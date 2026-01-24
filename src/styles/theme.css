@@ -1,0 +1,81 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #E6E5E1;
+  --foreground: #050505;
+  --card: #F2F0ED;
+  --card-foreground: #050505;
+  --popover: #F2F0ED;
+  --popover-foreground: #050505;
+  --primary: #FF4F28;
+  --primary-foreground: #000000;
+  --secondary: #998878;
+  --secondary-foreground: #1A1A1A;
+  --muted: #D1D1D1;
+  --muted-foreground: #666666;
+  --accent: #FFD600;
+  --accent-foreground: #000000;
+  --destructive: #FF4F28;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(0, 0, 0, 0.05);
+  --input: rgba(0, 0, 0, 0.05);
+  --ring: #FFD600;
+  --radius: 2.5rem;
+}
+
+.dark {
+  --background: #050505;
+  --foreground: #E6E5E1;
+  --card: #1C1C1E;
+  --card-foreground: #E6E5E1;
+  --popover: #1C1C1E;
+  --popover-foreground: #E6E5E1;
+  --primary: #FFD600;
+  --primary-foreground: #000000;
+  --secondary: #998878;
+  --secondary-foreground: #FFFFFF;
+  --muted: #2A2A2A;
+  --muted-foreground: #A1A1A1;
+  --accent: #FFD600;
+  --accent-foreground: #000000;
+  --destructive: #FF4F28;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #FFD600;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
