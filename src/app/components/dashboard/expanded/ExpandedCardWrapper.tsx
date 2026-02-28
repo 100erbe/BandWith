@@ -80,6 +80,10 @@ export const ExpandedCardWrapper: React.FC<ExpandedCardWrapperProps> = ({
         className="absolute inset-0 overflow-y-auto overflow-x-hidden flex flex-col"
         style={{ 
           willChange: 'opacity',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
         }}
         initial={{ 
           opacity: 0,

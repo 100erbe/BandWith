@@ -118,6 +118,7 @@ interface OnboardingContextType extends OnboardingState {
   prevStep: () => void;
   skipStep: () => void;
   goToStep: (step: number) => void;
+  resetOnboarding: () => void;
   completeOnboarding: () => Promise<void>;
 
   // Data setters
@@ -237,6 +238,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       ...prev,
       currentStep: step,
     }));
+  }, []);
+
+  // Reset to initial state (go back to welcome)
+  const resetOnboarding = useCallback(() => {
+    setState(initialState);
   }, []);
 
   // Complete onboarding
@@ -449,6 +455,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     prevStep,
     skipStep,
     goToStep,
+    resetOnboarding,
     completeOnboarding,
     setAccountData,
     setBandData,

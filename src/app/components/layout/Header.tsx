@@ -2,7 +2,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronDown, 
-  Check, 
   Plus,
   Grid,
   List,
@@ -17,9 +16,7 @@ interface HeaderProps {
   activeTab: TabName;
   selectedBand: Band;
   bands: Band[];
-  isBandSwitcherOpen: boolean;
-  setIsBandSwitcherOpen: (open: boolean) => void;
-  setSelectedBand: (band: Band) => void;
+  onOpenBandSwitcher: () => void;
   filteredEventsCount: number;
   totalEventsCount: number;
   eventView: 'list' | 'calendar';
@@ -34,9 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   selectedBand,
   bands,
-  isBandSwitcherOpen,
-  setIsBandSwitcherOpen,
-  setSelectedBand,
+  onOpenBandSwitcher,
   filteredEventsCount,
   totalEventsCount,
   eventView,
@@ -78,76 +73,35 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full", 
-                  selectedBand.role === 'ADMIN' ? "bg-[#FF4F28]" : "bg-[#D4FB46]"
+                  selectedBand.role === 'ADMIN' ? "bg-[#D5FB46]" : "bg-[#FF0066]"
                 )} />
                 <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-black transition-colors">
                   {selectedBand.role}
                 </span>
               </motion.div>
 
-              <div className="relative">
-                <button 
-                  onClick={() => setIsBandSwitcherOpen(!isBandSwitcherOpen)}
-                  className="text-left outline-none"
-                >
-                  <AnimatePresence mode="wait">
-                    <motion.h1 
-                      key={selectedBand.id}
-                      initial={{ y: 15, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: -15, opacity: 0 }}
-                      transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                      className="text-5xl font-black tracking-tighter leading-[0.9] text-[#1A1A1A] uppercase max-w-[280px] hover:text-black/70"
-                    >
-                      {selectedBand.name}
-                    </motion.h1>
-                  </AnimatePresence>
-                  
-                  <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
-                    <span className="text-xs font-bold uppercase tracking-wider">Switch Profile</span>
-                    <ChevronDown className={cn(
-                      "w-4 h-4 transition-transform duration-300", 
-                      isBandSwitcherOpen && "rotate-180"
-                    )} />
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {isBandSwitcherOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute top-full left-0 mt-2 w-64 bg-[#1C1C1E] rounded-[1.5rem] p-2 shadow-2xl border border-white/10 overflow-hidden z-50"
-                    >
-                      {bands.map((band) => (
-                        <button
-                          key={band.id}
-                          onClick={() => {
-                            setSelectedBand(band);
-                            setIsBandSwitcherOpen(false);
-                          }}
-                          className={cn(
-                            "w-full p-3 rounded-[1rem] flex items-center justify-between text-left transition-colors mb-1 last:mb-0",
-                            selectedBand.id === band.id ? "bg-[#333336]" : "hover:bg-white/5"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#E6E5E1] text-[#1A1A1A] flex items-center justify-center text-xs font-bold">
-                              {band.initials}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[#E6E5E1] font-bold text-sm leading-none">{band.name}</span>
-                              <span className="text-stone-500 text-[10px] font-bold uppercase mt-0.5">{band.role}</span>
-                            </div>
-                          </div>
-                          {selectedBand.id === band.id && <Check className="w-4 h-4 text-[#D4FB46]" />}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
+              <button 
+                onClick={onOpenBandSwitcher}
+                className="text-left outline-none"
+              >
+                <AnimatePresence mode="wait">
+                  <motion.h1 
+                    key={selectedBand.id}
+                    initial={{ y: 15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -15, opacity: 0 }}
+                    transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                    className="text-5xl font-black tracking-tighter leading-[0.9] text-[#1A1A1A] uppercase max-w-[280px] hover:text-black/70"
+                  >
+                    {selectedBand.name}
+                  </motion.h1>
                 </AnimatePresence>
-              </div>
+                
+                <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
+                  <span className="text-xs font-bold uppercase tracking-wider">Switch Profile</span>
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </button>
             </>
           )}
         </div>

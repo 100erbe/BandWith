@@ -6,7 +6,7 @@
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS member_invites (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     band_id UUID REFERENCES bands(id) ON DELETE CASCADE NOT NULL,
     invited_by UUID REFERENCES profiles(id) ON DELETE SET NULL NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS member_invites (
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS onboarding_progress (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
     path VARCHAR(20) NOT NULL, -- creator, joiner
     current_step INTEGER DEFAULT 0,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS onboarding_progress (
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS import_jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
     band_id UUID REFERENCES bands(id) ON DELETE CASCADE NOT NULL,
     source VARCHAR(50) NOT NULL, -- spotify, apple_music, google_drive, dropbox, csv

@@ -5,6 +5,7 @@ export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'QUOTE' | 'REHEARSAL';
 
 export interface EventItem {
   id: number;
+  eventId?: string; // Real UUID from database
   title: string;
   status: EventStatus;
   date: string;
@@ -13,6 +14,8 @@ export interface EventItem {
   price: string;
   members: string[];
   color: string;
+  notes?: string;
+  createdBy?: string;
 }
 
 export interface PendingEvent {
@@ -237,7 +240,7 @@ export const CONFIRMED_GIGS: ConfirmedGig[] = [
   },
 ];
 
-export const EVENT_FILTERS = ["All", "Confirmed", "Tentative", "Pending", "Past"];
+export const EVENT_FILTERS = ["All", "Confirmed", "Rehearsal"];
 
 // Helper function to get timeline icons
 export const getTimelineIcons = () => ({

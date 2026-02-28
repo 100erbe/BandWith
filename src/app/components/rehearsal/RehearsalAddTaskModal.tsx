@@ -3,6 +3,7 @@ import { RehearsalModalWrapper } from './RehearsalModalWrapper';
 import { CheckSquare, Plus, User, Users, Music, AlertCircle, Check } from 'lucide-react';
 import { RehearsalMember, RehearsalSong, RehearsalTask } from './types';
 import { cn } from '@/app/components/ui/utils';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 interface Props {
   isOpen: boolean;
@@ -93,7 +94,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                     autoFocus
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    className="w-full bg-[#F2F2F0] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-black/5 transition-all placeholder:text-black/20"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
                     placeholder="e.g. Learn the bridge part"
                 />
             </div>
@@ -103,7 +104,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                 <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Assign To</label>
                 
                 {/* Mode Tabs */}
-                <div className="flex p-1 bg-[#F2F2F0] rounded-xl mb-2">
+                <div className="flex p-1 bg-black/5 rounded-[10px] mb-2">
                     <button onClick={() => { setAssignMode('all'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'all' ? "bg-black text-white shadow-sm" : "text-black/40")}>Entire Band</button>
                     <button onClick={() => { setAssignMode('single'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'single' ? "bg-black text-white shadow-sm" : "text-black/40")}>One Member</button>
                     <button onClick={() => { setAssignMode('multiple'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'multiple' ? "bg-black text-white shadow-sm" : "text-black/40")}>Multiple</button>
@@ -119,7 +120,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                     key={m.id}
                                     onClick={() => handleToggleMember(m.id)}
                                     className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-xl border transition-all text-left group",
+                                        "flex items-center justify-between px-3 py-2 rounded-[10px] border transition-all text-left group",
                                         isSelected ? "bg-black border-black text-white" : "bg-white border-black/10 hover:border-black/30 text-black/60"
                                     )}
                                 >
@@ -127,7 +128,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                         <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-black" : "bg-black/10 text-black/40")}>{m.initials}</div>
                                         <span className="text-xs font-bold">{m.name}</span>
                                     </div>
-                                    {isSelected && <Check className="w-3 h-3" />}
+                                    <DotCheckbox checked={isSelected} activeColor={isSelected ? '#FFFFFF' : '#000000'} inactiveColor={isSelected ? 'rgba(255,255,255,0.3)' : undefined} />
                                 </button>
                             );
                         })}
@@ -153,7 +154,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                             onClick={() => setType(t as any)}
                             className={cn(
                                 "px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase transition-all",
-                                type === t ? "bg-black text-[#D4FB46] border-black" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
+                                type === t ? "bg-black text-white border-black" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
                             )}
                         >
                             {t}
@@ -167,7 +168,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                 <button 
                     onClick={handleAdd}
                     disabled={!text || (assignMode !== 'all' && selectedMemberIds.length === 0)}
-                    className="w-full py-4 bg-black text-[#D4FB46] rounded-xl font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-4 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="w-4 h-4" /> {getButtonText()}
                 </button>

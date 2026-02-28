@@ -115,8 +115,8 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                          className={cn(
                                              "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all",
                                              details.category === cat 
-                                                ? "bg-black text-[#D4FB46] border-black" 
-                                                : "bg-transparent text-black/40 border-black/10 hover:border-black/30"
+                                               ? "bg-black text-white border-black" 
+                                               : "bg-transparent text-black/40 border-black/10 hover:border-black/30"
                                          )}
                                      >
                                          {cat}
@@ -127,8 +127,8 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                      className={cn(
                                          "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed transition-all flex items-center gap-1",
                                          !categories.includes(details.category) && details.category !== '' 
-                                             ? "bg-black text-[#D4FB46] border-black" 
-                                             : "text-black/40 border-black/20 hover:border-black/40"
+                                            ? "bg-black text-white border-black" 
+                                            : "text-black/40 border-black/20 hover:border-black/40"
                                      )}
                                  >
                                      <Plus className="w-3 h-3" /> New
@@ -152,7 +152,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             <button 
                onClick={handleSave}
                disabled={!details.title}
-               className="w-full py-4 bg-black text-[#D4FB46] rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+               className="w-full py-4 bg-black text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
                Add to Setlist
             </button>

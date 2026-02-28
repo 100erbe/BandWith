@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1284" height="2778" fill="#E6E5E1"/>
+  
+  <!-- Subtle gradient overlay -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#D4FB46;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#D4FB46;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1284" height="2778" fill="url(#glow)"/>
+  
+  <!-- Logo Background (rounded square) -->
+  <rect 
+    x="542" 
+    y="1289" 
+    width="200" 
+    height="200" 
+    rx="44" 
+    fill="url(#logoGradient)"
+  />
+  
+  <!-- Logo Gradient -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#D4FB46"/>
+      <stop offset="100%" style="stop-color:#C8F040"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Equalizer Bars -->
+  <g>
+    <rect x="566" y="1313" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="566" y="1361" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="566" y="1429" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="614" y="1313" width="36" height="84" rx="10" fill="#000000"/>
+    <rect x="614" y="1429" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="662" y="1313" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="662" y="1361" width="36" height="36" rx="10" fill="#000000"/>
+    <rect x="662" y="1429" width="36" height="36" rx="10" fill="#000000"/>
+  </g>
+</svg>

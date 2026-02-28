@@ -11,12 +11,12 @@ import {
   Play,
   ListMusic,
   CheckCircle2,
-  Check,
   Mic2,
   Radio,
   X
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { EventItem } from '@/app/data/events';
 import { RehearsalViewMode } from '@/app/types';
@@ -399,12 +399,11 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                     const isDone = task.done || task.completed;
                     return (
                       <div key={i} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl">
-                        <div className={cn(
-                          "w-5 h-5 rounded-full border-2 flex items-center justify-center cursor-pointer", 
-                          isDone ? "bg-[#D4FB46] border-[#D4FB46]" : "border-white/30"
-                        )}>
-                          {isDone && <Check className="w-3 h-3 text-black" />}
-                        </div>
+                        <DotCheckbox
+                          checked={isDone}
+                          activeColor="#D4FB46"
+                          inactiveColor="rgba(255,255,255,0.15)"
+                        />
                         <div className="flex-1">
                           <span className={cn(
                             "text-sm font-bold block", 

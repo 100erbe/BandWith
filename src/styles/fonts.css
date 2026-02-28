@@ -1,0 +1,41 @@
+/* Neue Haas Grotesk Display Pro - loaded via Adobe Typekit */
+/* Kit: https://use.typekit.net/mzr4hzv.css */
+
+:root {
+  --font-display: 'neue-haas-grotesk-display', -apple-system, BlinkMacSystemFont, 
+                  'SF Pro Display', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-text: 'neue-haas-grotesk-text', -apple-system, BlinkMacSystemFont, 
+               'SF Pro Text', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-sans: var(--font-display);
+  --font-mono: 'SF Mono', 'Roboto Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  
+  /* Safe area defaults (overridden by JS on Android) */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  
+  --safe-padding-top: max(env(safe-area-inset-top, 0px), 12px);
+  --safe-padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+
+/* Android platform class - set by JS */
+html.platform-android {
+  --safe-area-top: 48px;
+  --safe-area-bottom: 24px;
+  --safe-padding-top: 56px;
+  --safe-padding-bottom: 24px;
+}
+
+/* Apply font globally - base weight is 400 (55 Roman) */
+html, body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+*, *::before, *::after {
+  font-family: inherit;
+}

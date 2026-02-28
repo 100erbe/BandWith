@@ -1,6 +1,6 @@
 // Notification types
 export type NotificationType = 'chat' | 'event' | 'finance';
-export type NotificationActionType = 'NAV_CHAT' | 'NAV_EVENTS_CONFIRMED' | 'NAV_FINANCE';
+export type NotificationActionType = 'NAV_CHAT' | 'NAV_EVENTS' | 'NAV_EVENTS_CONFIRMED' | 'NAV_FINANCE';
 
 export interface NotificationItem {
   id: number;
@@ -10,6 +10,8 @@ export interface NotificationItem {
   time: string;
   read: boolean;
   actionType: NotificationActionType;
+  chatId?: string; // For deep linking to specific chat
+  eventId?: string; // For deep linking to specific event
 }
 
 // Initial notifications data

@@ -4,20 +4,13 @@ import {
   X, 
   Plus, 
   ArrowUpRight,
-  MessageSquare,
-  Calendar as CalendarIcon,
-  CreditCard,
-  FileText,
-  Box,
-  Music2,
-  Split,
-  Fingerprint
+  LogOut,
+  Fingerprint,
 } from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
-import { menuContainerVariants, menuItemVariants } from '@/styles/motion';
 import { USER } from '@/app/data/user';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
+import { useAuth } from '@/lib/AuthContext';
 
 interface NotificationGroup {
   type: string;
@@ -33,238 +26,409 @@ interface IdentityHubProps {
   notificationGroups: NotificationGroup[];
   unreadCount: number;
   onNotificationClick: (ids: number[], actionType: string) => void;
+  onMarkAsRead?: (id: number) => void;
+  onMarkGroupAsRead?: (ids: number[]) => void;
+  entityCounts?: { templates: number; documents: number; inventory: number; repertoire: number };
+  onEntityDetailClick?: (label: string) => void;
+  onEditProfile?: () => void;
+  onEditBand?: () => void;
+  onAddEntity?: () => void;
 }
+
+const DotGrid: React.FC<{
+  filled: number;
+  cols: number;
+  rows: number;
+  height: number;
+  activeColor?: string;
+  inactiveColor?: string;
+}> = ({ filled, cols, rows, height, activeColor = '#D5FB46', inactiveColor = 'rgba(0,0,0,0.2)' }) => {
+  const total = cols * rows;
+  const capped = Math.min(filled, total);
+  return (
+    <div
+      className="grid w-full shrink-0"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+        gap: 4,
+        height,
+      }}
+    >
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[10px]"
+          style={{ backgroundColor: i < capped ? activeColor : inactiveColor }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const MemberBars: React.FC<{
+  count: number;
+  total?: number;
+}> = ({ count, total = 6 }) => {
+  const capped = Math.min(count, total);
+  return (
+    <div
+      className="grid w-full shrink-0"
+      style={{
+        gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`,
+        gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
+        gap: 4,
+        height: 53,
+      }}
+    >
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[10px] row-span-3"
+          style={{ backgroundColor: i < capped ? '#D5FB46' : 'rgba(0,0,0,0.2)' }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const IdentityHub: React.FC<IdentityHubProps> = ({
   isOpen,
   onClose,
   bands,
   selectedBand,
-  setSelectedBand,
   notificationGroups,
   unreadCount,
-  onNotificationClick
+  onNotificationClick,
+  onMarkGroupAsRead,
+  entityCounts,
+  onEntityDetailClick,
+  onEditProfile,
+  onEditBand,
+  onAddEntity
 }) => {
+  const { signOut, user, profile } = useAuth();
+  
+  const handleLogout = async () => {
+    await signOut();
+    onClose();
+  };
+
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || USER.name;
+  const displayInitials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || USER.initials;
+  const displayRole = profile?.role || USER.role;
+
+  const entityDetails = [
+    { label: 'TEMPLATES', count: entityCounts?.templates ?? 0, cols: 6, rows: 4, height: 72 },
+    { label: 'DOCUMENTS', count: entityCounts?.documents ?? 0, cols: 6, rows: 4, height: 72 },
+    { label: 'INVENTORY', count: entityCounts?.inventory ?? 0, cols: 6, rows: 4, height: 72 },
+    { label: 'REPERTOIRE', count: entityCounts?.repertoire ?? 0, cols: 12, rows: 8, height: 148 },
+  ];
+
+  const bandTags = bands.map(b => b.name);
+
+  const handleClearAll = () => {
+    notificationGroups.forEach(g => {
+      onMarkGroupAsRead?.(g.items.map(i => i.id));
+    });
+  };
+
+  const getNotifLabel = (type: string) => {
+    if (type.includes('quote')) return 'QUOTE';
+    if (type.includes('chat') || type === 'chat') return 'CHAT';
+    if (type.includes('event') || type === 'event') return 'EVENT';
+    if (type.includes('rehearsal')) return 'REHARSAL';
+    if (type.includes('invite')) return 'INVITE';
+    if (type.includes('payment') || type === 'finance') return 'PAYMENT';
+    return type.toUpperCase();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ y: "-100%" }}
+          initial={{ y: '-100%' }}
           animate={{ y: 0 }}
-          exit={{ y: "-100%" }}
-          transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 z-[60] bg-[#050505] overflow-y-auto px-4 pt-12 pb-32 text-white"
+          exit={{ y: '-100%' }}
+          transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+          className="fixed inset-0 z-[60] bg-[#737373] overflow-y-auto overflow-x-hidden"
+          style={{
+            overscrollBehaviorX: 'none',
+            touchAction: 'pan-y',
+          }}
         >
-          {/* Creative Background Element */}
-          <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
-            <div className="absolute -top-20 -right-20 w-96 h-96 bg-[#D4FB46] rounded-full blur-[100px] animate-pulse" />
-          </div>
-
-          {/* Header */}
-          <motion.div 
-            className="flex justify-between items-start mb-8 relative z-10" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            transition={{ delay: 0.2 }}
+          <div
+            className="flex flex-col gap-10 px-4 min-h-full"
+            style={{
+              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 62px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 62px)',
+            }}
           >
-            <div>
-              <span className="text-[#D4FB46] text-[10px] font-bold uppercase tracking-widest mb-1 block">Identity Hub</span>
-              <h2 className="text-3xl font-black tracking-tighter">Who you are</h2>
+            {/* ═══ HEADER ═══ */}
+            <div className="flex items-start justify-between w-full">
+              <div className="flex flex-col gap-1">
+                <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                  IDENTITY HUB
+                </span>
+                <h2 className="text-[32px] font-bold text-white leading-none uppercase">
+                  WHO YOU ARE
+                </h2>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.2)] border-2 border-white flex items-center justify-center shrink-0"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
             </div>
-            <button 
-              onClick={onClose}
-              className="w-12 h-12 rounded-full bg-[#1C1C1E]/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform hover:bg-[#1C1C1E]"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </motion.div>
 
-          {/* STAGGERED LIST CONTAINER */}
-          <motion.div variants={menuContainerVariants} initial="hidden" animate="show" exit="exit" className="relative z-10">
-
-            {/* NOTIFICATIONS SECTION */}
-            <AnimatePresence>
-              {unreadCount > 0 && (
-                <motion.div variants={menuItemVariants} exit={{ opacity: 0, height: 0 }} className="mb-8">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4 px-2 flex items-center justify-between">
-                    <span>Latest Updates</span>
-                    <span className="text-[#D4FB46]">{unreadCount} new</span>
-                  </h3>
-                  <div className="space-y-3">
-                    {notificationGroups.map((group) => {
-                      const isStack = group.items.length > 1;
-                      const latestItem = group.items[0];
-                      
-                      return (
-                        <motion.div 
-                          key={group.type}
-                          layout
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          onClick={() => onNotificationClick(group.items.map(i => i.id), latestItem.actionType)}
-                          whileTap={{ scale: 0.98 }}
-                          className="relative cursor-pointer group"
-                        >
-                          {/* Stack Effect */}
-                          {isStack && (
-                            <div className="absolute top-2 left-0 w-full h-full bg-[#E6E5E1]/30 rounded-[1.5rem] scale-[0.95] translate-y-1 z-0" />
-                          )}
-                          
-                          <div className={cn(
-                            "p-4 rounded-[1.5rem] flex items-center justify-between border transition-all relative z-10 bg-[#E6E5E1] border-transparent text-[#1A1A1A] shadow-lg",
-                            isStack && "hover:translate-y-1"
-                          )}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center border bg-[#D4FB46] border-black text-black">
-                                {group.type === 'chat' && <MessageSquare className="w-4 h-4" />}
-                                {group.type === 'event' && <CalendarIcon className="w-4 h-4" />}
-                                {group.type === 'finance' && <CreditCard className="w-4 h-4" />}
-                              </div>
-                              <div className="flex flex-col">
-                                <h4 className="text-xs font-black uppercase tracking-wide text-[#1A1A1A]">
-                                  {isStack ? `${group.items.length} New ${group.type === 'chat' ? 'Messages' : 'Updates'}` : latestItem.title}
-                                </h4>
-                                <p className="text-sm font-medium leading-tight truncate max-w-[180px] text-[#1A1A1A]/80">
-                                  {isStack ? "Tap to view all updates" : latestItem.message}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              {isStack && <span className="bg-black text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full mb-1">+{group.items.length - 1}</span>}
-                              <span className="text-[9px] font-bold uppercase text-[#1A1A1A]/50">{latestItem.time}</span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* PROFILE CARD */}
-            <motion.div variants={menuItemVariants} className="bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] rounded-[2rem] p-1 mb-8 border border-white/10 shadow-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              <div className="bg-[#111111] rounded-[1.8rem] p-5 flex items-center gap-5 relative z-10">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white font-black text-xl border border-white/10 z-10 relative">
-                    {USER.initials}
-                  </div>
-                  <div className="absolute bottom-1 right-1 w-4 h-4 bg-[#D4FB46] rounded-full border-2 border-[#111111] z-20 shadow-[0_0_10px_#D4FB46]" />
+            {/* ═══ NOTIFICATIONS (if any) ═══ */}
+            {unreadCount > 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between mb-1">
+                  <div />
+                  <button
+                    onClick={handleClearAll}
+                    className="text-[12px] font-bold text-[#D5FB46] uppercase"
+                  >
+                    CLEAR ALL
+                  </button>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight leading-none mb-1 text-white">{USER.name} {USER.surname}</h2>
-                  <div className="flex items-center gap-2 text-xs font-bold text-stone-500 uppercase tracking-wide">
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/5">
-                      <Fingerprint className="w-3 h-3 text-[#D4FB46]" />
-                      <span className="text-[#D4FB46]">{USER.role}</span>
+                {notificationGroups.map((group) => {
+                  const label = getNotifLabel(group.type);
+                  return (
+                    <button
+                      key={group.type}
+                      onClick={() => {
+                        const item = group.items[0];
+                        onNotificationClick(group.items.map(i => i.id), item.actionType);
+                      }}
+                      className="flex items-center justify-between w-full bg-white rounded-[10px] px-3 py-2.5 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-bold text-black uppercase">
+                          {label}
+                        </span>
+                        <span className="bg-[#D5FB46] text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                          {group.items.length}
+                        </span>
+                        {group.items[0] && (
+                          <span className="text-[10px] text-black/50 font-medium truncate max-w-[140px]">
+                            {group.items[0].message}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkGroupAsRead?.(group.items.map(i => i.id));
+                          }}
+                          className="w-6 h-6 rounded-full border border-black/20 flex items-center justify-center"
+                        >
+                          <X className="w-3 h-3 text-black/60" />
+                        </button>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ═══ PROFILE SECTION ═══ */}
+            <div className="flex flex-col gap-10">
+              {/* Avatar + Name */}
+              <div className="flex items-start gap-5">
+                <div className="w-[74px] h-[74px] rounded-full bg-[#D5FB46] border-2 border-white flex items-center justify-center text-black font-bold text-xl shrink-0 overflow-hidden">
+                  {displayInitials}
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-[22px] font-bold text-black uppercase leading-tight">
+                      {displayName}
+                    </p>
+                    <div className="flex items-center gap-1 bg-black/20 rounded-[6px] px-1.5 py-0.5 w-fit">
+                      <Fingerprint className="w-4 h-4 text-[#D5FB46]" />
+                      <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                        {displayRole}
+                      </span>
                     </div>
-                    <span>{USER.subRole}</span>
                   </div>
-                  <button className="text-[10px] font-bold text-stone-600 uppercase mt-2 hover:text-white transition-colors flex items-center gap-1">
-                    Edit Profile <ArrowUpRight className="w-3 h-3" />
+                  <button
+                    onClick={() => {
+                      if (onEditProfile) {
+                        onEditProfile();
+                        onClose();
+                      }
+                    }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <span className="text-[10px] font-medium text-black uppercase">
+                      EDIT PROFILE
+                    </span>
+                    <ArrowUpRight className="w-3 h-3 text-black" />
                   </button>
                 </div>
               </div>
-            </motion.div>
 
-            {/* Band Selection */}
-            <motion.div variants={menuItemVariants} className="space-y-4 mb-8">
-              {bands.map((band) => (
-                <motion.div 
-                  key={band.id} 
-                  onClick={() => setSelectedBand(band)}
-                  whileTap={{ scale: 0.98 }}
-                  className={cn(
-                    "p-6 rounded-[2.5rem] relative overflow-hidden transition-all cursor-pointer border", 
-                    selectedBand.id === band.id 
-                      ? "bg-[#D4FB46] text-black shadow-[0_0_30px_-10px_rgba(212,251,70,0.3)] border-[#D4FB46]" 
-                      : "bg-[#1C1C1E] text-white border-white/5 hover:border-white/20"
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-6 relative z-10">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-14 h-14 rounded-full flex items-center justify-center font-black text-sm border-2", 
-                        selectedBand.id === band.id ? "bg-black text-[#D4FB46] border-black" : "bg-black text-white border-black"
-                      )}>
-                        {band.initials}
+              {/* ═══ BAND SECTION ═══ */}
+              <div className="flex flex-col gap-[30px]">
+                <div className="flex flex-col gap-[30px]">
+                  {/* Band Header */}
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                          YOUR BAND
+                        </span>
+                        <h3 className="text-[32px] font-bold text-white leading-none uppercase">
+                          {selectedBand.name}
+                        </h3>
                       </div>
-                      <div>
-                        <h4 className="font-black text-2xl leading-none mb-1">{band.name}</h4>
-                        <span className={cn(
-                          "text-[10px] font-bold uppercase tracking-wide", 
-                          selectedBand.id === band.id ? "text-black/60" : "text-stone-500"
-                        )}>{band.role}</span>
+                      <button
+                        onClick={() => {
+                          if (onEditBand) {
+                            onEditBand();
+                            onClose();
+                          }
+                        }}
+                        className="bg-[#D5FB46] rounded-[6px] px-2.5 py-1 shrink-0"
+                      >
+                        <span className="text-[12px] font-bold text-black uppercase">EDIT</span>
+                      </button>
+                    </div>
+                    {/* Band Tags */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {bandTags.map((tag, i) => (
+                        <div
+                          key={i}
+                          className={`rounded-[6px] px-1.5 py-1 ${
+                            i === 0
+                              ? 'bg-black'
+                              : 'bg-white/20'
+                          }`}
+                        >
+                          <span
+                            className={`text-[12px] font-medium uppercase ${
+                              i === 0 ? 'text-[#D5FB46]' : 'text-black'
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Members + Genre Row */}
+                  <div className="flex gap-5 w-full">
+                    {/* Members */}
+                    <div className="flex-1 flex flex-col gap-2.5">
+                      <MemberBars count={selectedBand.members} />
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                          MEMBERS
+                        </span>
+                        <span className="text-[32px] font-bold text-black leading-none">
+                          {selectedBand.members}
+                        </span>
                       </div>
                     </div>
-                    {selectedBand.id === band.id && (
-                      <span className="px-2 py-1 bg-black/10 rounded-md text-[9px] font-bold uppercase text-black animate-pulse">Active</span>
-                    )}
-                  </div>
-
-                  {/* Stats Pills */}
-                  <div className="grid grid-cols-3 gap-3 relative z-10">
-                    {[
-                      { label: "Members", val: band.members },
-                      { label: "Genre", val: band.genre },
-                      { label: "Plan", val: band.plan }
-                    ].map((stat, i) => (
-                      <div key={i} className={cn(
-                        "py-3 rounded-2xl flex flex-col items-center justify-center backdrop-blur-sm", 
-                        selectedBand.id === band.id ? "bg-black/10" : "bg-black/30"
-                      )}>
-                        <span className="font-black text-lg leading-none mb-0.5">{stat.val}</span>
-                        <span className={cn(
-                          "text-[8px] font-bold uppercase", 
-                          selectedBand.id === band.id ? "text-black/60" : "text-stone-600"
-                        )}>{stat.label}</span>
+                    {/* Genre */}
+                    <div className="flex-1 flex flex-col gap-2.5">
+                      <DotGrid filled={10} cols={6} rows={3} height={53} />
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                          GENRE
+                        </span>
+                        <span className="text-[32px] font-bold text-black leading-none uppercase">
+                          {selectedBand.genre}
+                        </span>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </motion.div>
-              ))}
-              
-              <motion.button 
-                variants={menuItemVariants} 
-                className="w-full py-4 border-2 border-dashed border-white/10 rounded-[2rem] flex items-center justify-center gap-2 text-stone-500 font-bold text-xs uppercase hover:border-[#D4FB46] hover:text-[#D4FB46] transition-colors"
+                </div>
+
+                {/* + ADD NEW */}
+                <button
+                  onClick={() => {
+                    if (onAddEntity) {
+                      onAddEntity();
+                      onClose();
+                    }
+                  }}
+                  className="w-full border-2 border-dashed border-black/20 rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-3.5 h-3.5 text-black" />
+                  <span className="text-[12px] font-medium text-black text-center uppercase">
+                    ADD NEW
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* ═══ ENTITY DETAILS ═══ */}
+            <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-1">
+                <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                  SUPPORT TEXT
+                </span>
+                <h3 className="text-[32px] font-bold text-white leading-none uppercase">
+                  ENTITY DETAILS
+                </h3>
+              </div>
+
+              <div className="flex flex-col gap-10">
+                {entityDetails.map((item) => (
+                  <div key={item.label} className="flex flex-col gap-2">
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-bold text-[#D5FB46] uppercase">
+                          {item.label}
+                        </span>
+                        <button
+                          onClick={() => {
+                            onEntityDetailClick?.(item.label);
+                            onClose();
+                          }}
+                          className="bg-[#D5FB46] rounded-[6px] px-2.5 py-1"
+                        >
+                          <span className="text-[12px] font-bold text-black uppercase">EDIT</span>
+                        </button>
+                      </div>
+                      <span className="text-[32px] font-bold text-black leading-none">
+                        {item.count}
+                      </span>
+                    </div>
+                    <DotGrid
+                      filled={item.count}
+                      cols={item.cols}
+                      rows={item.rows}
+                      height={item.height}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══ SIGN OUT ═══ */}
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={handleLogout}
+                className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
               >
-                <Plus className="w-4 h-4" /> Add New Entity
-              </motion.button>
-            </motion.div>
-
-            {/* Entity Details */}
-            <motion.h3 variants={menuItemVariants} className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4 px-2">Entity Details</motion.h3>
-            <motion.div variants={menuItemVariants} className="space-y-2">
-              {[
-                { label: "Documents", icon: FileText, count: "5" },
-                { label: "Inventory", icon: Box, count: "12" },
-                { label: "Repertoire", icon: Music2, count: "45" },
-                { label: "Finance Splits", icon: Split, count: "" },
-              ].map((item, i) => (
-                <motion.div 
-                  key={i} 
-                  whileHover={{ x: 5 }} 
-                  className="flex items-center justify-between p-5 rounded-[2rem] bg-[#1C1C1E] border border-white/5 hover:bg-white/5 cursor-pointer group transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center border border-white/5">
-                      <item.icon className="w-5 h-5 text-stone-500 group-hover:text-white transition-colors" />
-                    </div>
-                    <span className="font-bold text-sm text-white">{item.label}</span>
-                  </div>
-                  {item.count && (
-                    <span className="bg-black px-2 py-0.5 rounded text-[10px] font-bold text-[#D4FB46] shadow-[0_0_10px_rgba(212,251,70,0.1)]">
-                      {item.count}
-                    </span>
-                  )}
-                </motion.div>
-              ))}
-            </motion.div>
-
-          </motion.div>
+                <LogOut className="w-4 h-4 text-white" />
+                <span className="text-[12px] font-medium text-white text-center uppercase">
+                  SIGN OUT
+                </span>
+              </button>
+              {user?.email && (
+                <p className="text-[10px] font-normal text-black/50 text-center uppercase w-full">
+                  SIGNED IN AS {user.email}
+                </p>
+              )}
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

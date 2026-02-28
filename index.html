@@ -1,15 +1,63 @@
-
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Revamp Dashboard Design</title>
-    </head>
-
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="stylesheet" href="https://use.typekit.net/mzr4hzv.css">
+    <title>BandWith</title>
+    <style>
+      html, body {
+        margin: 0; padding: 0; height: 100%; overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-user-select: none; user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        background: #000;
+      }
+      ::-webkit-scrollbar { display: none; }
+      * { -ms-overflow-style: none; scrollbar-width: none; }
+      #root {
+        height: 100%; overflow-y: scroll; overflow-x: hidden;
+        -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;
+      }
+      input, textarea, select {
+        -webkit-appearance: none; -moz-appearance: none; appearance: none;
+        border-radius: 0; font-size: 16px;
+      }
+      input:-webkit-autofill, input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus, input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #000 inset !important;
+        -webkit-text-fill-color: #fff !important;
+        caret-color: #fff !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
+      input:focus, textarea:focus, select:focus {
+        outline: none; -webkit-tap-highlight-color: transparent;
+      }
+      #css-splash {
+        position: fixed; inset: 0; z-index: 99999;
+        background: #000;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+      }
+      #css-splash img {
+        width: 64px; height: 64px; border-radius: 16px;
+      }
+      #css-splash .t {
+        margin-top: 24px;
+        font-family: 'neue-haas-grotesk-display', -apple-system, sans-serif;
+        font-size: 28px; font-weight: 900; letter-spacing: -0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="css-splash">
+      <img src="/brand/app-icon.png" alt="">
+      <div class="t"><span style="color:#fff">BAND</span><span style="color:#D5FB46">WITH</span></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

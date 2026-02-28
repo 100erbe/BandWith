@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Circle, X, ArrowRight, Sparkles } from 'lucide-react';
+import { X, ArrowRight, Sparkles } from 'lucide-react';
 import { useOnboarding } from '@/lib/OnboardingContext';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 interface ChecklistItem {
   id: string;
@@ -103,15 +104,11 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            {item.completed ? (
-              <div className="w-6 h-6 rounded-full bg-[#D4FB46] flex items-center justify-center flex-shrink-0">
-                <Check className="w-4 h-4 text-black" strokeWidth={2.5} />
-              </div>
-            ) : (
-              <div className="w-6 h-6 rounded-full border-2 border-zinc-600 flex items-center justify-center flex-shrink-0">
-                <Circle className="w-3 h-3 text-zinc-600" />
-              </div>
-            )}
+            <DotCheckbox
+              checked={item.completed}
+              activeColor="#D4FB46"
+              inactiveColor="rgba(255,255,255,0.15)"
+            />
             <span
               className={`text-[14px] ${
                 item.completed

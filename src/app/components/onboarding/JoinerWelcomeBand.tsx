@@ -47,7 +47,13 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
+    <div 
+      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Background gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div

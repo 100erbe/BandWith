@@ -1,4 +1,7 @@
+export { default as AnimatedSplash } from './AnimatedSplash';
 export { default as WelcomeScreen } from './WelcomeScreen';
+export { default as SignInScreen } from './SignInScreen';
+export { default as ForgotPasswordScreen } from './ForgotPasswordScreen';
 export { default as AccountCreation } from './AccountCreation';
 export { default as BandCreation } from './BandCreation';
 export { default as ProfileSetup } from './ProfileSetup';

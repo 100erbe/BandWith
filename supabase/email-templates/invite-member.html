@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're invited to join a band on BandWith</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table, td {border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
+    .button-td { padding: 0 !important; }
+    .button-a { padding: 18px 48px !important; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  
+  <!-- Wrapper Table -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #000000;">
+    <tr>
+      <td align="center" style="padding: 48px 24px;">
+        
+        <!-- Main Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px;">
+          
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding: 0 0 48px;">
+              <img src="https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/logo-white.png" 
+                   alt="BANDWITH" 
+                   width="180" 
+                   style="display: block; border: 0; max-width: 180px; height: auto;"
+              />
+            </td>
+          </tr>
+          
+          <!-- Main Card -->
+          <tr>
+            <td style="background-color: #0A0A0A; border-radius: 24px; border: 1px solid #1C1C1E;">
+              
+              <!-- Card Content -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="padding: 48px 40px 0;">
+                    <!-- Eyebrow -->
+                    <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #D4FB46;">
+                      You're Invited
+                    </p>
+                    <!-- Main Headline -->
+                    <h1 style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; color: #FFFFFF; letter-spacing: -0.02em;">
+                      Join the band<br>on BandWith
+                    </h1>
+                  </td>
+                </tr>
+                
+                <!-- Band Info Card -->
+                <tr>
+                  <td style="padding: 32px 40px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #1C1C1E; border-radius: 16px;">
+                      <tr>
+                        <td style="padding: 20px 24px;">
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="56" style="vertical-align: middle;">
+                                <!-- Band Avatar -->
+                                <div style="width: 48px; height: 48px; background-color: #D4FB46; border-radius: 12px; text-align: center; line-height: 48px; font-size: 18px; font-weight: 800; color: #000000;">
+                                  {{ .BandInitials }}
+                                </div>
+                              </td>
+                              <td style="vertical-align: middle; padding-left: 12px;">
+                                <p style="margin: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #71717A;">
+                                  Band
+                                </p>
+                                <p style="margin: 0; font-size: 18px; font-weight: 700; color: #FFFFFF;">
+                                  {{ .BandName }}
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Body Text -->
+                <tr>
+                  <td style="padding: 24px 40px 0;">
+                    <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #71717A;">
+                      <strong style="color: #FFFFFF;">{{ .InviterName }}</strong> has invited you to join their band on BandWith. Accept the invitation to start collaborating on gigs, rehearsals, and setlists.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Your Role -->
+                <tr>
+                  <td style="padding: 24px 40px 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding: 8px 16px; background-color: rgba(212, 251, 70, 0.1); border-left: 3px solid #D4FB46; border-radius: 0 8px 8px 0;">
+                          <p style="margin: 0; font-size: 12px; color: #71717A;">
+                            Your role: <strong style="color: #D4FB46;">{{ .Role }}</strong>
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 32px 40px;" class="button-td">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td>
+                          <a href="{{ .InviteURL }}" 
+                             class="button-a"
+                             style="display: block; padding: 18px 32px; background-color: #D4FB46; color: #000000; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; text-align: center; mso-padding-alt: 18px 32px;">
+                            Accept Invitation
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Divider -->
+                <tr>
+                  <td style="padding: 0 40px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-top: 1px solid #1C1C1E; height: 1px; line-height: 1px; font-size: 1px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Features -->
+                <tr>
+                  <td style="padding: 32px 40px;">
+                    <p style="margin: 0 0 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #52525B;">
+                      As a member you can
+                    </p>
+                    
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="24" style="vertical-align: top; color: #D4FB46; font-size: 14px;">✓</td>
+                              <td style="font-size: 14px; color: #A1A1AA;">View and RSVP to gigs & rehearsals</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="24" style="vertical-align: top; color: #D4FB46; font-size: 14px;">✓</td>
+                              <td style="font-size: 14px; color: #A1A1AA;">Access setlists and song notes</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="24" style="vertical-align: top; color: #D4FB46; font-size: 14px;">✓</td>
+                              <td style="font-size: 14px; color: #A1A1AA;">Chat with the band in real-time</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 40px 20px 0;">
+              <p style="margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: #3F3F46; text-align: center;">
+                If the button doesn't work, copy this link:
+              </p>
+              <p style="margin: 0 0 32px; font-size: 11px; line-height: 1.5; color: #D4FB46; text-align: center; word-break: break-all;">
+                {{ .InviteURL }}
+              </p>
+              
+              <p style="margin: 0 0 8px; font-size: 12px; color: #52525B; text-align: center;">
+                Questions? Email us at
+                <a href="mailto:support@bandwith.app" style="color: #D4FB46; text-decoration: none;">support@bandwith.app</a>
+              </p>
+              
+              <p style="margin: 24px 0 0; font-size: 11px; color: #27272A; text-align: center; line-height: 1.6;">
+                © 2026 BandWith. All rights reserved.<br>
+                If you don't recognize this invitation, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+  
+</body>
+</html>

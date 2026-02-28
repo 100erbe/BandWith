@@ -8,7 +8,13 @@ interface Props {
 
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
   return (
-    <div className="fixed inset-0 z-[200] bg-[#F7F7F5] text-black flex flex-col font-sans overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[200] bg-[#F7F7F5] text-black flex flex-col font-sans overflow-y-auto"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
         <div className="p-6 pb-32 max-w-md mx-auto w-full">
             
             {/* Header */}

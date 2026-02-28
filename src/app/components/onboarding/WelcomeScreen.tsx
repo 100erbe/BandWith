@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Guitar, Ticket, ArrowRight, Music2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowRight } from 'lucide-react';
 import { OnboardingPath } from '@/lib/OnboardingContext';
 
 interface WelcomeScreenProps {
@@ -8,139 +8,162 @@ interface WelcomeScreenProps {
   onSignIn: () => void;
 }
 
+const STATEMENTS = [
+  { word: 'Gigs', suffix: 'tracked' },
+  { word: 'Quotes', suffix: 'automated' },
+  { word: 'Setlists', suffix: 'organized' },
+  { word: 'Team', suffix: 'synced' },
+];
+
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onSelectPath,
   onSignIn,
 }) => {
-  return (
-    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-15"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(212, 251, 70, 0.4) 0%, transparent 70%)',
-            filter: 'blur(100px)',
-          }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-[600px] h-[600px] rounded-full opacity-10"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(0, 71, 255, 0.5) 0%, transparent 70%)',
-            filter: 'blur(80px)',
-          }}
-        />
-      </div>
+  const [activeIndex, setActiveIndex] = useState(0);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % STATEMENTS.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Content */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 relative z-10">
+      <div className="flex-1 flex flex-col px-5 pt-10 pb-6 relative z-10">
         {/* Logo */}
         <motion.div
-          className="flex flex-col items-center mb-16"
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5 }}
         >
-          <div
-            className="w-24 h-24 rounded-[2rem] bg-[#D4FB46] flex items-center justify-center mb-6"
-            style={{
-              boxShadow: '0 12px 48px rgba(212, 251, 70, 0.4)',
-            }}
+          <img
+            src="/brand/Logo - full text White.png"
+            alt="BANDWITH"
+            className="h-6"
+          />
+        </motion.div>
+
+        {/* Main editorial area */}
+        <div className="flex-1 flex flex-col justify-center -mt-10">
+          {/* Animated words */}
+          <motion.div
+            className="mb-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
           >
-            <Music2 className="w-12 h-12 text-black" strokeWidth={1.5} />
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-white">
-            Band<span className="text-[#D4FB46]">With</span>
-          </h1>
-        </motion.div>
+            <div className="overflow-hidden h-[64px] mb-1">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={activeIndex}
+                  className="block text-[56px] font-black text-[#D5FB46] leading-none tracking-tight uppercase"
+                  initial={{ y: 64, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -64, opacity: 0 }}
+                  transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
+                >
+                  {STATEMENTS[activeIndex].word}
+                </motion.span>
+              </AnimatePresence>
+            </div>
 
-        {/* Tagline */}
-        <motion.div
-          className="text-center mb-16"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <h2 className="text-[28px] font-bold text-white leading-tight mb-3">
-            Manage your band
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={activeIndex}
+                className="text-[56px] font-black text-white/15 leading-none tracking-tight uppercase"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                {STATEMENTS[activeIndex].suffix}
+              </motion.span>
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Progress dots */}
+          <motion.div
+            className="flex gap-1.5 mb-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            {STATEMENTS.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setActiveIndex(index)}
+                className="group"
+              >
+                <div
+                  className={`h-[3px] rounded-full transition-all duration-500 ${
+                    index === activeIndex
+                      ? 'w-7 bg-[#D5FB46]'
+                      : 'w-[6px] bg-white/15 group-hover:bg-white/30'
+                  }`}
+                />
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Tagline */}
+          <motion.p
+            className="text-white/35 text-[15px] font-semibold leading-relaxed max-w-[260px]"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            Everything your band needs.
             <br />
-            like a pro
-          </h2>
-          <p className="text-zinc-500 text-[15px] leading-relaxed max-w-[280px] mx-auto">
-            The all-in-one app for gigs, setlists, and team coordination.
-          </p>
-        </motion.div>
+            Nothing it doesn't.
+          </motion.p>
+        </div>
 
-        {/* Path Selection */}
+        {/* CTA Section */}
         <motion.div
-          className="space-y-4"
+          className="space-y-3"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
         >
-          {/* Start My Band */}
-          <motion.button
+          {/* Primary CTA */}
+          <button
             onClick={() => onSelectPath('creator')}
-            className="w-full relative overflow-hidden rounded-[1.5rem] p-6 text-left group"
-            style={{
-              background: 'linear-gradient(135deg, #D4FB46 0%, #B8E040 100%)',
-              boxShadow: '0 8px 32px rgba(212, 251, 70, 0.3)',
-            }}
-            whileHover={{ scale: 0.98 }}
-            whileTap={{ scale: 0.95 }}
+            className="w-full h-14 rounded-full text-[13px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-black/10 flex items-center justify-center">
-                <Guitar className="w-7 h-7 text-black" strokeWidth={1.5} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-black">Start My Band</h3>
-                <p className="text-sm text-black/60">Create a new band</p>
-              </div>
-              <ArrowRight className="w-6 h-6 text-black/40 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </motion.button>
+            Get Started
+            <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
+          </button>
 
-          {/* Join a Band */}
-          <motion.button
+          {/* Secondary CTA */}
+          <button
             onClick={() => onSelectPath('joiner')}
-            className="w-full relative overflow-hidden rounded-[1.5rem] p-6 text-left group bg-[#1C1C1E] border border-white/5"
-            whileHover={{ scale: 0.98, borderColor: 'rgba(255,255,255,0.1)' }}
-            whileTap={{ scale: 0.95 }}
+            className="w-full h-14 rounded-full text-[13px] font-bold uppercase tracking-[0.1em] text-white/35 hover:text-white/60 hover:bg-white/5 active:scale-[0.98] transition-all flex items-center justify-center border border-white/10"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
-                <Ticket className="w-7 h-7 text-white" strokeWidth={1.5} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-white">Join a Band</h3>
-                <p className="text-sm text-zinc-500">I have an invite</p>
-              </div>
-              <ArrowRight className="w-6 h-6 text-white/30 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </motion.button>
+            I have an invite code
+          </button>
+
+          {/* Sign in link */}
+          <div className="text-center pt-3">
+            <button
+              onClick={onSignIn}
+              className="text-white/25 text-[13px] font-semibold hover:text-white/50 transition-colors"
+            >
+              Already a member?{' '}
+              <span className="text-white/40 underline underline-offset-4 decoration-white/20">
+                Sign in
+              </span>
+            </button>
+          </div>
         </motion.div>
       </div>
-
-      {/* Footer */}
-      <motion.div
-        className="px-6 pb-10 pt-4 text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        <p className="text-zinc-600 text-[15px]">
-          Already have an account?{' '}
-          <button
-            onClick={onSignIn}
-            className="text-[#D4FB46] font-semibold hover:underline"
-          >
-            Sign In
-          </button>
-        </p>
-      </motion.div>
     </div>
   );
 };

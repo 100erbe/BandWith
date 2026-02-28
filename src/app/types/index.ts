@@ -8,7 +8,7 @@ export type EventViewMode = 'list' | 'calendar';
 export type RehearsalViewMode = 'index' | 'overview' | 'setlist' | 'tasks' | 'live' | 'post';
 
 // Card types for expanded state
-export type ExpandedCardType = 'finance' | 'pending' | 'quotes' | 'confirmed' | 'rehearsal' | null;
+export type ExpandedCardType = 'finance' | 'pending' | 'quotes' | 'confirmed' | 'rehearsal' | 'fee' | null;
 
 // Event creation types
 export type CreateEventType = 'gig' | 'quote' | 'rehearsal' | null;

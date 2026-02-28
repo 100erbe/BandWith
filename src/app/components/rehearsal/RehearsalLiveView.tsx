@@ -53,7 +53,13 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
   const currentSong = LIVE_SETLIST[activeSongIndex];
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#050505] text-white flex flex-col font-sans">
+    <div 
+      className="fixed inset-0 z-[200] bg-[#050505] text-white flex flex-col font-sans"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
             <div className="flex items-center gap-3">

@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useOnboarding, MemberInvite, INSTRUMENTS } from '@/lib/OnboardingContext';
+import { DotRadio } from '@/app/components/ui/DotRadio';
 
 interface InviteMembersProps {
   onBack: () => void;
@@ -66,15 +67,19 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
+    <div 
+      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Background gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-15"
+          className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background:
-              'radial-gradient(circle, rgba(153, 136, 120, 0.4) 0%, transparent 70%)',
-            filter: 'blur(80px)',
+            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -240,36 +245,30 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
         <motion.button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold text-[16px] ${
+          className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             invites.length > 0
-              ? 'bg-[#D4FB46] text-black'
-              : 'bg-[#1C1C1E] text-white border border-white/10'
+              ? 'bg-[#D4FB46] text-black hover:bg-[#c8ef3a]'
+              : 'bg-transparent text-white/60 border border-white/20 hover:border-white/40 hover:text-white'
           }`}
-          style={{
-            boxShadow:
-              invites.length > 0
-                ? '0 4px 20px rgba(212, 251, 70, 0.3)'
-                : 'none',
-          }}
           whileTap={{ scale: 0.98 }}
         >
           {isSubmitting ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : invites.length > 0 ? (
             <>
-              Send Invites & Continue
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+              Send Invites
+              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
             </>
           ) : (
             <>
-              Skip for now
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+              Skip for Now
+              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
             </>
           )}
         </motion.button>
 
         {invites.length > 0 && (
-          <p className="text-center text-zinc-600 text-[13px] mt-3">
+          <p className="text-center text-white/30 text-[12px] mt-3">
             You can invite more members later
           </p>
         )}
@@ -365,20 +364,22 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   PERMISSION
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-white/20">
-                    <input
-                      type="radio"
-                      name="permission"
-                      checked={currentInvite.permission !== 'admin'}
-                      onChange={() =>
-                        setCurrentInvite((prev) => ({
-                          ...prev,
-                          permission: 'member',
-                        }))
-                      }
-                      className="accent-[#D4FB46]"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentInvite((prev) => ({
+                        ...prev,
+                        permission: 'member',
+                      }))
+                    }
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-white/20"
+                  >
+                    <DotRadio
+                      selected={currentInvite.permission !== 'admin'}
+                      activeColor="#D4FB46"
+                      inactiveColor="rgba(255,255,255,0.15)"
                     />
-                    <div>
+                    <div className="text-left">
                       <span className="text-white font-medium text-[14px]">
                         Member
                       </span>
@@ -386,36 +387,38 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                         Limited access
                       </p>
                     </div>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-white/20">
-                    <input
-                      type="radio"
-                      name="permission"
-                      checked={currentInvite.permission === 'admin'}
-                      onChange={() =>
-                        setCurrentInvite((prev) => ({
-                          ...prev,
-                          permission: 'admin',
-                        }))
-                      }
-                      className="accent-[#D4FB46]"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentInvite((prev) => ({
+                        ...prev,
+                        permission: 'admin',
+                      }))
+                    }
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-white/20"
+                  >
+                    <DotRadio
+                      selected={currentInvite.permission === 'admin'}
+                      activeColor="#D4FB46"
+                      inactiveColor="rgba(255,255,255,0.15)"
                     />
-                    <div>
+                    <div className="text-left">
                       <span className="text-white font-medium text-[14px]">
                         Admin
                       </span>
                       <p className="text-zinc-500 text-[12px]">Full access</p>
                     </div>
-                  </label>
+                  </button>
                 </div>
               </div>
 
               {/* Confirm Button */}
               <button
                 onClick={handleConfirmInvite}
-                className="w-full py-4 rounded-2xl bg-[#D4FB46] text-black font-bold text-[16px]"
+                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all"
               >
-                Add to list
+                Add to List
               </button>
             </motion.div>
           </motion.div>

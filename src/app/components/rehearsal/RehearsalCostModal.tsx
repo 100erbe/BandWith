@@ -71,7 +71,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                   <button 
                     onClick={() => setSplitMethod('equal')}
                     className={cn(
-                        "p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all",
+                        "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
                         splitMethod === 'equal' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
                     )}
                   >
@@ -81,7 +81,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                   <button 
                     onClick={() => setSplitMethod('custom')}
                     className={cn(
-                        "p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all",
+                        "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
                         splitMethod === 'custom' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
                     )}
                   >
@@ -91,7 +91,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                   <button 
                     onClick={() => setSplitMethod('admin')}
                     className={cn(
-                        "p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all",
+                        "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
                         splitMethod === 'admin' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
                     )}
                   >
@@ -102,7 +102,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             </div>
 
             {/* Breakdown */}
-            <div className="bg-black/5 rounded-2xl p-4">
+            <div className="bg-black/5 rounded-[10px] p-4">
                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-3 block">Breakdown</label>
                <div className="space-y-3">
                   {data.members.map(member => (
@@ -137,7 +137,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
 
             <button 
                onClick={handleApply}
-               className="w-full py-4 bg-black text-[#D4FB46] rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
+               className="w-full py-4 bg-black text-white rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
             >
                Save & Apply
             </button>

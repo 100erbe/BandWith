@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -9,12 +9,13 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { 
-  Quote, 
+  Quote as MockQuote, 
   QuoteStatus,
   QUOTES_DATA, 
   getStatusColor, 
@@ -24,17 +25,61 @@ import {
 } from '@/app/data/quotes';
 import { QuoteCreationWizard } from '@/app/components/quotes/QuoteCreationWizard';
 import { QuoteDetailModal } from '@/app/components/quotes/QuoteDetailModal';
+import type { Quote as RealQuote } from '@/lib/services/quotes';
 
 interface QuotesExpandedProps {
-  bandId: number;
+  bandId: string;
   onClose: () => void;
+  realQuotes?: RealQuote[];
+  quoteStats?: {
+    totalQuotes: number;
+    pendingQuotes: number;
+    acceptedQuotes: number;
+    totalPipeline: number;
+    acceptedRevenue: number;
+  } | null;
+  loading?: boolean;
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
-  onClose
+  onClose,
+  realQuotes,
+  quoteStats,
+  loading
 }) => {
-  // Quote data state
-  const [quotes, setQuotes] = useState<Quote[]>(QUOTES_DATA);
+  // Convert real quotes to display format
+  const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => {
+    return rq.map(q => ({
+      id: q.id,
+      bandId: q.band_id,
+      eventId: q.quote_id || q.id,
+      eventTitle: q.event_name || 'Untitled Quote',
+      clientName: q.client_name,
+      status: (q.status?.toUpperCase() || 'DRAFT') as QuoteStatus,
+      lineItems: [],
+      customItems: q.custom_items || [],
+      subtotal: q.subtotal || 0,
+      discount: q.discount_value || 0,
+      tax: q.vat_amount || 0,
+      total: q.total || 0,
+      notes: q.client_notes || '',
+      validUntil: q.valid_until || '',
+      createdAt: q.created_at,
+      updatedAt: q.updated_at
+    }));
+  };
+
+  // Quote data state - use real quotes only
+  const [quotes, setQuotes] = useState<MockQuote[]>(
+    realQuotes && realQuotes.length > 0 ? convertRealQuotes(realQuotes) : []
+  );
+
+  // Update quotes when realQuotes changes
+  useEffect(() => {
+    if (realQuotes && realQuotes.length > 0) {
+      setQuotes(convertRealQuotes(realQuotes));
+    }
+  }, [realQuotes]);
   
   // Modal states
   const [isCreating, setIsCreating] = useState(false);
@@ -44,8 +89,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   // Chart interaction
   const [activeChartId, setActiveChartId] = useState<string | null>(null);
 
-  // Computed values
-  const pipelineTotal = quotes
+  // Computed values - use stats if available, otherwise calculate
+  const pipelineTotal = quoteStats?.totalPipeline || quotes
     .filter(q => q.status !== 'DECLINED' && q.status !== 'EXPIRED')
     .reduce((acc, q) => acc + q.total, 0);
 
@@ -160,7 +205,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       </motion.div>
       
       <div 
-        className="px-3 pb-32 max-w-md mx-auto w-full" 
+        className="px-3 pb-32" 
         onClick={() => setActiveChartId(null)}
       >
         {/* Pipeline Card */}
@@ -184,7 +229,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             
             {/* Pipeline Chart */}
             <div className="h-28 flex items-end justify-between gap-1.5 px-1 pb-2 relative">
-              {activeQuotes.slice(0, 7).map((quote, i) => { 
+              {activeQuotes.length === 0 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                  <BarChart3 className="w-8 h-8 text-stone-600 mb-2" />
+                  <p className="text-stone-500 text-xs">No pipeline data</p>
+                </div>
+              ) : activeQuotes.slice(0, 7).map((quote, i) => { 
                 const heightPct = Math.min(100, Math.max(20, (quote.total / 12000) * 100)); 
                 const probability = getProbabilityFromStatus(quote.status);
                 let barColor = "bg-[#333336]"; 
@@ -232,7 +282,18 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         {/* Quote List */}
         <div className="space-y-3">
           <h4 className="text-sm font-black text-[#1A1A1A] uppercase tracking-wider ml-2 opacity-60 mb-2">All Quotes</h4>
-          {quotes.map((quote, i) => (
+          {quotes.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: 0.4 }} 
+              className="bg-white/30 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center"
+            >
+              <FileText className="w-12 h-12 text-[#1A1A1A]/40 mb-3" />
+              <p className="text-[#1A1A1A] font-bold mb-1">No quotes yet</p>
+              <p className="text-[#1A1A1A]/60 text-sm">Create your first quote to get started</p>
+            </motion.div>
+          ) : quotes.map((quote, i) => (
             <motion.div 
               key={quote.id} 
               onClick={() => setSelectedQuote(quote)}

@@ -4,6 +4,7 @@ import { RehearsalModalWrapper } from './RehearsalModalWrapper';
 import { ListMusic, Search, Plus, Trash2, Save, Copy, CheckCircle2, History, Clock, Check, AlertCircle, X, ChevronRight, Music } from 'lucide-react';
 import { RehearsalSong, SetlistTemplate, RehearsalState, SetlistSnapshot } from './types';
 import { cn } from '@/app/components/ui/utils';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 interface Props {
   isOpen: boolean;
@@ -158,7 +159,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                 
                 {/* Search Trigger Bar (Visible when not expanded) */}
                 {!isSearchExpanded && (
-                    <div onClick={() => setIsSearchExpanded(true)} className="bg-[#F2F2F0] p-3 rounded-xl flex items-center gap-3 cursor-pointer hover:bg-black/5 transition-colors group shrink-0">
+                    <div onClick={() => setIsSearchExpanded(true)} className="bg-black/5 p-3 rounded-[10px] flex items-center gap-3 cursor-pointer hover:bg-black/10 transition-colors group shrink-0">
                         <Search className="w-4 h-4 text-black/40" />
                         <span className="text-sm font-bold text-black/40 group-hover:text-black/60">Tap to add songs...</span>
                         <div className="ml-auto bg-white px-2 py-1 rounded text-[10px] font-bold text-black/40 shadow-sm border border-black/5">
@@ -168,7 +169,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                 )}
 
                 {/* Current Runlist */}
-                <div className={cn("flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 bg-white rounded-xl", isSearchExpanded ? "hidden md:block opacity-30 pointer-events-none" : "block")}>
+                <div className={cn("flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 bg-white rounded-[10px]", isSearchExpanded ? "hidden md:block opacity-30 pointer-events-none" : "block")}>
                      {currentSongs.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-8">
                             <ListMusic className="w-12 h-12 mb-4 text-black/20" />
@@ -178,7 +179,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                     ) : (
                         <div className="space-y-2">
                              {currentSongs.map((song, i) => (
-                                <div key={song.id} className="bg-white border border-black/5 p-3 rounded-xl flex items-center justify-between group shadow-sm hover:border-black/20 transition-all">
+                                <div key={song.id} className="bg-white border border-black/5 p-3 rounded-[10px] flex items-center justify-between group shadow-sm hover:border-black/20 transition-all">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                                             {i+1}
@@ -204,7 +205,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="absolute inset-0 bg-white z-20 flex flex-col rounded-xl overflow-hidden shadow-2xl border border-black/10"
+                            className="absolute inset-0 bg-white z-20 flex flex-col rounded-[10px] overflow-hidden shadow-2xl border border-black/10"
                         >
                             {/* Overlay Header */}
                             <div className="p-3 border-b border-black/5 flex items-center gap-3 bg-white shrink-0">
@@ -223,15 +224,14 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
 
                             {/* Filters Row */}
                             <div className="px-3 py-2 bg-[#F9F9F8] border-b border-black/5 flex items-center justify-between shrink-0">
-                                <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={hideAlreadyInList} 
-                                        onChange={(e) => setHideAlreadyInList(e.target.checked)} 
-                                        className="w-3 h-3 rounded-sm border-black/20 text-black focus:ring-black"
-                                    />
+                                <button
+                                    type="button"
+                                    onClick={() => setHideAlreadyInList(!hideAlreadyInList)}
+                                    className="flex items-center gap-2 cursor-pointer select-none"
+                                >
+                                    <DotCheckbox checked={hideAlreadyInList} />
                                     <span className="text-[10px] font-bold text-black/50 uppercase tracking-wide">Hide already in list</span>
-                                </label>
+                                </button>
                                 <span className="text-[10px] font-bold text-black/30">{filteredLibrary.length} results</span>
                             </div>
 
@@ -255,7 +255,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                                     key={song.id} 
                                                     onClick={() => handleToggleSelectToAdd(song.id)}
                                                     className={cn(
-                                                        "w-full p-3 rounded-xl flex items-center justify-between group transition-all text-left border",
+                                                        "w-full p-3 rounded-[10px] flex items-center justify-between group transition-all text-left border",
                                                         isSelected ? "border-black bg-black text-white" : "border-black/5 bg-white hover:border-black/20"
                                                     )}
                                                 >
@@ -280,7 +280,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                 <button 
                                     onClick={handleAddSelected}
                                     disabled={selectedToAddIds.length === 0}
-                                    className="w-full py-3 bg-[#D4FB46] text-black rounded-xl text-sm font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg"
+                                    className="w-full py-3 bg-[#D4FB46] text-black rounded-[10px] text-sm font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg"
                                 >
                                     Add {selectedToAddIds.length} Songs <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -312,7 +312,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                     <button 
                         onClick={() => handleSaveAction(false)}
                         disabled={!name}
-                        className="py-4 px-8 bg-black text-[#D4FB46] rounded-2xl font-black text-xs uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="py-4 px-8 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         <Save className="w-4 h-4" /> {initialTemplate ? "Update Template" : "Create Template"}
                     </button>

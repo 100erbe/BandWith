@@ -1,22 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { 
-  CreditCard,
-  Clock,
-  FileText,
-  Check,
   ArrowUpRight,
-  Music,
-  Activity,
-  Calendar as CalendarIcon,
-  MapPin
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { dashboardContainerVariants, dashboardItemVariants } from '@/styles/motion';
-import { METRICS, SMART_INSIGHTS, QUICK_ACTIONS } from '@/app/data/metrics';
+import { QUICK_ACTIONS } from '@/app/data/metrics';
 import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
+import { getPermissions, type UserRole } from '@/lib/permissions';
+
+interface DashboardData {
+  eventStats: {
+    totalEvents: number;
+    confirmedEvents: number;
+    totalRevenue: number;
+    upcomingEvents: number;
+    revenueChange?: number;
+  } | null;
+  quoteStats: {
+    totalQuotes: number;
+    pendingQuotes: number;
+    acceptedQuotes: number;
+    totalPipeline: number;
+    acceptedRevenue: number;
+  } | null;
+  upcomingEvents: any[];
+  recentQuotes: any[];
+}
 
 interface HomeViewProps {
   selectedBand: Band;
@@ -26,277 +39,395 @@ interface HomeViewProps {
   currentRehearsal: EventItem | null;
   onRehearsalClick: () => void;
   isHidden: boolean;
+  dashboardData?: DashboardData;
+  dashboardLoading?: boolean;
+  onQuickAction?: (action: string) => void;
+  isAdmin?: boolean;
 }
+
+// --- Equalizer Dot Grid for Stats (6×4) ---
+
+type DotGridTheme = 'lime' | 'blue' | 'beige' | 'dark';
+
+const DOT_THEME_COLORS: Record<DotGridTheme, string> = {
+  lime: '#D5FB46',
+  blue: '#0147FF',
+  beige: '#9A8878',
+  dark: '#050505',
+};
+
+const REVENUE_CHART_PATTERN = [
+  [false, false, false, true],
+  [false, false, true, true],
+  [false, true, true, true],
+  [false, false, true, true],
+  [false, true, true, true],
+  [true, true, true, true],
+];
+
+const StatsDotGrid: React.FC<{ theme: DotGridTheme; filled?: number; isRevenue?: boolean }> = ({ 
+  theme, filled = 0, isRevenue = false 
+}) => {
+  const themeColor = DOT_THEME_COLORS[theme];
+  const totalDots = 24;
+  const filledCount = Math.min(filled, totalDots);
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    setVisibleCount(0);
+    const target = isRevenue ? totalDots : filledCount;
+    if (target === 0) return;
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current++;
+      setVisibleCount(current);
+      if (current >= target) clearInterval(interval);
+    }, 40);
+
+    return () => clearInterval(interval);
+  }, [filledCount, isRevenue]);
+
+  if (isRevenue) {
+    return (
+      <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
+        {Array.from({ length: totalDots }).map((_, i) => {
+          const col = i % 6;
+          const row = Math.floor(i / 6);
+          const isFilled = REVENUE_CHART_PATTERN[col][row];
+          const dotIndex = col * 4 + row;
+          const isVisible = dotIndex < visibleCount;
+          return (
+            <div
+              key={i}
+              className="rounded-[10px] transition-colors duration-200"
+              style={{ 
+                backgroundColor: isFilled && isVisible ? themeColor : '#CDCACA',
+                opacity: isVisible ? 1 : 0.4,
+                transition: 'background-color 0.2s, opacity 0.3s',
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
+      {Array.from({ length: totalDots }).map((_, i) => {
+        const isActive = i < filledCount;
+        const isVisible = i < visibleCount;
+        return (
+          <div
+            key={i}
+            className="rounded-[10px]"
+            style={{ 
+              backgroundColor: isActive && isVisible ? themeColor : '#CDCACA',
+              opacity: isVisible || !isActive ? 1 : 0.4,
+              transition: 'background-color 0.15s, opacity 0.2s',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
+// --- Pixel Art Grid for Action Center (7×5 pattern grid) ---
+
+type GridCell = {
+  c: number;
+  r: number;
+  cs?: number;
+  rs?: number;
+  d: boolean;
+};
+
+const ACTION_PATTERNS: Record<string, GridCell[]> = {
+  'Setlist & Repertoire': [
+    { c:1, r:1, cs:3, d:true }, { c:1, r:2, d:true }, { c:1, r:3, cs:3, d:true },
+    { c:3, r:4, d:true }, { c:1, r:5, cs:3, d:true }, { c:5, r:1, cs:3, d:true },
+    { c:5, r:2, d:true }, { c:7, r:2, d:true }, { c:5, r:3, cs:3, d:true },
+    { c:5, r:4, rs:2, d:true }, { c:6, r:4, d:true }, { c:7, r:5, d:true },
+    { c:2, r:2, d:false }, { c:3, r:2, d:false }, { c:1, r:4, d:false },
+    { c:2, r:4, d:false }, { c:4, r:1, d:false }, { c:4, r:2, d:false },
+    { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
+    { c:6, r:2, d:false }, { c:7, r:4, d:false }, { c:6, r:5, d:false },
+  ],
+  'Band Members': [
+    { c:1, r:1, cs:3, d:true }, { c:1, r:3, cs:3, d:true }, { c:1, r:5, cs:3, d:true },
+    { c:1, r:2, d:true }, { c:3, r:2, d:true }, { c:3, r:4, d:true },
+    { c:1, r:4, d:true }, { c:5, r:1, rs:5, d:true }, { c:6, r:1, rs:2, d:true },
+    { c:7, r:1, rs:5, d:true },
+    { c:2, r:2, d:false }, { c:2, r:4, d:false }, { c:6, r:4, d:false },
+    { c:6, r:5, d:false }, { c:4, r:1, d:false }, { c:4, r:2, d:false },
+    { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
+    { c:6, r:3, d:false },
+  ],
+  'Inventory': [
+    { c:1, r:1, cs:3, d:true }, { c:1, r:2, rs:3, d:true }, { c:1, r:5, cs:3, d:true },
+    { c:5, r:1, rs:4, d:true }, { c:5, r:5, cs:3, d:true }, { c:3, r:4, d:true },
+    { c:2, r:2, d:false }, { c:3, r:2, d:false }, { c:6, r:1, d:false },
+    { c:7, r:1, d:false }, { c:6, r:4, d:false }, { c:4, r:1, d:false },
+    { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false },
+    { c:4, r:5, d:false }, { c:3, r:3, d:false }, { c:2, r:3, d:false },
+    { c:2, r:4, d:false }, { c:6, r:3, d:false }, { c:6, r:2, d:false },
+    { c:7, r:2, d:false }, { c:7, r:3, d:false }, { c:7, r:4, d:false },
+  ],
+  'Task Templates': [
+    { c:1, r:1, cs:3, d:true }, { c:2, r:2, rs:4, d:true }, { c:5, r:1, cs:3, d:true },
+    { c:6, r:2, rs:4, d:true },
+    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false },
+    { c:4, r:4, d:false }, { c:4, r:5, d:false }, { c:1, r:5, d:false },
+    { c:1, r:2, d:false }, { c:3, r:2, d:false }, { c:5, r:5, d:false },
+    { c:7, r:2, d:false }, { c:7, r:3, d:false }, { c:7, r:4, d:false },
+    { c:3, r:3, d:false }, { c:1, r:4, d:false }, { c:1, r:3, d:false },
+    { c:3, r:4, d:false }, { c:3, r:5, d:false }, { c:5, r:2, d:false },
+    { c:5, r:3, d:false }, { c:5, r:4, d:false }, { c:7, r:5, d:false },
+  ],
+  'Contracts & Riders': [
+    { c:1, r:1, cs:3, d:true }, { c:1, r:2, rs:3, d:true }, { c:5, r:1, cs:3, d:true },
+    { c:5, r:2, d:true }, { c:7, r:2, d:true }, { c:5, r:3, cs:3, d:true },
+    { c:5, r:4, rs:2, d:true }, { c:7, r:5, d:true }, { c:1, r:5, cs:3, d:true },
+    { c:6, r:4, d:true },
+    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false },
+    { c:4, r:4, d:false }, { c:4, r:5, d:false }, { c:2, r:2, d:false },
+    { c:3, r:2, d:false }, { c:7, r:4, d:false }, { c:3, r:3, d:false },
+    { c:2, r:4, d:false }, { c:2, r:3, d:false }, { c:3, r:4, d:false },
+    { c:6, r:2, d:false }, { c:6, r:5, d:false },
+  ],
+};
+
+const PixelArtGrid: React.FC<{ pattern: GridCell[] }> = ({ pattern }) => (
+  <div
+    className="grid gap-1 w-[100px] h-[91px]"
+    style={{ gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(5, 1fr)' }}
+  >
+    {pattern.map((cell, i) => (
+      <div
+        key={i}
+        className="rounded-[10px]"
+        style={{
+          gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
+          gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
+          backgroundColor: cell.d ? '#737373' : '#CDCACA',
+        }}
+      />
+    ))}
+  </div>
+);
+
+// --- Action Center Item ---
+
+const ACTION_LABELS: Record<string, [string, string]> = {
+  'Setlist & Repertoire': ['SETLIST &', 'REPERTOIRE'],
+  'Band Members': ['BAND', 'MEMBERS'],
+  'Inventory': ['GEAR', 'LIST'],
+  'Task Templates': ['TASK', 'TEMPLATES'],
+  'Contracts & Riders': ['CONTRACTS', '& RIDERS'],
+};
+
+const ActionCenterItem: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => {
+  const pattern = ACTION_PATTERNS[label];
+  const lines = ACTION_LABELS[label] || [label.toUpperCase(), ''];
+
+  if (!pattern) return null;
+
+  return (
+    <button onClick={onClick} className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity">
+      <div className="flex items-start justify-between w-full">
+        <div className="flex flex-col leading-none text-left">
+          <span className="text-xs font-bold text-black text-left">{lines[0]}</span>
+          {lines[1] && <span className="text-xs font-bold text-black text-left">{lines[1]}</span>}
+        </div>
+        <ArrowUpRight className="w-3.5 h-3.5 text-black" />
+      </div>
+      <PixelArtGrid pattern={pattern} />
+    </button>
+  );
+};
+
+// --- Main Dashboard ---
 
 export const HomeView: React.FC<HomeViewProps> = ({
   selectedBand,
-  expandedCard,
+  expandedCard: _expandedCard,
   setExpandedCard,
   upcomingRehearsals,
-  currentRehearsal,
-  onRehearsalClick,
-  isHidden
+  currentRehearsal: _currentRehearsal,
+  onRehearsalClick: _onRehearsalClick,
+  isHidden,
+  dashboardData,
+  dashboardLoading,
+  onQuickAction,
+  isAdmin = true
 }) => {
+  const _userRole: UserRole = isAdmin ? 'admin' : 'member';
+  const _permissions = getPermissions(_userRole);
+
+  const filteredQuickActions = QUICK_ACTIONS.filter(action => {
+    if (!isAdmin) {
+      const adminOnlyActions = [
+        'Contracts & Riders',
+        'Task Templates',
+        'Inventory',
+      ];
+      return !adminOnlyActions.includes(action.label);
+    }
+    return true;
+  });
+
+  const formatRevenue = (value: number): string => {
+    if (value >= 1000) {
+      return `€${(value / 1000).toFixed(1)}k`;
+    }
+    return `€${value}`;
+  };
+
+  const revenue = dashboardData?.eventStats?.totalRevenue || 0;
+  const confirmedCount = dashboardData?.eventStats?.confirmedEvents || 0;
+  const quotesCount = dashboardData?.quoteStats?.totalQuotes || 0;
+  const revenueChange = dashboardData?.eventStats?.revenueChange;
+  const rehearsalCount = upcomingRehearsals.length;
+
+  const revenueChangeText = revenueChange !== undefined && revenueChange !== 0
+    ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
+    : '--';
+
   return (
-    <motion.div 
-      key={`dashboard-${selectedBand.id}`} 
+    <motion.div
+      key={`dashboard-${selectedBand.id}`}
       variants={dashboardContainerVariants}
       initial="hidden"
       animate="show"
       exit="exit"
       className={cn(
-        "flex flex-col gap-4 relative z-10",
+        "flex flex-col gap-20 relative z-10 pb-32",
         isHidden && "opacity-0 pointer-events-none"
       )}
     >
-      {/* Row 1 */}
-      <motion.div variants={dashboardItemVariants} className="grid grid-cols-12 gap-3 h-48">
-        {/* FINANCE */}
-        <div className="col-span-7 relative z-30">
-          <motion.div 
-            onClick={() => setExpandedCard("finance")}
-            className="w-full h-full bg-[#050505] rounded-[2.5rem] p-6 flex flex-col justify-between relative overflow-hidden cursor-pointer shadow-xl group"
-            whileHover={{ scale: 0.98 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "tween", duration: 0.15 }}
-          >
-            <motion.div 
-              animate={{ opacity: expandedCard === 'finance' ? 0 : 1 }} 
-              className="relative z-10 flex justify-between items-start h-full flex-col"
-            >
-              <div className="w-full flex justify-between items-start">
-                <div className="bg-[#1C1C1E] p-2 rounded-full border border-white/10">
-                  <CreditCard className="w-5 h-5 text-[#D4FB46]" />
-                </div>
-                <div className="bg-[#D4FB46] text-black px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1">
-                  <ArrowUpRight className="w-3 h-3" />
-                  12%
-                </div>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase text-[#E6E5E1]/60 leading-none block mb-1">Total Revenue</span>
-                <span className="text-4xl font-black tracking-tighter text-[#E6E5E1]">€{METRICS.earnings.value}</span>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        {/* PENDING */}
-        <motion.div 
-          onClick={() => setExpandedCard("pending")}
-          className="col-span-5 bg-[#FFFFFF] rounded-[2.5rem] p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer shadow-lg group"
-          whileHover={{ scale: 0.98 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "tween", duration: 0.15 }}
-        >
-          <motion.div 
-            animate={{ opacity: expandedCard === 'pending' ? 0 : 1 }} 
-            className="flex flex-col justify-between h-full"
-          >
-            <div className="flex justify-between items-start relative z-10">
-              <div className="bg-[#F2F0ED] p-2.5 rounded-full group-hover:bg-[#E6E5E1] transition-colors">
-                <Clock className="w-4 h-4 text-[#1A1A1A]" />
-              </div>
-            </div>
-            <div className="relative z-10">
-              <span className="text-3xl font-black tracking-tighter text-[#1A1A1A] block">{METRICS.pending.count}</span>
-              <span className="text-[10px] font-bold uppercase text-stone-400">Pending</span>
-            </div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      {/* NEXT REHEARSAL CARD */}
-      {upcomingRehearsals.length > 0 && currentRehearsal && (
-        <motion.div 
-          key="rehearsal-card"
-          variants={dashboardItemVariants}
-          className="w-full h-40 bg-[#0047FF] rounded-[2.5rem] p-6 flex flex-col justify-between relative overflow-hidden cursor-pointer shadow-lg shadow-blue-900/20 group"
-          onClick={onRehearsalClick}
-          whileHover={{ scale: 0.99 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "tween", duration: 0.15 }}
-        >
-          {/* Background Abstract Shapes */}
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#3366FF] rounded-full blur-2xl opacity-50" />
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#0033CC] rounded-full blur-xl opacity-40" />
-          
-          {upcomingRehearsals.length > 1 ? (
-            <motion.div 
-              animate={{ opacity: expandedCard === 'rehearsal' ? 0 : 1 }} 
-              className="flex flex-col h-full justify-between relative z-10 w-full"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/10 group-hover:bg-white/30 transition-colors">
-                  <Music className="w-5 h-5 text-white" />
-                </div>
-                <div className="bg-white text-[#0047FF] px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-sm">
-                  <Activity className="w-3 h-3" />
-                  Action Required
-                </div>
-              </div>
-              <div>
-                <span className="text-3xl font-black tracking-tighter text-white block leading-none mb-1">{upcomingRehearsals.length}</span>
-                <span className="text-[10px] font-bold uppercase text-white/80 tracking-wide">Upcoming Rehearsals</span>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div 
-              animate={{ opacity: expandedCard === 'rehearsal' ? 0 : 1 }} 
-              className="flex flex-col h-full justify-between relative z-10 w-full"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white/60 animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
-                  <span className="text-[10px] font-bold uppercase text-white tracking-widest">Next Rehearsal</span>
-                </div>
-                <span className="text-sm font-bold text-white/90 tabular-nums">{currentRehearsal.time}</span>
-              </div>
-              
-              <div className="space-y-3">
-                <h3 className="text-2xl font-black text-white leading-none truncate pr-2 tracking-tighter">{currentRehearsal.title}</h3>
-                
-                <div className="flex items-end justify-between">
-                  <div className="flex flex-col gap-1 text-white/80">
-                    <div className="flex items-center gap-1.5">
-                      <CalendarIcon className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase tabular-nums">{currentRehearsal.date}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase truncate max-w-[120px]">{currentRehearsal.location}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex -space-x-2">
-                    {currentRehearsal.members.slice(0,3).map((m: string, i: number) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-[#0033CC] border-2 border-[#0047FF] flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
-                        {m}
-                      </div>
-                    ))}
-                    {currentRehearsal.members.length > 3 && (
-                      <div className="w-8 h-8 rounded-full bg-[#0033CC] border-2 border-[#0047FF] flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
-                        +{currentRehearsal.members.length - 3}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-      )}
-
-      {/* Row 2 */}
-      <motion.div variants={dashboardItemVariants} className="grid grid-cols-12 gap-3 h-40">
-        {/* QUOTES */}
-        <motion.div 
-          onClick={() => setExpandedCard("quotes")}
-          className="col-span-5 bg-[#998878] rounded-[2.5rem] p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer shadow-lg"
-          whileHover={{ scale: 0.98 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "tween", duration: 0.15 }}
-        >
-          <motion.div 
-            animate={{ opacity: expandedCard === 'quotes' ? 0 : 1 }} 
-            className="flex flex-col justify-between h-full relative z-20"
-          >
-            <div className="flex justify-between items-start">
-              <div className="bg-white/10 p-2.5 rounded-full">
-                <FileText className="w-4 h-4 text-[#1A1A1A]" />
-              </div>
-            </div>
-            <div>
-              <span className="text-3xl font-black tracking-tighter text-[#1A1A1A] block">{METRICS.quotes.count}</span>
-              <span className="text-[10px] font-bold uppercase text-[#1A1A1A]/60">Quotes</span>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* CONFIRMED */}
-        <motion.div 
-          onClick={() => setExpandedCard("confirmed")}
-          className="col-span-7 bg-[#D4FB46] rounded-[2.5rem] p-5 flex flex-col justify-between relative overflow-hidden cursor-pointer shadow-lg"
-          whileHover={{ scale: 0.98 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: "tween", duration: 0.15 }}
-        >
-          <motion.div 
-            animate={{ opacity: expandedCard === 'confirmed' ? 0 : 1 }} 
-            className="flex flex-col justify-between h-full relative z-20"
-          >
-            <div className="flex justify-between items-start">
-              <div className="bg-black/10 p-2.5 rounded-full">
-                <Check className="w-4 h-4 text-black" />
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-black opacity-30" />
-            </div>
-            <div>
-              <span className="text-3xl font-black tracking-tighter text-black block">{METRICS.confirmed.count}</span>
-              <span className="text-[10px] font-bold uppercase text-black/60">Confirmed</span>
-            </div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      {/* ACTION CENTER */}
-      <motion.div variants={dashboardItemVariants} className="mt-16">
-        <div className="flex items-end gap-6 mb-8 px-1">
-          <h2 className="text-5xl font-black uppercase tracking-tighter text-[#1A1A1A] leading-[0.85]">ACTION<br/>CENTER</h2>
-          <div className="h-[1.5px] flex-1 bg-stone-300 mb-2" />
-        </div>
-        
-        {/* Actions */}
-        <div className="overflow-x-auto pb-4 -mx-3 px-3 scrollbar-hide mb-4">
-          <div className="flex gap-3 w-max">
-            {QUICK_ACTIONS.map((action) => (
-              <button 
-                key={action.id} 
-                className="w-36 h-32 bg-white rounded-[1.8rem] p-4 flex flex-col justify-between shadow-sm active:scale-95 transition-all group relative overflow-hidden"
-              >
-                <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-700 group-hover:bg-[#1A1A1A] group-hover:text-[#D4FB46] transition-colors relative z-10">
-                  <action.icon className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-bold uppercase text-left text-[#1A1A1A] leading-tight px-1 group-hover:text-black relative z-10">
-                  {action.label}
+      {/* ═══ STATS GRID (2×2) ═══ */}
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
+        {/* Row 1: Gigs Confirmed | Upcoming Rehearsal */}
+        <div className="flex gap-5">
+          <div className="flex-1 flex flex-col gap-2 items-start text-left">
+            <div className="flex flex-col w-full">
+              <span className="text-xs font-bold text-black tracking-wide">GIGS CONFIRMED</span>
+              <div className="h-[62px] overflow-hidden">
+                <span className="text-[52px] font-bold leading-none text-black block">
+                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : confirmedCount}
                 </span>
-              </button>
-            ))}
+              </div>
+            </div>
+            <StatsDotGrid theme="lime" filled={confirmedCount} />
+          </div>
+
+          <div className="flex-1 flex flex-col gap-2 items-start text-left">
+            <div className="flex flex-col w-full">
+              <span className="text-xs font-bold text-black tracking-wide">UPCOMING REHEARSAL</span>
+              <div className="h-[62px] overflow-hidden">
+                <span className="text-[52px] font-bold leading-none text-black block">
+                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : rehearsalCount}
+                </span>
+              </div>
+            </div>
+            <StatsDotGrid theme="blue" filled={rehearsalCount} />
           </div>
         </div>
-        
-        {/* Insights */}
-        <div className="overflow-x-auto pb-8 -mx-3 px-3 scrollbar-hide">
-          <div className="flex gap-3 w-max">
-            {SMART_INSIGHTS.map((item) => (
-              <div 
-                key={item.id} 
-                className={cn(
-                  "w-72 p-6 rounded-[2.2rem] flex flex-col justify-between shrink-0 relative overflow-hidden shadow-xl min-h-[160px]", 
-                  item.color
-                )}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div className={cn("p-2.5 rounded-full backdrop-blur-sm bg-white/10", item.textColor)}>
-                    <item.icon className="w-6 h-6" />
-                  </div>
-                </div>
-                <div>
-                  <h4 className={cn("text-[10px] font-bold uppercase tracking-widest mb-2 opacity-60", item.textColor)}>
-                    {item.title}
-                  </h4>
-                  <p className={cn("font-bold text-xl leading-tight mb-6 tracking-tight", item.textColor)}>
-                    {item.desc}
-                  </p>
-                  <button className={cn(
-                    "h-10 px-5 rounded-full text-xs font-bold uppercase tracking-wide w-full flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-sm", 
-                    item.textColor === "text-white" ? "bg-white text-black" : "bg-[#1A1A1A] text-white"
-                  )}>
-                    {item.action} <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+
+        {/* Row 2: Quotes | Revenue */}
+        <div className="flex gap-5">
+          {isAdmin ? (
+            <div className="flex-1 flex flex-col gap-2 items-start text-left">
+              <div className="flex flex-col w-full">
+                <span className="text-xs font-bold text-black tracking-wide">QUOTES</span>
+                <span className="text-[52px] font-bold leading-none text-black">
+                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
+                </span>
               </div>
-            ))}
+              <StatsDotGrid theme="beige" filled={quotesCount} />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col gap-2 items-start text-left">
+              <div className="flex flex-col w-full">
+                <span className="text-xs font-bold text-black tracking-wide">MY FEE</span>
+                <span className="text-[52px] font-bold leading-none text-black">€--</span>
+              </div>
+              <StatsDotGrid theme="beige" filled={0} />
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col gap-2 items-start text-left">
+            <div className="flex flex-col w-full">
+              <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
+              <span className="text-[52px] font-bold leading-none text-black">
+                {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
+              </span>
+            </div>
+            <StatsDotGrid theme="dark" filled={0} isRevenue={revenue > 0} />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ═══ ACTION CENTER ═══ */}
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
+        <div className="flex flex-col">
+          <span className="text-[32px] font-bold leading-none text-black">ACTION</span>
+          <span className="text-[32px] font-bold leading-none text-black">CENTER</span>
+        </div>
+
+        {/* Scrollable Action Tiles */}
+        <div className="flex flex-col gap-[60px]">
+          <div className="overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-10 w-max">
+              {filteredQuickActions.map((action) => (
+                <ActionCenterItem
+                  key={action.id}
+                  label={action.label}
+                  onClick={() => onQuickAction?.(action.label)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Stats Row */}
+          <div className="flex gap-2.5">
+            {/* Upcoming Gigs */}
+            <div className="flex flex-col gap-4 flex-1">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-black tracking-wide">UPCOMING GIGS</span>
+                <span className="text-[42px] font-bold leading-tight text-black">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : confirmedCount}
+                </span>
+                <span className="text-xs font-bold text-black tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
+              </div>
+              <button
+                onClick={() => onQuickAction?.('View Calendar')}
+                className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+              >
+                <span className="text-xs font-bold text-black">VIEW CALENDAR</span>
+                <ArrowUpRight className="w-5 h-5 text-black" />
+              </button>
+            </div>
+
+            {/* Revenue Growing */}
+            <div className="flex flex-col justify-between flex-1">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-black tracking-wide">REVENUE GROWING</span>
+                <span className="text-[42px] font-bold leading-tight text-black">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
+                </span>
+                <span className="text-xs font-bold text-black tracking-wide">VS LAST MONTH</span>
+              </div>
+              <button
+                onClick={() => onQuickAction?.('View Analytics')}
+                className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
+              >
+                <span className="text-xs font-bold text-[#D5FB46]">VIEW ANALYTICS</span>
+                <ArrowUpRight className="w-5 h-5 text-[#D5FB46]" />
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>

@@ -4,6 +4,7 @@ export type ChatStatus = 'received' | 'read' | 'sent';
 
 export interface ChatItem {
   id: number;
+  uuid?: string; // Real UUID from database
   type: ChatType;
   name: string;
   initials: string;
@@ -15,6 +16,12 @@ export interface ChatItem {
   members?: number;
   date?: string;
   month?: string;
+  // New fields for contextual info
+  subtitle?: string; // "Jazz Quartet" for direct, "Jazz Quartet • Jan 26" for events
+  senderName?: string; // Who sent the last message (for groups)
+  bandName?: string; // Band context
+  eventDate?: string; // Event date for display
+  lastMessageAt?: Date; // For sorting
 }
 
 // Chats data

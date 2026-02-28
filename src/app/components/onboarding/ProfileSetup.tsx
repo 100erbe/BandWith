@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Crown, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useOnboarding, INSTRUMENTS } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -77,15 +77,19 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   const progressPercent = isCreator ? 50 : 66;
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
+    <div 
+      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Background gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-15"
+          className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background:
-              'radial-gradient(circle, rgba(0, 71, 255, 0.3) 0%, transparent 70%)',
-            filter: 'blur(80px)',
+            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -253,24 +257,18 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
+            className="mt-4"
           >
-            <p className="text-zinc-500 text-[13px] font-medium mb-3">
-              You're the
-            </p>
-            <div className="bg-gradient-to-r from-[#D4FB46]/20 to-transparent border border-[#D4FB46]/30 rounded-2xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#D4FB46] flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-black" />
-                </div>
-                <div>
-                  <h3 className="text-[#D4FB46] font-bold text-[16px]">
-                    BAND ADMIN
-                  </h3>
-                  <p className="text-zinc-500 text-[13px]">
-                    Full control over settings, events, and members.
-                  </p>
-                </div>
-              </div>
+            <div className="border-l-2 border-[#D4FB46] pl-4 py-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FB46]">
+                Your Role
+              </span>
+              <h3 className="text-white font-bold text-lg mt-1">
+                Band Admin
+              </h3>
+              <p className="text-white/40 text-[13px] mt-0.5">
+                Full control over settings, events, and members.
+              </p>
             </div>
           </motion.div>
         )}
@@ -296,18 +294,15 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
         <motion.button
           onClick={handleSubmit}
           disabled={!isValid || isSubmitting}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-[#D4FB46] text-black font-bold text-[16px] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            boxShadow: isValid ? '0 4px 20px rgba(212, 251, 70, 0.3)' : 'none',
-          }}
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
           whileTap={{ scale: 0.98 }}
         >
           {isSubmitting ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
               Continue
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
             </>
           )}
         </motion.button>

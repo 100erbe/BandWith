@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -9,25 +9,79 @@ import {
   Sun,
   Phone,
   Navigation,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { PENDING_EVENTS_BY_DATE, EVENT_FILTERS } from '@/app/data/events';
+import type { Event } from '@/lib/services/events';
 
 interface PendingExpandedProps {
-  bandId: number;
+  bandId: string;
   onClose: () => void;
   eventFilter: string;
   setEventFilter: (filter: string) => void;
+  events?: Event[];
+  loading?: boolean;
 }
 
 export const PendingExpanded: React.FC<PendingExpandedProps> = ({
   onClose,
   eventFilter,
-  setEventFilter
+  setEventFilter,
+  events: realEvents,
+  loading
 }) => {
+  // Convert real events to display format and group by date
+  const eventsByDate = useMemo(() => {
+    if (!realEvents || realEvents.length === 0) {
+      return []; // No mock data - show empty state
+    }
+
+    // Group events by date
+    const groups: { [key: string]: any[] } = {};
+    
+    realEvents.forEach(event => {
+      const dateKey = event.date || event.event_date;
+      if (!groups[dateKey]) groups[dateKey] = [];
+      
+      groups[dateKey].push({
+        id: parseInt(event.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
+        title: event.title,
+        status: (event.status || 'draft').toUpperCase(),
+        price: event.fee ? Number(event.fee).toLocaleString() : '0',
+        time: event.time || event.start_time || '00:00',
+        location: event.venue || event.venue_name || 'TBD',
+        weather: 'sun',
+        temp: '20°',
+        travelTime: '30 min',
+        members: [],
+        contractSigned: event.contract_signed || false
+      });
+    });
+
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, events]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        label: getDateLabel(date),
+        events
+      }));
+  }, [realEvents]);
+
+  function getDateLabel(dateStr: string): string {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays <= 7) return 'This Week';
+    if (diffDays <= 14) return 'Next Week';
+    return 'Upcoming';
+  }
   return (
     <ExpandedCardWrapper
       backgroundColor="#F7F7F5"
@@ -51,7 +105,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         </div>
       </motion.div>
       
-      <div className="px-4 pb-32 max-w-md mx-auto w-full">
+      <div className="px-3 pb-32">
         <motion.div 
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
@@ -91,7 +145,17 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         </motion.div>
         
         <div className="space-y-8">
-          {PENDING_EVENTS_BY_DATE.map((group, groupIndex) => (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+            </div>
+          ) : eventsByDate.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-stone-400">
+              <AlertCircle className="w-12 h-12 mb-4" />
+              <p className="font-bold">No pending events</p>
+            </div>
+          ) : null}
+          {!loading && eventsByDate.map((group, groupIndex) => (
             <motion.div 
               key={group.date} 
               initial={{ opacity: 0, y: 20 }} 

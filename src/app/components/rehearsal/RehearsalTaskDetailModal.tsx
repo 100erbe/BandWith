@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Trash2, Save, User, Users, Clock, Check } from 'lucide-react';
+import { CheckSquare, Trash2, Save, User, Users, Clock } from 'lucide-react';
 import { RehearsalTask, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 interface Props {
   isOpen: boolean;
@@ -103,7 +104,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                         <input 
                             value={editedTask.text}
                             onChange={(e) => setEditedTask({...editedTask, text: e.target.value})}
-                            className="w-full bg-[#F2F2F0] rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-black"
+                            className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
                         />
                     )}
                 </div>
@@ -119,12 +120,12 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                              <button 
                                 onClick={() => handleToggleMember('all')}
                                 className={cn(
-                                    "w-full px-3 py-2 rounded-xl text-xs font-bold border flex items-center justify-between transition-all",
+                                    "w-full px-3 py-2 rounded-[10px] text-xs font-bold border flex items-center justify-between transition-all",
                                     isAssignedToAll ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40 hover:border-black/30"
                                 )}
                              >
                                  <span>Entire Band</span>
-                                 {isAssignedToAll && <Check className="w-3 h-3" />}
+                                 <DotCheckbox checked={isAssignedToAll} activeColor={isAssignedToAll ? '#FFFFFF' : '#000000'} inactiveColor={isAssignedToAll ? 'rgba(255,255,255,0.3)' : undefined} />
                              </button>
                              
                              {/* Specific Members Grid */}
@@ -136,14 +137,14 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                                             key={m.id}
                                             onClick={() => handleToggleMember(m.id)}
                                             className={cn(
-                                                "px-3 py-2 rounded-xl text-xs font-bold border flex items-center justify-between transition-all text-left",
+                                                "px-3 py-2 rounded-[10px] text-xs font-bold border flex items-center justify-between transition-all text-left",
                                                 isSelected ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40 hover:border-black/30",
                                                 isAssignedToAll ? "opacity-50 cursor-not-allowed" : ""
                                             )}
                                             disabled={isAssignedToAll}
                                          >
                                              <span>{m.name}</span>
-                                             {isSelected && <Check className="w-3 h-3" />}
+                                             <DotCheckbox checked={isSelected} activeColor={isSelected ? '#FFFFFF' : '#000000'} inactiveColor={isSelected ? 'rgba(255,255,255,0.3)' : undefined} />
                                          </button>
                                      );
                                  })}
@@ -168,7 +169,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                                  <button 
                                     key={t}
                                     onClick={() => setEditedTask({...editedTask, type: t as any})}
-                                    className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all", editedTask.type === t ? "bg-black text-[#D4FB46] border-black" : "bg-white border-black/10 text-black/40")}
+                                    className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all", editedTask.type === t ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40")}
                                  >
                                      {t}
                                  </button>
@@ -183,13 +184,13 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                 <div className="pt-6 mt-6 border-t border-black/10 flex gap-3">
                     <button 
                         onClick={handleDelete}
-                        className="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-red-100 transition-colors"
+                        className="flex-1 py-3 bg-red-50 text-red-600 rounded-[10px] font-bold text-xs uppercase tracking-wider hover:bg-red-100 transition-colors"
                     >
                         Delete
                     </button>
                     <button 
                         onClick={handleSave}
-                        className="flex-[2] py-3 bg-black text-[#D4FB46] rounded-xl font-bold text-xs uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                        className="flex-[2] py-3 bg-black text-white rounded-[10px] font-bold text-xs uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
                     >
                         <Save className="w-4 h-4" /> Save Changes
                     </button>

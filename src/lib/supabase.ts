@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -44,12 +45,46 @@ export const signIn = async (email: string, password: string) => {
 };
 
 export const signInWithOAuth = async (provider: 'google' | 'apple') => {
+  const isNative = Capacitor.isNativePlatform();
+  const platform = Capacitor.getPlatform();
+  
+  // For native apps, use deep link redirect with platform-specific scheme
+  let redirectTo: string;
+  if (isNative) {
+    // Use the app's URL scheme for deep linking
+    // iOS uses app.bandwith.mobile://, Android uses com.bandwith.app://
+    const scheme = platform === 'ios' ? 'app.bandwith.mobile' : 'com.bandwith.app';
+    redirectTo = `${scheme}://auth/callback`;
+  } else {
+    redirectTo = `${window.location.origin}/auth/callback`;
+  }
+  
+  console.log('[OAuth] Starting auth with provider:', provider);
+  console.log('[OAuth] Redirect URL:', redirectTo);
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo,
+      skipBrowserRedirect: isNative,
     },
   });
+  
+  if (error) {
+    console.error('[OAuth] Error:', error);
+    return { data, error };
+  }
+  
+  if (isNative && data?.url) {
+    console.log('[OAuth] Opening browser with URL:', data.url);
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ 
+      url: data.url,
+      presentationStyle: 'popover',
+      windowName: '_blank'
+    });
+  }
+  
   return { data, error };
 };
 

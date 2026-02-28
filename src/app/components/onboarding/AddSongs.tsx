@@ -9,10 +9,10 @@ import {
   Music,
   Upload,
   Loader2,
-  Check,
   Clock,
 } from 'lucide-react';
 import { useOnboarding, OnboardingSong } from '@/lib/OnboardingContext';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 // Popular songs suggestions (would come from API in production)
 const SUGGESTED_SONGS: OnboardingSong[] = [
@@ -130,15 +130,19 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
   );
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
+    <div 
+      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* Background gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full opacity-15"
+          className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background:
-              'radial-gradient(circle, rgba(255, 79, 40, 0.3) 0%, transparent 70%)',
-            filter: 'blur(80px)',
+            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -234,7 +238,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     }`}
                   >
                     {isAdded ? (
-                      <Check className="w-5 h-5" />
+                      <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.15)" />
                     ) : (
                       <Music className="w-5 h-5" />
                     )}
@@ -276,7 +280,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   className="flex items-center gap-3 p-3 rounded-xl bg-[#D4FB46]/10 border border-[#D4FB46]/20"
                 >
                   <div className="w-10 h-10 rounded-lg bg-[#D4FB46] text-black flex items-center justify-center">
-                    <Check className="w-5 h-5" />
+                    <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.15)" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-[14px] text-[#D4FB46] truncate">
@@ -330,30 +334,25 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
         <motion.button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold text-[16px] ${
+          className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             songs.length > 0
-              ? 'bg-[#D4FB46] text-black'
-              : 'bg-[#1C1C1E] text-white border border-white/10'
+              ? 'bg-[#D4FB46] text-black hover:bg-[#c8ef3a]'
+              : 'bg-transparent text-white/60 border border-white/20 hover:border-white/40 hover:text-white'
           }`}
-          style={{
-            boxShadow:
-              songs.length > 0
-                ? '0 4px 20px rgba(212, 251, 70, 0.3)'
-                : 'none',
-          }}
           whileTap={{ scale: 0.98 }}
         >
           {isSubmitting ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : songs.length > 0 ? (
             <>
-              Continue ({songs.length} songs added)
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+              Continue
+              <span className="text-xs font-bold opacity-60">({songs.length})</span>
+              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
             </>
           ) : (
             <>
-              Skip for now
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+              Skip for Now
+              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
             </>
           )}
         </motion.button>
@@ -492,7 +491,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               <button
                 onClick={handleAddCustomSong}
                 disabled={!customSong.title?.trim()}
-                className="w-full py-4 rounded-2xl bg-[#D4FB46] text-black font-bold text-[16px] disabled:opacity-50"
+                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all disabled:opacity-40"
               >
                 Add Song
               </button>

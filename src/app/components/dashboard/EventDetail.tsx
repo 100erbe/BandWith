@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Calendar, MapPin, Clock, Users, DollarSign, CheckCircle2 } from 'lucide-react';
+import { X, MapPin, Clock, Users, DollarSign, CheckCircle2, Calendar, FileText, Music, Euro } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
@@ -8,9 +8,50 @@ import { StatusBadge } from '@/app/components/ui/StatusBadge';
 interface EventDetailProps {
   event: EventData;
   onClose: () => void;
+  userResponse?: 'pending' | 'accepted' | 'declined';
+  onAccept?: () => Promise<void>;
+  onDecline?: () => Promise<void>;
+  memberFee?: number;
 }
 
-export const EventDetail: React.FC<EventDetailProps> = ({ event, onClose }) => {
+export const EventDetail: React.FC<EventDetailProps> = ({ 
+  event, 
+  onClose, 
+  userResponse = 'accepted', // Default to accepted for existing events
+  onAccept,
+  onDecline,
+  memberFee
+}) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isPending = userResponse === 'pending';
+  
+  const handleAccept = async () => {
+    if (onAccept && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        await onAccept();
+        onClose();
+      } catch (error) {
+        console.error('Error accepting event:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+  
+  const handleDecline = async () => {
+    if (onDecline && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        await onDecline();
+        onClose();
+      } catch (error) {
+        console.error('Error declining event:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
   return (
     <>
       <motion.div
@@ -47,8 +88,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({ event, onClose }) => {
                         layoutId={`date-block-${event.id}`}
                         className="flex flex-col items-center justify-center w-16 h-16 bg-[#D4FB46] rounded-2xl shrink-0"
                     >
-                        <span className="text-[10px] font-black uppercase text-black leading-none mb-0.5">Jan</span>
-                        <span className="text-2xl font-black text-black leading-none">{event.date.split('-')[2]}</span>
+                        <span className="text-[10px] font-black uppercase text-black leading-none mb-0.5">
+                          {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
+                        </span>
+                        <span className="text-2xl font-black text-black leading-none">{event.date?.split('-')[2] || '--'}</span>
                     </motion.div>
 
                     <div>
@@ -127,29 +170,66 @@ export const EventDetail: React.FC<EventDetailProps> = ({ event, onClose }) => {
                      {/* Financials */}
                      <div>
                         <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-4">
-                            <DollarSign className="w-4 h-4" /> Financials
+                            <Euro className="w-4 h-4" /> Financials
                         </h4>
                         <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex justify-between items-center">
                             <div>
-                                <div className="text-[10px] font-bold uppercase text-stone-400 mb-1">Total Fee</div>
-                                <div className="text-2xl font-black text-[#1A1A1A]">€{event.price}</div>
+                                <div className="text-[10px] font-bold uppercase text-stone-400 mb-1">
+                                  {memberFee !== undefined ? 'Your Fee' : 'Total Fee'}
+                                </div>
+                                <div className="text-2xl font-black text-[#1A1A1A]">
+                                  €{memberFee !== undefined ? memberFee : event.price}
+                                </div>
                             </div>
-                            <div className="px-3 py-1 bg-[#D4FB46] rounded-full text-[10px] font-bold text-black uppercase">
-                                Verified
-                            </div>
+                            {!isPending && (
+                              <div className="px-3 py-1 bg-[#D4FB46] rounded-full text-[10px] font-bold text-black uppercase">
+                                  {userResponse === 'accepted' ? 'Confirmed' : 'Declined'}
+                              </div>
+                            )}
                         </div>
                      </div>
+                     
+                     {/* Notes if any */}
+                     {event.notes && (
+                       <div>
+                         <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-4">
+                             <FileText className="w-4 h-4" /> Notes
+                         </h4>
+                         <p className="text-sm text-stone-600 leading-relaxed">{event.notes}</p>
+                       </div>
+                     )}
                 </div>
 
-                {/* Footer Action */}
-                <div className="mt-8 flex gap-3 sticky bottom-0 bg-white pt-4 border-t border-stone-100">
-                     <button className="flex-1 bg-[#1A1A1A] text-white h-12 rounded-xl font-bold uppercase text-xs tracking-wide hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
-                        <CheckCircle2 className="w-4 h-4" /> Accept Gig
-                     </button>
-                     <button className="px-6 border-2 border-stone-200 text-[#1A1A1A] h-12 rounded-xl font-bold uppercase text-xs tracking-wide hover:bg-stone-50 active:scale-95 transition-all">
-                        Decline
-                     </button>
-                </div>
+                {/* Footer Action - Only show for pending events */}
+                {isPending && onAccept && onDecline && (
+                  <div className="mt-8 flex gap-3 sticky bottom-0 bg-white pt-4 border-t border-stone-100">
+                       <button 
+                         onClick={handleAccept}
+                         disabled={isSubmitting}
+                         className="flex-1 bg-[#1A1A1A] text-white h-12 rounded-xl font-bold uppercase text-xs tracking-wide hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                       >
+                          <CheckCircle2 className="w-4 h-4" /> 
+                          {isSubmitting ? 'Processing...' : 'Accept Gig'}
+                       </button>
+                       <button 
+                         onClick={handleDecline}
+                         disabled={isSubmitting}
+                         className="px-6 border-2 border-stone-200 text-[#1A1A1A] h-12 rounded-xl font-bold uppercase text-xs tracking-wide hover:bg-stone-50 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                       >
+                          Decline
+                       </button>
+                  </div>
+                )}
+                
+                {/* Accepted state - show info only */}
+                {!isPending && (
+                  <div className="mt-8 pt-4 border-t border-stone-100">
+                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-stone-500">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span>You have {userResponse} this event</span>
+                    </div>
+                  </div>
+                )}
 
              </motion.div>
         </motion.div>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in to BandWith</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table, td {border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
+    .button-td { padding: 0 !important; }
+    .button-a { padding: 18px 48px !important; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  
+  <!-- Wrapper Table -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #000000;">
+    <tr>
+      <td align="center" style="padding: 48px 24px;">
+        
+        <!-- Main Container -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px;">
+          
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding: 0 0 48px;">
+              <img src="https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/logo-white.png" 
+                   alt="BANDWITH" 
+                   width="180" 
+                   style="display: block; border: 0; max-width: 180px; height: auto;"
+              />
+            </td>
+          </tr>
+          
+          <!-- Main Card -->
+          <tr>
+            <td style="background-color: #0A0A0A; border-radius: 24px; border: 1px solid #1C1C1E;">
+              
+              <!-- Card Content -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="padding: 48px 40px 0;">
+                    <!-- Eyebrow -->
+                    <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #D4FB46;">
+                      Sign In
+                    </p>
+                    <!-- Main Headline -->
+                    <h1 style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; color: #FFFFFF; letter-spacing: -0.02em;">
+                      Your magic link<br>is ready
+                    </h1>
+                  </td>
+                </tr>
+                
+                <!-- Body Text -->
+                <tr>
+                  <td style="padding: 24px 40px 0;">
+                    <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #71717A;">
+                      Click the button below to sign in to your BandWith account. This link will expire in 1 hour and can only be used once.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Security Notice -->
+                <tr>
+                  <td style="padding: 24px 40px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #1C1C1E; border-radius: 12px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="32" style="vertical-align: top;">
+                                <span style="font-size: 18px;">🔐</span>
+                              </td>
+                              <td style="vertical-align: middle;">
+                                <p style="margin: 0; font-size: 13px; color: #A1A1AA; line-height: 1.5;">
+                                  <strong style="color: #FFFFFF;">Secure one-time link</strong><br>
+                                  No password needed
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- CTA Button -->
+                <tr>
+                  <td style="padding: 32px 40px 48px;" class="button-td">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td>
+                          <a href="{{ .ConfirmationURL }}" 
+                             class="button-a"
+                             style="display: block; padding: 18px 32px; background-color: #D4FB46; color: #000000; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; text-align: center; mso-padding-alt: 18px 32px;">
+                            Sign In Now
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 40px 20px 0;">
+              <p style="margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: #3F3F46; text-align: center;">
+                If the button doesn't work, copy this link:
+              </p>
+              <p style="margin: 0 0 32px; font-size: 11px; line-height: 1.5; color: #D4FB46; text-align: center; word-break: break-all;">
+                {{ .ConfirmationURL }}
+              </p>
+              
+              <p style="margin: 0 0 8px; font-size: 12px; color: #52525B; text-align: center;">
+                Questions? Email us at
+                <a href="mailto:support@bandwith.app" style="color: #D4FB46; text-decoration: none;">support@bandwith.app</a>
+              </p>
+              
+              <p style="margin: 24px 0 0; font-size: 11px; color: #27272A; text-align: center; line-height: 1.6;">
+                © 2026 BandWith. All rights reserved.<br>
+                If you didn't request this link, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+  
+</body>
+</html>

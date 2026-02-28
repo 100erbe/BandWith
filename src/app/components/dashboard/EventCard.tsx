@@ -6,6 +6,7 @@ import { StatusBadge } from '@/app/components/ui/StatusBadge';
 
 export interface EventData {
   id: number;
+  eventId?: string; // Real UUID from database
   title: string;
   status: string;
   date: string;
@@ -14,6 +15,8 @@ export interface EventData {
   price: string;
   members: string[];
   color: string;
+  notes?: string;
+  createdBy?: string;
 }
 
 interface EventCardProps {
@@ -39,8 +42,10 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
               layoutId={`date-block-${event.id}`}
               className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-[#D4FB46] transition-colors shrink-0"
             >
-                <span className="text-[10px] font-black uppercase text-stone-400 group-hover:text-black leading-none mb-0.5">Jan</span>
-                <span className="text-xl font-black text-[#1A1A1A] leading-none group-hover:text-black">{event.date.split('-')[2]}</span>
+                <span className="text-[10px] font-black uppercase text-stone-400 group-hover:text-black leading-none mb-0.5">
+                  {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
+                </span>
+                <span className="text-xl font-black text-[#1A1A1A] leading-none group-hover:text-black">{event.date?.split('-')[2] || '--'}</span>
             </motion.div>
             
             {/* Title & Status */}

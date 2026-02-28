@@ -52,11 +52,11 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
             <div className="space-y-4">
                 <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Song Title *</label>
-                   <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-black/5 p-3 rounded-xl font-bold text-black border-none focus:ring-2 focus:ring-black/20 outline-none" placeholder="e.g. Superstition" />
+                   <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Superstition" />
                 </div>
                 <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Artist *</label>
-                   <input value={artist} onChange={e => setArtist(e.target.value)} className="w-full bg-black/5 p-3 rounded-xl font-bold text-black border-none focus:ring-2 focus:ring-black/20 outline-none" placeholder="e.g. Stevie Wonder" />
+                   <input value={artist} onChange={e => setArtist(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Stevie Wonder" />
                 </div>
             </div>
 
@@ -66,7 +66,7 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
                <textarea 
                   value={reason} 
                   onChange={e => setReason(e.target.value)}
-                  className="w-full bg-black/5 p-3 rounded-xl font-bold text-black border-none focus:ring-2 focus:ring-black/20 outline-none min-h-[100px] resize-none" 
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 font-bold text-black placeholder:text-black/30 focus:outline-none focus:border-black transition-all min-h-[100px] resize-none" 
                   placeholder="Would be great for our funk set! The groove is amazing..."
                />
             </div>
@@ -95,7 +95,7 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
             {/* Upload Score */}
             <div>
                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2 block">Upload Score (Optional)</label>
-               <div className="border border-dashed border-black/20 rounded-xl p-4 flex flex-col items-center justify-center text-center bg-black/[0.02] cursor-pointer hover:bg-black/5 transition-colors">
+               <div className="border border-dashed border-black/20 rounded-[10px] p-4 flex flex-col items-center justify-center text-center bg-black/[0.02] cursor-pointer hover:bg-black/5 transition-colors">
                    <UploadCloud className="w-6 h-6 text-black/30 mb-1" />
                    <span className="text-xs font-bold text-black/50">Drag & drop or click to upload</span>
                </div>
@@ -104,7 +104,7 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
             <button 
                onClick={handleSubmit}
                disabled={!title || !artist}
-               className="w-full py-4 bg-black text-[#D4FB46] rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+               className="w-full py-4 bg-black text-white rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
                Submit Proposal
             </button>
