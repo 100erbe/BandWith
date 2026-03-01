@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Trash2, Save, User, Users, Clock } from 'lucide-react';
+import { CheckSquare, Users, User, Plus, MessageCircle } from 'lucide-react';
 import { RehearsalTask, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
-import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
 interface Props {
   isOpen: boolean;
@@ -15,8 +14,8 @@ interface Props {
   readOnly?: boolean;
 }
 
-export const RehearsalTaskDetailModal: React.FC<Props> = ({ 
-  isOpen, onClose, task, members, onSave, onDelete, readOnly = false 
+export const RehearsalTaskDetailModal: React.FC<Props> = ({
+  isOpen, onClose, task, members, onSave, onDelete, readOnly = false
 }) => {
   const [editedTask, setEditedTask] = useState<RehearsalTask | null>(null);
 
@@ -34,169 +33,176 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
   };
 
   const handleDelete = () => {
-      if (task) {
-          onDelete(task.id);
-          onClose();
-      }
+    if (task) {
+      onDelete(task.id);
+      onClose();
+    }
   };
 
   const isAssignedToAll = editedTask.assignedTo.includes('all');
-  
+
   const handleToggleMember = (memberId: string) => {
-      if (readOnly) return;
-      
-      let newAssigned = [...editedTask.assignedTo];
-      
-      if (memberId === 'all') {
-          // If toggling All, clear everything else and set All
-          if (isAssignedToAll) {
-              // If already All, do nothing or clear? Let's say we can't clear everything easily, but for now allow unselecting All
-              newAssigned = [];
-          } else {
-              newAssigned = ['all'];
-          }
+    if (readOnly) return;
+    let newAssigned = [...editedTask.assignedTo];
+
+    if (memberId === 'all') {
+      newAssigned = isAssignedToAll ? [] : ['all'];
+    } else {
+      if (isAssignedToAll) {
+        newAssigned = [memberId];
       } else {
-          // If specific member
-          if (isAssignedToAll) {
-              // If was All, remove All and add specific
-              newAssigned = [memberId];
-          } else {
-              if (newAssigned.includes(memberId)) {
-                  newAssigned = newAssigned.filter(id => id !== memberId);
-              } else {
-                  newAssigned.push(memberId);
-              }
-          }
+        if (newAssigned.includes(memberId)) {
+          newAssigned = newAssigned.filter(id => id !== memberId);
+        } else {
+          newAssigned.push(memberId);
+        }
       }
-      
-      setEditedTask({ ...editedTask, assignedTo: newAssigned });
+    }
+    setEditedTask({ ...editedTask, assignedTo: newAssigned });
   };
 
-  // Helper to get names
-  const assignedNames = isAssignedToAll 
-        ? 'Entire Band' 
-        : editedTask.assignedTo.map(id => members.find(m => m.id === id)?.name).filter(Boolean).join(', ');
+  const assignedNames = isAssignedToAll
+    ? 'Entire Band'
+    : editedTask.assignedTo.map(id => members.find(m => m.id === id)?.name).filter(Boolean).join(', ');
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Task Details" icon={CheckSquare}>
-        <div className="flex flex-col h-auto">
-            {/* Swiss Summary Row */}
-            <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
-                     {isAssignedToAll ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                     {isAssignedToAll ? 'Band Task' : 'Assigned Task'}
-                 </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
-                     <Clock className="w-3 h-3" /> Due Rehearsal
-                 </div>
-                 <div className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1", editedTask.completed ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>
-                     {editedTask.completed ? "Completed" : "Open"}
-                 </div>
-            </div>
-
-            <div className="space-y-4">
-                {/* Description */}
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Description</label>
-                    {readOnly ? (
-                        <div className="text-sm font-bold text-black">{editedTask.text}</div>
-                    ) : (
-                        <input 
-                            value={editedTask.text}
-                            onChange={(e) => setEditedTask({...editedTask, text: e.target.value})}
-                            className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
-                        />
-                    )}
-                </div>
-
-                {/* Assignee */}
-                <div className="space-y-1">
-                     <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Assigned To</label>
-                     {readOnly ? (
-                         <div className="text-sm font-medium text-black">{assignedNames || 'Unassigned'}</div>
-                     ) : (
-                         <div className="space-y-2">
-                             {/* All Button */}
-                             <button 
-                                onClick={() => handleToggleMember('all')}
-                                className={cn(
-                                    "w-full px-3 py-2 rounded-[10px] text-xs font-bold border flex items-center justify-between transition-all",
-                                    isAssignedToAll ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40 hover:border-black/30"
-                                )}
-                             >
-                                 <span>Entire Band</span>
-                                 <DotCheckbox checked={isAssignedToAll} activeColor={isAssignedToAll ? '#FFFFFF' : '#000000'} inactiveColor={isAssignedToAll ? 'rgba(255,255,255,0.3)' : undefined} />
-                             </button>
-                             
-                             {/* Specific Members Grid */}
-                             <div className="grid grid-cols-2 gap-2">
-                                 {members.map(m => {
-                                     const isSelected = editedTask.assignedTo.includes(m.id);
-                                     return (
-                                         <button 
-                                            key={m.id}
-                                            onClick={() => handleToggleMember(m.id)}
-                                            className={cn(
-                                                "px-3 py-2 rounded-[10px] text-xs font-bold border flex items-center justify-between transition-all text-left",
-                                                isSelected ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40 hover:border-black/30",
-                                                isAssignedToAll ? "opacity-50 cursor-not-allowed" : ""
-                                            )}
-                                            disabled={isAssignedToAll}
-                                         >
-                                             <span>{m.name}</span>
-                                             <DotCheckbox checked={isSelected} activeColor={isSelected ? '#FFFFFF' : '#000000'} inactiveColor={isSelected ? 'rgba(255,255,255,0.3)' : undefined} />
-                                         </button>
-                                     );
-                                 })}
-                             </div>
-                         </div>
-                     )}
-                     {!readOnly && (
-                         <div className="text-[9px] font-bold text-black/30 mt-1 uppercase text-right">
-                             {isAssignedToAll ? 'Assigned to everyone' : `Assigned to ${editedTask.assignedTo.length} members`}
-                         </div>
-                     )}
-                </div>
-
-                {/* Type */}
-                 <div className="space-y-1">
-                     <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Category</label>
-                     {readOnly ? (
-                         <div className="text-sm font-medium text-black capitalize">{editedTask.type}</div>
-                     ) : (
-                         <div className="flex flex-wrap gap-2">
-                             {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
-                                 <button 
-                                    key={t}
-                                    onClick={() => setEditedTask({...editedTask, type: t as any})}
-                                    className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all", editedTask.type === t ? "bg-black text-white border-black" : "bg-white border-black/10 text-black/40")}
-                                 >
-                                     {t}
-                                 </button>
-                             ))}
-                         </div>
-                     )}
-                </div>
-            </div>
-
-            {/* Actions */}
-            {!readOnly && (
-                <div className="pt-6 mt-6 border-t border-black/10 flex gap-3">
-                    <button 
-                        onClick={handleDelete}
-                        className="flex-1 py-3 bg-red-50 text-red-600 rounded-[10px] font-bold text-xs uppercase tracking-wider hover:bg-red-100 transition-colors"
-                    >
-                        Delete
-                    </button>
-                    <button 
-                        onClick={handleSave}
-                        className="flex-[2] py-3 bg-black text-white rounded-[10px] font-bold text-xs uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
-                    >
-                        <Save className="w-4 h-4" /> Save Changes
-                    </button>
-                </div>
-            )}
+    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Task Details">
+      <div className="flex flex-col gap-[40px]">
+        {/* Status badges */}
+        <div className="flex flex-wrap gap-[4px]">
+          <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
+            <span className="text-[12px] font-bold uppercase text-[#0147FF] flex items-center gap-[4px]">
+              {isAssignedToAll ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
+              {isAssignedToAll ? 'BAND TASK' : 'ASSIGNED'}
+            </span>
+          </div>
+          <div className={cn(
+            "px-[10px] py-[4px] rounded-[6px]",
+            editedTask.completed ? "bg-white" : "bg-white/20"
+          )}>
+            <span className={cn(
+              "text-[12px] font-bold uppercase",
+              editedTask.completed ? "text-[#0147FF]" : "text-white"
+            )}>
+              {editedTask.completed ? 'COMPLETED' : 'OPEN'}
+            </span>
+          </div>
         </div>
+
+        {/* Description */}
+        <div className="flex flex-col gap-[8px]">
+          <span className="text-[12px] font-bold text-white uppercase">DESCRIPTION</span>
+          {readOnly ? (
+            <span className="text-[22px] font-bold text-white">{editedTask.text}</span>
+          ) : (
+            <input
+              value={editedTask.text}
+              onChange={(e) => setEditedTask({ ...editedTask, text: e.target.value })}
+              className="bg-transparent border-b-2 border-white/30 py-[8px] text-[22px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all"
+            />
+          )}
+        </div>
+
+        {/* Assigned To */}
+        <div className="flex flex-col gap-[12px]">
+          <span className="text-[12px] font-bold text-white uppercase">ASSIGNED TO</span>
+          {readOnly ? (
+            <span className="text-[22px] font-bold text-white">{assignedNames || 'Unassigned'}</span>
+          ) : (
+            <div className="flex flex-col gap-[8px]">
+              <button
+                onClick={() => handleToggleMember('all')}
+                className={cn(
+                  "w-full px-[16px] py-[12px] rounded-[10px] text-[14px] font-bold flex items-center justify-between transition-all",
+                  isAssignedToAll
+                    ? "bg-white text-[#0147FF]"
+                    : "bg-white/20 text-white"
+                )}
+              >
+                <span>ENTIRE BAND</span>
+                <div className={cn(
+                  "w-[20px] h-[20px] rounded-full border-2",
+                  isAssignedToAll ? "bg-[#0147FF] border-[#0147FF]" : "border-white/50"
+                )} />
+              </button>
+
+              <div className="grid grid-cols-2 gap-[8px]">
+                {members.map(m => {
+                  const isSelected = editedTask.assignedTo.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => handleToggleMember(m.id)}
+                      disabled={isAssignedToAll}
+                      className={cn(
+                        "px-[12px] py-[10px] rounded-[10px] text-[12px] font-bold flex items-center justify-between transition-all text-left",
+                        isSelected ? "bg-white text-[#0147FF]" : "bg-white/20 text-white",
+                        isAssignedToAll && "opacity-40"
+                      )}
+                    >
+                      <span>{m.name}</span>
+                      <div className={cn(
+                        "w-[16px] h-[16px] rounded-full border-2",
+                        isSelected ? "bg-[#0147FF] border-[#0147FF]" : "border-white/50"
+                      )} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Category */}
+        <div className="flex flex-col gap-[12px]">
+          <span className="text-[12px] font-bold text-white uppercase">CATEGORY</span>
+          {readOnly ? (
+            <span className="text-[22px] font-bold text-white capitalize">{editedTask.type}</span>
+          ) : (
+            <div className="flex flex-wrap gap-[8px]">
+              {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setEditedTask({ ...editedTask, type: t as RehearsalTask['type'] })}
+                  className={cn(
+                    "px-[16px] py-[8px] rounded-[10px] text-[12px] font-bold uppercase transition-all",
+                    editedTask.type === t
+                      ? "bg-white text-[#0147FF]"
+                      : "bg-white/20 text-white"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      {!readOnly && (
+        <div className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[102]"
+          style={{ backgroundColor: '#0147FF', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+        >
+          <div className="flex flex-col gap-[20px] items-center">
+            <div className="grid grid-cols-2 gap-[10px] w-full">
+              <button
+                onClick={handleDelete}
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white/20"
+              >
+                <span className="text-[16px] font-bold text-white uppercase">DELETE</span>
+              </button>
+              <button
+                onClick={handleSave}
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white"
+              >
+                <Plus className="w-[18px] h-[18px] text-[#0147FF]" />
+                <span className="text-[16px] font-bold text-[#0147FF] uppercase">SAVE</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </RehearsalModalWrapper>
   );
 };

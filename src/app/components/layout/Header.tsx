@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronDown, 
   Plus,
-  Grid,
-  List,
   Sparkles
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -43,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <motion.header 
-      className="mb-8 relative z-50 px-2"
+      className="mb-8 relative z-50"
       animate={{ 
         opacity: isHidden ? 0 : 1, 
         y: isHidden ? -20 : 0 
@@ -108,23 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Right: Actions / Identity */}
         <div className="flex items-center gap-3">
-          {/* Event Actions (List/Calendar Toggle) */}
-          {activeTab === 'Events' && (
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setEventView(eventView === 'list' ? 'calendar' : 'list')}
-                className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-[#1A1A1A] hover:bg-stone-50 transition-colors shadow-sm"
-              >
-                {eventView === 'list' ? <Grid className="w-4 h-4" /> : <List className="w-4 h-4" />}
-              </button>
-              <button 
-                onClick={onCreateEvent}
-                className="w-10 h-10 rounded-full bg-[#D4FB46] flex items-center justify-center text-black shadow-[0_4px_12px_rgba(212,251,70,0.3)] hover:scale-105 transition-transform"
-              >
-                <Plus className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </div>
-          )}
+          {/* Removed redundant + button — use BottomNavigation + instead */}
 
           {/* Identity Trigger */}
           <motion.div 

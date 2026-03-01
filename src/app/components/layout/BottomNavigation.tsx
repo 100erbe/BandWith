@@ -91,8 +91,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     <motion.div 
       className="fixed left-4 right-4 z-[80]"
       style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
-      animate={{ y: isHidden ? 200 : 0 }}
-      transition={{ duration: 0.4, ease: "easeInOut" }}
+      animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
     >
       {/* Plus Menu — Bottom Sheet (Figma: NEW - Popup) */}
       <AnimatePresence>

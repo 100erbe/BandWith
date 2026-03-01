@@ -1,12 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import {
-  X, ArrowLeft, Send, Copy, Edit3, Trash2,
-  CheckCircle, XCircle, Clock, Eye, Calendar,
-  FileText
-} from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
-import { Quote, QuoteStatus, getStatusColor, getStatusLabel } from '@/app/data/quotes';
+import { ArrowLeft, ArrowUpRight, Plus } from 'lucide-react';
+import { Quote } from '@/app/data/quotes';
+import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -17,221 +13,284 @@ interface QuoteDetailModalProps {
   onDelete?: (quote: Quote) => void;
 }
 
+const QDotGrid: React.FC<{
+  filled: number;
+  total: number;
+  cols?: number;
+  rows?: number;
+}> = ({ filled, total, cols = 6, rows = 2 }) => {
+  const capped = Math.min(filled, total);
+  return (
+    <div
+      className="grid w-full gap-[4px]"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+        height: rows * 15 + (rows - 1) * 4,
+      }}
+    >
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[10px]"
+          style={{ backgroundColor: i < capped ? 'white' : 'rgba(255,255,255,0.2)' }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const formatBandTotal = (total: number): string => {
+  if (total >= 1000) return `€${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}K`;
+  return `€${total}`;
+};
+
 export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   quote,
   onClose,
   onEdit,
-  onSend,
-  onDuplicate,
   onDelete,
 }) => {
   const canEdit = quote.status === 'DRAFT';
-  const canSend = quote.status === 'DRAFT';
-  const canDuplicate = true;
+  const eventDate = quote.eventDate ? new Date(quote.eventDate) : null;
+  const year = eventDate ? eventDate.getFullYear() : '';
+  const monthDay = eventDate
+    ? `${eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${eventDate.getDate()}`
+    : 'TBD';
 
-  const getStatusIcon = (status: QuoteStatus) => {
-    switch (status) {
-      case 'DRAFT': return <Edit3 className="w-4 h-4" />;
-      case 'SENT': return <Send className="w-4 h-4" />;
-      case 'ACCEPTED': return <CheckCircle className="w-4 h-4" />;
-      case 'DECLINED': return <XCircle className="w-4 h-4" />;
-      case 'EXPIRED': return <Clock className="w-4 h-4" />;
-      default: return null;
-    }
-  };
+  const miniCal = eventDate ? (() => {
+    const y = eventDate.getFullYear();
+    const m = eventDate.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const firstDay = (new Date(y, m, 1).getDay() + 6) % 7;
+    return { daysInMonth, firstDay, eventDay: eventDate.getDate() };
+  })() : null;
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const dp = quote.discount > 0 ? Math.round((quote.discount / quote.total) * 100) : 30;
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110]"
-        onClick={onClose}
+        className="fixed inset-0 z-[110]"
+        style={{ backgroundColor: '#9A8878' }}
       />
 
-      {/* Modal */}
       <motion.div
-        initial={{ opacity: 0, y: '100%' }}
+        initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: '100%' }}
-        transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-        className="fixed inset-x-0 bottom-0 z-[120] bg-[#E6E5E1] rounded-t-[2.5rem] max-h-[90vh] overflow-hidden flex flex-col"
+        exit={{ opacity: 0, y: 40 }}
+        className="fixed inset-0 z-[120] flex flex-col overflow-y-auto"
+        style={{ backgroundColor: '#9A8878' }}
       >
-        {/* Header */}
-        <div className="p-6 flex items-center justify-between border-b border-black/5 shrink-0">
-          <div className="flex items-center gap-4">
+        <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
+          {/* Header */}
+          <div className="flex items-center gap-[20px]">
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-black/5 flex items-center justify-center text-black/50 hover:bg-black/10 hover:text-black transition-colors"
+              className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-white"
+              style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-[24px] h-[24px] text-white" />
             </button>
-            <div>
-              <h2 className="text-xl font-black text-black">Quote Details</h2>
-              <p className="text-xs font-medium text-black/50">#{quote.id.slice(-8)}</p>
-            </div>
+            <span className="text-[32px] font-bold text-white uppercase">QUOTE</span>
           </div>
 
-          <div className={cn(
-            'px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1.5',
-            getStatusColor(quote.status)
-          )}>
-            {getStatusIcon(quote.status)}
-            {getStatusLabel(quote.status)}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Client & Event */}
-          <div className="p-5 bg-black rounded-2xl text-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">Client</span>
-                <h3 className="text-2xl font-black">{quote.clientName || 'Unknown Client'}</h3>
-                <p className="text-sm font-medium text-white/60 mt-1">{quote.eventTitle || 'Untitled Event'}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50 block mb-1">Total</span>
-                <span className="text-3xl font-black text-[#D4FB46]">€{quote.total.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Line Items */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-black/40 ml-2 mb-3 flex items-center gap-2">
-              <FileText className="w-3 h-3" /> Line Items ({quote.lineItems.length})
-            </h4>
-            <div className="bg-white rounded-2xl overflow-hidden divide-y divide-black/5 shadow-sm">
-              {quote.lineItems.map((item) => (
-                <div key={item.id} className="p-4 flex justify-between items-center">
-                  <div>
-                    <p className="font-bold text-black">{item.description}</p>
-                    <p className="text-xs text-black/50 mt-0.5">{item.quantity} × €{item.unitPrice.toLocaleString()}</p>
-                  </div>
-                  <span className="text-lg font-black text-black">€{item.total.toLocaleString()}</span>
+          {/* Event Info */}
+          <div className="flex gap-[20px] items-start">
+            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+              <div className="flex gap-[4px] items-center flex-wrap">
+                <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
+                  <span className="text-[12px] font-bold uppercase text-[#9A8878]">QUOTE</span>
                 </div>
-              ))}
+                <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
+                  <span className="text-[12px] font-bold uppercase text-[#9A8878]">
+                    {quote.eventTitle?.split(' ')[0]?.toUpperCase() || 'EVENT'}
+                  </span>
+                </div>
+              </div>
+              <h2 className="text-[32px] font-bold text-white uppercase leading-tight">
+                {quote.eventTitle || 'UNTITLED'}
+              </h2>
+              <div className="flex flex-col gap-[2px]">
+                <div className="flex items-center gap-[8px]">
+                  <span className="text-[16px] font-bold text-white uppercase">
+                    {quote.clientName || 'TBD'}
+                  </span>
+                  <ArrowUpRight className="w-[18px] h-[18px] text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end justify-between self-stretch shrink-0 gap-[4px]">
+              <WeatherWidget
+                eventDate={quote.eventDate}
+                location={quote.clientName}
+                textColor="white"
+              />
+              <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                <span className="text-[12px] font-bold text-white uppercase whitespace-nowrap">
+                  START - 3:30 PM
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Financial Summary */}
-          <div className="p-4 bg-[#998878]/10 rounded-2xl space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-black/50 font-medium">Subtotal</span>
-              <span className="font-bold text-black">€{quote.subtotal.toLocaleString()}</span>
+          {/* Year + Date */}
+          <div className="flex gap-[20px]">
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center gap-[6px]">
+                <span className="text-[12px] font-bold text-white uppercase">YEAR</span>
+              </div>
+              <span className="text-[42px] font-bold text-white leading-none">{year || '2028'}</span>
             </div>
-            {quote.discount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-black/50 font-medium">Discount</span>
-                <span className="font-bold text-red-500">-€{quote.discount.toLocaleString()}</span>
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center gap-[6px]">
+                <span className="text-[12px] font-bold text-white uppercase">DATE</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
               </div>
-            )}
-            {quote.tax > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-black/50 font-medium">Tax</span>
-                <span className="font-bold text-black">+€{quote.tax.toLocaleString()}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-2 border-t border-black/10">
-              <span className="text-lg font-black text-black">Total</span>
-              <span className="text-xl font-black text-black">€{quote.total.toLocaleString()}</span>
+              <span className="text-[42px] font-bold text-white leading-none">{monthDay}</span>
             </div>
           </div>
 
-          {/* Notes */}
-          {quote.notes && (
-            <div className="p-4 bg-white rounded-2xl">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2">Notes</span>
-              <p className="text-sm text-black/70 whitespace-pre-wrap">{quote.notes}</p>
+          {/* Mini Calendar */}
+          {miniCal && (
+            <div className="flex flex-col gap-[4px]">
+              <div className="flex">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                  <div key={i} className="flex-1 text-center">
+                    <span className="text-[10px] font-bold text-white">{d}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-[2px]">
+                {Array.from({ length: miniCal.firstDay }).map((_, i) => (
+                  <div key={`e-${i}`} className="h-[24px]" />
+                ))}
+                {Array.from({ length: miniCal.daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const isEventDay = day === miniCal.eventDay;
+                  return (
+                    <div
+                      key={day}
+                      className="h-[24px] flex items-center justify-center rounded-[6px]"
+                      style={{ backgroundColor: isEventDay ? 'white' : 'transparent' }}
+                    >
+                      <span
+                        className="text-[12px] font-medium"
+                        style={{ color: isEventDay ? '#9A8878' : 'white' }}
+                      >
+                        {day}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Metadata */}
-          <div className="grid grid-cols-2 gap-3">
-            {quote.validUntil && (
-              <div className="p-3 bg-black/5 rounded-xl">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-1 mb-1">
-                  <Calendar className="w-3 h-3" /> Valid Until
+          {/* Client + Pricing */}
+          <div className="grid grid-cols-2 gap-[20px]">
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[12px] font-bold text-white uppercase">CLIENT</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </div>
+                <span className="text-[42px] font-bold text-white leading-none">
+                  {(quote.clientName || 'MIA').split(' ')[0]?.toUpperCase()}
                 </span>
-                <span className="text-sm font-bold text-black">{formatDate(quote.validUntil)}</span>
-              </div>
-            )}
-            {quote.viewedAt && (
-              <div className="p-3 bg-black/5 rounded-xl">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-1 mb-1">
-                  <Eye className="w-3 h-3" /> Viewed
+                <span className="text-[22px] font-bold text-white leading-none">
+                  {(quote.clientName || 'MIA CALIFA').split(' ').slice(1).join(' ')?.toUpperCase() || 'CALIFA'}
                 </span>
-                <span className="text-sm font-bold text-black">{formatDate(quote.viewedAt)}</span>
               </div>
-            )}
-            <div className="p-3 bg-black/5 rounded-xl">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-1 mb-1">
-                <Clock className="w-3 h-3" /> Created
-              </span>
-              <span className="text-sm font-bold text-black">{formatDate(quote.createdAt)}</span>
+              <QDotGrid filled={6} total={40} cols={8} rows={5} />
             </div>
-            {quote.respondedAt && (
-              <div className="p-3 bg-black/5 rounded-xl">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-1 mb-1">
-                  {quote.status === 'ACCEPTED' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                  Response
+
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[12px] font-bold text-white uppercase">PRICING & FINANCE</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </div>
+                <span className="text-[42px] font-bold text-white leading-none">
+                  {formatBandTotal(quote.total)}
                 </span>
-                <span className="text-sm font-bold text-black">{formatDate(quote.respondedAt)}</span>
+                <span className="text-[22px] font-bold text-white leading-none">
+                  DP{dp}%
+                </span>
               </div>
-            )}
+              <QDotGrid filled={8} total={40} cols={8} rows={5} />
+            </div>
+          </div>
+
+          {/* Guests */}
+          <div className="flex flex-col gap-[20px]">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-[6px]">
+                <span className="text-[12px] font-bold text-white uppercase">GUESTS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              </div>
+              <span className="text-[42px] font-bold text-white leading-none">150</span>
+            </div>
+            <QDotGrid filled={150} total={200} cols={20} rows={10} />
+          </div>
+
+          {/* Music Moments + Members */}
+          <div className="grid grid-cols-2 gap-[20px]">
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[12px] font-bold text-white uppercase">MUSIC MOMENTS</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </div>
+                <span className="text-[42px] font-bold text-white leading-none">
+                  {quote.lineItems?.length || 3}
+                </span>
+              </div>
+              <QDotGrid filled={quote.lineItems?.length || 3} total={12} cols={6} rows={2} />
+            </div>
+
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[12px] font-bold text-white uppercase">MEMBERS</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </div>
+                <span className="text-[42px] font-bold text-white leading-none">8</span>
+              </div>
+              <QDotGrid filled={8} total={12} cols={6} rows={2} />
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="p-6 border-t border-black/5 shrink-0 bg-[#E6E5E1]">
-          <div className="flex gap-3">
-            {canEdit && onEdit && (
+        {/* Footer */}
+        <div
+          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[130]"
+          style={{ backgroundColor: '#9A8878', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+        >
+          <div className="flex flex-col gap-[20px] items-center">
+            <div className="grid grid-cols-2 gap-[10px] w-full">
               <button
-                onClick={() => onEdit(quote)}
-                className="flex-1 h-12 rounded-xl bg-black/5 text-black font-bold text-sm uppercase tracking-wide hover:bg-black/10 transition-colors flex items-center justify-center gap-2"
+                onClick={() => canEdit && onEdit?.(quote)}
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black"
               >
-                <Edit3 className="w-4 h-4" /> Edit
+                <Plus className="w-[18px] h-[18px] text-white" />
+                <span className="text-[16px] font-bold text-white uppercase">EDIT</span>
               </button>
-            )}
-            {canSend && onSend && (
-              <button
-                onClick={() => onSend(quote)}
-                className="flex-1 h-12 rounded-xl bg-[#998878] text-white font-bold text-sm uppercase tracking-wide hover:bg-[#887767] transition-colors flex items-center justify-center gap-2"
-              >
-                <Send className="w-4 h-4" /> Send
+              <button className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black">
+                <Plus className="w-[18px] h-[18px] text-white" />
+                <span className="text-[16px] font-bold text-white uppercase">CONVERT</span>
               </button>
-            )}
-            {canDuplicate && onDuplicate && (
-              <button
-                onClick={() => onDuplicate(quote)}
-                className="h-12 px-4 rounded-xl bg-black/5 text-black font-bold text-sm uppercase tracking-wide hover:bg-black/10 transition-colors flex items-center justify-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            )}
-            {canEdit && onDelete && (
-              <button
-                onClick={() => onDelete(quote)}
-                className="h-12 px-4 rounded-xl bg-red-50 text-red-600 font-bold text-sm uppercase tracking-wide hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+            </div>
+            <button
+              onClick={() => onDelete?.(quote)}
+              className="text-[12px] font-medium text-[#FF7C7C] uppercase"
+            >
+              DELETE THIS QUOTE
+            </button>
           </div>
         </div>
       </motion.div>

@@ -6,7 +6,7 @@ import { StatusBadge } from '@/app/components/ui/StatusBadge';
 
 export interface EventData {
   id: number;
-  eventId?: string; // Real UUID from database
+  eventId?: string;
   title: string;
   status: string;
   date: string;
@@ -17,6 +17,15 @@ export interface EventData {
   color: string;
   notes?: string;
   createdBy?: string;
+  setlistId?: string;
+  clientName?: string;
+  venueAddress?: string;
+  venueCity?: string;
+  guests?: number;
+  eventType?: string;
+  loadInTime?: string;
+  soundcheckTime?: string;
+  endTime?: string;
 }
 
 interface EventCardProps {

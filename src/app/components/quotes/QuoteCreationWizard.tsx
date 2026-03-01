@@ -107,18 +107,28 @@ const DEPOSIT_OPTIONS = [
   { value: 50, label: '50%' },
 ];
 
+const QuoteField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
+  <div className={cn('flex flex-col gap-1', className)}>
+    <span className="text-[12px] font-bold uppercase tracking-wide text-white">{label}</span>
+    {children}
+    <div className="h-px bg-white/20 mt-1" />
+  </div>
+);
+
 interface QuoteCreationWizardProps {
   onClose: () => void;
   onCreate: (quote: Partial<Quote>) => void;
   initialEventId?: string;
   initialEventTitle?: string;
   initialClientName?: string;
+  initialData?: Partial<Quote>;
 }
 
 export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   onClose,
   onCreate,
   initialClientName,
+  initialData,
 }) => {
   const [step, setStep] = useState(0);
   const defaults = getDefaultQuote();
@@ -131,20 +141,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   }, [step]);
 
   // === FORM STATE ===
-  const [clientName, setClientName] = useState(initialClientName || '');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [clientName, setClientName] = useState(initialData?.clientName || initialClientName || '');
+  const [clientEmail, setClientEmail] = useState(initialData?.clientEmail || '');
+  const [clientPhone, setClientPhone] = useState(initialData?.clientPhone || '');
   const [phoneCountry, setPhoneCountry] = useState('US');
-  const [clientCompany, setClientCompany] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [eventType, setEventType] = useState<QuoteEventType>('wedding');
-  const [eventDate, setEventDate] = useState('');
-  const [eventTimeStart, setEventTimeStart] = useState('');
-  const [eventTimeEnd, setEventTimeEnd] = useState('');
-  const [guestCount, setGuestCount] = useState<number | undefined>();
-  const [venueName, setVenueName] = useState('');
-  const [venueCity, setVenueCity] = useState('');
-  const [venueCountry, setVenueCountry] = useState('IT');
+  const [clientCompany, setClientCompany] = useState(initialData?.clientCompany || '');
+  const [eventName, setEventName] = useState(initialData?.eventName || initialData?.eventTitle || '');
+  const [eventType, setEventType] = useState<QuoteEventType>(initialData?.eventType || 'wedding');
+  const [eventDate, setEventDate] = useState(initialData?.eventDate || '');
+  const [eventTimeStart, setEventTimeStart] = useState(initialData?.eventTimeStart || '');
+  const [eventTimeEnd, setEventTimeEnd] = useState(initialData?.eventTimeEnd || '');
+  const [guestCount, setGuestCount] = useState<number | undefined>(initialData?.guestCount);
+  const [venueName, setVenueName] = useState(initialData?.venueName || '');
+  const [venueCity, setVenueCity] = useState(initialData?.venueCity || '');
+  const [venueCountry, setVenueCountry] = useState(initialData?.venueCountry || 'IT');
   const [indoorOutdoor, setIndoorOutdoor] = useState<'indoor' | 'outdoor'>('indoor');
   const [musicalMoments, setMusicalMoments] = useState<MusicalMoment[]>(DEFAULT_MUSICAL_MOMENTS);
   const [expandedMoment, setExpandedMoment] = useState<string | null>(null);
@@ -161,7 +171,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [fiscalCode, setFiscalCode] = useState('');
   const [vatExempt, setVatExempt] = useState(false);
   const [reverseCharge, setReverseCharge] = useState(false);
-  const [baseFee, setBaseFee] = useState(0);
+  const [baseFee, setBaseFee] = useState(initialData?.baseFee || 0);
   const [travelIncluded, setTravelIncluded] = useState(true);
   const [travelFee, setTravelFee] = useState(0);
   const [accommodationNeeded, setAccommodationNeeded] = useState(false);
@@ -288,14 +298,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     </div>
   );
 
-  // === FIELD COMPONENT ===
-  const Field: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
-    <div className={cn('flex flex-col gap-1', className)}>
-      <span className="text-[12px] font-bold uppercase tracking-wide text-white">{label}</span>
-      {children}
-      <div className="h-px bg-white/20 mt-1" />
-    </div>
-  );
+  // Field component is defined outside the render (QuoteField) to prevent re-mounts
 
   // === TAG PILL ===
   const TagPill: React.FC<{ children: React.ReactNode; active?: boolean }> = ({ children, active }) => (
@@ -312,7 +315,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // ═══════════════════════════════════
   const renderClientDateStep = () => (
     <div className="flex flex-col gap-10">
-      <Field label="CLIENT NAME">
+      <QuoteField label="CLIENT NAME">
         <input
           type="text"
           value={clientName}
@@ -321,9 +324,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
           autoFocus
         />
-      </Field>
+      </QuoteField>
 
-      <Field label="EMAIL">
+      <QuoteField label="EMAIL">
         <div className="flex items-center gap-3">
           <Mail className="w-5 h-5 text-white/40 shrink-0" />
           <input
@@ -334,10 +337,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
           />
         </div>
-      </Field>
+      </QuoteField>
 
       <div className="grid grid-cols-2 gap-5">
-        <Field label="COUNTRY">
+        <QuoteField label="COUNTRY">
           <select
             value={phoneCountry}
             onChange={e => setPhoneCountry(e.target.value)}
@@ -347,8 +350,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <option key={c.code} value={c.code} className="text-black">{c.code} {c.prefix}</option>
             ))}
           </select>
-        </Field>
-        <Field label="PHONE NUMBER">
+        </QuoteField>
+        <QuoteField label="PHONE NUMBER">
           <div className="flex items-center gap-2">
             <Phone className="w-5 h-5 text-white/40 shrink-0" />
             <input
@@ -359,29 +362,31 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none"
             />
           </div>
-        </Field>
+        </QuoteField>
       </div>
 
       <div className="grid grid-cols-2 gap-5">
-        <Field label="DATE">
+        <QuoteField label="DATE">
           <input
             type="date"
             value={eventDate}
             onChange={e => setEventDate(e.target.value)}
             className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none uppercase"
+            style={{ colorScheme: 'dark' }}
           />
-        </Field>
-        <Field label="START">
+        </QuoteField>
+        <QuoteField label="START">
           <input
             type="time"
             value={eventTimeStart}
             onChange={e => setEventTimeStart(e.target.value)}
             className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none uppercase"
+            style={{ colorScheme: 'dark' }}
           />
-        </Field>
+        </QuoteField>
       </div>
 
-      <Field label="VENUE">
+      <QuoteField label="VENUE">
         <div className="flex items-center gap-3">
           <MapPin className="w-5 h-5 text-white/40 shrink-0" />
           <input
@@ -392,10 +397,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
           />
         </div>
-      </Field>
+      </QuoteField>
 
       <div className="grid grid-cols-2 gap-5">
-        <Field label="CITY">
+        <QuoteField label="CITY">
           <input
             type="text"
             value={venueCity}
@@ -403,8 +408,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             placeholder="CITY"
             className="w-full bg-transparent text-[20px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
           />
-        </Field>
-        <Field label="COUNTRY">
+        </QuoteField>
+        <QuoteField label="COUNTRY">
           <select
             value={venueCountry}
             onChange={e => setVenueCountry(e.target.value)}
@@ -414,7 +419,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <option key={code} value={code} className="text-black">{VAT_RATES[code].name.toUpperCase()}</option>
             ))}
           </select>
-        </Field>
+        </QuoteField>
       </div>
 
       {venueCity && (
@@ -591,7 +596,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             {isSelected && (
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-bold uppercase text-white/50">MUSICIANS</span>
+                  <div className="flex flex-col">
+                    <span className="text-[12px] font-bold uppercase text-white/50">MUSICIANS</span>
+                    {musicians > selectedMusicians.length && selectedMusicians.length > 0 && (
+                      <span className="text-[10px] font-bold text-orange-400 mt-1">
+                        Exceeds band size ({selectedMusicians.length})
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[32px] font-bold text-white">{musicians}</span>
                 </div>
                 <div className="flex items-center justify-end gap-3">
@@ -649,7 +661,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          <Field label="PRICE">
+                          <QuoteField label="PRICE">
                             <div className="flex items-center gap-1">
                               <span className="text-white/40 font-bold">$</span>
                               <input
@@ -660,8 +672,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                                 className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none"
                               />
                             </div>
-                          </Field>
-                          <Field label="DURATION (MIN)">
+                          </QuoteField>
+                          <QuoteField label="DURATION (MIN)">
                             <input
                               type="number"
                               value={duration}
@@ -669,7 +681,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                               onClick={e => e.stopPropagation()}
                               className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none"
                             />
-                          </Field>
+                          </QuoteField>
                         </div>
                       </div>
                     </motion.div>
@@ -683,12 +695,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         );
       })}
 
-      {musicalMoments.some(m => m.selected) && (
-        <div className="mt-4 bg-white/10 rounded-[16px] px-6 py-4">
-          <span className="text-[12px] font-bold uppercase text-white/60">PARTIAL</span>
-          <p className="text-[32px] font-bold text-white">${selectedMomentsTotal}</p>
-        </div>
-      )}
+      <div className="h-24" />
     </div>
   );
 
@@ -711,6 +718,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className="w-full bg-transparent text-[42px] font-bold text-white placeholder:text-white/20 focus:outline-none"
             />
           </div>
+          {selectedMomentsTotal > 0 && baseFee !== selectedMomentsTotal && (
+            <button
+              onClick={() => setBaseFee(selectedMomentsTotal)}
+              className="text-[11px] font-bold text-white/40 underline decoration-white/20 hover:text-white/70 transition-colors"
+            >
+              Use moments total (${selectedMomentsTotal})
+            </button>
+          )}
         </div>
         <DotCheckbox checked={baseFee > 0} activeColor="#ffffff" inactiveColor="rgba(255,255,255,0.2)" />
       </div>
@@ -723,10 +738,48 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <span className="text-[24px] font-bold uppercase text-white">EXTRA</span>
       </div>
 
-      <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} />
-      <FeeRow label="ACCOMMODATION" tag="TRAVEL & LOGISTICS" included={!accommodationNeeded} onToggle={() => setAccommodationNeeded(!accommodationNeeded)} />
-      <FeeRow label="MEALS" tag="TRAVEL & LOGISTICS" included={mealsIncluded} onToggle={() => setMealsIncluded(!mealsIncluded)} />
-      <FeeRow label="EQUIPMENT" tag="TECHNICAL" included={soundIncluded && lightsIncluded && backlineIncluded} onToggle={() => { setSoundIncluded(!soundIncluded); setLightsIncluded(!lightsIncluded); setBacklineIncluded(!backlineIncluded); }} />
+      <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} fee={travelFee} onFeeChange={setTravelFee} />
+      <FeeRow label="ACCOMMODATION" tag="TRAVEL & LOGISTICS" included={!accommodationNeeded} onToggle={() => setAccommodationNeeded(!accommodationNeeded)} fee={accommodationFee} onFeeChange={setAccommodationFee} />
+      <FeeRow label="MEALS" tag="TRAVEL & LOGISTICS" included={mealsIncluded} onToggle={() => setMealsIncluded(!mealsIncluded)} fee={mealsFee} onFeeChange={setMealsFee} />
+      <FeeRow label="EQUIPMENT" tag="TECHNICAL" included={soundIncluded && lightsIncluded && backlineIncluded} onToggle={() => { setSoundIncluded(!soundIncluded); setLightsIncluded(!lightsIncluded); setBacklineIncluded(!backlineIncluded); }} fee={soundFee + lightsFee + backlineFee} onFeeChange={(v) => { setSoundFee(v); setLightsFee(0); setBacklineFee(0); }} />
+
+      {/* Custom Fee Items */}
+      <div className="flex flex-col gap-3">
+        <span className="text-[12px] font-bold uppercase text-white/50">CUSTOM FEES</span>
+        {customItems.map((item, i) => (
+          <div key={item.id || i} className="flex items-center gap-3">
+            <input
+              type="text"
+              value={item.name}
+              onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, name: e.target.value } : ci))}
+              placeholder="Fee name..."
+              className="flex-1 bg-white/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-white placeholder:text-white/30 focus:outline-none"
+            />
+            <div className="flex items-center gap-1">
+              <span className="text-white/50 font-bold text-sm">$</span>
+              <input
+                type="number"
+                value={item.amount || ''}
+                onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, amount: parseFloat(e.target.value) || 0 } : ci))}
+                placeholder="0"
+                className="bg-white/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-white focus:outline-none w-24"
+              />
+            </div>
+            <button
+              onClick={() => setCustomItems(prev => prev.filter((_, idx) => idx !== i))}
+              className="text-white/30 hover:text-red-400 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, name: '', amount: 0, description: '' }])}
+          className="flex items-center gap-2 text-[12px] font-bold text-white/40 uppercase hover:text-white transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Custom Fee
+        </button>
+      </div>
 
       <div className="h-px bg-white/10" />
 
@@ -1054,37 +1107,50 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {step > 0 ? (
-              <button
-                onClick={handleBack}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4 text-black" />
-                <span className="text-[16px] font-bold text-black uppercase">BACK</span>
-              </button>
-            ) : (
-              <button
-                onClick={onClose}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
-              >
-                <X className="w-4 h-4 text-black" />
-                <span className="text-[16px] font-bold text-black uppercase">CANCEL</span>
-              </button>
+          <div className="flex flex-col gap-3">
+            {step === 3 && musicalMoments.some(m => m.selected) && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[12px] font-bold uppercase text-white/60">PARTIAL</span>
+                <span className="text-[28px] font-bold text-white">${selectedMomentsTotal}</span>
+              </div>
             )}
-            <button
-              onClick={handleNext}
-              disabled={!canProceed()}
-              className={cn(
-                'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
-                canProceed() ? 'bg-black' : 'bg-black/30'
+            <div className="grid grid-cols-2 gap-2.5">
+              {step > 0 ? (
+                <button
+                  onClick={handleBack}
+                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4 text-black" />
+                  <span className="text-[16px] font-bold text-black uppercase">BACK</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                >
+                  <X className="w-4 h-4 text-black" />
+                  <span className="text-[16px] font-bold text-black uppercase">CANCEL</span>
+                </button>
               )}
-            >
-              <span className={cn('text-[16px] font-bold uppercase', canProceed() ? 'text-white' : 'text-white/30')}>
-                NEXT
-              </span>
-              <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-white' : 'text-white/30')} />
-            </button>
+              <button
+                onClick={() => {
+                  if (step === 3 && baseFee === 0 && selectedMomentsTotal > 0) {
+                    setBaseFee(selectedMomentsTotal);
+                  }
+                  handleNext();
+                }}
+                disabled={!canProceed()}
+                className={cn(
+                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
+                  canProceed() ? 'bg-black' : 'bg-black/30'
+                )}
+              >
+                <span className={cn('text-[16px] font-bold uppercase', canProceed() ? 'text-white' : 'text-white/30')}>
+                  NEXT
+                </span>
+                <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-white' : 'text-white/30')} />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1098,23 +1164,40 @@ const FeeRow: React.FC<{
   tag: string;
   included: boolean;
   onToggle: () => void;
-}> = ({ label, tag, included, onToggle }) => (
-  <button onClick={onToggle} className="flex items-start justify-between gap-5 w-full text-left">
-    <div className="flex flex-col gap-1 flex-1">
-      <div className="px-2.5 py-1 rounded-[6px] bg-white/10 text-[12px] font-bold text-white/40 uppercase self-start">
-        {tag}
+  fee?: number;
+  onFeeChange?: (value: number) => void;
+}> = ({ label, tag, included, onToggle, fee, onFeeChange }) => (
+  <div className="flex flex-col gap-2">
+    <button onClick={onToggle} className="flex items-start justify-between gap-5 w-full text-left">
+      <div className="flex flex-col gap-1 flex-1">
+        <div className="px-2.5 py-1 rounded-[6px] bg-white/10 text-[12px] font-bold text-white/40 uppercase self-start">
+          {tag}
+        </div>
+        <span className={cn(
+          'text-[20px] font-bold uppercase',
+          !included ? 'text-white' : 'text-white/30'
+        )}>
+          {label}
+        </span>
       </div>
-      <span className={cn(
-        'text-[20px] font-bold uppercase',
-        !included ? 'text-white' : 'text-white/30'
-      )}>
-        {label}
-      </span>
-    </div>
     <DotCheckbox
       checked={!included}
       activeColor="#ffffff"
       inactiveColor="rgba(255,255,255,0.2)"
     />
   </button>
+  {!included && onFeeChange && (
+    <div className="flex items-center gap-2 pl-2">
+      <span className="text-white/50 font-bold text-sm">$</span>
+      <input
+        type="number"
+        value={fee || ''}
+        onChange={(e) => onFeeChange(parseFloat(e.target.value) || 0)}
+        placeholder="0"
+        className="bg-white/10 rounded-[8px] px-3 py-2 text-[16px] font-bold text-white focus:outline-none w-32"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )}
+  </div>
 );

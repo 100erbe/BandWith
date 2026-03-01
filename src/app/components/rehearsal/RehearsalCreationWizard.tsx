@@ -168,6 +168,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
   });
 
   const [endTime, setEndTime] = useState('22:00');
+  const [checklistChecked, setChecklistChecked] = useState<Set<number>>(new Set());
 
   const [data, setData] = useState<RehearsalState>({
     type: 'full_band',
@@ -473,7 +474,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
               onClick={() => handleTypeChange(opt.value)}
               className="w-full flex items-center justify-between py-4 border-b border-white/10 last:border-b-0 transition-all"
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex flex-col items-start justify-start gap-3 flex-1 min-w-0">
                 <span className={cn(
                   "px-2.5 py-1 rounded-[6px] text-[12px] font-bold uppercase shrink-0 transition-colors",
                   isSelected ? "bg-white/30 text-white" : "bg-white/10 text-white/30"
@@ -539,7 +540,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
               <button
                 key={m.id}
                 onClick={() => toggleAudienceMember(m.id)}
-                className="flex items-center gap-3 p-3 rounded-[10px] transition-all hover:bg-white/5 text-left"
+                className="flex flex-col items-start justify-start gap-3 p-3 rounded-[10px] transition-all hover:bg-white/5 text-left"
               >
                 <DotCheckbox
                   checked={isSelected}
@@ -1114,14 +1115,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
           </div>
           <div className="bg-white/10 rounded-[10px] border border-white/10 p-5 grid grid-cols-2 gap-3">
             {data.defaultChecklist.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <button
+                key={i}
+                className="flex flex-col justify-start items-start gap-3 text-left"
+                onClick={() => setChecklistChecked(prev => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i); else next.add(i);
+                  return next;
+                })}
+              >
                 <DotCheckbox
-                  checked={false}
+                  checked={checklistChecked.has(i)}
                   activeColor="#ffffff"
                   inactiveColor="rgba(255,255,255,0.2)"
                 />
-                <span className="text-sm font-bold text-white/60">{item}</span>
-              </div>
+                <span className={cn("text-sm font-bold", checklistChecked.has(i) ? "text-white" : "text-white/60")}>{item}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -1241,7 +1250,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
               <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
                 <ListMusic className="w-5 h-5" />
               </div>
-              <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              <div className="flex items-center gap-2">
+                <button onClick={(e) => { e.stopPropagation(); setStep(2); }} className="text-[10px] font-bold text-white/30 uppercase hover:text-white transition-colors">Edit</button>
+                <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              </div>
             </div>
             <div>
               <div className="text-[32px] font-bold text-white leading-none mb-1">{data.setlistSnapshotFinal?.songs.length || 0}</div>
@@ -1260,7 +1272,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
               <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              <div className="flex items-center gap-2">
+                <button onClick={(e) => { e.stopPropagation(); setStep(3); }} className="text-[10px] font-bold text-white/30 uppercase hover:text-white transition-colors">Edit</button>
+                <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              </div>
             </div>
             <div>
               <div className="text-[32px] font-bold text-white leading-none mb-1">{data.tasks.length}</div>
@@ -1330,7 +1345,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         className="fixed inset-0 z-[100] bg-[#0147ff] flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="px-6 pt-[env(safe-area-inset-top,12px)] shrink-0">
+        <div className="px-4 pt-[env(safe-area-inset-top,12px)] shrink-0">
           <div className="pt-3 flex items-start justify-between mb-5">
             <div className="flex items-center gap-1.5 pt-4">
               {STEPS.map((_, i) => (
@@ -1365,7 +1380,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
           {step === 0 && renderTypeStep()}
           {step === 1 && renderDateLocationStep()}
           {step === 2 && renderRunlistProposalsStep()}
@@ -1405,7 +1420,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
                     : "bg-black/30 text-white/30 cursor-not-allowed"
                 )}
               >
-                {STEPS[step].skippable ? 'SKIP' : 'NEXT'}
+                {STEPS[step].skippable ? (
+                  (step === 2 && (data.setlist.length > 0 || data.proposals.length > 0)) ||
+                  (step === 3 && data.tasks.length > 0) ? 'NEXT' : 'SKIP'
+                ) : 'NEXT'}
               </button>
             ) : (
               <button

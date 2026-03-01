@@ -227,7 +227,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={() => setHideAlreadyInList(!hideAlreadyInList)}
-                                    className="flex items-center gap-2 cursor-pointer select-none"
+                                    className="flex items-center gap-2 cursor-pointer"
                                 >
                                     <DotCheckbox checked={hideAlreadyInList} />
                                     <span className="text-[10px] font-bold text-black/50 uppercase tracking-wide">Hide already in list</span>

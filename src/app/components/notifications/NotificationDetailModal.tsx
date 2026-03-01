@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  X, 
+import {
+  ArrowLeft,
   Send,
   UserPlus,
   CheckCircle,
@@ -10,12 +10,10 @@ import {
   Calendar,
   MapPin,
   Users,
-  Trash2,
   Check,
-  ChevronLeft,
-  ChevronRight,
   CalendarPlus,
-  Euro
+  Euro,
+  ArrowUpRight
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Capacitor } from '@capacitor/core';
@@ -36,14 +34,13 @@ interface NotificationDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   notification: NotificationData | null;
-  notifications?: NotificationData[]; // For multiple notifications of same type
+  notifications?: NotificationData[];
   onMarkAsRead?: (id?: string) => void;
   onMarkAllAsRead?: () => void;
   onDelete?: (id?: string) => void;
   onAction?: (action: string, notificationId?: string) => void;
 }
 
-// Format relative time
 const formatTime = (dateStr: string): string => {
   const date = new Date(dateStr);
   const now = new Date();
@@ -51,7 +48,7 @@ const formatTime = (dateStr: string): string => {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  
+
   if (diffMins < 1) return 'now';
   if (diffMins < 60) return `${diffMins}m`;
   if (diffHours < 24) return `${diffHours}h`;
@@ -59,135 +56,60 @@ const formatTime = (dateStr: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-// Format date for display
 const formatEventDate = (dateStr: string): string => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { 
+  return date.toLocaleDateString('en-US', {
     weekday: 'short',
-    month: 'short', 
+    month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
   });
 };
 
-// Get icon based on notification type
-const getIcon = (type: string) => {
-  if (type === 'invite_sent') return Send;
-  if (type === 'invite_received') return UserPlus;
-  if (type === 'invite_accepted' || type === 'member_joined') return CheckCircle;
-  if (type === 'invite_declined' || type === 'member_left') return XCircle;
-  if (type === 'invite_expired') return Clock;
-  if (type.includes('event') || type.includes('rehearsal')) return Calendar;
-  if (type.includes('quote') || type.includes('payment')) return Euro;
-  return Users;
+const getTypeBg = (type: string): string => {
+  if (type === 'event_invite' || type === 'event_created') return '#D5FB46';
+  if (type.includes('rehearsal')) return '#0147FF';
+  if (type.includes('quote') || type.includes('payment')) return '#9A8878';
+  return '#1A1A1A';
 };
 
-// Get colors based on notification type - Swiss Editorial style
-const getTypeStyle = (type: string): { bg: string; accent: string; label: string } => {
-  if (type === 'event_invite') return { bg: 'bg-[#D4FB46]', accent: 'text-black', label: 'Event Invitation' };
-  if (type === 'event_created') return { bg: 'bg-emerald-500', accent: 'text-white', label: 'Event Created' };
-  if (type.includes('invite')) return { bg: 'bg-blue-500', accent: 'text-white', label: 'Invitation' };
-  if (type.includes('payment')) return { bg: 'bg-amber-500', accent: 'text-white', label: 'Payment' };
-  if (type.includes('rehearsal')) return { bg: 'bg-[#0047FF]', accent: 'text-white', label: 'Rehearsal' };
-  return { bg: 'bg-stone-700', accent: 'text-white', label: 'Notification' };
+const getTypeText = (type: string): string => {
+  if (type === 'event_invite' || type === 'event_created') return 'black';
+  return 'white';
 };
 
-// Generate ICS content for calendar
-const generateICS = (data: Record<string, unknown>): string => {
-  const title = data.event_title as string || 'Event';
-  const date = data.event_date as string;
-  const time = data.event_time as string || '20:00';
-  const venue = data.venue as string || '';
-  
-  const startDate = new Date(`${date}T${time}`);
-  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
-  
-  const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//BandWith//Event//EN
-BEGIN:VEVENT
-DTSTART:${formatDate(startDate)}
-DTEND:${formatDate(endDate)}
-SUMMARY:${title}
-LOCATION:${venue}
-DESCRIPTION:Event from BandWith
-END:VEVENT
-END:VCALENDAR`;
+const getTypeLabel = (type: string): string => {
+  if (type === 'event_invite') return 'EVENT INVITE';
+  if (type === 'event_created') return 'NEW EVENT';
+  if (type.includes('invite')) return 'INVITATION';
+  if (type.includes('rehearsal')) return 'REHEARSAL';
+  if (type.includes('payment')) return 'PAYMENT';
+  if (type.includes('quote')) return 'QUOTE';
+  return 'NOTIFICATION';
 };
 
-// Add to calendar function
 const addToCalendar = async (data: Record<string, unknown>) => {
   try {
-    const title = data.event_title as string || 'Event';
+    const title = (data.event_title as string) || 'Event';
     const date = data.event_date as string;
-    const time = data.event_time as string || '20:00';
-    const venue = data.venue as string || '';
-    
+    const time = (data.event_time as string) || '20:00';
+    const venue = (data.venue as string) || '';
+
     const startDate = new Date(`${date}T${time}`);
-    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
-    
-    // Format for Google Calendar URL
-    const formatGoogleDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+    const formatGoogleDate = (d: Date) =>
+      d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
     const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}&location=${encodeURIComponent(venue)}&sf=true`;
-    
+
     if (Capacitor.isNativePlatform()) {
-      // Open in browser on native platforms
       await Browser.open({ url: googleUrl });
     } else {
-      // Web fallback
       window.open(googleUrl, '_blank');
     }
-    
-    console.log('Opening calendar');
   } catch (error) {
     console.error('Error adding to calendar:', error);
   }
-};
-
-// Compact notification item for list view
-const NotificationListItem: React.FC<{
-  notification: NotificationData;
-  isSelected: boolean;
-  onSelect: () => void;
-}> = ({ notification, isSelected, onSelect }) => {
-  const Icon = getIcon(notification.type);
-  const style = getTypeStyle(notification.type);
-  
-  return (
-    <motion.button
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      onClick={onSelect}
-      className={cn(
-        "w-full text-left p-4 rounded-2xl transition-all",
-        isSelected 
-          ? "bg-white/10 ring-2 ring-[#D4FB46]" 
-          : "bg-white/5 hover:bg-white/8"
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", style.bg)}>
-          <Icon className={cn("w-5 h-5", style.accent)} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="font-bold text-sm text-white truncate">{notification.title}</h4>
-            <span className="text-[10px] text-stone-500 flex-shrink-0 font-medium">
-              {formatTime(notification.created_at)}
-            </span>
-          </div>
-          <p className="text-xs text-stone-400 line-clamp-1 mt-0.5">{notification.body}</p>
-        </div>
-        {!notification.read && (
-          <div className="w-2 h-2 rounded-full bg-[#D4FB46] flex-shrink-0 mt-2" />
-        )}
-      </div>
-    </motion.button>
-  );
 };
 
 export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = ({
@@ -202,24 +124,22 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
-  
-  // Use notifications array if provided, otherwise use single notification
-  const allNotifications = notifications.length > 0 ? notifications : (notification ? [notification] : []);
+
+  const allNotifications =
+    notifications.length > 0 ? notifications : notification ? [notification] : [];
   const currentNotification = allNotifications[selectedIndex] || notification;
   const isMultiple = allNotifications.length > 1;
-  
+
   if (!currentNotification) return null;
 
-  const Icon = getIcon(currentNotification.type);
-  const style = getTypeStyle(currentNotification.type);
+  const bgColor = getTypeBg(currentNotification.type);
+  const textColor = getTypeText(currentNotification.type);
+  const typeLabel = getTypeLabel(currentNotification.type);
   const data = currentNotification.data || {};
-  
-  // Check if this is an event notification with RSVP actions
   const isEventInvite = currentNotification.type === 'event_invite';
   const hasEventData = !!data.event_date;
 
   const handleAction = (action: string) => {
-    console.log('[Modal] Action triggered:', action, 'for notification:', currentNotification.id);
     onAction?.(action, currentNotification.id);
   };
 
@@ -232,173 +152,185 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-end justify-center"
-          onClick={onClose}
-        >
-          {/* Backdrop */}
-          <motion.div 
+        <>
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            className="fixed inset-0 z-[100]"
+            style={{ backgroundColor: bgColor }}
           />
-          
-          {/* Modal - Swiss Editorial Style */}
+
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 400 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-[#0A0A0A] rounded-t-[2rem] overflow-hidden"
-            style={{ maxHeight: '85vh' }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
+            style={{ backgroundColor: bgColor }}
           >
-            {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-            
-            {/* Header - Minimal */}
-            <div className="px-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", style.bg)}>
-                    <Icon className={cn("w-6 h-6", style.accent)} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
-                      {style.label}
-                    </p>
-                    <h2 className="text-lg font-black text-white">
-                      {isMultiple ? `${allNotifications.length} Notifications` : currentNotification.title}
-                    </h2>
-                  </div>
-                </div>
+            <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
+              {/* Header */}
+              <div className="flex items-center gap-[20px]">
                 <button
                   onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2"
+                  style={{
+                    backgroundColor: 'rgba(216,216,216,0.2)',
+                    borderColor: textColor,
+                  }}
                 >
-                  <X className="w-5 h-5 text-white/60" />
+                  <ArrowLeft className="w-[24px] h-[24px]" style={{ color: textColor }} />
                 </button>
+                <span className="text-[32px] font-bold uppercase" style={{ color: textColor }}>
+                  {typeLabel}
+                </span>
               </div>
-            </div>
-            
-            {/* Content */}
-            <div className="px-6 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 180px)' }}>
+
               {isMultiple ? (
-                // List view for multiple notifications
-                <div className="space-y-2">
+                <div className="flex flex-col gap-[10px]">
                   {allNotifications.map((notif, index) => (
-                    <NotificationListItem
+                    <button
                       key={notif.id}
-                      notification={notif}
-                      isSelected={index === selectedIndex}
-                      onSelect={() => setSelectedIndex(index)}
-                    />
+                      onClick={() => setSelectedIndex(index)}
+                      className={cn(
+                        'w-full text-left p-[16px] rounded-[10px] transition-all',
+                        index === selectedIndex
+                          ? textColor === 'white' ? 'bg-white/20' : 'bg-black/10'
+                          : textColor === 'white' ? 'bg-white/10' : 'bg-black/5'
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-[8px]">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[14px] font-bold truncate block" style={{ color: textColor }}>
+                            {notif.title}
+                          </span>
+                          {notif.body && (
+                            <span className="text-[12px] block mt-[2px] line-clamp-1" style={{ color: textColor, opacity: 0.6 }}>
+                              {notif.body}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold shrink-0" style={{ color: textColor, opacity: 0.5 }}>
+                          {formatTime(notif.created_at)}
+                        </span>
+                      </div>
+                    </button>
                   ))}
                 </div>
               ) : (
-                // Single notification detail view - Swiss Editorial Card
-                <div className="space-y-4">
-                  {/* Message */}
-                  {currentNotification.body && (
-                    <p className="text-white/80 text-base leading-relaxed">
-                      {currentNotification.body}
-                    </p>
-                  )}
-                  
-                  {/* Event Details Card */}
-                  {hasEventData && (
-                    <div className="bg-white/5 rounded-2xl p-5 space-y-4 border border-white/5">
-                      {/* Event Title */}
-                      {data.event_title && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-stone-500 mb-1">Event</p>
-                          <p className="text-xl font-black text-white">{String(data.event_title)}</p>
-                        </div>
-                      )}
-                      
-                      {/* Date & Time */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#D4FB46]/10 flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-[#D4FB46]" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-stone-500">Date & Time</p>
-                          <p className="text-sm font-bold text-white">
-                            {data.event_date && formatEventDate(String(data.event_date))}
-                            {data.event_time && ` at ${String(data.event_time)}`}
-                          </p>
-                        </div>
+                <div className="flex flex-col gap-[40px]">
+                  {/* Notification title */}
+                  <div className="flex flex-col gap-[4px]">
+                    <div className="flex gap-[4px] flex-wrap">
+                      <div
+                        className="px-[10px] py-[4px] rounded-[6px]"
+                        style={{
+                          backgroundColor: textColor === 'white' ? 'white' : 'black',
+                          color: textColor === 'white' ? bgColor : '#D5FB46',
+                        }}
+                      >
+                        <span className="text-[12px] font-bold uppercase">{typeLabel}</span>
                       </div>
-                      
-                      {/* Venue */}
-                      {data.venue && (
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                            <MapPin className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <h2 className="text-[32px] font-bold uppercase leading-tight" style={{ color: textColor }}>
+                      {currentNotification.title}
+                    </h2>
+                    {currentNotification.body && (
+                      <p className="text-[14px] font-medium" style={{ color: textColor, opacity: 0.7 }}>
+                        {currentNotification.body}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Event details */}
+                  {hasEventData && (
+                    <div className="flex flex-col gap-[20px]">
+                      {data.event_title && (
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-[6px]">
+                            <span className="text-[12px] font-bold uppercase" style={{ color: textColor }}>EVENT</span>
+                            <ArrowUpRight className="w-[14px] h-[14px]" style={{ color: textColor }} />
                           </div>
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-stone-500">Venue</p>
-                            <p className="text-sm font-bold text-white">{String(data.venue)}</p>
-                          </div>
+                          <span className="text-[42px] font-bold leading-none" style={{ color: textColor }}>
+                            {String(data.event_title).toUpperCase()}
+                          </span>
                         </div>
                       )}
-                      
-                      {/* Fee */}
+
+                      <div className="grid grid-cols-2 gap-[20px]">
+                        {data.event_date && (
+                          <div className="flex flex-col gap-[4px]">
+                            <span className="text-[12px] font-bold uppercase" style={{ color: textColor }}>
+                              DATE & TIME
+                            </span>
+                            <span className="text-[22px] font-bold" style={{ color: textColor }}>
+                              {formatEventDate(String(data.event_date))}
+                            </span>
+                            {data.event_time && (
+                              <span className="text-[16px] font-bold" style={{ color: textColor, opacity: 0.7 }}>
+                                {String(data.event_time)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {data.venue && (
+                          <div className="flex flex-col gap-[4px]">
+                            <div className="flex items-center gap-[6px]">
+                              <span className="text-[12px] font-bold uppercase" style={{ color: textColor }}>VENUE</span>
+                              <ArrowUpRight className="w-[14px] h-[14px]" style={{ color: textColor }} />
+                            </div>
+                            <span className="text-[22px] font-bold" style={{ color: textColor }}>
+                              {String(data.venue).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
                       {(data.member_fee || data.fee) && (
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                            <Euro className="w-5 h-5 text-emerald-400" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-stone-500">
-                              {data.member_fee ? 'Your Fee' : 'Total Fee'}
-                            </p>
-                            <p className="text-sm font-black text-[#D4FB46]">
-                              €{Number(data.member_fee || data.fee).toLocaleString()}
-                            </p>
-                          </div>
+                        <div className="flex flex-col">
+                          <span className="text-[12px] font-bold uppercase" style={{ color: textColor }}>
+                            {data.member_fee ? 'YOUR FEE' : 'TOTAL FEE'}
+                          </span>
+                          <span className="text-[42px] font-bold leading-none" style={{ color: textColor }}>
+                            €{Number(data.member_fee || data.fee).toLocaleString()}
+                          </span>
                         </div>
                       )}
-                      
-                      {/* Add to Calendar Button */}
+
                       <button
                         onClick={handleAddToCalendar}
                         disabled={isAddingToCalendar}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                        className="w-full py-[16px] rounded-[10px] flex items-center justify-center gap-[8px]"
+                        style={{
+                          backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                        }}
                       >
-                        <CalendarPlus className="w-4 h-4 text-[#D4FB46]" />
-                        <span className="text-sm font-bold text-white">
-                          {isAddingToCalendar ? 'Adding...' : 'Add to Calendar'}
+                        <CalendarPlus className="w-[18px] h-[18px]" style={{ color: textColor }} />
+                        <span className="text-[14px] font-bold uppercase" style={{ color: textColor }}>
+                          {isAddingToCalendar ? 'ADDING...' : 'ADD TO CALENDAR'}
                         </span>
                       </button>
                     </div>
                   )}
-                  
-                  {/* Other Details */}
+
                   {!hasEventData && Object.keys(data).length > 0 && (
-                    <div className="bg-white/5 rounded-2xl p-4 space-y-3">
+                    <div className="flex flex-col gap-[10px]">
                       {data.invitee_email && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-stone-500 font-medium">Email</span>
-                          <span className="text-sm font-bold text-white">{String(data.invitee_email)}</span>
+                        <div className="flex justify-between items-center py-[10px] border-b" style={{ borderColor: textColor === 'white' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                          <span className="text-[12px] font-bold uppercase" style={{ color: textColor, opacity: 0.5 }}>EMAIL</span>
+                          <span className="text-[14px] font-bold" style={{ color: textColor }}>{String(data.invitee_email)}</span>
                         </div>
                       )}
                       {data.inviter_name && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-stone-500 font-medium">Invited By</span>
-                          <span className="text-sm font-bold text-white">{String(data.inviter_name)}</span>
+                        <div className="flex justify-between items-center py-[10px] border-b" style={{ borderColor: textColor === 'white' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                          <span className="text-[12px] font-bold uppercase" style={{ color: textColor, opacity: 0.5 }}>INVITED BY</span>
+                          <span className="text-[14px] font-bold" style={{ color: textColor }}>{String(data.inviter_name)}</span>
                         </div>
                       )}
                       {data.member_name && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-stone-500 font-medium">Member</span>
-                          <span className="text-sm font-bold text-white">{String(data.member_name)}</span>
+                        <div className="flex justify-between items-center py-[10px] border-b" style={{ borderColor: textColor === 'white' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                          <span className="text-[12px] font-bold uppercase" style={{ color: textColor, opacity: 0.5 }}>MEMBER</span>
+                          <span className="text-[14px] font-bold" style={{ color: textColor }}>{String(data.member_name)}</span>
                         </div>
                       )}
                     </div>
@@ -406,68 +338,102 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 </div>
               )}
             </div>
-            
-            {/* Actions - Swiss Editorial CTAs */}
-            <div className="px-6 pb-6 pt-2 border-t border-white/5 bg-[#0A0A0A]">
+
+            {/* Footer */}
+            <div
+              className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[102]"
+              style={{ backgroundColor: bgColor, boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+            >
               {isEventInvite ? (
-                // RSVP Actions for event invites
-                <div className="space-y-3">
-                  <div className="flex gap-3">
+                <div className="flex flex-col gap-[20px] items-center">
+                  <div className="grid grid-cols-2 gap-[10px] w-full">
                     <button
                       onClick={() => handleAction('decline_event')}
-                      className="flex-1 py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-black text-sm uppercase tracking-wider hover:bg-red-500/20 transition-all active:scale-[0.98]"
+                      className="rounded-[10px] py-[16px] flex items-center justify-center"
+                      style={{
+                        backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                      }}
                     >
-                      Decline
+                      <span className="text-[16px] font-bold uppercase" style={{ color: textColor }}>
+                        DECLINE
+                      </span>
                     </button>
                     <button
                       onClick={() => handleAction('accept_event')}
-                      className="flex-1 py-4 rounded-2xl bg-[#D4FB46] text-black font-black text-sm uppercase tracking-wider hover:bg-[#c4eb36] transition-all active:scale-[0.98]"
+                      className="rounded-[10px] py-[16px] flex items-center justify-center"
+                      style={{
+                        backgroundColor: textColor === 'white' ? 'white' : 'black',
+                      }}
                     >
-                      Accept
+                      <span
+                        className="text-[16px] font-bold uppercase"
+                        style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                      >
+                        ACCEPT
+                      </span>
                     </button>
                   </div>
                   {!currentNotification.read && (
                     <button
                       onClick={() => onMarkAsRead?.(currentNotification.id)}
-                      className="w-full py-3 rounded-xl bg-white/5 text-stone-400 font-medium text-xs hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                      className="text-[12px] font-medium uppercase"
+                      style={{ color: textColor, opacity: 0.5 }}
                     >
-                      <Check className="w-4 h-4" />
-                      Mark as Read
+                      MARK AS READ
                     </button>
                   )}
                 </div>
               ) : isMultiple ? (
-                // Multiple notifications actions
                 <button
                   onClick={onMarkAllAsRead}
-                  className="w-full py-4 rounded-2xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-[16px] rounded-[10px] flex items-center justify-center gap-[8px]"
+                  style={{
+                    backgroundColor: textColor === 'white' ? 'white' : 'black',
+                  }}
                 >
-                  <Check className="w-4 h-4" />
-                  Mark All as Read
+                  <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }} />
+                  <span
+                    className="text-[16px] font-bold uppercase"
+                    style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                  >
+                    MARK ALL READ
+                  </span>
                 </button>
               ) : (
-                // Single notification actions
-                <div className="flex gap-3">
-                  {!currentNotification.read && (
+                <div className="flex flex-col gap-[20px] items-center">
+                  <div className="grid grid-cols-2 gap-[10px] w-full">
+                    {!currentNotification.read && (
+                      <button
+                        onClick={() => onMarkAsRead?.(currentNotification.id)}
+                        className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px]"
+                        style={{
+                          backgroundColor: textColor === 'white' ? 'white' : 'black',
+                        }}
+                      >
+                        <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }} />
+                        <span
+                          className="text-[16px] font-bold uppercase"
+                          style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                        >
+                          READ
+                        </span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => onMarkAsRead?.(currentNotification.id)}
-                      className="flex-1 py-3.5 rounded-xl bg-white/5 text-white font-medium text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                      onClick={() => onDelete?.(currentNotification.id)}
+                      className="rounded-[10px] py-[16px] flex items-center justify-center"
+                      style={{
+                        backgroundColor: textColor === 'white' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                      }}
                     >
-                      <Check className="w-4 h-4" />
-                      Mark as Read
+                      <span className="text-[16px] font-bold uppercase text-[#FF7C7C]">DELETE</span>
                     </button>
-                  )}
-                  <button
-                    onClick={() => onDelete?.(currentNotification.id)}
-                    className="px-4 py-3.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  </div>
                 </div>
               )}
             </div>
           </motion.div>
-        </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

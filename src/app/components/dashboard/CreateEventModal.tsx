@@ -53,7 +53,7 @@ const STEPS = [
   { id: 'type', label: 'STEP 01', title: 'EVENT TYPE', subtitle: 'CLICK TO SELECT', skippable: false },
   { id: 'details', label: 'STEP 02', title: 'DATE &\nLOCATION', subtitle: 'BUILD YOUR QUOTE', skippable: false },
   { id: 'team', label: 'STEP 03', title: 'TEAM & PAY', subtitle: 'OPTIONAL', skippable: true },
-  { id: 'overview', label: 'STEP 04', title: 'OVERVIEW', subtitle: 'CLICK TO SELECT', skippable: false },
+  { id: 'overview', label: 'STEP 04', title: 'DETAILS', subtitle: 'REVIEW & CREATE', skippable: false },
 ];
 
 const DAYS_OF_WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -222,6 +222,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [setting, setSetting] = useState<SettingType>('indoor');
   const [details, setDetails] = useState({
     title: '',
+    clientName: '',
     venue: '',
     address: '',
     city: '',
@@ -235,6 +236,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     duration: 120,
     pay: '',
   });
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(currentUserMemberId ? [currentUserMemberId] : []);
   const [memberFees, setMemberFees] = useState<Record<string, string>>(currentUserMemberId ? { [currentUserMemberId]: '0' } : {});
@@ -356,16 +358,41 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     </div>
   );
 
+  const autoGenerateTitle = (clientName: string, type: EventType | null) => {
+    if (titleManuallyEdited) return;
+    const typeLabel = type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Event';
+    const title = clientName ? `${typeLabel} - ${clientName}` : '';
+    setDetails(prev => ({ ...prev, title }));
+  };
+
   // --- RENDER STEP 2: Date & Location ---
   const renderStep2 = () => (
     <div className="flex flex-col gap-8">
+      {/* Client Name */}
+      <div>
+        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">CLIENT NAME</span>
+        <input
+          type="text"
+          value={details.clientName}
+          onChange={(e) => {
+            setDetails(prev => ({ ...prev, clientName: e.target.value }));
+            autoGenerateTitle(e.target.value, eventType);
+          }}
+          placeholder="EG. ROSSI"
+          className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase placeholder:text-black/20 focus:outline-none focus:border-black"
+        />
+      </div>
+
       {/* Event Title */}
       <div>
         <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">EVENT TITLE</span>
         <input
           type="text"
           value={details.title}
-          onChange={(e) => setDetails({ ...details, title: e.target.value })}
+          onChange={(e) => {
+            setDetails({ ...details, title: e.target.value });
+            setTitleManuallyEdited(true);
+          }}
           placeholder="EG. WEDDING PARTY"
           className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase placeholder:text-black/20 focus:outline-none focus:border-black"
         />
@@ -449,13 +476,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       {/* Guests */}
       <div>
         <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">GUESTS</span>
-        <input
-          type="number"
-          value={details.guests || ''}
-          onChange={(e) => setDetails({ ...details, guests: parseInt(e.target.value) || 0 })}
-          placeholder="0"
-          className="bg-transparent text-[28px] font-bold text-black focus:outline-none mb-3 w-full"
-        />
+        <div className="flex items-center gap-4 mb-2">
+          <button
+            onClick={() => setDetails({ ...details, guests: Math.max(0, details.guests - 10) })}
+            className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0"
+          >
+            <Minus className="w-5 h-5 text-white" />
+          </button>
+          <span className="text-[40px] font-bold text-black leading-none flex-1 text-center">{details.guests}</span>
+          <button
+            onClick={() => setDetails({ ...details, guests: details.guests + 10 })}
+            className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0"
+          >
+            <Plus className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[50, 100, 150, 200, 300, 500].map(n => (
+            <button
+              key={n}
+              onClick={() => setDetails({ ...details, guests: n })}
+              className={cn(
+                'px-3 py-1.5 rounded-[8px] text-[11px] font-bold transition-all',
+                details.guests === n ? 'bg-black text-[#D5FB46]' : 'bg-black/10 text-black/50 hover:bg-black/20'
+              )}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
         <GuestDots count={details.guests} />
       </div>
 
@@ -506,6 +555,40 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               )}
             >
               {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Team Presets */}
+      <div>
+        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-2">QUICK SELECT</span>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { label: 'SOLO', count: 1 },
+            { label: 'DUO', count: 2 },
+            { label: 'TRIO', count: 3 },
+            { label: 'QUARTET', count: 4 },
+            { label: 'FULL BAND', count: MEMBERS.length },
+          ].map(preset => (
+            <button
+              key={preset.label}
+              onClick={() => {
+                const newSelected = MEMBERS.slice(0, preset.count).map(m => m.id);
+                if (currentUserMemberId && !newSelected.includes(currentUserMemberId)) {
+                  newSelected[0] = currentUserMemberId;
+                }
+                setSelectedMembers(newSelected);
+                const newFees: Record<string, string> = {};
+                newSelected.forEach(id => { newFees[id] = memberFees[id] || '0'; });
+                setMemberFees(newFees);
+              }}
+              className={cn(
+                'px-3 py-1.5 rounded-[8px] text-[11px] font-bold uppercase transition-all',
+                musicianCount === preset.count ? 'bg-black text-[#D5FB46]' : 'bg-black/10 text-black/50 hover:bg-black/20'
+              )}
+            >
+              {preset.label}
             </button>
           ))}
         </div>
@@ -579,10 +662,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         })}
       </div>
 
+      {/* Total Payout summary */}
+      {totalPayout > 0 && (
+        <div className="flex items-center justify-between py-3 border-t border-black/10">
+          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider">TOTAL PAYOUT</span>
+          <span className="text-[22px] font-bold text-black">${totalPayout}</span>
+        </div>
+      )}
+
       {/* Price & Duration */}
       <div className="grid grid-cols-2 gap-6 pt-4 border-t border-black/10">
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">PRICE</span>
+          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">BAND FEE</span>
           <div className="flex items-center">
             <span className="text-[28px] font-bold text-black">$</span>
             <input
@@ -593,15 +684,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               className="bg-transparent text-[28px] font-bold text-black focus:outline-none w-full placeholder:text-black/20"
             />
           </div>
+          {totalPayout > 0 && details.pay && (
+            <span className="text-[10px] font-bold text-black/30 block mt-1">
+              Margin: ${(parseFloat(details.pay) || 0) - totalPayout}
+            </span>
+          )}
         </div>
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">DURATION (MIN)</span>
-          <input
-            type="number"
+          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">DURATION</span>
+          <select
             value={details.duration}
             onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-            className="bg-transparent text-[28px] font-bold text-black focus:outline-none w-full"
-          />
+            className="bg-transparent text-[28px] font-bold text-black focus:outline-none w-full appearance-none cursor-pointer"
+          >
+            {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
+              <option key={m} value={m} className="text-black bg-white text-base">
+                {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
@@ -615,7 +716,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const toggleSection = (id: string) => setExpandedSection(prev => prev === id ? null : id);
 
     const sections = [
-      { id: 'songs', tag: 'SONGS', value: setlist.length.toString(), hasData: setlist.length > 0 },
+      { id: 'songs', tag: 'SONGS', value: String(setlist.reduce((acc: number, s: any) => acc + ((s.songs || []).length), 0)), hasData: setlist.length > 0 },
       { id: 'schedule', tag: 'SCHEDULE', value: 'RoS', hasData: true },
       { id: 'tasks', tag: 'TASKS', value: tasks.length.toString(), hasData: tasks.length > 0 },
       { id: 'notes', tag: 'NOTES', value: notes ? '1' : '0', hasData: !!notes },
@@ -796,6 +897,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       setSetlist(prev => prev.map(s =>
         s.uid === songPickerTargetSet
           ? { ...s, songs: [...(s.songs || []), { uid: `song-${Date.now()}`, title: picked.title, artist: picked.artist, songId: picked.id }] }
+          : s
+      ));
+    }
+  };
+
+  const handlePickedMultipleSongs = (picked: PickedSong[]) => {
+    if (songPickerTargetSet) {
+      setSetlist(prev => prev.map(s =>
+        s.uid === songPickerTargetSet
+          ? { ...s, songs: [...(s.songs || []), ...picked.map(p => ({ uid: `song-${Date.now()}-${Math.random().toString(36).slice(2)}`, title: p.title, artist: p.artist, songId: p.id }))] }
           : s
       ));
     }
@@ -1089,6 +1200,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             isOpen={songPickerOpen}
             onClose={() => { setSongPickerOpen(false); setSongPickerTargetSet(null); }}
             onSelect={handlePickedSong}
+            onSelectMultiple={handlePickedMultipleSongs}
+            multiSelect={true}
             selectedIds={setlist.flatMap((s: any) => (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId))}
             theme="lime"
           />
@@ -1124,10 +1237,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   })();
 
+  const hasStepData = (() => {
+    if (step === 2) return Object.values(memberFees).some(f => parseFloat(f) > 0) || !!details.pay;
+    return false;
+  })();
+
   const rightButtonLabel = isLastStep
     ? 'CREATE EVENT'
     : isSkippable
-      ? 'SKIP'
+      ? (hasStepData ? 'NEXT' : 'SKIP')
       : 'NEXT';
   const rightButtonAction = isLastStep ? handleCreate : handleNext;
 

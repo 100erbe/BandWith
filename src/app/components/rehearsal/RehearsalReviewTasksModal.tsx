@@ -12,8 +12,8 @@ interface Props {
 }
 
 export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, tasks, members }) => {
-  const bandTasks = tasks.filter(t => t.assignedTo === 'all');
-  const assignedTasks = tasks.filter(t => t.assignedTo !== 'all');
+  const bandTasks = tasks.filter(t => Array.isArray(t.assignedTo) ? t.assignedTo.includes('all') : t.assignedTo === 'all');
+  const assignedTasks = tasks.filter(t => Array.isArray(t.assignedTo) ? !t.assignedTo.includes('all') : t.assignedTo !== 'all');
   
   const completedCount = tasks.filter(t => t.completed).length;
 
@@ -77,7 +77,7 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                     ) : (
                         <div className="space-y-2">
                             {assignedTasks.map(task => {
-                                const assignee = members.find(m => m.id === task.assignedTo);
+                                const assignee = members.find(m => Array.isArray(task.assignedTo) ? task.assignedTo.includes(m.id) : m.id === task.assignedTo);
                                 return (
                                     <div key={task.id} className="p-3 bg-[#F2F2F0] rounded-xl flex items-start gap-3">
                                          <div className="mt-0.5 w-5 h-5 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-sm shrink-0">

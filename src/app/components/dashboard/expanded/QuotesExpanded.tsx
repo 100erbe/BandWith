@@ -98,31 +98,72 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   // Handlers
   const handleCreateQuote = (quoteData: Partial<Quote>) => {
+    const lineItems = quoteData.lineItems || [];
+
+    if (lineItems.length === 0 && quoteData.baseFee) {
+      lineItems.push({
+        id: `li-${Date.now()}`,
+        description: 'Performance Fee',
+        quantity: 1,
+        unitPrice: quoteData.baseFee,
+        total: quoteData.baseFee,
+      });
+    }
+    if (quoteData.customItems) {
+      quoteData.customItems.forEach((ci: any) => {
+        if (ci.amount > 0) {
+          lineItems.push({
+            id: ci.id || `li-${Date.now()}-${Math.random()}`,
+            description: ci.name || 'Custom Item',
+            quantity: 1,
+            unitPrice: ci.amount,
+            total: ci.amount,
+          });
+        }
+      });
+    }
+
     const newQuote = createQuote(
       'band-1',
       quoteData.eventId || `event-${Date.now()}`,
-      quoteData.lineItems?.map(li => ({
+      lineItems.map(li => ({
         description: li.description,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
-      })) || [],
+      })),
       {
-        discount: quoteData.discount,
-        tax: quoteData.tax,
-        notes: quoteData.notes,
+        discount: quoteData.discount || (quoteData.discountType !== 'none' ? quoteData.discountValue : undefined),
+        tax: quoteData.tax || quoteData.vatRate,
+        notes: quoteData.notes || quoteData.clientNotes,
         validUntil: quoteData.validUntil,
-        eventTitle: quoteData.eventTitle,
+        eventTitle: quoteData.eventTitle || quoteData.eventName,
         clientName: quoteData.clientName,
       }
     );
 
-    // If status is SENT, update it
     if (quoteData.status === 'SENT') {
       newQuote.status = 'SENT';
     }
 
+    Object.assign(newQuote, {
+      clientEmail: quoteData.clientEmail,
+      clientPhone: quoteData.clientPhone,
+      clientCompany: quoteData.clientCompany,
+      eventType: quoteData.eventType,
+      eventDate: quoteData.eventDate,
+      venueName: quoteData.venueName,
+      venueCity: quoteData.venueCity,
+      performanceType: quoteData.performanceType,
+      musicians: quoteData.musicians,
+      baseFee: quoteData.baseFee,
+      depositPercentage: quoteData.depositPercentage,
+      depositRequired: quoteData.depositRequired,
+      customItems: quoteData.customItems,
+    });
+
     setQuotes(prev => [newQuote, ...prev]);
     setIsCreating(false);
+    setEditingQuote(null);
   };
 
   const handleSendQuote = (quote: Quote) => {
@@ -347,6 +388,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               setEditingQuote(null);
             }}
             onCreate={handleCreateQuote}
+            initialData={editingQuote || undefined}
+            initialClientName={editingQuote?.clientName}
           />
         )}
       </AnimatePresence>

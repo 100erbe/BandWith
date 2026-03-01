@@ -5,7 +5,7 @@ export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'QUOTE' | 'REHEARSAL';
 
 export interface EventItem {
   id: number;
-  eventId?: string; // Real UUID from database
+  eventId?: string;
   title: string;
   status: EventStatus;
   date: string;
@@ -16,6 +16,15 @@ export interface EventItem {
   color: string;
   notes?: string;
   createdBy?: string;
+  setlistId?: string;
+  clientName?: string;
+  venueAddress?: string;
+  venueCity?: string;
+  guests?: number;
+  eventType?: string;
+  loadInTime?: string;
+  soundcheckTime?: string;
+  endTime?: string;
 }
 
 export interface PendingEvent {

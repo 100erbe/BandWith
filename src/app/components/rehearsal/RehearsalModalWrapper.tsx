@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -8,42 +8,60 @@ interface Props {
   title: string;
   children: React.ReactNode;
   icon?: React.ElementType;
+  bgColor?: string;
+  textColor?: string;
 }
 
-export const RehearsalModalWrapper: React.FC<Props> = ({ isOpen, onClose, title, children, icon: Icon }) => {
+export const RehearsalModalWrapper: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  bgColor = '#0147FF',
+  textColor = 'white',
+}) => {
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 z-[100]"
+            style={{ backgroundColor: bgColor }}
           />
-          <motion.div 
-            initial={{ opacity: 0, y: 100, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.95 }}
-            className="fixed inset-x-4 top-[10%] bottom-[10%] md:inset-x-auto md:w-[600px] md:left-1/2 md:-translate-x-1/2 bg-[#E6E5E1] rounded-3xl z-[101] shadow-2xl flex flex-col overflow-hidden border border-white/20"
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
+            style={{ backgroundColor: bgColor }}
           >
-             <div className="flex items-center justify-between p-6 border-b border-black/5">
-                <div className="flex items-center gap-3">
-                   {Icon && <Icon className="w-6 h-6 text-black" />}
-                   <h2 className="text-xl font-black uppercase text-black">{title}</h2>
-                </div>
-                <button 
+            <div className="flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[40px]">
+              {/* Header */}
+              <div className="flex items-center gap-[20px]">
+                <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2"
+                  style={{
+                    backgroundColor: 'rgba(216,216,216,0.2)',
+                    borderColor: textColor,
+                  }}
                 >
-                   <X className="w-4 h-4 text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px]" style={{ color: textColor }} />
                 </button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                {children}
-             </div>
+                <span
+                  className="text-[32px] font-bold uppercase"
+                  style={{ color: textColor }}
+                >
+                  {title}
+                </span>
+              </div>
+
+              {/* Content */}
+              {children}
+            </div>
           </motion.div>
         </>
       )}

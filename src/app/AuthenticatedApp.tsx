@@ -102,6 +102,14 @@ const eventToEventItem = (event: Event): EventItem => ({
       : "bg-green-100 text-green-700",
   notes: event.notes || undefined,
   createdBy: event.created_by || undefined,
+  setlistId: event.setlist_id || undefined,
+  clientName: event.client_name || undefined,
+  venueAddress: event.venue_address || undefined,
+  venueCity: event.venue_city || undefined,
+  eventType: event.event_type || undefined,
+  loadInTime: event.load_in_time || undefined,
+  soundcheckTime: event.soundcheck_time || undefined,
+  endTime: event.end_time || undefined,
 });
 
 export default function AuthenticatedApp() {
@@ -628,6 +636,34 @@ export default function AuthenticatedApp() {
     }
   };
 
+  const handleEventEdit = () => {
+    if (!selectedEvent) return;
+    const eventType = selectedEvent.status === 'REHEARSAL' ? 'rehearsal' : 'gig';
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    setCreateEventType(eventType as CreateEventType);
+    setIsCreateEventOpen(true);
+  };
+
+  const handleEventDelete = async () => {
+    if (!selectedEvent?.eventId) return;
+    try {
+      await supabase.from('events').delete().eq('id', selectedEvent.eventId);
+      refetchEvents();
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+  };
+
+  const handleEventChat = () => {
+    if (!selectedEvent) return;
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    setActiveTab('Chat');
+  };
+
   const handleEventCardClick = async (event: EventData) => {
     setSelectedEvent(event);
     setSelectedEventMembership(null);
@@ -677,6 +713,10 @@ export default function AuthenticatedApp() {
     const eventType = isRehearsalWizard ? "rehearsal" : data.eventType;
 
     if (realBand?.id) {
+      const venueAddress = isRehearsalWizard ? data.address : data.details?.address;
+      const venueCity = isRehearsalWizard ? data.city : data.details?.city;
+      const clientName = data.details?.clientName || data.clientName;
+
       const eventData = {
         band_id: realBand.id,
         title: title || "Untitled Event",
@@ -684,7 +724,10 @@ export default function AuthenticatedApp() {
         status: "confirmed" as const,
         date, time: time || "20:00",
         event_date: date, start_time: time || "20:00",
-        venue: location || "TBD", venue_name: location || "TBD",
+        venue_name: location || "TBD",
+        venue_address: venueAddress || null,
+        venue_city: venueCity || null,
+        client_name: clientName || null,
         fee: parseFloat(price) || 0,
         notes: data.notes || null,
         description: location ? `Location: ${location}` : null,
@@ -730,7 +773,7 @@ export default function AuthenticatedApp() {
 
   // Render
   const isMenuOpen = isIdentityOpen || isControlDeckOpen;
-  const isHeaderHidden = !!expandedCard || isMenuOpen || activeTab === "Events";
+  const isHeaderHidden = !!expandedCard || isMenuOpen;
   const userRole: UserRole = isAdmin ? "admin" : "member";
   const permissions = getPermissions(userRole);
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
@@ -743,7 +786,7 @@ export default function AuthenticatedApp() {
       <div className="w-full relative flex flex-col z-10" style={{
         paddingTop: isAndroid && isNative ? "56px" : "max(env(safe-area-inset-top, 0px), 12px)",
         paddingBottom: isAndroid && isNative ? "calc(100px + 24px)" : "calc(100px + env(safe-area-inset-bottom, 0px))",
-        paddingLeft: "12px", paddingRight: "12px",
+        paddingLeft: "16px", paddingRight: "16px",
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
@@ -771,7 +814,9 @@ export default function AuthenticatedApp() {
           {selectedEvent && (
             <EventDetail event={selectedEvent} onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
               userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "invited" ? "pending" : "accepted"}
-              onAccept={handleEventAccept} onDecline={handleEventDecline} memberFee={selectedEventMembership?.fee} />
+              onAccept={handleEventAccept} onDecline={handleEventDecline}
+              onEdit={handleEventEdit} onDelete={handleEventDelete} onChat={handleEventChat}
+              memberFee={selectedEventMembership?.fee} />
           )}
         </AnimatePresence>
 
@@ -839,7 +884,7 @@ export default function AuthenticatedApp() {
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={confirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
 
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || isBandSwitcherOpen || isIdentityOpen} />
+        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen} />
       </div>
 
       <AnimatePresence>

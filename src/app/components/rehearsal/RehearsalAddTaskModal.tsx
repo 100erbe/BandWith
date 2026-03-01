@@ -17,8 +17,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
   const [text, setText] = useState('');
   const [type, setType] = useState<RehearsalTask['type']>('prepare');
   
-  // Assignment State
-  const [assignMode, setAssignMode] = useState<'all' | 'single' | 'multiple'>('all');
+  const [assignMode, setAssignMode] = useState<'all' | 'single' | 'multiple'>('single');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   const handleToggleMember = (id: string) => {
@@ -120,7 +119,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                     key={m.id}
                                     onClick={() => handleToggleMember(m.id)}
                                     className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-[10px] border transition-all text-left group",
+                                        "flex flex-col items-start justify-start gap-[10px] px-3 py-2 rounded-[10px] border transition-all text-left group",
                                         isSelected ? "bg-black border-black text-white" : "bg-white border-black/10 hover:border-black/30 text-black/60"
                                     )}
                                 >
