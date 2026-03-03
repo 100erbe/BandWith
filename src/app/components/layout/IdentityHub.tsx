@@ -203,9 +203,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         const item = group.items[0];
                         onNotificationClick(group.items.map(i => i.id), item.actionType);
                       }}
-                      className="flex items-center justify-between w-full bg-white rounded-[10px] px-3 py-2.5 text-left"
+                      className="flex items-center justify-between w-full bg-white rounded-[10px] px-3 py-2.5 text-left gap-5"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full">
                         <span className="text-[12px] font-bold text-black uppercase">
                           {label}
                         </span>
@@ -213,7 +213,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           {group.items.length}
                         </span>
                         {group.items[0] && (
-                          <span className="text-[10px] text-black/50 font-medium truncate max-w-[140px]">
+                          <span className="text-[14px] text-black/50 font-medium truncate w-full">
                             {group.items[0].message}
                           </span>
                         )}

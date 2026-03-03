@@ -27,6 +27,12 @@ interface DashboardData {
     totalPipeline: number;
     acceptedRevenue: number;
   } | null;
+  memberStats?: {
+    totalEarned: number;
+    confirmedFee: number;
+    pendingFee: number;
+    revenueChange: number;
+  } | null;
   upcomingEvents: any[];
   recentQuotes: any[];
 }
@@ -285,10 +291,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return `€${value}`;
   };
 
-  const revenue = dashboardData?.eventStats?.totalRevenue || 0;
+  const memberStats = dashboardData?.memberStats;
+  const revenue = isAdmin ? (dashboardData?.eventStats?.totalRevenue || 0) : (memberStats?.totalEarned || 0);
   const confirmedCount = dashboardData?.eventStats?.confirmedEvents || 0;
   const quotesCount = dashboardData?.quoteStats?.totalQuotes || 0;
-  const revenueChange = dashboardData?.eventStats?.revenueChange;
+  const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;
 
   const revenueChangeText = revenueChange !== undefined && revenueChange !== 0
@@ -352,15 +359,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex-1 flex flex-col gap-2 items-start text-left">
               <div className="flex flex-col w-full">
                 <span className="text-xs font-bold text-black tracking-wide">MY FEE</span>
-                <span className="text-[52px] font-bold leading-none text-black">€--</span>
+                <span className="text-[52px] font-bold leading-none text-black">
+                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
+                </span>
               </div>
-              <StatsDotGrid theme="beige" filled={0} />
+              <StatsDotGrid theme="beige" filled={(memberStats?.confirmedFee || 0) > 0 ? 6 : 0} />
             </div>
           )}
 
           <div className="flex-1 flex flex-col gap-2 items-start text-left">
             <div className="flex flex-col w-full">
-              <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
+              <span className="text-xs font-bold text-black tracking-wide">{isAdmin ? 'REVENUE' : 'MY EARNINGS'}</span>
               <span className="text-[52px] font-bold leading-none text-black">
                 {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
               </span>
@@ -414,7 +423,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Revenue Growing */}
             <div className="flex flex-col justify-between flex-1">
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-black tracking-wide">REVENUE GROWING</span>
+                <span className="text-xs font-bold text-black tracking-wide">{isAdmin ? 'REVENUE GROWING' : 'EARNINGS GROWING'}</span>
                 <span className="text-[42px] font-bold leading-tight text-black">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
                 </span>

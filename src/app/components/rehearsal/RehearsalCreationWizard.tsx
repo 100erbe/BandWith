@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Music, Mic2, Calendar, MapPin, Clock, Repeat, DollarSign, Users, 
-  ArrowRight, ArrowLeft, Plus, Trash2, FileText, Link, ThumbsUp, 
+  ArrowRight, ArrowLeft, ArrowUpRight, Plus, Trash2, FileText, Link, ThumbsUp, 
   ThumbsDown, MessageCircle, CheckCircle2, AlertCircle, Briefcase,
   Wrench, BookOpen, ChevronDown, Play, Search, X, Folder, ListMusic, History, Edit, Layers, ChevronUp, Copy, Paperclip, User, LayoutGrid,
   Euro, Home, Lock, Unlock, Guitar, Check
@@ -71,7 +71,7 @@ const DEFAULT_CHECKLIST = ["Instrument", "Cables", "Tuner", "Power Supply", "Spa
 const STEPS = [
   { title: 'TYPE', subtitle: 'DEFINE THE SESSION', skippable: false },
   { title: 'DATE &\nLOCATION', subtitle: 'WHEN & WHERE', skippable: false },
-  { title: 'RUNLIST &\nPROPOSALS', subtitle: 'OPTIONAL', skippable: true },
+  { title: 'SETLIST &\nPROPOSALS', subtitle: 'OPTIONAL', skippable: true },
   { title: 'PREPARATION', subtitle: 'OPTIONAL', skippable: true },
   { title: 'REVIEW', subtitle: 'CONFIRM & CREATE', skippable: false },
 ];
@@ -84,13 +84,33 @@ const TYPE_OPTIONS: { value: RehearsalType; label: string; tag: string }[] = [
   { value: 'custom', label: 'OTHER', tag: 'CUSTOM' },
 ];
 
-interface Props {
-  onClose: () => void;
-  onCreate: (data: RehearsalState) => void;
+interface EditingEvent {
+  id: number;
+  eventId?: string;
+  title: string;
+  status: string;
+  date: string;
+  time: string;
+  location: string;
+  price: string;
+  endTime?: string;
+  notes?: string;
+  venueAddress?: string;
+  venueCity?: string;
+  eventType?: string;
+  memberUserIds?: string[];
+  memberFeeMap?: Record<string, string>;
 }
 
-export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) => {
+interface Props {
+  onClose: () => void;
+  onCreate: (data: any) => void;
+  editingEvent?: EditingEvent | null;
+}
+
+export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent }) => {
   const { selectedBand } = useBand();
+  const isEditing = !!editingEvent;
   const [step, setStep] = useState(0);
 
   const realMembers: RehearsalMember[] = useMemo(() => {
@@ -124,6 +144,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
   const [isReviewTasksOpen, setIsReviewTasksOpen] = useState(false);
   const [isReviewProposalsOpen, setIsReviewProposalsOpen] = useState(false);
   const [isReviewMembersOpen, setIsReviewMembersOpen] = useState(false);
+  const [reviewExpanded, setReviewExpanded] = useState<string | null>(null);
+  const [isSetlistConfirmed, setIsSetlistConfirmed] = useState(false);
 
   const [templates, setTemplates] = useState<SetlistTemplate[]>([]);
   const [library, setLibrary] = useState<RehearsalSong[]>([]);
@@ -167,23 +189,23 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
     return d.getFullYear();
   });
 
-  const [endTime, setEndTime] = useState('22:00');
+  const [endTime, setEndTime] = useState(editingEvent?.endTime || '22:00');
   const [checklistChecked, setChecklistChecked] = useState<Set<number>>(new Set());
 
   const [data, setData] = useState<RehearsalState>({
     type: 'full_band',
-    title: '',
-    location: '',
-    address: '',
-    date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    time: '20:00',
+    title: editingEvent?.title || '',
+    location: editingEvent?.location || '',
+    address: editingEvent?.venueAddress || '',
+    date: editingEvent?.date || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    time: editingEvent?.time || '20:00',
     duration: '2h',
     recurrence: 'once',
     venueType: 'free',
     showCost: false,
-    totalCost: '0',
+    totalCost: editingEvent?.price || '0',
     splitMethod: 'equal',
-    audienceIds: [],
+    audienceIds: editingEvent?.memberUserIds || [],
     members: [],
     setlist: [],
     setlistSnapshotFinal: undefined,
@@ -194,14 +216,21 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
     personalChecklist: [],
     bandChecklist: ['PA System Check', 'Extension Cords', 'Backup Cables', 'First Aid Kit'],
     reminderTime: '1_day',
-    status: 'draft'
+    status: isEditing ? 'scheduled' : 'draft'
   });
 
   useEffect(() => {
     if (realMembers.length > 0) {
-      setData(prev => ({ ...prev, members: realMembers }));
+      let members = realMembers;
+      if (isEditing && editingEvent?.memberFeeMap) {
+        members = realMembers.map(m => ({
+          ...m,
+          fee: editingEvent.memberFeeMap?.[m.id] || m.fee,
+        }));
+      }
+      setData(prev => ({ ...prev, members }));
     }
-  }, [realMembers]);
+  }, [realMembers, isEditing, editingEvent]);
 
   useEffect(() => {
     if (data.time && endTime) {
@@ -218,9 +247,23 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
   }, [data.time, endTime]);
 
   // Navigation
+  const handleSubmit = () => {
+    const submitData = {
+      ...data,
+      endTime,
+      ...(isEditing && editingEvent ? {
+        _editing: true,
+        _editingEventId: editingEvent.eventId,
+        _editingLocalId: editingEvent.id,
+        _originalEventType: editingEvent.eventType || 'rehearsal',
+      } : {}),
+    };
+    onCreate(submitData);
+  };
+
   const handleNext = () => {
     if (step < STEPS.length - 1) setStep(step + 1);
-    else onCreate(data);
+    else handleSubmit();
   };
   const handleBack = () => {
     if (step > 0) setStep(step - 1);
@@ -328,10 +371,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
   const handleBuildSnapshot = () => {
     const queueIds = data.selectedTemplateIdsInOrder || [];
     if (queueIds.length === 0) return;
+
+    const existingSnapshot = data.setlistSnapshotFinal;
     const queueTemplates = queueIds.map(id => templates.find(t => t.id === id)).filter(Boolean) as SetlistTemplate[];
-    const mergedSongs: RehearsalSetlistSnapshotFinal['songs'] = [];
-    const seenSongIds = new Set<string>();
+
+    const mergedSongs: RehearsalSetlistSnapshotFinal['songs'] = existingSnapshot ? [...existingSnapshot.songs] : [];
+    const seenSongIds = new Set<string>(mergedSongs.map(s => s.songId));
     const skippedSongIds: string[] = [];
+    const existingSources = existingSnapshot ? [...existingSnapshot.sources] : [];
+    const existingSkipped = existingSnapshot?.mergeReport.duplicatesSkippedSongIds || [];
+
     queueTemplates.forEach(tpl => {
       tpl.songIds.forEach(sid => {
         if (seenSongIds.has(sid)) {
@@ -351,22 +400,58 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         }
       });
     });
+
+    const allSources = [
+      ...existingSources,
+      ...queueTemplates
+        .filter(t => !existingSources.some(s => s.templateId === t.id))
+        .map(t => ({ templateId: t.id, templateName: t.name, templateVersion: t.version }))
+    ];
+
+    const allSkipped = [...existingSkipped, ...skippedSongIds];
+    const totalBeforeDedupe = (existingSnapshot?.mergeReport.totalSongsBeforeDedupe || 0)
+      + queueTemplates.reduce((acc, t) => acc + t.songIds.length, 0);
+
     const snapshot: RehearsalSetlistSnapshotFinal = {
-      id: `snap-${Date.now()}`,
-      name: "Rehearsal Runlist (Snapshot)",
-      createdAt: new Date().toISOString(),
-      createdBy: "GB",
-      sources: queueTemplates.map(t => ({ templateId: t.id, templateName: t.name, templateVersion: t.version })),
+      id: existingSnapshot?.id || `snap-${Date.now()}`,
+      name: "Rehearsal Setlist",
+      createdAt: existingSnapshot?.createdAt || new Date().toISOString(),
+      createdBy: existingSnapshot?.createdBy || "GB",
+      sources: allSources,
       songs: mergedSongs,
       mergeReport: {
-        totalImportedTemplates: queueTemplates.length,
-        totalSongsBeforeDedupe: queueTemplates.reduce((acc, t) => acc + t.songIds.length, 0),
-        totalDuplicatesSkipped: skippedSongIds.length,
-        duplicatesSkippedSongIds: skippedSongIds
+        totalImportedTemplates: allSources.length,
+        totalSongsBeforeDedupe: totalBeforeDedupe,
+        totalDuplicatesSkipped: allSkipped.length,
+        duplicatesSkippedSongIds: allSkipped
       }
     };
     const legacySongs = mergedSongs.map(ms => library.find(s => s.id === ms.songId)).filter(Boolean) as RehearsalSong[];
-    setData(prev => ({ ...prev, setlistSnapshotFinal: snapshot, setlist: legacySongs }));
+    setData(prev => ({ ...prev, setlistSnapshotFinal: snapshot, setlist: legacySongs, selectedTemplateIdsInOrder: [] }));
+    setIsSetlistConfirmed(false);
+  };
+
+  const handleUpdateSnapshot = (updatedSnapshot: RehearsalSetlistSnapshotFinal) => {
+    const legacySongs = updatedSnapshot.songs
+      .map(ms => library.find(s => s.id === ms.songId))
+      .filter(Boolean) as RehearsalSong[];
+    setData(prev => ({ ...prev, setlistSnapshotFinal: updatedSnapshot, setlist: legacySongs }));
+  };
+
+  const handleConfirmSetlist = () => {
+    setIsSetlistConfirmed(true);
+    setIsReviewSetlistOpen(false);
+  };
+
+  const handleDeselectSetlist = () => {
+    setIsSetlistConfirmed(false);
+    setData(prev => ({
+      ...prev,
+      setlistSnapshotFinal: undefined,
+      setlist: [],
+      selectedTemplateIdsInOrder: [],
+    }));
+    setIsReviewSetlistOpen(false);
   };
 
   // Proposal logic
@@ -771,205 +856,289 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
     </div>
   );
 
-  // ── STEP 2: RUNLIST + PROPOSALS ───────────────────────────
+  // ── STEP 2: SETLIST + PROPOSALS ───────────────────────────
 
-  const renderRunlistProposalsStep = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-500 flex flex-col h-full">
-      {/* Runlist Section */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2.5">
-          <button
-            onClick={() => openSetlistEditor(null)}
-            className="py-4 bg-white text-black rounded-[10px] font-bold text-[12px] uppercase tracking-wider hover:bg-white/90 transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> New Template
-          </button>
-          <button
-            onClick={() => setSongPickerOpen(true)}
-            className="py-4 bg-white/20 text-white rounded-[10px] font-bold text-[12px] uppercase tracking-wider hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
-          >
-            <Music className="w-4 h-4" /> From Library
-          </button>
-        </div>
+  const renderRunlistProposalsStep = () => {
+    const queueIds = data.selectedTemplateIdsInOrder || [];
+    const hasQueue = queueIds.length > 0;
 
-        {data.setlistSnapshotFinal ? (
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+
+        {/* ── Active Setlist Card ── */}
+        {data.setlistSnapshotFinal && (
           <div
-            className="bg-white/10 border border-white/20 rounded-[10px] p-6 cursor-pointer hover:bg-white/15 transition-all"
+            className={cn(
+              "rounded-[10px] p-5 cursor-pointer transition-all",
+              isSetlistConfirmed
+                ? "bg-[#D5FB46]/15 border border-[#D5FB46]/40"
+                : "bg-white/10 border border-white/20 hover:bg-white/15"
+            )}
             onClick={() => setIsReviewSetlistOpen(true)}
           >
-            <div className="flex items-center gap-2 text-white/60 mb-3">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-[12px] font-bold uppercase tracking-wider">Active Snapshot</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-white/50" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Active Setlist</span>
+              </div>
+              {isSetlistConfirmed ? (
+                <span className="px-2.5 py-1 bg-[#D5FB46] text-black text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Confirmed
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold uppercase text-white/30">Tap to edit</span>
+              )}
             </div>
-            <div className="text-[40px] font-bold text-white leading-none mb-2">{data.setlistSnapshotFinal.songs.length} Songs</div>
-            <div className="flex items-center gap-3 mt-3">
-              <span className="px-3 py-1.5 bg-white/20 text-white text-[12px] font-bold uppercase rounded-full">{totalDuration}</span>
-              <span className="px-3 py-1.5 bg-white/10 text-white/60 text-[12px] font-bold uppercase rounded-full flex items-center gap-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[32px] font-bold text-white leading-none">{data.setlistSnapshotFinal.songs.length}</span>
+              <span className="text-sm font-bold text-white/40 uppercase">Songs</span>
+            </div>
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <span className="px-2.5 py-1 bg-white/15 text-white text-[10px] font-bold uppercase rounded-full">{totalDuration}</span>
+              <span className="px-2.5 py-1 bg-white/10 text-white/50 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
                 <Layers className="w-3 h-3" /> {data.setlistSnapshotFinal.sources.length} sources
               </span>
+              {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped > 0 && (
+                <span className="px-2.5 py-1 bg-white/10 text-white/40 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped} merged
+                </span>
+              )}
             </div>
-            {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped > 0 && (
-              <div className="mt-3 text-[12px] font-bold text-white/50 flex items-center gap-2">
-                <AlertCircle className="w-3 h-3" />
-                {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped} duplicates merged
-              </div>
-            )}
-            <div className="mt-4 pt-3 border-t border-white/10 text-[12px] font-bold uppercase text-white/40 flex items-center gap-2">
-              Tap to preview <ArrowRight className="w-3 h-3" />
+            <div className="flex gap-2 mt-4">
+              {!isSetlistConfirmed ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleConfirmSetlist(); }}
+                  className="flex-1 py-2.5 bg-[#D5FB46] text-black rounded-[10px] text-[11px] font-bold uppercase tracking-wider hover:bg-[#c5eb36] transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" /> Confirm
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeselectSetlist(); }}
+                  className="flex-1 py-2.5 bg-white/10 border border-white/20 text-white/50 rounded-[10px] text-[11px] font-bold uppercase tracking-wider hover:bg-white/20 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <X className="w-3.5 h-3.5" /> Deselect
+                </button>
+              )}
             </div>
           </div>
-        ) : (
-          (data.selectedTemplateIdsInOrder || []).length > 0 && (
-            <div className="bg-white/10 rounded-[10px] p-5 space-y-3">
-              <span className="text-[12px] font-bold uppercase text-white/50 tracking-wider">Queue ({data.selectedTemplateIdsInOrder!.length})</span>
-              <div className="space-y-2">
-                {data.selectedTemplateIdsInOrder!.map((tid, i) => {
-                  const t = templates.find(tp => tp.id === tid);
-                  return (
-                    <div key={`${tid}-${i}`} className="flex items-center justify-between bg-white/10 p-3 rounded-[10px]">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-white text-[#0147ff] text-xs font-bold flex items-center justify-center">{i + 1}</div>
-                        <span className="font-bold text-white text-sm">{t?.name || 'Unknown'}</span>
-                      </div>
-                      <button onClick={() => handleRemoveFromQueue(i)} className="text-white/40 hover:text-red-300 transition-colors">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              <button
-                onClick={handleBuildSnapshot}
-                className="w-full py-3 bg-white text-black rounded-[10px] text-sm font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/90 transition-colors mt-2"
-              >
-                <Layers className="w-4 h-4" /> Build rehearsal runlist
-              </button>
-            </div>
-          )
         )}
-      </div>
 
-      {/* Templates */}
-      <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
-        <span className="text-[12px] font-bold uppercase text-white/40 tracking-wider block mb-3">Available Templates</span>
-        <div className="space-y-3">
-          {templates.map(template => (
-            <div key={template.id} className="bg-white/10 rounded-[10px] p-5 border border-white/10 hover:border-white/20 transition-all">
-              <div onClick={() => openSetlistEditor(template)} className="cursor-pointer mb-3">
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-bold text-lg text-white">{template.name}</h4>
-                  <span className="px-2.5 py-1 text-[11px] font-bold uppercase bg-white/20 rounded-full text-white/60">v{template.version}</span>
-                </div>
-                <div className="flex items-center gap-3 text-[12px] font-bold text-white/40">
-                  <span className="flex items-center gap-1"><ListMusic className="w-3 h-3" /> {template.songIds.length} Songs</span>
-                  <span className="flex items-center gap-1"><History className="w-3 h-3" /> {new Date(template.updatedAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => handleAddToQueue(template.id)}
-                className="w-full py-2.5 bg-white/10 border border-white/10 rounded-[10px] text-[12px] font-bold uppercase text-white/60 hover:bg-white/20 hover:text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <Plus className="w-3 h-3" /> Add to queue
-              </button>
+        {/* ── Queue (pending merge) ── */}
+        {hasQueue && (
+          <div className="bg-white/10 rounded-[10px] p-4 space-y-3">
+            <span className="text-[11px] font-bold uppercase text-white/40 tracking-wider">
+              Queue ({queueIds.length})
+            </span>
+            <div className="space-y-1.5">
+              {queueIds.map((tid, i) => {
+                const t = templates.find(tp => tp.id === tid);
+                return (
+                  <div key={`${tid}-${i}`} className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-lg">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-5 h-5 rounded-full bg-white text-[#0147ff] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <span className="font-bold text-white text-sm truncate">{t?.name || 'Unknown'}</span>
+                      <span className="text-[10px] font-bold text-white/30 shrink-0">{t?.songIds.length || 0}</span>
+                    </div>
+                    <button onClick={() => handleRemoveFromQueue(i)} className="text-white/30 hover:text-red-300 transition-colors shrink-0 ml-2">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-white/10" />
-        <span className="text-[12px] font-bold uppercase text-white/30">Proposals</span>
-        <div className="flex-1 h-px bg-white/10" />
-      </div>
-
-      {/* Proposals Section */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <span className="text-[32px] font-bold text-white">{data.proposals.length}</span>
-            <span className="text-[12px] font-bold uppercase text-white/40">Proposals</span>
+            <button
+              onClick={handleBuildSnapshot}
+              className="w-full py-2.5 bg-white text-black rounded-[10px] text-[12px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/90 transition-colors"
+            >
+              <Layers className="w-3.5 h-3.5" /> {data.setlistSnapshotFinal ? 'Merge into Setlist' : 'Build Setlist'}
+            </button>
           </div>
+        )}
+
+        {/* ── Available Setlists ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase text-white/40 tracking-wider">Available Setlists</span>
+            <button
+              onClick={() => openSetlistEditor(null)}
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> New
+            </button>
+          </div>
+
+          {templates.length === 0 ? (
+            <div className="bg-white/5 rounded-[10px] p-8 text-center border border-white/10 border-dashed">
+              <ListMusic className="w-8 h-8 text-white/20 mx-auto mb-3" />
+              <p className="text-sm font-bold text-white/30">No setlists yet</p>
+              <p className="text-[11px] text-white/20 mt-1">Create one to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {templates.map(template => {
+                const inQueue = queueIds.includes(template.id);
+                const alreadyInSnapshot = data.setlistSnapshotFinal?.sources.some(s => s.templateId === template.id) || false;
+                return (
+                  <div
+                    key={template.id}
+                    className={cn(
+                      "rounded-[10px] p-3 flex items-center gap-3 transition-all border",
+                      alreadyInSnapshot
+                        ? "bg-white/5 border-white/10 opacity-60"
+                        : inQueue
+                          ? "bg-white/15 border-white/20"
+                          : "bg-white/10 border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => openSetlistEditor(template)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm text-white truncate">{template.name}</h4>
+                        <span className="text-[9px] font-bold text-white/30 uppercase shrink-0">v{template.version}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-[11px] font-bold text-white/30">
+                        <span className="flex items-center gap-1"><ListMusic className="w-3 h-3" /> {template.songIds.length}</span>
+                        <span>{new Date(template.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    {alreadyInSnapshot ? (
+                      <span className="text-[10px] font-bold text-white/30 uppercase shrink-0 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Added
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddToQueue(template.id)}
+                        className={cn(
+                          "shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                          inQueue
+                            ? "bg-white text-[#0147ff]"
+                            : "bg-white/15 text-white/50 hover:bg-white/25 hover:text-white"
+                        )}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Add Songs from Library ── */}
+        <div>
           <button
-            onClick={() => setIsProposeModalOpen(true)}
-            className="px-5 py-2.5 rounded-[10px] font-bold text-sm uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-2"
+            onClick={() => setSongPickerOpen(true)}
+            className="w-full py-3 rounded-[10px] border border-white/20 hover:border-white/40 text-white text-[12px] font-bold uppercase flex items-center justify-center gap-2 transition-all hover:bg-white/10"
           >
-            <Plus className="w-4 h-4" /> Propose New
+            <Music className="w-4 h-4" /> Browse Song Library
           </button>
         </div>
 
-        <div className="space-y-3">
-          {data.proposals.map(prop => (
-            <div key={prop.id} className="bg-white/10 rounded-[10px] p-5 border border-white/10 space-y-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 pr-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-bold text-lg text-white">{prop.title}</h4>
-                    {prop.status === 'new' && <span className="px-2 py-0.5 bg-white text-[#0147ff] text-[10px] font-bold uppercase rounded-full">NEW</span>}
-                  </div>
-                  <span className="text-sm font-bold uppercase text-white/40">{prop.artist}</span>
-                </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <span className={cn("px-3 py-1 text-[11px] font-bold uppercase rounded-full",
-                    prop.status === 'approved' ? "bg-green-500/30 text-green-300" : "bg-white/10 text-white/50"
-                  )}>
-                    {prop.status === 'approved' ? "Approved" : "Pending"}
-                  </span>
-                  <button
-                    onClick={() => openProposalEdit(prop)}
-                    className="px-3 py-1 bg-white/10 rounded-full text-[11px] font-bold uppercase text-white/50 hover:text-white hover:bg-white/20 transition-all"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
+        {/* ── Proposals ── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-[11px] font-bold uppercase text-white/25">Proposal Songs</span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
 
-              <div className="bg-white/5 rounded-[8px] p-3">
-                <p className="text-sm text-white/60 italic">"{prop.reason}"</p>
-                <div className="flex items-center gap-2 mt-2 text-[11px] font-bold text-white/30">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-white/70 text-[9px] font-bold">{prop.proposer}</div>
-                  <span>Proposed 2 days ago</span>
+        <div className="space-y-4 pb-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-[28px] font-bold text-white leading-none">{data.proposals.length}</span>
+              <span className="text-[11px] font-bold uppercase text-white/40">Proposals</span>
+            </div>
+            <button
+              onClick={() => setIsProposeModalOpen(true)}
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Propose
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {data.proposals.map(prop => (
+              <div key={prop.id} className="bg-white/10 rounded-[10px] p-4 border border-white/10 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 pr-3 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h4 className="font-bold text-sm text-white truncate">{prop.title}</h4>
+                      {prop.status === 'new' && <span className="px-1.5 py-0.5 bg-white text-[#0147ff] text-[9px] font-bold uppercase rounded-full shrink-0">NEW</span>}
+                    </div>
+                    <span className="text-[11px] font-bold uppercase text-white/40">{prop.artist}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn("px-2.5 py-1 text-[10px] font-bold uppercase rounded-full",
+                      prop.status === 'approved' ? "bg-green-500/30 text-green-300" : "bg-white/10 text-white/50"
+                    )}>
+                      {prop.status === 'approved' ? "Approved" : "Pending"}
+                    </span>
+                    <button
+                      onClick={() => openProposalEdit(prop)}
+                      className="px-2.5 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase text-white/50 hover:text-white hover:bg-white/20 transition-all"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
-                {prop.attachments && prop.attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {prop.attachments.map((att, i) => (
-                      <div key={i} className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1.5 rounded-full text-[11px] font-bold text-white/50">
-                        {att.type === 'link' ? <Link className="w-3 h-3" /> : <Paperclip className="w-3 h-3" />}
-                        <span className="truncate max-w-[100px]">{att.label || 'Attachment'}</span>
-                      </div>
-                    ))}
+
+                {prop.reason && (
+                  <div className="bg-white/5 rounded-lg p-2.5">
+                    <p className="text-[12px] text-white/50 italic">"{prop.reason}"</p>
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold text-white/25">
+                      <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-white/70 text-[8px] font-bold">{prop.proposer}</div>
+                      <span>Proposed 2 days ago</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-4 text-[12px] font-bold">
+                  <span className="flex items-center gap-1 text-white"><ThumbsUp className="w-3 h-3" /> {prop.votes.yes}</span>
+                  <span className="flex items-center gap-1 text-white/40"><ThumbsDown className="w-3 h-3" /> {prop.votes.no}</span>
+                  <span className="flex items-center gap-1 text-white/40"><MessageCircle className="w-3 h-3" /> {prop.votes.comments}</span>
+                </div>
+
+                {prop.status === 'approved' && (
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        if (selectedBand?.id) {
+                          createSong({ band_id: selectedBand.id, title: prop.title, artist: prop.artist, status: 'ready', priority: 'medium' });
+                        }
+                      }}
+                      className="py-2 rounded-lg border border-white/20 hover:border-white text-white text-[11px] font-bold uppercase transition-all"
+                    >
+                      Add to Repertoire
+                    </button>
+                    <button
+                      onClick={() => {
+                        const song: RehearsalSong = {
+                          id: `prop-${prop.id}`,
+                          title: prop.title,
+                          artist: prop.artist,
+                          duration_seconds: 240,
+                          notes: prop.reason || '',
+                          status: 'ready' as const,
+                          priority: 'medium' as const,
+                        };
+                        setData(prev => ({ ...prev, setlist: [...prev.setlist, song] }));
+                      }}
+                      className="py-2 rounded-lg bg-white text-black text-[11px] font-bold uppercase transition-all hover:bg-white/90"
+                    >
+                      Add to Rehearsal
+                    </button>
                   </div>
                 )}
               </div>
-
-              <div className="flex items-center gap-4 text-sm font-bold">
-                <span className="flex items-center gap-1.5 text-white"><ThumbsUp className="w-3.5 h-3.5" /> {prop.votes.yes}</span>
-                <span className="flex items-center gap-1.5 text-white/40"><ThumbsDown className="w-3.5 h-3.5" /> {prop.votes.no}</span>
-                <span className="flex items-center gap-1.5 text-white/40"><MessageCircle className="w-3.5 h-3.5" /> {prop.votes.comments}</span>
-              </div>
-
-              {prop.status === 'approved' ? (
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/10">
-                  <button className="py-2.5 rounded-[10px] border border-white/20 hover:border-white text-white text-[12px] font-bold uppercase transition-all">
-                    Add to Repertoire
-                  </button>
-                  <button className="py-2.5 rounded-[10px] bg-white text-black text-[12px] font-bold uppercase transition-all hover:bg-white/90">
-                    Add to Rehearsal
-                  </button>
-                </div>
-              ) : (
-                <div className="pt-3 border-t border-white/10 text-center">
-                  <span className="text-[12px] font-bold uppercase text-white/30 flex items-center justify-center gap-2">
-                    <Clock className="w-3 h-3" /> Awaiting approval
-                  </span>
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ── STEP 3: PREPARATION ───────────────────────────────────
 
@@ -1167,168 +1336,158 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
   const renderReviewStep = () => {
     const approvedProposals = data.proposals.filter(p => p.status === 'approved').length;
     const pendingProposals = data.proposals.length - approvedProposals;
-    const tasksForMe = data.tasks.filter(t => t.assignedTo.includes('all') || t.assignedTo.includes('1')).length;
+    const songCount = data.setlistSnapshotFinal?.songs.length || 0;
+    const memberCount = data.audienceIds.length > 0 ? data.audienceIds.length : data.members.length;
+    const toggleReview = (key: string) => setReviewExpanded(prev => prev === key ? null : key);
+
+    const rehearsalTime = endTime
+      ? `${data.time} – ${endTime}`
+      : data.time;
 
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500 pb-4">
-        {/* Hero Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="bg-black text-white rounded-[10px] p-6 relative overflow-hidden"
-        >
-          <div className="space-y-6 relative z-10">
-            <div className="flex justify-between items-start">
-              <div className="flex gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D5FB46] text-black text-[11px] font-bold uppercase rounded-full">
-                  {data.type === 'full_band' ? <Music className="w-3.5 h-3.5" /> : <Mic2 className="w-3.5 h-3.5" />}
-                  {data.type.replace('_', ' ')}
-                </div>
-                {data.recurrence !== 'once' && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white text-[11px] font-bold uppercase rounded-full">
-                    <Repeat className="w-3.5 h-3.5" /> {data.recurrence}
-                  </div>
-                )}
-              </div>
-              {data.venueType === 'paid' && (
-                <div className="text-2xl font-bold text-white">€{data.totalCost}</div>
-              )}
+      <div className="flex flex-col gap-[40px] animate-in fade-in slide-in-from-right-8 duration-500 pb-4">
+        {/* Header */}
+        <div className="flex flex-col gap-[8px]">
+          <div className="flex gap-[4px] flex-wrap">
+            <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
+              <span className="text-[12px] font-bold text-white uppercase">REHEARSAL</span>
             </div>
-
-            <div>
-              <h2 className="text-[28px] font-bold uppercase leading-tight mb-3">{data.title}</h2>
-              <div className="flex items-center gap-3 text-white/50 text-sm font-bold">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> {formatDate(data.date)}
-                </div>
-                <div className="w-1 h-1 rounded-full bg-white/30" />
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> {data.time} ({data.duration})
-                </div>
-              </div>
+            <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
+              <span className="text-[12px] font-bold text-white uppercase">{data.type.replace('_', ' ')}</span>
             </div>
-
-            <div className="flex justify-between items-end pt-4 border-t border-white/10">
-              <div>
-                <div className="text-[11px] font-bold uppercase text-white/30 mb-1 flex items-center gap-1.5">
-                  <MapPin className="w-3 h-3" /> Location
-                </div>
-                <div className="font-bold text-white">{data.location || 'Not set'}</div>
+            {data.recurrence !== 'once' && (
+              <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
+                <span className="text-[12px] font-bold text-white uppercase">{data.recurrence}</span>
               </div>
-              <div className="flex -space-x-2">
-                {data.members.slice(0, 6).map((m, i) => (
-                  <motion.div
-                    key={m.id}
-                    initial={{ x: 10, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 + (i * 0.1) }}
-                    className="w-8 h-8 rounded-full border-2 border-black bg-[#D5FB46] flex items-center justify-center text-[10px] font-bold text-black"
-                  >
-                    {m.initials}
-                  </motion.div>
-                ))}
-                {data.members.length > 6 && (
-                  <div className="w-8 h-8 rounded-full border-2 border-black bg-white/20 flex items-center justify-center text-[10px] font-bold text-white">
-                    +{data.members.length - 6}
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
-        </motion.div>
-
-        {/* 2x2 Metric Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            onClick={() => setIsReviewSetlistOpen(true)}
-            className="p-5 bg-white/10 rounded-[10px] border border-white/10 hover:border-white/30 cursor-pointer transition-all group h-36 flex flex-col justify-between"
-          >
-            <div className="flex justify-between items-start">
-              <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
-                <ListMusic className="w-5 h-5" />
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={(e) => { e.stopPropagation(); setStep(2); }} className="text-[10px] font-bold text-white/30 uppercase hover:text-white transition-colors">Edit</button>
-                <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-white leading-none mb-1">{data.setlistSnapshotFinal?.songs.length || 0}</div>
-              <div className="text-[11px] font-bold uppercase text-white/40">Songs • {totalDuration}</div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            onClick={() => setIsReviewTasksOpen(true)}
-            className="p-5 bg-white/10 rounded-[10px] border border-white/10 hover:border-white/30 cursor-pointer transition-all group h-36 flex flex-col justify-between"
-          >
-            <div className="flex justify-between items-start">
-              <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={(e) => { e.stopPropagation(); setStep(3); }} className="text-[10px] font-bold text-white/30 uppercase hover:text-white transition-colors">Edit</button>
-                <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-white leading-none mb-1">{data.tasks.length}</div>
-              <div className="text-[11px] font-bold uppercase text-white/40">Tasks</div>
-              <div className="text-[11px] font-bold text-white/30 mt-0.5">{tasksForMe} assigned to you</div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            onClick={() => setIsReviewProposalsOpen(true)}
-            className="p-5 bg-white/10 rounded-[10px] border border-white/10 hover:border-white/30 cursor-pointer transition-all group h-36 flex flex-col justify-between"
-          >
-            <div className="flex justify-between items-start">
-              <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
-                <MessageCircle className="w-5 h-5" />
-              </div>
-              <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-white leading-none mb-1">{approvedProposals}</div>
-              <div className="text-[11px] font-bold uppercase text-white/40">Approved</div>
-              <div className="text-[11px] font-bold text-white/30 mt-0.5">{pendingProposals} pending</div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            onClick={() => setIsReviewMembersOpen(true)}
-            className="p-5 bg-white/10 rounded-[10px] border border-white/10 hover:border-white/30 cursor-pointer transition-all group h-36 flex flex-col justify-between"
-          >
-            <div className="flex justify-between items-start">
-              <div className="p-2 bg-white/10 rounded-[8px] text-white/60 group-hover:bg-white group-hover:text-[#0147ff] transition-colors">
-                <Users className="w-5 h-5" />
-              </div>
-              <ArrowRight className="w-4 h-4 text-white/20 group-hover:translate-x-1 group-hover:text-white transition-all" />
-            </div>
-            <div>
-              <div className="text-[32px] font-bold text-white leading-none mb-1">{data.members.length}</div>
-              <div className="text-[11px] font-bold uppercase text-white/40">Members</div>
-              <div className="text-[11px] font-bold text-white/30 mt-0.5">All confirmed</div>
-            </div>
-          </motion.div>
+          <h2 className="text-[32px] font-bold text-white uppercase leading-none">{data.title}</h2>
+          <span className="text-[14px] font-medium text-white/50 uppercase">{data.location || 'TBD'}</span>
         </div>
 
+        {/* Rehearsal Time */}
+        <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col">
+            <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleReview('time')}>
+              <span className="text-[12px] font-bold uppercase text-white">REHEARSAL TIME</span>
+              <motion.div animate={{ rotate: reviewExpanded === 'time' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              </motion.div>
+            </button>
+            <span className="text-[42px] font-bold leading-none text-white">{rehearsalTime}</span>
+          </div>
+          <AnimatePresence>
+            {reviewExpanded === 'time' && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                <div className="pt-[12px] flex flex-col gap-[8px]">
+                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
+                    <span className="text-[12px] font-medium uppercase text-white/50">Start</span>
+                    <span className="text-[14px] font-bold text-white">{data.time}</span>
+                  </div>
+                  {endTime && (
+                    <div className="flex items-center justify-between py-[8px] border-b border-white/20">
+                      <span className="text-[12px] font-medium uppercase text-white/50">End</span>
+                      <span className="text-[14px] font-bold text-white">{endTime}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
+                    <span className="text-[12px] font-medium uppercase text-white/50">Duration</span>
+                    <span className="text-[14px] font-bold text-white">{data.duration}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
+                    <span className="text-[12px] font-medium uppercase text-white/50">Date</span>
+                    <span className="text-[14px] font-bold text-white">{formatDate(data.date)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
+                    <span className="text-[12px] font-medium uppercase text-white/50">Location</span>
+                    <span className="text-[14px] font-bold text-white">{data.location || 'TBD'}</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Setlist */}
+        <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col">
+            <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewSetlistOpen(true)}>
+              <span className="text-[12px] font-bold uppercase text-white">SONGS TO PLAY</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+            </button>
+            <span className="text-[42px] font-bold leading-none text-white">{songCount}</span>
+          </div>
+          <div className="flex items-center gap-[8px]">
+            <span className="text-[12px] font-medium text-white/50 uppercase">{totalDuration}</span>
+            <button onClick={() => setStep(2)} className="text-[12px] font-bold text-white/30 uppercase hover:text-white transition-colors ml-auto">Edit</button>
+          </div>
+        </div>
+
+        {/* Tasks */}
+        <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col">
+            <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewTasksOpen(true)}>
+              <span className="text-[12px] font-bold uppercase text-white">TASKS</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+            </button>
+            <span className="text-[42px] font-bold leading-none text-white">{data.tasks.length}</span>
+          </div>
+          <div className="flex items-center gap-[8px]">
+            <span className="text-[12px] font-medium text-white/50 uppercase">{data.tasks.filter(t => t.assignedTo.includes('all') || t.assignedTo.includes('1')).length} assigned to you</span>
+            <button onClick={() => setStep(3)} className="text-[12px] font-bold text-white/30 uppercase hover:text-white transition-colors ml-auto">Edit</button>
+          </div>
+        </div>
+
+        {/* Proposals */}
+        {data.proposals.length > 0 && (
+          <div className="flex flex-col gap-[20px]">
+            <div className="flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewProposalsOpen(true)}>
+                <span className="text-[12px] font-bold uppercase text-white">PROPOSALS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{approvedProposals}</span>
+            </div>
+            <span className="text-[12px] font-medium text-white/50 uppercase">{approvedProposals} approved · {pendingProposals} pending</span>
+          </div>
+        )}
+
+        {/* Members */}
+        <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col">
+            <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewMembersOpen(true)}>
+              <span className="text-[12px] font-bold uppercase text-white">CONFIRMED MEMBERS</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+            </button>
+            <span className="text-[42px] font-bold leading-none text-white">{memberCount}</span>
+          </div>
+          <div className="flex -space-x-2">
+            {data.members.slice(0, 8).map((m, i) => (
+              <motion.div
+                key={m.id}
+                initial={{ x: 10, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.1 + (i * 0.05) }}
+                className="w-8 h-8 rounded-full border-2 border-[#0147FF] bg-white flex items-center justify-center text-[10px] font-bold text-black"
+              >
+                {m.initials}
+              </motion.div>
+            ))}
+            {data.members.length > 8 && (
+              <div className="w-8 h-8 rounded-full border-2 border-[#0147FF] bg-white/20 flex items-center justify-center text-[10px] font-bold text-white">
+                +{data.members.length - 8}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
         <div className="text-center pt-2">
           <span className="text-sm font-bold text-white/30 flex items-center justify-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            Ready to create. Notifying {data.audienceIds.length > 0 ? data.audienceIds.length : data.members.length} members immediately.
+            {isEditing
+              ? `Ready to save. ${memberCount} members assigned.`
+              : `Ready to create. Notifying ${memberCount} members immediately.`}
           </span>
         </div>
       </div>
@@ -1370,11 +1529,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
             <span className="text-[12px] font-bold uppercase text-white/50 tracking-wider block mb-1">
               STEP {String(step + 1).padStart(2, '0')}
             </span>
+            <span className="text-[12px] font-bold text-white/60 uppercase">
+              {isEditing ? 'EDITING REHEARSAL' : 'NEW REHEARSAL'}
+            </span>
             <h2 className="text-[32px] font-bold text-white leading-tight whitespace-pre-line">
               {STEPS[step].title}
             </h2>
             <p className="text-[16px] font-bold text-white/30 mt-1">
-              {STEPS[step].subtitle}
+              {isEditing && step === 4 ? 'REVIEW & SAVE' : STEPS[step].subtitle}
             </p>
           </div>
         </div>
@@ -1389,7 +1551,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0">
+        <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0">
           <div className="grid grid-cols-2 gap-3">
             {step > 0 ? (
               <button
@@ -1427,10 +1589,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
               </button>
             ) : (
               <button
-                onClick={() => onCreate(data)}
+                onClick={handleSubmit}
                 className="bg-[#D5FB46] text-black rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-[#c5eb36] transition-colors"
               >
-                CREATE REHEARSAL
+                {isEditing ? 'SAVE REHEARSAL' : 'CREATE REHEARSAL'}
               </button>
             )}
           </div>
@@ -1465,6 +1627,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         onSave={handleSaveTemplate}
         onCreate={handleCreateTemplate}
         currentUserInitials="GB"
+        bandId={selectedBand?.id}
+        onSongCreated={(song) => {
+          if (!library.find(s => s.id === song.id)) {
+            setLibrary(prev => [song, ...prev]);
+          }
+        }}
       />
       <RehearsalEditProposalModal
         isOpen={isEditProposalOpen}
@@ -1485,6 +1653,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate }) 
         onClose={() => setIsReviewSetlistOpen(false)}
         snapshot={data.setlistSnapshotFinal}
         totalDuration={totalDuration}
+        onUpdateSnapshot={handleUpdateSnapshot}
+        onConfirmSetlist={handleConfirmSetlist}
+        onDeselectSetlist={handleDeselectSetlist}
+        isConfirmed={isSetlistConfirmed}
       />
       <RehearsalReviewTasksModal
         isOpen={isReviewTasksOpen}

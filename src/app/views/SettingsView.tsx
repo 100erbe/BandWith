@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bell,
-  Palette,
   Shield,
   HelpCircle,
   Info,
-  ChevronRight,
   Moon,
   Sun,
   Smartphone,
@@ -14,12 +12,12 @@ import {
   VolumeX,
   Lock,
   Eye,
-  EyeOff,
   Trash2,
   AlertTriangle,
+  ArrowUpRight,
+  ArrowLeft,
   X
 } from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
@@ -31,258 +29,292 @@ interface SettingsViewProps {
   initialSection?: SettingsSection;
 }
 
+const SectionDotGrid: React.FC<{ filled: number; color?: string }> = ({ filled, color = '#000000' }) => (
+  <div
+    className="grid gap-1 w-full h-[32px]"
+    style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(2, 1fr)' }}
+  >
+    {Array.from({ length: 12 }).map((_, i) => (
+      <div
+        key={i}
+        className="rounded-[10px]"
+        style={{ backgroundColor: i < filled ? color : 'rgba(0,0,0,0.1)' }}
+      />
+    ))}
+  </div>
+);
+
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSection = 'main' }) => {
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   
-  // Settings state
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState<'light' | 'dark' | 'system'>('light');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const getSectionTitle = (): string => {
+    switch (activeSection) {
+      case 'notifications': return 'NOTIFICATIONS';
+      case 'appearance': return 'APPEARANCE';
+      case 'privacy': return 'PRIVACY';
+      case 'help': return 'HELP';
+      case 'about': return 'ABOUT';
+      case 'language': return 'LANGUAGE';
+      default: return 'SETTINGS';
+    }
+  };
+
   const renderMainSection = () => (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-0">
       {[
-        { id: 'notifications' as const, icon: Bell, label: 'Notifications', desc: 'Push, email & sounds' },
-        { id: 'appearance' as const, icon: Palette, label: 'Appearance', desc: 'Theme & display' },
-        { id: 'privacy' as const, icon: Shield, label: 'Privacy & Security', desc: 'Data & permissions' },
-        { id: 'help' as const, icon: HelpCircle, label: 'Help & Support', desc: 'FAQ & contact' },
-        { id: 'about' as const, icon: Info, label: 'About', desc: 'Version & legal' },
+        { id: 'notifications' as const, label: 'NOTIFICATIONS', desc: 'Push, email & sounds' },
+        { id: 'appearance' as const, label: 'APPEARANCE', desc: 'Theme & display' },
+        { id: 'language' as const, label: 'LANGUAGE', desc: 'English' },
+        { id: 'privacy' as const, label: 'PRIVACY & SECURITY', desc: 'Data & permissions' },
+        { id: 'help' as const, label: 'HELP & SUPPORT', desc: 'FAQ & contact' },
+        { id: 'about' as const, label: 'ABOUT', desc: 'Version & legal' },
       ].map((item, i) => (
         <motion.button
           key={item.id}
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.05 }}
+          transition={{ delay: i * 0.04 }}
           onClick={() => setActiveSection(item.id)}
-          className="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-black/5 hover:border-black/20 transition-colors"
+          className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center">
-              <item.icon className="w-6 h-6 text-black/40" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-black">{item.label}</h3>
-              <p className="text-xs text-black/40">{item.desc}</p>
-            </div>
+          <div className="flex flex-col items-start">
+            <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+            <span className="text-[10px] font-medium text-black/40 uppercase">{item.desc}</span>
           </div>
-          <ChevronRight className="w-5 h-5 text-black/20" />
+          <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
         </motion.button>
       ))}
     </div>
   );
 
   const renderNotificationsSection = () => (
-    <div className="space-y-4">
-      <SettingsToggle
-        icon={Smartphone}
-        label="Push Notifications"
-        desc="Receive alerts on your device"
-        enabled={pushEnabled}
-        onToggle={setPushEnabled}
-      />
-      <SettingsToggle
-        icon={Bell}
-        label="Email Notifications"
-        desc="Get updates in your inbox"
-        enabled={emailEnabled}
-        onToggle={setEmailEnabled}
-      />
-      <SettingsToggle
-        icon={soundEnabled ? Volume2 : VolumeX}
-        label="Sound Effects"
-        desc="Play sounds for notifications"
-        enabled={soundEnabled}
-        onToggle={setSoundEnabled}
-      />
+    <div className="flex flex-col gap-8">
+      <SectionDotGrid filled={pushEnabled && emailEnabled && soundEnabled ? 12 : pushEnabled && emailEnabled ? 8 : pushEnabled ? 4 : 0} />
+
+      <div className="flex flex-col gap-0">
+        <SettingsToggle
+          label="PUSH NOTIFICATIONS"
+          desc="Receive alerts on your device"
+          icon={Smartphone}
+          enabled={pushEnabled}
+          onToggle={setPushEnabled}
+        />
+        <SettingsToggle
+          label="EMAIL NOTIFICATIONS"
+          desc="Get updates in your inbox"
+          icon={Bell}
+          enabled={emailEnabled}
+          onToggle={setEmailEnabled}
+        />
+        <SettingsToggle
+          label="SOUND EFFECTS"
+          desc="Play sounds for notifications"
+          icon={soundEnabled ? Volume2 : VolumeX}
+          enabled={soundEnabled}
+          onToggle={setSoundEnabled}
+        />
+      </div>
     </div>
   );
 
   const renderAppearanceSection = () => (
-    <div className="space-y-4">
-      <h3 className="text-xs font-bold uppercase text-black/40 px-1">Theme</h3>
-      <div className="bg-white rounded-2xl p-2 border border-black/5">
-        {[
-          { id: 'light' as const, icon: Sun, label: 'Light' },
-          { id: 'dark' as const, icon: Moon, label: 'Dark' },
-          { id: 'system' as const, icon: Smartphone, label: 'System' },
-        ].map((theme) => (
-          <button
-            key={theme.id}
-            onClick={() => setDarkMode(theme.id)}
-            className={cn(
-              "w-full p-4 rounded-xl flex items-center justify-between transition-colors",
-              darkMode === theme.id ? "bg-[#D4FB46]" : "hover:bg-black/5"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <theme.icon className={cn(
-                "w-5 h-5",
-                darkMode === theme.id ? "text-[#1A1A1A]" : "text-black/40"
-              )} />
-              <span className={cn(
-                "font-medium",
-                darkMode === theme.id ? "text-[#1A1A1A]" : "text-black/80"
-              )}>{theme.label}</span>
-            </div>
-            <DotRadio selected={darkMode === theme.id} />
-          </button>
-        ))}
+    <div className="flex flex-col gap-8">
+      <SectionDotGrid filled={darkMode === 'light' ? 4 : darkMode === 'dark' ? 8 : 12} />
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-bold text-black/40 uppercase tracking-wide">THEME</span>
+        <div className="flex flex-col gap-0">
+          {[
+            { id: 'light' as const, icon: Sun, label: 'LIGHT' },
+            { id: 'dark' as const, icon: Moon, label: 'DARK' },
+            { id: 'system' as const, icon: Smartphone, label: 'SYSTEM' },
+          ].map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => setDarkMode(theme.id)}
+              className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+            >
+              <div className="flex items-center gap-3">
+                <theme.icon className="w-4 h-4 text-black/40" />
+                <span className="text-xs font-bold text-black uppercase tracking-wide">{theme.label}</span>
+              </div>
+              <DotRadio
+                selected={darkMode === theme.id}
+                activeColor={darkMode === theme.id ? '#000000' : undefined}
+                className="!w-[60px] !h-[38px]"
+              />
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] font-medium text-black/30 uppercase mt-2">
+          Theme switching coming soon. Using light mode.
+        </p>
       </div>
-      <p className="text-xs text-black/30 px-1">
-        Note: Theme switching is currently not implemented. The app uses light mode by default.
-      </p>
     </div>
   );
 
   const renderPrivacySection = () => (
-    <div className="space-y-4">
-      <SettingsToggle
-        icon={Eye}
-        label="Show Online Status"
-        desc="Let others see when you're active"
-        enabled={true}
-        onToggle={() => {}}
-      />
-      <SettingsToggle
-        icon={Lock}
-        label="Two-Factor Authentication"
-        desc="Add extra security to your account"
-        enabled={false}
-        onToggle={() => {}}
-      />
-      
-      <div className="pt-6 border-t border-black/10">
-        <h3 className="text-xs font-bold uppercase text-red-400 px-1 mb-4">Danger Zone</h3>
+    <div className="flex flex-col gap-8">
+      <SectionDotGrid filled={6} color="#0147FF" />
+
+      <div className="flex flex-col gap-0">
+        <SettingsToggle
+          label="SHOW ONLINE STATUS"
+          desc="Let others see when you're active"
+          icon={Eye}
+          enabled={true}
+          onToggle={() => {}}
+        />
+        <SettingsToggle
+          label="TWO-FACTOR AUTH"
+          desc="Add extra security"
+          icon={Lock}
+          enabled={false}
+          onToggle={() => {}}
+        />
+      </div>
+
+      <div className="flex flex-col gap-4 pt-4 border-t border-black/10">
+        <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">DANGER ZONE</span>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-4 text-red-400 hover:bg-red-500/20 transition-colors"
+          className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.1)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
-          <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
-            <Trash2 className="w-6 h-6" />
-          </div>
-          <div className="text-left">
-            <h3 className="font-bold">Delete Account</h3>
-            <p className="text-xs text-red-400/60">Permanently remove all your data</p>
-          </div>
+          <Trash2 className="w-4 h-4 text-[#A73131]" />
+          <span className="text-[12px] font-bold text-[#A73131] uppercase">DELETE ACCOUNT</span>
         </button>
       </div>
     </div>
   );
 
   const renderHelpSection = () => (
-    <div className="space-y-4">
-      {[
-        { label: 'FAQ', desc: 'Common questions answered' },
-        { label: 'Contact Support', desc: 'Get help from our team' },
-        { label: 'Report a Bug', desc: 'Help us improve the app' },
-        { label: 'Feature Request', desc: 'Suggest new features' },
-      ].map((item, i) => (
-        <button
-          key={i}
-          className="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-black/5 hover:border-black/20 transition-colors"
-        >
-          <div className="text-left">
-            <h3 className="font-bold text-black">{item.label}</h3>
-            <p className="text-xs text-black/40">{item.desc}</p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-black/20" />
-        </button>
-      ))}
+    <div className="flex flex-col gap-8">
+      <SectionDotGrid filled={8} color="#9A8878" />
+
+      <div className="flex flex-col gap-0">
+        {[
+          { label: 'FAQ', desc: 'Common questions answered' },
+          { label: 'CONTACT SUPPORT', desc: 'Get help from our team' },
+          { label: 'REPORT A BUG', desc: 'Help us improve the app' },
+          { label: 'FEATURE REQUEST', desc: 'Suggest new features' },
+        ].map((item, i) => (
+          <button
+            key={i}
+            className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+          >
+            <div className="flex flex-col items-start">
+              <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+              <span className="text-[10px] font-medium text-black/40 uppercase">{item.desc}</span>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 
   const renderAboutSection = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl p-6 border border-black/5 text-center">
-        <div className="w-20 h-20 mx-auto mb-4 bg-[#D4FB46] rounded-2xl flex items-center justify-center">
-          <span className="text-[#1A1A1A] font-black text-2xl">B</span>
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-5">
+        <div
+          className="grid gap-1 w-[120px] h-[72px]"
+          style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(4, 1fr)' }}
+        >
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-[10px]"
+              style={{ backgroundColor: i < 18 ? '#D5FB46' : 'rgba(0,0,0,0.1)' }}
+            />
+          ))}
         </div>
-        <h2 className="text-2xl font-black text-black">BandWith</h2>
-        <p className="text-black/40 text-sm mt-1">Version 1.0.0</p>
+        <div className="flex flex-col">
+          <span className="text-[42px] font-bold text-black leading-none">BANDWITH</span>
+          <span className="text-xs font-bold text-black/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
+        </div>
       </div>
-      
-      <div className="space-y-2">
+
+      <div className="flex flex-col gap-0">
         {[
-          { label: 'Terms of Service', external: true },
-          { label: 'Privacy Policy', external: true },
-          { label: 'Licenses', external: false },
+          { label: 'TERMS OF SERVICE' },
+          { label: 'PRIVACY POLICY' },
+          { label: 'LICENSES' },
         ].map((item, i) => (
           <button
             key={i}
-            className="w-full bg-white rounded-xl p-4 flex items-center justify-between border border-black/5 hover:border-black/20 transition-colors"
+            className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
           >
-            <span className="font-medium text-black">{item.label}</span>
-            <ChevronRight className="w-5 h-5 text-black/20" />
+            <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+            <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
           </button>
         ))}
       </div>
-      
-      <p className="text-center text-xs text-black/30">
-        Made with ♥ for musicians
+
+      <p className="text-[10px] font-normal text-black/30 text-center uppercase">
+        Made with love for musicians
       </p>
     </div>
   );
 
-  const getSectionTitle = () => {
-    switch (activeSection) {
-      case 'notifications': return 'Notifications';
-      case 'appearance': return 'Appearance';
-      case 'privacy': return 'Privacy & Security';
-      case 'help': return 'Help & Support';
-      case 'about': return 'About';
-      case 'language': return 'Language';
-      default: return 'Settings';
-    }
-  };
-
   const renderLanguageSection = () => (
-    <div className="space-y-4">
-      <p className="text-sm text-black/40 px-1">
-        Language settings will be available in a future update.
-      </p>
-      <div className="bg-white rounded-2xl p-4 border border-black/5">
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-8">
+      <SectionDotGrid filled={3} color="#0147FF" />
+
+      <div className="flex flex-col gap-2">
+        <span className="text-[10px] font-medium text-black/40 uppercase">
+          More languages coming soon.
+        </span>
+        <button className="flex items-center justify-between w-full py-4 border-b border-black/10 active:opacity-70">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🇬🇧</span>
-            <span className="font-medium text-black">English</span>
+            <span className="text-lg">🇬🇧</span>
+            <span className="text-xs font-bold text-black uppercase tracking-wide">ENGLISH</span>
           </div>
-          <DotRadio selected={true} activeColor="#D4FB46" />
-        </div>
+          <DotRadio selected={true} activeColor="#000000" className="!w-[60px] !h-[38px]" />
+        </button>
       </div>
     </div>
   );
 
+  const sectionTitle = getSectionTitle();
+
   return (
     <motion.div
-      initial={{ x: "100%" }}
+      initial={{ x: '100%' }}
       animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto"
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden"
+      style={{
+        overscrollBehaviorX: 'none',
+        touchAction: 'pan-y',
+      }}
     >
       {/* Header */}
-      <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">App</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">
-              {getSectionTitle()}
-            </h1>
-          </div>
-          <button 
+      <div
+        className="px-4 shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+      >
+        <div className="flex items-center gap-4 mb-6">
+          <button
             onClick={activeSection === 'main' ? onClose : () => setActiveSection('main')}
-            className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-all"
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <X className="w-6 h-6 text-black/50" />
+            <ArrowLeft className="w-[24px] h-[24px] text-black" />
           </button>
+          <h1 className="text-[32px] font-bold text-black leading-none uppercase">{sectionTitle}</h1>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4 pb-32">
+      <div className="px-4 pb-32">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSection}
@@ -302,7 +334,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         </AnimatePresence>
       </div>
 
-      {/* Delete Account Confirmation Modal */}
+      {/* Delete Confirm */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div
@@ -316,28 +348,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full border border-black/5"
+              className="bg-[#E6E5E1] rounded-[10px] p-6 max-w-sm w-full"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-8 h-8 text-red-400" />
-              </div>
-              <h2 className="text-xl font-black text-center text-black mb-2">Delete Account?</h2>
-              <p className="text-center text-black/50 text-sm mb-6">
-                This action cannot be undone. All your data, bands, and events will be permanently deleted.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 h-12 rounded-xl bg-black/5 text-black font-bold text-sm hover:bg-black/10 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="flex-1 h-12 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors"
-                >
-                  Delete
-                </button>
+              <div className="flex flex-col gap-5">
+                <div className="w-12 h-12 mx-auto bg-[rgba(167,49,49,0.15)] rounded-[10px] flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-[#A73131]" />
+                </div>
+                <div className="flex flex-col gap-2 text-center">
+                  <h2 className="text-[22px] font-bold text-black uppercase">DELETE ACCOUNT?</h2>
+                  <p className="text-[10px] font-medium text-black/40 uppercase">
+                    This action cannot be undone. All your data will be permanently deleted.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1 h-12 rounded-[10px] bg-black/5 text-black font-bold text-xs uppercase active:scale-95 transition-transform"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="flex-1 h-12 rounded-[10px] bg-[#A73131] text-white font-bold text-xs uppercase active:scale-95 transition-transform"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -347,30 +383,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
   );
 };
 
-// Toggle component
 interface SettingsToggleProps {
-  icon: React.ElementType;
   label: string;
   desc: string;
+  icon: React.ElementType;
   enabled: boolean;
   onToggle: (value: boolean) => void;
 }
 
-const SettingsToggle: React.FC<SettingsToggleProps> = ({ icon: Icon, label, desc, enabled, onToggle }) => (
+const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon, enabled, onToggle }) => (
   <button
     type="button"
     onClick={() => onToggle(!enabled)}
-    className="w-full bg-white rounded-2xl p-4 flex items-center justify-between border border-black/5 cursor-pointer"
+    className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity cursor-pointer"
   >
-    <div className="flex items-center gap-4">
-      <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center">
-        <Icon className="w-6 h-6 text-black/40" />
-      </div>
-      <div className="text-left">
-        <h3 className="font-bold text-black">{label}</h3>
-        <p className="text-xs text-black/40">{desc}</p>
+    <div className="flex items-center gap-3">
+      <Icon className="w-4 h-4 text-black/40 shrink-0" />
+      <div className="flex flex-col items-start">
+        <span className="text-xs font-bold text-black uppercase tracking-wide">{label}</span>
+        <span className="text-[10px] font-medium text-black/40 uppercase">{desc}</span>
       </div>
     </div>
-    <DotCheckbox checked={enabled} />
+    <DotCheckbox checked={enabled} className="!w-[60px] !h-[38px]" />
   </button>
 );

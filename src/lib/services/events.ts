@@ -71,7 +71,7 @@ export interface EventMember {
   id: string;
   event_id: string;
   user_id: string;
-  status: 'invited' | 'confirmed' | 'declined' | 'maybe';
+  status: 'confirmed' | 'declined' | 'maybe' | 'pending';
   fee?: number;
   role?: string;
   notes?: string;
@@ -335,7 +335,7 @@ export const inviteToEvent = async (
         user_id: userId,
         role,
         fee,
-        status: 'invited',
+        status: 'pending',
       })
       .select()
       .single();
@@ -494,6 +494,51 @@ export const getEventStats = async (
     };
 
     return { data: stats, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+export const getMemberPersonalStats = async (
+  bandId: string,
+  userId: string,
+  year?: number
+): Promise<{
+  data: { totalEarned: number; confirmedFee: number; pendingFee: number; revenueChange: number } | null;
+  error: Error | null;
+}> => {
+  try {
+    const currentYear = year || new Date().getFullYear();
+    const startOfYear = `${currentYear}-01-01`;
+    const endOfYear = `${currentYear}-12-31`;
+    const now = new Date();
+    const curStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
+    const { data: memberships, error } = await supabase
+      .from('event_members')
+      .select('fee, status, events!inner(band_id, event_date, status)')
+      .eq('user_id', userId)
+      .eq('events.band_id', bandId)
+      .gte('events.event_date', startOfYear)
+      .lte('events.event_date', endOfYear);
+
+    if (error) throw error;
+
+    const rows = (memberships || []) as any[];
+    const confirmed = rows.filter(r => r.status === 'confirmed' && (r.events?.status === 'confirmed' || r.events?.status === 'completed'));
+    const totalEarned = confirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    const pending = rows.filter(r => r.status === 'pending');
+    const pendingFee = pending.reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    const curMonth = confirmed.filter((r: any) => r.events?.event_date >= curStart && r.events?.event_date <= curEnd).reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    const prevMonth = confirmed.filter((r: any) => r.events?.event_date >= prevStart && r.events?.event_date <= prevEnd).reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    let revenueChange = 0;
+    if (prevMonth > 0) revenueChange = Math.round(((curMonth - prevMonth) / prevMonth) * 100);
+    else if (curMonth > 0) revenueChange = 100;
+
+    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

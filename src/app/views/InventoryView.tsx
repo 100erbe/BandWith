@@ -2,19 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
-  Search,
   Package,
-  Tag,
-  CheckCircle,
-  AlertTriangle,
-  MoreVertical,
+  MoreHorizontal,
   Edit2,
   Trash2,
   X,
   Loader2,
-  Boxes,
-  Wrench,
-  MapPin,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
@@ -47,11 +41,11 @@ const CATEGORIES = [
   'Other',
 ];
 
-const STATUS_CONFIG = {
-  available: { label: 'Available', color: 'bg-green-500/10 text-green-600', icon: CheckCircle },
-  in_use: { label: 'In Use', color: 'bg-blue-500/10 text-blue-600', icon: Package },
-  maintenance: { label: 'Maintenance', color: 'bg-orange-500/10 text-orange-600', icon: AlertTriangle },
-  lost: { label: 'Lost', color: 'bg-red-500/10 text-red-600', icon: AlertTriangle },
+const STATUS_CONFIG: Record<string, { label: string }> = {
+  available: { label: 'Available' },
+  in_use: { label: 'In Use' },
+  maintenance: { label: 'Maintenance' },
+  lost: { label: 'Lost' },
 };
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) => {
@@ -230,70 +224,64 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 50 }}
-      transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto flex flex-col"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden flex flex-col"
+      style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       {/* Header */}
-      <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">Equipment</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">INVENTORY</h1>
-            <p className="text-sm text-black/50 font-bold tracking-tight mt-1">{items.length} items total</p>
+      <div className="px-4 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onBack}
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+          >
+            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+          </button>
+          <div className="flex flex-col leading-none flex-1">
+            <span className="text-[32px] font-bold text-black leading-none">GEAR</span>
+            <span className="text-[32px] font-bold text-black leading-none">LIST</span>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={openAddModal}
-              className="w-12 h-12 rounded-full bg-[#D4FB46] flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <Plus className="w-5 h-5 text-black" />
-            </button>
-            <button
-              onClick={onBack}
-              className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-all"
-            >
-              <X className="w-6 h-6 text-black/50" />
-            </button>
-          </div>
+          <button
+            onClick={openAddModal}
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
+          >
+            <Plus className="w-[20px] h-[20px] text-black" />
+          </button>
         </div>
 
         {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+        <div className="mb-4">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search inventory..."
-            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-sm font-medium text-black placeholder:text-black/30 border border-black/5 focus:outline-none focus:border-black/20 transition-colors"
+            className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
           />
         </div>
       </div>
 
       {/* Categories */}
-      <div className="px-5 py-3 overflow-x-auto scrollbar-hide">
+      <div className="px-4 py-3 overflow-x-auto scrollbar-hide">
         <div className="flex gap-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all",
+                "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase whitespace-nowrap transition-all",
                 selectedCategory === cat
                   ? "bg-black text-white"
-                  : "bg-white/60 text-black/50 hover:bg-white"
+                  : "bg-black/5 text-black/40 active:bg-black/10"
               )}
             >
               {cat}
               {categoryCounts[cat] > 0 && (
-                <span className="ml-1.5 text-xs opacity-60">
+                <span className="ml-1 opacity-60">
                   {categoryCounts[cat]}
                 </span>
               )}
@@ -303,227 +291,106 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
       </div>
 
       {/* Items List */}
-      <div className="flex-1 px-5 pb-20 overflow-y-auto">
+      <div className="flex-1 px-4 pb-20 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-black/40" />
+            <Loader2 className="w-8 h-8 animate-spin text-black/30" />
           </div>
         ) : filteredItems.length === 0 && items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Package className="w-12 h-12 text-black/20 mb-3" />
-            <p className="text-black/50 font-medium">No items found</p>
-            <p className="text-black/40 text-sm">Add your first item to get started</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <Package className="w-12 h-12 text-black/15 mb-3" />
+            <span className="text-xs font-bold text-black/40 uppercase tracking-wide mb-1">No items found</span>
+            <span className="text-[10px] font-medium text-black/30 uppercase">Add your first item to get started</span>
           </div>
         ) : (
           <>
-            {/* Hero Card - Inventory Overview */}
+            {/* Stats Row */}
             {items.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mb-6 p-6 bg-gradient-to-br from-[#1A1A1A] to-[#2A2A2E] rounded-[2rem] relative overflow-hidden shadow-xl"
-              >
-                {/* Decorative gradient */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4FB46]/10 rounded-full blur-3xl" />
-                
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <span className="text-[#D4FB46] text-[10px] font-bold uppercase tracking-widest block mb-1">Equipment</span>
-                      <div className="flex items-baseline gap-3">
-                        <h3 className="text-4xl font-black text-white tracking-tighter">{stats.totalItems}</h3>
-                        <span className="text-stone-500 text-lg font-medium">items</span>
-                      </div>
-                    </div>
-                    <div className="w-14 h-14 bg-[#D4FB46] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(212,251,70,0.3)]">
-                      <Boxes className="w-7 h-7 text-[#1A1A1A]" />
-                    </div>
-                  </div>
-
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-3 gap-3 mb-5">
-                    <motion.div 
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="bg-white/5 rounded-xl p-3 border border-white/10"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Available</span>
-                      </div>
-                      <span className="text-xl font-black text-white">{stats.available}</span>
-                    </motion.div>
-                    <motion.div 
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.25 }}
-                      className="bg-white/5 rounded-xl p-3 border border-white/10"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Package className="w-4 h-4 text-blue-400" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">In Use</span>
-                      </div>
-                      <span className="text-xl font-black text-white">{stats.inUse}</span>
-                    </motion.div>
-                    {stats.maintenance > 0 && (
-                      <motion.div 
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-white/5 rounded-xl p-3 border border-white/10"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Wrench className="w-4 h-4 text-orange-400" />
-                          <span className="text-[10px] font-bold text-stone-500 uppercase">Repair</span>
-                        </div>
-                        <span className="text-xl font-black text-white">{stats.maintenance}</span>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Status Progress Bar */}
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.35 }}
-                  >
-                    <div className="flex items-center justify-between text-[10px] font-bold text-stone-500 mb-2">
-                      <span>STATUS OVERVIEW</span>
-                      <span>{stats.totalQuantity} total units</span>
-                    </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(stats.available / stats.totalItems) * 100}%` }}
-                        transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }}
-                        className="bg-green-500 h-full"
-                      />
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(stats.inUse / stats.totalItems) * 100}%` }}
-                        transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
-                        className="bg-blue-500 h-full"
-                      />
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(stats.maintenance / stats.totalItems) * 100}%` }}
-                        transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
-                        className="bg-orange-500 h-full"
-                      />
-                    </div>
-                    {stats.locations.length > 0 && (
-                      <div className="flex items-center gap-2 mt-3 text-[10px] font-bold text-stone-500">
-                        <MapPin className="w-3 h-3" />
-                        {stats.locations.slice(0, 3).join(', ')}{stats.locations.length > 3 && ` +${stats.locations.length - 3}`}
-                      </div>
-                    )}
-                  </motion.div>
-                </div>
-              </motion.div>
+              <div className="flex gap-5 mb-10">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex-1 flex flex-col gap-1 items-start">
+                  <span className="text-xs font-bold text-black tracking-wide">TOTAL</span>
+                  <span className="text-[42px] font-bold leading-tight text-black">{stats.totalItems}</span>
+                  <span className="text-[10px] font-medium text-black/40 uppercase">{stats.totalQuantity} UNITS</span>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex-1 flex flex-col gap-1 items-start">
+                  <span className="text-xs font-bold text-black tracking-wide">AVAILABLE</span>
+                  <span className="text-[42px] font-bold leading-tight text-black">{stats.available}</span>
+                  <span className="text-[10px] font-medium text-black/40 uppercase">READY TO USE</span>
+                </motion.div>
+              </div>
             )}
 
-            {/* Items List Header */}
+            {/* Section Title */}
             {items.length > 0 && (
-              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-widest mb-3 px-1">
-                {filteredItems.length === 0 ? 'No matches' : `All Items (${filteredItems.length})`}
-              </h4>
+              <div className="flex flex-col mb-5">
+                <span className="text-[32px] font-bold leading-none text-black">ALL</span>
+                <span className="text-[32px] font-bold leading-none text-black">ITEMS</span>
+              </div>
             )}
 
             {filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Search className="w-8 h-8 text-black/20 mb-2" />
-                <p className="text-black/50 font-medium text-sm">No items match your filter</p>
+              <div className="flex flex-col items-center justify-center py-10">
+                <span className="text-[10px] font-medium text-black/40 uppercase">No items match your filter</span>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="flex flex-col gap-0">
                 {filteredItems.map((item, index) => {
               const statusConfig = STATUS_CONFIG[item.status];
-              const StatusIcon = statusConfig.icon;
               
               return (
                 <motion.div
                   key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-2xl p-4 relative"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                  className="relative"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-black/50" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-black truncate">{item.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-black/40 flex items-center gap-1">
-                              <Tag className="w-3 h-3" />
-                              {item.category}
-                            </span>
-                            <span className="text-xs text-black/40">
-                              × {item.quantity}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={() => setMenuOpenId(menuOpenId === item.id ? null : item.id)}
-                          className="p-2 -mr-2 -mt-1 rounded-lg hover:bg-black/5 transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-black/40" />
-                        </button>
+                  <div className="flex items-center justify-between py-4 border-b border-black/10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-[10px] bg-[#CDCACA] flex items-center justify-center shrink-0">
+                        <Package className="w-5 h-5 text-black/50" />
                       </div>
-
-                      <div className="flex items-center gap-2 mt-3">
-                        <span className={cn(
-                          "px-2 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1",
-                          statusConfig.color
-                        )}>
-                          <StatusIcon className="w-3 h-3" />
-                          {statusConfig.label}
+                      <div className="flex flex-col items-start min-w-0">
+                        <span className="text-xs font-bold text-black uppercase tracking-wide truncate max-w-full">{item.name}</span>
+                        <span className="text-[10px] font-medium text-black/40 uppercase">
+                          {item.category} · ×{item.quantity} · {statusConfig.label}
+                          {item.location ? ` · ${item.location}` : ''}
                         </span>
-                        {item.location && (
-                          <span className="text-xs text-black/40 truncate">
-                            📍 {item.location}
-                          </span>
-                        )}
                       </div>
-
-                      {item.notes && (
-                        <p className="text-xs text-black/40 mt-2 line-clamp-1">
-                          {item.notes}
-                        </p>
-                      )}
                     </div>
+                    <button
+                      onClick={() => setMenuOpenId(menuOpenId === item.id ? null : item.id)}
+                      className="w-8 h-8 flex items-center justify-center active:opacity-70 transition-opacity shrink-0"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-black" />
+                    </button>
                   </div>
 
-                  {/* Context Menu */}
+                  {/* Inline Action Menu */}
                   <AnimatePresence>
                     {menuOpenId === item.id && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute right-4 top-12 bg-white rounded-xl shadow-xl border border-black/5 overflow-hidden z-10"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden border-b border-black/10"
                       >
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-black/70 hover:bg-white/80"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
+                        <div className="py-2 flex flex-col gap-0">
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                          >
+                            <Edit2 className="w-4 h-4 text-black/40" />
+                            <span className="text-xs font-bold text-black uppercase tracking-wide">EDIT</span>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                          >
+                            <Trash2 className="w-4 h-4 text-[#A73131]" />
+                            <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">DELETE</span>
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -546,24 +413,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
             className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#E6E5E1]"
           >
             {/* Header */}
-            <div 
-              className="px-6 pt-6 pb-4 flex-shrink-0"
+            <div
+              className="px-4 shrink-0"
               style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">Inventory</p>
-                  <h1 className="text-4xl font-black text-black tracking-tight">
-                    {editingItem ? 'EDIT' : 'ADD ITEM'}
-                  </h1>
-                  <p className="text-sm text-black/50 mt-1">Track your equipment</p>
-                </div>
-                <button 
+              <div className="flex items-center gap-4 mb-6">
+                <button
                   onClick={() => setShowAddModal(false)}
-                  className="w-12 h-12 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+                  style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
                 >
-                  <X className="w-5 h-5 text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px] text-black" />
                 </button>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[32px] font-bold text-black leading-none">
+                    {editingItem ? 'EDIT' : 'ADD'}
+                  </span>
+                  <span className="text-[32px] font-bold text-black leading-none">ITEM</span>
+                </div>
               </div>
             </div>
 

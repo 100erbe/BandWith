@@ -21,7 +21,9 @@ export interface ChatItem {
   senderName?: string; // Who sent the last message (for groups)
   bandName?: string; // Band context
   eventDate?: string; // Event date for display
+  eventType?: 'gig' | 'rehearsal';
   lastMessageAt?: Date; // For sorting
+  isOnline?: boolean;
 }
 
 // Chats data
@@ -35,7 +37,9 @@ export const CHATS_DATA: ChatItem[] = [
     time: '2m', 
     unread: 1, 
     status: 'received',
-    role: 'Planner'
+    role: 'Planner',
+    bandName: 'BandWith',
+    isOnline: true
   },
   { 
     id: 2, 
@@ -46,18 +50,22 @@ export const CHATS_DATA: ChatItem[] = [
     time: '10m', 
     unread: 2, 
     status: 'received',
-    role: 'Member'
+    role: 'Member',
+    bandName: 'Jazz Trio',
+    isOnline: true
   },
   { 
     id: 3, 
     type: 'band', 
     name: 'BandWith Official', 
     initials: 'BW', 
-    lastMessage: 'GB: Setlist updated for Saturday.', 
+    lastMessage: 'Setlist updated for Saturday.', 
     time: '1h', 
     unread: 0, 
     status: 'read',
-    members: 4
+    members: 4,
+    senderName: 'GB',
+    isOnline: false
   },
   { 
     id: 4, 
@@ -66,10 +74,13 @@ export const CHATS_DATA: ChatItem[] = [
     date: '26', 
     month: 'JAN',
     initials: '',
-    lastMessage: 'Venue: Load-in is via back door only.', 
+    lastMessage: 'Load-in is via back door only.', 
     time: '3h', 
     unread: 0, 
-    status: 'read'
+    status: 'read',
+    eventType: 'gig',
+    senderName: 'Venue',
+    isOnline: false
   },
   { 
     id: 5, 
@@ -80,7 +91,9 @@ export const CHATS_DATA: ChatItem[] = [
     time: '1d', 
     unread: 0, 
     status: 'sent',
-    role: 'Guitar'
+    role: 'Guitar',
+    bandName: 'BandWith',
+    isOnline: true
   },
   { 
     id: 6, 
@@ -91,6 +104,8 @@ export const CHATS_DATA: ChatItem[] = [
     time: '2d', 
     unread: 0, 
     status: 'read',
-    members: 3
+    members: 3,
+    senderName: 'Marco',
+    isOnline: false
   }
 ];

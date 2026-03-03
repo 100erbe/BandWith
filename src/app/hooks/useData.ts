@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import * as bandsService from '@/lib/services/bands';
 import * as eventsService from '@/lib/services/events';
@@ -358,11 +358,14 @@ export const useSetlist = (setlistId: string | null) => {
 export const useNotifications = (options?: {
   unreadOnly?: boolean;
   limit?: number;
+  onNewEventInvite?: (notification: notificationsService.Notification) => void;
 }) => {
   const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<notificationsService.Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const onNewEventInviteRef = useRef(options?.onNewEventInvite);
+  onNewEventInviteRef.current = options?.onNewEventInvite;
 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -389,10 +392,12 @@ export const useNotifications = (options?: {
       (notification) => {
         console.log('[useNotifications] Realtime INSERT:', notification.title);
         setNotifications(prev => {
-          // Avoid duplicates
           if (prev.some(n => n.id === notification.id)) return prev;
           return [notification, ...prev];
         });
+        if (notification.type === 'event_invite' && onNewEventInviteRef.current) {
+          onNewEventInviteRef.current(notification);
+        }
       },
       // On UPDATE - update existing notification (e.g., marked as read)
       (updatedNotification) => {
@@ -466,7 +471,7 @@ export const useUnreadCount = () => {
 // COMBINED DASHBOARD HOOK
 // ============================================
 
-export const useDashboardData = (bandId: string | null) => {
+export const useDashboardData = (bandId: string | null, userId?: string | null) => {
   const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -485,11 +490,18 @@ export const useDashboardData = (bandId: string | null) => {
       totalPipeline: number;
       acceptedRevenue: number;
     } | null;
+    memberStats: {
+      totalEarned: number;
+      confirmedFee: number;
+      pendingFee: number;
+      revenueChange: number;
+    } | null;
     upcomingEvents: eventsService.Event[];
     recentQuotes: quotesService.Quote[];
   }>({
     eventStats: null,
     quoteStats: null,
+    memberStats: null,
     upcomingEvents: [],
     recentQuotes: [],
   });
@@ -500,16 +512,24 @@ export const useDashboardData = (bandId: string | null) => {
     setLoading(true);
     
     try {
-      const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = await Promise.all([
+      const promises: Promise<any>[] = [
         eventsService.getEventStats(bandId),
         quotesService.getQuoteStats(bandId),
         eventsService.getUpcomingEvents(bandId, 5),
         quotesService.getQuotes(bandId, { limit: 5 }),
-      ]);
+      ];
+      if (userId) {
+        promises.push(eventsService.getMemberPersonalStats(bandId, userId));
+      }
+
+      const results = await Promise.all(promises);
+      const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = results;
+      const memberStatsRes = userId ? results[4] : null;
 
       setData({
         eventStats: eventStatsRes.data,
         quoteStats: quoteStatsRes.data,
+        memberStats: memberStatsRes?.data || null,
         upcomingEvents: upcomingEventsRes.data || [],
         recentQuotes: recentQuotesRes.data || [],
       });
@@ -518,7 +538,7 @@ export const useDashboardData = (bandId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId]);
+  }, [isAuthenticated, bandId, userId]);
 
   useEffect(() => {
     fetchData();

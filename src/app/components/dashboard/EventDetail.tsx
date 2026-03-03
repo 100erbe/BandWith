@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, AlertCircle } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
+import { supabase } from '@/lib/supabase';
 
 interface EventDetailProps {
   event: EventData;
@@ -15,6 +16,7 @@ interface EventDetailProps {
   onDelete?: () => void;
   onChat?: () => void;
   memberFee?: number;
+  isAdmin?: boolean;
 }
 
 const DetailDotGrid: React.FC<{
@@ -162,21 +164,30 @@ const THEME = {
   },
 };
 
+const getRehearsalCadence = (event: EventData): string => {
+  if (!event.is_recurring) return 'ONCE';
+  const rule = event.recurrence_rule;
+  const freq = (rule?.freq || rule?.frequency || '').toLowerCase();
+  const interval = rule?.interval || 1;
+  if (freq === 'weekly' && interval === 1) return 'WEEKLY';
+  if (freq === 'weekly' && interval === 2) return 'BI-WEEKLY';
+  if (freq === 'monthly' && interval === 1) return 'MONTHLY';
+  if (freq === 'monthly' && interval === 2) return 'BI-MONTHLY';
+  if (freq) return freq.toUpperCase();
+  return 'ONCE';
+};
+
 const getEventTags = (event: EventData, eventType: EventType): string[] => {
   const tags: string[] = [];
   if (eventType === 'gig') {
     tags.push('GIG');
-    if (event.location?.toLowerCase().includes('outdoor') || event.location?.toLowerCase().includes('park')) {
-      tags.push('OUTDOOR');
-    } else {
-      tags.push('INDOOR');
-    }
+    tags.push(event.indoorOutdoor?.toUpperCase() || 'INDOOR');
   } else if (eventType === 'rehearsal') {
-    tags.push('REHARSAL');
-    tags.push('WEEKLY');
+    tags.push('REHEARSAL');
+    tags.push(getRehearsalCadence(event));
   } else if (eventType === 'quote') {
     tags.push('QUOTE');
-    tags.push('WEDDING');
+    tags.push((event.quoteStatus || 'pending').toUpperCase());
   } else {
     tags.push('DRAFT');
   }
@@ -193,6 +204,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onDelete,
   onChat,
   memberFee,
+  isAdmin = true,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -339,13 +351,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             <RehearsalSections event={event} theme={theme} memberCount={memberCount} />
           )}
           {eventType === 'gig' && (
-            <GigSections event={event} theme={theme} memberCount={memberCount} />
+            <GigSections event={event} theme={theme} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
           )}
           {eventType === 'quote' && (
-            <QuoteSections event={event} theme={theme} memberCount={memberCount} miniCalendar={miniCalendar} eventYear={eventYear} eventMonthDay={eventMonthDay} />
+            <QuoteSections event={event} theme={theme} memberCount={memberCount} miniCalendar={miniCalendar} eventYear={eventYear} eventMonthDay={eventMonthDay} isAdmin={isAdmin} memberFee={memberFee} />
           )}
           {eventType === 'draft' && (
-            <DraftSections event={event} theme={theme} memberCount={memberCount} />
+            <DraftSections event={event} theme={theme} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
           )}
         </div>
 
@@ -502,8 +514,27 @@ const RehearsalSections: React.FC<{
   const toggle = (key: string) => setExpandedSection(prev => prev === key ? null : key);
 
   const rehearsalTime = event.time
-    ? `${formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2))))} - ${formatEventTime(event.time)}`
-    : '8 - 10PM';
+    ? (event.endTime
+        ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
+        : formatEventTime(event.time))
+    : 'TBD';
+
+  const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string }[]>([]);
+  useEffect(() => {
+    if (!event.eventId && !event.setlistId) return;
+    const fetchSetlist = async () => {
+      const { data } = await supabase
+        .from('setlist_songs')
+        .select('*, song:songs(title, artist)')
+        .eq('setlist_id', event.setlistId || '')
+        .order('position', { ascending: true });
+      if (data && data.length > 0) {
+        setSetlistSongs(data.map((s: any) => ({ title: s.song?.title || 'Unknown', artist: s.song?.artist })));
+      }
+    };
+    fetchSetlist();
+  }, [event.eventId, event.setlistId]);
+  const numSongs = setlistSongs.length;
 
   return (
     <div className="flex flex-col gap-[40px]">
@@ -515,11 +546,10 @@ const RehearsalSections: React.FC<{
             {rehearsalTime}
           </span>
         </div>
-        <DetailDotGrid filled={8} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+        <DetailDotGrid filled={event.time ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'time'}>
-          <DetailRow label="Start" value={event.time ? formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2)))) : '8PM'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="End" value={event.time ? formatEventTime(event.time) : '10PM'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Duration" value="2 Hours" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          <DetailRow label="Start" value={event.time ? formatEventTime(event.time) : 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          {event.endTime && <DetailRow label="End" value={formatEventTime(event.endTime)} color={theme.text} subtitleColor={theme.subtitleOpacity} />}
           <DetailRow label="Location" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
         </ExpandableDetail>
       </div>
@@ -528,14 +558,15 @@ const RehearsalSections: React.FC<{
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
           <SectionHeader label="SONGS TO PLAY" color={theme.text} onTap={() => toggle('songs')} expanded={expandedSection === 'songs'} />
-          <SectionValue value={4} color={theme.text} />
+          <SectionValue value={numSongs || 0} color={theme.text} />
         </div>
-        <DetailDotGrid filled={4} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+        <DetailDotGrid filled={numSongs} total={Math.max(12, numSongs)} cols={6} rows={Math.max(2, Math.ceil(Math.max(12, numSongs) / 6))} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'songs'}>
-          <DetailRow label="Song 1" value="Come Together" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Song 2" value="Superstition" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Song 3" value="Fly Me To The Moon" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Song 4" value="Isn't She Lovely" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          {setlistSongs.length > 0 ? setlistSongs.slice(0, 5).map((song, i) => (
+            <DetailRow key={i} label={`Song ${i + 1}`} value={song.title} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )) : (
+            <DetailRow label="Info" value="No setlist assigned" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )}
         </ExpandableDetail>
       </div>
 
@@ -543,13 +574,15 @@ const RehearsalSections: React.FC<{
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
           <SectionHeader label="CONFIRMED MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
-          <SectionValue value={memberCount || 7} color={theme.text} />
+          <SectionValue value={memberCount} color={theme.text} />
         </div>
-        <DetailDotGrid filled={memberCount || 7} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+        <DetailDotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'members'}>
-          {(event.members?.length ? event.members : ['GB', 'CE', 'AN']).map((m, i) => (
-            <DetailRow key={i} label={['SINGER', 'GUITAR', 'DRUMS', 'BASS', 'PIANO', 'SAX', 'TRUMPET', 'KEYS'][i % 8]} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          ))}
+          {event.members?.length ? event.members.map((m, i) => (
+            <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )) : (
+            <DetailRow label="Info" value="No members assigned" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )}
         </ExpandableDetail>
       </div>
     </div>
@@ -561,26 +594,49 @@ const GigSections: React.FC<{
   event: EventData;
   theme: typeof THEME.gig;
   memberCount: number;
-}> = ({ event, theme, memberCount }) => {
+  isAdmin?: boolean;
+  memberFee?: number;
+}> = ({ event, theme, memberCount, isAdmin = true, memberFee }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggle = (key: string) => setExpandedSection(prev => prev === key ? null : key);
 
-  const showTime = event.time ? formatEventTime(event.time) : '8PM';
-  const loadInTime = event.time
-    ? formatEventTime(event.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3))))
-    : '5PM';
-  const soundCheckTime = event.time
-    ? formatEventTime(event.time.replace(/:\d{2}$/, ':30').replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2))))
-    : '6:30PM';
+  const showTime = event.time ? formatEventTime(event.time) : 'TBD';
+  const loadInTime = event.loadInTime
+    ? formatEventTime(event.loadInTime)
+    : event.time
+      ? formatEventTime(event.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3))))
+      : 'TBD';
+  const soundCheckTime = event.soundcheckTime
+    ? formatEventTime(event.soundcheckTime)
+    : event.time
+      ? formatEventTime(event.time.replace(/:\d{2}$/, ':30').replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2))))
+      : 'TBD';
   const bandTotal = formatBandTotal(event.price);
-  const numSongs = 45;
 
+  const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string }[]>([]);
+  useEffect(() => {
+    if (!event.eventId) return;
+    const fetchSetlist = async () => {
+      const { data } = await supabase
+        .from('setlist_songs')
+        .select('*, song:songs(title, artist)')
+        .eq('setlist_id', event.setlistId || '')
+        .order('position', { ascending: true });
+      if (data && data.length > 0) {
+        setSetlistSongs(data.map((s: any) => ({ title: s.song?.title || 'Unknown', artist: s.song?.artist })));
+      }
+    };
+    fetchSetlist();
+  }, [event.eventId, event.setlistId]);
+  const numSongs = setlistSongs.length;
+
+  const perMemberFee = memberCount > 0 ? Math.round(parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0') / memberCount) : 0;
   const members = event.members?.length > 0
     ? event.members.map((m, i) => ({
         initials: m,
-        name: m === 'GB' ? 'GIANLUCA' : m === 'CE' ? 'EMMA' : m === 'AN' ? 'ANTONIO' : `MEMBER ${i + 1}`,
-        role: ['SINGER', 'SINGER', 'GUITAR', 'PIANO', 'BASS', 'SAX', 'TRUMPET', 'DRUMS'][i % 8],
-        fee: i < 2 ? '$350' : '$300',
+        name: m,
+        role: `Member ${i + 1}`,
+        fee: `€${perMemberFee}`,
       }))
     : [];
 
@@ -594,11 +650,10 @@ const GigSections: React.FC<{
             <SectionHeader label="LOAD IN" color={theme.text} onTap={() => toggle('loadin')} expanded={expandedSection === 'loadin'} />
             <SectionValue value={loadInTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={4} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          <DetailDotGrid filled={loadInTime !== 'TBD' ? 4 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'loadin'}>
             <DetailRow label="Time" value={loadInTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Location" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Parking" value="Street" color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
         </div>
 
@@ -608,10 +663,9 @@ const GigSections: React.FC<{
             <SectionHeader label="SOUND CHECK" color={theme.text} onTap={() => toggle('soundcheck')} expanded={expandedSection === 'soundcheck'} />
             <SectionValue value={soundCheckTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={7} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          <DetailDotGrid filled={soundCheckTime !== 'TBD' ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'soundcheck'}>
             <DetailRow label="Time" value={soundCheckTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Duration" value="30 Min" color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
         </div>
 
@@ -621,27 +675,27 @@ const GigSections: React.FC<{
             <SectionHeader label="SHOW START" color={theme.text} onTap={() => toggle('showstart')} expanded={expandedSection === 'showstart'} />
             <SectionValue value={showTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={8} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          <DetailDotGrid filled={showTime !== 'TBD' ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'showstart'}>
             <DetailRow label="Show Time" value={showTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Set Duration" value="3 Hours" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Sets" value="2" color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
         </div>
 
-        {/* Band Total Fee */}
+        {/* Fee Section */}
         <div className="flex flex-col gap-[8px]">
           <div className="flex flex-col">
-            <SectionHeader label="BAND TOTAL FEE" color={theme.text} onTap={() => toggle('fee')} expanded={expandedSection === 'fee'} />
-            <SectionValue value={bandTotal} color={theme.text} />
+            <SectionHeader label={isAdmin ? "BAND TOTAL FEE" : "YOUR FEE"} color={theme.text} onTap={() => toggle('fee')} expanded={expandedSection === 'fee'} />
+            <SectionValue value={isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal)} color={theme.text} />
           </div>
-          <DetailDotGrid filled={10} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-          <ExpandableDetail expanded={expandedSection === 'fee'}>
-            {members.map((m, i) => (
-              <DetailRow key={i} label={m.name} value={m.fee} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            ))}
-            <DetailRow label="Total" value={bandTotal} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          </ExpandableDetail>
+          <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 10 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          {isAdmin && (
+            <ExpandableDetail expanded={expandedSection === 'fee'}>
+              {members.map((m, i) => (
+                <DetailRow key={i} label={m.name} value={m.fee} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+              ))}
+              <DetailRow label="Total" value={bandTotal} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+            </ExpandableDetail>
+          )}
         </div>
       </div>
 
@@ -655,12 +709,22 @@ const GigSections: React.FC<{
         </div>
         <DetailDotGrid filled={numSongs} total={96} cols={12} rows={8} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'setlist'}>
-          {['Come Together', 'Superstition', 'Fly Me To The Moon', "Isn't She Lovely", 'All Of Me'].map((song, i) => (
-            <DetailRow key={i} label={`${i + 1}`} value={song} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          ))}
-          <span className="text-[12px] font-medium pt-[4px]" style={{ color: theme.subtitleOpacity }}>
-            + {numSongs - 5} more songs
-          </span>
+          {numSongs > 0 ? (
+            <>
+              {setlistSongs.slice(0, 10).map((song, i) => (
+                <DetailRow key={i} label={`${i + 1}`} value={song.title} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+              ))}
+              {numSongs > 10 && (
+                <span className="text-[12px] font-medium pt-[4px]" style={{ color: theme.subtitleOpacity }}>
+                  + {numSongs - 10} more songs
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-[12px] font-medium" style={{ color: theme.subtitleOpacity }}>
+              No setlist assigned
+            </span>
+          )}
         </ExpandableDetail>
       </div>
 
@@ -786,8 +850,10 @@ const QuoteSections: React.FC<{
   memberCount: number;
   miniCalendar: { daysInMonth: number; firstDay: number; eventDay: number } | null;
   eventYear: string | number;
+  isAdmin?: boolean;
+  memberFee?: number;
   eventMonthDay: string;
-}> = ({ event, theme, memberCount, miniCalendar, eventYear, eventMonthDay }) => {
+}> = ({ event, theme, memberCount, miniCalendar, eventYear, eventMonthDay, isAdmin = true, memberFee }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggle = (key: string) => setExpandedSection(prev => prev === key ? null : key);
   const bandTotal = formatBandTotal(event.price);
@@ -798,9 +864,9 @@ const QuoteSections: React.FC<{
       <div className="flex gap-[20px]">
         <div className="flex-1 flex flex-col">
           <SectionHeader label="YEAR" color={theme.text} onTap={() => toggle('year')} expanded={expandedSection === 'year'} />
-          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>{eventYear || '2028'}</span>
+          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>{eventYear || new Date().getFullYear()}</span>
           <ExpandableDetail expanded={expandedSection === 'year'}>
-            <DetailRow label="Year" value={String(eventYear || '2028')} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+            <DetailRow label="Year" value={String(eventYear || new Date().getFullYear())} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Season" value={(() => { const m = new Date(event.date).getMonth(); return m >= 5 && m <= 8 ? 'Summer' : m >= 2 && m <= 4 ? 'Spring' : m >= 9 && m <= 10 ? 'Autumn' : 'Winter'; })()} color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
         </div>
@@ -859,84 +925,54 @@ const QuoteSections: React.FC<{
             <SectionHeader label="CLIENT" color={theme.text} onTap={() => toggle('client')} expanded={expandedSection === 'client'} />
             <div className="flex flex-col">
               <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
-                {event.notes?.split(' ')[0]?.toUpperCase() || 'MIA'}
+                {(event.clientName || event.title || '—').split(' ')[0]?.toUpperCase()}
               </span>
               <span className="text-[22px] font-bold leading-none" style={{ color: theme.text }}>
-                {event.notes?.split(' ').slice(1).join(' ')?.toUpperCase() || 'CALIFA'}
+                {(event.clientName || event.title || '').split(' ').slice(1).join(' ')?.toUpperCase()}
               </span>
             </div>
           </div>
-          <DetailDotGrid filled={6} total={40} cols={8} rows={5} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          <DetailDotGrid filled={event.clientName ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'client'}>
-            <DetailRow label="Name" value={event.notes || 'MIA CALIFA'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Event Type" value="WEDDING" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+            <DetailRow label="Name" value={event.clientName || '—'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+            <DetailRow label="Event Type" value={(event.eventType || '—').toUpperCase()} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Location" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
         </div>
 
         <div className="flex flex-col gap-[8px]">
           <div className="flex flex-col">
-            <SectionHeader label="PRICING & FINANCE" color={theme.text} onTap={() => toggle('pricing')} expanded={expandedSection === 'pricing'} />
+            <SectionHeader label={isAdmin ? "PRICING" : "YOUR FEE"} color={theme.text} onTap={() => toggle('pricing')} expanded={expandedSection === 'pricing'} />
             <div className="flex flex-col">
               <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
-                {bandTotal}
-              </span>
-              <span className="text-[22px] font-bold leading-none" style={{ color: theme.text }}>
-                DP30%
+                {isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal)}
               </span>
             </div>
           </div>
-          <DetailDotGrid filled={8} total={40} cols={8} rows={5} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-          <ExpandableDetail expanded={expandedSection === 'pricing'}>
-            <DetailRow label="Band Total" value={bandTotal} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Deposit" value="30%" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Balance Due" value="70%" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="Status" value="PENDING" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          </ExpandableDetail>
+          <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+          {isAdmin && (
+            <ExpandableDetail expanded={expandedSection === 'pricing'}>
+              <DetailRow label="Band Total" value={bandTotal} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+              <DetailRow label="Venue" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+            </ExpandableDetail>
+          )}
         </div>
       </div>
 
-      {/* Guests */}
+      {/* Members */}
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
-          <SectionHeader label="GUESTS" color={theme.text} onTap={() => toggle('guests')} expanded={expandedSection === 'guests'} />
-          <SectionValue value={150} color={theme.text} />
+          <SectionHeader label="MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
+          <SectionValue value={memberCount} color={theme.text} />
         </div>
-        <DetailDotGrid filled={150} total={200} cols={20} rows={10} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-        <ExpandableDetail expanded={expandedSection === 'guests'}>
-          <DetailRow label="Expected" value="150" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Capacity" value="200" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Venue" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+        <DetailDotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+        <ExpandableDetail expanded={expandedSection === 'members'}>
+          {event.members?.length ? event.members.map((m, i) => (
+            <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )) : (
+            <DetailRow label="Info" value="No members assigned" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )}
         </ExpandableDetail>
-      </div>
-
-      {/* Music Moments + Members */}
-      <div className="grid grid-cols-2 gap-[20px]">
-        <div className="flex flex-col gap-[8px]">
-          <div className="flex flex-col">
-            <SectionHeader label="MUSIC MOMENTS" color={theme.text} onTap={() => toggle('moments')} expanded={expandedSection === 'moments'} />
-            <SectionValue value={3} color={theme.text} />
-          </div>
-          <DetailDotGrid filled={3} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-          <ExpandableDetail expanded={expandedSection === 'moments'}>
-            <DetailRow label="1" value="Ceremony" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="2" value="Cocktail Hour" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            <DetailRow label="3" value="Reception" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          </ExpandableDetail>
-        </div>
-
-        <div className="flex flex-col gap-[8px]">
-          <div className="flex flex-col">
-            <SectionHeader label="MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
-            <SectionValue value={memberCount || 8} color={theme.text} />
-          </div>
-          <DetailDotGrid filled={memberCount || 8} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-          <ExpandableDetail expanded={expandedSection === 'members'}>
-            {(event.members?.length ? event.members : ['GB', 'CE', 'AN']).map((m, i) => (
-              <DetailRow key={i} label={['SINGER', 'GUITAR', 'DRUMS', 'BASS', 'PIANO', 'SAX', 'TRUMPET', 'KEYS'][i % 8]} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-            ))}
-          </ExpandableDetail>
-        </div>
       </div>
     </div>
   );
@@ -947,7 +983,9 @@ const DraftSections: React.FC<{
   event: EventData;
   theme: typeof THEME.draft;
   memberCount: number;
-}> = ({ event, theme, memberCount }) => {
+  isAdmin?: boolean;
+  memberFee?: number;
+}> = ({ event, theme, memberCount, isAdmin = true, memberFee }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggle = (key: string) => setExpandedSection(prev => prev === key ? null : key);
 
@@ -960,22 +998,25 @@ const DraftSections: React.FC<{
         </div>
         <DetailDotGrid filled={memberCount} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'members'}>
-          {(event.members?.length ? event.members : []).map((m, i) => (
-            <DetailRow key={i} label={['SINGER', 'GUITAR', 'DRUMS', 'BASS', 'PIANO', 'SAX', 'TRUMPET', 'KEYS'][i % 8]} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          ))}
+          {event.members?.length ? event.members.map((m, i) => (
+            <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )) : (
+            <DetailRow label="Info" value="No members assigned" color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          )}
         </ExpandableDetail>
       </div>
 
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
-          <SectionHeader label="BAND TOTAL" color={theme.text} onTap={() => toggle('total')} expanded={expandedSection === 'total'} />
-          <SectionValue value={formatBandTotal(event.price)} color={theme.text} />
+          <SectionHeader label={isAdmin ? "BAND TOTAL" : "YOUR FEE"} color={theme.text} onTap={() => toggle('total')} expanded={expandedSection === 'total'} />
+          <SectionValue value={isAdmin ? formatBandTotal(event.price) : (memberFee != null ? `$${memberFee}` : formatBandTotal(event.price))} color={theme.text} />
         </div>
-        <DetailDotGrid filled={6} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
-        <ExpandableDetail expanded={expandedSection === 'total'}>
-          <DetailRow label="Total" value={formatBandTotal(event.price)} color={theme.text} subtitleColor={theme.subtitleOpacity} />
-          <DetailRow label="Status" value="DRAFT" color={theme.text} subtitleColor={theme.subtitleOpacity} />
-        </ExpandableDetail>
+        <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
+        {isAdmin && (
+          <ExpandableDetail expanded={expandedSection === 'total'}>
+            <DetailRow label="Total" value={formatBandTotal(event.price)} color={theme.text} subtitleColor={theme.subtitleOpacity} />
+          </ExpandableDetail>
+        )}
       </div>
 
       {event.notes && (

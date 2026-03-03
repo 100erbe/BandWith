@@ -1,18 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   ArrowUpRight,
   ArrowDownLeft,
-  Search,
-  Briefcase,
   Loader2,
-  BarChart3,
   Receipt,
   Plus,
-  X,
   Check,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
@@ -32,15 +28,47 @@ interface FinanceExpandedProps {
   onTransactionAdded?: () => void;
 }
 
+const FinanceDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, color }) => {
+  const total = 24;
+  const count = Math.min(filled, total);
+  const [visible, setVisible] = useState(0);
+
+  useEffect(() => {
+    setVisible(0);
+    if (count === 0) return;
+    let c = 0;
+    const iv = setInterval(() => {
+      c++;
+      setVisible(c);
+      if (c >= count) clearInterval(iv);
+    }, 40);
+    return () => clearInterval(iv);
+  }, [count]);
+
+  return (
+    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[10px]"
+          style={{
+            backgroundColor: i < count && i < visible ? color : '#CDCACA',
+            transition: 'background-color 0.15s',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   bandId,
   onClose,
   financialStats,
   transactions: realTransactions,
   loading,
-  onTransactionAdded
+  onTransactionAdded,
 }) => {
-  // Add transaction modal state
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
   const [txTitle, setTxTitle] = useState('');
@@ -51,13 +79,13 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
   const categories = {
     income: ['GIG', 'REHEARSAL', 'MERCHANDISE', 'ROYALTIES', 'OTHER'],
-    expense: ['EQUIPMENT', 'TRAVEL', 'STUDIO', 'MARKETING', 'FEES', 'OTHER']
+    expense: ['EQUIPMENT', 'TRAVEL', 'STUDIO', 'MARKETING', 'FEES', 'OTHER'],
   };
 
   const handleAddTransaction = async () => {
     if (!txTitle.trim() || !txAmount) return;
     setSaving(true);
-    
+
     const { error } = await createTransaction({
       band_id: bandId,
       title: txTitle.trim(),
@@ -65,9 +93,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
       type: txType,
       category: txCategory,
       date: txDate,
-      status: 'completed'
+      status: 'completed',
     });
-    
+
     if (!error) {
       setShowAddTransaction(false);
       setTxTitle('');
@@ -78,181 +106,208 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     setSaving(false);
   };
 
-  // Use real data only - no mock fallback
   const stats = financialStats || { totalIncome: 0, totalExpenses: 0, netProfit: 0 };
-  const hasData = stats.totalIncome > 0 || stats.totalExpenses > 0;
-  
-  // Only use real transactions, no mock
-  const displayTransactions = realTransactions && realTransactions.length > 0 
-    ? realTransactions.map(t => ({
-        id: parseInt(t.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
-        title: t.title,
-        date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        amount: t.type === 'income' ? `+€${Number(t.amount).toFixed(2)}` : `-€${Math.abs(Number(t.amount)).toFixed(2)}`,
-        type: t.type as 'income' | 'expense',
-        tag: t.category || 'OTHER'
-      }))
-    : [];
 
-  const formatValue = (value: number) => {
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-    return value.toFixed(0);
-  };
+  const displayTransactions =
+    realTransactions && realTransactions.length > 0
+      ? realTransactions.map((t) => ({
+          id:
+            parseInt(t.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
+          title: t.title,
+          date: new Date(t.date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }),
+          amount:
+            t.type === 'income'
+              ? `+€${Number(t.amount).toFixed(2)}`
+              : `-€${Math.abs(Number(t.amount)).toFixed(2)}`,
+          type: t.type as 'income' | 'expense',
+          tag: t.category || 'OTHER',
+        }))
+      : [];
+
+  const fmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0));
+
   return (
     <ExpandedCardWrapper
-      backgroundColor="#050505"
+      backgroundColor="#E6E5E1"
       onClose={onClose}
       origin={{ top: '12%', left: '3%', right: '42%', bottom: '62%' }}
     >
-      <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#050505]/95 backdrop-blur-md"
+      {/* Header */}
+      <motion.div
+        className="sticky top-0 z-50 px-4 py-4 flex items-center gap-4 bg-[#E6E5E1]/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
       >
-        <button 
-          onClick={(e) => { e.stopPropagation(); onClose(); }} 
-          className="w-10 h-10 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white border border-white/10 hover:bg-[#333336] transition-colors"
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+          style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-[24px] h-[24px] text-black" />
         </button>
-        <span className="text-xs font-bold tracking-[0.2em] text-stone-500 uppercase">Financial Overview</span>
-        <button 
+        <div className="flex flex-col leading-none flex-1">
+          <span className="text-[32px] font-bold text-black leading-none">MONEY</span>
+          <span className="text-[32px] font-bold text-black leading-none">FLOW</span>
+        </div>
+        <button
           onClick={() => setShowAddTransaction(true)}
-          className="w-10 h-10 rounded-full bg-[#D4FB46] flex items-center justify-center text-black hover:scale-105 transition-transform"
+          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-[20px] h-[20px] text-black" />
         </button>
       </motion.div>
-      
-      <div className="px-3 pb-32">
-        <div className="mb-6 relative pt-2 px-3">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: 0.3 }} 
-            className="w-full bg-[#1C1C1E] rounded-[2rem] p-6 relative overflow-hidden border border-white/5"
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex flex-col">
-                <span className="text-stone-500 text-[10px] font-bold uppercase tracking-widest mb-1">Net Profit</span>
-                <div className="flex items-baseline gap-2">
+
+      {/* Content */}
+      <div className="px-4 pb-32">
+        <div className="flex flex-col gap-10">
+          {/* Stats Grid */}
+          <div className="flex flex-col gap-10">
+            <div className="flex gap-5">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex-1 flex flex-col gap-2 items-start text-left"
+              >
+                <span className="text-xs font-bold text-black tracking-wide">NET PROFIT</span>
+                <div className="h-[62px] overflow-hidden">
                   {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-[#D4FB46]" />
+                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
                   ) : (
-                    <h2 className="text-4xl font-black text-[#D4FB46] tracking-tighter">€{formatValue(stats.netProfit)}</h2>
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      €{fmt(stats.netProfit)}
+                    </span>
                   )}
                 </div>
-              </div>
-              <div className="w-10 h-10 bg-[#D4FB46] rounded-full flex items-center justify-center text-black shadow-[0_0_15px_rgba(212,251,70,0.4)]">
-                <Briefcase className="w-5 h-5 stroke-[2.5]" />
-              </div>
+                <FinanceDotGrid
+                  filled={Math.min(Math.ceil(stats.netProfit / 500), 24)}
+                  color="#D5FB46"
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="flex-1 flex flex-col gap-2 items-start text-left"
+              >
+                <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
+                <div className="h-[62px] overflow-hidden">
+                  {loading ? (
+                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
+                  ) : (
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      €{fmt(stats.totalIncome)}
+                    </span>
+                  )}
+                </div>
+                <FinanceDotGrid
+                  filled={Math.min(Math.ceil(stats.totalIncome / 500), 24)}
+                  color="#0147FF"
+                />
+              </motion.div>
             </div>
-            <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
-              <div>
-                <span className="text-stone-500 text-[10px] font-bold uppercase block mb-0.5">Total Revenue</span>
-                <span className="text-white text-lg font-bold">€{formatValue(stats.totalIncome)}</span>
-              </div>
-              <div className="border-l border-white/10 pl-4">
-                <span className="text-stone-500 text-[10px] font-bold uppercase block mb-0.5">Expenses</span>
-                <span className="text-white text-lg font-bold">-€{formatValue(stats.totalExpenses)}</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.25, type: "tween", duration: 0.3, ease: "easeOut" }} 
-          className="w-full h-56 bg-[#101010] rounded-[2rem] border border-white/5 relative overflow-hidden mb-6 p-6 flex flex-col"
-        >
-          <div className="flex justify-between items-center mb-4 z-10">
-            <span className="text-xs font-bold text-stone-500 uppercase tracking-widest">Cash Flow</span>
-            <div className="flex gap-2">
-              <button className="w-6 h-6 rounded-full bg-[#1C1C1E] text-stone-500 flex items-center justify-center text-[10px] font-bold border border-white/5">M</button>
-              <button className="w-6 h-6 rounded-full bg-[#D4FB46] text-black flex items-center justify-center text-[10px] font-bold">Y</button>
+
+            <div className="flex gap-5">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex-1 flex flex-col gap-2 items-start text-left"
+              >
+                <span className="text-xs font-bold text-black tracking-wide">EXPENSES</span>
+                <div className="h-[62px] overflow-hidden">
+                  {loading ? (
+                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
+                  ) : (
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      -€{fmt(stats.totalExpenses)}
+                    </span>
+                  )}
+                </div>
+                <FinanceDotGrid
+                  filled={Math.min(Math.ceil(stats.totalExpenses / 500), 24)}
+                  color="#9A8878"
+                />
+              </motion.div>
+              <div className="flex-1" />
             </div>
           </div>
-          {hasData ? (
-            <div className="flex-1 flex items-end justify-between gap-2 relative z-10">
-              {/* Show bars based on real data when available */}
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((_, i) => (
-                <motion.div 
-                  key={i} 
-                  initial={{ height: "4px" }} 
-                  animate={{ height: "4px" }} 
-                  transition={{ delay: 0.3 + (i * 0.03), type: "tween", duration: 0.35, ease: "easeOut" }} 
-                  className="w-full rounded-full relative group bg-[#1C1C1E]"
-                />
-              ))}
+
+          {/* Recent Activity */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col">
+              <span className="text-[32px] font-bold leading-none text-black">RECENT</span>
+              <span className="text-[32px] font-bold leading-none text-black">ACTIVITY</span>
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <BarChart3 className="w-10 h-10 text-stone-600 mb-3" />
-              <p className="text-stone-500 text-sm font-medium">No data yet</p>
-              <p className="text-stone-600 text-xs">Add transactions to see your cash flow</p>
-            </div>
-          )}
-        </motion.div>
-        
-        <div className="flex flex-col gap-4">
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            transition={{ delay: 0.7 }} 
-            className="flex items-center justify-between px-1"
-          >
-            <h3 className="text-xl font-black text-white tracking-tight">Recent Activity</h3>
-            {displayTransactions.length > 0 && <Search className="w-5 h-5 text-stone-500" />}
-          </motion.div>
-          
-          {displayTransactions.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.4 }} 
-              className="bg-[#101010] border border-white/5 p-8 rounded-[1.5rem] flex flex-col items-center justify-center text-center"
-            >
-              <Receipt className="w-12 h-12 text-stone-600 mb-3" />
-              <p className="text-stone-400 font-medium mb-1">No transactions yet</p>
-              <p className="text-stone-600 text-sm">Your income and expenses will appear here</p>
-            </motion.div>
-          ) : (
-            displayTransactions.map((tx, i) => (
-              <motion.div 
-                key={tx.id} 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.4 + (i * 0.03), type: "tween", duration: 0.25, ease: "easeOut" }} 
-                className="bg-[#101010] border border-white/10 p-4 rounded-[1.5rem] relative group overflow-hidden hover:border-[#D4FB46]/50 transition-colors"
+
+            {displayTransactions.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex flex-col items-center py-10"
               >
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-110", 
-                      tx.type === 'income' ? "bg-[#1C1C1E] text-[#D4FB46]" : "bg-[#1C1C1E] text-white"
-                    )}>
-                      {tx.type === 'income' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-bold bg-[#1C1C1E] px-1.5 py-0.5 rounded text-stone-400 border border-white/5">{tx.tag}</span>
-                        <span className="text-[10px] font-bold text-stone-600 uppercase">{tx.date}</span>
-                      </div>
-                      <h4 className="font-bold text-white text-sm tracking-wide">{tx.title}</h4>
-                    </div>
-                  </div>
-                  <span className={cn(
-                    "text-lg font-black tracking-tight", 
-                    tx.type === 'income' ? "text-[#D4FB46]" : "text-white"
-                  )}>
-                    {tx.amount}
-                  </span>
-                </div>
+                <Receipt className="w-12 h-12 text-black/15 mb-3" />
+                <span className="text-xs font-bold text-black/40 uppercase tracking-wide mb-1">
+                  No transactions yet
+                </span>
+                <span className="text-[10px] font-medium text-black/30 uppercase">
+                  Your income and expenses will appear here
+                </span>
               </motion.div>
-            ))
-          )}
+            ) : (
+              <div className="flex flex-col gap-0">
+                {displayTransactions.map((tx, i) => (
+                  <motion.div
+                    key={tx.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + i * 0.03 }}
+                    className="flex items-center justify-between py-4 border-b border-black/10 last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          'w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0',
+                          tx.type === 'income' ? 'bg-[#D5FB46]' : 'bg-[#CDCACA]',
+                        )}
+                      >
+                        {tx.type === 'income' ? (
+                          <ArrowDownLeft className="w-5 h-5 text-black" />
+                        ) : (
+                          <ArrowUpRight className="w-5 h-5 text-black" />
+                        )}
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs font-bold text-black uppercase tracking-wide">
+                          {tx.title}
+                        </span>
+                        <span className="text-[10px] font-medium text-black/40 uppercase">
+                          {tx.tag} · {tx.date}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        'text-xs font-bold',
+                        tx.type === 'income' ? 'text-black' : 'text-black/50',
+                      )}
+                    >
+                      {tx.amount}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -263,7 +318,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setShowAddTransaction(false)}
           >
             <motion.div
@@ -271,94 +326,110 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="w-full max-w-md bg-[#1C1C1E] rounded-t-[2rem] p-6"
-              onClick={e => e.stopPropagation()}
+              className="w-full max-w-md bg-[#E6E5E1] rounded-t-[20px] p-6"
+              onClick={(e) => e.stopPropagation()}
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
             >
-              <div className="w-12 h-1 bg-stone-600 rounded-full mx-auto mb-6" />
-              
-              <h2 className="text-2xl font-black text-white mb-6">Add Transaction</h2>
+              <div className="w-12 h-1 bg-black/20 rounded-full mx-auto mb-6" />
+
+              <span className="text-[32px] font-bold text-black leading-none block mb-6">
+                ADD TRANSACTION
+              </span>
 
               {/* Type Toggle */}
-              <div className="flex gap-2 mb-6">
+              <div className="flex gap-0 mb-6 border-b border-black/10">
                 <button
-                  onClick={() => { setTxType('income'); setTxCategory('GIG'); }}
+                  onClick={() => {
+                    setTxType('income');
+                    setTxCategory('GIG');
+                  }}
                   className={cn(
-                    "flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                    'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'income'
-                      ? "bg-[#D4FB46] text-black"
-                      : "bg-white/5 text-stone-400 hover:bg-white/10"
+                      ? 'border-black'
+                      : 'border-transparent text-black/40',
                   )}
                 >
                   <ArrowDownLeft className="w-4 h-4" />
-                  Income
+                  <span className="text-xs font-bold uppercase tracking-wide">Income</span>
                 </button>
                 <button
-                  onClick={() => { setTxType('expense'); setTxCategory('EQUIPMENT'); }}
+                  onClick={() => {
+                    setTxType('expense');
+                    setTxCategory('EQUIPMENT');
+                  }}
                   className={cn(
-                    "flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                    'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'expense'
-                      ? "bg-white text-black"
-                      : "bg-white/5 text-stone-400 hover:bg-white/10"
+                      ? 'border-black'
+                      : 'border-transparent text-black/40',
                   )}
                 >
                   <ArrowUpRight className="w-4 h-4" />
-                  Expense
+                  <span className="text-xs font-bold uppercase tracking-wide">Expense</span>
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="flex flex-col gap-5">
                 {/* Title */}
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-2">Description</label>
+                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                    Description
+                  </label>
                   <input
                     type="text"
                     value={txTitle}
                     onChange={(e) => setTxTitle(e.target.value)}
                     placeholder="e.g., Jazz Night @ Blue Note"
-                    className="w-full h-12 px-4 rounded-xl bg-white/5 text-white font-medium placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-[#D4FB46]"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
                   />
                 </div>
 
                 {/* Amount */}
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-2">Amount (€)</label>
+                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                    Amount (€)
+                  </label>
                   <input
                     type="number"
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full h-12 px-4 rounded-xl bg-white/5 text-white font-bold text-xl placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-[#D4FB46]"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
                   />
                 </div>
 
                 {/* Date */}
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-2">Date</label>
+                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                    Date
+                  </label>
                   <div className="relative">
                     <input
                       type="date"
                       value={txDate}
                       onChange={(e) => setTxDate(e.target.value)}
-                      className="w-full h-12 px-4 rounded-xl bg-white/5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-[#D4FB46]"
+                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black focus:outline-none focus:border-black transition-colors"
                     />
-                    <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-500 pointer-events-none" />
+                    <Calendar className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Category */}
                 <div>
-                  <label className="text-[10px] font-bold text-stone-500 uppercase block mb-2">Category</label>
+                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                    Category
+                  </label>
                   <div className="flex flex-wrap gap-2">
-                    {categories[txType].map(cat => (
+                    {categories[txType].map((cat) => (
                       <button
                         key={cat}
                         onClick={() => setTxCategory(cat)}
                         className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-bold uppercase transition-all",
+                          'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all',
                           txCategory === cat
-                            ? "bg-[#D4FB46] text-black"
-                            : "bg-white/5 text-stone-400 hover:bg-white/10"
+                            ? 'bg-black text-white'
+                            : 'bg-black/5 text-black/40 active:bg-black/10',
                         )}
                       >
                         {cat}
@@ -372,10 +443,10 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   onClick={handleAddTransaction}
                   disabled={!txTitle.trim() || !txAmount || saving}
                   className={cn(
-                    "w-full h-14 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all mt-4",
+                    'w-full h-14 rounded-[10px] font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all mt-2',
                     txTitle.trim() && txAmount
-                      ? "bg-[#D4FB46] text-black hover:scale-[1.02] active:scale-[0.98]"
-                      : "bg-white/10 text-stone-600 cursor-not-allowed"
+                      ? 'bg-black text-white active:scale-[0.98]'
+                      : 'bg-black/10 text-black/30 cursor-not-allowed',
                   )}
                 >
                   {saving ? (
@@ -383,7 +454,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   ) : (
                     <>
                       <Check className="w-5 h-5" />
-                      Add {txType === 'income' ? 'Income' : 'Expense'}
+                      ADD {txType === 'income' ? 'INCOME' : 'EXPENSE'}
                     </>
                   )}
                 </button>

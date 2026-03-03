@@ -1,16 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { 
-  X, 
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Calendar,
-  Music2,
-  Loader2,
-  BarChart3
-} from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useBand } from '@/lib/BandContext';
 import { useDashboardData } from '@/app/hooks/useData';
 
@@ -18,191 +8,223 @@ interface AnalyticsViewProps {
   onClose: () => void;
 }
 
+const AnalyticsDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, color }) => {
+  const total = 24;
+  const count = Math.min(filled, total);
+  const [visible, setVisible] = useState(0);
+
+  useEffect(() => {
+    setVisible(0);
+    if (count === 0) return;
+    let c = 0;
+    const iv = setInterval(() => {
+      c++;
+      setVisible(c);
+      if (c >= count) clearInterval(iv);
+    }, 40);
+    return () => clearInterval(iv);
+  }, [count]);
+
+  return (
+    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[10px]"
+          style={{
+            backgroundColor: i < count && i < visible ? color : '#CDCACA',
+            transition: 'background-color 0.15s',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+const MONTHLY_DATA = [
+  { month: 'JAN', pct: 45 },
+  { month: 'FEB', pct: 32 },
+  { month: 'MAR', pct: 67 },
+  { month: 'APR', pct: 55 },
+  { month: 'MAY', pct: 78 },
+  { month: 'JUN', pct: 42 },
+];
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
   const { selectedBand } = useBand();
   const { data: dashboardData, loading } = useDashboardData(selectedBand?.id || null);
 
-  const stats = [
-    {
-      label: 'Total Revenue',
-      value: dashboardData?.eventStats?.totalRevenue || 0,
-      format: 'currency',
-      icon: DollarSign,
-      change: dashboardData?.eventStats?.revenueChangePercentage || 0,
-      color: 'bg-[#1A1A1A]',
-      textColor: 'text-white'
-    },
-    {
-      label: 'Total Events',
-      value: dashboardData?.eventStats?.totalEvents || 0,
-      format: 'number',
-      icon: Calendar,
-      change: 0,
-      color: 'bg-[#D4FB46]',
-      textColor: 'text-[#1A1A1A]'
-    },
-    {
-      label: 'Confirmed Gigs',
-      value: dashboardData?.eventStats?.confirmedEvents || 0,
-      format: 'number',
-      icon: Music2,
-      change: 0,
-      color: 'bg-white',
-      textColor: 'text-black'
-    },
-    {
-      label: 'Upcoming Events',
-      value: dashboardData?.eventStats?.upcomingEvents || 0,
-      format: 'number',
-      icon: Calendar,
-      change: 0,
-      color: 'bg-white',
-      textColor: 'text-black'
-    },
-  ];
+  const fmt = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1)}k` : `€${v}`);
 
-  const formatValue = (value: number, format: string) => {
-    if (format === 'currency') {
-      return new Intl.NumberFormat('en-EU', {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
-    }
-    return value.toString();
-  };
+  const totalRevenue = dashboardData?.eventStats?.totalRevenue || 0;
+  const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
+  const confirmed = dashboardData?.eventStats?.confirmedEvents || 0;
+  const upcoming = dashboardData?.eventStats?.upcomingEvents || 0;
+  const change = dashboardData?.eventStats?.revenueChangePercentage || 0;
 
   return (
     <motion.div
-      initial={{ x: "100%" }}
+      initial={{ x: '100%' }}
       animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden"
+      style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       {/* Header */}
-      <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">Insights</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">ANALYTICS</h1>
-            <p className="text-sm text-black/50 font-bold tracking-tight mt-1">{selectedBand?.name}</p>
-          </div>
+      <div
+        className="px-4 shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+      >
+        <div className="flex items-center gap-4 mb-10">
           <button
             onClick={onClose}
-            className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-all"
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <X className="w-6 h-6 text-black/50" />
+            <ArrowLeft className="w-[24px] h-[24px] text-black" />
           </button>
+          <div className="flex flex-col leading-none">
+            <span className="text-[32px] font-bold text-black leading-none">DATA</span>
+            <span className="text-[32px] font-bold text-black leading-none">INSIGHTS</span>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-6 pb-32">
+      <div className="px-4 pb-32">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-black/30" />
           </div>
         ) : (
-          <>
-            {/* Year Filter */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {[2024, 2025, 2026].map((year) => (
-                <button
-                  key={year}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-bold transition-colors whitespace-nowrap",
-                    year === 2026
-                      ? "bg-black text-white"
-                      : "bg-white/60 text-black/50 hover:bg-white"
-                  )}
+          <div className="flex flex-col gap-10">
+            {/* Stats Grid (2×2) */}
+            <div className="flex flex-col gap-10">
+              <div className="flex gap-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  {year}
-                </button>
-              ))}
+                  <span className="text-xs font-bold text-black tracking-wide">TOTAL REVENUE</span>
+                  <div className="h-[62px] overflow-hidden">
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      {fmt(totalRevenue)}
+                    </span>
+                  </div>
+                  <AnalyticsDotGrid
+                    filled={Math.min(Math.ceil(totalRevenue / 500), 24)}
+                    color="#D5FB46"
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex-1 flex flex-col gap-2 items-start text-left"
+                >
+                  <span className="text-xs font-bold text-black tracking-wide">TOTAL EVENTS</span>
+                  <div className="h-[62px] overflow-hidden">
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      {totalEvents}
+                    </span>
+                  </div>
+                  <AnalyticsDotGrid filled={totalEvents} color="#0147FF" />
+                </motion.div>
+              </div>
+
+              <div className="flex gap-5">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="flex-1 flex flex-col gap-2 items-start text-left"
+                >
+                  <span className="text-xs font-bold text-black tracking-wide">CONFIRMED</span>
+                  <div className="h-[62px] overflow-hidden">
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      {confirmed}
+                    </span>
+                  </div>
+                  <AnalyticsDotGrid filled={confirmed} color="#9A8878" />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex-1 flex flex-col gap-2 items-start text-left"
+                >
+                  <span className="text-xs font-bold text-black tracking-wide">UPCOMING</span>
+                  <div className="h-[62px] overflow-hidden">
+                    <span className="text-[52px] font-bold leading-none text-black block">
+                      {upcoming}
+                    </span>
+                  </div>
+                  <AnalyticsDotGrid filled={upcoming} color="#050505" />
+                </motion.div>
+              </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {stats.map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className={cn(
-                    "rounded-2xl p-4 relative overflow-hidden",
-                    stat.color,
-                    i === 0 && "col-span-2"
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center",
-                      stat.color === 'bg-[#1A1A1A]' ? "bg-white/10" : "bg-black/5"
-                    )}>
-                      <stat.icon className={cn("w-5 h-5", stat.textColor)} />
-                    </div>
-                    {stat.change !== 0 && (
-                      <div className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
-                        stat.change > 0 
-                          ? "bg-green-100 text-green-600" 
-                          : "bg-red-100 text-red-600"
-                      )}>
-                        {stat.change > 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
-                        )}
-                        {Math.abs(stat.change).toFixed(0)}%
-                      </div>
-                    )}
-                  </div>
-                  <p className={cn(
-                    "text-xs font-bold uppercase tracking-wide mb-1 opacity-60",
-                    stat.textColor
-                  )}>
-                    {stat.label}
-                  </p>
-                  <p className={cn("text-3xl font-black", stat.textColor)}>
-                    {formatValue(stat.value, stat.format)}
-                  </p>
-                </motion.div>
-              ))}
+            {/* Bottom Stats Row */}
+            <div className="flex gap-2.5">
+              <div className="flex flex-col flex-1">
+                <span className="text-xs font-bold text-black tracking-wide">REVENUE CHANGE</span>
+                <span className="text-[42px] font-bold leading-tight text-black">
+                  {change !== 0
+                    ? `${change > 0 ? '+' : ''}${change.toFixed(0)}%`
+                    : '--'}
+                </span>
+                <span className="text-xs font-bold text-black tracking-wide">VS PREVIOUS PERIOD</span>
+              </div>
+              <div className="flex flex-col flex-1">
+                <span className="text-xs font-bold text-black tracking-wide">ALL TIME</span>
+                <span className="text-[42px] font-bold leading-tight text-black">
+                  {fmt(totalRevenue)}
+                </span>
+                <span className="text-xs font-bold text-black tracking-wide">TOTAL EARNINGS</span>
+              </div>
             </div>
 
             {/* Monthly Breakdown */}
-            <div className="bg-white rounded-2xl p-6">
-              <h3 className="font-bold text-black mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Monthly Breakdown
-              </h3>
-              <div className="space-y-4">
-                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((month, i) => {
-                  const percentage = Math.random() * 100;
-                  return (
-                    <div key={month} className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-black/50 w-10">{month}</span>
-                      <div className="flex-1 h-3 bg-black/5 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-[#D4FB46] rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${percentage}%` }}
-                          transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col">
+                <span className="text-[32px] font-bold leading-none text-black">MONTHLY</span>
+                <span className="text-[32px] font-bold leading-none text-black">BREAKDOWN</span>
               </div>
-              <p className="text-xs text-black/30 mt-4 text-center">
+
+              <div className="flex flex-col gap-0">
+                {MONTHLY_DATA.map(({ month, pct }, i) => (
+                  <motion.div
+                    key={month}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.04 }}
+                    className="flex items-center gap-4 py-4 border-b border-black/10 last:border-0"
+                  >
+                    <span className="text-xs font-bold text-black w-10 tracking-wide">
+                      {month}
+                    </span>
+                    <div className="flex-1 h-3 bg-[#CDCACA] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-[#D5FB46] rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <span className="text-[10px] font-medium text-black/40 uppercase text-center">
                 Detailed analytics coming soon
-              </p>
+              </span>
             </div>
-          </>
+          </div>
         )}
       </div>
     </motion.div>

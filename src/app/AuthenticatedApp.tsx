@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
@@ -29,9 +29,12 @@ import {
   respondToEventInvite,
   getUserEventMembership,
   getEventMembers,
+  inviteToEvent,
   createEvent,
+  updateEvent,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
+import { createSetlist } from "@/lib/services/songs";
 
 import { USER } from "@/app/data/user";
 import { BANDS, Band as MockBand } from "@/app/data/bands";
@@ -77,40 +80,61 @@ import { RehearsalLiveView } from "@/app/components/rehearsal/RehearsalLiveView"
 import { RehearsalPostView } from "@/app/components/rehearsal/RehearsalPostView";
 
 import { QuoteCreationWizard } from "@/app/components/quotes";
-import { Quote, createQuote } from "@/app/data/quotes";
+import { Quote } from "@/app/data/quotes";
+import { createQuote as createQuoteDB } from "@/lib/services/quotes";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
+import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 
-const eventToEventItem = (event: Event): EventItem => ({
-  id: parseInt(event.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
-  eventId: event.id,
-  title: event.title || "Untitled Event",
-  status: event.event_type === "rehearsal" ? "REHEARSAL" : "CONFIRMED",
-  date: event.event_date || new Date().toISOString().split("T")[0],
-  time: event.start_time || "19:00",
-  location: event.venue_name || event.venue_city || "TBD",
-  price: event.fee?.toString() || "0",
-  members: [],
-  color:
-    event.event_type === "rehearsal"
-      ? "bg-black text-[#D4FB46]"
-      : "bg-green-100 text-green-700",
-  notes: event.notes || undefined,
-  createdBy: event.created_by || undefined,
-  setlistId: event.setlist_id || undefined,
-  clientName: event.client_name || undefined,
-  venueAddress: event.venue_address || undefined,
-  venueCity: event.venue_city || undefined,
-  eventType: event.event_type || undefined,
-  loadInTime: event.load_in_time || undefined,
-  soundcheckTime: event.soundcheck_time || undefined,
-  endTime: event.end_time || undefined,
-});
+const mapEventStatus = (event: Event): string => {
+  if (event.event_type === "rehearsal") return "REHEARSAL";
+  if (event.quote_id) return "QUOTE";
+  const s = event.status?.toLowerCase();
+  if (s === "draft") return "DRAFT";
+  if (s === "tentative") return "QUOTE";
+  if (s === "confirmed" || s === "completed") return "CONFIRMED";
+  if (s === "cancelled") return "DRAFT";
+  return "CONFIRMED";
+};
+
+const eventToEventItem = (event: Event): EventItem => {
+  const status = mapEventStatus(event);
+  return {
+    id: parseInt(event.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
+    eventId: event.id,
+    title: event.title || "Untitled Event",
+    status,
+    date: event.event_date || new Date().toISOString().split("T")[0],
+    time: event.start_time || "19:00",
+    location: event.venue_name || event.venue_city || "TBD",
+    price: event.fee?.toString() || "0",
+    members: [],
+    color:
+      status === "REHEARSAL" ? "bg-black text-[#D4FB46]"
+        : status === "QUOTE" ? "bg-[#9A8878] text-white"
+        : status === "DRAFT" ? "bg-black/20 text-black/60"
+        : "bg-green-100 text-green-700",
+    notes: event.notes || undefined,
+    createdBy: event.created_by || undefined,
+    setlistId: event.setlist_id || undefined,
+    clientName: event.client_name || undefined,
+    venueAddress: event.venue_address || undefined,
+    venueCity: event.venue_city || undefined,
+    eventType: event.event_type || undefined,
+    loadInTime: event.load_in_time || undefined,
+    soundcheckTime: event.soundcheck_time || undefined,
+    endTime: event.end_time || undefined,
+    indoorOutdoor: event.indoor_outdoor || undefined,
+    quoteStatus: event.status || undefined,
+    is_recurring: event.is_recurring || false,
+    recurrence_rule: event.recurrence_rule || undefined,
+  };
+};
 
 export default function AuthenticatedApp() {
   const { isAuthenticated, user } = useAuth();
@@ -177,7 +201,7 @@ export default function AuthenticatedApp() {
   }, [isAuthenticated, pushSupported, initializePush]);
 
   // Data hooks
-  const { data: dashboardData, loading: dashboardLoading } = useDashboardData(realBand?.id || null);
+  const { data: dashboardData, loading: dashboardLoading } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
   const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"]);
   const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"]);
@@ -187,6 +211,7 @@ export default function AuthenticatedApp() {
   const [activeTab, setActiveTab] = useState<TabName>("Home");
   const [mockSelectedBand, setMockSelectedBand] = useState<MockBand>(BANDS[0]);
   const [isBandSwitcherOpen, setIsBandSwitcherOpen] = useState(false);
+  const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState<ExpandedCardType>(null);
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
 
@@ -201,13 +226,117 @@ export default function AuthenticatedApp() {
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [createEventType, setCreateEventType] = useState<CreateEventType>(null);
+  const [editingEventData, setEditingEventData] = useState<EventData | null>(null);
+  const [saveToast, setSaveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  useEffect(() => {
+    if (!saveToast) return;
+    const t = setTimeout(() => setSaveToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [saveToast]);
 
   const [chatFilter, setChatFilter] = useState<ChatType>("direct");
   const [chatSearch, setChatSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
 
-  // Push navigation
+  const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>([]);
+
+  const { events: realEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents(realBand?.id || null);
+  const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
+  const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({
+    limit: 20,
+    onNewEventInvite: (notif) => {
+      if (notif.data?.creator_id !== user?.id) {
+        setRsvpNotification(notif);
+      }
+    },
+  });
+  const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
+
+  const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number }[]>>({});
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!realEvents?.length) return;
+    const fetchAllMembers = async () => {
+      const eventIds = realEvents.map(e => e.id);
+      const map: Record<string, { name: string; userId: string; fee?: number }[]> = {};
+
+      // Simple query WITHOUT profile join to avoid FK/schema issues
+      const { data, error } = await supabase
+        .from('event_members')
+        .select('event_id, user_id, fee, status')
+        .in('event_id', eventIds);
+
+      if (error) {
+        console.error('event_members query failed:', error.message);
+        return; // Keep previous map rather than overwriting with empty
+      }
+
+      // Resolve names from band members already in memory
+      const bandNameMap: Record<string, string> = {};
+      realBand?.members?.forEach((m: any) => {
+        if (m.user_id) bandNameMap[m.user_id] = m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member';
+      });
+
+      data?.forEach((em: any) => {
+        if (!map[em.event_id]) map[em.event_id] = [];
+        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee });
+      });
+      setEventMembersMap(map);
+    };
+    fetchAllMembers();
+  }, [realEvents, membersRefreshKey, realBand?.members]);
+
+  const events = useMemo(() => {
+    if (realEvents && realEvents.length > 0) {
+      return realEvents.map(e => {
+        const item = eventToEventItem(e);
+        const members = eventMembersMap[e.id] || [];
+        if (members.length > 0) {
+          item.members = members.map(m => {
+            const parts = m.name.split(' ');
+            return parts.map(p => p[0]).join('').toUpperCase().slice(0, 2);
+          });
+          item.memberUserIds = members.map(m => m.userId);
+        }
+        return item;
+      });
+    }
+    return [];
+  }, [realEvents, eventMembersMap]);
+
+  const userFeeMap = useMemo(() => {
+    if (isAdmin || !user?.id) return {};
+    const map: Record<string, number> = {};
+    Object.entries(eventMembersMap).forEach(([eventId, members]) => {
+      const me = members.find(m => m.userId === user.id);
+      if (me?.fee) map[eventId] = me.fee;
+    });
+    return map;
+  }, [eventMembersMap, user?.id, isAdmin]);
+
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
+  const handleEventCardClickRef = useRef<(event: EventData) => void>(() => {});
+
+  const navigateToEvent = useCallback(async (eventDbId: string) => {
+    setActiveTab("Events");
+    setTimeout(async () => {
+      const ev = eventsRef.current.find(e => e.eventId === eventDbId);
+      if (ev) {
+        handleEventCardClickRef.current(ev);
+      } else {
+        await refetchEvents();
+        setTimeout(() => {
+          const evRetry = eventsRef.current.find(e => e.eventId === eventDbId);
+          if (evRetry) handleEventCardClickRef.current(evRetry);
+        }, 500);
+      }
+    }, 200);
+  }, [refetchEvents]);
+
+  // Push navigation - deep link to the relevant screen
   useEffect(() => {
     const handler = (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
@@ -216,23 +345,15 @@ export default function AuthenticatedApp() {
         setTimeout(() => {
           setSelectedChat({ id: Date.now(), uuid: d.chatId, type: "direct", name: "Chat", initials: "CH", lastMessage: "", time: "now", unread: 0, status: "received" });
         }, 100);
-      } else if (d.screen === "event") setActiveTab("Events");
-      else if (d.screen === "home") setActiveTab("Home");
+      } else if (d.screen === "event" && d.eventId) {
+        navigateToEvent(d.eventId);
+      } else if (d.screen === "event") {
+        setActiveTab("Events");
+      } else if (d.screen === "home") setActiveTab("Home");
     };
     window.addEventListener("push-navigate", handler);
     return () => window.removeEventListener("push-navigate", handler);
-  }, []);
-
-  const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>([]);
-
-  const { events: realEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents(realBand?.id || null);
-  const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({ limit: 20 });
-  const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
-
-  const events = useMemo(() => {
-    if (realEvents && realEvents.length > 0) return realEvents.map(eventToEventItem);
-    return [];
-  }, [realEvents]);
+  }, [navigateToEvent]);
 
   const setEvents = (updater: typeof localEvents | ((prev: typeof localEvents) => typeof localEvents)) => {
     setLocalEvents(typeof updater === "function" ? updater : () => updater);
@@ -460,7 +581,14 @@ export default function AuthenticatedApp() {
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
-      const mf = eventFilter === "All" || (eventFilter === "Confirmed" && e.status === "CONFIRMED") || (eventFilter === "Rehearsal" && e.status === "REHEARSAL");
+      const s = e.status?.toUpperCase();
+      let mf = eventFilter === "All";
+      if (!mf) {
+        if (eventFilter === "GIGS" || eventFilter === "Confirmed") mf = s === "CONFIRMED" || s === "COMPLETED";
+        else if (eventFilter === "REHEARSAL" || eventFilter === "Rehearsal") mf = s === "REHEARSAL";
+        else if (eventFilter === "QUOTE") mf = s === "QUOTE" || s === "QUOTED";
+        else if (eventFilter === "DRAFT") mf = s === "DRAFT" || s === "PENDING";
+      }
       const ms = e.title.toLowerCase().includes(eventSearch.toLowerCase()) || e.location.toLowerCase().includes(eventSearch.toLowerCase());
       return mf && ms;
     });
@@ -593,6 +721,16 @@ export default function AuthenticatedApp() {
     ids.forEach((nid) => { const rid = notificationIdMap.get(nid); if (rid) markNotificationAsRead(rid); });
     setTimeout(() => refetchNotifications?.(), 500);
     closeIdentity();
+
+    // Try to deep link to the specific event if this is an event notification
+    const realId = first ? notificationIdMap.get(first.id) : undefined;
+    const realNotifNav = realId ? realNotifications?.find((rn) => rn.id === realId) : null;
+    const navEventId = (realNotifNav?.data as any)?.event_id;
+    if (navEventId && (actionType === "NAV_EVENTS" || actionType === "NAV_EVENTS_CONFIRMED")) {
+      setTimeout(() => navigateToEvent(navEventId), 300);
+      return;
+    }
+
     setTimeout(() => {
       if (actionType === "NAV_CHAT") setActiveTab("Chat");
       else if (actionType === "NAV_EVENTS") { setActiveTab("Events"); setEventFilter("All"); }
@@ -636,12 +774,46 @@ export default function AuthenticatedApp() {
     }
   };
 
-  const handleEventEdit = () => {
+  const handleEventEdit = async () => {
     if (!selectedEvent) return;
-    const eventType = selectedEvent.status === 'REHEARSAL' ? 'rehearsal' : 'gig';
+    const s = selectedEvent.status?.toUpperCase();
+    let evType: CreateEventType;
+    if (s === 'REHEARSAL') evType = 'rehearsal';
+    else if (s === 'QUOTED' || s === 'QUOTE') evType = 'quote';
+    else evType = 'gig';
+
+    let memberUserIds: string[] = [];
+    let memberFeeMap: Record<string, string> = {};
+    if (selectedEvent.eventId) {
+      // Try getEventMembers (has profile join)
+      const { data: members } = await getEventMembers(selectedEvent.eventId);
+      if (members?.length) {
+        memberUserIds = members.map(m => m.user_id);
+        members.forEach(m => { memberFeeMap[m.user_id] = m.fee?.toString() || '0'; });
+      } else {
+        // Fallback 1: simple query without profile join
+        const { data: rawMembers } = await supabase
+          .from('event_members')
+          .select('user_id, fee')
+          .eq('event_id', selectedEvent.eventId);
+        if (rawMembers?.length) {
+          memberUserIds = rawMembers.map((m: any) => m.user_id);
+          rawMembers.forEach((m: any) => { memberFeeMap[m.user_id] = m.fee?.toString() || '0'; });
+        } else {
+          // Fallback 2: use cached eventMembersMap
+          const cached = eventMembersMap[selectedEvent.eventId];
+          if (cached?.length) {
+            memberUserIds = cached.map(m => m.userId);
+            cached.forEach(m => { memberFeeMap[m.userId] = m.fee?.toString() || '0'; });
+          }
+        }
+      }
+    }
+
+    setEditingEventData({ ...selectedEvent, memberUserIds, memberFeeMap });
     setSelectedEvent(null);
     setSelectedEventMembership(null);
-    setCreateEventType(eventType as CreateEventType);
+    setCreateEventType(evType);
     setIsCreateEventOpen(true);
   };
 
@@ -672,6 +844,7 @@ export default function AuthenticatedApp() {
       setSelectedEventMembership(membership);
     }
   };
+  handleEventCardClickRef.current = handleEventCardClick;
 
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
@@ -681,7 +854,9 @@ export default function AuthenticatedApp() {
       const { data: members } = await getEventMembers(realEventId);
       const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
       if (creator?.user_id && user?.id) {
-        await notifyEventResponse(realEventId, selectedEvent.title, selectedEvent.status === "REHEARSAL" ? "rehearsal" : "gig", user.id, creator.user_id, "accepted");
+        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+        await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
       }
     }
     await refetchEvents?.();
@@ -696,7 +871,9 @@ export default function AuthenticatedApp() {
       const { data: members } = await getEventMembers(realEventId);
       const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
       if (creator?.user_id && user?.id) {
-        await notifyEventResponse(realEventId, selectedEvent.title, selectedEvent.status === "REHEARSAL" ? "rehearsal" : "gig", user.id, creator.user_id, "declined");
+        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+        await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
       }
     }
     await refetchEvents?.();
@@ -708,66 +885,189 @@ export default function AuthenticatedApp() {
     const title = isRehearsalWizard ? data.title : data.details?.title;
     const date = isRehearsalWizard ? data.date : data.details?.date;
     const time = isRehearsalWizard ? data.time : data.details?.time;
+    const endTime = isRehearsalWizard ? data.endTime : data.details?.endTime;
     const location = isRehearsalWizard ? data.location : data.details?.venue;
     const price = isRehearsalWizard ? data.totalCost : data.details?.pay || "0";
-    const eventType = isRehearsalWizard ? "rehearsal" : data.eventType;
+    const eventType = isRehearsalWizard ? "rehearsal" : (data._originalEventType || data.eventType || "other");
 
-    if (realBand?.id) {
+    if (!realBand?.id) {
+      setSaveToast({ message: 'No band selected', type: 'error' });
+      setEditingEventData(null);
+      setIsCreateEventOpen(false);
+      return;
+    }
+
+    try {
       const venueAddress = isRehearsalWizard ? data.address : data.details?.address;
       const venueCity = isRehearsalWizard ? data.city : data.details?.city;
       const clientName = data.details?.clientName || data.clientName;
 
-      const eventData = {
+      const fullAddress = [venueAddress, venueCity].filter(Boolean).join(', ') || null;
+      const venueFinal = location || "TBD";
+      const timeFinal = time || "20:00";
+      const eventData: Record<string, any> = {
         band_id: realBand.id,
         title: title || "Untitled Event",
-        event_type: eventType as "gig" | "rehearsal",
-        status: "confirmed" as const,
-        date, time: time || "20:00",
-        event_date: date, start_time: time || "20:00",
-        venue_name: location || "TBD",
-        venue_address: venueAddress || null,
+        event_type: eventType,
+        status: "confirmed",
+        event_date: date,
+        start_time: timeFinal,
+        end_time: endTime || null,
+        venue_name: venueFinal,
+        venue: venueFinal,
+        venue_address: fullAddress,
         venue_city: venueCity || null,
         client_name: clientName || null,
         fee: parseFloat(price) || 0,
         notes: data.notes || null,
-        description: location ? `Location: ${location}` : null,
+        indoor_outdoor: data.setting || null,
+        is_recurring: isRehearsalWizard ? (data.recurrence && data.recurrence !== 'once') : false,
+        recurrence_rule: isRehearsalWizard && data.recurrence && data.recurrence !== 'once'
+          ? { frequency: data.recurrence === 'biweekly' ? 'weekly' : data.recurrence, interval: data.recurrence === 'biweekly' ? 2 : 1 }
+          : null,
       };
 
-      const { data: saved, error } = await createEvent(eventData);
-      if (!error && saved) {
-        if (user?.id) {
-          try {
-            const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
-            const invitedIds = data.audienceIds?.length > 0 ? data.audienceIds : data.members?.map((m: any) => m.id) || [];
-            await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, fee: parseFloat(price) || undefined });
-            const invitedCount = invitedIds.length > 0 ? invitedIds.filter((id: string) => id !== user.id).length : (realBand.member_count || 1) - 1;
-            if (invitedCount > 0) await notifyEventPendingConfirmations(user.id, realBand.id, saved.id, title || "Event", eventType, invitedCount);
-          } catch (err) { console.error("Notify error:", err); }
+      const persistMembers = async (eventId: string): Promise<string> => {
+        if (!data.members?.length) return 'no members in payload';
+        let membersToInvite = data.members;
+        if (isRehearsalWizard && data.audienceIds?.length > 0) {
+          membersToInvite = data.members.filter((m: any) => data.audienceIds.includes(m.id));
         }
-        refetchEvents();
+        if (!membersToInvite.length) return 'filtered to 0 members';
+
+        const { error: delErr } = await supabase.from('event_members').delete().eq('event_id', eventId);
+        if (delErr) return `delete failed: ${delErr.message}`;
+
+        const errors: string[] = [];
+        for (const m of membersToInvite) {
+          const isCreator = m.id === user?.id;
+          const { error: insErr } = await supabase
+            .from('event_members')
+            .insert({ event_id: eventId, user_id: m.id, role: m.role || null, fee: parseFloat(m.fee) || 0, status: isCreator ? 'confirmed' : 'pending' });
+          if (insErr) errors.push(`${m.id}: ${insErr.message}`);
+        }
+
+        if (errors.length > 0) return `insert errors: ${errors.join('; ')}`;
+
+        // Verify: read back what we just inserted
+        const { data: verify, error: verErr } = await supabase
+          .from('event_members')
+          .select('user_id')
+          .eq('event_id', eventId);
+        if (verErr) return `verify failed: ${verErr.message}`;
+        return `OK: ${verify?.length || 0} members saved`;
+      };
+
+      // Persist setlist: create a DB setlist from form data and attach its ID
+      const persistSetlist = async (): Promise<string | null> => {
+        try {
+          // Rehearsal flow: setlistSnapshotFinal has songs with songId
+          if (isRehearsalWizard && data.setlistSnapshotFinal?.songs?.length > 0) {
+            const songs = data.setlistSnapshotFinal.songs.map((s: any, i: number) => ({
+              song_id: s.songId,
+              position: i,
+              set_number: 1,
+            }));
+            const { data: sl } = await createSetlist({
+              band_id: realBand.id,
+              name: `${title || 'Rehearsal'} setlist`,
+              song_count: songs.length,
+            }, songs);
+            return sl?.id || null;
+          }
+          // Gig/Quote flow: setlist is array of sets with songs
+          if (!isRehearsalWizard && data.setlist?.length > 0) {
+            const allSongs: { song_id: string; position: number; set_number: number }[] = [];
+            let pos = 0;
+            for (let setIdx = 0; setIdx < data.setlist.length; setIdx++) {
+              const set = data.setlist[setIdx];
+              for (const song of (set.songs || [])) {
+                if (song.songId) {
+                  allSongs.push({ song_id: song.songId, position: pos++, set_number: setIdx + 1 });
+                }
+              }
+            }
+            if (allSongs.length === 0) return null;
+            const { data: sl } = await createSetlist({
+              band_id: realBand.id,
+              name: `${title || 'Event'} setlist`,
+              song_count: allSongs.length,
+            }, allSongs);
+            return sl?.id || null;
+          }
+          return null;
+        } catch (err) {
+          console.error('Setlist persist error:', err);
+          return null;
+        }
+      };
+
+      const setlistId = await persistSetlist();
+      if (setlistId) {
+        eventData.setlist_id = setlistId;
       }
-    }
 
-    const newId = Date.now();
-    setEvents((prev) => [...prev, {
-      id: newId, title, status: eventType === "rehearsal" ? "REHEARSAL" : "CONFIRMED",
-      date, time, location, price, members: data.members?.map((m: any) => "U" + m.id) || [],
-      color: eventType === "rehearsal" ? "bg-black text-[#D4FB46]" : "bg-yellow-100 text-yellow-700",
-    }]);
-
-    if (eventType === "rehearsal") {
-      setRehearsalDetails((prev) => ({
-        ...prev,
-        [newId]: {
-          setlist: data.setlist?.filter((s: any) => s.type === "song") || [],
-          tasks: data.tasks || [],
-          timeline: [
-            { time, label: "Start", icon: Play, active: true },
-            { time: "22:00", label: "End", icon: LogOut },
-          ],
-        },
+      // Optimistically build member map from the form data
+      const optimisticMembers = (data.members || []).map((m: any) => ({
+        name: m.name || 'Member',
+        userId: m.id,
+        fee: parseFloat(m.fee) || 0,
       }));
+
+      if (data._editing && data._editingEventId) {
+        const { error } = await updateEvent(data._editingEventId, eventData);
+        if (!error) {
+          const memberResult = await persistMembers(data._editingEventId);
+          if (optimisticMembers.length > 0) {
+            setEventMembersMap(prev => ({ ...prev, [data._editingEventId]: optimisticMembers }));
+          }
+          const memberFailed = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
+          if (memberFailed) {
+            console.error('Member persist issue:', memberResult);
+            setSaveToast({ message: 'Event updated, but there was a problem saving members.', type: 'error' });
+          } else {
+            setSaveToast({ message: 'Event updated!', type: 'success' });
+          }
+        } else {
+          setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
+        }
+      } else {
+        const { data: saved, error } = await createEvent(eventData);
+        if (!error && saved) {
+          const memberResult = await persistMembers(saved.id);
+          // Optimistic update
+          if (optimisticMembers.length > 0) {
+            setEventMembersMap(prev => ({ ...prev, [saved.id]: optimisticMembers }));
+          }
+          if (user?.id) {
+            try {
+              const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+              const invitedIds = data.audienceIds?.length > 0 ? data.audienceIds : data.members?.map((m: any) => m.id) || [];
+              const perMemberFees: Record<string, number> = {};
+              (data.members || []).forEach((m: any) => { if (m.id && m.fee) perMemberFees[m.id] = parseFloat(m.fee) || 0; });
+              await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, fee: parseFloat(price) || undefined, memberFees: perMemberFees });
+              const invitedCount = invitedIds.length > 0 ? invitedIds.filter((id: string) => id !== user.id).length : (realBand.member_count || 1) - 1;
+              if (invitedCount > 0) await notifyEventPendingConfirmations(user.id, realBand.id, saved.id, title || "Event", eventType, invitedCount);
+            } catch (err) { console.error("Notify error:", err); }
+          }
+          const memberFailed2 = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
+          if (memberFailed2) {
+            console.error('Member persist issue:', memberResult);
+            setSaveToast({ message: 'Event created, but there was a problem saving members.', type: 'error' });
+          } else {
+            setSaveToast({ message: 'Event created!', type: 'success' });
+          }
+        } else {
+          setSaveToast({ message: `Create failed: ${error?.message || JSON.stringify(error)}`, type: 'error' });
+        }
+      }
+      await refetchEvents();
+      setMembersRefreshKey(k => k + 1);
+    } catch (err: any) {
+      setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
     }
+
+    setEditingEventData(null);
     setIsCreateEventOpen(false);
   };
 
@@ -806,17 +1106,17 @@ export default function AuthenticatedApp() {
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} />
+            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} />
           )}
         </AnimatePresence>
 
         <AnimatePresence>
           {selectedEvent && (
             <EventDetail event={selectedEvent} onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
-              userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "invited" ? "pending" : "accepted"}
+              userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
               onAccept={handleEventAccept} onDecline={handleEventDecline}
               onEdit={handleEventEdit} onDelete={handleEventDelete} onChat={handleEventChat}
-              memberFee={selectedEventMembership?.fee} />
+              memberFee={selectedEventMembership?.fee} isAdmin={isAdmin} />
           )}
         </AnimatePresence>
 
@@ -838,8 +1138,37 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>{showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} onChatCreated={(id) => { setShowNewChat(false); setSelectedChat({ id: Date.now(), uuid: id, type: "direct", name: "New Chat", initials: "NC", lastMessage: "Start chatting...", time: "now", unread: 0, status: "read" }); refetchChats?.(); }} />}</AnimatePresence>
 
-        <AnimatePresence>{isCreateEventOpen && createEventType !== "quote" && <CreateEventModal initialType={createEventType} layoutId={`create-button-${createEventType}`} onClose={() => setIsCreateEventOpen(false)} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} />}</AnimatePresence>
-        <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={(q) => { setIsCreateEventOpen(false); }} />}</AnimatePresence>
+        <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
+        <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
+          if (realBand?.id) {
+            const quoteData = {
+              band_id: realBand.id,
+              quote_number: q.quoteNumber || `Q-${Date.now()}`,
+              status: (q.status || 'draft').toLowerCase(),
+              client_name: q.clientName || 'Unknown',
+              client_email: q.clientEmail || null,
+              client_phone: q.clientPhone || null,
+              client_company: q.clientCompany || null,
+              event_name: q.eventName || null,
+              event_type: q.eventType || null,
+              event_date: q.eventDate || null,
+              venue_name: q.venueName || null,
+              venue_city: q.venueCity || null,
+              subtotal: q.subtotal || 0,
+              iva_amount: q.vatAmount || 0,
+              total: q.total || 0,
+              deposit_amount: q.depositAmount || 0,
+              event_id: q.eventId || (await (async () => {
+                const evD: Record<string, any> = { band_id: realBand.id, title: q.eventName || q.clientName || 'Quote Event', event_type: q.eventType || 'other', status: 'tentative' as const, event_date: q.eventDate || new Date().toISOString().split('T')[0], start_time: q.eventTimeStart || '20:00', venue_name: q.venueName || 'TBD', venue: q.venueName || 'TBD', fee: q.total || 0, client_name: q.clientName || null };
+                const { data: ev } = await createEvent(evD);
+                refetchEvents();
+                return ev?.id || null;
+              })()),
+            };
+            await createQuoteDB(quoteData);
+          }
+          setIsCreateEventOpen(false);
+        }} />}</AnimatePresence>
 
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as MockBand)) : BANDS}
@@ -884,7 +1213,24 @@ export default function AuthenticatedApp() {
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={confirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
 
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen} />
+        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification} />
+
+        <AnimatePresence>
+          {saveToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              className={cn(
+                "fixed bottom-24 left-4 right-4 z-[200] p-4 rounded-2xl text-sm font-bold text-center shadow-xl",
+                saveToast.type === 'error' ? "bg-red-600 text-white" : "bg-green-600 text-white"
+              )}
+              onClick={() => setSaveToast(null)}
+            >
+              {saveToast.message}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -928,6 +1274,17 @@ export default function AuthenticatedApp() {
                 if (eventId && user?.id) {
                   const status = action === "accept_event" ? "confirmed" : "declined";
                   const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+
+                  const { data: membership } = await supabase
+                    .from('event_members')
+                    .select('id')
+                    .eq('event_id', eventId)
+                    .eq('user_id', user.id)
+                    .single();
+                  if (membership) {
+                    await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
+                  }
+
                   const creatorId = notif?.data?.creator_id as string;
                   if (creatorId && creatorId !== user.id) {
                     await notifyEventResponse([creatorId], notif?.band_id || "", eventId, eventTitle, eventType, memberName, status);
@@ -938,10 +1295,70 @@ export default function AuthenticatedApp() {
                 }
               }
             } catch (err) { console.error("Action error:", err); }
+            const navId = notif?.data?.event_id as string;
             setSelectedNotification(null);
             setSelectedNotifications([]);
+            if (navId) setTimeout(() => navigateToEvent(navId), 300);
           }}
         />
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {rsvpNotification && (
+          <EventRSVPSheet
+            key={rsvpNotification.id}
+            notification={rsvpNotification}
+            onAccept={async () => {
+              const eventId = rsvpNotification.data?.event_id as string;
+              if (eventId && user?.id) {
+                const { data: membership } = await supabase
+                  .from('event_members')
+                  .select('id')
+                  .eq('event_id', eventId)
+                  .eq('user_id', user.id)
+                  .single();
+                if (membership) await respondToEventInvite(membership.id, 'confirmed');
+                const creatorId = rsvpNotification.data?.creator_id as string;
+                if (creatorId) {
+                  const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                  const eventType = (rsvpNotification.data?.event_type as string) || 'gig';
+                  await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "confirmed");
+                }
+                await markNotificationAsRead(rsvpNotification.id);
+                refetchNotifications?.();
+                refetchEvents();
+              }
+              const navId = rsvpNotification.data?.event_id as string;
+              setRsvpNotification(null);
+              if (navId) setTimeout(() => navigateToEvent(navId), 300);
+            }}
+            onDecline={async () => {
+              const eventId = rsvpNotification.data?.event_id as string;
+              if (eventId && user?.id) {
+                const { data: membership } = await supabase
+                  .from('event_members')
+                  .select('id')
+                  .eq('event_id', eventId)
+                  .eq('user_id', user.id)
+                  .single();
+                if (membership) await respondToEventInvite(membership.id, 'declined');
+                const creatorId = rsvpNotification.data?.creator_id as string;
+                if (creatorId) {
+                  const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                  const eventType = (rsvpNotification.data?.event_type as string) || 'gig';
+                  await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "declined");
+                }
+                await markNotificationAsRead(rsvpNotification.id);
+                refetchNotifications?.();
+                refetchEvents();
+              }
+              const navId = rsvpNotification.data?.event_id as string;
+              setRsvpNotification(null);
+              if (navId) setTimeout(() => navigateToEvent(navId), 300);
+            }}
+            onClose={() => setRsvpNotification(null)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

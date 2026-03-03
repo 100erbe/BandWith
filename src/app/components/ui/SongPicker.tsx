@@ -336,7 +336,14 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                         )}
                       >
                         <div className="flex-1 min-w-0 mr-3">
-                          <span className={cn('text-sm font-bold block truncate', themeColors.text)}>{song.title}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={cn('text-sm font-bold block truncate', themeColors.text)}>{song.title}</span>
+                            {selectedIds.includes(song.id) && !multiSelected.has(song.id) && (
+                              <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', theme === 'lime' ? 'bg-black/10 text-black/50' : 'bg-white/15 text-white/60')}>
+                                In set
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className={cn('text-[11px] font-bold truncate', themeColors.subtext)}>
                               {song.artist || 'Unknown Artist'}

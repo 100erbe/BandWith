@@ -226,6 +226,58 @@ export const bulkCreateSongs = async (
   }
 };
 
+export const seedRepertoireSongs = async (
+  bandId: string
+): Promise<{ data: Song[] | null; count: number; error: Error | null }> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { REPERTOIRE_SONGS } = await import('@/app/data/repertoire-songs');
+
+    const { data: existing } = await supabase
+      .from('songs')
+      .select('title, artist')
+      .eq('band_id', bandId);
+
+    const existingSet = new Set(
+      (existing || []).map(s => `${s.title}|||${s.artist}`)
+    );
+
+    const newSongs = REPERTOIRE_SONGS.filter(
+      s => !existingSet.has(`${s.title}|||${s.artist}`)
+    );
+
+    if (newSongs.length === 0) {
+      return { data: [], count: 0, error: null };
+    }
+
+    const BATCH_SIZE = 100;
+    const allInserted: Song[] = [];
+
+    for (let i = 0; i < newSongs.length; i += BATCH_SIZE) {
+      const batch = newSongs.slice(i, i + BATCH_SIZE);
+      const { data, error } = await supabase
+        .from('songs')
+        .insert(
+          batch.map(s => ({
+            ...s,
+            band_id: bandId,
+            added_by: user.id,
+          }))
+        )
+        .select();
+
+      if (error) throw error;
+      if (data) allInserted.push(...data);
+    }
+
+    return { data: allInserted, count: allInserted.length, error: null };
+  } catch (error: any) {
+    return { data: null, count: 0, error };
+  }
+};
+
 // ============================================
 // SETLISTS CRUD
 // ============================================
@@ -439,7 +491,6 @@ export const reorderSetlistSongs = async (
   songOrder: { id: string; position: number; set_number: number }[]
 ): Promise<{ error: Error | null }> => {
   try {
-    // Update each song's position
     for (const item of songOrder) {
       const { error } = await supabase
         .from('setlist_songs')
@@ -448,6 +499,46 @@ export const reorderSetlistSongs = async (
 
       if (error) throw error;
     }
+
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+export const replaceSetlistSongs = async (
+  setlistId: string,
+  songIds: string[]
+): Promise<{ error: Error | null }> => {
+  try {
+    const { error: deleteError } = await supabase
+      .from('setlist_songs')
+      .delete()
+      .eq('setlist_id', setlistId);
+
+    if (deleteError) throw deleteError;
+
+    if (songIds.length > 0) {
+      const rows = songIds.map((songId, i) => ({
+        setlist_id: setlistId,
+        song_id: songId,
+        position: i + 1,
+        set_number: 1,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('setlist_songs')
+        .insert(rows);
+
+      if (insertError) throw insertError;
+    }
+
+    const { error: updateError } = await supabase
+      .from('setlists')
+      .update({ song_count: songIds.length })
+      .eq('id', setlistId);
+
+    if (updateError) throw updateError;
 
     return { error: null };
   } catch (error: any) {

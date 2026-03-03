@@ -537,6 +537,34 @@ export const deleteMessage = async (
   }
 };
 
+export const deleteChat = async (
+  chatId: string
+): Promise<{ error: Error | null }> => {
+  try {
+    const { error: msgError } = await supabase
+      .from('messages')
+      .delete()
+      .eq('chat_id', chatId);
+    if (msgError) throw msgError;
+
+    const { error: partError } = await supabase
+      .from('chat_participants')
+      .delete()
+      .eq('chat_id', chatId);
+    if (partError) throw partError;
+
+    const { error: chatError } = await supabase
+      .from('chats')
+      .delete()
+      .eq('id', chatId);
+    if (chatError) throw chatError;
+
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
 // ============================================
 // REALTIME SUBSCRIPTION
 // ============================================

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, Music, Folder } from 'lucide-react';
+import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, ArrowUpRight, Music, Folder, AlertCircle } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
@@ -65,18 +65,42 @@ interface CreateEventModalProps {
   layoutId?: string;
   bandMembers?: BandMember[];
   currentUserId?: string;
+  editingEvent?: {
+    id: number;
+    eventId?: string;
+    title: string;
+    status: string;
+    date: string;
+    time: string;
+    location: string;
+    price: string;
+    clientName?: string;
+    venueAddress?: string;
+    venueCity?: string;
+    guests?: number;
+    notes?: string;
+    endTime?: string;
+    loadInTime?: string;
+    soundcheckTime?: string;
+    eventType?: string;
+    members?: string[];
+    memberUserIds?: string[];
+    memberFeeMap?: Record<string, string>;
+  } | null;
 }
 
 // --- Step Indicator ---
-const StepIndicator: React.FC<{ current: number; total: number }> = ({ current, total }) => (
+const StepIndicator: React.FC<{ current: number; total: number; activeColor?: string; inactiveColor?: string }> = ({ current, total, activeColor, inactiveColor }) => (
   <div className="flex items-center justify-center gap-1">
     {Array.from({ length: total }).map((_, i) => (
       <div
         key={i}
         className={cn(
           'h-1 rounded-[10px]',
-          i === current ? 'w-4 bg-black' : 'w-2 bg-black/30'
+          i === current ? 'w-4' : 'w-2',
+          !activeColor && (i === current ? 'bg-black' : 'bg-black/30'),
         )}
+        style={activeColor ? { backgroundColor: i === current ? activeColor : inactiveColor } : undefined}
       />
     ))}
   </div>
@@ -86,7 +110,8 @@ const StepIndicator: React.FC<{ current: number; total: number }> = ({ current, 
 const CalendarGrid: React.FC<{
   selectedDate: string;
   onSelectDate: (date: string) => void;
-}> = ({ selectedDate, onSelectDate }) => {
+  isDark?: boolean;
+}> = ({ selectedDate, onSelectDate, isDark }) => {
   const [viewDate, setViewDate] = useState(() => {
     const d = selectedDate ? new Date(selectedDate) : new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -117,21 +142,21 @@ const CalendarGrid: React.FC<{
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block">EVENT DATE</span>
-          <span className="text-[22px] font-bold text-black uppercase">{monthLabel}</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block', isDark ? 'text-white/50' : 'text-black/50')}>EVENT DATE</span>
+          <span className={cn('text-[22px] font-bold uppercase', isDark ? 'text-white' : 'text-black')}>{monthLabel}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center">
-            <ChevronLeft className="w-4 h-4 text-black" />
+          <button onClick={prevMonth} className={cn('w-8 h-8 rounded-full border-2 flex items-center justify-center', isDark ? 'border-white' : 'border-black')}>
+            <ChevronLeft className={cn('w-4 h-4', isDark ? 'text-white' : 'text-black')} />
           </button>
-          <button onClick={nextMonth} className="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center">
-            <ChevronRight className="w-4 h-4 text-black" />
+          <button onClick={nextMonth} className={cn('w-8 h-8 rounded-full border-2 flex items-center justify-center', isDark ? 'border-white' : 'border-black')}>
+            <ChevronRight className={cn('w-4 h-4', isDark ? 'text-white' : 'text-black')} />
           </button>
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1">
         {DAYS_OF_WEEK.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-bold text-black/40 py-1">{d}</div>
+          <div key={i} className={cn('text-center text-[10px] font-bold py-1', isDark ? 'text-white/40' : 'text-black/40')}>{d}</div>
         ))}
         {cells.map((day, i) => (
           <button
@@ -146,7 +171,9 @@ const CalendarGrid: React.FC<{
             className={cn(
               'aspect-square rounded-full flex items-center justify-center text-sm font-bold transition-all',
               !day && 'invisible',
-              day && isSelected(day) ? 'bg-black text-[#D5FB46]' : 'text-black hover:bg-black/10'
+              day && isSelected(day)
+                ? (isDark ? 'bg-white text-black' : 'bg-black text-[#D5FB46]')
+                : (isDark ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10')
             )}
           >
             {day}
@@ -158,7 +185,7 @@ const CalendarGrid: React.FC<{
 };
 
 // --- Guest Dots ---
-const GuestDots: React.FC<{ count: number }> = ({ count }) => {
+const GuestDots: React.FC<{ count: number; activeColor?: string; inactiveColor?: string }> = ({ count, activeColor, inactiveColor }) => {
   const maxDots = 200;
   const filled = Math.min(count, maxDots);
   const cols = 20;
@@ -169,9 +196,10 @@ const GuestDots: React.FC<{ count: number }> = ({ count }) => {
         <div
           key={i}
           className={cn(
-            'w-[10px] h-[10px] rounded-full',
-            i < filled ? 'bg-black' : 'bg-black/20'
+            'w-full h-[10px] rounded-full',
+            !activeColor && (i < filled ? 'bg-black' : 'bg-black/20')
           )}
+          style={activeColor ? { backgroundColor: i < filled ? activeColor : inactiveColor } : undefined}
         />
       ))}
     </div>
@@ -179,10 +207,33 @@ const GuestDots: React.FC<{ count: number }> = ({ count }) => {
 };
 
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
-  onClose, onCreate, initialType, bandMembers = [], currentUserId,
+  onClose, onCreate, initialType, bandMembers = [], currentUserId, editingEvent,
 }) => {
+  const isEditing = !!editingEvent;
   const { selectedBand } = useBand();
-  const [step, setStep] = useState(0);
+
+  const editingWarnings = useMemo(() => {
+    if (!editingEvent) return [];
+    const w: string[] = [];
+    if (!editingEvent.location || editingEvent.location === 'TBD') w.push('venue');
+    if (!editingEvent.date) w.push('date');
+    const type = editingEvent.eventType?.toLowerCase();
+    if (type !== 'rehearsal' && (!editingEvent.price || editingEvent.price === '0')) w.push('fee');
+    const hasMembers = (editingEvent.memberUserIds?.length ?? 0) > 0 || (editingEvent.members?.length ?? 0) > 0;
+    if (!hasMembers) w.push('members');
+    return w;
+  }, [editingEvent]);
+
+  const firstWarningStep = useMemo(() => {
+    if (editingWarnings.length === 0) return 1;
+    const step1Warnings = ['venue', 'date', 'time'];
+    const step2Warnings = ['fee', 'members'];
+    if (editingWarnings.some(w => step1Warnings.includes(w))) return 1;
+    if (editingWarnings.some(w => step2Warnings.includes(w))) return 2;
+    return 1;
+  }, [editingWarnings]);
+
+  const [step, setStep] = useState(isEditing ? firstWarningStep : 0);
   const [songsView, setSongsView] = useState(false);
   const [songPickerOpen, setSongPickerOpen] = useState(false);
   const [songPickerTargetSet, setSongPickerTargetSet] = useState<string | null>(null);
@@ -215,36 +266,99 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const currentUserMemberId = currentUserMember?.id || currentUserId || '';
 
   // --- Form State ---
+  const editingType = useMemo<EventType | null>(() => {
+    if (!editingEvent) return null;
+    if (editingEvent.eventType) return editingEvent.eventType as EventType;
+    const s = editingEvent.status?.toUpperCase();
+    if (s === 'REHEARSAL') return 'rehearsal';
+    if (s === 'QUOTED' || s === 'QUOTE') return 'other';
+    return 'other';
+  }, [editingEvent]);
+
   const [eventType, setEventType] = useState<EventType | null>(
-    initialType === 'rehearsal' ? 'rehearsal' : (initialType as EventType | null) || null
+    editingType || (initialType === 'rehearsal' ? 'rehearsal' : (initialType as EventType | null) || null)
   );
   const [performanceType, setPerformanceType] = useState<PerformanceType>('full_band');
   const [setting, setSetting] = useState<SettingType>('indoor');
   const [details, setDetails] = useState({
-    title: '',
-    clientName: '',
-    venue: '',
-    address: '',
-    city: '',
+    title: editingEvent?.title || '',
+    clientName: editingEvent?.clientName || '',
+    venue: editingEvent?.location || '',
+    address: editingEvent?.venueAddress || '',
+    city: editingEvent?.venueCity || '',
     province: '',
     zip: '',
     country: '',
-    date: new Date().toISOString().split('T')[0],
-    startTime: '20:00',
-    endTime: '23:30',
-    guests: 0,
+    date: editingEvent?.date || new Date().toISOString().split('T')[0],
+    startTime: editingEvent?.time || '20:00',
+    endTime: editingEvent?.endTime || '23:30',
+    guests: editingEvent?.guests || 0,
     duration: 120,
-    pay: '',
+    pay: editingEvent?.price || '',
   });
-  const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState(!!editingEvent);
 
-  const [selectedMembers, setSelectedMembers] = useState<string[]>(currentUserMemberId ? [currentUserMemberId] : []);
-  const [memberFees, setMemberFees] = useState<Record<string, string>>(currentUserMemberId ? { [currentUserMemberId]: '0' } : {});
-  const [memberMandatory, setMemberMandatory] = useState<Record<string, boolean>>(currentUserMemberId ? { [currentUserMemberId]: true } : {});
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(() => {
+    if (editingEvent?.memberUserIds?.length) {
+      return editingEvent.memberUserIds.map(uid => {
+        const member = MEMBERS.find(m => m.user_id === uid);
+        return member?.id || uid;
+      }).filter(Boolean);
+    }
+    if (isEditing) return [];
+    return currentUserMemberId ? [currentUserMemberId] : [];
+  });
+  const [memberFees, setMemberFees] = useState<Record<string, string>>(() => {
+    if (editingEvent?.memberUserIds?.length && editingEvent.memberFeeMap) {
+      const fees: Record<string, string> = {};
+      editingEvent.memberUserIds.forEach(uid => {
+        const member = MEMBERS.find(m => m.user_id === uid);
+        const id = member?.id || uid;
+        fees[id] = editingEvent.memberFeeMap?.[uid] || '0';
+      });
+      return fees;
+    }
+    if (isEditing) return {};
+    return currentUserMemberId ? { [currentUserMemberId]: '0' } : {};
+  });
+  const [memberMandatory, setMemberMandatory] = useState<Record<string, boolean>>(() => {
+    if (editingEvent?.memberUserIds?.length) {
+      const mandatory: Record<string, boolean> = {};
+      editingEvent.memberUserIds.forEach(uid => {
+        const member = MEMBERS.find(m => m.user_id === uid);
+        const id = member?.id || uid;
+        mandatory[id] = true;
+      });
+      return mandatory;
+    }
+    return currentUserMemberId ? { [currentUserMemberId]: true } : {};
+  });
 
   const [setlist, setSetlist] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(editingEvent?.notes || '');
+  const [extraBandFee, setExtraBandFee] = useState('');
+
+  // Derive the event category (gig / quote / rehearsal) for theming
+  const modalCategory: 'gig' | 'quote' | 'rehearsal' =
+    initialType === 'rehearsal' || eventType === 'rehearsal' ? 'rehearsal'
+    : initialType === 'quote' || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
+    : 'gig';
+
+  const modalBg = modalCategory === 'rehearsal' ? '#0147FF' : modalCategory === 'quote' ? '#9A8878' : '#D5FB46';
+  const isDarkBg = modalCategory === 'rehearsal' || modalCategory === 'quote';
+  const tc = isDarkBg ? 'text-white' : 'text-black';
+  const tcMuted = isDarkBg ? 'text-white/50' : 'text-black/50';
+  const tcFaint = isDarkBg ? 'text-white/30' : 'text-black/30';
+  const tcSub = isDarkBg ? 'text-white/40' : 'text-black/40';
+  const bcMuted = isDarkBg ? 'border-white/20' : 'border-black/20';
+  const bcSolid = isDarkBg ? 'border-white' : 'border-black';
+  const bgPill = isDarkBg ? 'bg-white/10' : 'bg-black/10';
+  const pillAccent = modalCategory === 'rehearsal' ? 'text-[#0147FF]' : modalCategory === 'quote' ? 'text-[#9A8878]' : 'text-[#D5FB46]';
+  const bgPillSelected = isDarkBg ? 'bg-white text-black' : `bg-black ${pillAccent}`;
+  const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-black/50';
+  const dotActive = isDarkBg ? '#FFFFFF' : '#000000';
+  const dotInactive = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
 
   const musicianCount = selectedMembers.length;
 
@@ -252,12 +366,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     Object.values(memberFees).reduce((acc, fee) => acc + (parseFloat(fee) || 0), 0),
   [memberFees]);
 
+  const allMemberFeesValid = useMemo(() =>
+    selectedMembers.length === 0 || selectedMembers.every(id => parseFloat(memberFees[id]) > 0),
+  [selectedMembers, memberFees]);
+
+  const grandTotalFee = useMemo(() =>
+    totalPayout + (parseFloat(extraBandFee) || 0),
+  [totalPayout, extraBandFee]);
+
   // --- Handlers ---
   const handleNext = () => {
     if (step < STEPS.length - 1) setStep(step + 1);
     else handleCreate();
   };
-  const handleBack = () => { if (step > 0) setStep(step - 1); };
+  const handleBack = () => {
+    const minStep = isEditing ? 1 : 0;
+    if (step > minStep) setStep(step - 1);
+  };
 
   const toggleMember = (memberId: string) => {
     if (selectedMembers.includes(memberId)) {
@@ -306,9 +431,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       details: {
         ...details,
         time: details.startTime,
-        pay: details.pay,
+        pay: String(grandTotalFee || details.pay || '0'),
       },
       eventType,
+      _originalEventType: editingEvent?.eventType || eventType,
       performanceType,
       setting,
       members: membersWithUserIds,
@@ -317,13 +443,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       tasks,
       notes,
       status: 'confirmed',
+      ...(isEditing && editingEvent ? { _editing: true, _editingEventId: editingEvent.eventId, _editingLocalId: editingEvent.id } : {}),
     };
     onCreate(eventData);
   };
 
-  // --- Rehearsal passthrough ---
+  // --- Rehearsal passthrough (both new and editing) ---
   if (eventType === 'rehearsal') {
-    return <RehearsalCreationWizard onClose={onClose} onCreate={onCreate} />;
+    return <RehearsalCreationWizard onClose={onClose} onCreate={onCreate} editingEvent={editingEvent} />;
   }
 
   // --- RENDER STEP 1: Event Type ---
@@ -340,18 +467,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-1 flex-1">
               <div className={cn(
                 'inline-flex self-start px-2.5 py-1 rounded-md text-[12px] font-bold uppercase',
-                isSelected ? 'bg-black text-white' : 'bg-black/30 text-black/50'
+                isSelected ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white') : (isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-black/50')
               )}>
                 {value.toUpperCase()}
               </div>
               <span className={cn(
                 'text-[32px] font-bold uppercase leading-tight',
-                isSelected ? 'text-black' : 'text-black/30'
+                isSelected ? tc : tcFaint
               )}>
                 {label}
               </span>
             </div>
-            <DotRadio selected={isSelected} activeColor="#000000" inactiveColor="rgba(0,0,0,0.20)" />
+            <DotRadio selected={isSelected} activeColor={dotActive} inactiveColor={dotInactive} />
           </button>
         );
       })}
@@ -365,12 +492,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setDetails(prev => ({ ...prev, title }));
   };
 
+  const warnField = (field: string) => {
+    if (!isEditing) return false;
+    if (!editingWarnings.includes(field)) return false;
+    // Dynamic override: if user has already filled the field, don't show warning
+    if (field === 'members' && selectedMembers.length > 0) return false;
+    if (field === 'venue' && details.venue && details.venue !== 'TBD') return false;
+    if (field === 'date' && details.date) return false;
+    if (field === 'fee' && details.pay && details.pay !== '0') return false;
+    return true;
+  };
+
   // --- RENDER STEP 2: Date & Location ---
   const renderStep2 = () => (
     <div className="flex flex-col gap-8">
       {/* Client Name */}
       <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">CLIENT NAME</span>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>CLIENT NAME</span>
         <input
           type="text"
           value={details.clientName}
@@ -379,13 +517,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             autoGenerateTitle(e.target.value, eventType);
           }}
           placeholder="EG. ROSSI"
-          className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase placeholder:text-black/20 focus:outline-none focus:border-black"
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
         />
       </div>
 
       {/* Event Title */}
       <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">EVENT TITLE</span>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EVENT TITLE</span>
         <input
           type="text"
           value={details.title}
@@ -394,19 +532,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             setTitleManuallyEdited(true);
           }}
           placeholder="EG. WEDDING PARTY"
-          className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase placeholder:text-black/20 focus:outline-none focus:border-black"
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
         />
       </div>
 
       {/* Venue */}
-      <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">VENUE</span>
+      <div className={cn(warnField('venue') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('venue') ? 'text-[#F23030]' : tcMuted)}>VENUE</span>
+          {warnField('venue') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+        </div>
         <input
           type="text"
           value={details.venue}
           onChange={(e) => setDetails({ ...details, venue: e.target.value })}
           placeholder="VENUE NAME"
-          className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase placeholder:text-black/20 focus:outline-none focus:border-black mb-3"
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
         />
         {/* Address Tags */}
         <div className="flex flex-wrap gap-2">
@@ -415,80 +556,91 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             value={details.address}
             onChange={(e) => setDetails({ ...details, address: e.target.value })}
             placeholder="ADDRESS"
-            className="px-3 py-1.5 rounded-full bg-black/10 text-[11px] font-bold text-black/60 uppercase placeholder:text-black/30 focus:outline-none focus:bg-black/20 w-auto min-w-[140px]"
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.city}
             onChange={(e) => setDetails({ ...details, city: e.target.value })}
             placeholder="CITY"
-            className="px-3 py-1.5 rounded-full bg-black/10 text-[11px] font-bold text-black/60 uppercase placeholder:text-black/30 focus:outline-none focus:bg-black/20 w-auto min-w-[80px]"
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.province}
             onChange={(e) => setDetails({ ...details, province: e.target.value })}
             placeholder="PROVINCE"
-            className="px-3 py-1.5 rounded-full bg-black/10 text-[11px] font-bold text-black/60 uppercase placeholder:text-black/30 focus:outline-none focus:bg-black/20 w-auto min-w-[80px]"
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.zip}
             onChange={(e) => setDetails({ ...details, zip: e.target.value })}
             placeholder="ZIP"
-            className="px-3 py-1.5 rounded-full bg-black/10 text-[11px] font-bold text-black/60 uppercase placeholder:text-black/30 focus:outline-none focus:bg-black/20 w-auto min-w-[50px]"
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.country}
             onChange={(e) => setDetails({ ...details, country: e.target.value })}
             placeholder="COUNTRY"
-            className="px-3 py-1.5 rounded-full bg-black/10 text-[11px] font-bold text-black/60 uppercase placeholder:text-black/30 focus:outline-none focus:bg-black/20 w-auto min-w-[60px]"
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
           />
         </div>
       </div>
 
       {/* Calendar */}
-      <CalendarGrid selectedDate={details.date} onSelectDate={(d) => setDetails({ ...details, date: d })} />
+      <div className={cn(warnField('date') && 'rounded-lg p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+        {warnField('date') && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-bold text-[#F23030] uppercase tracking-wider">DATE</span>
+            <AlertCircle className="w-3 h-3 text-[#F23030]" />
+          </div>
+        )}
+        <CalendarGrid selectedDate={details.date} onSelectDate={(d) => setDetails({ ...details, date: d })} isDark={isDarkBg} />
+      </div>
 
       {/* Start / End Times */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className={cn('grid grid-cols-2 gap-6', warnField('time') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">START</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('time') ? 'text-[#F23030]' : tcMuted)}>START</span>
+            {warnField('time') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+          </div>
           <input
             type="time"
             value={details.startTime}
             onChange={(e) => setDetails({ ...details, startTime: e.target.value })}
-            className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase focus:outline-none focus:border-black"
+            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
           />
         </div>
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">END</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>END</span>
           <input
             type="time"
             value={details.endTime}
             onChange={(e) => setDetails({ ...details, endTime: e.target.value })}
-            className="w-full bg-transparent border-b border-black/20 pb-2 text-[22px] font-bold text-black uppercase focus:outline-none focus:border-black"
+            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
           />
         </div>
       </div>
 
       {/* Guests */}
       <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">GUESTS</span>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>GUESTS</span>
         <div className="flex items-center gap-4 mb-2">
           <button
             onClick={() => setDetails({ ...details, guests: Math.max(0, details.guests - 10) })}
-            className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0"
+            className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', isDarkBg ? 'bg-white' : 'bg-black')}
           >
-            <Minus className="w-5 h-5 text-white" />
+            <Minus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
           </button>
-          <span className="text-[40px] font-bold text-black leading-none flex-1 text-center">{details.guests}</span>
+          <span className={cn('text-[40px] font-bold leading-none flex-1 text-center', tc)}>{details.guests}</span>
           <button
             onClick={() => setDetails({ ...details, guests: details.guests + 10 })}
-            className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0"
+            className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', isDarkBg ? 'bg-white' : 'bg-black')}
           >
-            <Plus className="w-5 h-5 text-white" />
+            <Plus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
           </button>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
@@ -498,25 +650,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               onClick={() => setDetails({ ...details, guests: n })}
               className={cn(
                 'px-3 py-1.5 rounded-[8px] text-[11px] font-bold transition-all',
-                details.guests === n ? 'bg-black text-[#D5FB46]' : 'bg-black/10 text-black/50 hover:bg-black/20'
+                details.guests === n ? bgPillSelected : bgPillUnselected
               )}
             >
               {n}
             </button>
           ))}
         </div>
-        <GuestDots count={details.guests} />
+        <GuestDots count={details.guests} activeColor={dotActive} inactiveColor={dotInactive} />
       </div>
 
       {/* Setting */}
       <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-2">SETTING</span>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>SETTING</span>
         <div className="flex gap-2">
           <button
             onClick={() => setSetting('indoor')}
             className={cn(
               'px-4 py-2 rounded-md text-[12px] font-bold uppercase border transition-all',
-              setting === 'indoor' ? 'bg-black text-[#D5FB46] border-black' : 'bg-transparent text-black/40 border-black/20'
+              setting === 'indoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
             )}
           >
             INDOOR
@@ -525,7 +677,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onClick={() => setSetting('outdoor')}
             className={cn(
               'px-4 py-2 rounded-md text-[12px] font-bold uppercase border transition-all',
-              setting === 'outdoor' ? 'bg-black text-[#D5FB46] border-black' : 'bg-transparent text-black/40 border-black/20'
+              setting === 'outdoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
             )}
           >
             OUTDOOR
@@ -538,42 +690,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // --- RENDER STEP 3: Team & Pay ---
   const renderStep3 = () => (
     <div className="flex flex-col gap-8">
-      {/* Performance Type */}
+      {/* Team Size */}
       <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">PERFORMANCE</span>
-        <span className="text-[28px] font-bold text-black uppercase block mb-3">TYPE</span>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>PERFORMANCE</span>
+        <span className={cn('text-[28px] font-bold uppercase block mb-3', tc)}>TYPE</span>
         <div className="flex flex-wrap gap-2">
-          {PERFORMANCE_TYPES.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setPerformanceType(value)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
-                performanceType === value
-                  ? 'bg-black text-white border-black'
-                  : 'bg-transparent text-black/50 border-black/20'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Team Presets */}
-      <div>
-        <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-2">QUICK SELECT</span>
-        <div className="flex flex-wrap gap-2 mb-4">
           {[
-            { label: 'SOLO', count: 1 },
-            { label: 'DUO', count: 2 },
-            { label: 'TRIO', count: 3 },
-            { label: 'QUARTET', count: 4 },
-            { label: 'FULL BAND', count: MEMBERS.length },
+            { label: 'SOLO', count: 1, type: 'solo' as PerformanceType },
+            { label: 'DUO', count: 2, type: 'duo' as PerformanceType },
+            { label: 'TRIO', count: 3, type: 'trio' as PerformanceType },
+            { label: 'QUARTET', count: 4, type: 'full_band' as PerformanceType },
+            { label: 'FULL BAND', count: MEMBERS.length, type: 'full_band' as PerformanceType },
           ].map(preset => (
             <button
               key={preset.label}
               onClick={() => {
+                setPerformanceType(preset.type);
                 const newSelected = MEMBERS.slice(0, preset.count).map(m => m.id);
                 if (currentUserMemberId && !newSelected.includes(currentUserMemberId)) {
                   newSelected[0] = currentUserMemberId;
@@ -584,8 +716,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 setMemberFees(newFees);
               }}
               className={cn(
-                'px-3 py-1.5 rounded-[8px] text-[11px] font-bold uppercase transition-all',
-                musicianCount === preset.count ? 'bg-black text-[#D5FB46]' : 'bg-black/10 text-black/50 hover:bg-black/20'
+                'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
+                musicianCount === preset.count
+                  ? bgPillSelected + ' border-current'
+                  : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-black/50 border-black/20')
               )}
             >
               {preset.label}
@@ -595,24 +729,27 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Musicians Count */}
-      <div>
+      <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
         <div className="flex items-end justify-between">
           <div>
-            <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">MUSICIANS</span>
-            <span className="text-[40px] font-bold text-black leading-none">{musicianCount}</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[#F23030]' : tcMuted)}>MUSICIANS</span>
+              {warnField('members') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+            </div>
+            <span className={cn('text-[40px] font-bold leading-none', tc)}>{musicianCount}</span>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => adjustMusicians(-1)}
-              className="w-10 h-10 rounded-full bg-black flex items-center justify-center"
+              className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDarkBg ? 'bg-white' : 'bg-black')}
             >
-              <Minus className="w-5 h-5 text-white" />
+              <Minus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
             </button>
             <button
               onClick={() => adjustMusicians(1)}
-              className="w-10 h-10 rounded-full bg-black flex items-center justify-center"
+              className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDarkBg ? 'bg-white' : 'bg-black')}
             >
-              <Plus className="w-5 h-5 text-white" />
+              <Plus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
             </button>
           </div>
         </div>
@@ -624,12 +761,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           const isSelected = selectedMembers.includes(member.id);
           const isMandatory = memberMandatory[member.id] || false;
           if (!isSelected) return null;
+          const feeVal = parseFloat(memberFees[member.id]) || 0;
+          const feeMissing = feeVal <= 0;
 
           return (
             <div key={member.id} className="flex items-start justify-between">
               <div className="flex flex-col gap-1 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 bg-black text-white text-[10px] font-bold uppercase rounded">
+                  <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
                     {member.role}
                   </span>
                   <button
@@ -637,73 +776,77 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     className={cn(
                       'px-2 py-0.5 text-[10px] font-bold uppercase rounded border transition-all',
                       isMandatory
-                        ? 'bg-black text-white border-black'
-                        : 'bg-transparent text-black/40 border-black/20'
+                        ? (isDarkBg ? 'bg-white text-black border-white' : 'bg-black text-white border-black')
+                        : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
                     )}
                   >
                     MANDATORY
                   </button>
                 </div>
-                <span className="text-[20px] font-bold text-black uppercase">{member.name}</span>
+                <span className={cn('text-[20px] font-bold uppercase', tc)}>{member.name}</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-black/40 font-bold text-sm">$</span>
+                  <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
                   <input
                     type="number"
                     value={memberFees[member.id] || ''}
                     onChange={(e) => updateFee(member.id, e.target.value)}
                     placeholder="0"
-                    className="bg-transparent text-black/60 font-bold text-sm border-b border-black/10 focus:outline-none focus:border-black w-20 pb-0.5"
+                    className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
                   />
+                  {feeMissing && <span className="text-[9px] font-bold text-[#F23030] uppercase ml-1">Required</span>}
                 </div>
               </div>
-              <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.20)" />
+              <DotCheckbox checked={true} activeColor={dotActive} inactiveColor={dotInactive} />
             </div>
           );
         })}
       </div>
 
-      {/* Total Payout summary */}
-      {totalPayout > 0 && (
-        <div className="flex items-center justify-between py-3 border-t border-black/10">
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider">TOTAL PAYOUT</span>
-          <span className="text-[22px] font-bold text-black">${totalPayout}</span>
-        </div>
-      )}
+      {/* Fee Summary */}
+      <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+        {totalPayout > 0 && (
+          <div className="flex items-center justify-between">
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
+            <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
+          </div>
+        )}
 
-      {/* Price & Duration */}
-      <div className="grid grid-cols-2 gap-6 pt-4 border-t border-black/10">
         <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">BAND FEE</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE</span>
           <div className="flex items-center">
-            <span className="text-[28px] font-bold text-black">$</span>
+            <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
             <input
               type="number"
-              value={details.pay}
-              onChange={(e) => setDetails({ ...details, pay: e.target.value })}
+              value={extraBandFee}
+              onChange={(e) => setExtraBandFee(e.target.value)}
               placeholder="0"
-              className="bg-transparent text-[28px] font-bold text-black focus:outline-none w-full placeholder:text-black/20"
+              className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-black/20')}
             />
           </div>
-          {totalPayout > 0 && details.pay && (
-            <span className="text-[10px] font-bold text-black/30 block mt-1">
-              Margin: ${(parseFloat(details.pay) || 0) - totalPayout}
-            </span>
-          )}
         </div>
-        <div>
-          <span className="text-[10px] font-bold text-black/50 uppercase tracking-wider block mb-1">DURATION</span>
-          <select
-            value={details.duration}
-            onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-            className="bg-transparent text-[28px] font-bold text-black focus:outline-none w-full appearance-none cursor-pointer"
-          >
-            {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
-              <option key={m} value={m} className="text-black bg-white text-base">
-                {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
-              </option>
-            ))}
-          </select>
-        </div>
+
+        {grandTotalFee > 0 && (
+          <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL BAND FEE</span>
+            <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Duration */}
+      <div className={cn('pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>DURATION</span>
+        <select
+          value={details.duration}
+          onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
+          className={cn('bg-transparent text-[28px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
+        >
+          {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
+            <option key={m} value={m} className="text-black bg-white text-base">
+              {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
@@ -712,11 +855,310 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const renderStep4 = () => {
     const selectedDate = details.date ? new Date(details.date + 'T00:00:00') : new Date();
     const dateStr = selectedDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-
     const toggleSection = (id: string) => setExpandedSection(prev => prev === id ? null : id);
+    const songCount = setlist.reduce((acc: number, s: any) => acc + ((s.songs || []).length), 0);
+    const eventYear = selectedDate.getFullYear();
+    const eventMonthDay = selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+    const borderColor = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+    const subtitleColor = isDarkBg ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+    const textColor = isDarkBg ? 'white' : 'black';
 
+    const isQuote = modalCategory === 'quote';
+
+    if (isQuote) {
+      return (
+        <div className="flex flex-col gap-[40px]">
+          {/* Header */}
+          <div className="flex flex-col gap-[8px]">
+            <div className="flex gap-[4px] flex-wrap">
+              <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
+                <span className="text-[12px] font-bold text-white uppercase">QUOTE</span>
+              </div>
+            </div>
+            <h2 className="text-[32px] font-bold text-white uppercase leading-none">{details.title || 'UNTITLED'}</h2>
+            <span className="text-[14px] font-medium text-white/50 uppercase">{dateStr}</span>
+          </div>
+
+          {/* Year + Date */}
+          <div className="flex gap-[20px]">
+            <div className="flex-1 flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('year')}>
+                <span className="text-[12px] font-bold uppercase text-white">YEAR</span>
+                <motion.div animate={{ rotate: expandedSection === 'year' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </motion.div>
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{eventYear}</span>
+              <AnimatePresence>
+                {expandedSection === 'year' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                    <div className="pt-[12px] flex flex-col gap-[8px]">
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Year</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{eventYear}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Season</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>
+                          {(() => { const m = selectedDate.getMonth(); return m >= 5 && m <= 8 ? 'Summer' : m >= 2 && m <= 4 ? 'Spring' : m >= 9 && m <= 10 ? 'Autumn' : 'Winter'; })()}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <div className="flex-1 flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('date')}>
+                <span className="text-[12px] font-bold uppercase text-white">DATE</span>
+                <motion.div animate={{ rotate: expandedSection === 'date' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </motion.div>
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{eventMonthDay}</span>
+              <AnimatePresence>
+                {expandedSection === 'date' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                    <div className="pt-[12px] flex flex-col gap-[8px]">
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Day</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Time</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{details.startTime || 'TBD'}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Client + Pricing */}
+          <div className="grid grid-cols-2 gap-[20px]">
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('client')}>
+                  <span className="text-[12px] font-bold uppercase text-white">CLIENT</span>
+                  <motion.div animate={{ rotate: expandedSection === 'client' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  </motion.div>
+                </button>
+                <span className="text-[42px] font-bold leading-none text-white">
+                  {(details.clientName || details.title || '—').split(' ')[0]?.toUpperCase()}
+                </span>
+                {(details.clientName || details.title || '').split(' ').length > 1 && (
+                  <span className="text-[22px] font-bold leading-none text-white">
+                    {(details.clientName || details.title || '').split(' ').slice(1).join(' ')?.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <AnimatePresence>
+                {expandedSection === 'client' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                    <div className="pt-[12px] flex flex-col gap-[8px]">
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Name</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{details.clientName || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Event Type</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>QUOTE</span>
+                      </div>
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Location</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{details.address || 'TBD'}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="flex flex-col gap-[8px]">
+              <div className="flex flex-col">
+                <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('pricing')}>
+                  <span className="text-[12px] font-bold uppercase text-white">PRICING</span>
+                  <motion.div animate={{ rotate: expandedSection === 'pricing' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  </motion.div>
+                </button>
+                <span className="text-[42px] font-bold leading-none text-white">
+                  €{details.price || '0'}
+                </span>
+              </div>
+              <AnimatePresence>
+                {expandedSection === 'pricing' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                    <div className="pt-[12px] flex flex-col gap-[8px]">
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Band Total</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>€{details.price || '0'}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Venue</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{details.address || 'TBD'}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Songs */}
+          <div className="flex flex-col gap-[20px]">
+            <div className="flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setSongsView(true)}>
+                <span className="text-[12px] font-bold uppercase text-white">SONGS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{songCount}</span>
+            </div>
+          </div>
+
+          {/* Tasks */}
+          <div className="flex flex-col gap-[20px]">
+            <div className="flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('tasks')}>
+                <span className="text-[12px] font-bold uppercase text-white">TASKS</span>
+                <motion.div animate={{ rotate: expandedSection === 'tasks' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </motion.div>
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{tasks.length}</span>
+            </div>
+            <AnimatePresence>
+              {expandedSection === 'tasks' && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                  <div className="pt-[12px] flex flex-col gap-[8px]">
+                    {taskTemplates.length > 0 && tasks.length === 0 && (
+                      <div className="mb-3">
+                        <span className="text-[10px] font-bold uppercase block mb-1.5 text-white/40">LOAD FROM TEMPLATE</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {taskTemplates.map(tpl => (
+                            <button
+                              key={tpl.id}
+                              onClick={() => {
+                                const loaded = tpl.tasks.map((t: any) => ({
+                                  uid: `t-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                  title: t.title,
+                                  completed: false,
+                                  templateId: tpl.id,
+                                }));
+                                setTasks(loaded);
+                              }}
+                              className="px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all bg-white/15 text-white hover:bg-white/25"
+                            >
+                              <Folder className="w-3 h-3 text-white/40" />
+                              {tpl.name}
+                              <span className="text-white/30">{tpl.tasks.length}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {tasks.map((task, i) => (
+                      <div key={task.uid || i} className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={task.title}
+                          onChange={(e) => {
+                            const newTasks = [...tasks];
+                            newTasks[i] = { ...newTasks[i], title: e.target.value };
+                            setTasks(newTasks);
+                          }}
+                          placeholder="Task description..."
+                          className="flex-1 bg-transparent border-b-2 border-white/10 py-1 text-sm font-bold text-white focus:outline-none focus:border-white placeholder:text-white/20 transition-all"
+                        />
+                        <button onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))} className="text-white/20 hover:text-red-500 transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setTasks([...tasks, { uid: `t-${Date.now()}`, title: '', completed: false }])}
+                      className="text-[12px] font-bold uppercase flex items-center gap-1 text-white/50 hover:text-white transition-colors mt-1"
+                    >
+                      <Plus className="w-3 h-3" /> Add task
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Members */}
+          <div className="flex flex-col gap-[20px]">
+            <div className="flex flex-col">
+              <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('members')}>
+                <span className="text-[12px] font-bold uppercase text-white">MEMBERS</span>
+                <motion.div animate={{ rotate: expandedSection === 'members' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                </motion.div>
+              </button>
+              <span className="text-[42px] font-bold leading-none text-white">{selectedMembers.length}</span>
+            </div>
+            <AnimatePresence>
+              {expandedSection === 'members' && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                  <div className="pt-[12px] flex flex-col gap-[8px]">
+                    {selectedMembers.length > 0 ? selectedMembers.map((mid, i) => {
+                      const m = MEMBERS.find(x => x.id === mid);
+                      return (
+                        <div key={mid} className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                          <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Member {i + 1}</span>
+                          <span className="text-[14px] font-bold" style={{ color: textColor }}>{m?.name || mid}</span>
+                        </div>
+                      );
+                    }) : (
+                      <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
+                        <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Info</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>No members assigned</span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Notes */}
+          {notes && (
+            <div className="flex flex-col gap-[20px]">
+              <div className="flex flex-col">
+                <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('notes')}>
+                  <span className="text-[12px] font-bold uppercase text-white">NOTES</span>
+                  <motion.div animate={{ rotate: expandedSection === 'notes' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  </motion.div>
+                </button>
+              </div>
+              <AnimatePresence>
+                {expandedSection === 'notes' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+                    <div className="pt-[12px]">
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Any notes for the band..."
+                        rows={3}
+                        className="w-full bg-transparent border-b-2 border-white/10 py-2 text-sm font-medium text-white focus:outline-none focus:border-white placeholder:text-white/20 transition-all resize-none"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // GIG layout (original style)
     const sections = [
-      { id: 'songs', tag: 'SONGS', value: String(setlist.reduce((acc: number, s: any) => acc + ((s.songs || []).length), 0)), hasData: setlist.length > 0 },
+      { id: 'songs', tag: 'SONGS', value: String(songCount), hasData: setlist.length > 0 },
       { id: 'schedule', tag: 'SCHEDULE', value: 'RoS', hasData: true },
       { id: 'tasks', tag: 'TASKS', value: tasks.length.toString(), hasData: tasks.length > 0 },
       { id: 'notes', tag: 'NOTES', value: notes ? '1' : '0', hasData: !!notes },
@@ -728,16 +1170,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             {currentUserMember && (
-              <span className="px-2 py-0.5 bg-black text-white text-[10px] font-bold uppercase rounded">
+              <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
                 {currentUserMember.role}
               </span>
             )}
-            <span className="text-[12px] font-bold text-black/50">{dateStr} @{details.startTime?.replace(':', '') || '2000'}</span>
+            <span className={cn('text-[12px] font-bold', tcMuted)}>{dateStr} @{details.startTime?.replace(':', '') || '2000'}</span>
           </div>
-          <h2 className="text-[40px] font-bold text-black uppercase leading-[0.95]">
+          <h2 className={cn('text-[40px] font-bold uppercase leading-[0.95]', tc)}>
             {details.title || 'EVENT TITLE'}
           </h2>
-          <span className="text-[12px] font-bold text-black/50 mt-1 block">{dateStr} @{details.startTime?.replace(':', '') || '2000'}</span>
+          <span className={cn('text-[12px] font-bold mt-1 block', tcMuted)}>{dateStr} @{details.startTime?.replace(':', '') || '2000'}</span>
         </div>
 
         {/* Stat Cards */}
@@ -749,15 +1191,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 className="w-full flex items-start justify-between text-left group"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="px-2 py-0.5 bg-black text-white text-[10px] font-bold uppercase rounded inline-flex self-start">
+                  <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
                     {tag}
                   </span>
-                  <span className="text-[40px] font-bold text-black leading-none">{value}</span>
+                  <span className={cn('text-[40px] font-bold leading-none', tc)}>{value}</span>
                 </div>
-                <DotCheckbox checked={hasData} activeColor="#000000" inactiveColor="rgba(0,0,0,0.20)" />
+                <DotCheckbox checked={hasData} activeColor={dotActive} inactiveColor={dotInactive} />
               </button>
 
-              {/* Expanded inline editor */}
               <AnimatePresence>
                 {expandedSection === id && id === 'schedule' && (
                   <motion.div
@@ -769,22 +1210,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   >
                     <div className="pt-4 pb-2 grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-[10px] font-bold text-black/40 uppercase block mb-1">DURATION</span>
+                        <span className={cn('text-[10px] font-bold uppercase block mb-1', tcSub)}>DURATION</span>
                         <input
                           type="number"
                           value={details.duration}
                           onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-transparent border-b-2 border-black/10 py-1 text-lg font-bold text-black focus:outline-none focus:border-black transition-all"
+                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 focus:border-white' : 'border-black/10 focus:border-black')}
                         />
-                        <span className="text-[10px] font-bold text-black/30">minutes</span>
+                        <span className={cn('text-[10px] font-bold', tcFaint)}>minutes</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-black/40 uppercase block mb-1">SETS</span>
+                        <span className={cn('text-[10px] font-bold uppercase block mb-1', tcSub)}>SETS</span>
                         <input
                           type="number"
                           value={1}
                           readOnly
-                          className="w-full bg-transparent border-b-2 border-black/10 py-1 text-lg font-bold text-black focus:outline-none"
+                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none', tc, isDarkBg ? 'border-white/10' : 'border-black/10')}
                         />
                       </div>
                     </div>
@@ -800,10 +1241,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     className="overflow-hidden"
                   >
                     <div className="pt-4 pb-2 flex flex-col gap-2">
-                      {/* Task templates quick-load */}
                       {taskTemplates.length > 0 && tasks.length === 0 && (
                         <div className="mb-3">
-                          <span className="text-[10px] font-bold text-black/40 uppercase block mb-1.5">LOAD FROM TEMPLATE</span>
+                          <span className={cn('text-[10px] font-bold uppercase block mb-1.5', tcSub)}>LOAD FROM TEMPLATE</span>
                           <div className="flex flex-wrap gap-1.5">
                             {taskTemplates.map(tpl => (
                               <button
@@ -817,11 +1257,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                   }));
                                   setTasks(loaded);
                                 }}
-                                className="px-3 py-1.5 rounded-[10px] bg-white text-[11px] font-bold text-black flex items-center gap-1.5 hover:bg-white/80 transition-all"
+                                className={cn('px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all', isDarkBg ? 'bg-white/15 text-white hover:bg-white/25' : 'bg-white text-black hover:bg-white/80')}
                               >
-                                <Folder className="w-3 h-3 text-black/40" />
+                                <Folder className={cn('w-3 h-3', tcSub)} />
                                 {tpl.name}
-                                <span className="text-black/30">{tpl.tasks.length}</span>
+                                <span className={tcFaint}>{tpl.tasks.length}</span>
                               </button>
                             ))}
                           </div>
@@ -839,11 +1279,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                               setTasks(newTasks);
                             }}
                             placeholder="Task description..."
-                            className="flex-1 bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                            className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-black/20 focus:border-black')}
                           />
                           <button
                             onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))}
-                            className="text-black/20 hover:text-red-500 transition-colors"
+                            className={cn(isDarkBg ? 'text-white/20' : 'text-black/20', 'hover:text-red-500 transition-colors')}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -851,7 +1291,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       ))}
                       <button
                         onClick={() => setTasks([...tasks, { uid: `t-${Date.now()}`, title: '', completed: false }])}
-                        className="text-[12px] font-bold text-black/50 uppercase flex items-center gap-1 hover:text-black transition-colors mt-1"
+                        className={cn('text-[12px] font-bold uppercase flex items-center gap-1 transition-colors mt-1', tcMuted, isDarkBg ? 'hover:text-white' : 'hover:text-black')}
                       >
                         <Plus className="w-3 h-3" /> Add task
                       </button>
@@ -873,7 +1313,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Any notes for the band..."
                         rows={3}
-                        className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-medium text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all resize-none"
+                        className={cn('w-full bg-transparent border-b-2 py-2 text-sm font-medium focus:outline-none transition-all resize-none', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-black/20 focus:border-black')}
                       />
                     </div>
                   </motion.div>
@@ -894,6 +1334,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handlePickedSong = (picked: PickedSong) => {
     if (songPickerTargetSet) {
+      const targetSet = setlist.find((s: any) => s.uid === songPickerTargetSet);
+      const existingIds = new Set((targetSet?.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId));
+      if (existingIds.has(picked.id)) {
+        alert(`"${picked.title}" is already in this set.`);
+        return;
+      }
       setSetlist(prev => prev.map(s =>
         s.uid === songPickerTargetSet
           ? { ...s, songs: [...(s.songs || []), { uid: `song-${Date.now()}`, title: picked.title, artist: picked.artist, songId: picked.id }] }
@@ -904,11 +1350,24 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const handlePickedMultipleSongs = (picked: PickedSong[]) => {
     if (songPickerTargetSet) {
-      setSetlist(prev => prev.map(s =>
-        s.uid === songPickerTargetSet
-          ? { ...s, songs: [...(s.songs || []), ...picked.map(p => ({ uid: `song-${Date.now()}-${Math.random().toString(36).slice(2)}`, title: p.title, artist: p.artist, songId: p.id }))] }
-          : s
-      ));
+      const targetSet = setlist.find((s: any) => s.uid === songPickerTargetSet);
+      const existingIds = new Set((targetSet?.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId));
+      const dupes = picked.filter(p => existingIds.has(p.id));
+      const newSongs = picked.filter(p => !existingIds.has(p.id));
+
+      if (dupes.length > 0 && newSongs.length > 0) {
+        alert(`${dupes.length} song(s) already in this set were skipped: ${dupes.map(d => d.title).join(', ')}`);
+      } else if (dupes.length > 0 && newSongs.length === 0) {
+        alert(`All selected songs are already in this set.`);
+      }
+
+      if (newSongs.length > 0) {
+        setSetlist(prev => prev.map(s =>
+          s.uid === songPickerTargetSet
+            ? { ...s, songs: [...(s.songs || []), ...newSongs.map(p => ({ uid: `song-${Date.now()}-${Math.random().toString(36).slice(2)}`, title: p.title, artist: p.artist, songId: p.id }))] }
+            : s
+        ));
+      }
     }
     setSongPickerOpen(false);
     setSongPickerTargetSet(null);
@@ -1006,20 +1465,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[101] bg-[#D5FB46] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[101] flex flex-col overflow-hidden"
       style={{
+        backgroundColor: modalBg,
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {/* Songs Header */}
       <div className="px-4 pt-4 pb-4 flex items-center justify-between shrink-0">
-        <button onClick={() => setSongsView(false)} className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-black" />
+        <button onClick={() => setSongsView(false)} className={cn('w-10 h-10 rounded-full border-2 flex items-center justify-center', bcSolid)}>
+          <ArrowLeft className={cn('w-5 h-5', tc)} />
         </button>
-        <span className="text-[20px] font-bold text-black uppercase">SONGS</span>
-        <button onClick={onClose} className="w-[50px] h-[50px] rounded-full border-2 border-black bg-[rgba(216,216,216,0.3)] flex items-center justify-center">
-          <X className="w-6 h-6 text-black" />
+        <span className={cn('text-[20px] font-bold uppercase', tc)}>SONGS</span>
+        <button onClick={onClose} className={cn('w-[50px] h-[50px] rounded-full border-2 bg-[rgba(216,216,216,0.3)] flex items-center justify-center', bcSolid)}>
+          <X className={cn('w-6 h-6', tc)} />
         </button>
       </div>
 
@@ -1049,21 +1509,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         <div className="flex items-start justify-between mb-6">
           <div className="flex flex-col gap-1">
-            <span className="px-2 py-0.5 bg-black/30 text-black/50 text-[10px] font-bold uppercase rounded inline-flex self-start">
+            <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-black/50')}>
               {setlist.length} {setlist.length === 1 ? 'SET' : 'SETS'}
             </span>
-            <span className="text-[28px] font-bold text-black uppercase">SETLIST BUILDER</span>
+            <span className={cn('text-[28px] font-bold uppercase', tc)}>SETLIST BUILDER</span>
           </div>
           <button
             onClick={addSet}
-            className="w-10 h-10 rounded-full border-2 border-black flex items-center justify-center mt-2 hover:bg-black hover:text-[#D5FB46] text-black transition-colors"
+            className={cn('w-10 h-10 rounded-full border-2 flex items-center justify-center mt-2 transition-colors', bcSolid, tc, isDarkBg ? 'hover:bg-white hover:text-black' : `hover:bg-black hover:${pillAccent}`)}
           >
             <Plus className="w-5 h-5" />
           </button>
         </div>
 
         {setlist.length === 0 ? (
-          <div className="text-center py-12 text-black/30">
+          <div className={cn('text-center py-12', tcFaint)}>
             <span className="text-lg font-bold block mb-2">No sets yet</span>
             <span className="text-sm font-bold">Tap + to create one{savedSetlists.length > 0 ? ' or load a saved setlist' : ''}</span>
           </div>
@@ -1187,8 +1647,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onClick={handleSongsViewDone}
             className="py-4 bg-black rounded-[10px] flex items-center justify-center gap-2"
           >
-            <span className="text-[16px] font-bold text-[#D5FB46]">DONE</span>
-            <ArrowRight className="w-4 h-4 text-[#D5FB46]" />
+            <span className="text-[16px] font-bold" style={{ color: modalBg }}>DONE</span>
+            <ArrowRight className="w-4 h-4" style={{ color: modalBg }} />
           </button>
         </div>
       </div>
@@ -1223,7 +1683,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // --- Footer button config ---
   const isLastStep = step === STEPS.length - 1;
-  const isFirstStep = step === 0;
+  const isFirstStep = isEditing ? step <= 1 : step === 0;
   const currentStepConfig = STEPS[step];
   const isSkippable = currentStepConfig.skippable;
 
@@ -1231,19 +1691,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     switch (step) {
       case 0: return eventType !== null;
       case 1: return !!details.date;
-      case 2: return true;
+      case 2: return selectedMembers.length === 0 || allMemberFeesValid;
       case 3: return true;
       default: return true;
     }
   })();
 
   const hasStepData = (() => {
-    if (step === 2) return Object.values(memberFees).some(f => parseFloat(f) > 0) || !!details.pay;
+    if (step === 2) return selectedMembers.length > 0 && allMemberFeesValid;
     return false;
   })();
 
   const rightButtonLabel = isLastStep
-    ? 'CREATE EVENT'
+    ? (isEditing ? 'SAVE CHANGES' : 'CREATE EVENT')
     : isSkippable
       ? (hasStepData ? 'NEXT' : 'SKIP')
       : 'NEXT';
@@ -1257,8 +1717,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-[100] bg-[#D5FB46] flex flex-col overflow-hidden"
+        className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
         style={{
+          backgroundColor: modalBg,
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
@@ -1267,23 +1728,27 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <div className="flex-1 overflow-y-auto px-4 pt-16 pb-4">
           {/* Step Indicator */}
           <div className="mb-2">
-            <StepIndicator current={step} total={STEPS.length} />
+            <StepIndicator current={step} total={STEPS.length} activeColor={dotActive} inactiveColor={dotInactive} />
           </div>
 
           {/* Header + Close */}
           <div className="flex items-start justify-between mb-10">
             <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-bold text-black uppercase">{STEPS[step].label}</span>
-              <h1 className="text-[32px] font-bold text-black uppercase leading-[1] whitespace-pre-line">
+              <span className={cn('text-[12px] font-bold uppercase', tc)}>
+                {isEditing ? 'EDITING' : STEPS[step].label}
+              </span>
+              <h1 className={cn('text-[32px] font-bold uppercase leading-[1] whitespace-pre-line', tc)}>
                 {STEPS[step].title}
               </h1>
-              <span className="text-[16px] font-bold text-black/50 uppercase">{STEPS[step].subtitle}</span>
+              <span className={cn('text-[16px] font-bold uppercase', tcMuted)}>
+                {isEditing ? (editingWarnings.length > 0 ? `${editingWarnings.length} FIELD${editingWarnings.length > 1 ? 'S' : ''} TO COMPLETE` : 'REVIEW & SAVE') : STEPS[step].subtitle}
+              </span>
             </div>
             <button
               onClick={onClose}
-              className="w-[50px] h-[50px] rounded-full border-2 border-black bg-[rgba(216,216,216,0.3)] flex items-center justify-center shrink-0"
+              className={cn('w-[50px] h-[50px] rounded-full border-2 bg-[rgba(216,216,216,0.3)] flex items-center justify-center shrink-0', bcSolid)}
             >
-              <X className="w-6 h-6 text-black" />
+              <X className={cn('w-6 h-6', tc)} />
             </button>
           </div>
 

@@ -790,6 +790,7 @@ export const notifyEventMembersCreated = async (
   additionalData?: {
     venue?: string;
     fee?: number;
+    memberFees?: Record<string, number>;
   }
 ): Promise<{ error: Error | null }> => {
   try {
@@ -822,24 +823,24 @@ export const notifyEventMembersCreated = async (
       month: 'short' 
     });
     
-    // Build notification body based on event type
-    let body = `${creatorName} scheduled "${eventTitle}" for ${formattedDate} at ${eventTime}.`;
-    if (additionalData?.venue) {
-      body += ` @ ${additionalData.venue}`;
-    }
-    if (additionalData?.fee && eventType !== 'rehearsal') {
-      body += ` | €${additionalData.fee.toLocaleString()}`;
-    }
-    if (config.requiresRsvp) {
-      body += ' Confirm your availability.';
-    }
+    // Build per-member notification body (shows their personal fee, not total)
+    const buildBody = (userId: string) => {
+      let b = `${creatorName} scheduled "${eventTitle}" for ${formattedDate} at ${eventTime}.`;
+      if (additionalData?.venue) b += ` @ ${additionalData.venue}`;
+      const personalFee = additionalData?.memberFees?.[userId];
+      if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
+        b += ` | Your fee: €${personalFee.toLocaleString()}`;
+      }
+      if (config.requiresRsvp) b += ' Confirm your availability.';
+      return b;
+    };
     
-    // Create notifications for invited members
+    // Create notifications for invited members (each with their own member_fee and body)
     const notifications = userIds.map(userId => ({
       user_id: userId,
       type: 'event_invite' as NotificationType,
       title: `${config.emoji} New ${config.label}`,
-      body,
+      body: buildBody(userId),
       band_id: bandId,
       data: { 
         event_id: eventId, 
@@ -851,6 +852,7 @@ export const notifyEventMembersCreated = async (
         creator_name: creatorName,
         venue: additionalData?.venue,
         fee: additionalData?.fee,
+        member_fee: additionalData?.memberFees?.[userId] ?? undefined,
         requires_rsvp: config.requiresRsvp,
       },
       action_label: config.requiresRsvp ? 'RSVP Now' : 'View Event',
@@ -865,13 +867,20 @@ export const notifyEventMembersCreated = async (
     
     if (insertError) throw insertError;
     
-    // Send push notifications
-    await sendPushNotification(
-      userIds,
-      `${config.emoji} New ${config.label}`,
-      `${creatorName} scheduled "${eventTitle}" for ${formattedDate}`,
-      { event_id: eventId, type: 'event_invite', event_type: eventType }
-    );
+    // Send push notifications (one per member so each gets their own fee in the body)
+    for (const userId of userIds) {
+      const personalFee = additionalData?.memberFees?.[userId];
+      let pushBody = `${creatorName} scheduled "${eventTitle}" for ${formattedDate}`;
+      if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
+        pushBody += ` | Your fee: €${personalFee.toLocaleString()}`;
+      }
+      await sendPushNotification(
+        [userId],
+        `${config.emoji} New ${config.label}`,
+        pushBody,
+        { event_id: eventId, type: 'event_invite', event_type: eventType, member_fee: String(personalFee || '') }
+      );
+    }
     
     return { error: null };
   } catch (error: any) {

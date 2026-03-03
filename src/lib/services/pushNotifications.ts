@@ -224,7 +224,13 @@ export const setupNativePushListeners = (
     
     if (notificationChatId && activeChat === notificationChatId) {
       console.log('[Push] Skipping notification - user is already viewing this chat');
-      // Don't show notification, don't call callback - user sees messages live
+      return;
+    }
+
+    // Suppress local notification for event invites - the in-app RSVP sheet handles these
+    if (notification.data?.type === 'event_invite') {
+      console.log('[Push] Skipping local notification for event_invite - RSVP sheet handles it');
+      onNotification({ title: notification.title, body: notification.body, data: notification.data });
       return;
     }
     

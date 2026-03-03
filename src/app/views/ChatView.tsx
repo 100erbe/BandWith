@@ -5,15 +5,15 @@ import {
   User, 
   Music2, 
   Calendar as CalendarIcon,
-  CheckCheck,
-  Check,
   Plus,
   MessageSquare,
   X,
   Loader2,
-  ArrowUpRight
+  ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
+import { PlugsConnectedIcon, PlugsDisconnectedIcon, ChecksIcon } from '@/app/components/ui/ConnectionIcons';
+import { EmptyState } from '@/app/components/ui/EmptyState';
 import { ChatItem, ChatType } from '@/app/data/chats';
 import { searchChatsAndMessages, SearchResult } from '@/lib/services/chats';
 
@@ -263,7 +263,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* ═══ CHAT LIST ═══ */}
-      <div className="flex flex-col gap-[40px] -mt-[20px]">
+      <div className="flex flex-col gap-[16px] -mt-[20px]">
         {filteredChats.length > 0 ? (
           filteredChats.map((chat, i) => (
             <motion.div 
@@ -272,199 +272,137 @@ export const ChatView: React.FC<ChatViewProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => onChatClick?.(chat)}
-              className="flex flex-col gap-[16px] cursor-pointer"
+              className="bg-card rounded-[10px] p-[20px] cursor-pointer flex flex-col gap-[16px] overflow-hidden active:scale-[0.98] transition-transform"
             >
-              {/* Top row: Info + Arrow */}
-              <div className="flex gap-[20px] items-start">
-                {/* Left: Avatar + Name + Message */}
-                <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                  {/* Type Tag */}
-                  <div className="flex gap-[4px] items-center">
-                    <div className={cn(
-                      "rounded-[6px] px-[10px] py-[4px]",
-                      chat.type === 'direct' ? "bg-black text-white" :
-                      chat.type === 'band' ? "bg-[#D5FB46] text-black" :
-                      "bg-[#0147FF] text-white"
-                    )}>
-                      <span className="text-[12px] font-bold uppercase">
-                        {chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT'}
-                      </span>
+              {/* ── Top: Info + Icons ── */}
+              <div className="flex gap-[30px] items-start">
+                {/* Left: Pills + Name + Preview */}
+                <div className="flex-1 flex flex-col gap-[8px] min-w-0">
+                  <div className="flex flex-col gap-[4px]">
+                    {/* Pills row */}
+                    <div className="flex flex-wrap gap-[4px]">
+                      {chat.type === 'direct' && (
+                        <>
+                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                            <span className="text-[12px] font-bold text-white uppercase">DM</span>
+                          </div>
+                          {chat.bandName && (
+                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                              <span className="text-[12px] font-bold text-white uppercase">{chat.bandName}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {chat.type === 'band' && (
+                        <>
+                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                            <span className="text-[12px] font-bold text-white uppercase">BM</span>
+                          </div>
+                          {chat.senderName && (
+                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                              <span className="text-[12px] font-bold text-white uppercase">{chat.senderName}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {chat.type === 'event' && (
+                        <>
+                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                            <span className="text-[12px] font-bold text-white uppercase">EM</span>
+                          </div>
+                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                            <span className="text-[12px] font-bold text-white uppercase">
+                              {chat.eventType === 'rehearsal' ? 'REHEARSAL' : 'GIG'}
+                            </span>
+                          </div>
+                          {chat.senderName && (
+                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
+                              <span className="text-[12px] font-bold text-white uppercase">{chat.senderName}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                    {chat.unread > 0 && (
-                      <div className="bg-[#D5FB46] rounded-[6px] px-[10px] py-[4px]">
-                        <span className="text-[12px] font-bold text-black">
-                          {chat.unread} NEW
-                        </span>
-                      </div>
-                    )}
+                    {/* Name */}
+                    <h3 className="text-[22px] font-bold text-black uppercase leading-none truncate">
+                      {chat.name}
+                    </h3>
                   </div>
-
-                  {/* Name */}
-                  <h3 className="text-[32px] font-bold text-black uppercase leading-none truncate">
-                    {chat.name}
-                  </h3>
-
-                  {/* Last Message */}
-                  <div className="flex flex-col gap-[2px]">
-                    <p className={cn(
-                      "text-[12px] font-medium uppercase truncate",
-                      chat.unread > 0 ? "text-black" : "text-black/50"
-                    )}>
-                      {chat.lastMessage || 'No messages yet'}
-                    </p>
-                    {chat.subtitle && (
-                      <span className="text-[12px] font-medium text-black/30 uppercase">
-                        {chat.subtitle}
-                      </span>
-                    )}
-                  </div>
+                  {/* Message preview */}
+                  <p className="text-[12px] font-medium text-black/50 uppercase leading-snug line-clamp-2">
+                    {chat.lastMessage || 'No messages yet'}
+                  </p>
                 </div>
 
-                {/* Right: Arrow + Time */}
+                {/* Right: Icons + Timestamp */}
                 <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                  <div className={cn(
-                    "rounded-full p-[5.7px]",
-                    chat.type === 'band' ? "bg-[#D5FB46]" : "bg-black"
-                  )}>
-                    <ArrowUpRight className={cn(
-                      "w-[28px] h-[28px]",
-                      chat.type === 'band' ? "text-black" : "text-[#D5FB46]"
-                    )} />
+                  <div className="flex gap-[6px]">
+                    {chat.isOnline ? (
+                      <div className="bg-[#17c764] rounded-full p-[6px]">
+                        <PlugsConnectedIcon className="w-[28px] h-[28px] text-black" />
+                      </div>
+                    ) : (
+                      <div className="bg-[rgba(0,0,0,0.3)] rounded-full p-[6px]">
+                        <PlugsDisconnectedIcon className="w-[28px] h-[28px] text-black" />
+                      </div>
+                    )}
+                    {/* Open chat arrow */}
+                    <div className="bg-black rounded-full p-[6px]">
+                      <ArrowUpRight className="w-[28px] h-[28px] text-[#D5FB46]" />
+                    </div>
                   </div>
-                  <div className="bg-black/10 rounded-[10px] px-[10px] py-[10px]">
-                    <span className="text-[12px] font-bold text-black uppercase whitespace-nowrap">
+                  {/* Timestamp */}
+                  <div className="bg-black/20 rounded-[6px] px-[10px] py-[4px]">
+                    <span className="text-[12px] font-bold text-black whitespace-nowrap">
                       {chat.time || 'NOW'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom: Stats */}
-              <div className="flex gap-[20px] items-end">
-                {/* Members dot grid */}
-                <div className="w-[169px] flex flex-col gap-[10px] shrink-0">
+              {/* ── Bottom: Dots grid + Unread ── */}
+              <div className="flex items-end justify-between">
+                {/* Dot grid — 16 cols × 3 rows */}
+                <div className="flex-1 max-w-[220px]">
                   <div
                     className="grid w-full gap-[4px]"
                     style={{
-                      gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
-                      gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-                      height: 32,
+                      gridTemplateColumns: 'repeat(16, minmax(0, 1fr))',
+                      gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
+                      height: 62,
                     }}
                   >
-                    {Array.from({ length: 12 }).map((_, idx) => {
-                      const memberCount = chat.members || (chat.type === 'direct' ? 2 : 1);
-                      const color = chat.type === 'band' ? '#D5FB46' :
-                                    chat.type === 'event' ? '#0147FF' : '#000000';
+                    {Array.from({ length: 48 }).map((_, idx) => {
+                      const unreadDots = chat.unread || 0;
+                      const limeStart = 48 - unreadDots;
                       return (
                         <div
                           key={idx}
                           className="rounded-[10px]"
-                          style={{ backgroundColor: idx < memberCount ? color : 'rgba(0,0,0,0.1)' }}
+                          style={{
+                            backgroundColor: idx >= limeStart ? '#D5FB46' : 'rgba(0,0,0,0.1)',
+                          }}
                         />
                       );
                     })}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[12px] font-bold text-black uppercase">
-                      {chat.type === 'direct' ? 'STATUS' : 'MEMBERS'}
-                    </span>
-                    <span className="text-[42px] font-bold text-black leading-none">
-                      {chat.type === 'direct' ? (
-                        chat.status === 'read' ? (
-                          <span className="flex items-center"><CheckCheck className="w-[32px] h-[32px]" /></span>
-                        ) : (
-                          <span className="flex items-center"><Check className="w-[32px] h-[32px]" /></span>
-                        )
-                      ) : (
-                        chat.members || 1
-                      )}
-                    </span>
-                  </div>
                 </div>
-
-                {/* Activity */}
-                <div className="flex-1 flex flex-col gap-[10px]">
-                  <div
-                    className="grid w-full gap-[4px]"
-                    style={{
-                      gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
-                      gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-                      height: 32,
-                    }}
-                  >
-                    {Array.from({ length: 12 }).map((_, idx) => {
-                      const filled = chat.unread > 0 ? Math.min(12, chat.unread + 6) : 4;
-                      const color = chat.type === 'band' ? '#D5FB46' :
-                                    chat.type === 'event' ? '#0147FF' : '#000000';
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-[10px]"
-                          style={{ backgroundColor: idx < filled ? color : 'rgba(0,0,0,0.1)' }}
-                        />
-                      );
-                    })}
+                {chat.unread > 0 ? (
+                  <div className="flex flex-col items-end w-[50px] shrink-0">
+                    <span className="text-[12px] font-bold text-black uppercase">UNREAD</span>
+                    <span className="text-[42px] font-bold text-black leading-none">{chat.unread}</span>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[12px] font-bold text-black uppercase">
-                      UNREAD
-                    </span>
-                    <span className="text-[42px] font-bold text-black leading-none">
-                      {chat.unread || 0}
-                    </span>
+                ) : (
+                  <div className="flex flex-col items-end w-[48px] shrink-0">
+                    <span className="text-[12px] font-bold text-black uppercase">READ</span>
+                    <ChecksIcon className="w-[48px] h-[48px]" />
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
           ))
         ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-[20px]"
-          >
-            {/* Empty State - Swiss Brutalist */}
-            <div className="bg-black rounded-[20px] p-[30px] flex flex-col gap-[20px]">
-              <div className="flex flex-col gap-[4px]">
-                <span className="text-[12px] font-bold text-white/40 uppercase">
-                  {chatFilter === 'direct' ? 'DIRECT MESSAGES' : chatFilter === 'band' ? 'BAND CHATS' : 'EVENT CHATS'}
-                </span>
-                <h3 className="text-[32px] font-bold text-white uppercase leading-none">
-                  NO CHATS
-                </h3>
-              </div>
-              <p className="text-[14px] font-medium text-white/50 uppercase">
-                {chatFilter === 'direct' && 'START A PRIVATE CONVERSATION WITH A BAND MEMBER'}
-                {chatFilter === 'band' && 'CREATE A GROUP CHAT TO COORDINATE WITH YOUR BAND'}
-                {chatFilter === 'event' && 'CHAT CHANNELS FOR EVENTS WILL APPEAR HERE'}
-              </p>
-              <button
-                onClick={() => onStartChat?.()}
-                className="bg-[#D5FB46] text-black rounded-full px-[20px] py-[12px] font-bold text-[14px] uppercase flex items-center gap-[8px] self-start"
-              >
-                <Plus className="w-[16px] h-[16px]" />
-                NEW CHAT
-              </button>
-            </div>
-
-            {/* Tip Cards */}
-            <div className="grid grid-cols-2 gap-[10px]">
-              <div className="bg-black/[0.06] rounded-[10px] p-[16px] flex flex-col gap-[8px]">
-                <div className="w-[32px] h-[32px] bg-black rounded-[6px] flex items-center justify-center">
-                  <User className="w-[16px] h-[16px] text-[#D5FB46]" />
-                </div>
-                <span className="text-[12px] font-bold text-black uppercase">DIRECT</span>
-                <span className="text-[11px] font-medium text-black/40 uppercase">CHAT PRIVATELY WITH MEMBERS</span>
-              </div>
-              <div className="bg-black/[0.06] rounded-[10px] p-[16px] flex flex-col gap-[8px]">
-                <div className="w-[32px] h-[32px] bg-[#D5FB46] rounded-[6px] flex items-center justify-center">
-                  <Music2 className="w-[16px] h-[16px] text-black" />
-                </div>
-                <span className="text-[12px] font-bold text-black uppercase">BANDS</span>
-                <span className="text-[11px] font-medium text-black/40 uppercase">COORDINATE WITH YOUR BAND</span>
-              </div>
-            </div>
-          </motion.div>
+          <EmptyState />
         )}
       </div>
     </motion.div>

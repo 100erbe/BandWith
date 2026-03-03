@@ -2,22 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
-  Search,
   LayoutTemplate,
   CheckSquare,
   Copy,
-  MoreVertical,
+  MoreHorizontal,
   Edit2,
   Trash2,
   X,
   Loader2,
-  Clock,
   Calendar,
-  Music,
-  Briefcase,
-  Heart,
-  Star,
-  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
@@ -45,13 +39,13 @@ interface TaskTemplatesViewProps {
   bandId: string;
 }
 
-const CATEGORIES = {
-  wedding: { label: 'Wedding', icon: Heart, color: 'bg-pink-500/10 text-pink-600' },
-  corporate: { label: 'Corporate', icon: Briefcase, color: 'bg-blue-500/10 text-blue-600' },
-  festival: { label: 'Festival', icon: Music, color: 'bg-purple-500/10 text-purple-600' },
-  private: { label: 'Private Party', icon: Star, color: 'bg-amber-500/10 text-amber-600' },
-  rehearsal: { label: 'Rehearsal', icon: Clock, color: 'bg-green-500/10 text-green-600' },
-  other: { label: 'Other', icon: LayoutTemplate, color: 'bg-black/5 text-black/60' },
+const CATEGORIES: Record<string, { label: string }> = {
+  wedding: { label: 'Wedding' },
+  corporate: { label: 'Corporate' },
+  festival: { label: 'Festival' },
+  private: { label: 'Private Party' },
+  rehearsal: { label: 'Rehearsal' },
+  other: { label: 'Other' },
 };
 
 const DEFAULT_TEMPLATES: Omit<TaskTemplate, 'id' | 'band_id' | 'created_at'>[] = [
@@ -268,169 +262,148 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 50 }}
-      transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto flex flex-col"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden flex flex-col"
+      style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       {/* Header */}
-      <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">Workflows</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">TEMPLATES</h1>
-            <p className="text-sm text-black/50 font-bold tracking-tight mt-1">{templates.length} templates</p>
+      <div className="px-4 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onBack}
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+          >
+            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+          </button>
+          <div className="flex flex-col leading-none flex-1">
+            <span className="text-[32px] font-bold text-black leading-none">TASK</span>
+            <span className="text-[32px] font-bold text-black leading-none">TEMPLATES</span>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="w-12 h-12 rounded-full bg-[#D4FB46] flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <Plus className="w-5 h-5 text-black" />
-            </button>
-            <button
-              onClick={onBack}
-              className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-all"
-            >
-              <X className="w-6 h-6 text-black/50" />
-            </button>
-          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
+          >
+            <Plus className="w-[20px] h-[20px] text-black" />
+          </button>
         </div>
 
         {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black/30" />
+        <div className="mb-4">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search templates..."
-            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-sm font-medium text-black placeholder:text-black/30 border border-black/5 focus:outline-none focus:border-black/20 transition-colors"
+            className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
           />
         </div>
       </div>
 
       {/* Templates List */}
-      <div className="flex-1 px-5 py-4 pb-20 overflow-y-auto">
+      <div className="flex-1 px-4 pb-20 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-black/40" />
+            <Loader2 className="w-8 h-8 animate-spin text-black/30" />
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <LayoutTemplate className="w-12 h-12 text-black/20 mb-3" />
-            <p className="text-black/50 font-medium">No templates found</p>
-            <p className="text-black/40 text-sm">Create your first task template</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <LayoutTemplate className="w-12 h-12 text-black/15 mb-3" />
+            <span className="text-xs font-bold text-black/40 uppercase tracking-wide mb-1">No templates found</span>
+            <span className="text-[10px] font-medium text-black/30 uppercase">Create your first task template</span>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredTemplates.map((template, index) => {
-              const categoryConfig = CATEGORIES[template.category];
-              const CategoryIcon = categoryConfig.icon;
-              
-              return (
-                <motion.div
-                  key={template.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-2xl p-4 relative"
-                >
-                  <div 
-                    className="flex items-start gap-4 cursor-pointer"
-                    onClick={() => setSelectedTemplate(template)}
+          <>
+            {/* Section Title */}
+            <div className="flex flex-col mb-5">
+              <span className="text-[32px] font-bold leading-none text-black">ALL</span>
+              <span className="text-[32px] font-bold leading-none text-black">TEMPLATES</span>
+            </div>
+
+            <div className="flex flex-col gap-0">
+              {filteredTemplates.map((template, index) => {
+                const categoryConfig = CATEGORIES[template.category];
+                
+                return (
+                  <motion.div
+                    key={template.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="relative"
                   >
-                    <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center",
-                      categoryConfig.color
-                    )}>
-                      <CategoryIcon className="w-5 h-5" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-black">{template.name}</h3>
-                          <p className="text-sm text-black/50 line-clamp-1">{template.description}</p>
+                    <div
+                      className="flex items-center justify-between py-4 border-b border-black/10 cursor-pointer active:opacity-70 transition-opacity"
+                      onClick={() => setSelectedTemplate(template)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-[10px] bg-[#CDCACA] flex items-center justify-center shrink-0">
+                          <CheckSquare className="w-5 h-5 text-black/50" />
                         </div>
-                        
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(menuOpenId === template.id ? null : template.id);
-                          }}
-                          className="p-2 -mr-2 -mt-1 rounded-lg hover:bg-black/5 transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-black/40" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-3">
-                        <span className="text-xs text-black/40 flex items-center gap-1">
-                          <CheckSquare className="w-3 h-3" />
-                          {template.tasks.length} tasks
-                        </span>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                          categoryConfig.color
-                        )}>
-                          {categoryConfig.label}
-                        </span>
-                        {template.is_default && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#D4FB46]/20 text-[#1A1A1A]">
-                            Default
+                        <div className="flex flex-col items-start min-w-0">
+                          <span className="text-xs font-bold text-black uppercase tracking-wide truncate max-w-full">{template.name}</span>
+                          <span className="text-[10px] font-medium text-black/40 uppercase">
+                            {template.tasks.length} TASKS · {categoryConfig.label}
+                            {template.is_default ? ' · DEFAULT' : ''}
                           </span>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <ChevronRight className="w-5 h-5 text-black/20 mt-3" />
-                  </div>
-
-                  {/* Context Menu */}
-                  <AnimatePresence>
-                    {menuOpenId === template.id && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute right-4 top-12 bg-white rounded-xl shadow-xl border border-black/5 overflow-hidden z-10"
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId(menuOpenId === template.id ? null : template.id);
+                        }}
+                        className="w-8 h-8 flex items-center justify-center active:opacity-70 transition-opacity shrink-0"
                       >
-                        <button
-                          onClick={() => handleDuplicate(template)}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-black/70 hover:bg-white/80"
+                        <MoreHorizontal className="w-4 h-4 text-black" />
+                      </button>
+                    </div>
+
+                    {/* Inline Action Menu */}
+                    <AnimatePresence>
+                      {menuOpenId === template.id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden border-b border-black/10"
                         >
-                          <Copy className="w-4 h-4" />
-                          Duplicate
-                        </button>
-                        <button
-                          onClick={() => handleEdit(template)}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-black/70 hover:bg-white/80"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                          Edit
-                        </button>
-                        {!template.is_default && (
-                          <button
-                            onClick={() => handleDelete(template.id)}
-                            className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })}
-          </div>
+                          <div className="py-2 flex flex-col gap-0">
+                            <button
+                              onClick={() => handleDuplicate(template)}
+                              className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                            >
+                              <Copy className="w-4 h-4 text-black/40" />
+                              <span className="text-xs font-bold text-black uppercase tracking-wide">DUPLICATE</span>
+                            </button>
+                            <button
+                              onClick={() => handleEdit(template)}
+                              className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                            >
+                              <Edit2 className="w-4 h-4 text-black/40" />
+                              <span className="text-xs font-bold text-black uppercase tracking-wide">EDIT</span>
+                            </button>
+                            {!template.is_default && (
+                              <button
+                                onClick={() => handleDelete(template.id)}
+                                className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                              >
+                                <Trash2 className="w-4 h-4 text-[#A73131]" />
+                                <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">DELETE</span>
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
@@ -518,22 +491,22 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#E6E5E1]"
           >
             {/* Header */}
-            <div 
-              className="px-6 pt-6 pb-4 flex-shrink-0"
+            <div
+              className="px-4 shrink-0"
               style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-1">Task Templates</p>
-                  <h1 className="text-4xl font-black text-black tracking-tight">CREATE</h1>
-                  <p className="text-sm text-black/50 mt-1">Build your workflow</p>
-                </div>
-                <button 
+              <div className="flex items-center gap-4 mb-6">
+                <button
                   onClick={() => setShowCreateModal(false)}
-                  className="w-12 h-12 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
+                  style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
                 >
-                  <X className="w-5 h-5 text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px] text-black" />
                 </button>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[32px] font-bold text-black leading-none">CREATE</span>
+                  <span className="text-[32px] font-bold text-black leading-none">TEMPLATE</span>
+                </div>
               </div>
             </div>
 

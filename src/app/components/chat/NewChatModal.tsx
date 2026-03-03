@@ -3,15 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   Search,
-  User,
-  Users,
-  Calendar,
-  Music2,
   Loader2,
   ArrowRight
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
+import { EmptyState } from '@/app/components/ui/EmptyState';
 import { createChat } from '@/lib/services/chats';
 import { getBandMembersForChat, getBands } from '@/lib/services/bands';
 import { getEvents } from '@/lib/services/events';
@@ -49,34 +46,26 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Data for each tab
   const [allMembers, setAllMembers] = useState<MemberWithBand[]>([]);
   const [allBands, setAllBands] = useState<BandWithMembers[]>([]);
   const [allEvents, setAllEvents] = useState<EventWithBand[]>([]);
 
-  // Selection states
   const [selectedMember, setSelectedMember] = useState<MemberWithBand | null>(null);
   const [selectedBandChat, setSelectedBandChat] = useState<BandWithMembers | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventWithBand | null>(null);
 
-  // Load all data on mount
   useEffect(() => {
     const loadAllData = async () => {
       setIsLoading(true);
       
       try {
-        // Get all bands
         const { data: bandsData, error: bandsError } = await getBands();
-        console.log('[NewChatModal] Bands loaded:', bandsData?.length, 'error:', bandsError);
         
         if (bandsData) {
           setAllBands(bandsData);
           
-          // Get members from all bands
           const membersPromises = bandsData.map(async (band) => {
-            console.log('[NewChatModal] Loading members for band:', band.id, band.name);
-            const { data: members, error: membersError } = await getBandMembersForChat(band.id);
-            console.log('[NewChatModal] Members for', band.name, ':', members?.length, 'error:', membersError);
+            const { data: members } = await getBandMembersForChat(band.id);
             return (members || []).map(m => ({
               ...m,
               bandId: band.id,
@@ -85,12 +74,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           });
           
           const allMembersArrays = await Promise.all(membersPromises);
-          const flatMembers = allMembersArrays.flat();
+          setAllMembers(allMembersArrays.flat());
           
-          // Remove duplicates (same user in multiple bands) - keep both entries but with band info
-          setAllMembers(flatMembers);
-          
-          // Get events from all bands
           const eventsPromises = bandsData.map(async (band) => {
             const { data: events } = await getEvents(band.id);
             return (events || []).map(e => ({
@@ -113,7 +98,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     loadAllData();
   }, []);
 
-  // Filter based on search
   const filteredMembers = useMemo(() => {
     if (!searchQuery) return allMembers;
     const q = searchQuery.toLowerCase();
@@ -139,7 +123,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     );
   }, [allEvents, searchQuery]);
 
-  // Get initials
   const getInitials = (name?: string, fallback?: string) => {
     if (name) {
       return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -147,7 +130,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     return fallback?.slice(0, 2).toUpperCase() || '??';
   };
 
-  // Format event date
   const formatEventDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('it-IT', { 
@@ -157,7 +139,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     });
   };
 
-  // Handle selection
   const handleSelect = (type: ChatTypeOption, item: any) => {
     if (type === 'direct') {
       setSelectedMember(item);
@@ -174,7 +155,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     }
   };
 
-  // Create chat
   const handleCreateChat = async () => {
     setCreating(true);
     setError(null);
@@ -190,7 +170,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         if (data) onChatCreated(data.id);
         
       } else if (chatType === 'band' && selectedBandChat) {
-        // Get all member IDs for this band
         const memberIds = selectedBandChat.members?.map(m => m.user_id) || [];
         const { data, error: createError } = await createChat({
           type: 'band',
@@ -207,7 +186,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           name: selectedEvent.title,
           band_id: selectedEvent.band_id,
           event_id: selectedEvent.id,
-          participant_ids: [], // Will be populated by backend based on event members
+          participant_ids: [],
         });
         if (createError) throw createError;
         if (data) onChatCreated(data.id);
@@ -219,95 +198,96 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     setCreating(false);
   };
 
-  // Check if can create
   const canCreate = 
     (chatType === 'direct' && selectedMember) ||
     (chatType === 'band' && selectedBandChat) ||
     (chatType === 'event' && selectedEvent);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
-      onClick={onClose}
-    >
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+        onClick={onClose}
+      />
+
+      {/* Bottom Sheet */}
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-        className="w-full max-w-md bg-[#E6E5E1] rounded-t-[2rem] max-h-[85vh] flex flex-col overflow-hidden"
+        transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+        className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] flex flex-col"
+        style={{ 
+          maxHeight: '85vh',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-black/10 rounded-full" />
+        {/* Pill handle */}
+        <div className="flex justify-center mb-4">
+          <div className="w-10 h-1 rounded-full bg-white/30" />
         </div>
 
-        {/* Header - Swiss Editorial Style */}
-        <div className="px-6 pb-6">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <p className="text-[12px] font-bold text-black/40 uppercase mb-1">
-                NEW CONVERSATION
-              </p>
-              <h2 className="text-[32px] font-bold text-black uppercase leading-none">
-                {chatType === 'direct' ? 'MESSAGE' : chatType === 'band' ? 'BAND CHAT' : 'EVENT CHAT'}
-              </h2>
-            </div>
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8">
+          <p className="text-xs font-bold text-white/50 uppercase tracking-wider">
+            NEW CONVERSATION
+          </p>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Selector */}
+        <div className="flex gap-[12px] mb-6">
+          {[
+            { type: 'direct' as const, label: 'DIRECT' },
+            { type: 'band' as const, label: 'BAND' },
+            { type: 'event' as const, label: 'EVENT' },
+          ].map(({ type, label }) => (
             <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors mt-1"
+              key={type}
+              onClick={() => {
+                setChatType(type);
+                setSelectedMember(null);
+                setSelectedBandChat(null);
+                setSelectedEvent(null);
+                setSearchQuery('');
+              }}
+              className={cn(
+                "px-[10px] py-[6px] rounded-[6px] text-[12px] font-bold uppercase transition-all",
+                chatType === type
+                  ? "bg-[#D5FB46] text-black"
+                  : "bg-white/10 text-white/40"
+              )}
             >
-              <X className="w-4 h-4 text-black" />
+              {label}
             </button>
-          </div>
+          ))}
+        </div>
 
-          {/* Tab Selector - Minimal Swiss Style */}
-          <div className="flex gap-[12px] mb-6">
-            {[
-              { type: 'direct' as const, label: 'DIRECT' },
-              { type: 'band' as const, label: 'BAND' },
-              { type: 'event' as const, label: 'EVENT' },
-            ].map(({ type, label }) => (
-              <button
-                key={type}
-                onClick={() => {
-                  setChatType(type);
-                  setSelectedMember(null);
-                  setSelectedBandChat(null);
-                  setSelectedEvent(null);
-                  setSearchQuery('');
-                }}
-                className={cn(
-                  "px-[8px] py-[6px] rounded-[6px] text-[12px] transition-all",
-                  chatType === type
-                    ? "bg-white text-black font-bold"
-                    : "bg-black/20 text-black/40 font-medium"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Field - Swiss Minimal */}
-          <div className="bg-black/[0.06] rounded-[10px] flex items-center px-[12px] gap-[8px]">
-            <Search className="w-[16px] h-[16px] text-black/30 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
-                chatType === 'direct' ? 'SEARCH MEMBERS...' :
-                chatType === 'band' ? 'SEARCH BANDS...' :
-                'SEARCH EVENTS...'
-              }
-              className="w-full h-[40px] bg-transparent text-[12px] font-bold text-black placeholder:text-black/30 uppercase focus:outline-none"
-            />
-          </div>
+        {/* Search */}
+        <div className="bg-white/10 rounded-[10px] flex items-center px-[12px] gap-[8px] mb-6">
+          <Search className="w-[16px] h-[16px] text-white/30 shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              chatType === 'direct' ? 'SEARCH MEMBERS...' :
+              chatType === 'band' ? 'SEARCH BANDS...' :
+              'SEARCH EVENTS...'
+            }
+            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-white placeholder:text-white/30 uppercase focus:outline-none"
+          />
         </div>
 
         {/* Error */}
@@ -317,9 +297,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mx-6 mb-4"
+              className="mb-4"
             >
-              <div className="p-3 bg-red-50 border-l-2 border-red-500 text-red-700 text-sm">
+              <div className="p-3 bg-red-500/20 border-l-2 border-red-500 text-red-300 text-sm">
                 {error}
               </div>
             </motion.div>
@@ -327,69 +307,67 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </AnimatePresence>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
+        <div className="flex-1 overflow-y-auto min-h-0 pb-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-black/20 animate-spin" />
+              <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
             </div>
           ) : (
             <>
-              {/* DIRECT TAB - Show Members grouped by Band */}
+              {/* DIRECT TAB */}
               {chatType === 'direct' && (
-                <div className="space-y-6">
-                  {/* Group members by band */}
+                <div className="flex flex-col gap-6">
                   {allBands.map(band => {
                     const bandMembers = filteredMembers.filter(m => m.bandId === band.id);
                     if (bandMembers.length === 0) return null;
                     
                     return (
                       <div key={band.id}>
-                        {/* Band Header */}
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-5 h-5 rounded bg-[#D4FB46] flex items-center justify-center">
-                            <Music2 className="w-3 h-3 text-[#1A1A1A]" />
-                          </div>
-                          <span className="text-[10px] font-bold tracking-[0.15em] text-black/40 uppercase">
+                          <span className="text-[10px] font-bold tracking-[0.15em] text-[#D5FB46] uppercase">
                             {band.name}
                           </span>
                         </div>
                         
-                        {/* Members */}
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1">
                           {bandMembers.map(member => {
                             const isSelected = selectedMember?.id === member.id && selectedMember?.bandId === member.bandId;
                             return (
                               <motion.button
                                 key={`${member.id}-${member.bandId}`}
                                 onClick={() => handleSelect('direct', member)}
-                                className="w-full p-3 rounded-lg flex items-center gap-3 transition-all hover:bg-black/5"
+                                whileTap={{ scale: 0.98 }}
+                                className={cn(
+                                  "w-full p-3 rounded-[10px] flex items-center gap-3 transition-all",
+                                  isSelected ? "bg-white/10" : "hover:bg-white/5"
+                                )}
                               >
                                 <div className={cn(
                                   "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
                                   isSelected 
                                     ? "bg-[#D5FB46] text-black" 
-                                    : "bg-black/10 text-black/60"
+                                    : "bg-white/10 text-white/60"
                                 )}>
                                   {getInitials(member.full_name, member.email)}
                                 </div>
                                 <div className="flex-1 text-left">
                                   <p className={cn(
-                                    "font-semibold text-sm",
-                                    isSelected ? "text-black" : "text-black/50"
+                                    "font-bold text-sm uppercase",
+                                    isSelected ? "text-white" : "text-white/50"
                                   )}>
                                     {member.full_name || member.email}
                                   </p>
                                   <p className={cn(
-                                    "text-xs",
-                                    isSelected ? "text-black/60" : "text-black/30"
+                                    "text-xs uppercase",
+                                    isSelected ? "text-white/60" : "text-white/30"
                                   )}>
                                     {member.instrument || member.role || 'Member'}
                                   </p>
                                 </div>
                                 <DotRadio
                                   selected={isSelected}
-                                  activeColor="#000000"
-                                  inactiveColor="rgba(0,0,0,0.20)"
+                                  activeColor="#D5FB46"
+                                  inactiveColor="rgba(255,255,255,0.20)"
                                 />
                               </motion.button>
                             );
@@ -401,16 +379,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                   
                   {filteredMembers.length === 0 && (
                     <div className="text-center py-12">
-                      <User className="w-10 h-10 text-black/20 mx-auto mb-3" />
-                      <p className="text-black/40 text-[12px] font-bold uppercase">NO MEMBERS FOUND</p>
+                      <p className="text-white/40 text-[12px] font-bold uppercase">NO MEMBERS FOUND</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* BAND TAB - Show Bands */}
+              {/* BAND TAB */}
               {chatType === 'band' && (
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   {filteredBands.map(band => {
                     const isSelected = selectedBandChat?.id === band.id;
                     const memberCount = band.members?.length || 0;
@@ -419,29 +396,38 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                       <motion.button
                         key={band.id}
                         onClick={() => handleSelect('band', band)}
-                        className="w-full p-4 rounded-[10px] flex items-center gap-4 transition-all bg-white hover:bg-black/[0.03] border border-black/5"
+                        whileTap={{ scale: 0.98 }}
+                        className={cn(
+                          "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all",
+                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
+                        )}
                       >
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm bg-[#D5FB46] text-black">
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm",
+                          isSelected 
+                            ? "bg-[#D5FB46] text-black"
+                            : "bg-white/10 text-white/60"
+                        )}>
                           {getInitials(band.name)}
                         </div>
                         <div className="flex-1 text-left">
                           <p className={cn(
-                            "font-bold",
-                            isSelected ? "text-black" : "text-black/50"
+                            "font-bold uppercase",
+                            isSelected ? "text-white" : "text-white/50"
                           )}>
                             {band.name}
                           </p>
                           <p className={cn(
-                            "text-xs",
-                            isSelected ? "text-black/60" : "text-black/30"
+                            "text-xs uppercase",
+                            isSelected ? "text-white/60" : "text-white/30"
                           )}>
-                            {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                            {memberCount} {memberCount === 1 ? 'MEMBER' : 'MEMBERS'}
                           </p>
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="#000000"
-                          inactiveColor="rgba(0,0,0,0.20)"
+                          activeColor="#D5FB46"
+                          inactiveColor="rgba(255,255,255,0.20)"
                         />
                       </motion.button>
                     );
@@ -449,16 +435,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredBands.length === 0 && (
                     <div className="text-center py-12">
-                      <Music2 className="w-10 h-10 text-black/20 mx-auto mb-3" />
-                      <p className="text-black/40 text-[12px] font-bold uppercase">NO BANDS FOUND</p>
+                      <p className="text-white/40 text-[12px] font-bold uppercase">NO BANDS FOUND</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* EVENT TAB - Show Events with Band info */}
+              {/* EVENT TAB */}
               {chatType === 'event' && (
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   {filteredEvents.map(event => {
                     const isSelected = selectedEvent?.id === event.id;
                     
@@ -466,49 +451,49 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                       <motion.button
                         key={event.id}
                         onClick={() => handleSelect('event', event)}
+                        whileTap={{ scale: 0.98 }}
                         className={cn(
                           "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all text-left",
-                          "bg-white hover:bg-black/[0.03] border border-black/5"
+                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
                         )}
                       >
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
                           isSelected 
                             ? "bg-[#D5FB46]" 
-                            : "bg-black/5"
+                            : "bg-white/10"
                         )}>
-                          <Calendar className={cn(
-                            "w-5 h-5",
-                            isSelected ? "text-black" : "text-black/50"
-                          )} />
+                          <span className={cn(
+                            "text-[10px] font-bold uppercase",
+                            isSelected ? "text-black" : "text-white/50"
+                          )}>
+                            {event.event_type === 'rehearsal' ? 'REH' : 'GIG'}
+                          </span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn(
-                            "font-bold truncate",
-                            isSelected ? "text-black" : "text-black/50"
+                            "font-bold truncate uppercase",
+                            isSelected ? "text-white" : "text-white/50"
                           )}>
                             {event.title}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={cn(
-                              "text-xs",
-                              isSelected ? "text-black/60" : "text-black/30"
+                              "text-xs uppercase",
+                              isSelected ? "text-white/60" : "text-white/30"
                             )}>
                               {formatEventDate(event.event_date)}
                             </span>
-                            <span className="text-xs text-black/20">•</span>
-                            <span className={cn(
-                              "text-xs font-medium",
-                              isSelected ? "text-[#D5FB46]" : "text-[#D5FB46]/80"
-                            )}>
+                            <span className="text-xs text-white/20">•</span>
+                            <span className="text-xs font-bold text-[#D5FB46] uppercase">
                               {event.bandName}
                             </span>
                           </div>
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="#000000"
-                          inactiveColor="rgba(0,0,0,0.20)"
+                          activeColor="#D5FB46"
+                          inactiveColor="rgba(255,255,255,0.20)"
                         />
                       </motion.button>
                     );
@@ -516,8 +501,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredEvents.length === 0 && (
                     <div className="text-center py-12">
-                      <Calendar className="w-10 h-10 text-black/20 mx-auto mb-3" />
-                      <p className="text-black/40 text-[12px] font-bold uppercase">NO EVENTS FOUND</p>
+                      <p className="text-white/40 text-[12px] font-bold uppercase">NO EVENTS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -526,19 +510,16 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           )}
         </div>
 
-        {/* Action Button - Swiss Minimal */}
-        <div 
-          className="p-6 bg-white border-t border-black/5"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
-        >
+        {/* Action Button */}
+        <div className="pt-4 border-t border-white/10">
           <button
             onClick={handleCreateChat}
             disabled={!canCreate || creating}
             className={cn(
-              "w-full h-14 rounded-full font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
+              "w-full h-14 rounded-md font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
               canCreate
-                ? "bg-black text-[#D5FB46] hover:bg-black/90 active:scale-[0.98]"
-                : "bg-black/5 text-black/30 cursor-not-allowed"
+                ? "bg-[#D5FB46] text-black active:scale-[0.98]"
+                : "bg-white/5 text-white/30 cursor-not-allowed"
             )}
           >
             {creating ? (
@@ -561,7 +542,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </>
   );
 };
 
