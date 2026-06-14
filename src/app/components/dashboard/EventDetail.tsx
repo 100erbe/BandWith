@@ -521,19 +521,19 @@ const RehearsalSections: React.FC<{
 
   const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string }[]>([]);
   useEffect(() => {
-    if (!event.eventId && !event.setlistId) return;
+    if (!event.setlistId) return;
     const fetchSetlist = async () => {
       const { data } = await supabase
         .from('setlist_songs')
         .select('*, song:songs(title, artist)')
-        .eq('setlist_id', event.setlistId || '')
+        .eq('setlist_id', event.setlistId)
         .order('position', { ascending: true });
       if (data && data.length > 0) {
         setSetlistSongs(data.map((s: any) => ({ title: s.song?.title || 'Unknown', artist: s.song?.artist })));
       }
     };
     fetchSetlist();
-  }, [event.eventId, event.setlistId]);
+  }, [event.setlistId]);
   const numSongs = setlistSongs.length;
 
   return (
@@ -615,19 +615,19 @@ const GigSections: React.FC<{
 
   const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string }[]>([]);
   useEffect(() => {
-    if (!event.eventId) return;
+    if (!event.setlistId) return;
     const fetchSetlist = async () => {
       const { data } = await supabase
         .from('setlist_songs')
         .select('*, song:songs(title, artist)')
-        .eq('setlist_id', event.setlistId || '')
+        .eq('setlist_id', event.setlistId)
         .order('position', { ascending: true });
       if (data && data.length > 0) {
         setSetlistSongs(data.map((s: any) => ({ title: s.song?.title || 'Unknown', artist: s.song?.artist })));
       }
     };
     fetchSetlist();
-  }, [event.eventId, event.setlistId]);
+  }, [event.setlistId]);
   const numSongs = setlistSongs.length;
 
   const perMemberFee = memberCount > 0 ? Math.round(parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0') / memberCount) : 0;
