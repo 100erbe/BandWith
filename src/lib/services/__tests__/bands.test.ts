@@ -34,9 +34,12 @@ describe('Band Service', () => {
 
   describe('getBands', () => {
     it('should return an empty array when user has no bands', async () => {
+      // Make the mock chainable for multiple `.eq()` calls:
       mockFrom.mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
         }),
       });
 

@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
-import { USER } from '@/app/data/user';
 import { TabName } from '@/app/types';
+import { useAuth } from '@/lib/AuthContext';
 
 interface HeaderProps {
   activeTab: TabName;
@@ -39,6 +39,27 @@ export const Header: React.FC<HeaderProps> = ({
   unreadCount,
   isHidden
 }) => {
+  const { profile } = useAuth();
+  
+  // Calculate initials from actual profile or fallback
+  const getInitials = () => {
+    if (profile?.full_name) {
+      const parts = profile.full_name.split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return profile.full_name.substring(0, 2).toUpperCase();
+    }
+    
+    if (profile?.email) {
+      return profile.email.substring(0, 2).toUpperCase();
+    }
+    
+    return 'GB'; // ultimate fallback
+  };
+
+  const initials = getInitials();
+
   return (
     <motion.header 
       className="mb-8 relative z-50"
@@ -115,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="relative shrink-0 cursor-pointer"
           >
             <div className="w-14 h-14 rounded-[1.2rem] bg-[#E6E5E1] flex items-center justify-center text-[#1A1A1A] font-bold text-lg border-2 border-white shadow-lg relative z-20">
-              {USER.initials}
+              {initials}
             </div>
             {/* Notification Badge */}
             <AnimatePresence>

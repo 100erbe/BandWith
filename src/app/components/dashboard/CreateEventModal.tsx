@@ -261,7 +261,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     fetchLibrary();
   }, [selectedBand?.id]);
 
-  const MEMBERS = useMemo(() => bandMembers, [bandMembers]);
+  const MEMBERS = useMemo(() => bandMembers || [], [bandMembers]);
   const currentUserMember = useMemo(() => MEMBERS.find(m => m.user_id === currentUserId), [MEMBERS, currentUserId]);
   const currentUserMemberId = currentUserMember?.id || currentUserId || '';
 
@@ -342,7 +342,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // Derive the event category (gig / quote / rehearsal) for theming
   const modalCategory: 'gig' | 'quote' | 'rehearsal' =
     initialType === 'rehearsal' || eventType === 'rehearsal' ? 'rehearsal'
-    : initialType === 'quote' || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
+    : initialType === ('quote' as any) || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
     : 'gig';
 
   const modalBg = modalCategory === 'rehearsal' ? '#0147FF' : modalCategory === 'quote' ? '#9A8878' : '#D5FB46';
@@ -367,7 +367,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   [memberFees]);
 
   const allMemberFeesValid = useMemo(() =>
-    selectedMembers.length === 0 || selectedMembers.every(id => parseFloat(memberFees[id]) > 0),
+    selectedMembers.length === 0 || selectedMembers.every(id => memberFees[id] !== undefined && memberFees[id] !== ''),
   [selectedMembers, memberFees]);
 
   const grandTotalFee = useMemo(() =>
@@ -401,10 +401,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     setMemberFees(prev => ({ ...prev, [memberId]: amount }));
   }, []);
 
-  const toggleMandatory = (memberId: string) => {
-    setMemberMandatory(prev => ({ ...prev, [memberId]: !prev[memberId] }));
-  };
-
   const adjustMusicians = (delta: number) => {
     if (delta > 0 && MEMBERS.length > selectedMembers.length) {
       const next = MEMBERS.find(m => !selectedMembers.includes(m.id));
@@ -421,9 +417,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       return {
         id: member?.user_id || id,
         memberId: id,
-        fee: memberFees[id],
-        name: member?.name,
-        role: member?.role,
+        fee: memberFees[id] || '0',
+        name: member?.name || 'Unknown',
+        role: member?.role || 'Member',
       };
     });
 
@@ -495,7 +491,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const warnField = (field: string) => {
     if (!isEditing) return false;
     if (!editingWarnings.includes(field)) return false;
-    // Dynamic override: if user has already filled the field, don't show warning
     if (field === 'members' && selectedMembers.length > 0) return false;
     if (field === 'venue' && details.venue && details.venue !== 'TBD') return false;
     if (field === 'date' && details.date) return false;
@@ -700,7 +695,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             { label: 'DUO', count: 2, type: 'duo' as PerformanceType },
             { label: 'TRIO', count: 3, type: 'trio' as PerformanceType },
             { label: 'QUARTET', count: 4, type: 'full_band' as PerformanceType },
-            { label: 'FULL BAND', count: MEMBERS.length, type: 'full_band' as PerformanceType },
+            { label: 'FULL BAND', count: MEMBERS.length || 1, type: 'full_band' as PerformanceType },
           ].map(preset => (
             <button
               key={preset.label}
@@ -757,49 +752,49 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       {/* Members List */}
       <div className="flex flex-col gap-6">
-        {MEMBERS.map((member) => {
-          const isSelected = selectedMembers.includes(member.id);
-          const isMandatory = memberMandatory[member.id] || false;
-          if (!isSelected) return null;
-          const feeVal = parseFloat(memberFees[member.id]) || 0;
-          const feeMissing = feeVal <= 0;
+        {MEMBERS.length === 0 ? (
+          <div className={cn('text-center py-8 px-4 rounded-[12px] border-2 border-dashed bg-black/5', bcMuted)}>
+             <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>LOADING MEMBERS...</span>
+          </div>
+        ) : (
+          MEMBERS.map((member) => {
+            const isSelected = selectedMembers.includes(member.id);
+            if (!isSelected) return null;
+            const feeMissing = memberFees[member.id] === '';
 
-          return (
-            <div key={member.id} className="flex items-start justify-between">
-              <div className="flex flex-col gap-1 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
-                    {member.role}
-                  </span>
-                  <button
-                    onClick={() => toggleMandatory(member.id)}
-                    className={cn(
-                      'px-2 py-0.5 text-[10px] font-bold uppercase rounded border transition-all',
-                      isMandatory
-                        ? (isDarkBg ? 'bg-white text-black border-white' : 'bg-black text-white border-black')
-                        : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
-                    )}
-                  >
-                    MANDATORY
-                  </button>
+            return (
+              <div key={member.id} className="flex items-start justify-between">
+                <div className="flex flex-col gap-1 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
+                      {member.id === currentUserMemberId ? 'YOU / ' + member.role : member.role}
+                    </span>
+                  </div>
+                  <span className={cn('text-[20px] font-bold uppercase', tc)}>{member.name}</span>
+                  <div className="flex items-center gap-1">
+                    <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
+                    <input
+                      type="number"
+                      value={memberFees[member.id] || ''}
+                      onChange={(e) => updateFee(member.id, e.target.value)}
+                      placeholder="0"
+                      className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
+                    />
+                  </div>
                 </div>
-                <span className={cn('text-[20px] font-bold uppercase', tc)}>{member.name}</span>
-                <div className="flex items-center gap-1">
-                  <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
-                  <input
-                    type="number"
-                    value={memberFees[member.id] || ''}
-                    onChange={(e) => updateFee(member.id, e.target.value)}
-                    placeholder="0"
-                    className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
-                  />
-                  {feeMissing && <span className="text-[9px] font-bold text-[#F23030] uppercase ml-1">Required</span>}
-                </div>
+                <DotCheckbox checked={true} activeColor={dotActive} inactiveColor={dotInactive} />
               </div>
-              <DotCheckbox checked={true} activeColor={dotActive} inactiveColor={dotInactive} />
-            </div>
-          );
-        })}
+            );
+          })
+        )}
+        
+        {/* Friendly hint if they are alone */}
+        {MEMBERS.length <= 1 && (
+          <div className={cn('text-center py-4 px-4 rounded-[12px] border-2 border-dashed bg-black/5 mt-4', bcMuted)}>
+            <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>PLAYING SOLO?</span>
+            <span className={cn('text-[10px] font-medium block', tcFaint)}>You can add more bandmates later from your dashboard to split fees.</span>
+          </div>
+        )}
       </div>
 
       {/* Fee Summary */}
@@ -812,7 +807,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         )}
 
         <div>
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
           <div className="flex items-center">
             <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
             <input
@@ -825,10 +820,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </div>
         </div>
 
-        {grandTotalFee > 0 && (
+        {(grandTotalFee > 0 || details.pay) && (
           <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
             <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL BAND FEE</span>
-            <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee}</span>
+            <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee || details.pay || 0}</span>
           </div>
         )}
       </div>
@@ -985,7 +980,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   </motion.div>
                 </button>
                 <span className="text-[42px] font-bold leading-none text-white">
-                  €{details.price || '0'}
+                  €{grandTotalFee || details.pay || '0'}
                 </span>
               </div>
               <AnimatePresence>
@@ -994,7 +989,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     <div className="pt-[12px] flex flex-col gap-[8px]">
                       <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
                         <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Band Total</span>
-                        <span className="text-[14px] font-bold" style={{ color: textColor }}>€{details.price || '0'}</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>€{grandTotalFee || details.pay || '0'}</span>
                       </div>
                       <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
                         <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Venue</span>
@@ -1378,7 +1373,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     if (!data?.songs?.length) return;
 
     const groupedBySet = new Map<number, { title: string; artist: string; songId: string; uid: string }[]>();
-    data.songs.forEach(ss => {
+    data.songs.forEach((ss: any) => {
       const setNum = ss.set_number || 1;
       if (!groupedBySet.has(setNum)) groupedBySet.set(setNum, []);
       groupedBySet.get(setNum)!.push({
@@ -1485,7 +1480,6 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       {/* Setlist Builder */}
       <div className="flex-1 overflow-y-auto px-4">
-        {/* Saved setlist templates quick-load */}
         {savedSetlists.length > 0 && setlist.length === 0 && (
           <div className="mb-6">
             <span className="text-[10px] font-bold text-black/50 uppercase block mb-2">LOAD FROM SAVED SETLISTS</span>
@@ -1664,11 +1658,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             multiSelect={true}
             selectedIds={setlist.flatMap((s: any) => (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId))}
             theme="lime"
-          />
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+            />
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
 
   // --- Render current step ---
   const renderStep = () => {
@@ -1691,14 +1685,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     switch (step) {
       case 0: return eventType !== null;
       case 1: return !!details.date;
-      case 2: return selectedMembers.length === 0 || allMemberFeesValid;
+      case 2: return true; // Optional step: Never hard-lock the user
       case 3: return true;
       default: return true;
     }
   })();
 
   const hasStepData = (() => {
-    if (step === 2) return selectedMembers.length > 0 && allMemberFeesValid;
+    if (step === 2) return Object.values(memberFees).some(f => parseFloat(f) > 0) || parseFloat(extraBandFee) > 0;
     return false;
   })();
 

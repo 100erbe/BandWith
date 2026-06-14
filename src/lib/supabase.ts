@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { Capacitor } from '@capacitor/core';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -8,7 +8,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables - using mock mode');
 }
 
-export const supabase = createClient(
+// Create a Supabase client using @supabase/ssr for better auth cookie management.
+// In Capacitor (WebView) environments, cookies are handled adaptively.
+export const supabase = createServerClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {
@@ -16,6 +18,51 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      flowType: 'implicit',
+    },
+    cookies: {
+      get(key: string) {
+        if (Capacitor.isNativePlatform()) {
+          return undefined;
+        }
+        try {
+          const cookie = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith(`${key}=`));
+          return cookie ? cookie.split('=')[1] : undefined;
+        } catch {
+          return undefined;
+        }
+      },
+      set(key: string, value: string, options: Record<string, unknown>) {
+        if (Capacitor.isNativePlatform()) {
+          return;
+        }
+        try {
+          let cookie = `${key}=${value}`;
+          if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
+          if (options?.domain) cookie += `; domain=${options.domain}`;
+          if (options?.path) cookie += `; path=${options.path}`;
+          if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
+          if (options?.secure) cookie += '; secure';
+          if (options?.httpOnly) cookie += '; httponly';
+          document.cookie = cookie;
+        } catch {
+          // Cookies not available
+        }
+      },
+      remove(key: string, options: Record<string, unknown>) {
+        if (Capacitor.isNativePlatform()) {
+          return;
+        }
+        try {
+          let cookie = `${key}=; max-age=0`;
+          if (options?.path) cookie += `; path=${options.path}`;
+          document.cookie = cookie;
+        } catch {
+          // Cookies not available
+        }
+      },
     },
   }
 );

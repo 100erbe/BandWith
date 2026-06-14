@@ -60,6 +60,7 @@ interface BottomNavigationProps {
   closeMenus: () => void;
   onCreateEvent: (type: CreateEventType) => void;
   isHidden: boolean;
+  isAdmin: boolean;
 }
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({
@@ -73,6 +74,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   closeMenus,
   onCreateEvent,
   isHidden,
+  isAdmin,
 }) => {
   const handleTabClick = (tab: TabName) => {
     setActiveTab(tab);
@@ -132,7 +134,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
               {/* Menu Items */}
               <div className="flex flex-col gap-10">
-                {/* NEW GIG */}
+                {/* NEW GIG — Admins only */}
+                {isAdmin && (
                 <button
                   onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }}
                   className="flex items-start gap-5 w-full text-left"
@@ -153,6 +156,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     <span className="text-[12px] font-medium text-white leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
                   </div>
                 </button>
+                )}
 
                 {/* NEW REHEARSAL */}
                 <button
@@ -177,7 +181,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   </div>
                 </button>
 
-                {/* NEW QUOTE */}
+                {/* NEW QUOTE — Admins only */}
+                {isAdmin && (
                 <button
                   onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }}
                   className="flex items-start gap-5 w-full text-left"
@@ -196,6 +201,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     <span className="text-[12px] font-medium text-white leading-normal">Click to create a quote for an event—build an estimate, package the details, and send it fast.</span>
                   </div>
                 </button>
+                )}
               </div>
             </motion.div>
           </>

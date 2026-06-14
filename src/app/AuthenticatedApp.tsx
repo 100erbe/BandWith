@@ -1112,7 +1112,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>
           {selectedEvent && (
-            <EventDetail event={selectedEvent} onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
+            <EventDetail key="event-detail" event={selectedEvent} onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
               userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
               onAccept={handleEventAccept} onDecline={handleEventDecline}
               onEdit={handleEventEdit} onDelete={handleEventDelete} onChat={handleEventChat}
@@ -1122,10 +1122,10 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>
           {selectedChat && selectedChat.uuid && (
-            <ChatDetailModal chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
+            <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
           )}
           {selectedChat && !selectedChat.uuid && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
+            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
                 <div className="w-16 h-16 bg-[#D4FB46] rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-black" /></div>
                 <h3 className="text-xl font-black mb-2">Demo Chat</h3>
@@ -1213,7 +1213,7 @@ export default function AuthenticatedApp() {
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={confirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
 
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification} />
+        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification} isAdmin={isAdmin} />
 
         <AnimatePresence>
           {saveToast && (
@@ -1235,28 +1235,28 @@ export default function AuthenticatedApp() {
 
       <AnimatePresence>
         {rehearsalViewMode === "live" && expandedCard === "rehearsal" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+          <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
             <RehearsalLiveView onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
           </motion.div>
         )}
         {rehearsalViewMode === "post" && expandedCard === "rehearsal" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+          <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
             <RehearsalPostView onClose={() => setRehearsalViewMode("overview")} />
           </motion.div>
         )}
 
-        {showBandMembers && <BandMembersView onClose={() => setShowBandMembers(false)} />}
-        {showSetlistManager && <SetlistManagerView onClose={() => setShowSetlistManager(false)} />}
-        {showSettings && <SettingsView onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }} initialSection={settingsInitialSection} />}
-        {showAnalytics && <AnalyticsView onClose={() => setShowAnalytics(false)} />}
-        {showInventory && realBand && <InventoryView onBack={() => setShowInventory(false)} bandId={realBand.id} />}
-        {showContracts && realBand && <ContractsView onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-        {showTaskTemplates && realBand && <TaskTemplatesView onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
+        {showBandMembers && <BandMembersView key="band-members" onClose={() => setShowBandMembers(false)} />}
+        {showSetlistManager && <SetlistManagerView key="setlist-manager" onClose={() => setShowSetlistManager(false)} />}
+        {showSettings && <SettingsView key="settings" onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }} initialSection={settingsInitialSection} />}
+        {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
+        {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
+        {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
+        {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
 
-        {showEditProfile && <EditProfileModal isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
-        {showCreateBand && <CreateBandModal isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
+        {showEditProfile && <EditProfileModal key="edit-profile" isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
+        {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
 
-        <NotificationDetailModal
+        <NotificationDetailModal key="notification-detail"
           isOpen={!!selectedNotification || selectedNotifications.length > 0}
           onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
           notification={selectedNotification}

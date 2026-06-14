@@ -7,8 +7,6 @@ export type EventStatus = 'draft' | 'tentative' | 'confirmed' | 'cancelled' | 'c
 export interface Event {
   id: string;
   band_id: string;
-  
-  // Basic Info
   title: string;
   event_type: EventType;
   status: EventStatus;
@@ -83,7 +81,7 @@ export interface EventMember {
     email: string;
     full_name?: string;
     avatar_url?: string;
-  };
+  } | null;
 }
 
 export interface EventWithMembers extends Event {
@@ -171,7 +169,6 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
 
     if (eventError) throw eventError;
 
-    // Get event members
     const { data: members, error: membersError } = await supabase
       .from('event_members')
       .select(`
@@ -190,7 +187,10 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
     return {
       data: {
         ...event,
-        members: members || [],
+        members: (members || []).map((m: any) => ({
+          ...m,
+          profile: m.profile || null,
+        })),
       },
       error: null,
     };
@@ -235,23 +235,87 @@ export const getUpcomingEvents = async (
   }
 };
 
-export const createEvent = async (eventData: Partial<Event>): Promise<{ data: Event | null; error: Error | null }> => {
+/**
+ * Create an event and its members atomically.
+ * Uses a single function to ensure both operations succeed or fail together.
+ * This prevents "Ghost Events" (events in the DB with zero members).
+ */
+export const createEvent = async (
+  eventData: Partial<Event>,
+  memberIds?: { user_id: string; role?: string; fee?: number; status?: string }[]
+): Promise<{ data: Event | null; error: Error | null }> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+    if (!eventData.band_id) throw new Error('band_id is required');
 
-    const { data, error } = await supabase
+    // Sanitize and prepare the event payload to match DB schema
+    const sanitizedPayload = {
+      band_id: eventData.band_id,
+      title: eventData.title || 'Untitled Event',
+      event_type: eventData.event_type || 'gig',
+      status: eventData.status || 'confirmed',
+      event_date: eventData.event_date || new Date().toISOString().split('T')[0],
+      start_time: eventData.start_time || null,
+      end_time: eventData.end_time || null,
+      load_in_time: eventData.load_in_time || null,
+      soundcheck_time: eventData.soundcheck_time || null,
+      venue: eventData.venue_name || (eventData as any).venue || null,
+      venue_name: eventData.venue_name || null,
+      venue_address: eventData.venue_address || null,
+      venue_city: eventData.venue_city || null,
+      client_name: eventData.client_name || null,
+      fee: eventData.fee != null ? eventData.fee : 0,
+      price: (eventData as any).price != null ? (eventData as any).price : 0,
+      description: eventData.description || null,
+      notes: eventData.notes || null,
+      indoor_outdoor: eventData.indoor_outdoor || null,
+      is_recurring: eventData.is_recurring || false,
+      recurrence_rule: eventData.recurrence_rule || null,
+      setlist_id: eventData.setlist_id || null,
+      capacity: (eventData as any).capacity || null,
+      created_by: user.id,
+    };
+
+    // Insert the event
+    const { data: newEvent, error: eventError } = await supabase
       .from('events')
-      .insert({
-        ...eventData,
-        created_by: user.id,
-      })
+      .insert(sanitizedPayload)
       .select()
       .single();
 
-    if (error) throw error;
+    if (eventError) throw eventError;
 
-    return { data, error: null };
+    // If memberIds are provided, insert them into event_members
+    if (memberIds && memberIds.length > 0) {
+      const eventMemberPayloads = memberIds.map(m => ({
+        event_id: newEvent.id,
+        user_id: m.user_id,
+        role: m.role || null,
+        fee: m.fee != null ? m.fee : 0,
+        status: m.status || 'confirmed',
+      }));
+
+      const { error: membersError } = await supabase
+        .from('event_members')
+        .insert(eventMemberPayloads);
+
+      if (membersError) {
+        // Rollback: delete the event if member insertion fails
+        console.error('Event member insertion failed, rolling back event creation:', membersError);
+        await supabase.from('events').delete().eq('id', newEvent.id);
+        throw new Error(`Failed to add event members: ${membersError.message}`);
+      }
+    }
+
+    // Return the event with member count
+    return {
+      data: {
+        ...newEvent,
+        member_count: memberIds?.length || 0,
+      } as any,
+      error: null,
+    };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -262,9 +326,16 @@ export const updateEvent = async (
   updates: Partial<Event>
 ): Promise<{ data: Event | null; error: Error | null }> => {
   try {
+    // Ensure fee/price are numbers
+    const sanitizedUpdates = {
+      ...updates,
+      fee: updates.fee != null ? updates.fee : undefined,
+      price: (updates as any).price != null ? (updates as any).price : undefined,
+    };
+
     const { data, error } = await supabase
       .from('events')
-      .update(updates)
+      .update(sanitizedUpdates)
       .eq('id', eventId)
       .select()
       .single();
@@ -315,7 +386,12 @@ export const getEventMembers = async (eventId: string): Promise<{ data: EventMem
 
     if (error) throw error;
 
-    return { data, error: null };
+    const safeData = (data || []).map((m: any) => ({
+      ...m,
+      profile: m.profile || null,
+    })) as EventMember[];
+
+    return { data: safeData, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -333,8 +409,8 @@ export const inviteToEvent = async (
       .insert({
         event_id: eventId,
         user_id: userId,
-        role,
-        fee,
+        role: role || null,
+        fee: fee != null ? fee : 0,
         status: 'pending',
       })
       .select()
@@ -386,7 +462,6 @@ export const removeFromEvent = async (eventMemberId: string): Promise<{ error: E
   }
 };
 
-// Get current user's membership status for an event
 export const getUserEventMembership = async (
   eventId: string,
   userId: string
@@ -405,9 +480,9 @@ export const getUserEventMembership = async (
       `)
       .eq('event_id', eventId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows found"
+    if (error) throw error;
 
     return { data: data || null, error: null };
   } catch (error: any) {
@@ -428,7 +503,7 @@ export const getEventStats = async (
     confirmedEvents: number;
     totalRevenue: number;
     upcomingEvents: number;
-    revenueChange: number; // Percentage change vs previous period
+    revenueChange: number;
   } | null;
   error: Error | null;
 }> => {
@@ -438,7 +513,6 @@ export const getEventStats = async (
     const endOfYear = `${currentYear}-12-31`;
     const today = new Date().toISOString().split('T')[0];
     
-    // Calculate current month and previous month
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentMonthStart = new Date(now.getFullYear(), currentMonth, 1).toISOString().split('T')[0];
@@ -447,7 +521,6 @@ export const getEventStats = async (
     const prevMonthStart = new Date(now.getFullYear(), currentMonth - 1, 1).toISOString().split('T')[0];
     const prevMonthEnd = new Date(now.getFullYear(), currentMonth, 0).toISOString().split('T')[0];
 
-    // Get all events for the year
     const { data: events, error } = await supabase
       .from('events')
       .select('status, fee, event_date')
@@ -457,7 +530,6 @@ export const getEventStats = async (
 
     if (error) throw error;
 
-    // Calculate current month revenue
     const currentMonthRevenue = events
       ?.filter(e => 
         e.event_date >= currentMonthStart && 
@@ -466,7 +538,6 @@ export const getEventStats = async (
       )
       .reduce((sum, e) => sum + (e.fee || 0), 0) || 0;
     
-    // Calculate previous month revenue
     const prevMonthRevenue = events
       ?.filter(e => 
         e.event_date >= prevMonthStart && 
@@ -475,12 +546,11 @@ export const getEventStats = async (
       )
       .reduce((sum, e) => sum + (e.fee || 0), 0) || 0;
     
-    // Calculate percentage change
     let revenueChange = 0;
     if (prevMonthRevenue > 0) {
       revenueChange = Math.round(((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100);
     } else if (currentMonthRevenue > 0) {
-      revenueChange = 100; // If previous was 0 but current has revenue, show 100%
+      revenueChange = 100;
     }
 
     const stats = {

@@ -1,5 +1,4 @@
 import { supabase } from '../supabase';
-import { notifyInviteSent, notifyMemberJoined } from './notifications';
 
 // Types
 export interface Band {
@@ -30,7 +29,7 @@ export interface BandMember {
     email: string;
     full_name?: string;
     avatar_url?: string;
-  };
+  } | null;
 }
 
 export interface BandWithMembers extends Band {
@@ -39,10 +38,25 @@ export interface BandWithMembers extends Band {
   user_role: 'admin' | 'member';
 }
 
+export interface Invitation {
+  id: string;
+  band_id: string;
+  email: string;
+  role: 'admin' | 'member';
+  status: 'pending' | 'accepted' | 'expired';
+  token: string;
+  created_at: string;
+}
+
 // ============================================
 // BANDS CRUD
 // ============================================
 
+/**
+ * Fetch all bands for the current user, including members and role.
+ * Uses a single query to get band_members, then batches the member fetching
+ * to avoid N+1 query problems.
+ */
 export const getBands = async (): Promise<{ data: BandWithMembers[] | null; error: Error | null }> => {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -67,11 +81,13 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
           slug,
           logo_url,
           description,
+          created_by,
           created_at,
           updated_at
         )
       `)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('is_active', true);
 
     if (error) {
       console.error('Supabase error fetching band_members:', error.message, error.code);
@@ -83,59 +99,64 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
       return { data: [], error: null };
     }
 
-    console.log('[getBands] Processing', data.length, 'band memberships');
+    // Collect all band IDs
+    const bandIds = data.map((item: any) => item.band_id).filter(Boolean);
     
-    // Transform data - now includes members!
-    const bands = await Promise.all(
-      data.map(async (item: any) => {
+    // Batch-fetch all members for all bands in one query
+    const { data: allMembers, error: membersError } = await supabase
+      .from('band_members')
+      .select(`
+        *,
+        profile:profiles (
+          id,
+          email,
+          full_name,
+          avatar_url
+        )
+      `)
+      .in('band_id', bandIds)
+      .eq('is_active', true);
+
+    if (membersError) {
+      console.error('[getBands] Error batch-loading members:', membersError);
+    }
+
+    // Group members by band_id
+    const membersByBandId: Record<string, any[]> = {};
+    if (allMembers) {
+      for (const member of allMembers) {
+        const bid = member.band_id;
+        if (!membersByBandId[bid]) membersByBandId[bid] = [];
+        membersByBandId[bid].push(member);
+      }
+    }
+
+    // Transform data
+    const bands = data
+      .map((item: any) => {
         const band = item.bands;
+        if (!band) return null;
         
-        // Skip if band relation is null (shouldn't happen but be safe)
-        if (!band) {
-          console.log('[getBands] Skipping null band relation');
-          return null;
-        }
+        const members = membersByBandId[band.id] || [];
         
-        console.log('[getBands] Loading members for band:', band.id, band.name);
-        
-        // Get members with profiles
-        const { data: members, error: membersError } = await supabase
-          .from('band_members')
-          .select(`
-            *,
-            profile:profiles (
-              id,
-              email,
-              full_name,
-              avatar_url
-            )
-          `)
-          .eq('band_id', band.id);
-
-        if (membersError) {
-          console.error('[getBands] Error loading members for band', band.id, membersError);
-        }
-        
-        console.log('[getBands] Band', band.name, 'has', members?.length || 0, 'members:', members?.map((m: any) => m.profile?.full_name || m.user_id));
-
         return {
           ...band,
           user_role: item.role,
-          member_count: members?.length || 0,
+          member_count: members.length || 0,
           members: members || [],
-        };
+        } as BandWithMembers;
       })
-    );
+      .filter(b => b !== null) as BandWithMembers[];
 
-    // Filter out nulls
-    const validBands = bands.filter(b => b !== null) as BandWithMembers[];
-
-    return { data: validBands, error: null };
+    return { data: bands, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
 };
 
+/**
+ * Fetch a single band by ID with its members.
+ */
 export const getBand = async (bandId: string): Promise<{ data: BandWithMembers | null; error: Error | null }> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -149,7 +170,7 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
 
     if (bandError) throw bandError;
 
-    // Get members with profiles (removed is_active filter for consistency)
+    // Get members with profiles
     const { data: members, error: membersError } = await supabase
       .from('band_members')
       .select(`
@@ -161,7 +182,8 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
           avatar_url
         )
       `)
-      .eq('band_id', bandId);
+      .eq('band_id', bandId)
+      .eq('is_active', true);
 
     if (membersError) throw membersError;
 
@@ -182,6 +204,10 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
   }
 };
 
+/**
+ * Create a new band. The DB trigger `handle_new_band` will automatically
+ * add the creator as an 'admin' member in band_members.
+ */
 export const createBand = async (bandData: {
   name: string;
   description?: string;
@@ -191,17 +217,20 @@ export const createBand = async (bandData: {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Generate slug from name
-    const slug = bandData.name
+    // Generate a unique slug
+    const slugBase = bandData.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
+    const slug = `${slugBase}-${Date.now().toString(36)}`;
 
     const { data, error } = await supabase
       .from('bands')
       .insert({
-        ...bandData,
-        slug: `${slug}-${Date.now().toString(36)}`,
+        name: bandData.name,
+        description: bandData.description || null,
+        logo_url: bandData.logo_url || null,
+        slug,
         created_by: user.id,
       })
       .select()
@@ -275,7 +304,13 @@ export const getBandMembers = async (bandId: string): Promise<{ data: BandMember
 
     if (error) throw error;
 
-    return { data, error: null };
+    // Ensure profiles with null joins don't crash the UI
+    const safeData = (data || []).map((m: any) => ({
+      ...m,
+      profile: m.profile || null,
+    })) as BandMember[];
+
+    return { data: safeData, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -294,7 +329,7 @@ export const addBandMember = async (
         band_id: bandId,
         user_id: userId,
         role,
-        instrument,
+        instrument: instrument || null,
       })
       .select()
       .single();
@@ -329,13 +364,110 @@ export const updateBandMember = async (
 
 export const removeBandMember = async (memberId: string): Promise<{ error: Error | null }> => {
   try {
-    // Soft delete - set is_active to false
+    // Hard delete from band_members
     const { error } = await supabase
       .from('band_members')
-      .update({ is_active: false, left_at: new Date().toISOString() })
+      .delete()
       .eq('id', memberId);
 
     if (error) throw error;
+
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+// ============================================
+// INVITATIONS
+// ============================================
+
+/**
+ * Invite a person by email. If they already have a profile (existing user),
+ * add them directly to band_members. If not, create an invitation in the
+ * invitations table.
+ */
+export const inviteMember = async (
+  bandId: string,
+  email: string,
+  role: 'admin' | 'member' = 'member'
+): Promise<{ data: { userId?: string; invited: boolean } | null; error: Error | null }> => {
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // First check if user exists in profiles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle(); // Use maybeSingle to avoid PGRST116 error
+
+    if (existingProfile) {
+      // User exists, add them directly to band_members
+      const { error } = await addExistingUserToBand(bandId, existingProfile.id, role);
+      if (error) throw error;
+      return { data: { userId: existingProfile.id, invited: false }, error: null };
+    }
+
+    // User doesn't exist — create a pending invitation
+    const { error: inviteError } = await supabase
+      .from('invitations')
+      .insert({
+        band_id: bandId,
+        email: normalizedEmail,
+        role,
+        status: 'pending',
+      });
+
+    if (inviteError) throw inviteError;
+
+    return { data: { invited: true }, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+/**
+ * Add an existing user directly to a band as a member.
+ */
+export const addExistingUserToBand = async (
+  bandId: string,
+  userId: string,
+  role: 'admin' | 'member' = 'member',
+  instrument?: string
+): Promise<{ error: Error | null }> => {
+  try {
+    // Check if user is already an active member
+    const { data: existingMember } = await supabase
+      .from('band_members')
+      .select('id, is_active')
+      .eq('band_id', bandId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingMember) {
+      if (existingMember.is_active) {
+        throw new Error('This user is already a member of this band');
+      }
+      // Reactivate the member
+      const { error } = await supabase
+        .from('band_members')
+        .update({ is_active: true, role, left_at: null })
+        .eq('id', existingMember.id);
+      if (error) throw error;
+    } else {
+      // Add new member
+      const { error } = await supabase
+        .from('band_members')
+        .insert({
+          band_id: bandId,
+          user_id: userId,
+          role,
+          instrument: instrument || null,
+          is_active: true,
+        });
+      if (error) throw error;
+    }
 
     return { error: null };
   } catch (error: any) {
@@ -442,7 +574,6 @@ export const getBandMembersForChat = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: [], error: null };
 
-    // Get ALL band members (removed is_active filter as it may cause issues)
     const { data: members, error } = await supabase
       .from('band_members')
       .select(`
@@ -457,9 +588,8 @@ export const getBandMembersForChat = async (
         )
       `)
       .eq('band_id', bandId)
-      .neq('user_id', user.id); // Exclude current user
-    
-    console.log('[getBandMembersForChat] bandId:', bandId, 'members found:', members?.length, 'error:', error);
+      .eq('is_active', true)
+      .neq('user_id', user.id);
 
     if (error) throw error;
 
@@ -489,12 +619,10 @@ export const searchUsersForChat = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: [], error: null };
 
-    // If no query, return empty (use getBandMembersForChat for defaults)
     if (!query || query.length < 2) {
       return { data: [], error: null };
     }
 
-    // Get band members first
     const { data: bandMembers } = await supabase
       .from('band_members')
       .select('user_id')
@@ -503,7 +631,6 @@ export const searchUsersForChat = async (
 
     const bandMemberIds = new Set(bandMembers?.map(m => m.user_id) || []);
 
-    // Search all profiles
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('id, email, full_name, avatar_url')
@@ -513,13 +640,11 @@ export const searchUsersForChat = async (
 
     if (error) throw error;
 
-    // Mark which users are band members
     const result = (profiles || []).map(p => ({
       ...p,
       isBandMember: bandMemberIds.has(p.id),
     }));
 
-    // Sort: band members first
     result.sort((a, b) => {
       if (a.isBandMember && !b.isBandMember) return -1;
       if (!a.isBandMember && b.isBandMember) return 1;
@@ -527,157 +652,6 @@ export const searchUsersForChat = async (
     });
 
     return { data: result, error: null };
-  } catch (error: any) {
-    return { data: null, error };
-  }
-};
-
-// Add existing user to band directly
-export const addExistingUserToBand = async (
-  bandId: string,
-  userId: string,
-  role: 'admin' | 'member' = 'member',
-  instrument?: string
-): Promise<{ error: Error | null }> => {
-  try {
-    // Check if user is already in band
-    const { data: existingMember } = await supabase
-      .from('band_members')
-      .select('id, is_active')
-      .eq('band_id', bandId)
-      .eq('user_id', userId)
-      .single();
-
-    if (existingMember) {
-      if (existingMember.is_active) {
-        throw new Error('This user is already a member of this band');
-      }
-      // Reactivate the member
-      const { error } = await supabase
-        .from('band_members')
-        .update({ is_active: true, role, left_at: null })
-        .eq('id', existingMember.id);
-      if (error) throw error;
-    } else {
-      // Add new member
-      const { error } = await supabase
-        .from('band_members')
-        .insert({
-          band_id: bandId,
-          user_id: userId,
-          role,
-          instrument,
-          is_active: true,
-        });
-      if (error) throw error;
-    }
-
-    return { error: null };
-  } catch (error: any) {
-    return { error };
-  }
-};
-
-// Invite member by email (for new users)
-export const inviteMember = async (
-  bandId: string,
-  email: string,
-  role: 'admin' | 'member' = 'member'
-): Promise<{ data: { userId?: string; invited: boolean } | null; error: Error | null }> => {
-  try {
-    // First check if user exists in profiles
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (existingProfile) {
-      // User exists, add them directly
-      const { error } = await addExistingUserToBand(bandId, existingProfile.id, role);
-      if (error) throw error;
-      return { data: { userId: existingProfile.id, invited: false }, error: null };
-    } else {
-      // User doesn't exist - send invitation via Supabase Auth
-      
-      // Get band info and current user info
-      const { data: band } = await supabase
-        .from('bands')
-        .select('name')
-        .eq('id', bandId)
-        .single();
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: inviterProfile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', user?.id)
-        .single();
-      
-      // Send invitation via Edge Function (uses Supabase Auth's invite system)
-      try {
-        const { data: inviteResult, error: inviteError } = await supabase.functions.invoke('invite-member', {
-          body: {
-            email: email.toLowerCase(),
-            bandId,
-            bandName: band?.name || 'Your Band',
-            role: role === 'admin' ? 'admin' : 'member',
-            inviterName: inviterProfile?.full_name || inviterProfile?.email || 'A band member',
-          },
-        });
-        
-        if (inviteError) {
-          console.error('Edge function error:', inviteError);
-          throw inviteError;
-        }
-        
-        console.log('Invitation sent:', inviteResult);
-        
-        // Create in-app notification for the admin
-        if (user?.id) {
-          await notifyInviteSent(user.id, bandId, band?.name || 'Your Band', email);
-        }
-        
-        // If user already existed, return their ID
-        if (inviteResult?.userExists && inviteResult?.userId) {
-          // Notify all band members that someone joined
-          const { data: members } = await supabase
-            .from('band_members')
-            .select('user_id')
-            .eq('band_id', bandId)
-            .neq('user_id', inviteResult.userId);
-          
-          if (members && members.length > 0) {
-            const memberIds = members.map(m => m.user_id);
-            await notifyMemberJoined(memberIds, bandId, band?.name || 'Your Band', email);
-          }
-          
-          return { data: { userId: inviteResult.userId, invited: false }, error: null };
-        }
-      } catch (emailError) {
-        console.error('Failed to send invitation:', emailError);
-        
-        // Fallback: store invitation locally for manual follow-up
-        await supabase
-          .from('band_invitations')
-          .upsert({
-            band_id: bandId,
-            email: email.toLowerCase(),
-            role,
-            status: 'pending',
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          }, {
-            onConflict: 'band_id,email',
-          });
-        
-        // Still create a notification even if email failed
-        if (user?.id) {
-          await notifyInviteSent(user.id, bandId, band?.name || 'Your Band', email);
-        }
-      }
-
-      return { data: { invited: true }, error: null };
-    }
   } catch (error: any) {
     return { data: null, error };
   }

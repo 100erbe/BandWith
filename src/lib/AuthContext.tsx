@@ -60,6 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      // First attempt to get the profile
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -67,13 +68,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single();
 
       if (error) {
+        // If profile doesn't exist (PGRST116), create a basic one
+        if (error.code === 'PGRST116') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return null;
+
+          const fallbackProfile: Profile = {
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            avatar_url: user.user_metadata?.avatar_url || null,
+            role: 'member',
+            instrument: null,
+            phone: null,
+          };
+
+          const { data: createdProfile, error: createError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              email: user.email || '',
+              full_name: fallbackProfile.full_name,
+              avatar_url: fallbackProfile.avatar_url,
+              role: 'member',
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating fallback profile:', createError);
+            return fallbackProfile;
+          }
+          return createdProfile as Profile;
+        }
         console.error('Error fetching profile:', error);
         return null;
       }
 
       return data as Profile;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Unexpected error in fetchProfile:', error);
       return null;
     }
   };

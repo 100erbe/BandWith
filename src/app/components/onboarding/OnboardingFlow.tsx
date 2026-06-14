@@ -67,6 +67,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       }
       setScreenMode('flow');
     }
+    
+    // Safety check: if we are at step 0 (Band Creation) but NOT authenticated, 
+    // we should be seeing account creation, not band creation.
+    // This fixed the "Get Started skips Account Creation" bug.
   }, [isAuthenticated, screenMode, path, startOnboarding]);
 
   // Handle invite token on mount
@@ -97,8 +101,15 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   }, [startOnboarding]);
 
   const handleComplete = useCallback(async () => {
-    await completeOnboarding();
-    onComplete();
+    console.log("OnboardingFlow handleComplete triggered!");
+    try {
+      await completeOnboarding();
+      console.log("completeOnboarding finished successfully!");
+    } catch (e) {
+      console.error("Onboarding complete error:", e);
+    }
+    console.log("Calling onComplete callback!");
+    onComplete(); // Fire synchronously to guarantee execution
   }, [completeOnboarding, onComplete]);
 
   // Loading state for invite

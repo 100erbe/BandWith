@@ -110,13 +110,25 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   const { signOut, user, profile } = useAuth();
   
   const handleLogout = async () => {
-    await signOut();
-    onClose();
+    try {
+      await signOut();
+      onClose();
+      // Force a reload to ensure all states are wiped clean
+      window.location.href = '/';
+    } catch (e) {
+      console.error("Logout failed:", e);
+      // Fallback: clear local storage manually if API fails
+      localStorage.clear();
+      window.location.href = '/';
+    }
   };
 
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || USER.name;
-  const displayInitials = displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || USER.initials;
-  const displayRole = profile?.role || USER.role;
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const displayInitials = profile?.full_name 
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : (user?.email?.substring(0, 2).toUpperCase() || '??');
+    
+  const displayRole = profile?.role || 'Member';
 
   const entityDetails = [
     { label: 'TEMPLATES', count: entityCounts?.templates ?? 0, cols: 6, rows: 4, height: 72 },

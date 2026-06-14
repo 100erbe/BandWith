@@ -8,7 +8,6 @@ import React, {
 import { useAuth } from './AuthContext';
 import {
   supabase,
-  createMemberInvite,
   getOnboardingProgress,
   updateOnboardingProgress,
   createOnboardingProgress,
@@ -255,36 +254,52 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
 
     // Create band if creator path
     if (state.path === 'creator' && state.bandData) {
+      const slug = state.bandData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
       const { data: band, error: bandError } = await supabase
         .from('bands')
         .insert({
           name: state.bandData.name,
           logo_url: state.bandData.avatarUrl,
           created_by: user.id,
+          slug: `${slug}-${Date.now().toString(36)}`
         })
         .select()
         .single();
 
-      if (!bandError && band) {
-        // Add creator as admin
-        await supabase.from('band_members').insert({
+      if (bandError) {
+        console.error("CRITICAL: Band Creation Failed:", bandError);
+        // If this fails, we can't save members, so we stop here
+        return;
+      }
+
+      if (band) {
+        // Use upsert to avoid 409 Conflict if trigger already created the member
+        const { error: memberError } = await supabase.from('band_members').upsert({
           band_id: band.id,
           user_id: user.id,
           role: 'admin',
           instrument: state.profileData?.instruments?.join(', '),
-        });
+        }, { onConflict: 'band_id,user_id' });
 
-        // Send invites
-        for (const invite of state.invites) {
-          await createMemberInvite(
-            band.id,
-            user.id,
-            invite.email,
-            invite.name,
-            invite.role,
-            invite.instruments,
-            invite.permission
-          );
+        if (memberError) console.error("Member Upsert Error:", memberError);
+
+        // Send invites securely to the new 'invitations' table
+        if (state.invites.length > 0) {
+          const invitesToInsert = state.invites.map(invite => ({
+            band_id: band.id,
+            email: invite.email,
+            role: invite.permission || 'member'
+          }));
+
+          const { error: inviteError } = await supabase
+            .from('invitations')
+            .insert(invitesToInsert);
+
+          if (inviteError) console.error("Failed to save invitations:", inviteError);
         }
 
         // Add songs
@@ -387,12 +402,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
   const loadInviteData = useCallback(async (token: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase
-        .from('member_invites')
+        .from('invitations')
         .select(
           `
           *,
-          band:bands(id, name, logo_url, description),
-          inviter:profiles!invited_by(full_name, email)
+          band:bands(id, name, logo_url, description)
         `
         )
         .eq('token', token)

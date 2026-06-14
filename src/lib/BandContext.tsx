@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { getBands, getBand, BandWithMembers } from './services/bands';
+
+export type MemberRole = 'admin' | 'member';
 
 interface BandContextType {
   bands: BandWithMembers[];
@@ -10,6 +12,7 @@ interface BandContextType {
   selectBand: (bandId: string) => void;
   refreshBands: () => Promise<void>;
   isAdmin: boolean;
+  currentMemberRole: MemberRole | null;
 }
 
 const BandContext = createContext<BandContextType | undefined>(undefined);
@@ -33,17 +36,25 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Robust RBAC calculation
+  const currentMemberRole = useMemo(() => {
+    if (!selectedBand) return null;
+    return (selectedBand.user_role as MemberRole) || null;
+  }, [selectedBand]);
+
+  const isAdmin = useMemo(() => currentMemberRole === 'admin', [currentMemberRole]);
+
   // Fetch bands when authenticated with retry
   const fetchBands = useCallback(async (retryCount = 0) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setBands([]);
       setSelectedBand(null);
       setLoading(false);
       return;
     }
 
-    // Only set loading true on first attempt
-    if (retryCount === 0) {
+    // Only set loading true on first attempt or if we have no data
+    if (retryCount === 0 && bands.length === 0) {
       setLoading(true);
     }
     
@@ -51,87 +62,95 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
       const { data, error: fetchError } = await getBands();
       
       if (fetchError) {
-        // Log detailed error info
         const errorMsg = fetchError?.message || 'Unknown error';
         const errorCode = (fetchError as any)?.code || 'N/A';
-        console.error('Bands fetch error:', { message: errorMsg, code: errorCode, details: fetchError });
+        console.error('Bands fetch error:', { message: errorMsg, code: errorCode });
         
-        // Retry on network/abort errors
+        // Retry on network errors
         if (retryCount < 3 && (
           errorMsg.includes('aborted') || 
           errorMsg.includes('fetch') ||
-          errorMsg.includes('network') ||
-          errorCode === 'PGRST301' // JWT expired
+          errorCode === 'PGRST301'
         )) {
           setTimeout(() => fetchBands(retryCount + 1), 500 * (retryCount + 1));
           return;
         }
         
-        // For other errors, set empty bands and continue (don't block app)
         setBands([]);
         setError(fetchError);
         setLoading(false);
         return;
       }
 
-      setBands(data || []);
+      const fetchedBands = data || [];
+      setBands(fetchedBands);
 
-      // Auto-select first band if none selected
-      if (data && data.length > 0 && !selectedBand) {
-        setSelectedBand(data[0]);
+      // Robust auto-selection logic
+      if (fetchedBands.length > 0) {
+        if (!selectedBand) {
+          setSelectedBand(fetchedBands[0]);
+        } else {
+          // Refresh the currently selected band data if it still exists in the new list
+          const updatedSelected = fetchedBands.find(b => b.id === selectedBand.id);
+          if (updatedSelected) {
+            setSelectedBand(updatedSelected);
+          } else {
+            // If currently selected band is no longer in the list (e.g. removed), select the first one
+            setSelectedBand(fetchedBands[0]);
+          }
+        }
+      } else {
+        setSelectedBand(null);
       }
 
       setError(null);
       setLoading(false);
     } catch (err: any) {
-      // Retry on AbortError (up to 3 times)
-      const isAbortError = err?.name === 'AbortError' || err?.message?.includes('aborted');
-      if (isAbortError && retryCount < 3) {
-        setTimeout(() => fetchBands(retryCount + 1), 500 * (retryCount + 1));
-        return;
+      if (err?.name !== 'AbortError' && !err?.message?.includes('aborted')) {
+        console.error('Error fetching bands:', err);
+        setBands([]);
+        setError(err);
       }
-      
-      // Log and continue with empty bands (don't block app)
-      if (!isAbortError) {
-        console.error('Error fetching bands:', err?.message || err);
-      }
-      setBands([]);
-      setError(err);
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user, selectedBand, bands.length]);
 
   useEffect(() => {
-    fetchBands();
-  }, [fetchBands]);
+    if (isAuthenticated) {
+      fetchBands();
+    } else {
+      setBands([]);
+      setSelectedBand(null);
+      setLoading(false);
+    }
+  }, [isAuthenticated, user?.id]);
 
   // Select a specific band
   const selectBand = useCallback(async (bandId: string) => {
-    // First check if we have it in the list
     const existingBand = bands.find(b => b.id === bandId);
     if (existingBand) {
       setSelectedBand(existingBand);
       return;
     }
 
-    // Otherwise fetch it
     try {
+      setLoading(true);
       const { data, error: fetchError } = await getBand(bandId);
       if (fetchError) throw fetchError;
       if (data) {
         setSelectedBand(data);
-        // Also add to bands list if not there
-        if (!bands.find(b => b.id === bandId)) {
-          setBands(prev => [...prev, data]);
-        }
+        setBands(prev => {
+          if (prev.find(b => b.id === bandId)) return prev;
+          return [...prev, data];
+        });
       }
     } catch (err: any) {
       console.error('Error selecting band:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
     }
   }, [bands]);
-
-  // Check if current user is admin of selected band
-  const isAdmin = selectedBand?.user_role === 'admin';
 
   const value: BandContextType = {
     bands,
@@ -141,6 +160,7 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
     selectBand,
     refreshBands: fetchBands,
     isAdmin,
+    currentMemberRole,
   };
 
   return <BandContext.Provider value={value}>{children}</BandContext.Provider>;

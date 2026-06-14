@@ -1,0 +1,1 @@
+console.log(`The problem happens because there is a database trigger "on_band_created" that tries to add the user to "band_members". However, when it tries to insert into "band_members", Row-Level Security blocks the insert because the user doesn't have an established policy to insert themselves as a member or there's a missing column "created_by".`);

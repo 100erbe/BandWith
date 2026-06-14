@@ -19,7 +19,7 @@ export const useBands = () => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchBands = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await bandsService.getBands();
@@ -41,7 +41,7 @@ export const useBand = (bandId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchBand = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await bandsService.getBand(bandId);
@@ -63,7 +63,7 @@ export const useBandMembers = (bandId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchMembers = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await bandsService.getBandMembers(bandId);
@@ -92,7 +92,7 @@ export const useEvents = (
   const [error, setError] = useState<Error | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await eventsService.getEvents(bandId, options);
@@ -153,7 +153,7 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await eventsService.getUpcomingEvents(bandId, limit);
@@ -180,7 +180,7 @@ export const useEventStats = (bandId: string | null, year?: number) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await eventsService.getEventStats(bandId, year);
@@ -209,7 +209,7 @@ export const useQuotes = (
   const [error, setError] = useState<Error | null>(null);
 
   const fetchQuotes = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await quotesService.getQuotes(bandId, options);
@@ -259,7 +259,7 @@ export const useQuoteStats = (bandId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await quotesService.getQuoteStats(bandId);
@@ -288,7 +288,7 @@ export const useSongs = (
   const [error, setError] = useState<Error | null>(null);
 
   const fetchSongs = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await songsService.getSongs(bandId, options);
@@ -313,7 +313,7 @@ export const useSetlists = (
   const [error, setError] = useState<Error | null>(null);
 
   const fetchSetlists = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await songsService.getSetlists(bandId, options);
@@ -368,7 +368,7 @@ export const useNotifications = (options?: {
   onNewEventInviteRef.current = options?.onNewEventInvite;
 
   const fetchNotifications = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await notificationsService.getNotifications(options);
@@ -385,7 +385,7 @@ export const useNotifications = (options?: {
 
   // Subscribe to realtime notifications (INSERT and UPDATE)
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
 
     const unsubscribe = notificationsService.subscribeToNotifications(
       // On INSERT - add new notification
@@ -414,7 +414,7 @@ export const useNotifications = (options?: {
   // Polling fallback - refresh every 60 seconds to catch missed realtime events
   // Polling is disabled when modals are open to prevent keyboard issues
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     const pollInterval = setInterval(() => {
       // Only poll if document is visible
@@ -441,7 +441,7 @@ export const useUnreadCount = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchCount = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data } = await notificationsService.getUnreadCount();
@@ -455,7 +455,7 @@ export const useUnreadCount = () => {
 
   // Subscribe to realtime notifications
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
 
     const unsubscribe = notificationsService.subscribeToNotifications(() => {
       setCount(prev => prev + 1);
@@ -507,7 +507,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
   });
 
   const fetchData = useCallback(async () => {
-    if (!isAuthenticated || !bandId) return;
+    if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
     setLoading(true);
     
@@ -560,7 +560,7 @@ export const useTransactions = (
   const [error, setError] = useState<Error | null>(null);
 
   const fetchTransactions = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await transactionsService.getTransactions(bandId, options);
@@ -587,7 +587,7 @@ export const useFinancialStats = (bandId: string | null, year?: number, month?: 
   const [error, setError] = useState<Error | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!bandId) return;
+    if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await transactionsService.getFinancialStats(bandId, year, month);
@@ -625,7 +625,7 @@ export const useExpandedFinanceData = (bandId: string | null) => {
   });
 
   const fetchData = useCallback(async () => {
-    if (!isAuthenticated || !bandId) return;
+    if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
     setLoading(true);
     
@@ -664,7 +664,7 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
   const [error, setError] = useState<Error | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    if (!isAuthenticated || !bandId) return;
+    if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
     setLoading(true);
     
@@ -705,7 +705,7 @@ export const useExpandedQuotesData = (bandId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!isAuthenticated || !bandId) return;
+    if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
     setLoading(true);
     
@@ -742,7 +742,7 @@ export const useChats = (bandId?: string) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchChats = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await chatsService.getChats(bandId);
@@ -757,7 +757,7 @@ export const useChats = (bandId?: string) => {
 
   // Subscribe to new messages for real-time updates
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) { setLoading(false); return; }
 
     const unsubscribe = chatsService.subscribeToNewMessages(() => {
       // Refetch chats to update last message and unread counts
@@ -777,7 +777,7 @@ export const useChat = (chatId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchChat = useCallback(async () => {
-    if (!isAuthenticated || !chatId) return;
+    if (!isAuthenticated || !chatId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await chatsService.getChat(chatId);
@@ -800,7 +800,7 @@ export const useMessages = (chatId: string | null, options?: { limit?: number })
   const [error, setError] = useState<Error | null>(null);
 
   const fetchMessages = useCallback(async () => {
-    if (!isAuthenticated || !chatId) return;
+    if (!isAuthenticated || !chatId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await chatsService.getMessages(chatId, options);
@@ -818,7 +818,7 @@ export const useMessages = (chatId: string | null, options?: { limit?: number })
 
   // Subscribe to new messages in this chat
   useEffect(() => {
-    if (!isAuthenticated || !chatId) return;
+    if (!isAuthenticated || !chatId) { setLoading(false); return; }
 
     const unsubscribe = chatsService.subscribeToChat(chatId, (newMessage) => {
       setMessages(prev => [...prev, newMessage]);

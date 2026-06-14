@@ -74,7 +74,7 @@ const MembersDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, c
 };
 
 export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => {
-  const { selectedBand } = useBand();
+  const { selectedBand, isAdmin } = useBand();
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
@@ -202,7 +202,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     if (member.profile?.full_name) {
       return member.profile.full_name
         .split(' ')
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2);
@@ -245,12 +245,14 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             <span className="text-[32px] font-bold text-black leading-none">BAND</span>
             <span className="text-[32px] font-bold text-black leading-none">MEMBERS</span>
           </div>
-          <button
-            onClick={() => setShowInvite(true)}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
-          >
-            <Plus className="w-[20px] h-[20px] text-black" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowInvite(true)}
+              className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
+            >
+              <Plus className="w-[20px] h-[20px] text-black" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -269,12 +271,14 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             <span className="text-[10px] font-medium text-black/40 uppercase mb-6">
               Invite your bandmates to collaborate
             </span>
-            <button
-              onClick={() => setShowInvite(true)}
-              className="flex items-center justify-between px-5 py-3 rounded-[10px] bg-[#D5FB46] active:scale-95 transition-transform"
-            >
-              <span className="text-xs font-bold text-black">INVITE FIRST MEMBER</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="flex items-center justify-between px-5 py-3 rounded-[10px] bg-[#D5FB46] active:scale-95 transition-transform"
+              >
+                <span className="text-xs font-bold text-black">INVITE FIRST MEMBER</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-10">
@@ -380,24 +384,28 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                 </span>
                               </button>
                             )}
-                            <button
-                              onClick={() => handleToggleRole(member)}
-                              className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                            >
-                              <UserCog className="w-4 h-4 text-black/40" />
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">
-                                MAKE {member.role === 'admin' ? 'MEMBER' : 'ADMIN'}
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => handleRemoveMember(member.id)}
-                              className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                            >
-                              <Trash2 className="w-4 h-4 text-[#A73131]" />
-                              <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">
-                                REMOVE
-                              </span>
-                            </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => handleToggleRole(member)}
+                                  className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                                >
+                                  <UserCog className="w-4 h-4 text-black/40" />
+                                  <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                    MAKE {member.role === 'admin' ? 'MEMBER' : 'ADMIN'}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveMember(member.id)}
+                                  className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                                >
+                                  <Trash2 className="w-4 h-4 text-[#A73131]" />
+                                  <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">
+                                    REMOVE
+                                  </span>
+                                </button>
+                              </>
+                            )}
                           </div>
                         </motion.div>
                       )}
