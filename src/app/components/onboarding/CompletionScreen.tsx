@@ -21,7 +21,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
 
   return (
     <div 
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -60,7 +60,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 30 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <h1 className="text-[48px] font-black text-white leading-[1.05] tracking-tight mb-4">
+          <h1 className="text-[48px] font-black text-foreground leading-[1.05] tracking-tight mb-4">
             Ready<br />
             <span className="text-[#D4FB46]">to rock.</span>
           </h1>
@@ -73,7 +73,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 20 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <p className="text-white/40 text-lg">
+          <p className="text-muted-foreground/60 text-lg">
             {bandData?.name} is all set up.
           </p>
         </motion.div>
@@ -87,20 +87,20 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         >
           {/* Members */}
           <div className="flex items-baseline gap-4">
-            <span className="text-[56px] font-black text-white leading-none">
+            <span className="text-[56px] font-black text-foreground leading-none">
               {invites.length || 1}
             </span>
-            <span className="text-white/40 text-lg">
+            <span className="text-muted-foreground/60 text-lg">
               {(invites.length || 1) === 1 ? 'member' : 'members'}
             </span>
           </div>
 
           {/* Songs */}
           <div className="flex items-baseline gap-4">
-            <span className="text-[56px] font-black text-white leading-none">
+            <span className="text-[56px] font-black text-foreground leading-none">
               {songs.length || '—'}
             </span>
-            <span className="text-white/40 text-lg">
+            <span className="text-muted-foreground/60 text-lg">
               {songs.length === 1 ? 'song' : 'songs'} in repertoire
             </span>
           </div>
@@ -117,10 +117,10 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FB46]">
               Signed in as
             </span>
-            <p className="text-white font-bold text-lg mt-1">
+            <p className="text-foreground font-bold text-lg mt-1">
               {profileData.fullName}
             </p>
-            <p className="text-white/40 text-sm">
+            <p className="text-muted-foreground/60 text-sm">
               {profileData.instruments?.join(' · ')}
             </p>
           </motion.div>

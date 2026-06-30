@@ -29,7 +29,7 @@ interface EventsViewProps {
   userFeeMap?: Record<string, number>;
 }
 
-const FILTERS = ['All', 'GIGS', 'REHEARSAL', 'QUOTE'] as const;
+const FILTERS = ['All', 'GIGS', 'REHEARSAL', 'QUOTE', 'DRAFT'] as const;
 
 const TAG_COLORS: Record<string, string> = {
   gig: 'bg-[#D5FB46] text-black',
@@ -471,9 +471,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
   return (
     <motion.div
       key="events"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
       className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
     >
       {allEvents.length === 0 ? (

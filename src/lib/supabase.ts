@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -8,9 +8,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Missing Supabase environment variables - using mock mode');
 }
 
-// Create a Supabase client using @supabase/ssr for better auth cookie management.
-// In Capacitor (WebView) environments, cookies are handled adaptively.
-export const supabase = createServerClient(
+// Create a Supabase client using the standard browser client.
+// The @supabase/ssr createServerClient is for Next.js/Remix server environments
+// and interferes with session persistence in a standard SPA.
+// We use createClient which automatically handles localStorage in the browser
+// and works correctly with OAuth redirect flows.
+export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {
@@ -19,50 +22,32 @@ export const supabase = createServerClient(
       persistSession: true,
       detectSessionInUrl: true,
       flowType: 'implicit',
-    },
-    cookies: {
-      get(key: string) {
-        if (Capacitor.isNativePlatform()) {
-          return undefined;
-        }
-        try {
-          const cookie = document.cookie
-            .split('; ')
-            .find((row) => row.startsWith(`${key}=`));
-          return cookie ? cookie.split('=')[1] : undefined;
-        } catch {
-          return undefined;
-        }
-      },
-      set(key: string, value: string, options: Record<string, unknown>) {
-        if (Capacitor.isNativePlatform()) {
-          return;
-        }
-        try {
-          let cookie = `${key}=${value}`;
-          if (options?.maxAge) cookie += `; max-age=${options.maxAge}`;
-          if (options?.domain) cookie += `; domain=${options.domain}`;
-          if (options?.path) cookie += `; path=${options.path}`;
-          if (options?.sameSite) cookie += `; samesite=${options.sameSite}`;
-          if (options?.secure) cookie += '; secure';
-          if (options?.httpOnly) cookie += '; httponly';
-          document.cookie = cookie;
-        } catch {
-          // Cookies not available
-        }
-      },
-      remove(key: string, options: Record<string, unknown>) {
-        if (Capacitor.isNativePlatform()) {
-          return;
-        }
-        try {
-          let cookie = `${key}=; max-age=0`;
-          if (options?.path) cookie += `; path=${options.path}`;
-          document.cookie = cookie;
-        } catch {
-          // Cookies not available
-        }
-      },
+      storage: Capacitor.isNativePlatform()
+        ? {
+            // For Capacitor native apps, use a simple in-memory + localStorage hybrid
+            getItem: async (key: string) => {
+              try {
+                return localStorage.getItem(key);
+              } catch {
+                return null;
+              }
+            },
+            setItem: async (key: string, value: string) => {
+              try {
+                localStorage.setItem(key, value);
+              } catch {
+                // Storage not available
+              }
+            },
+            removeItem: async (key: string) => {
+              try {
+                localStorage.removeItem(key);
+              } catch {
+                // Storage not available
+              }
+            },
+          }
+        : undefined, // Use default browser localStorage for web
     },
   }
 );
@@ -103,6 +88,8 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     const scheme = platform === 'ios' ? 'app.bandwith.mobile' : 'com.bandwith.app';
     redirectTo = `${scheme}://auth/callback`;
   } else {
+    // For web (including Capacitor WebView for dev), redirect back to the auth callback page
+    // which will extract the session from the URL hash and redirect to the app root
     redirectTo = `${window.location.origin}/auth/callback`;
   }
   
@@ -113,7 +100,9 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     provider,
     options: {
       redirectTo,
-      skipBrowserRedirect: isNative,
+      // In web: don't skip — let the browser do a full redirect to Google, then back to callback
+      // In native: skip the browser redirect and open the Browser plugin manually
+      skipBrowserRedirect: false,
     },
   });
   
@@ -122,6 +111,7 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     return { data, error };
   }
   
+  // For native, we still need to open the browser manually
   if (isNative && data?.url) {
     console.log('[OAuth] Opening browser with URL:', data.url);
     const { Browser } = await import('@capacitor/browser');
@@ -270,6 +260,8 @@ export const updateOnboardingProgress = async (
     checklist_dismissed?: boolean;
     completed_at?: string;
     duration_seconds?: number;
+    pending_band_name?: string;
+    pending_band_avatar?: string;
   }
 ) => {
   const { data, error } = await supabase

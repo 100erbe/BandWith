@@ -23,13 +23,13 @@ export const ExpandedCardWrapper: React.FC<ExpandedCardWrapperProps> = ({
   origin = { top: '12%', left: '3%', right: '45%', bottom: '60%' },
 }) => {
   // Slower, smoother animation curves
-  const expandTransition = {
+  const expandTransition: any = {
     type: "tween",
     duration: 0.8,
     ease: [0.32, 0.72, 0, 1],
   };
 
-  const collapseTransition = {
+  const collapseTransition: any = {
     type: "tween",
     duration: 0.5,
     ease: [0.32, 0, 0.67, 0],
@@ -105,3 +105,4 @@ export const ExpandedCardWrapper: React.FC<ExpandedCardWrapperProps> = ({
     </motion.div>
   );
 };
+

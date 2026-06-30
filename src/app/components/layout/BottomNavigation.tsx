@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 
-/* ── Inline SVG icons — exact Figma paths from node 80:494 ── */
+/* ── SVG icons ── */
 
 const IconHome: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -61,7 +61,120 @@ interface BottomNavigationProps {
   onCreateEvent: (type: CreateEventType) => void;
   isHidden: boolean;
   isAdmin: boolean;
+  isSolo?: boolean;
+  isScrollingDown?: boolean;
 }
+
+/* ═══ Tab descriptor used by both the button and the pill tracker ═══ */
+
+type TabDescriptor = {
+  key: string;
+  label: string;
+  icon: React.FC<{ color: string }>;
+  isActive: boolean;
+  onClick: () => void;
+};
+
+/* ═══ Standalone pill that slides between tabs ═══ */
+
+const PILL_PADDING = 4; // px on each side
+
+const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean }> = ({
+  containerRef,
+  activeKey,
+  isScrollingDown,
+}) => {
+  const [rect, setRect] = useState<{ left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (!activeKey || !containerRef.current) {
+      setRect(null);
+      return;
+    }
+    const container = containerRef.current;
+    const tabEl = container.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
+    if (!tabEl) {
+      setRect(null);
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const tabRect = tabEl.getBoundingClientRect();
+
+    if (isScrollingDown) {
+      // Closed: pill wraps just the icon (24px) + 4px padding = 32px
+      const pillWidth = 24 + PILL_PADDING * 2;
+      const center = tabRect.left + tabRect.width / 2;
+      setRect({
+        left: center - containerRect.left - pillWidth / 2,
+        width: pillWidth,
+      });
+    } else {
+      // Open: pill wraps full button width minus 4px padding on each side
+      setRect({
+        left: tabRect.left - containerRect.left + PILL_PADDING,
+        width: tabRect.width - PILL_PADDING * 2,
+      });
+    }
+  }, [activeKey, containerRef, isScrollingDown]);
+
+  if (!rect) return null;
+
+  return (
+    <motion.div
+      layoutId="active-pill"
+      className="absolute top-0 bottom-0 rounded-full bg-black/8 dark:bg-white/12 z-0"
+      style={{ left: rect.left, width: rect.width }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+    />
+  );
+};
+
+/* ═══ NavTab sub-component ── no pill inside ═══ */
+
+const NavTab: React.FC<{
+  tabKey: string;
+  label: string;
+  icon: React.FC<{ color: string }>;
+  isActive: boolean;
+  onClick: () => void;
+  isScrollingDown: boolean;
+  isMenuOpen: boolean;
+}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen }) => {
+  const activeColor = isMenuOpen ? '#FFFFFF' : '#000000';
+  const inactiveColor = isMenuOpen ? 'rgba(255,255,255,0.30)' : '#737373';
+  const strokeColor = isActive ? activeColor : inactiveColor;
+
+  return (
+    <button
+      data-tab-key={tabKey}
+      onClick={onClick}
+      className={cn(
+        'relative z-10 flex items-center justify-center outline-none px-0 shrink-0',
+        isScrollingDown ? 'w-11' : 'w-16'
+      )}
+    >
+      <div className={cn(
+        'flex flex-col items-center justify-center gap-0',
+        'transition-transform duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
+        isScrollingDown && 'translate-y-[10px]'
+      )}>
+        <div className="w-[24px] h-[24px] flex items-center justify-center">
+          <Icon color={strokeColor} />
+        </div>
+        <span className={cn(
+          'text-[10px] font-bold tracking-wide select-none',
+          isActive ? 'text-foreground' : 'text-muted-foreground',
+          'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform h-[14px] leading-[14px]',
+          isScrollingDown ? 'opacity-0 translate-y-[-14px]' : 'opacity-100 translate-y-0'
+        )}>
+          {label}
+        </span>
+      </div>
+    </button>
+  );
+};
+
+/* ═══ BottomNavigation ═══ */
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   activeTab,
@@ -75,28 +188,58 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   onCreateEvent,
   isHidden,
   isAdmin,
+  isSolo = false,
+  isScrollingDown = false,
 }) => {
+  const navRef = useRef<HTMLDivElement>(null);
+
   const handleTabClick = (tab: TabName) => {
+    if (isSolo && tab === 'Chat') tab = 'Events';
     setActiveTab(tab);
     closeMenus();
   };
 
-  const isMenuOpen = isControlDeckOpen || isIdentityOpen;
-  const isHomeActive = activeTab === "Home" && !isMenuOpen;
-  const isEventsActive = activeTab === "Events" && !isMenuOpen;
-  const isChatActive = activeTab === "Chat" && !isMenuOpen;
+  const isMenuOpen = isIdentityOpen;
+  const isHomeActive = activeTab === 'Home' && !isMenuOpen;
+  const isEventsActive = activeTab === 'Events' && !isMenuOpen;
+  const isChatActive = activeTab === 'Chat' && !isMenuOpen;
+  const inactiveHamburger = isMenuOpen ? 'rgba(255,255,255,0.30)' : '#737373';
 
-  const activeColor = isMenuOpen ? "#FFFFFF" : "#000000";
-  const inactiveColor = isMenuOpen ? "rgba(255,255,255,0.30)" : "#737373";
+  /* Determine which tab key the pill should follow */
+  const isSettingsActive = isControlDeckOpen;
+  const pillActiveKey = isMenuOpen
+    ? null
+    : isSettingsActive
+      ? 'Settings'
+      : isHomeActive
+        ? 'Home'
+        : isEventsActive
+          ? 'Events'
+          : isChatActive
+            ? 'Chat'
+            : null;
+
+  const tabs: TabDescriptor[] = [
+    { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
+    { key: 'Events', label: 'Calendar', icon: IconMusic, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
+    { key: 'Chat', label: 'Chat', icon: IconChat, isActive: isChatActive, onClick: () => handleTabClick('Chat') },
+    {
+      key: 'Settings',
+      label: 'Settings',
+      icon: ({ color }: { color: string }) => (isControlDeckOpen ? <IconClose color="#000000" /> : <IconMenu color={inactiveHamburger} />),
+      isActive: isSettingsActive,
+      onClick: toggleControlDeck,
+    },
+  ];
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed left-4 right-4 z-[80]"
       style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
       animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      {/* Plus Menu — Bottom Sheet (Figma: NEW - Popup) */}
+      {/* Plus Menu Bottom Sheet */}
       <AnimatePresence>
         {isPlusMenuOpen && (
           <>
@@ -116,91 +259,59 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
               style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
             >
-              {/* Pill handle */}
               <div className="flex justify-center mb-2.5">
                 <div className="w-10 h-1 rounded-full bg-white/30" />
               </div>
-
-              {/* Header */}
               <div className="flex items-end justify-between mb-8">
                 <p className="text-[12px] font-bold text-white/50 uppercase">START</p>
-                <button
-                  onClick={() => setIsPlusMenuOpen(false)}
-                  className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center"
-                >
+                <button onClick={() => setIsPlusMenuOpen(false)} className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center">
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
-
-              {/* Menu Items */}
               <div className="flex flex-col gap-10">
-                {/* NEW GIG — Admins only */}
                 {isAdmin && (
-                <button
-                  onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }}
-                  className="flex items-start gap-5 w-full text-left"
-                >
-                  <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                    <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
-                    <div className="bg-[#D5FB46] rounded-[10px] row-span-3" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-[#D5FB46] rounded-[10px]" />
-                    <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
-                  </div>
-                  <div className="flex flex-col gap-2 flex-1">
-                    <span className="text-[22px] font-bold text-white uppercase">NEW GIG</span>
-                    <span className="text-[12px] font-medium text-white leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
-                  </div>
-                </button>
+                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
+                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
+                      <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
+                      <div className="bg-[#D5FB46] rounded-[10px] row-span-3" />
+                      <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-[#D5FB46] rounded-[10px]" />
+                      <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <span className="text-[22px] font-bold text-white uppercase">NEW GIG</span>
+                      <span className="text-[12px] font-medium text-white leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
+                    </div>
+                  </button>
                 )}
-
-                {/* NEW REHEARSAL */}
-                <button
-                  onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }}
-                  className="flex items-start gap-5 w-full text-left"
-                >
+                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                   <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
                     <div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" />
-                    <div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px] row-span-2" />
-                    <div className="bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" />
+                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
+                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
+                    <div className="bg-[#0147FF] rounded-[10px] row-span-2" /><div className="bg-[#0147FF] rounded-[10px]" />
+                    <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" /><div className="bg-[#0147FF] rounded-[10px]" />
                   </div>
                   <div className="flex flex-col gap-2 flex-1">
                     <span className="text-[22px] font-bold text-white uppercase">NEW REHEARSAL</span>
-                    <span className="text-[12px] font-medium text-white leading-normal">Click to create a new rehearsal—plan the session, share the details, and keep everyone in sync.</span>
+                    <span className="text-[12px] font-medium text-white leading-normal">Plan the session, share details, and keep everyone in sync.</span>
                   </div>
                 </button>
-
-                {/* NEW QUOTE — Admins only */}
                 {isAdmin && (
-                <button
-                  onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }}
-                  className="flex items-start gap-5 w-full text-left"
-                >
-                  <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                    <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
-                    <div className="bg-[#9A8878] rounded-[10px] row-span-3" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-[#9A8878] rounded-[10px] row-span-3" />
-                    <div className="bg-white/20 rounded-[10px]" />
-                    <div className="bg-[#9A8878] rounded-[10px]" />
-                    <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
-                  </div>
-                  <div className="flex flex-col gap-2 flex-1">
-                    <span className="text-[22px] font-bold text-white uppercase">NEW QUOTE</span>
-                    <span className="text-[12px] font-medium text-white leading-normal">Click to create a quote for an event—build an estimate, package the details, and send it fast.</span>
-                  </div>
-                </button>
+                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
+                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
+                      <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
+                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-[#9A8878] rounded-[10px]" />
+                      <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <span className="text-[22px] font-bold text-white uppercase">NEW QUOTE</span>
+                      <span className="text-[12px] font-medium text-white leading-normal">Build an estimate, package details, and send it fast.</span>
+                    </div>
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -208,106 +319,57 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         )}
       </AnimatePresence>
 
-      {/* ═══ NAVBAR — Exact Figma node 80:494 ═══ */}
-      <div 
+      {/* ═══ NAVBAR ═══ */}
+      <div
+        ref={navRef}
         className={cn(
-          "flex items-end justify-center rounded-[999px] transition-all duration-300",
-          isMenuOpen 
-            ? "bg-[rgba(28,28,30,0.92)]" 
-            : "bg-[rgba(255,255,255,0.20)]"
+          'relative flex items-center justify-center rounded-[999px] mx-auto w-fit',
+          isMenuOpen ? 'bg-[rgba(28,28,30,0.92)]' : 'bg-white/90 dark:bg-[#1c1c1e]/90',
+          'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isScrollingDown ? 'h-10 gap-x-1' : 'h-14 gap-x-3'
         )}
-        style={{ 
-          height: 50, 
-          paddingLeft: 10, 
-          paddingRight: 10,
+        style={{
           boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
       >
-        {/* Tab 1: Home */}
-        <button 
-          onClick={() => handleTabClick("Home")}
-          className="flex flex-col gap-[2px] items-center justify-center flex-1 h-full min-w-0"
-        >
-          <div className="shrink-0 w-[24px] h-[24px]">
-            <IconHome color={isHomeActive ? activeColor : inactiveColor} />
-          </div>
-          {isHomeActive && (
-            <motion.div 
-              layoutId="nav-dot" 
-              className="w-[6px] h-[6px] rounded-full bg-[#D5FB46] shrink-0" 
-            />
-          )}
-        </button>
+        {/* Standalone sliding pill — z-0 behind icons */}
+        <SlidingPill containerRef={navRef} activeKey={pillActiveKey} />
 
-        {/* Tab 2: Events */}
-        <button 
-          onClick={() => handleTabClick("Events")}
-          className="flex flex-col gap-[2px] items-center justify-center flex-1 h-full min-w-0"
-        >
-          <div className="shrink-0 w-[24px] h-[24px]">
-            <IconMusic color={isEventsActive ? activeColor : inactiveColor} />
-          </div>
-          {isEventsActive && (
-            <motion.div 
-              layoutId="nav-dot" 
-              className="w-[6px] h-[6px] rounded-full bg-[#D5FB46] shrink-0" 
-            />
-          )}
-        </button>
+        {/* Tab buttons — z-10 above pill */}
+        {tabs.slice(0, 2).map((tab) => (
+          <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isScrollingDown} isMenuOpen={isMenuOpen} />
+        ))}
 
-        {/* Tab 3: Plus — lime rounded square, anchored to bottom */}
-        <div className="flex flex-col items-center justify-end flex-1 h-full min-w-0 pb-[12px] pt-[8px]">
-          <button 
-            onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
-            className="w-[52px] h-[52px] bg-[#D5FB46] rounded-[16px] flex items-center justify-center p-[12px] shrink-0 active:scale-95 transition-transform"
-          >
-            <IconPlus 
-              color="#000000" 
-              className={cn(
-                "transition-transform duration-300",
-                isPlusMenuOpen && "rotate-45"
-              )} 
-            />
-          </button>
+        {/* Plus button — standalone, unlabeled, no pill — bleeds above */}
+        <div className="relative z-10 flex items-center justify-center -mt-1">
+          <div className={cn(
+            'flex flex-col items-center justify-center gap-0',
+            'transition-transform duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
+            isScrollingDown && 'translate-y-[10px]'
+          )}>
+            <button
+              onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+              className="w-[46px] h-[46px] bg-[#D5FB46] rounded-[14px] flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+            >
+              <IconPlus color="#000000" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
+            </button>
+            {/* Invisible spacer matching other tabs' label height */}
+            <span className={cn(
+              'h-[14px] leading-[14px] select-none text-transparent text-[10px]',
+              'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
+              isScrollingDown ? 'opacity-0 translate-y-[-14px]' : 'opacity-100 translate-y-0'
+            )}>_</span>
+          </div>
         </div>
 
-        {/* Tab 4: Chat */}
-        <button 
-          onClick={() => handleTabClick("Chat")}
-          className="flex flex-col gap-[2px] items-center justify-center flex-1 h-full min-w-0"
-        >
-          <div className="shrink-0 w-[24px] h-[24px]">
-            <IconChat color={isChatActive ? activeColor : inactiveColor} />
-          </div>
-          {isChatActive && (
-            <motion.div 
-              layoutId="nav-dot" 
-              className="w-[6px] h-[6px] rounded-full bg-[#D5FB46] shrink-0" 
-            />
-          )}
-        </button>
-
-        {/* Tab 5: More */}
-        <button 
-          onClick={toggleControlDeck}
-          className="flex flex-col gap-[2px] items-center justify-center flex-1 h-full min-w-0"
-        >
-          <div className="shrink-0 w-[24px] h-[24px]">
-            {isControlDeckOpen 
-              ? <IconClose color="#FFFFFF" />
-              : <IconMenu color={isMenuOpen ? "rgba(255,255,255,0.30)" : inactiveColor} />
-            }
-          </div>
-          {isControlDeckOpen && (
-            <motion.div 
-              layoutId="nav-dot" 
-              className="w-[6px] h-[6px] rounded-full bg-[#D5FB46] shrink-0" 
-            />
-          )}
-        </button>
+        {tabs.slice(2).map((tab) => (
+          <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isScrollingDown} isMenuOpen={isMenuOpen} />
+        ))}
       </div>
     </motion.div>
   );
 };
+
+export default BottomNavigation;

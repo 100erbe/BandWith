@@ -7,6 +7,12 @@ import React, {
 } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, signIn, signUp, signOut, resetPassword, signInWithOAuth } from './supabase';
+import { Capacitor } from '@capacitor/core';
+
+export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
+
+// PLG: User mode — 'band' = collaborative workspace, 'solo' = personal calendar
+export type UserMode = 'band' | 'solo';
 
 export interface Profile {
   id: string;
@@ -16,6 +22,14 @@ export interface Profile {
   role: 'admin' | 'member';
   instrument: string | null;
   phone: string | null;
+  bio?: string | null;
+  location?: string | null;
+  timezone?: string | null;
+  preferred_language?: string | null;
+  notification_preferences?: Record<string, boolean> | null;
+  sub_tier?: SubTier | null;
+  user_mode?: UserMode | null;
+  updated_at?: string | null;
 }
 
 interface AuthContextType {
@@ -24,6 +38,30 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  userMode: UserMode | null;         // PLG: current user mode
+  setUserMode: (mode: UserMode) => Promise<void>;  // PLG: switch mode
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    metadata?: { full_name?: string }
+  ) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
+  signInWithApple: () => Promise<{ error: AuthError | null }>;
+  signOut: () => Promise<{ error: AuthError | null }>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  refreshProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+}
+
+interface AuthContextType {
+  user: User | null;
+  profile: Profile | null;
+  session: Session | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  userMode: UserMode | null;
+  setUserMode: (mode: UserMode) => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,
@@ -185,8 +223,93 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
+    // Listen for deep links in native (Capacitor) environment
+    // This handles the OAuth redirect back to the app from Google/Apple
+    let deepLinkCleanup: (() => void) | undefined;
+    if (Capacitor.isNativePlatform()) {
+      const setupDeepLinkListener = async () => {
+        try {
+          const { App } = await import('@capacitor/app');
+          
+          App.addListener('appUrlOpen', async (data) => {
+            const url = data.url;
+            console.log('[DeepLink] App opened with URL:', url);
+            
+            // Check if this is an auth callback
+            if (url && url.includes('auth/callback')) {
+              // Extract the hash fragment from the deep link URL
+              const hashIndex = url.indexOf('#');
+              if (hashIndex >= 0) {
+                const hash = url.substring(hashIndex);
+                console.log('[DeepLink] Auth hash found, setting session...');
+                
+                // Parse the hash params and set the session
+                const hashParams = new URLSearchParams(hash.substring(1));
+                const accessToken = hashParams.get('access_token');
+                const refreshToken = hashParams.get('refresh_token');
+                
+                if (accessToken) {
+                  const { data: sessionData, error } = await supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken || '',
+                  });
+                  
+                  if (error) {
+                    console.error('[DeepLink] Error setting session:', error);
+                  } else if (sessionData.session) {
+                    console.log('[DeepLink] Session established successfully');
+                  }
+                }
+              } else if (url.includes('code=')) {
+                // PKCE flow — code is in the query string
+                console.log('[DeepLink] Auth code found, exchanging...');
+                // The onAuthStateChange listener should handle this
+              }
+            }
+          });
+          
+          // Check if the app was opened via a URL while closed
+          const result = await App.getLaunchUrl();
+          if (result?.url && result.url.includes('auth/callback')) {
+            console.log('[DeepLink] Launched with auth URL:', result.url);
+            const url = result.url;
+            const hashIndex = url.indexOf('#');
+            if (hashIndex >= 0) {
+              const hash = url.substring(hashIndex);
+              const hashParams = new URLSearchParams(hash.substring(1));
+              const accessToken = hashParams.get('access_token');
+              const refreshToken = hashParams.get('refresh_token');
+              
+              if (accessToken) {
+                const { data: sessionData, error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken || '',
+                });
+                
+                if (error) {
+                  console.error('[DeepLink] Error setting session from launch URL:', error);
+                } else if (sessionData.session) {
+                  console.log('[DeepLink] Session established from launch URL');
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[DeepLink] Error setting up deep link listener:', err);
+        }
+      };
+      
+      setupDeepLinkListener();
+      
+      deepLinkCleanup = () => {
+        // Capacitor doesn't provide a direct way to remove listeners,
+        // but the component unmount will clean up
+      };
+    }
+
     return () => {
       subscription.unsubscribe();
+      if (deepLinkCleanup) deepLinkCleanup();
     };
   }, []);
 
@@ -229,12 +352,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
+  // PLG: Derived user mode from profile
+  const userMode: UserMode | null = profile?.user_mode || null;
+
+  // PLG: Set user mode and persist to profile
+  const setUserMode = async (mode: UserMode) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ user_mode: mode, role: mode === 'solo' ? 'member' : 'admin' })
+      .eq('id', user.id);
+    if (error) {
+      console.error('Failed to set user mode:', error);
+      return;
+    }
+    await refreshProfile();
+  };
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
     isAuthenticated: !!user,
+    userMode,
+    setUserMode,
     signIn: handleSignIn,
     signUp: handleSignUp,
     signInWithGoogle: handleSignInWithGoogle,

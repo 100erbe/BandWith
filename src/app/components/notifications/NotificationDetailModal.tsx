@@ -135,7 +135,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   const bgColor = getTypeBg(currentNotification.type);
   const textColor = getTypeText(currentNotification.type);
   const typeLabel = getTypeLabel(currentNotification.type);
-  const data = currentNotification.data || {};
+  const data = (currentNotification.data || {}) as Record<string, any>;
   const isEventInvite = currentNotification.type === 'event_invite';
   const hasEventData = !!data.event_date;
 

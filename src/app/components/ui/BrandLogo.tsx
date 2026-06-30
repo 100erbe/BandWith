@@ -41,7 +41,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
     { x: col3, y: size - padding - barWidth, h: barWidth },
   ];
 
-  const barVariants = {
+  const barVariants: any = {
     initial: { scaleY: 0.8, opacity: 0.8 },
     animate: (i: number) => ({
       scaleY: [0.8, 1, 0.9, 1],

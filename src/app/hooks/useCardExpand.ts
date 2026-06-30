@@ -8,7 +8,7 @@ export interface CardRect {
 }
 
 export interface UseCardExpandReturn {
-  cardRef: React.RefObject<HTMLDivElement>;
+  cardRef: React.RefObject<HTMLDivElement | null>;
   getCardRect: () => CardRect | null;
   captureRect: () => void;
   capturedRect: CardRect | null;

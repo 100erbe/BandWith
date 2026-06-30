@@ -26,7 +26,7 @@ export interface BandMember {
   initials: string;
 }
 
-type EventType = 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'other' | 'rehearsal';
+type EventType = 'gig' | 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'other' | 'rehearsal';
 type PerformanceType = 'full_band' | 'duo' | 'trio' | 'solo' | 'dj_set' | 'acoustic' | 'karaoke';
 type SettingType = 'indoor' | 'outdoor';
 
@@ -210,7 +210,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose, onCreate, initialType, bandMembers = [], currentUserId, editingEvent,
 }) => {
   const isEditing = !!editingEvent;
-  const { selectedBand } = useBand();
+  const { selectedBand, isAdmin } = useBand();
 
   const editingWarnings = useMemo(() => {
     if (!editingEvent) return [];
@@ -771,16 +771,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     </span>
                   </div>
                   <span className={cn('text-[20px] font-bold uppercase', tc)}>{member.name}</span>
-                  <div className="flex items-center gap-1">
-                    <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
-                    <input
-                      type="number"
-                      value={memberFees[member.id] || ''}
-                      onChange={(e) => updateFee(member.id, e.target.value)}
-                      placeholder="0"
-                      className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
-                    />
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
+                      <input
+                        type="number"
+                        value={memberFees[member.id] || ''}
+                        onChange={(e) => updateFee(member.id, e.target.value)}
+                        placeholder="0"
+                        className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
+                      />
+                    </div>
+                  )}
                 </div>
                 <DotCheckbox checked={true} activeColor={dotActive} inactiveColor={dotInactive} />
               </div>
@@ -798,35 +800,37 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Fee Summary */}
-      <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
-        {totalPayout > 0 && (
-          <div className="flex items-center justify-between">
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
-            <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
-          </div>
-        )}
+      {isAdmin && (
+        <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+          {totalPayout > 0 && (
+            <div className="flex items-center justify-between">
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
+              <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
+            </div>
+          )}
 
-        <div>
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
-          <div className="flex items-center">
-            <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
-            <input
-              type="number"
-              value={extraBandFee}
-              onChange={(e) => setExtraBandFee(e.target.value)}
-              placeholder="0"
-              className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-black/20')}
-            />
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
+            <div className="flex items-center">
+              <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
+              <input
+                type="number"
+                value={extraBandFee}
+                onChange={(e) => setExtraBandFee(e.target.value)}
+                placeholder="0"
+                className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-black/20')}
+              />
+            </div>
           </div>
+
+          {(grandTotalFee > 0 || details.pay) && (
+            <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL BAND FEE</span>
+              <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee || details.pay || 0}</span>
+            </div>
+          )}
         </div>
-
-        {(grandTotalFee > 0 || details.pay) && (
-          <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL BAND FEE</span>
-            <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee || details.pay || 0}</span>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Duration */}
       <div className={cn('pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>

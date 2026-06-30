@@ -3,6 +3,10 @@ import { motion } from 'motion/react';
 import { 
   ArrowUpRight,
   Loader2,
+  MapPin,
+  Clock,
+  ListMusic,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { dashboardContainerVariants, dashboardItemVariants } from '@/styles/motion';
@@ -10,7 +14,7 @@ import { QUICK_ACTIONS } from '@/app/data/metrics';
 import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
-import { getPermissions, type UserRole } from '@/lib/permissions';
+import { useBand } from '@/lib/BandContext';
 
 interface DashboardData {
   eventStats: {
@@ -49,6 +53,7 @@ interface HomeViewProps {
   dashboardLoading?: boolean;
   onQuickAction?: (action: string) => void;
   isAdmin?: boolean;
+  isSolo?: boolean;  // PLG: Solo mode hides collaborative features
 }
 
 // --- Equalizer Dot Grid for Stats (6×4) ---
@@ -267,12 +272,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   dashboardData,
   dashboardLoading,
   onQuickAction,
-  isAdmin = true
+  isAdmin: _isAdminProp = true,
+  isSolo = false,
 }) => {
-  const _userRole: UserRole = isAdmin ? 'admin' : 'member';
-  const _permissions = getPermissions(_userRole);
+  // Use the band context for role, fall back to prop for backwards compatibility
+  const { isAdmin: isAdminFromContext } = useBand();
+  const isAdmin = isAdminFromContext ?? _isAdminProp;
 
+
+
+  // For admins: show all quick actions
+  // For members: show only performance-relevant actions
+  // PLG: For solo users: show only personal actions
   const filteredQuickActions = QUICK_ACTIONS.filter(action => {
+    if (isSolo) {
+      // Solo mode: show only personal actions
+      const soloActions = ['Setlist & Repertoire'];
+      return soloActions.includes(action.label);
+    }
     if (!isAdmin) {
       const adminOnlyActions = [
         'Contracts & Riders',
@@ -316,7 +333,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     >
       {/* ═══ STATS GRID (2×2) ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
-        {/* Row 1: Gigs Confirmed | Upcoming Rehearsal */}
+        {/* Row 1: Gigs Confirmed | Upcoming Rehearsal — visible to all */}
         <div className="flex gap-5">
           <div className="flex-1 flex flex-col gap-2 items-start text-left">
             <div className="flex flex-col w-full">
@@ -343,39 +360,57 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Row 2: Quotes | Revenue */}
+        {/* Row 2: Admin sees full business metrics / Member sees personal earnings */}
         <div className="flex gap-5">
           {isAdmin ? (
-            <div className="flex-1 flex flex-col gap-2 items-start text-left">
-              <div className="flex flex-col w-full">
-                <span className="text-xs font-bold text-black tracking-wide">QUOTES</span>
-                <span className="text-[52px] font-bold leading-none text-black">
-                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
-                </span>
+            <>
+              {/* ADMIN: Quotes count */}
+              <div className="flex-1 flex flex-col gap-2 items-start text-left">
+                <div className="flex flex-col w-full">
+                  <span className="text-xs font-bold text-black tracking-wide">QUOTES</span>
+                  <span className="text-[52px] font-bold leading-none text-black">
+                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
+                  </span>
+                </div>
+                <StatsDotGrid theme="beige" filled={quotesCount} />
               </div>
-              <StatsDotGrid theme="beige" filled={quotesCount} />
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col gap-2 items-start text-left">
-              <div className="flex flex-col w-full">
-                <span className="text-xs font-bold text-black tracking-wide">MY FEE</span>
-                <span className="text-[52px] font-bold leading-none text-black">
-                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
-                </span>
-              </div>
-              <StatsDotGrid theme="beige" filled={(memberStats?.confirmedFee || 0) > 0 ? 6 : 0} />
-            </div>
-          )}
 
-          <div className="flex-1 flex flex-col gap-2 items-start text-left">
-            <div className="flex flex-col w-full">
-              <span className="text-xs font-bold text-black tracking-wide">{isAdmin ? 'REVENUE' : 'MY EARNINGS'}</span>
-              <span className="text-[52px] font-bold leading-none text-black">
-                {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
-              </span>
-            </div>
-            <StatsDotGrid theme="dark" filled={0} isRevenue={revenue > 0} />
-          </div>
+              {/* ADMIN: Total Revenue */}
+              <div className="flex-1 flex flex-col gap-2 items-start text-left">
+                <div className="flex flex-col w-full">
+                  <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
+                  <span className="text-[52px] font-bold leading-none text-black">
+                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
+                  </span>
+                </div>
+                <StatsDotGrid theme="dark" filled={0} isRevenue={revenue > 0} />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* MEMBER: My Fee — confirmed fee per event */}
+              <div className="flex-1 flex flex-col gap-2 items-start text-left">
+                <div className="flex flex-col w-full">
+                  <span className="text-xs font-bold text-black tracking-wide">MY FEE</span>
+                  <span className="text-[52px] font-bold leading-none text-black">
+                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
+                  </span>
+                </div>
+                <StatsDotGrid theme="beige" filled={(memberStats?.confirmedFee || 0) > 0 ? 6 : 0} />
+              </div>
+
+              {/* MEMBER: Total Personal Earnings YTD */}
+              <div className="flex-1 flex flex-col gap-2 items-start text-left">
+                <div className="flex flex-col w-full">
+                  <span className="text-xs font-bold text-black tracking-wide">MY EARNINGS</span>
+                  <span className="text-[52px] font-bold leading-none text-black">
+                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.totalEarned || 0)}
+                  </span>
+                </div>
+                <StatsDotGrid theme="dark" filled={0} isRevenue={(memberStats?.totalEarned || 0) > 0} />
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
 
@@ -386,8 +421,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <span className="text-[32px] font-bold leading-none text-black">CENTER</span>
         </div>
 
-        {/* Scrollable Action Tiles */}
         <div className="flex flex-col gap-[60px]">
+          {/* Scrollable Action Tiles */}
           <div className="overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             <div className="flex gap-10 w-max">
               {filteredQuickActions.map((action) => (
@@ -400,44 +435,95 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          {/* Bottom Stats Row */}
-          <div className="flex gap-2.5">
-            {/* Upcoming Gigs */}
-            <div className="flex flex-col gap-4 flex-1">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-black tracking-wide">UPCOMING GIGS</span>
-                <span className="text-[42px] font-bold leading-tight text-black">
-                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : confirmedCount}
-                </span>
-                <span className="text-xs font-bold text-black tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
+          {/* Bottom Row — Member-specific operational cards vs Admin business cards */}
+          {isAdmin ? (
+            <div className="flex gap-2.5">
+              {/* ADMIN: Upcoming Gigs */}
+              <div className="flex flex-col gap-4 flex-1">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-black tracking-wide">UPCOMING GIGS</span>
+                  <span className="text-[42px] font-bold leading-tight text-black">
+                    {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : confirmedCount}
+                  </span>
+                  <span className="text-xs font-bold text-black tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
+                </div>
+                <button
+                  onClick={() => onQuickAction?.('View Calendar')}
+                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+                >
+                  <span className="text-xs font-bold text-black">VIEW CALENDAR</span>
+                  <ArrowUpRight className="w-5 h-5 text-black" />
+                </button>
               </div>
-              <button
-                onClick={() => onQuickAction?.('View Calendar')}
-                className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
-              >
-                <span className="text-xs font-bold text-black">VIEW CALENDAR</span>
-                <ArrowUpRight className="w-5 h-5 text-black" />
-              </button>
-            </div>
 
-            {/* Revenue Growing */}
-            <div className="flex flex-col justify-between flex-1">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-black tracking-wide">{isAdmin ? 'REVENUE GROWING' : 'EARNINGS GROWING'}</span>
-                <span className="text-[42px] font-bold leading-tight text-black">
-                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
-                </span>
-                <span className="text-xs font-bold text-black tracking-wide">VS LAST MONTH</span>
+              {/* ADMIN: Revenue Growing */}
+              <div className="flex flex-col justify-between flex-1">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-black tracking-wide">REVENUE GROWING</span>
+                  <span className="text-[42px] font-bold leading-tight text-black">
+                    {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
+                  </span>
+                  <span className="text-xs font-bold text-black tracking-wide">VS LAST MONTH</span>
+                </div>
+                <button
+                  onClick={() => onQuickAction?.('View Analytics')}
+                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
+                >
+                  <span className="text-xs font-bold text-[#D5FB46]">VIEW ANALYTICS</span>
+                  <ArrowUpRight className="w-5 h-5 text-[#D5FB46]" />
+                </button>
               </div>
-              <button
-                onClick={() => onQuickAction?.('View Analytics')}
-                className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
-              >
-                <span className="text-xs font-bold text-[#D5FB46]">VIEW ANALYTICS</span>
-                <ArrowUpRight className="w-5 h-5 text-[#D5FB46]" />
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex gap-2.5">
+              {/* MEMBER: Next Soundcheck / Load-In */}
+              <div className="flex flex-col gap-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-black" />
+                  <span className="text-xs font-bold text-black tracking-wide">NEXT SOUNDCHECK</span>
+                </div>
+                <span className="text-[28px] font-bold leading-tight text-black">
+                  {confirmedCount > 0 ? '2h 15m' : '—'}
+                </span>
+                <span className="text-[11px] font-bold text-black/50 tracking-wide">
+                  {confirmedCount > 0 ? 'BEFORE DOORS OPEN' : 'NO UPCOMING GIGS'}
+                </span>
+                {confirmedCount > 0 && (
+                  <button
+                    onClick={() => onQuickAction?.('View Calendar')}
+                    className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+                  >
+                    <span className="text-xs font-bold text-black flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                      LOAD-IN MAP
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-black" />
+                  </button>
+                )}
+              </div>
+
+              {/* MEMBER: My Setlist Snapshot */}
+              <div className="flex flex-col justify-between flex-1">
+                <div className="flex items-center gap-2">
+                  <ListMusic className="w-4 h-4 text-black" />
+                  <span className="text-xs font-bold text-black tracking-wide">MY SETLIST</span>
+                </div>
+                <span className="text-[28px] font-bold leading-tight text-black">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : '—'}
+                </span>
+                <span className="text-[11px] font-bold text-black/50 tracking-wide">
+                  NEXT GIG SONGS
+                </span>
+                <button
+                  onClick={() => onQuickAction?.('Setlist & Repertoire')}
+                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
+                >
+                  <span className="text-xs font-bold text-[#D5FB46]">VIEW SETLIST</span>
+                  <ChevronRight className="w-4 h-4 text-[#D5FB46]" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>

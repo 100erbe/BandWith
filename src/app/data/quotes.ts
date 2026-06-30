@@ -100,6 +100,7 @@ export interface QuoteMusician {
 export interface QuoteCustomItem {
   id: string;
   description: string;
+  name?: string;
   amount: number;
   quantity: number;
 }
@@ -222,6 +223,9 @@ export interface Quote {
   tax?: number;
   notes?: string;
   eventTitle?: string;
+  depositAmount?: number;
+  quote_id?: string;
+  name?: string;
 }
 
 // Available band members for selection

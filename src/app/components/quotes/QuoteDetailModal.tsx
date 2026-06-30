@@ -66,7 +66,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     return { daysInMonth, firstDay, eventDay: eventDate.getDate() };
   })() : null;
 
-  const dp = quote.discount > 0 ? Math.round((quote.discount / quote.total) * 100) : 30;
+  const dp = (quote.discount ?? 0) > 0 ? Math.round(((quote.discount ?? 0) / (quote.total || 1)) * 100) : 30;
 
   return (
     <>

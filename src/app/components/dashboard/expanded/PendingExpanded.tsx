@@ -216,7 +216,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                     </div>
                     <div className="bg-[#F7F7F5] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
                       <div className="flex -space-x-2 pl-2">
-                        {event.members.length > 0 ? event.members.map((initial, i) => (
+                        {event.members.length > 0 ? event.members.map((initial: any, i: number) => (
                           <div key={i} className="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white relative z-10">
                             {initial}
                           </div>

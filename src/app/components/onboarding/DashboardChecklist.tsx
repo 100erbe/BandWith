@@ -64,7 +64,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
 
   return (
     <motion.div
-      className="bg-[#1C1C1E] rounded-[2rem] p-6 border border-white/5"
+      className="bg-card rounded-[2rem] p-6 border border-border"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -76,16 +76,16 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
             <Sparkles className="w-5 h-5 text-[#D4FB46]" />
           </div>
           <div>
-            <h3 className="text-white font-bold text-[16px]">
+            <h3 className="text-foreground font-bold text-[16px]">
               Complete Your Setup
             </h3>
-            <p className="text-zinc-500 text-[13px]">{progressPercent}% done</p>
+            <p className="text-muted-foreground text-[13px]">{progressPercent}% done</p>
           </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-5">
+      <div className="h-2 bg-card/80 rounded-full overflow-hidden mb-5">
         <motion.div
           className="h-full bg-[#D4FB46] rounded-full"
           initial={{ width: 0 }}
@@ -112,8 +112,8 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
             <span
               className={`text-[14px] ${
                 item.completed
-                  ? 'text-zinc-500 line-through'
-                  : 'text-white font-medium'
+                  ? 'text-muted-foreground line-through'
+                  : 'text-foreground font-medium'
               }`}
             >
               {item.label}
@@ -136,7 +136,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       {/* Dismiss */}
       <button
         onClick={handleDismiss}
-        className="w-full mt-3 text-center text-zinc-600 text-[13px] py-2 hover:text-zinc-500 transition-colors flex items-center justify-center gap-1"
+        className="w-full mt-3 text-center text-muted-foreground/60 text-[13px] py-2 hover:text-muted-foreground transition-colors flex items-center justify-center gap-1"
       >
         <X className="w-3 h-3" />
         Dismiss

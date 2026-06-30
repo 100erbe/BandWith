@@ -774,7 +774,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
         ))}
         <button
-          onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, name: '', amount: 0, description: '' }])}
+          onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, description: '', amount: 0, quantity: 1 }])}
           className="flex items-center gap-2 text-[12px] font-bold text-white/40 uppercase hover:text-white transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Custom Fee

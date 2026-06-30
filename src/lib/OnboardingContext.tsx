@@ -14,17 +14,20 @@ import {
 } from './supabase';
 
 // Onboarding step definitions
-export type OnboardingPath = 'creator' | 'joiner';
+export type OnboardingPath = 'solo' | 'creator' | 'joiner';
 
 export const CREATOR_STEPS = [
   'welcome',
   'account',
+  'intent',
   'band',
   'profile',
   'invite',
   'songs',
   'complete',
 ] as const;
+
+export const SOLO_STEPS = ['account', 'profile', 'complete'] as const;
 
 export const JOINER_STEPS = [
   'invite-landing',
@@ -80,9 +83,10 @@ interface OnboardingState {
   isComplete: boolean;
   startedAt: Date | null;
 
-  // Invite token (for joiners)
+  // Invite token / code logic
   inviteToken: string | null;
   inviteData: any | null;
+  pendingBandId: string | null; // Added to handle the 6-digit bypass code
 
   // Collected data
   accountData: {
@@ -124,6 +128,8 @@ interface OnboardingContextType extends OnboardingState {
   setAccountData: (data: OnboardingState['accountData']) => void;
   setBandData: (data: OnboardingState['bandData']) => void;
   setProfileData: (data: OnboardingState['profileData']) => void;
+  setPendingBandId: (id: string | null) => void;
+  acceptInviteCode: (code: string) => Promise<boolean>;
   addInvite: (invite: MemberInvite) => void;
   removeInvite: (email: string) => void;
   addSong: (song: OnboardingSong) => void;
@@ -170,6 +176,7 @@ const initialState: OnboardingState = {
   startedAt: null,
   inviteToken: null,
   inviteData: null,
+  pendingBandId: null,
   accountData: null,
   bandData: null,
   profileData: null,
@@ -252,71 +259,52 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       ? Math.round((Date.now() - state.startedAt.getTime()) / 1000)
       : 0;
 
-    // Create band if creator path
-    if (state.path === 'creator' && state.bandData) {
-      const slug = state.bandData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-
-      const { data: band, error: bandError } = await supabase
-        .from('bands')
-        .insert({
-          name: state.bandData.name,
-          logo_url: state.bandData.avatarUrl,
-          created_by: user.id,
-          slug: `${slug}-${Date.now().toString(36)}`
-        })
-        .select()
-        .single();
-
-      if (bandError) {
-        console.error("CRITICAL: Band Creation Failed:", bandError);
-        // If this fails, we can't save members, so we stop here
-        return;
+    // ═══════════════════════════════════════════════════════════════
+    // 1) The Invite Code Bypass (Hired Musician Path)
+    // ═══════════════════════════════════════════════════════════════
+    if (state.pendingBandId) {
+      // Set user mode explicitly to 'member'
+      if (state.profileData) {
+        await supabase
+          .from('profiles')
+          .update({
+            full_name: state.profileData.fullName,
+            instrument: state.profileData.instruments?.join(', '),
+            phone: state.profileData.phone,
+            user_mode: 'member',
+          })
+          .eq('id', user.id);
       }
 
-      if (band) {
-        // Use upsert to avoid 409 Conflict if trigger already created the member
-        const { error: memberError } = await supabase.from('band_members').upsert({
-          band_id: band.id,
-          user_id: user.id,
-          role: 'admin',
-          instrument: state.profileData?.instruments?.join(', '),
-        }, { onConflict: 'band_id,user_id' });
+      // Automatically insert them into the shared band roster
+      await supabase
+        .from('band_members')
+        .upsert(
+          {
+            band_id: state.pendingBandId,
+            user_id: user.id,
+            role: 'member',
+            instrument: state.profileData?.instruments?.join(', '),
+          },
+          { onConflict: 'band_id,user_id' }
+        );
 
-        if (memberError) console.error("Member Upsert Error:", memberError);
+      await updateOnboardingProgress(user.id, {
+        completed_at: new Date().toISOString(),
+        duration_seconds: duration,
+      });
 
-        // Send invites securely to the new 'invitations' table
-        if (state.invites.length > 0) {
-          const invitesToInsert = state.invites.map(invite => ({
-            band_id: band.id,
-            email: invite.email,
-            role: invite.permission || 'member'
-          }));
-
-          const { error: inviteError } = await supabase
-            .from('invitations')
-            .insert(invitesToInsert);
-
-          if (inviteError) console.error("Failed to save invitations:", inviteError);
-        }
-
-        // Add songs
-        for (const song of state.songs) {
-          await supabase.from('songs').insert({
-            band_id: band.id,
-            title: song.title,
-            artist: song.artist,
-            duration_seconds: song.duration,
-            bpm: song.bpm,
-            key: song.key,
-          });
-        }
-      }
+      setState((prev) => ({ ...prev, isComplete: true }));
+      return; // Exit immediately, bypassing all creation logic!
     }
 
-    // Update profile
+
+    // Determine whether the user is going solo (no band created) or creating a band
+    const isGoingSolo = state.path !== 'creator' || !state.bandData;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 2) Update profile — Branching Intent (Solo vs Band Admin)
+    // ═══════════════════════════════════════════════════════════════
     if (state.profileData) {
       await supabase
         .from('profiles')
@@ -324,8 +312,140 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
           full_name: state.profileData.fullName,
           instrument: state.profileData.instruments?.join(', '),
           phone: state.profileData.phone,
+          user_mode: isGoingSolo ? 'solo' : 'band_admin',
         })
         .eq('id', user.id);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 3) Solo path — Mark complete and route to personal calendar
+    // ═══════════════════════════════════════════════════════════════
+    if (isGoingSolo) {
+      await updateOnboardingProgress(user.id, {
+        completed_at: new Date().toISOString(),
+        duration_seconds: duration,
+      });
+
+      setState((prev) => ({
+        ...prev,
+        isComplete: true,
+      }));
+      return;
+    }
+
+    // ── From here on we know the user wants to create a band ──
+
+    // ═══════════════════════════════════════════════════════════════
+    // 4) Free Trial & Subscription Gate
+    // ═══════════════════════════════════════════════════════════════
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('user_mode, sub_tier, trial_ends_at')
+      .eq('id', user.id)
+      .single();
+
+    const subTier = profileData?.sub_tier;
+    const trialEndsAt = profileData?.trial_ends_at;
+    
+    // Determine if user has an active 7-Day trial
+    const hasActiveTrial = trialEndsAt ? new Date(trialEndsAt) > new Date() : false;
+
+    const canCreateBands =
+      hasActiveTrial ||
+      subTier === 'single_band' ||
+      subTier === 'multi_band' ||
+      subTier === 'unlimited';
+
+    if (!canCreateBands) {
+      console.warn(
+        'P0001 GUARD: User lacks active trial or plan. Deferring band creation until after payment.',
+      );
+
+      await supabase
+        .from('onboarding_progress')
+        .upsert(
+          {
+            user_id: user.id,
+            pending_band_name: state.bandData!.name,
+            pending_band_avatar: state.bandData!.avatarUrl,
+            current_step: state.currentStep,
+            path: state.path,
+          },
+          { onConflict: 'user_id' },
+        );
+
+      await updateOnboardingProgress(user.id, {
+        completed_at: new Date().toISOString(),
+        duration_seconds: duration,
+      });
+
+      setState((prev) => ({ ...prev, isComplete: true }));
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 5) Create band (User is validated)
+    // ═══════════════════════════════════════════════════════════════
+    const slug = state.bandData!.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    const { data: band, error: bandError } = await supabase
+      .from('bands')
+      .insert({
+        name: state.bandData!.name,
+        logo_url: state.bandData!.avatarUrl,
+        created_by: user.id,
+        slug: `${slug}-${Date.now().toString(36)}`,
+      })
+      .select()
+      .single();
+
+    if (bandError) {
+      console.error('CRITICAL: Band Creation Failed:', bandError);
+      return;
+    }
+
+    if (band) {
+      const { error: memberError } = await supabase
+        .from('band_members')
+        .upsert(
+          {
+            band_id: band.id,
+            user_id: user.id,
+            role: 'admin',
+            instrument: state.profileData?.instruments?.join(', '),
+          },
+          { onConflict: 'band_id,user_id' },
+        );
+
+      if (memberError) console.error('Member Upsert Error:', memberError);
+
+      if (state.invites.length > 0) {
+        const invitesToInsert = state.invites.map((invite) => ({
+          band_id: band.id,
+          email: invite.email,
+          role: invite.permission || 'member',
+        }));
+
+        const { error: inviteError } = await supabase
+          .from('invitations')
+          .insert(invitesToInsert);
+
+        if (inviteError) console.error('Failed to save invitations:', inviteError);
+      }
+
+      for (const song of state.songs) {
+        await supabase.from('songs').insert({
+          band_id: band.id,
+          title: song.title,
+          artist: song.artist,
+          duration_seconds: song.duration,
+          bpm: song.bpm,
+          key: song.key,
+        });
+      }
     }
 
     // Mark onboarding complete
@@ -358,6 +478,36 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     },
     []
   );
+
+  const setPendingBandId = useCallback((id: string | null) => {
+    setState((prev) => ({ ...prev, pendingBandId: id }));
+  }, []);
+
+  // Accept a 6-digit invite code — validates it against invitations table
+  const acceptInviteCode = useCallback(async (code: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('id, band_id, band:bands(id, name, logo_url)')
+        .eq('token', code)
+        .eq('status', 'pending')
+        .single();
+
+      if (error || !data) {
+        console.warn('Invite code not found or already used:', code);
+        return false;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        pendingBandId: data.band_id,
+      }));
+      return true;
+    } catch (err) {
+      console.error('Error validating invite code:', err);
+      return false;
+    }
+  }, []);
 
   const addInvite = useCallback((invite: MemberInvite) => {
     setState((prev) => ({
@@ -474,6 +624,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     setAccountData,
     setBandData,
     setProfileData,
+    setPendingBandId,
+    acceptInviteCode,
     addInvite,
     removeInvite,
     addSong,

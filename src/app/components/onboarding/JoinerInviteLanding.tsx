@@ -63,7 +63,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -84,7 +84,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         {onBack ? (
           <button
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white/60 hover:bg-white/10 transition-all"
+            className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
           >
             <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
           </button>
@@ -112,19 +112,19 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[44px] font-black text-white leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             You're
             <br />
             <span className="text-[#0047FF]">invited</span>
           </h1>
-          <p className="text-white/40 text-[16px] font-medium leading-relaxed">
+          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
             {inviterName} invited you to join as <span className="text-[#D4FB46] font-bold">{memberRole}</span>
           </p>
         </motion.div>
 
         {/* Band Card - Editorial style */}
         <motion.div
-          className="rounded-3xl bg-white/5 border border-white/5 p-5 mb-6"
+          className="rounded-3xl bg-card border border-border p-5 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
@@ -139,18 +139,18 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-2xl font-black text-white">
+                <span className="text-2xl font-black text-foreground">
                   {getInitials(bandName)}
                 </span>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="text-white font-bold text-[20px] leading-tight truncate">
+              <h2 className="text-foreground font-bold text-[20px] leading-tight truncate">
                 {bandName}
               </h2>
               {inviteData?.band?.description && (
-                <p className="text-white/30 text-[13px] line-clamp-1 mt-0.5">
+                <p className="text-muted-foreground/50 text-[13px] line-clamp-1 mt-0.5">
                   {inviteData.band.description}
                 </p>
               )}
@@ -158,15 +158,15 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           </div>
 
           {/* Stats */}
-          <div className="flex gap-6 mt-5 pt-4 border-t border-white/5">
-            <div className="flex items-center gap-2 text-white/40">
+          <div className="flex gap-6 mt-5 pt-4 border-t border-border">
+            <div className="flex items-center gap-2 text-muted-foreground/60">
               <Users className="w-4 h-4" strokeWidth={1.5} />
               <span className="text-[13px] font-medium">
                 {memberCount} {memberCount === 1 ? 'member' : 'members'}
               </span>
             </div>
             {inviteData?.created_at && (
-              <div className="flex items-center gap-2 text-white/40">
+              <div className="flex items-center gap-2 text-muted-foreground/60">
                 <Calendar className="w-4 h-4" strokeWidth={1.5} />
                 <span className="text-[13px] font-medium">
                   Sent {formatDate(inviteData.created_at)}
@@ -183,7 +183,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
         >
-          <p className="text-white/20 text-[11px] font-bold uppercase tracking-[0.15em] mb-3">
+          <p className="text-muted-foreground/30 text-[11px] font-bold uppercase tracking-[0.15em] mb-3">
             What you'll get
           </p>
           
@@ -192,7 +192,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             'Shared setlists & song library',
             'Team chat & notifications',
           ].map((item, index) => (
-            <div key={index} className="flex items-center gap-3 text-white/50">
+            <div key={index} className="flex items-center gap-3 text-muted-foreground/80">
               <CheckCircle className="w-4 h-4 text-[#D4FB46]" strokeWidth={1.5} />
               <span className="text-[14px] font-medium">{item}</span>
             </div>
@@ -219,7 +219,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         {/* Decline */}
         <button
           onClick={onDecline}
-          className="w-full text-center py-3 text-white/30 text-[14px] font-medium hover:text-white/50 transition-colors"
+          className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
         >
           Decline invitation
         </button>

@@ -6,6 +6,7 @@ import { Capacitor } from "@capacitor/core";
 
 import { useAuth } from "@/lib/AuthContext";
 import { useBand } from "@/lib/BandContext";
+import { useScrollDirection } from "@/app/hooks/useScrollDirection";
 import { supabase } from "@/lib/supabase";
 import { getPermissions, type UserRole } from "@/lib/permissions";
 import {
@@ -37,16 +38,16 @@ import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist } from "@/lib/services/songs";
 
 import { USER } from "@/app/data/user";
-import { BANDS, Band as MockBand } from "@/app/data/bands";
-import { EventItem } from "@/app/data/events";
+import { EventItem, EventStatus } from "@/app/data/events";
 import { ChatType, ChatItem } from "@/app/data/chats";
 import { NotificationItem } from "@/app/data/notifications";
+import type { Band } from "@/app/data/bands";
 import type { BandWithMembers } from "@/lib/services/bands";
 
 import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@/app/types";
 
 import { Header } from "@/app/components/layout/Header";
-import { BottomNavigation } from "@/app/components/layout/BottomNavigation";
+import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
 import { ControlDeck } from "@/app/components/layout/ControlDeck";
 import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
@@ -85,13 +86,14 @@ import { createQuote as createQuoteDB } from "@/lib/services/quotes";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
+import { UpgradePricingSheet } from "@/app/components/modals/UpgradePricingSheet";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
 import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 
-const mapEventStatus = (event: Event): string => {
+const mapEventStatus = (event: Event): EventStatus => {
   if (event.event_type === "rehearsal") return "REHEARSAL";
   if (event.quote_id) return "QUOTE";
   const s = event.status?.toLowerCase();
@@ -115,9 +117,9 @@ const eventToEventItem = (event: Event): EventItem => {
     price: event.fee?.toString() || "0",
     members: [],
     color:
-      status === "REHEARSAL" ? "bg-black text-[#D4FB46]"
-        : status === "QUOTE" ? "bg-[#9A8878] text-white"
-        : status === "DRAFT" ? "bg-black/20 text-black/60"
+      (status === "REHEARSAL") ? "bg-black text-[#D4FB46]"
+        : (status === "QUOTE") ? "bg-[#9A8878] text-white"
+        : (status === "DRAFT") ? "bg-black/20 text-black/60"
         : "bg-green-100 text-green-700",
     notes: event.notes || undefined,
     createdBy: event.created_by || undefined,
@@ -129,15 +131,11 @@ const eventToEventItem = (event: Event): EventItem => {
     loadInTime: event.load_in_time || undefined,
     soundcheckTime: event.soundcheck_time || undefined,
     endTime: event.end_time || undefined,
-    indoorOutdoor: event.indoor_outdoor || undefined,
-    quoteStatus: event.status || undefined,
-    is_recurring: event.is_recurring || false,
-    recurrence_rule: event.recurrence_rule || undefined,
   };
 };
 
 export default function AuthenticatedApp() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, profile, userMode } = useAuth();
   const {
     selectedBand: realBand,
     bands: realBands,
@@ -162,8 +160,10 @@ export default function AuthenticatedApp() {
         const { StatusBar, Style } = await import("@capacitor/status-bar");
         const { Keyboard } = await import("@capacitor/keyboard");
         if (!alive) return;
-        await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: "#000000" });
+        // Use system-preference check instead of Capacitor Appearance API
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        await StatusBar.setStyle({ style: prefersDark ? Style.Dark : Style.Light });
+        await StatusBar.setBackgroundColor({ color: prefersDark ? "#050505" : "#E6E5E1" });
         if (Capacitor.getPlatform() === "ios") {
           await StatusBar.setOverlaysWebView({ overlay: true });
         }
@@ -200,6 +200,13 @@ export default function AuthenticatedApp() {
     }
   }, [isAuthenticated, pushSupported, initializePush]);
 
+  // PLG: Must be declared early for downstream memos
+  const isSolo = userMode === 'solo';
+
+  // Scroll direction for bottom nav label shrink
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isScrollingDown = useScrollDirection(scrollContainerRef);
+
   // Data hooks
   const { data: dashboardData, loading: dashboardLoading } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
@@ -209,7 +216,6 @@ export default function AuthenticatedApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
-  const [mockSelectedBand, setMockSelectedBand] = useState<MockBand>(BANDS[0]);
   const [isBandSwitcherOpen, setIsBandSwitcherOpen] = useState(false);
   const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState<ExpandedCardType>(null);
@@ -408,7 +414,19 @@ export default function AuthenticatedApp() {
   const setNotifications = setLocalNotifications;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const selectedBand: MockBand = useMemo(() => {
+  const selectedBand: Band = useMemo(() => {
+    // PLG: Solo mode — show a personal calendar placeholder
+    if (isSolo) {
+      return {
+        id: 0,
+        name: 'My Calendar',
+        role: 'MEMBER',
+        initials: 'P', // "Personal"
+        members: 1,
+        genre: 'Solo',
+        plan: 'Free',
+      } as Band;
+    }
     if (realBand) {
       return {
         id: parseInt(realBand.id.replace(/-/g, "").slice(0, 8), 16) || 1,
@@ -418,13 +436,21 @@ export default function AuthenticatedApp() {
         members: realBand.member_count,
         genre: "Rock",
         plan: realBand.plan === "pro" || realBand.plan === "enterprise" ? "Pro" : "Free",
-      } as MockBand;
+      } as Band;
     }
-    return mockSelectedBand;
-  }, [realBand, mockSelectedBand]);
+    // Fallback: when no real band exists yet, create a placeholder from onboarding data
+    return {
+      id: 0,
+      name: 'My Band',
+      role: 'ADMIN',
+      initials: 'MB',
+      members: 1,
+      genre: '',
+      plan: 'Free',
+    } as Band;
+  }, [realBand, isSolo, user]);
 
-  const setSelectedBand = (band: MockBand) => {
-    setMockSelectedBand(band);
+  const setSelectedBand = (band: Band) => {
     const match = realBands.find((rb) => rb.name === band.name);
     if (match) selectBand(match.id);
   };
@@ -442,10 +468,36 @@ export default function AuthenticatedApp() {
   const [showInventory, setShowInventory] = useState(false);
   const [showContracts, setShowContracts] = useState(false);
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
-  const [liveInterval, setLiveInterval] = useState<NodeJS.Timeout | null>(null);
+  const [liveInterval, setLiveInterval] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreateBand, setShowCreateBand] = useState(false);
+  const [showUpgradePricing, setShowUpgradePricing] = useState(false);
+
+  // Tier-limit check before showing the create band modal
+  const handleRequestCreateBand = useCallback(() => {
+    const tier = profile?.sub_tier || 'free_member';
+
+    // Count bands where the current user is admin
+    const adminBandCount = realBands.filter((b) => b.user_role === 'admin').length;
+
+    // Define limits per tier
+    const limits: Record<string, number> = {
+      free_member: 0,
+      single_band: 1,
+      multi_band: 5,
+      unlimited: Infinity,
+    };
+
+    const limit = limits[tier] ?? 0;
+
+    if (adminBandCount >= limit) {
+      // Hit the ceiling — show upgrade pricing sheet instead
+      setShowUpgradePricing(true);
+    } else {
+      setShowCreateBand(true);
+    }
+  }, [profile?.sub_tier, realBands]);
 
   const [entityCounts, setEntityCounts] = useState({ templates: 0, documents: 0, inventory: 0, repertoire: 0 });
 
@@ -613,7 +665,7 @@ export default function AuthenticatedApp() {
       id: m.id,
       user_id: m.user_id,
       name: m.profile?.full_name || m.profile?.email?.split("@")[0] || "Member",
-      role: m.role || m.profile?.instrument || "Member",
+      role: m.role || m.instrument || "Member",
       fee: String(m.default_fee || 0),
       initials: (m.profile?.full_name || m.profile?.email || "M").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
     }));
@@ -1083,14 +1135,15 @@ export default function AuthenticatedApp() {
       <div className={cn("fixed inset-0 transition-colors duration-500 z-0", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
-      <div className="w-full relative flex flex-col z-10" style={{
+      <div ref={scrollContainerRef} className="w-full relative flex flex-col z-10 overflow-y-auto" style={{
         paddingTop: isAndroid && isNative ? "56px" : "max(env(safe-area-inset-top, 0px), 12px)",
         paddingBottom: isAndroid && isNative ? "calc(100px + 24px)" : "calc(100px + env(safe-area-inset-bottom, 0px))",
         paddingLeft: "16px", paddingRight: "16px",
+        height: '100vh',
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as MockBand)) : BANDS}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={filteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
@@ -1100,13 +1153,24 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {activeTab === "Home" && (
-            <HomeView key={`dashboard-${selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={dashboardData} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onQuickAction={(action) => { if (action === "Band Members") setShowBandMembers(true); if (action === "Setlist & Repertoire") setShowSetlistManager(true); if (action === "Inventory") setShowInventory(true); if (action === "Contracts & Riders") setShowContracts(true); if (action === "Task Templates") setShowTaskTemplates(true); }} />
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={dashboardData} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onQuickAction={(action) => {
+              if (isSolo) return; // PLG: Solo mode has no band actions
+              if (action === "Band Members") setShowBandMembers(true);
+              if (action === "Setlist & Repertoire") setShowSetlistManager(true);
+              if (action === "Inventory") setShowInventory(true);
+              if (action === "Contracts & Riders") setShowContracts(true);
+              if (action === "Task Templates") setShowTaskTemplates(true);
+            }} isSolo={isSolo} />
           )}
-          {activeTab === "Chat" && (
+          {activeTab === "Chat" && !isSolo && (
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} />
+          )}
+          {/* PLG: Solo mode fallback for Chat tab */}
+          {activeTab === "Chat" && isSolo && (
+            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} />
           )}
         </AnimatePresence>
 
@@ -1138,7 +1202,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>{showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} onChatCreated={(id) => { setShowNewChat(false); setSelectedChat({ id: Date.now(), uuid: id, type: "direct", name: "New Chat", initials: "NC", lastMessage: "Start chatting...", time: "now", unread: 0, status: "read" }); refetchChats?.(); }} />}</AnimatePresence>
 
-        <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
+        <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
         <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
           if (realBand?.id) {
             const quoteData = {
@@ -1155,7 +1219,7 @@ export default function AuthenticatedApp() {
               venue_name: q.venueName || null,
               venue_city: q.venueCity || null,
               subtotal: q.subtotal || 0,
-              iva_amount: q.vatAmount || 0,
+              vat_amount: q.vatAmount || 0,
               total: q.total || 0,
               deposit_amount: q.depositAmount || 0,
               event_id: q.eventId || (await (async () => {
@@ -1165,27 +1229,27 @@ export default function AuthenticatedApp() {
                 return ev?.id || null;
               })()),
             };
-            await createQuoteDB(quoteData);
+            await createQuoteDB(quoteData as any);
           }
           setIsCreateEventOpen(false);
         }} />}</AnimatePresence>
 
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as MockBand)) : BANDS}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand} setSelectedBand={setSelectedBand} notificationGroups={notificationGroups} unreadCount={unreadCount} onNotificationClick={handleNotificationClick} onMarkAsRead={handleMarkSingleAsRead} onMarkGroupAsRead={handleMarkGroupAsRead}
           onEntityDetailClick={(l) => { if (l === "INVENTORY") setShowInventory(true); if (l === "REPERTOIRE") setShowSetlistManager(true); if (l === "TEMPLATES") setShowTaskTemplates(true); if (l === "DOCUMENTS") setShowContracts(true); }}
           entityCounts={entityCounts}
-          onEditProfile={() => setShowEditProfile(true)} onEditBand={() => setShowBandMembers(true)} onAddEntity={() => setShowCreateBand(true)} />
+          onEditProfile={() => setShowEditProfile(true)} onEditBand={() => setShowBandMembers(true)} onAddEntity={handleRequestCreateBand} />
 
         <ControlDeck isOpen={isControlDeckOpen} onClose={toggleControlDeck} onNavigate={handleGridNav} isAdmin={isAdmin} />
 
         <SwitchBandPopup
           isOpen={isBandSwitcherOpen}
           onClose={() => setIsBandSwitcherOpen(false)}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as MockBand)) : BANDS}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           onSelectBand={setSelectedBand}
-          onAddNewBand={() => setShowCreateBand(true)}
+          onAddNewBand={handleRequestCreateBand}
         />
 
         <AnimatePresence>
@@ -1213,7 +1277,7 @@ export default function AuthenticatedApp() {
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={confirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
 
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification} isAdmin={isAdmin} />
+        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
 
         <AnimatePresence>
           {saveToast && (
@@ -1255,6 +1319,7 @@ export default function AuthenticatedApp() {
 
         {showEditProfile && <EditProfileModal key="edit-profile" isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
         {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
+        <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
 
         <NotificationDetailModal key="notification-detail"
           isOpen={!!selectedNotification || selectedNotifications.length > 0}

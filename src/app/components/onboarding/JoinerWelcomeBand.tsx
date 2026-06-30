@@ -48,7 +48,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
 
   return (
     <div 
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -115,7 +115,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
               boxShadow: '0 16px 64px rgba(0, 71, 255, 0.5)',
             }}
           >
-            <Sparkles className="w-14 h-14 text-white" strokeWidth={1.5} />
+            <Sparkles className="w-14 h-14 text-foreground" strokeWidth={1.5} />
           </div>
         </motion.div>
 
@@ -126,7 +126,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h1 className="text-[32px] font-black text-white leading-tight mb-2">
+          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
             Welcome to
           </h1>
           <p className="text-[#D4FB46] text-[28px] font-black">"{bandName}"!</p>
@@ -134,12 +134,12 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
 
         {/* Bandmates Card */}
         <motion.div
-          className="w-full max-w-sm bg-[#1C1C1E] rounded-[2rem] p-6 border border-white/5"
+          className="w-full max-w-sm bg-card rounded-[2rem] p-6 border border-border"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <p className="text-zinc-500 text-[12px] font-medium mb-4 uppercase">
+          <p className="text-muted-foreground text-[12px] font-medium mb-4 uppercase">
             Your Bandmates
           </p>
 
@@ -158,7 +158,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-medium text-[14px] flex items-center gap-2">
+                  <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
                     {member.name}
                     {member.isAdmin && (
                       <span className="px-2 py-0.5 rounded-full bg-[#D4FB46]/20 text-[#D4FB46] text-[10px] font-bold">
@@ -166,7 +166,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                       </span>
                     )}
                   </p>
-                  <p className="text-zinc-500 text-[12px]">{member.role}</p>
+                  <p className="text-muted-foreground text-[12px]">{member.role}</p>
                 </div>
               </motion.div>
             ))}
@@ -184,13 +184,13 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                 </span>
               </div>
               <div className="flex-1">
-                <p className="text-white font-medium text-[14px] flex items-center gap-2">
+                <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
                   {profileData?.fullName || 'You'}
                   <span className="px-2 py-0.5 rounded-full bg-[#D4FB46] text-black text-[10px] font-bold flex items-center gap-1">
                     <Star className="w-3 h-3" /> NEW
                   </span>
                 </p>
-                <p className="text-zinc-500 text-[12px]">
+                <p className="text-muted-foreground text-[12px]">
                   {profileData?.instruments?.join(', ') || 'Musician'}
                 </p>
               </div>
@@ -200,15 +200,15 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
 
         {/* Upcoming Events Card */}
         <motion.div
-          className="w-full max-w-sm mt-4 bg-[#1C1C1E] rounded-2xl p-5 border border-white/5"
+          className="w-full max-w-sm mt-4 bg-card rounded-2xl p-5 border border-border"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
         >
-          <p className="text-zinc-500 text-[12px] font-medium mb-3 uppercase">
+          <p className="text-muted-foreground text-[12px] font-medium mb-3 uppercase">
             Upcoming
           </p>
-          <div className="flex items-center gap-3 text-zinc-400">
+          <div className="flex items-center gap-3 text-muted-foreground/70">
             <Calendar className="w-5 h-5" />
             <p className="text-[14px]">No gigs scheduled yet</p>
           </div>

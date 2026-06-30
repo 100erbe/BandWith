@@ -70,7 +70,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const chatItem: ChatItem = {
       id: Date.now(),
       uuid: result.chat_id,
-      type: result.chat_type || 'direct',
+      type: (result.chat_type === 'group' ? 'band' : result.chat_type) || 'direct' as any,
       name: result.chat_name || 'Chat',
       initials: (result.chat_name || 'C').substring(0, 2).toUpperCase(),
       lastMessage: result.message_content || '',
@@ -100,9 +100,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
   return (
     <motion.div 
       key="chat"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
       className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
     >
       {/* ═══ HEADER ═══ */}

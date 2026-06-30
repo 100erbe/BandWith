@@ -46,7 +46,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -56,7 +56,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
       <div className="px-5 pt-5 flex items-center justify-between relative z-10">
         <button
           onClick={onBack}
-          className="w-11 h-11 rounded-full border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-all"
+          className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-card transition-all"
         >
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
@@ -85,10 +85,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           <p className="text-[#D5FB46] text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
             Account Recovery
           </p>
-          <h1 className="text-[40px] font-black text-white tracking-tight uppercase leading-[0.95]">
+          <h1 className="text-[40px] font-black text-foreground tracking-tight uppercase leading-[0.95]">
             Reset
             <br />
-            <span className="text-white/20">Password</span>
+            <span className="text-muted-foreground/30">Password</span>
           </h1>
         </motion.div>
 
@@ -120,7 +120,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-2xl font-black text-white uppercase tracking-tight mb-3"
+                  className="text-2xl font-black text-foreground uppercase tracking-tight mb-3"
                 >
                   Check Your Email
                 </motion.h2>
@@ -129,10 +129,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="text-white/40 text-[14px] leading-relaxed max-w-xs"
+                  className="text-muted-foreground/60 text-[14px] leading-relaxed max-w-xs"
                 >
                   We've sent a password reset link to{' '}
-                  <span className="text-white font-bold">{email}</span>.
+                  <span className="text-foreground font-bold">{email}</span>.
                   <br /><br />
                   Check your inbox and follow the link to create a new password.
                 </motion.p>
@@ -158,7 +158,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
               className="flex-1 flex flex-col"
             >
               <motion.p
-                className="text-white/35 text-[14px] leading-relaxed mb-8"
+                className="text-muted-foreground/55 text-[14px] leading-relaxed mb-8"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
@@ -188,13 +188,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 </AnimatePresence>
 
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" strokeWidth={1.5} />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email address"
-                    className="w-full h-[52px] pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white text-[15px] placeholder:text-white/25 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-white/8 transition-all"
+                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
                     required
                     autoFocus
                   />

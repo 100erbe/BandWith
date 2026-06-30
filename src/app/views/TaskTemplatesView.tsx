@@ -114,7 +114,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
   // Create form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState<TaskTemplate['category']>('other');
+  const [formCategory, setFormCategory] = useState<string>('other');
   const [formTasks, setFormTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskOffset, setNewTaskOffset] = useState(-7);
@@ -158,7 +158,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         id: crypto.randomUUID(),
         name: formName.trim(),
         description: formDescription.trim(),
-        category: formCategory,
+        category: formCategory as any,
         tasks: formTasks,
         band_id: bandId,
         is_default: false,
@@ -553,7 +553,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                 >
                   <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-3">Category</label>
                   <div className="flex flex-wrap gap-2">
-                    {(['gig', 'rehearsal', 'meeting', 'other'] as const).map(cat => (
+                    {(['gig', 'rehearsal', 'meeting', 'other'] as const).map((cat: any) => (
                       <button
                         key={cat}
                         onClick={() => setFormCategory(cat)}

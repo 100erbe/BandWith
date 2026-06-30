@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#E6E5E1" />
     <link rel="stylesheet" href="https://use.typekit.net/mzr4hzv.css">
     <title>BandWith</title>
     <style>
@@ -14,7 +14,7 @@
         overscroll-behavior: none;
         -webkit-user-select: none; user-select: none;
         -webkit-tap-highlight-color: transparent;
-        background: #000;
+        background: var(--background, #E6E5E1);
       }
       ::-webkit-scrollbar { display: none; }
       * { -ms-overflow-style: none; scrollbar-width: none; }
@@ -28,9 +28,9 @@
       }
       input:-webkit-autofill, input:-webkit-autofill:hover,
       input:-webkit-autofill:focus, input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #000 inset !important;
-        -webkit-text-fill-color: #fff !important;
-        caret-color: #fff !important;
+        -webkit-box-shadow: 0 0 0 30px #E6E5E1 inset !important;
+        -webkit-text-fill-color: #050505 !important;
+        caret-color: #050505 !important;
         transition: background-color 5000s ease-in-out 0s;
       }
       input:focus, textarea:focus, select:focus {
@@ -38,7 +38,7 @@
       }
       #css-splash {
         position: fixed; inset: 0; z-index: 99999;
-        background: #000;
+        background: #E6E5E1;
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
       }
@@ -55,7 +55,7 @@
   <body>
     <div id="css-splash">
       <img src="/brand/app-icon.png" alt="">
-      <div class="t"><span style="color:#fff">BAND</span><span style="color:#D5FB46">WITH</span></div>
+      <div class="t"><span style="color:#050505">BAND</span><span style="color:#D5FB46">WITH</span></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

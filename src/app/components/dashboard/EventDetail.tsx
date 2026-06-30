@@ -106,6 +106,7 @@ const THEME = {
     backBorderColor: 'white',
     backBg: 'rgba(216,216,216,0.2)',
     deleteLabel: 'DELETE THIS REHARSAL',
+    secondBtnLabel: undefined,
   },
   gig: {
     bg: '#D5FB46',
@@ -124,6 +125,7 @@ const THEME = {
     backBorderColor: 'black',
     backBg: 'rgba(216,216,216,0.2)',
     deleteLabel: 'DELETE THIS GIG',
+    secondBtnLabel: undefined,
   },
   quote: {
     bg: '#9A8878',
@@ -161,6 +163,7 @@ const THEME = {
     backBorderColor: 'white',
     backBg: 'rgba(216,216,216,0.2)',
     deleteLabel: 'DELETE THIS DRAFT',
+    secondBtnLabel: undefined,
   },
 };
 
@@ -348,16 +351,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
           {/* Event-specific sections */}
           {eventType === 'rehearsal' && (
-            <RehearsalSections event={event} theme={theme} memberCount={memberCount} />
+            <RehearsalSections event={event} theme={theme as any} memberCount={memberCount} />
           )}
           {eventType === 'gig' && (
-            <GigSections event={event} theme={theme} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
+            <GigSections event={event} theme={theme as any} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
           )}
           {eventType === 'quote' && (
-            <QuoteSections event={event} theme={theme} memberCount={memberCount} miniCalendar={miniCalendar} eventYear={eventYear} eventMonthDay={eventMonthDay} isAdmin={isAdmin} memberFee={memberFee} />
+            <QuoteSections event={event} theme={theme as any} memberCount={memberCount} miniCalendar={miniCalendar} eventYear={eventYear} eventMonthDay={eventMonthDay} isAdmin={isAdmin} memberFee={memberFee} />
           )}
           {eventType === 'draft' && (
-            <DraftSections event={event} theme={theme} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
+            <DraftSections event={event} theme={theme as any} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
           )}
         </div>
 

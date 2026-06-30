@@ -314,7 +314,7 @@ export const createNotificationChannel = async (
       id,
       name,
       description,
-      importance,
+      importance: importance as any,
       visibility: 1,
       lights: true,
       vibration: true,

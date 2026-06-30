@@ -197,7 +197,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     
     const readySongs = songs.filter(s => s.status === 'ready').length;
     const learningSongs = songs.filter(s => s.status === 'learning').length;
-    const suggestedSongs = songs.filter(s => s.status === 'suggested').length;
+    const suggestedSongs = songs.filter(s => (s as any).status === 'suggested').length;
     
     const avgBpm = songs.filter(s => s.bpm).length > 0
       ? Math.round(songs.filter(s => s.bpm).reduce((acc, s) => acc + (s.bpm || 0), 0) / songs.filter(s => s.bpm).length)

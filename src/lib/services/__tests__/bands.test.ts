@@ -85,7 +85,6 @@ describe('Band Service', () => {
 
       const result = await createBand({
         name: 'Test Band',
-        plan: 'free',
       });
 
       expect(result.error).toBeNull();
@@ -95,7 +94,6 @@ describe('Band Service', () => {
     it('should fail without a name', async () => {
       const result = await createBand({
         name: '',
-        plan: 'free',
       });
 
       expect(result.error).toBeTruthy();

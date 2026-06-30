@@ -59,10 +59,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
     try {
       const { data, error: createError } = await createBand({
         name: name.trim(),
-        genre: genre || undefined,
         description: description.trim() || undefined,
-        website: website.trim() || undefined,
-        plan: plan as 'free' | 'pro' | 'enterprise',
       });
 
       if (createError) throw createError;

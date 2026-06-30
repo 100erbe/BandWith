@@ -98,7 +98,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -118,7 +118,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
       <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
         <button
           onClick={onBack}
-          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white/60 hover:bg-white/10 transition-all"
+          className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
         >
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
@@ -143,12 +143,12 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[48px] font-black text-white leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-[48px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Find your
             <br />
             <span className="text-[#0047FF]">invite</span>
           </h1>
-          <p className="text-white/40 text-[17px] font-medium leading-relaxed max-w-[280px]">
+          <p className="text-muted-foreground/60 text-[17px] font-medium leading-relaxed max-w-[280px]">
             Enter the email where your band invitation was sent.
           </p>
         </motion.div>
@@ -161,7 +161,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           transition={{ delay: 0.2, duration: 0.6 }}
         >
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" strokeWidth={1.5} />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
             <input
               type="email"
               value={email}
@@ -171,7 +171,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
               }}
               onKeyDown={handleKeyDown}
               placeholder="your@email.com"
-              className="w-full h-14 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white text-[17px] placeholder:text-white/20 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all"
+              className="w-full h-14 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[17px] placeholder:text-muted-foreground/30 focus:outline-none focus:border-white/30 focus:bg-card/80 transition-all"
               autoComplete="email"
               autoCapitalize="none"
               autoFocus
@@ -218,7 +218,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
         </button>
 
         {/* Helper text */}
-        <p className="text-center text-white/20 text-[13px] font-medium px-8">
+        <p className="text-center text-muted-foreground/30 text-[13px] font-medium px-8">
           We'll look for pending invitations sent to this address
         </p>
       </motion.div>

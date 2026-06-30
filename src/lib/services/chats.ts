@@ -511,7 +511,11 @@ export const getChatParticipants = async (
 
     if (error) throw error;
 
-    return { data: data as ChatParticipant[], error: null };
+    const mapped = (data || []).map((d: any) => ({
+      ...d,
+      profile: Array.isArray(d.profile) ? d.profile[0] || null : d.profile || null,
+    })) as ChatParticipant[];
+    return { data: mapped, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

@@ -7,7 +7,9 @@ export interface Band {
   slug?: string;
   logo_url?: string;
   description?: string;
+  genre?: string;
   created_by?: string;
+  plan?: string;
   created_at: string;
   updated_at: string;
 }

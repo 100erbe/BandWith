@@ -109,7 +109,7 @@ interface Props {
 }
 
 export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent }) => {
-  const { selectedBand } = useBand();
+  const { selectedBand, isAdmin } = useBand();
   const isEditing = !!editingEvent;
   const [step, setStep] = useState(0);
 
@@ -787,23 +787,25 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <Home className="w-5 h-5" />
             <span className="font-bold uppercase text-sm">Free</span>
           </button>
-          <button
-            onClick={() => setData(prev => ({ ...prev, venueType: 'paid' }))}
-            className={cn(
-              "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
-              data.venueType === 'paid'
-                ? "bg-white text-black border-white"
-                : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
-            )}
-          >
-            <Euro className="w-5 h-5" />
-            <span className="font-bold uppercase text-sm">Paid</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setData(prev => ({ ...prev, venueType: 'paid' }))}
+              className={cn(
+                "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
+                data.venueType === 'paid'
+                  ? "bg-white text-black border-white"
+                  : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+              )}
+            >
+              <Euro className="w-5 h-5" />
+              <span className="font-bold uppercase text-sm">Paid</span>
+            </button>
+          )}
         </div>
       </div>
 
       <AnimatePresence>
-        {data.venueType === 'paid' && (
+        {data.venueType === 'paid' && isAdmin && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -1119,10 +1121,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                           id: `prop-${prop.id}`,
                           title: prop.title,
                           artist: prop.artist,
-                          duration_seconds: 240,
+                          duration: '4:00',
                           notes: prop.reason || '',
-                          status: 'ready' as const,
+                          status: 'ready' as any,
                           priority: 'medium' as const,
+                          type: 'song' as const,
                         };
                         setData(prev => ({ ...prev, setlist: [...prev.setlist, song] }));
                       }}
@@ -1305,28 +1308,30 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         </div>
 
         {/* Band Essentials */}
-        <div className="bg-[#D5FB46] rounded-[10px] p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-black">
-              <Briefcase className="w-5 h-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Band Essentials</h3>
-            </div>
-            <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase text-black/50">
-              <Lock className="w-3 h-3" /> Admin Only
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            {data.bandChecklist?.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm font-bold text-black/60">
-                <div className="w-1.5 h-1.5 rounded-full bg-black/30" />
-                {item}
+        {isAdmin && (
+          <div className="bg-[#D5FB46] rounded-[10px] p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-black">
+                <Briefcase className="w-5 h-5" />
+                <h3 className="text-sm font-bold uppercase tracking-wider">Band Essentials</h3>
               </div>
-            ))}
+              <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase text-black/50">
+                <Lock className="w-3 h-3" /> Admin Only
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {data.bandChecklist?.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm font-bold text-black/60">
+                  <div className="w-1.5 h-1.5 rounded-full bg-black/30" />
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="pt-3 border-t border-black/10 text-[11px] font-medium text-black/40 text-center italic">
+              These items are required for every rehearsal.
+            </div>
           </div>
-          <div className="pt-3 border-t border-black/10 text-[11px] font-medium text-black/40 text-center italic">
-            These items are required for every rehearsal.
-          </div>
-        </div>
+        )}
       </div>
     );
   };

@@ -67,7 +67,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
 
   return (
     <div 
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -87,7 +87,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
       <AnimatePresence>
         {showCelebration && (
           <motion.div
-            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm"
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -109,7 +109,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               transition={{ delay: 0.3 }}
               className="text-center"
             >
-              <h2 className="text-3xl font-black text-white mb-2">
+              <h2 className="text-3xl font-black text-foreground mb-2">
                 🎉 "{bandName}"
               </h2>
               <p className="text-[#D4FB46] text-xl font-bold">is born!</p>
@@ -148,18 +148,18 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-[15px] font-medium">Back</span>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-zinc-500 text-[13px] font-medium">Step 1/4</span>
+            <span className="text-muted-foreground text-[13px] font-medium">Step 1/4</span>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="mt-4 h-1 bg-white/10 rounded-full overflow-hidden">
+        <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-[#D4FB46] rounded-full"
             initial={{ width: 0 }}
@@ -178,10 +178,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-[32px] font-black text-white leading-tight mb-2">
+          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
             Name your band
           </h1>
-          <p className="text-zinc-500 text-[16px]">
+          <p className="text-muted-foreground text-[16px]">
             This is how your band will appear to members and clients.
           </p>
         </motion.div>
@@ -193,7 +193,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <label className="text-zinc-500 text-[13px] font-medium mb-2 block">
+          <label className="text-muted-foreground text-[13px] font-medium mb-2 block">
             BAND NAME *
           </label>
           <input
@@ -201,15 +201,15 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             value={bandName}
             onChange={(e) => setBandName(e.target.value)}
             placeholder="The Groovemasters"
-            className="w-full bg-transparent border-b-2 border-white/20 pb-3 text-white text-[28px] font-bold placeholder:text-zinc-700 outline-none focus:border-[#D4FB46] transition-colors"
+            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[28px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-[#D4FB46] transition-colors"
             maxLength={50}
             autoFocus
           />
           <div className="flex justify-between mt-2">
-            <p className="text-zinc-600 text-[12px]">
+            <p className="text-muted-foreground/60 text-[12px]">
               {bandName.length < 2 ? 'At least 2 characters' : ''}
             </p>
-            <p className="text-zinc-600 text-[12px]">{bandName.length}/50</p>
+            <p className="text-muted-foreground/60 text-[12px]">{bandName.length}/50</p>
           </div>
         </motion.div>
 
@@ -220,7 +220,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <label className="text-zinc-500 text-[13px] font-medium mb-4 block">
+          <label className="text-muted-foreground text-[13px] font-medium mb-4 block">
             BAND AVATAR
           </label>
           
@@ -228,7 +228,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-28 h-28 rounded-[1.5rem] bg-[#1C1C1E] border-2 border-dashed border-white/20 flex flex-col items-center justify-center hover:border-[#D4FB46]/50 transition-colors overflow-hidden group"
+              className="w-28 h-28 rounded-[1.5rem] bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-[#D4FB46]/50 transition-colors overflow-hidden group"
             >
               {avatarPreview || avatarUrl ? (
                 <img
@@ -244,8 +244,8 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 </div>
               ) : (
                 <>
-                  <Camera className="w-8 h-8 text-zinc-600 mb-2 group-hover:text-[#D4FB46] transition-colors" />
-                  <span className="text-zinc-600 text-[11px] font-medium group-hover:text-[#D4FB46]">
+                  <Camera className="w-8 h-8 text-muted-foreground/60 mb-2 group-hover:text-[#D4FB46] transition-colors" />
+                  <span className="text-muted-foreground/60 text-[11px] font-medium group-hover:text-[#D4FB46]">
                     Add photo
                   </span>
                 </>
@@ -253,10 +253,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             </button>
             
             <div className="flex-1">
-              <p className="text-zinc-400 text-[14px] mb-1">
+              <p className="text-muted-foreground/70 text-[14px] mb-1">
                 {avatarPreview ? 'Looking good! 🎸' : 'Tap to add a photo'}
               </p>
-              <p className="text-zinc-600 text-[12px]">
+              <p className="text-muted-foreground/60 text-[12px]">
                 Skip for now, add later
               </p>
             </div>
@@ -278,10 +278,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p className="text-zinc-600 text-[11px] font-medium mb-3 uppercase tracking-wider">
+            <p className="text-muted-foreground/60 text-[11px] font-medium mb-3 uppercase tracking-wider">
               Preview
             </p>
-            <div className="bg-[#1C1C1E] rounded-[1.5rem] p-4 flex items-center gap-4 border border-white/5">
+            <div className="bg-card rounded-[1.5rem] p-4 flex items-center gap-4 border border-border">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4FB46] to-[#98BC21] flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarPreview || avatarUrl ? (
                   <img
@@ -296,8 +296,8 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 )}
               </div>
               <div>
-                <h3 className="text-white font-bold text-[18px]">{bandName}</h3>
-                <p className="text-zinc-500 text-[13px]">1 member • New band</p>
+                <h3 className="text-foreground font-bold text-[18px]">{bandName}</h3>
+                <p className="text-muted-foreground text-[13px]">1 member • New band</p>
               </div>
             </div>
           </motion.div>

@@ -1,7 +1,7 @@
 import { Play, Truck, Volume2, LogOut } from "lucide-react";
 
 // Event types
-export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'QUOTE' | 'REHEARSAL';
+export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'DRAFT' | 'QUOTE' | 'REHEARSAL';
 
 export interface EventItem {
   id: number;
@@ -13,6 +13,7 @@ export interface EventItem {
   location: string;
   price: string;
   members: string[];
+  memberUserIds?: string[];
   color: string;
   notes?: string;
   createdBy?: string;

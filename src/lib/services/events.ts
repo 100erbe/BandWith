@@ -59,6 +59,12 @@ export interface Event {
   // Quote
   quote_id?: string;
   
+  // Display aliases (from joined/transformed data)
+  date?: string;
+  time?: string;
+  venue?: string;
+  address?: string;
+  
   // Meta
   created_by?: string;
   created_at: string;

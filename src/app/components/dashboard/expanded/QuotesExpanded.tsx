@@ -23,6 +23,7 @@ import {
   duplicateQuote,
   createQuote
 } from '@/app/data/quotes';
+import type { Quote } from '@/app/data/quotes';
 import { QuoteCreationWizard } from '@/app/components/quotes/QuoteCreationWizard';
 import { QuoteDetailModal } from '@/app/components/quotes/QuoteDetailModal';
 import type { Quote as RealQuote } from '@/lib/services/quotes';
@@ -50,9 +51,10 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   // Convert real quotes to display format
   const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => {
     return rq.map(q => ({
+      ...q,
       id: q.id,
       bandId: q.band_id,
-      eventId: q.quote_id || q.id,
+      eventId: q.id,
       eventTitle: q.event_name || 'Untitled Quote',
       clientName: q.client_name,
       status: (q.status?.toUpperCase() || 'DRAFT') as QuoteStatus,
@@ -65,8 +67,36 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       notes: q.client_notes || '',
       validUntil: q.valid_until || '',
       createdAt: q.created_at,
-      updatedAt: q.updated_at
-    }));
+      updatedAt: q.updated_at,
+      quoteNumber: '',
+      clientEmail: '',
+      eventName: '',
+      eventType: 'other' as any,
+      eventDate: '',
+      eventTimeStart: '',
+      venueCity: '',
+      venueCountry: '',
+      performanceType: 'full_band' as any,
+      setDuration: 0,
+      numberOfSets: 0,
+      musicians: [],
+      genres: [],
+      billingCountry: '',
+      vatRate: 0,
+      vatExempt: false,
+      reverseCharge: false,
+      currency: 'EUR',
+      baseFee: 0,
+      lineItemsTotal: 0,
+      grandTotal: 0,
+      depositAmount: 0,
+      paymentTerms: '',
+      cancellationPolicy: '',
+      includeTravel: false,
+      includeAccommodation: false,
+      includeMeals: false,
+      createdBy: '',
+    })) as any;
   };
 
   // Quote data state - use real quotes only

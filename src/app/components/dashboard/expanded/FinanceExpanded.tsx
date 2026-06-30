@@ -73,7 +73,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
-  const [txCategory, setTxCategory] = useState('GIG');
+  const [txCategory, setTxCategory] = useState<string>('GIG');
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
 
@@ -91,9 +91,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
       title: txTitle.trim(),
       amount: parseFloat(txAmount),
       type: txType,
-      category: txCategory,
+      category: txCategory as any,
       date: txDate,
-      status: 'completed',
+
     });
 
     if (!error) {

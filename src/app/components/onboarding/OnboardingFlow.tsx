@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useOnboarding, OnboardingPath } from '@/lib/OnboardingContext';
+import { useOnboarding, OnboardingPath, CREATOR_STEPS } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
 
 import WelcomeScreen from './WelcomeScreen';
 import SignInScreen from './SignInScreen';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 import AccountCreation from './AccountCreation';
+import IntentSelector from './IntentSelector';
 import BandCreation from './BandCreation';
 import ProfileSetup from './ProfileSetup';
 import InviteMembers from './InviteMembers';
@@ -38,6 +39,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     prevStep,
     goToStep,
     completeOnboarding,
+    acceptInviteCode,
     loadInviteData,
     inviteData,
     resetOnboarding,
@@ -116,7 +118,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   if (isLoading) {
     return (
       <div
-        className="min-h-screen bg-black flex items-center justify-center"
+        className="min-h-screen bg-background flex items-center justify-center"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -156,8 +158,22 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   if (screenMode === 'welcome' && !path) {
     return (
       <WelcomeScreen
-        onSelectPath={handleSelectPath}
+        onGetStarted={() => {
+          startOnboarding('creator');
+          setScreenMode('flow');
+        }}
         onSignIn={() => setScreenMode('sign-in')}
+        onInviteCodeSubmit={(code) => {
+          acceptInviteCode(code).then((valid) => {
+            if (valid) {
+              // Code validated — pendingBandId is set. Proceed as creator path.
+              startOnboarding('creator');
+              setScreenMode('flow');
+            }
+          });
+        }}
+        inviteCodeLoading={false}
+        inviteCodeError={null}
       />
     );
   }
@@ -166,6 +182,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   if (path === 'creator') {
     const renderCreatorStep = () => {
+      // ── Not yet authenticated: show account creation first ──
       if (!isAuthenticated) {
         if (currentStep === 0) {
           return (
@@ -176,24 +193,43 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             />
           );
         }
-        const stepAfterAccount = currentStep - 1;
-        switch (stepAfterAccount) {
-          case 0: return <BandCreation key="band" onBack={prevStep} onComplete={nextStep} />;
-          case 1: return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
-          case 2: return <InviteMembers key="invite" onBack={prevStep} onComplete={nextStep} />;
-          case 3: return <AddSongs key="songs" onBack={prevStep} onComplete={nextStep} />;
-          case 4: return <CompletionScreen key="complete" onComplete={handleComplete} />;
-          default: return null;
-        }
-      } else {
-        switch (currentStep) {
-          case 0: return <BandCreation key="band" onBack={handleBackToWelcome} onComplete={nextStep} />;
-          case 1: return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
-          case 2: return <InviteMembers key="invite" onBack={prevStep} onComplete={nextStep} />;
-          case 3: return <AddSongs key="songs" onBack={prevStep} onComplete={nextStep} />;
-          case 4: return <CompletionScreen key="complete" onComplete={handleComplete} />;
-          default: return null;
-        }
+        // After account creation, the user becomes authenticated,
+        // so this branch is never reached for currentStep > 0.
+        return null;
+      }
+
+      // ── Authenticated: skip 'welcome' (index 0), offset by +1 ──
+      const stepName = CREATOR_STEPS[currentStep + 1];
+      switch (stepName) {
+        case 'account':
+          // User is already authenticated — skip account creation, go to intent
+          return <IntentSelector
+            key="intent"
+            onSelectSolo={() => {
+              startOnboarding('solo');
+              goToStep(1);
+            }}
+            onSelectBand={() => { nextStep(); nextStep(); }} // skip past 'intent' to 'band'
+            onBack={() => {}} // no going back from account
+          />;
+        case 'intent':
+          return (
+            <IntentSelector
+              key="intent"
+              onSelectSolo={() => {
+                startOnboarding('solo');
+                goToStep(1);
+              }}
+              onSelectBand={() => nextStep()}
+              onBack={prevStep}
+            />
+          );
+        case 'band': return <BandCreation key="band" onBack={prevStep} onComplete={nextStep} />;
+        case 'profile': return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
+        case 'invite': return <InviteMembers key="invite" onBack={prevStep} onComplete={nextStep} />;
+        case 'songs': return <AddSongs key="songs" onBack={prevStep} onComplete={nextStep} />;
+        case 'complete': return <CompletionScreen key="complete" onComplete={handleComplete} />;
+        default: return null;
       }
     };
 
@@ -208,6 +244,72 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           className="min-h-screen"
         >
           {renderCreatorStep()}
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // ─── SOLO FLOW ───
+  // After user selects "Organize My Schedule" from the IntentSelector,
+  // the path switches to 'solo'. The solo path only has:
+  //   account → profile → complete
+
+  if (path === 'solo') {
+    const renderSoloStep = () => {
+      if (!isAuthenticated) {
+        // Step 0: Account creation (not yet authenticated)
+        if (currentStep === 0) {
+          return (
+            <AccountCreation
+              key="solo-account"
+              onBack={handleBackToWelcome}
+              onComplete={nextStep}
+            />
+          );
+        }
+        // After account, currentStep 1+ maps to profile, complete
+        const steps = ['account', 'profile', 'complete'];
+        const stepName = steps[currentStep] || 'complete';
+        switch (stepName) {
+          case 'profile':
+            return <ProfileSetup key="solo-profile" onBack={prevStep} onComplete={nextStep} />;
+          case 'complete':
+          default:
+            return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
+        }
+      }
+
+      // Authenticated solo path
+      const steps = ['account', 'profile', 'complete'];
+      const stepName = steps[currentStep] || 'complete';
+      switch (stepName) {
+        case 'account':
+          return (
+            <AccountCreation
+              key="solo-account-auth"
+              onBack={handleBackToWelcome}
+              onComplete={nextStep}
+            />
+          );
+        case 'profile':
+          return <ProfileSetup key="solo-profile" onBack={prevStep} onComplete={nextStep} />;
+        case 'complete':
+        default:
+          return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
+      }
+    };
+
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`solo-${currentStep}-${isAuthenticated}`}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+          className="min-h-screen"
+        >
+          {renderSoloStep()}
         </motion.div>
       </AnimatePresence>
     );
@@ -369,8 +471,21 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   // Fallback — if path is set but none of the above matched, show welcome
   return (
     <WelcomeScreen
-      onSelectPath={handleSelectPath}
+      onGetStarted={() => {
+        startOnboarding('creator');
+        setScreenMode('flow');
+      }}
       onSignIn={() => setScreenMode('sign-in')}
+      onInviteCodeSubmit={(code) => {
+        acceptInviteCode(code).then((valid) => {
+          if (valid) {
+            startOnboarding('creator');
+            setScreenMode('flow');
+          }
+        });
+      }}
+      inviteCodeLoading={false}
+      inviteCodeError={null}
     />
   );
 };

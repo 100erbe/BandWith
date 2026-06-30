@@ -26,7 +26,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -46,7 +46,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
       <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
         <button
           onClick={onBack}
-          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white/60 hover:bg-white/10 transition-all"
+          className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
         >
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
@@ -71,12 +71,12 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[44px] font-black text-white leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Choose
             <br />
             <span className="text-[#0047FF]">your band</span>
           </h1>
-          <p className="text-white/40 text-[16px] font-medium leading-relaxed">
+          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
             You have {invites.length} pending invitations
           </p>
         </motion.div>
@@ -92,7 +92,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
             <motion.button
               key={invite.id}
               onClick={() => onSelect(invite)}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all text-left group"
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border hover:bg-card/80 hover:border-border transition-all text-left group"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
@@ -106,7 +106,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-xl font-black text-white">
+                  <span className="text-xl font-black text-foreground">
                     {getInitials(invite.band?.name || 'B')}
                   </span>
                 )}
@@ -114,15 +114,15 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
 
               {/* Band info */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-bold text-[17px] truncate">
+                <h3 className="text-foreground font-bold text-[17px] truncate">
                   {invite.band?.name || 'Unknown Band'}
                 </h3>
-                <div className="flex items-center gap-3 text-white/40 text-[13px] mt-0.5">
+                <div className="flex items-center gap-3 text-muted-foreground/60 text-[13px] mt-0.5">
                   <span className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
                     {invite.member_count || 0} members
                   </span>
-                  <span className="text-white/20">·</span>
+                  <span className="text-muted-foreground/30">·</span>
                   <span className="capitalize">{invite.role}</span>
                 </div>
               </div>
@@ -143,7 +143,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.5 }}
       >
-        <p className="text-center text-white/20 text-[13px] font-medium">
+        <p className="text-center text-muted-foreground/30 text-[13px] font-medium">
           Tap a band to view invitation details
         </p>
       </motion.div>

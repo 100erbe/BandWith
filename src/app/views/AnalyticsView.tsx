@@ -60,7 +60,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
   const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
   const confirmed = dashboardData?.eventStats?.confirmedEvents || 0;
   const upcoming = dashboardData?.eventStats?.upcomingEvents || 0;
-  const change = dashboardData?.eventStats?.revenueChangePercentage || 0;
+  const change = dashboardData?.memberStats?.revenueChange || 0;
 
   return (
     <motion.div

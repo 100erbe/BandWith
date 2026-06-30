@@ -121,7 +121,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
 
   return (
     <div
-      className="min-h-screen bg-black flex flex-col relative overflow-hidden"
+      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -136,7 +136,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
       >
         <button
           onClick={onBack}
-          className="w-11 h-11 rounded-full border border-white/15 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-all"
+          className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-card transition-all"
         >
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
@@ -162,15 +162,15 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
         >
-          <p className="text-white/30 text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
+          <p className="text-muted-foreground/50 text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
             Step 01
           </p>
-          <h1 className="text-[36px] font-black text-white tracking-tight uppercase leading-[0.95]">
+          <h1 className="text-[36px] font-black text-foreground tracking-tight uppercase leading-[0.95]">
             {isJoiner ? 'Join Band' : 'Create'}
             <br />
-            <span className="text-white/20">{isJoiner ? '' : 'Account'}</span>
+            <span className="text-muted-foreground/30">{isJoiner ? '' : 'Account'}</span>
           </h1>
-          <p className="text-white/35 text-[14px] font-medium mt-3">
+          <p className="text-muted-foreground/55 text-[14px] font-medium mt-3">
             {isJoiner ? 'One step to join the crew' : "Let's get you set up in seconds"}
           </p>
         </motion.div>
@@ -185,7 +185,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           <button
             onClick={handleOAuthGoogle}
             disabled={loading}
-            className="flex items-center justify-center gap-2 h-[48px] rounded-2xl bg-white/5 border border-white/8 text-white font-bold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all hover:bg-white/10"
+            className="flex items-center justify-center gap-2 h-[48px] rounded-2xl bg-card border border-border text-foreground font-bold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all hover:bg-card/80"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -199,7 +199,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           <button
             onClick={handleOAuthApple}
             disabled={loading}
-            className="flex items-center justify-center gap-2 h-[48px] rounded-2xl bg-white/5 border border-white/8 text-white font-bold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all hover:bg-white/10"
+            className="flex items-center justify-center gap-2 h-[48px] rounded-2xl bg-card border border-border text-foreground font-bold text-[13px] disabled:opacity-50 active:scale-[0.98] transition-all hover:bg-card/80"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
@@ -215,9 +215,9 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25, duration: 0.4 }}
         >
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-white/25 text-[10px] font-bold uppercase tracking-[0.25em]">or with email</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-card/80" />
+          <span className="text-muted-foreground/40 text-[10px] font-bold uppercase tracking-[0.25em]">or with email</span>
+          <div className="flex-1 h-px bg-card/80" />
         </motion.div>
 
         {/* Form */}
@@ -257,13 +257,13 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           {/* Name */}
           {!isJoiner && (
             <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" strokeWidth={1.5} />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-[52px] pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white text-[15px] placeholder:text-white/25 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-white/8 transition-all"
+                className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
                 required
               />
             </div>
@@ -271,14 +271,14 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
 
           {/* Email */}
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" strokeWidth={1.5} />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
               readOnly={isEmailReadonly}
-              className={`w-full h-[52px] pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white text-[15px] placeholder:text-white/25 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-white/8 transition-all ${
+              className={`w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all ${
                 isEmailReadonly ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               required
@@ -287,20 +287,20 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
 
           {/* Password */}
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" strokeWidth={1.5} />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password (min 8 characters)"
-              className="w-full h-[52px] pl-12 pr-12 bg-white/5 border border-white/10 rounded-2xl text-white text-[15px] placeholder:text-white/25 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-white/8 transition-all"
+              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
               required
               minLength={8}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground/90 transition-colors"
             >
               {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={1.5} /> : <Eye className="w-5 h-5" strokeWidth={1.5} />}
             </button>
@@ -326,14 +326,14 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
 
         {/* Footer */}
         <motion.p
-          className="mt-auto pt-6 text-center text-white/20 text-[11px] leading-relaxed"
+          className="mt-auto pt-6 text-center text-muted-foreground/30 text-[11px] leading-relaxed"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
           By continuing, you agree to our{' '}
-          <a href="#" className="text-white/35 underline">Terms</a> and{' '}
-          <a href="#" className="text-white/35 underline">Privacy Policy</a>
+          <a href="#" className="text-muted-foreground/55 underline">Terms</a> and{' '}
+          <a href="#" className="text-muted-foreground/55 underline">Privacy Policy</a>
         </motion.p>
       </motion.div>
     </div>
