@@ -335,7 +335,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         }}
       >
         {/* Standalone sliding pill — z-0 behind icons */}
-        <SlidingPill containerRef={navRef} activeKey={pillActiveKey} />
+        <SlidingPill containerRef={navRef} activeKey={pillActiveKey} isScrollingDown={isScrollingDown} />
 
         {/* Tab buttons — z-10 above pill */}
         {tabs.slice(0, 2).map((tab) => (
