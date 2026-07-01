@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -65,8 +65,6 @@ interface BottomNavigationProps {
   isScrollingDown?: boolean;
 }
 
-/* ═══ Tab descriptor used by both the button and the pill tracker ═══ */
-
 type TabDescriptor = {
   key: string;
   label: string;
@@ -77,59 +75,56 @@ type TabDescriptor = {
 
 /* ═══ Standalone pill that slides between tabs ═══ */
 
-const PILL_PADDING = 4; // px on each side
-
 const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean }> = ({
   containerRef,
   activeKey,
   isScrollingDown,
 }) => {
-  const [rect, setRect] = useState<{ left: number; width: number } | null>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const [[x, w], setRect] = useState<[number, number]>([0, 0]);
 
-  useEffect(() => {
-    if (!activeKey || !containerRef.current) {
-      setRect(null);
-      return;
-    }
-    const container = containerRef.current;
-    const tabEl = container.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
-    if (!tabEl) {
-      setRect(null);
-      return;
-    }
-    const containerRect = container.getBoundingClientRect();
+  // Use useLayoutEffect so DOM reads happen synchronously after render
+  useLayoutEffect(() => {
+    if (!containerRef.current || !activeKey) return;
+    const tabEl = containerRef.current.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
+    if (!tabEl) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
     const tabRect = tabEl.getBoundingClientRect();
 
-    if (isScrollingDown) {
-      // Closed: pill wraps just the icon (24px) + 4px padding = 32px
-      const pillWidth = 24 + PILL_PADDING * 2;
-      const center = tabRect.left + tabRect.width / 2;
-      setRect({
-        left: center - containerRect.left - pillWidth / 2,
-        width: pillWidth,
-      });
-    } else {
-      // Open: pill wraps full button width minus 4px padding on each side
-      setRect({
-        left: tabRect.left - containerRect.left + PILL_PADDING,
-        width: tabRect.width - PILL_PADDING * 2,
-      });
-    }
-  }, [activeKey, containerRef, isScrollingDown]);
+    const pillWidth = tabRect.width - 8;
+    const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
+    const pillLeft = tabCenter - (pillWidth / 2);
 
-  if (!rect) return null;
+    setRect([pillLeft, pillWidth]);
+  }, [activeKey, isScrollingDown, containerRef]);
+
+  // Resize handler
+  useEffect(() => {
+    const onResize = () => {
+      if (!containerRef.current || !activeKey) return;
+      const tabEl = containerRef.current.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
+      if (!tabEl) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const tabRect = tabEl.getBoundingClientRect();
+      const pillWidth = tabRect.width - 8;
+      const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
+      setRect([tabCenter - (pillWidth / 2), pillWidth]);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [activeKey, containerRef]);
 
   return (
     <motion.div
-      layoutId="active-pill"
-      className="absolute top-0 bottom-0 rounded-full bg-black/8 dark:bg-white/12 z-0"
-      style={{ left: rect.left, width: rect.width }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      ref={pillRef}
+      className="absolute top-[4px] bottom-[4px] rounded-full bg-black/8 dark:bg-white/12 z-0"
+      animate={{ left: x, width: w }}
+      transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 1 }}
     />
   );
 };
 
-/* ═══ NavTab sub-component ── no pill inside ═══ */
+/* ═══ NavTab sub-component ═══ */
 
 const NavTab: React.FC<{
   tabKey: string;
@@ -149,26 +144,27 @@ const NavTab: React.FC<{
       data-tab-key={tabKey}
       onClick={onClick}
       className={cn(
-        'relative z-10 flex items-center justify-center outline-none px-0 shrink-0',
-        isScrollingDown ? 'w-11' : 'w-16'
+        'relative z-10 flex flex-col items-center justify-center outline-none px-0 shrink-0 h-full',
+        'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+        isScrollingDown ? 'w-12' : 'w-16'
       )}
     >
-      <div className={cn(
-        'flex flex-col items-center justify-center gap-0',
-        'transition-transform duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
-        isScrollingDown && 'translate-y-[10px]'
-      )}>
-        <div className="w-[24px] h-[24px] flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center w-full">
+        <div className="w-[24px] h-[24px] flex items-center justify-center z-10 relative">
           <Icon color={strokeColor} />
         </div>
-        <span className={cn(
-          'text-[10px] font-bold tracking-wide select-none',
-          isActive ? 'text-foreground' : 'text-muted-foreground',
-          'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform h-[14px] leading-[14px]',
-          isScrollingDown ? 'opacity-0 translate-y-[-14px]' : 'opacity-100 translate-y-0'
+        
+        <div className={cn(
+          'overflow-hidden flex items-start justify-center w-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+          isScrollingDown ? 'h-0 opacity-0' : 'h-[16px] mt-[2px] opacity-100'
         )}>
-          {label}
-        </span>
+          <span className={cn(
+            'text-[10px] font-bold tracking-wide select-none leading-[14px]',
+            isActive ? 'text-foreground' : 'text-muted-foreground'
+          )}>
+            {label}
+          </span>
+        </div>
       </div>
     </button>
   );
@@ -192,10 +188,21 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isScrollingDown = false,
 }) => {
   const navRef = useRef<HTMLDivElement>(null);
+  
+  const [forceOpen, setForceOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isScrollingDown) {
+      setForceOpen(false);
+    }
+  }, [isScrollingDown]);
+
+  const effectiveIsScrollingDown = isScrollingDown && !forceOpen;
 
   const handleTabClick = (tab: TabName) => {
     if (isSolo && tab === 'Chat') tab = 'Events';
     setActiveTab(tab);
+    setForceOpen(true);
     closeMenus();
   };
 
@@ -205,7 +212,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const isChatActive = activeTab === 'Chat' && !isMenuOpen;
   const inactiveHamburger = isMenuOpen ? 'rgba(255,255,255,0.30)' : '#737373';
 
-  /* Determine which tab key the pill should follow */
   const isSettingsActive = isControlDeckOpen;
   const pillActiveKey = isMenuOpen
     ? null
@@ -228,18 +234,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       label: 'Settings',
       icon: ({ color }: { color: string }) => (isControlDeckOpen ? <IconClose color="#000000" /> : <IconMenu color={inactiveHamburger} />),
       isActive: isSettingsActive,
-      onClick: toggleControlDeck,
+      onClick: () => {
+        toggleControlDeck();
+        setForceOpen(true);
+      },
     },
   ];
 
   return (
-    <motion.div
-      className="fixed left-4 right-4 z-[80]"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
-      animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-    >
-      {/* Plus Menu Bottom Sheet */}
+    <>
+      {/* Plus Menu Bottom Sheet - Moved out of the flex-center container to guarantee stable full-width layout */}
       <AnimatePresence>
         {isPlusMenuOpen && (
           <>
@@ -256,16 +260,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+              className="fixed bottom-0 left-0 right-0 z-[91] bg-background rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
               style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
             >
               <div className="flex justify-center mb-2.5">
-                <div className="w-10 h-1 rounded-full bg-white/30" />
+                <div className="w-10 h-1 rounded-full bg-foreground/20" />
               </div>
               <div className="flex items-end justify-between mb-8">
-                <p className="text-[12px] font-bold text-white/50 uppercase">START</p>
-                <button onClick={() => setIsPlusMenuOpen(false)} className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center">
-                  <X className="w-5 h-5 text-white" />
+                <p className="text-[12px] font-bold text-foreground/50 uppercase">START</p>
+                <button onClick={() => setIsPlusMenuOpen(false)} className="w-9 h-9 rounded-full border border-foreground/20 flex items-center justify-center">
+                  <X className="w-5 h-5 text-foreground" />
                 </button>
               </div>
               <div className="flex flex-col gap-10">
@@ -274,42 +278,42 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
                       <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
                       <div className="bg-[#D5FB46] rounded-[10px] row-span-3" />
-                      <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
-                      <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
+                      <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
                       <div className="bg-[#D5FB46] rounded-[10px]" />
                       <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-white uppercase">NEW GIG</span>
-                      <span className="text-[12px] font-medium text-white leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
+                      <span className="text-[22px] font-bold text-foreground uppercase">NEW GIG</span>
+                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
                     </div>
                   </button>
                 )}
                 <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                   <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
                     <div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" />
+                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
                     <div className="bg-[#0147FF] rounded-[10px]" /><div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
                     <div className="bg-[#0147FF] rounded-[10px] row-span-2" /><div className="bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-white/20 rounded-[10px]" /><div className="bg-white/20 rounded-[10px]" /><div className="bg-[#0147FF] rounded-[10px]" />
+                    <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-[#0147FF] rounded-[10px]" />
                   </div>
                   <div className="flex flex-col gap-2 flex-1">
-                    <span className="text-[22px] font-bold text-white uppercase">NEW REHEARSAL</span>
-                    <span className="text-[12px] font-medium text-white leading-normal">Plan the session, share details, and keep everyone in sync.</span>
+                    <span className="text-[22px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
+                    <span className="text-[12px] font-medium text-foreground/60 leading-normal">Plan the session, share details, and keep everyone in sync.</span>
                   </div>
                 </button>
                 {isAdmin && (
                   <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                     <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
                       <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
-                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-white/20 rounded-[10px]" />
-                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-white/20 rounded-[10px]" />
+                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
+                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
                       <div className="bg-[#9A8878] rounded-[10px]" />
                       <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-white uppercase">NEW QUOTE</span>
-                      <span className="text-[12px] font-medium text-white leading-normal">Build an estimate, package details, and send it fast.</span>
+                      <span className="text-[22px] font-bold text-foreground uppercase">NEW QUOTE</span>
+                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
                     </div>
                   </button>
                 )}
@@ -319,56 +323,55 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         )}
       </AnimatePresence>
 
-      {/* ═══ NAVBAR ═══ */}
-      <div
-        ref={navRef}
-        className={cn(
-          'relative flex items-center justify-center rounded-[999px] mx-auto w-fit',
-          isMenuOpen ? 'bg-[rgba(28,28,30,0.92)]' : 'bg-white/90 dark:bg-[#1c1c1e]/90',
-          'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
-          isScrollingDown ? 'h-10 gap-x-1' : 'h-14 gap-x-3'
-        )}
-        style={{
-          boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-        }}
+      {/* Main Bar Centering Wrapper */}
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center pointer-events-none"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
+        animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
-        {/* Standalone sliding pill — z-0 behind icons */}
-        <SlidingPill containerRef={navRef} activeKey={pillActiveKey} isScrollingDown={isScrollingDown} />
+        <div
+          ref={navRef}
+          className={cn(
+            'pointer-events-auto relative flex items-center justify-center rounded-[999px]',
+            isMenuOpen ? 'bg-[rgba(28,28,30,0.92)]' : 'bg-white/90 dark:bg-[#1c1c1e]/90',
+            'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+            effectiveIsScrollingDown ? 'h-12 gap-x-2 px-2' : 'h-16 gap-x-3 px-3'
+          )}
+          style={{
+            boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+          }}
+        >
+          <SlidingPill containerRef={navRef} activeKey={pillActiveKey} isScrollingDown={effectiveIsScrollingDown} />
 
-        {/* Tab buttons — z-10 above pill */}
-        {tabs.slice(0, 2).map((tab) => (
-          <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isScrollingDown} isMenuOpen={isMenuOpen} />
-        ))}
+          {tabs.slice(0, 2).map((tab) => (
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={effectiveIsScrollingDown} isMenuOpen={isMenuOpen} />
+          ))}
 
-        {/* Plus button — standalone, unlabeled, no pill — bleeds above */}
-        <div className="relative z-10 flex items-center justify-center -mt-1">
-          <div className={cn(
-            'flex flex-col items-center justify-center gap-0',
-            'transition-transform duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
-            isScrollingDown && 'translate-y-[10px]'
-          )}>
+          <div className="relative z-10 flex items-center justify-center mx-1">
             <button
-              onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
-              className="w-[46px] h-[46px] bg-[#D5FB46] rounded-[14px] flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+              onClick={() => {
+                setIsPlusMenuOpen(!isPlusMenuOpen);
+                setForceOpen(true);
+              }}
+              className={cn(
+                'bg-[#D5FB46] rounded-[16px] flex items-center justify-center shrink-0 active:scale-95 shadow-[0px_4px_16px_rgba(0,0,0,0.15)]',
+                'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                effectiveIsScrollingDown ? 'w-[48px] h-[48px] -translate-y-3' : 'w-[56px] h-[56px] -translate-y-5'
+              )}
             >
               <IconPlus color="#000000" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
             </button>
-            {/* Invisible spacer matching other tabs' label height */}
-            <span className={cn(
-              'h-[14px] leading-[14px] select-none text-transparent text-[10px]',
-              'transition-all duration-[275ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
-              isScrollingDown ? 'opacity-0 translate-y-[-14px]' : 'opacity-100 translate-y-0'
-            )}>_</span>
           </div>
-        </div>
 
-        {tabs.slice(2).map((tab) => (
-          <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isScrollingDown} isMenuOpen={isMenuOpen} />
-        ))}
-      </div>
-    </motion.div>
+          {tabs.slice(2).map((tab) => (
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={effectiveIsScrollingDown} isMenuOpen={isMenuOpen} />
+          ))}
+        </div>
+      </motion.div>
+    </>
   );
 };
 
