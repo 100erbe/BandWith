@@ -89,18 +89,18 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                 <div className="relative z-10 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-8">
                         <div>
-                           <span className="text-[#D4FB46] text-xs font-bold uppercase tracking-widest mb-2 block">Now Playing</span>
+                           <span className="text-accent text-xs font-bold uppercase tracking-widest mb-2 block">Now Playing</span>
                            <h2 className="text-4xl font-black leading-none mb-1">{currentSong.title}</h2>
                            <p className="text-xl font-bold text-stone-400 uppercase">{currentSong.artist}</p>
                         </div>
-                        <div className="w-16 h-16 rounded-2xl bg-[#D4FB46] flex items-center justify-center text-black font-black text-2xl">
+                        <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-accent-foreground font-black text-2xl">
                            {activeSongIndex + 1}
                         </div>
                     </div>
 
                     {/* Progress Bar Mock */}
                     <div className="bg-black/30 h-16 rounded-2xl mb-8 relative overflow-hidden flex items-center px-4 border border-white/5">
-                        <div className="absolute left-0 top-0 bottom-0 bg-[#D4FB46]/20 w-[60%]" />
+                        <div className="absolute left-0 top-0 bottom-0 bg-accent/20 w-[60%]" />
                         <div className="relative z-10 w-full flex justify-between font-mono font-bold text-sm">
                             <span>3:42</span>
                             <span>{currentSong.duration}</span>
@@ -111,7 +111,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     <div className="grid grid-cols-4 gap-4">
                         <button 
                             onClick={() => setIsPlaying(!isPlaying)}
-                            className="h-20 rounded-2xl bg-[#D4FB46] text-black flex items-center justify-center hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(212,251,70,0.3)]"
+                            className="h-20 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(106,13,173,0.3)]"
                         >
                             {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current" />}
                         </button>
@@ -164,7 +164,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                      <h3 className="text-xs font-bold uppercase text-stone-500 mb-3">Tools</h3>
                      <div className="grid grid-cols-3 gap-2">
                          <button onClick={() => setShowMetronome(true)} className="aspect-square bg-[#2C2C2E] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#3C3C3E]">
-                             <Clock className="w-5 h-5 text-[#D4FB46]" />
+                             <Clock className="w-5 h-5 text-accent" />
                              <span className="text-[9px] font-bold uppercase">Metronome</span>
                          </button>
                           <button className="aspect-square bg-[#2C2C2E] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#3C3C3E]">
@@ -204,13 +204,13 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     <div className="flex items-center justify-center gap-8 mb-8">
                         <button onClick={() => setBpm(b => b-5)} className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center text-2xl font-black hover:bg-black/40">-</button>
                         <div className="text-center">
-                            <div className="text-6xl font-black text-[#D4FB46] tabular-nums">{bpm}</div>
+                            <div className="text-6xl font-black text-accent tabular-nums">{bpm}</div>
                             <div className="text-xs font-bold uppercase text-stone-500">BPM</div>
                         </div>
                         <button onClick={() => setBpm(b => b+5)} className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center text-2xl font-black hover:bg-black/40">+</button>
                     </div>
 
-                    <button className="w-full py-4 bg-[#D4FB46] text-black rounded-xl font-black uppercase flex items-center justify-center gap-2">
+                    <button className="w-full py-4 bg-accent text-accent-foreground rounded-xl font-black uppercase flex items-center justify-center gap-2">
                         <Play className="w-5 h-5 fill-current" /> Start
                     </button>
                 </motion.div>

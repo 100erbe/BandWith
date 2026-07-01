@@ -263,7 +263,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
+                className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
                 required
               />
             </div>
@@ -278,7 +278,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
               readOnly={isEmailReadonly}
-              className={`w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all ${
+              className={`w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all ${
                 isEmailReadonly ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               required
@@ -293,7 +293,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password (min 8 characters)"
-              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
+              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
               required
               minLength={8}
             />
@@ -310,7 +310,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           <motion.button
             type="submit"
             disabled={loading}
-            className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mt-2"
+            className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mt-2"
             whileTap={{ scale: 0.98 }}
           >
             {loading ? (

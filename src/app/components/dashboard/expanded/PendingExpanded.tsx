@@ -101,7 +101,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-2xl font-black tracking-tight text-[#1A1A1A]">Events</h2>
+          <h2 className="text-2xl font-black tracking-tight text-foreground">Events</h2>
         </div>
       </motion.div>
       
@@ -118,7 +118,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
           <input 
             type="text" 
             placeholder="Search events..." 
-            className="w-full bg-white h-12 pl-12 pr-4 rounded-[1.2rem] text-sm font-medium text-[#1A1A1A] placeholder:text-stone-400 border border-stone-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#D4FB46]" 
+            className="w-full bg-white h-12 pl-12 pr-4 rounded-[1.2rem] text-sm font-medium text-foreground placeholder:text-stone-400 border border-stone-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent" 
           />
         </motion.div>
         
@@ -163,7 +163,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
               transition={{ delay: 0.4 + (groupIndex * 0.1) }}
             >
               <div className="flex items-baseline justify-between mb-3 px-2">
-                <h3 className="text-sm font-black text-[#1A1A1A] uppercase tracking-wider">{group.date}</h3>
+                <h3 className="text-sm font-black text-foreground uppercase tracking-wider">{group.date}</h3>
                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{group.label}</span>
               </div>
               <div className="space-y-3">
@@ -176,10 +176,10 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex flex-col gap-2">
                           <StatusBadge status={event.status} />
-                          <h4 className="text-xl font-black text-[#1A1A1A] leading-tight mt-1">{event.title}</h4>
+                          <h4 className="text-xl font-black text-foreground leading-tight mt-1">{event.title}</h4>
                         </div>
                         <div className="text-right">
-                          <span className="block text-xl font-black text-[#1A1A1A]">€{event.price}</span>
+                          <span className="block text-xl font-black text-foreground">€{event.price}</span>
                           {!event.contractSigned && (
                             <div className="flex items-center gap-1 justify-end text-[10px] text-red-500 font-bold mt-1 uppercase">
                               <AlertCircle className="w-3 h-3" /> No Contract
@@ -194,7 +194,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                           </div>
                           <div className="flex flex-col">
                             <span className="text-[10px] text-stone-400 font-bold uppercase">Time</span>
-                            <span className="text-sm font-bold text-[#1A1A1A]">{event.time}</span>
+                            <span className="text-sm font-bold text-foreground">{event.time}</span>
                           </div>
                         </div>
                         <div className="bg-stone-50 rounded-2xl p-3 flex items-center gap-3">
@@ -203,12 +203,12 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                           </div>
                           <div className="flex flex-col">
                             <span className="text-[10px] text-stone-400 font-bold uppercase">Forecast</span>
-                            <span className="text-sm font-bold text-[#1A1A1A]">{event.temp}</span>
+                            <span className="text-sm font-bold text-foreground">{event.temp}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-stone-500 pl-1">
-                        <MapPin className="w-4 h-4 text-[#D4FB46] fill-[#1A1A1A]" />
+                        <MapPin className="w-4 h-4 text-accent fill-[#1A1A1A]" />
                         <span className="uppercase tracking-wide">{event.location}</span>
                         <span className="w-1 h-1 rounded-full bg-stone-300 mx-1" />
                         <span>{event.travelTime} drive</span>
@@ -225,7 +225,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-[#1A1A1A] hover:bg-stone-50 transition-colors">
+                        <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-foreground hover:bg-stone-50 transition-colors">
                           <Phone className="w-3.5 h-3.5" /> Call
                         </button>
                         <button className="h-9 px-4 rounded-xl bg-[#1A1A1A] flex items-center gap-2 text-xs font-bold text-white shadow-lg hover:bg-black transition-colors">

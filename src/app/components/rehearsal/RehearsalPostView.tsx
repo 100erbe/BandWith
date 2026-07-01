@@ -109,13 +109,13 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
                      <div className="space-y-3 mb-6">
                          <p className="text-[10px] font-bold uppercase text-stone-500">Suggested Focus:</p>
                          <ul className="space-y-2 text-xs font-bold">
-                             <li className="flex gap-2"><span className="text-[#D4FB46]">•</span> Bohemian Rhapsody (Bridge)</li>
-                             <li className="flex gap-2"><span className="text-[#D4FB46]">•</span> Purple Rain (Modulation)</li>
-                             <li className="flex gap-2"><span className="text-[#D4FB46]">•</span> Superstition (New!)</li>
+                             <li className="flex gap-2"><span className="text-accent">•</span> Bohemian Rhapsody (Bridge)</li>
+                             <li className="flex gap-2"><span className="text-accent">•</span> Purple Rain (Modulation)</li>
+                             <li className="flex gap-2"><span className="text-accent">•</span> Superstition (New!)</li>
                          </ul>
                      </div>
 
-                     <button onClick={onClose} className="w-full py-3 bg-[#D4FB46] text-black rounded-xl font-black uppercase text-xs hover:scale-[1.02] transition-transform">
+                     <button onClick={onClose} className="w-full py-3 bg-accent text-accent-foreground rounded-xl font-black uppercase text-xs hover:scale-[1.02] transition-transform">
                          Schedule Next
                      </button>
                  </div>

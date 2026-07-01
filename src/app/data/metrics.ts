@@ -67,7 +67,7 @@ export const SMART_INSIGHTS: SmartInsight[] = [
     icon: CloudLightning,
     color: "bg-[#1C1C1E]", 
     textColor: "text-white",
-    accent: "text-[#D4FB46]"
+    accent: "text-accent"
   },
   { 
     id: 2, 

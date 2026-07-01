@@ -61,9 +61,9 @@ interface HomeViewProps {
 type DotGridTheme = 'lime' | 'blue' | 'beige' | 'dark';
 
 const DOT_THEME_COLORS: Record<DotGridTheme, string> = {
-  lime: '#D5FB46',
-  blue: '#0147FF',
-  beige: '#9A8878',
+  lime: 'var(--accent)',
+  blue: 'var(--accent-rehearsal)',
+  beige: 'var(--accent-quote)',
   dark: '#050505',
 };
 
@@ -449,9 +449,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
                 >
-                  <span className="text-xs font-bold text-black">VIEW CALENDAR</span>
+                  <span className="text-xs font-bold text-accent-foreground">VIEW CALENDAR</span>
                   <ArrowUpRight className="w-5 h-5 text-black" />
                 </button>
               </div>
@@ -469,8 +469,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   onClick={() => onQuickAction?.('View Analytics')}
                   className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
                 >
-                  <span className="text-xs font-bold text-[#D5FB46]">VIEW ANALYTICS</span>
-                  <ArrowUpRight className="w-5 h-5 text-[#D5FB46]" />
+                  <span className="text-xs font-bold text-accent">VIEW ANALYTICS</span>
+                  <ArrowUpRight className="w-5 h-5 text-accent" />
                 </button>
               </div>
             </div>
@@ -485,15 +485,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="text-[28px] font-bold leading-tight text-black">
                   {confirmedCount > 0 ? '2h 15m' : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-black/50 tracking-wide">
+                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
                   {confirmedCount > 0 ? 'BEFORE DOORS OPEN' : 'NO UPCOMING GIGS'}
                 </span>
                 {confirmedCount > 0 && (
                   <button
                     onClick={() => onQuickAction?.('View Calendar')}
-                    className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+                    className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
                   >
-                    <span className="text-xs font-bold text-black flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-accent-foreground flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" />
                       LOAD-IN MAP
                     </span>
@@ -511,15 +511,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="text-[28px] font-bold leading-tight text-black">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-black/50 tracking-wide">
+                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
                   NEXT GIG SONGS
                 </span>
                 <button
                   onClick={() => onQuickAction?.('Setlist & Repertoire')}
                   className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
                 >
-                  <span className="text-xs font-bold text-[#D5FB46]">VIEW SETLIST</span>
-                  <ChevronRight className="w-4 h-4 text-[#D5FB46]" />
+                  <span className="text-xs font-bold text-accent">VIEW SETLIST</span>
+                  <ChevronRight className="w-4 h-4 text-accent" />
                 </button>
               </div>
             </div>

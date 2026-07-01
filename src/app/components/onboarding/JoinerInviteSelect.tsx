@@ -128,8 +128,8 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
               </div>
 
               {/* Arrow */}
-              <div className="w-10 h-10 rounded-full bg-[#D4FB46]/0 group-hover:bg-[#D4FB46]/10 flex items-center justify-center transition-all">
-                <ArrowRight className="w-5 h-5 text-[#D4FB46] opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
+              <div className="w-10 h-10 rounded-full bg-accent/0 group-hover:bg-accent/10 flex items-center justify-center transition-all">
+                <ArrowRight className="w-5 h-5 text-accent opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
               </div>
             </motion.button>
           ))}

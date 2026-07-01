@@ -17,8 +17,8 @@ const TIERS = [
     price: '$0',
     period: '/mo forever',
     icon: Music,
-    accent: '#D4FB46',
-    bgGradient: 'from-[#D4FB46] to-[#bff53a]',
+    accent: 'var(--accent)',
+    bgGradient: 'from-accent to-[#bff53a]',
     textColor: 'text-black',
     description: 'Basic operations',
     features: [
@@ -103,15 +103,15 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed bottom-0 left-0 right-0 z-[81] bg-[#E6E5E1] rounded-t-[26px] max-h-[90vh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 z-[81] bg-background rounded-t-[26px] max-h-[90vh] overflow-y-auto"
             style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Pill handle */}
-            <div className="sticky top-0 z-10 bg-[#E6E5E1] pt-4 pb-2 flex flex-col items-center">
+            <div className="sticky top-0 z-10 bg-background pt-4 pb-2 flex flex-col items-center">
               <div className="w-10 h-1 rounded-full bg-black/20 mb-4" />
               <button
                 onClick={onClose}
-                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-black/50 hover:text-black hover:bg-black/5 transition-all"
+                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-foreground/50 hover:text-black hover:bg-black/5 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -122,14 +122,14 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               <div className="mb-8 text-center">
                 <div className="inline-flex items-center gap-2 bg-black/5 rounded-full px-4 py-1.5 mb-4">
                   <Sparkles className="w-4 h-4 text-[#8B5CF6]" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-black/50">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/50">
                     Unlock More Power
                   </span>
                 </div>
                 <h2 className="text-[28px] font-black text-black leading-tight uppercase tracking-tight">
                   Choose Your Plan
                 </h2>
-                <p className="text-sm font-medium text-black/50 mt-2 max-w-xs mx-auto">
+                <p className="text-sm font-medium text-foreground/50 mt-2 max-w-xs mx-auto">
                   Scale your music operations with the right plan for your needs.
                 </p>
               </div>
@@ -155,7 +155,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       {/* Current Plan Badge */}
                       {isCurrentPlan && (
                         <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm rounded-full px-3 py-1">
-                          <span className="text-[10px] font-bold uppercase text-black/70">
+                          <span className="text-[10px] font-bold uppercase text-foreground/70">
                             Current
                           </span>
                         </div>
@@ -180,7 +180,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           </h3>
                           <p className={cn(
                             'text-[12px] font-bold mt-0.5',
-                            tier.textColor === 'text-black' ? 'text-black/60' : 'text-white/70'
+                            tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
                           )}>
                             {tier.tagline}
                           </p>
@@ -194,7 +194,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           </span>
                           <span className={cn(
                             'text-[10px] font-bold ml-0.5',
-                            tier.textColor === 'text-black' ? 'text-black/50' : 'text-white/60'
+                            tier.textColor === 'text-black' ? 'text-foreground/50' : 'text-white/60'
                           )}>
                             {tier.period}
                           </span>
@@ -203,7 +203,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
 
                       <p className={cn(
                         'text-[11px] font-medium mb-4',
-                        tier.textColor === 'text-black' ? 'text-black/60' : 'text-white/70'
+                        tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
                       )}>
                         {tier.description}
                       </p>
@@ -214,11 +214,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           <div key={fi} className="flex items-start gap-2.5">
                             <Check className={cn(
                               'w-4 h-4 mt-0.5 shrink-0',
-                              tier.textColor === 'text-black' ? 'text-black/70' : 'text-white/80'
+                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
                             )} />
                             <span className={cn(
                               'text-[12px] font-medium',
-                              tier.textColor === 'text-black' ? 'text-black/70' : 'text-white/80'
+                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
                             )}>
                               {feature}
                             </span>
@@ -249,7 +249,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               </div>
 
               {/* Footer */}
-              <p className="text-center text-[10px] font-medium text-black/30 mt-6">
+              <p className="text-center text-[10px] font-medium text-foreground/30 mt-6">
                 Upgrade anytime. Cancel anytime. Plans are per account.
               </p>
             </div>

@@ -137,7 +137,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     >
       {/* Header */}
       <motion.div
-        className="sticky top-0 z-50 px-4 py-4 flex items-center gap-4 bg-[#E6E5E1]/95 backdrop-blur-md"
+        className="sticky top-0 z-50 px-4 py-4 flex items-center gap-4 bg-background/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -158,7 +158,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         </div>
         <button
           onClick={() => setShowAddTransaction(true)}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-[#D5FB46] shrink-0 active:scale-90 transition-transform"
+          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent shrink-0 active:scale-90 transition-transform"
         >
           <Plus className="w-[20px] h-[20px] text-black" />
         </button>
@@ -179,7 +179,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 <span className="text-xs font-bold text-black tracking-wide">NET PROFIT</span>
                 <div className="h-[62px] overflow-hidden">
                   {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
+                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
                     <span className="text-[52px] font-bold leading-none text-black block">
                       €{fmt(stats.netProfit)}
@@ -188,7 +188,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 </div>
                 <FinanceDotGrid
                   filled={Math.min(Math.ceil(stats.netProfit / 500), 24)}
-                  color="#D5FB46"
+                  color="var(--accent)"
                 />
               </motion.div>
 
@@ -201,7 +201,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
                 <div className="h-[62px] overflow-hidden">
                   {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
+                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
                     <span className="text-[52px] font-bold leading-none text-black block">
                       €{fmt(stats.totalIncome)}
@@ -210,7 +210,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 </div>
                 <FinanceDotGrid
                   filled={Math.min(Math.ceil(stats.totalIncome / 500), 24)}
-                  color="#0147FF"
+                  color="var(--accent-rehearsal)"
                 />
               </motion.div>
             </div>
@@ -225,7 +225,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 <span className="text-xs font-bold text-black tracking-wide">EXPENSES</span>
                 <div className="h-[62px] overflow-hidden">
                   {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-black/30 mt-4" />
+                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
                     <span className="text-[52px] font-bold leading-none text-black block">
                       -€{fmt(stats.totalExpenses)}
@@ -234,7 +234,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 </div>
                 <FinanceDotGrid
                   filled={Math.min(Math.ceil(stats.totalExpenses / 500), 24)}
-                  color="#9A8878"
+                  color="var(--accent-quote)"
                 />
               </motion.div>
               <div className="flex-1" />
@@ -256,10 +256,10 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 className="flex flex-col items-center py-10"
               >
                 <Receipt className="w-12 h-12 text-black/15 mb-3" />
-                <span className="text-xs font-bold text-black/40 uppercase tracking-wide mb-1">
+                <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mb-1">
                   No transactions yet
                 </span>
-                <span className="text-[10px] font-medium text-black/30 uppercase">
+                <span className="text-[10px] font-medium text-foreground/30 uppercase">
                   Your income and expenses will appear here
                 </span>
               </motion.div>
@@ -277,7 +277,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                       <div
                         className={cn(
                           'w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0',
-                          tx.type === 'income' ? 'bg-[#D5FB46]' : 'bg-[#CDCACA]',
+                          tx.type === 'income' ? 'bg-accent' : 'bg-[#CDCACA]',
                         )}
                       >
                         {tx.type === 'income' ? (
@@ -290,7 +290,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                         <span className="text-xs font-bold text-black uppercase tracking-wide">
                           {tx.title}
                         </span>
-                        <span className="text-[10px] font-medium text-black/40 uppercase">
+                        <span className="text-[10px] font-medium text-foreground/40 uppercase">
                           {tx.tag} · {tx.date}
                         </span>
                       </div>
@@ -298,7 +298,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     <span
                       className={cn(
                         'text-xs font-bold',
-                        tx.type === 'income' ? 'text-black' : 'text-black/50',
+                        tx.type === 'income' ? 'text-black' : 'text-foreground/50',
                       )}
                     >
                       {tx.amount}
@@ -326,7 +326,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="w-full max-w-md bg-[#E6E5E1] rounded-t-[20px] p-6"
+              className="w-full max-w-md bg-background rounded-t-[20px] p-6"
               onClick={(e) => e.stopPropagation()}
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
             >
@@ -347,7 +347,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'income'
                       ? 'border-black'
-                      : 'border-transparent text-black/40',
+                      : 'border-transparent text-foreground/40',
                   )}
                 >
                   <ArrowDownLeft className="w-4 h-4" />
@@ -362,7 +362,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'expense'
                       ? 'border-black'
-                      : 'border-transparent text-black/40',
+                      : 'border-transparent text-foreground/40',
                   )}
                 >
                   <ArrowUpRight className="w-4 h-4" />
@@ -373,7 +373,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
               <div className="flex flex-col gap-5">
                 {/* Title */}
                 <div>
-                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
                     Description
                   </label>
                   <input
@@ -381,13 +381,13 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     value={txTitle}
                     onChange={(e) => setTxTitle(e.target.value)}
                     placeholder="e.g., Jazz Night @ Blue Note"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
                   />
                 </div>
 
                 {/* Amount */}
                 <div>
-                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
                     Amount (€)
                   </label>
                   <input
@@ -395,13 +395,13 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
                   />
                 </div>
 
                 {/* Date */}
                 <div>
-                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
                     Date
                   </label>
                   <div className="relative">
@@ -411,13 +411,13 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                       onChange={(e) => setTxDate(e.target.value)}
                       className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black focus:outline-none focus:border-black transition-colors"
                     />
-                    <Calendar className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40 pointer-events-none" />
+                    <Calendar className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Category */}
                 <div>
-                  <label className="text-[10px] font-bold text-black/40 uppercase block mb-2 tracking-wide">
+                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
                     Category
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -429,7 +429,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                           'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all',
                           txCategory === cat
                             ? 'bg-black text-white'
-                            : 'bg-black/5 text-black/40 active:bg-black/10',
+                            : 'bg-black/5 text-foreground/40 active:bg-black/10',
                         )}
                       >
                         {cat}
@@ -446,7 +446,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     'w-full h-14 rounded-[10px] font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all mt-2',
                     txTitle.trim() && txAmount
                       ? 'bg-black text-white active:scale-[0.98]'
-                      : 'bg-black/10 text-black/30 cursor-not-allowed',
+                      : 'bg-black/10 text-foreground/30 cursor-not-allowed',
                   )}
                 >
                   {saving ? (

@@ -155,7 +155,7 @@ export const getNotificationColor = (type: NotificationType): string => {
     return '#F59E0B'; // Amber
   }
   if (type.includes('invite') || type.includes('joined')) {
-    return '#D4FB46'; // Brand green
+    return 'var(--accent)'; // Brand green
   }
   return '#6B7280'; // Gray
 };

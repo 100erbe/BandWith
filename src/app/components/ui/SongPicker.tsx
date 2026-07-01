@@ -68,7 +68,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
         bg: 'bg-[#0147ff]', text: 'text-white', subtext: 'text-white/50',
         input: 'border-white/20 text-white placeholder:text-white/30 focus:border-white',
         pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[#0147ff]',
-        card: 'bg-white/10', accent: 'bg-[#D5FB46] text-black',
+        card: 'bg-white/10', accent: 'bg-accent text-accent-foreground',
         btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
       };
       case 'beige': return {
@@ -79,10 +79,10 @@ export const SongPicker: React.FC<SongPickerProps> = ({
         btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
       };
       default: return {
-        bg: 'bg-[#D5FB46]', text: 'text-black', subtext: 'text-black/50',
-        input: 'border-black/10 text-black placeholder:text-black/20 focus:border-black',
+        bg: 'bg-accent', text: 'text-accent-foreground', subtext: 'text-accent-foreground/50',
+        input: 'border-black/10 text-black placeholder:text-foreground/20 focus:border-black',
         pill: 'bg-black/10 text-black', pillActive: 'bg-black text-white',
-        card: 'bg-white', accent: 'bg-black text-[#D5FB46]',
+        card: 'bg-white', accent: 'bg-black text-accent',
         btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white text-black',
       };
     }
@@ -339,7 +339,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                           <div className="flex items-center gap-2">
                             <span className={cn('text-sm font-bold block truncate', themeColors.text)}>{song.title}</span>
                             {selectedIds.includes(song.id) && !multiSelected.has(song.id) && (
-                              <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', theme === 'lime' ? 'bg-black/10 text-black/50' : 'bg-white/15 text-white/60')}>
+                              <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', theme === 'lime' ? 'bg-black/10 text-foreground/50' : 'bg-white/15 text-white/60')}>
                                 In set
                               </span>
                             )}

@@ -75,7 +75,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[110]"
-        style={{ backgroundColor: '#9A8878' }}
+        style={{ backgroundColor: 'var(--accent-quote)' }}
       />
 
       <motion.div
@@ -83,7 +83,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         className="fixed inset-0 z-[120] flex flex-col overflow-y-auto"
-        style={{ backgroundColor: '#9A8878' }}
+        style={{ backgroundColor: 'var(--accent-quote)' }}
       >
         <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
           {/* Header */}
@@ -103,10 +103,10 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <div className="flex-1 flex flex-col gap-[4px] min-w-0">
               <div className="flex gap-[4px] items-center flex-wrap">
                 <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
-                  <span className="text-[12px] font-bold uppercase text-[#9A8878]">QUOTE</span>
+                  <span className="text-[12px] font-bold uppercase text-accent-quote">QUOTE</span>
                 </div>
                 <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
-                  <span className="text-[12px] font-bold uppercase text-[#9A8878]">
+                  <span className="text-[12px] font-bold uppercase text-accent-quote">
                     {quote.eventTitle?.split(' ')[0]?.toUpperCase() || 'EVENT'}
                   </span>
                 </div>
@@ -180,7 +180,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     >
                       <span
                         className="text-[12px] font-medium"
-                        style={{ color: isEventDay ? '#9A8878' : 'white' }}
+                        style={{ color: isEventDay ? 'var(--accent-quote)' : 'white' }}
                       >
                         {day}
                       </span>
@@ -269,7 +269,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         {/* Footer */}
         <div
           className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[130]"
-          style={{ backgroundColor: '#9A8878', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+          style={{ backgroundColor: 'var(--accent-quote)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
         >
           <div className="flex flex-col gap-[20px] items-center">
             <div className="grid grid-cols-2 gap-[10px] w-full">

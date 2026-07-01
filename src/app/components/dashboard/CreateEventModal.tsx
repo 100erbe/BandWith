@@ -142,7 +142,7 @@ const CalendarGrid: React.FC<{
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider block', isDark ? 'text-white/50' : 'text-black/50')}>EVENT DATE</span>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block', isDark ? 'text-white/50' : 'text-foreground/50')}>EVENT DATE</span>
           <span className={cn('text-[22px] font-bold uppercase', isDark ? 'text-white' : 'text-black')}>{monthLabel}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ const CalendarGrid: React.FC<{
       </div>
       <div className="grid grid-cols-7 gap-1">
         {DAYS_OF_WEEK.map((d, i) => (
-          <div key={i} className={cn('text-center text-[10px] font-bold py-1', isDark ? 'text-white/40' : 'text-black/40')}>{d}</div>
+          <div key={i} className={cn('text-center text-[10px] font-bold py-1', isDark ? 'text-white/40' : 'text-foreground/40')}>{d}</div>
         ))}
         {cells.map((day, i) => (
           <button
@@ -172,7 +172,7 @@ const CalendarGrid: React.FC<{
               'aspect-square rounded-full flex items-center justify-center text-sm font-bold transition-all',
               !day && 'invisible',
               day && isSelected(day)
-                ? (isDark ? 'bg-white text-black' : 'bg-black text-[#D5FB46]')
+                ? (isDark ? 'bg-white text-black' : 'bg-accent text-accent-foreground')
                 : (isDark ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10')
             )}
           >
@@ -345,18 +345,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     : initialType === ('quote' as any) || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
     : 'gig';
 
-  const modalBg = modalCategory === 'rehearsal' ? '#0147FF' : modalCategory === 'quote' ? '#9A8878' : '#D5FB46';
+  const modalBg = modalCategory === 'rehearsal' ? 'var(--accent-rehearsal)' : modalCategory === 'quote' ? 'var(--accent-quote)' : 'var(--accent-gig)';
   const isDarkBg = modalCategory === 'rehearsal' || modalCategory === 'quote';
   const tc = isDarkBg ? 'text-white' : 'text-black';
-  const tcMuted = isDarkBg ? 'text-white/50' : 'text-black/50';
-  const tcFaint = isDarkBg ? 'text-white/30' : 'text-black/30';
-  const tcSub = isDarkBg ? 'text-white/40' : 'text-black/40';
+  const tcMuted = isDarkBg ? 'text-white/50' : 'text-foreground/50';
+  const tcFaint = isDarkBg ? 'text-white/30' : 'text-foreground/30';
+  const tcSub = isDarkBg ? 'text-white/40' : 'text-foreground/40';
   const bcMuted = isDarkBg ? 'border-white/20' : 'border-black/20';
   const bcSolid = isDarkBg ? 'border-white' : 'border-black';
   const bgPill = isDarkBg ? 'bg-white/10' : 'bg-black/10';
-  const pillAccent = modalCategory === 'rehearsal' ? 'text-[#0147FF]' : modalCategory === 'quote' ? 'text-[#9A8878]' : 'text-[#D5FB46]';
+  const pillAccent = modalCategory === 'rehearsal' ? 'text-accent-rehearsal' : modalCategory === 'quote' ? 'text-accent-quote' : 'text-accent';
   const bgPillSelected = isDarkBg ? 'bg-white text-black' : `bg-black ${pillAccent}`;
-  const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-black/50';
+  const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-foreground/50';
   const dotActive = isDarkBg ? '#FFFFFF' : '#000000';
   const dotInactive = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
 
@@ -463,7 +463,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-1 flex-1">
               <div className={cn(
                 'inline-flex self-start px-2.5 py-1 rounded-md text-[12px] font-bold uppercase',
-                isSelected ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white') : (isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-black/50')
+                isSelected ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white') : (isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-foreground/50')
               )}>
                 {value.toUpperCase()}
               </div>
@@ -512,7 +512,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             autoGenerateTitle(e.target.value, eventType);
           }}
           placeholder="EG. ROSSI"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
         />
       </div>
 
@@ -527,7 +527,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             setTitleManuallyEdited(true);
           }}
           placeholder="EG. WEDDING PARTY"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
         />
       </div>
 
@@ -542,7 +542,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           value={details.venue}
           onChange={(e) => setDetails({ ...details, venue: e.target.value })}
           placeholder="VENUE NAME"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-black/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
         />
         {/* Address Tags */}
         <div className="flex flex-wrap gap-2">
@@ -551,35 +551,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             value={details.address}
             onChange={(e) => setDetails({ ...details, address: e.target.value })}
             placeholder="ADDRESS"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.city}
             onChange={(e) => setDetails({ ...details, city: e.target.value })}
             placeholder="CITY"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.province}
             onChange={(e) => setDetails({ ...details, province: e.target.value })}
             placeholder="PROVINCE"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.zip}
             onChange={(e) => setDetails({ ...details, zip: e.target.value })}
             placeholder="ZIP"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
           />
           <input
             type="text"
             value={details.country}
             onChange={(e) => setDetails({ ...details, country: e.target.value })}
             placeholder="COUNTRY"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-black/60 placeholder:text-black/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
           />
         </div>
       </div>
@@ -663,7 +663,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onClick={() => setSetting('indoor')}
             className={cn(
               'px-4 py-2 rounded-md text-[12px] font-bold uppercase border transition-all',
-              setting === 'indoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
+              setting === 'indoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-foreground/40 border-black/20')
             )}
           >
             INDOOR
@@ -672,7 +672,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onClick={() => setSetting('outdoor')}
             className={cn(
               'px-4 py-2 rounded-md text-[12px] font-bold uppercase border transition-all',
-              setting === 'outdoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-black/40 border-black/20')
+              setting === 'outdoor' ? bgPillSelected + ' border-current' : (isDarkBg ? 'bg-transparent text-white/40 border-white/20' : 'bg-transparent text-foreground/40 border-black/20')
             )}
           >
             OUTDOOR
@@ -714,7 +714,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
                 musicianCount === preset.count
                   ? bgPillSelected + ' border-current'
-                  : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-black/50 border-black/20')
+                  : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-foreground/50 border-black/20')
               )}
             >
               {preset.label}
@@ -779,7 +779,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         value={memberFees[member.id] || ''}
                         onChange={(e) => updateFee(member.id, e.target.value)}
                         placeholder="0"
-                        className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-black/60 border-black/10 focus:border-black'))}
+                        className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-foreground/60 border-black/10 focus:border-black'))}
                       />
                     </div>
                   )}
@@ -818,7 +818,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 value={extraBandFee}
                 onChange={(e) => setExtraBandFee(e.target.value)}
                 placeholder="0"
-                className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-black/20')}
+                className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-foreground/20')}
               />
             </div>
           </div>
@@ -1278,11 +1278,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                               setTasks(newTasks);
                             }}
                             placeholder="Task description..."
-                            className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-black/20 focus:border-black')}
+                            className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-foreground/20 focus:border-black')}
                           />
                           <button
                             onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))}
-                            className={cn(isDarkBg ? 'text-white/20' : 'text-black/20', 'hover:text-red-500 transition-colors')}
+                            className={cn(isDarkBg ? 'text-white/20' : 'text-foreground/20', 'hover:text-red-500 transition-colors')}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -1312,7 +1312,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Any notes for the band..."
                         rows={3}
-                        className={cn('w-full bg-transparent border-b-2 py-2 text-sm font-medium focus:outline-none transition-all resize-none', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-black/20 focus:border-black')}
+                        className={cn('w-full bg-transparent border-b-2 py-2 text-sm font-medium focus:outline-none transition-all resize-none', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-foreground/20 focus:border-black')}
                       />
                     </div>
                   </motion.div>
@@ -1486,7 +1486,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <div className="flex-1 overflow-y-auto px-4">
         {savedSetlists.length > 0 && setlist.length === 0 && (
           <div className="mb-6">
-            <span className="text-[10px] font-bold text-black/50 uppercase block mb-2">LOAD FROM SAVED SETLISTS</span>
+            <span className="text-[10px] font-bold text-foreground/50 uppercase block mb-2">LOAD FROM SAVED SETLISTS</span>
             <div className="flex flex-wrap gap-2">
               {savedSetlists.map(sl => (
                 <button
@@ -1494,10 +1494,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   onClick={() => loadSavedSetlist(sl)}
                   className="px-3 py-2 rounded-[10px] bg-white flex items-center gap-2 hover:bg-white/80 transition-all"
                 >
-                  <Folder className="w-3.5 h-3.5 text-black/50" />
+                  <Folder className="w-3.5 h-3.5 text-foreground/50" />
                   <span className="text-[12px] font-bold text-black">{sl.name}</span>
                   {sl.song_count != null && (
-                    <span className="text-[10px] font-bold text-black/30">{sl.song_count} songs</span>
+                    <span className="text-[10px] font-bold text-foreground/30">{sl.song_count} songs</span>
                   )}
                 </button>
               ))}
@@ -1507,7 +1507,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         <div className="flex items-start justify-between mb-6">
           <div className="flex flex-col gap-1">
-            <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-black/50')}>
+            <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-foreground/50')}>
               {setlist.length} {setlist.length === 1 ? 'SET' : 'SETS'}
             </span>
             <span className={cn('text-[28px] font-bold uppercase', tc)}>SETLIST BUILDER</span>
@@ -1543,7 +1543,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         {item.title}
                       </span>
                       <span className="text-[40px] font-bold text-black leading-none">{songCount}</span>
-                      <span className="text-[10px] font-bold text-black/50 uppercase">
+                      <span className="text-[10px] font-bold text-foreground/50 uppercase">
                         {songCount === 1 ? 'SONG' : 'SONGS'}
                       </span>
                     </div>
@@ -1565,32 +1565,32 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             type="text"
                             value={item.title}
                             onChange={(e) => setSetlist(prev => prev.map(s => s.uid === item.uid ? { ...s, title: e.target.value } : s))}
-                            className="bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                            className="bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                             placeholder="Set name..."
                           />
 
                           {(item.songs || []).map((song: any, si: number) => (
                             <div key={song.uid} className="flex items-start gap-2">
-                              <span className="text-[11px] font-bold text-black/30 mt-2 w-5 shrink-0">{si + 1}.</span>
+                              <span className="text-[11px] font-bold text-foreground/30 mt-2 w-5 shrink-0">{si + 1}.</span>
                               <div className="flex-1 flex flex-col gap-1">
                                 <input
                                   type="text"
                                   value={song.title}
                                   onChange={(e) => updateSongInSet(item.uid, song.uid, 'title', e.target.value)}
                                   placeholder="Song title..."
-                                  className="bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                                  className="bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                                 />
                                 <input
                                   type="text"
                                   value={song.artist}
                                   onChange={(e) => updateSongInSet(item.uid, song.uid, 'artist', e.target.value)}
                                   placeholder="Artist..."
-                                  className="bg-transparent border-b border-black/5 py-1 text-[11px] font-bold text-black/50 placeholder:text-black/15 focus:outline-none focus:border-black/30 transition-all"
+                                  className="bg-transparent border-b border-black/5 py-1 text-[11px] font-bold text-foreground/50 placeholder:text-black/15 focus:outline-none focus:border-black/30 transition-all"
                                 />
                               </div>
                               <button
                                 onClick={() => removeSongFromSet(item.uid, song.uid)}
-                                className="text-black/20 hover:text-red-500 transition-colors mt-1"
+                                className="text-foreground/20 hover:text-red-500 transition-colors mt-1"
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -1602,13 +1602,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => openSongPickerForSet(item.uid)}
-                                className="text-[12px] font-bold text-black/70 uppercase flex items-center gap-1 hover:text-black transition-colors"
+                                className="text-[12px] font-bold text-foreground/70 uppercase flex items-center gap-1 hover:text-black transition-colors"
                               >
                                 <Music className="w-3 h-3" /> From library
                               </button>
                               <button
                                 onClick={() => addSongToSet(item.uid)}
-                                className="text-[12px] font-bold text-black/50 uppercase flex items-center gap-1 hover:text-black transition-colors"
+                                className="text-[12px] font-bold text-foreground/50 uppercase flex items-center gap-1 hover:text-black transition-colors"
                               >
                                 <Plus className="w-3 h-3" /> Manual
                               </button>

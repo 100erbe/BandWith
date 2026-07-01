@@ -118,7 +118,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             <span className="text-[#0047FF]">invited</span>
           </h1>
           <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
-            {inviterName} invited you to join as <span className="text-[#D4FB46] font-bold">{memberRole}</span>
+            {inviterName} invited you to join as <span className="text-accent font-bold">{memberRole}</span>
           </p>
         </motion.div>
 
@@ -193,7 +193,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             'Team chat & notifications',
           ].map((item, index) => (
             <div key={index} className="flex items-center gap-3 text-muted-foreground/80">
-              <CheckCircle className="w-4 h-4 text-[#D4FB46]" strokeWidth={1.5} />
+              <CheckCircle className="w-4 h-4 text-accent" strokeWidth={1.5} />
               <span className="text-[14px] font-medium">{item}</span>
             </div>
           ))}
@@ -210,7 +210,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         {/* Primary CTA */}
         <button
           onClick={onAccept}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >
           Accept & Continue
           <ArrowRight className="w-5 h-5" strokeWidth={2.5} />

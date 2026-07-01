@@ -276,12 +276,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 {isAdmin && (
                   <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                     <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                      <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
-                      <div className="bg-[#D5FB46] rounded-[10px] row-span-3" />
+                      <div className="col-span-3 bg-accent-gig rounded-[10px]" />
+                      <div className="bg-accent-gig rounded-[10px] row-span-3" />
                       <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
                       <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-[#D5FB46] rounded-[10px]" />
-                      <div className="col-span-3 bg-[#D5FB46] rounded-[10px]" />
+                      <div className="bg-accent-gig rounded-[10px]" />
+                      <div className="col-span-3 bg-accent-gig rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
                       <span className="text-[22px] font-bold text-foreground uppercase">NEW GIG</span>
@@ -291,11 +291,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 )}
                 <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                   <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                    <div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px]" /><div className="col-span-3 bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-[#0147FF] rounded-[10px] row-span-2" /><div className="bg-[#0147FF] rounded-[10px]" />
-                    <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-[#0147FF] rounded-[10px]" />
+                    <div className="col-span-3 bg-accent-rehearsal rounded-[10px]" />
+                    <div className="bg-accent-rehearsal rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
+                    <div className="bg-accent-rehearsal rounded-[10px]" /><div className="col-span-3 bg-accent-rehearsal rounded-[10px]" />
+                    <div className="bg-accent-rehearsal rounded-[10px] row-span-2" /><div className="bg-accent-rehearsal rounded-[10px]" />
+                    <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-accent-rehearsal rounded-[10px]" />
                   </div>
                   <div className="flex flex-col gap-2 flex-1">
                     <span className="text-[22px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
@@ -305,11 +305,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 {isAdmin && (
                   <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
                     <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                      <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
-                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-[#9A8878] rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-[#9A8878] rounded-[10px]" />
-                      <div className="col-span-3 bg-[#9A8878] rounded-[10px]" />
+                      <div className="col-span-3 bg-accent-quote rounded-[10px]" />
+                      <div className="bg-accent-quote rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
+                      <div className="bg-accent-quote rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
+                      <div className="bg-accent-quote rounded-[10px]" />
+                      <div className="col-span-3 bg-accent-quote rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
                       <span className="text-[22px] font-bold text-foreground uppercase">NEW QUOTE</span>
@@ -357,12 +357,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 setForceOpen(true);
               }}
               className={cn(
-                'bg-[#D5FB46] rounded-[16px] flex items-center justify-center shrink-0 active:scale-95 shadow-[0px_4px_16px_rgba(0,0,0,0.15)]',
+                'bg-accent rounded-[16px] flex items-center justify-center shrink-0 active:scale-95 shadow-[0px_4px_16px_rgba(0,0,0,0.15)]',
                 'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
                 effectiveIsScrollingDown ? 'w-[48px] h-[48px] -translate-y-3' : 'w-[56px] h-[56px] -translate-y-5'
               )}
             >
-              <IconPlus color="#000000" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
+              <IconPlus color="var(--accent-fg)" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
             </button>
           </div>
 

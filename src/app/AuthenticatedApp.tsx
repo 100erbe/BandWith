@@ -117,9 +117,9 @@ const eventToEventItem = (event: Event): EventItem => {
     price: event.fee?.toString() || "0",
     members: [],
     color:
-      (status === "REHEARSAL") ? "bg-black text-[#D4FB46]"
-        : (status === "QUOTE") ? "bg-[#9A8878] text-white"
-        : (status === "DRAFT") ? "bg-black/20 text-black/60"
+      (status === "REHEARSAL") ? "bg-black text-accent"
+        : (status === "QUOTE") ? "bg-accent-quote text-white"
+        : (status === "DRAFT") ? "bg-black/20 text-foreground/60"
         : "bg-green-100 text-green-700",
     notes: event.notes || undefined,
     createdBy: event.created_by || undefined,
@@ -1131,7 +1131,7 @@ export default function AuthenticatedApp() {
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
   return (
-    <div className="min-h-screen text-[#1A1A1A] font-sans selection:bg-[#D4FB46]/50">
+    <div className="min-h-screen text-foreground font-sans selection:bg-accent/50">
       <div className={cn("fixed inset-0 transition-colors duration-500 z-0", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
@@ -1191,10 +1191,10 @@ export default function AuthenticatedApp() {
           {selectedChat && !selectedChat.uuid && (
             <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
-                <div className="w-16 h-16 bg-[#D4FB46] rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-black" /></div>
+                <div className="w-16 h-16 <bg-accent rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-accent-foreground" /></div>
                 <h3 className="text-xl font-black mb-2">Demo Chat</h3>
                 <p className="text-stone-500 text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
-                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-black text-[#D4FB46] py-3 rounded-full font-bold text-sm">Start Real Chat</button>
+                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-black text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
               </motion.div>
             </motion.div>
           )}

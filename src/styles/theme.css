@@ -1,75 +1,143 @@
 @custom-variant dark (&:is(.dark *));
 
+/* ══════════════════════════════════════════════════════════════════
+   BandWith Design System — Semantic CSS Custom Properties
+   ══════════════════════════════════════════════════════════════════
+   • All palette values are defined here — never hardcode hex colors
+   • Update values here to change the entire app theme
+   • Light  mode → :root
+   • Dark   mode → .dark
+   ══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #E6E5E1;
-  --foreground: #050505;
+  /* ── Base ── */
+  --bg: #E6E5E1;
+  --fg: #0A0A0A;
+
+  /* ── Surfaces ── */
   --card: #F2F0ED;
-  --card-foreground: #050505;
+  --card-fg: #0A0A0A;
   --popover: #F2F0ED;
-  --popover-foreground: #050505;
-  --primary: #FF4F28;
-  --primary-foreground: #000000;
-  --secondary: #998878;
-  --secondary-foreground: #1A1A1A;
+  --popover-fg: #0A0A0A;
   --muted: #D1D1D1;
-  --muted-foreground: #666666;
-  --accent: #FFD600;
-  --accent-foreground: #000000;
-  --destructive: #FF4F28;
-  --destructive-foreground: #FFFFFF;
+  --muted-fg: #666666;
+
+  /* ── Primary brand (all modes) ── */
+  --primary: #6A0DAD;
+  --primary-fg: #FFFFFF;
+
+  /* ── Secondary ── */
+  --secondary: #998878;
+  --secondary-fg: #1A1A1A;
+
+  /* ── Action (gig) ── */
+  --accent-gig: #00C9B1;
+  --accent-gig-fg: #000000;
+
+  /* ── Utility (rehearsal) ── */
+  --accent-rehearsal: #0055E1;
+  --accent-rehearsal-fg: #FFFFFF;
+
+  /* ── Context (quote) ── */
+  --accent-quote: #009AF3;
+  --accent-quote-fg: #FFFFFF;
+
+  /* ── General accent (legacy / fallback) — maps to primary brand ── */
+  --accent: #6A0DAD;
+  --accent-fg: #FFFFFF;
+
+  /* ── Semantic ── */
+  --destructive: #A73131;
+  --destructive-fg: #FFFFFF;
   --border: rgba(0, 0, 0, 0.05);
   --input: rgba(0, 0, 0, 0.05);
-  --ring: #FFD600;
+  --ring: #6A0DAD;
   --radius: 2.5rem;
 }
 
 .dark {
-  --background: #050505;
-  --foreground: #E6E5E1;
+  /* ── Base ── */
+  --bg: #050505;
+  --fg: #FAFAFA;
+
+  /* ── Surfaces ── */
   --card: #1C1C1E;
-  --card-foreground: #E6E5E1;
+  --card-fg: #FAFAFA;
   --popover: #1C1C1E;
-  --popover-foreground: #E6E5E1;
-  --primary: #FFD600;
-  --primary-foreground: #000000;
-  --secondary: #998878;
-  --secondary-foreground: #FFFFFF;
+  --popover-fg: #FAFAFA;
   --muted: #2A2A2A;
-  --muted-foreground: #A1A1A1;
-  --accent: #FFD600;
-  --accent-foreground: #000000;
+  --muted-fg: #A1A1A1;
+
+  /* ── Primary brand (all modes) ── */
+  --primary: #6A0DAD;
+  --primary-fg: #FFFFFF;
+
+  /* ── Secondary ── */
+  --secondary: #998878;
+  --secondary-fg: #FFFFFF;
+
+  /* ── Action (gig) ── */
+  --accent-gig: #00C9B1;
+  --accent-gig-fg: #000000;
+
+  /* ── Utility (rehearsal) ── */
+  --accent-rehearsal: #007CF9;
+  --accent-rehearsal-fg: #FFFFFF;
+
+  /* ── Context (quote) ── */
+  --accent-quote: #00B3D7;
+  --accent-quote-fg: #000000;
+
+  /* ── General accent (legacy / fallback) — maps to primary brand ── */
+  --accent: #6A0DAD;
+  --accent-fg: #FFFFFF;
+
+  /* ── Semantic ── */
   --destructive: #FF4F28;
-  --destructive-foreground: #FFFFFF;
+  --destructive-fg: #FFFFFF;
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.1);
-  --ring: #FFD600;
+  --ring: #6A0DAD;
 }
 
+/* ═══ Map CSS vars to Tailwind v4 theme tokens ═══
+   These let you use utilities like bg-background, text-foreground, bg-primary, etc. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-card-foreground: var(--card-fg);
   --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-popover-foreground: var(--popover-fg);
   --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-foreground: var(--primary-fg);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-foreground: var(--secondary-fg);
   --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground: var(--muted-fg);
+
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-foreground: var(--accent-fg);
+
+  --color-accent-gig: var(--accent-gig);
+  --color-accent-gig-foreground: var(--accent-gig-fg);
+  --color-accent-rehearsal: var(--accent-rehearsal);
+  --color-accent-rehearsal-foreground: var(--accent-rehearsal-fg);
+  --color-accent-quote: var(--accent-quote);
+  --color-accent-quote-foreground: var(--accent-quote-fg);
+
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-foreground: var(--destructive-fg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
 }
 
+/* ═══ Base layer — applied to <body> via Tailwind ═══ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -77,5 +145,10 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Smooth theme transitions on interactive / surface elements */
+  body, .bg-background, .bg-card, .bg-popover, .bg-muted {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 }

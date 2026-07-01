@@ -36,7 +36,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        <Loader2 className="w-8 h-8 text-[#D5FB46] animate-spin mb-4" />
+        <Loader2 className="w-8 h-8 text-accent animate-spin mb-4" />
         <p className="text-muted-foreground text-[15px] font-medium">
           Checking invite code…
         </p>
@@ -90,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <br />
               your schedule,
               <br />
-              <span className="text-[#D5FB46]">your way.</span>
+              <span className="text-accent">your way.</span>
             </h1>
             <p className="text-muted-foreground text-[15px] font-medium leading-relaxed max-w-[280px]">
               Manage gigs, rehearsals, and sync your band — or just keep your own calendar in tune.
@@ -111,7 +111,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               'Setlist builder',
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#D5FB46]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
                 <span className="text-[13px] text-muted-foreground/70 font-medium">
                   {feature}
                 </span>
@@ -130,7 +130,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {/* Primary CTA */}
           <button
             onClick={onGetStarted}
-            className="w-full h-14 rounded-full text-[13px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            className="w-full h-14 rounded-full text-[13px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
           >
             Get Started
             <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
@@ -153,7 +153,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     setSubmitted(false);
                   }}
                   placeholder="Enter invite code"
-                  className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none focus:border-[#D5FB46] transition-colors"
+                  className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleInviteSubmit();
@@ -162,7 +162,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <button
                   onClick={handleInviteSubmit}
                   disabled={inviteCode.trim().length < 2}
-                  className="h-12 px-5 rounded-xl bg-[#D5FB46] text-black text-[13px] font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
+                  className="h-12 px-5 rounded-xl bg-accent text-accent-foreground text-[13px] font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
                 >
                   Join
                 </button>

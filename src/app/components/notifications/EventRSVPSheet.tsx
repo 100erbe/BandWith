@@ -48,7 +48,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 
   const isRehearsal = eventType === 'rehearsal';
   const isQuote = eventType === 'quote';
-  const accentColor = isRehearsal ? '#0147FF' : isQuote ? '#9A8878' : '#D5FB46';
+  const accentColor = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : 'var(--accent)';
   const accentText = isRehearsal || isQuote ? 'white' : 'black';
   const label = isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'GIG';
 

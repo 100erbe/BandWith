@@ -68,7 +68,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 z-[70] bg-background overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       {/* Header */}
@@ -95,7 +95,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
       <div className="px-4 pb-32">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-black/30" />
+            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
           </div>
         ) : (
           <div className="flex flex-col gap-10">
@@ -116,7 +116,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   </div>
                   <AnalyticsDotGrid
                     filled={Math.min(Math.ceil(totalRevenue / 500), 24)}
-                    color="#D5FB46"
+                    color="var(--accent)"
                   />
                 </motion.div>
 
@@ -132,7 +132,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                       {totalEvents}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={totalEvents} color="#0147FF" />
+                  <AnalyticsDotGrid filled={totalEvents} color="var(--accent-rehearsal)" />
                 </motion.div>
               </div>
 
@@ -149,7 +149,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                       {confirmed}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={confirmed} color="#9A8878" />
+                  <AnalyticsDotGrid filled={confirmed} color="var(--accent-quote)" />
                 </motion.div>
 
                 <motion.div
@@ -210,7 +210,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                     </span>
                     <div className="flex-1 h-3 bg-[#CDCACA] rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-[#D5FB46] rounded-full"
+                        className="h-full bg-accent rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
@@ -220,7 +220,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                 ))}
               </div>
 
-              <span className="text-[10px] font-medium text-black/40 uppercase text-center">
+              <span className="text-[10px] font-medium text-foreground/40 uppercase text-center">
                 Detailed analytics coming soon
               </span>
             </div>

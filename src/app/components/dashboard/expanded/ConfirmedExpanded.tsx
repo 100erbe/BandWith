@@ -68,12 +68,12 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#D4FB46"
+      backgroundColor="var(--accent)"
       onClose={onClose}
       origin={{ top: '40%', left: '44%', right: '3%', bottom: '42%' }}
     >
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#D4FB46]/95 backdrop-blur-md" 
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-accent/95 backdrop-blur-md" 
         initial={{ opacity: 0, y: -20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -87,7 +87,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
           </button>
           <h2 className="text-2xl font-black tracking-tight text-black">Schedule</h2>
         </div>
-        <button className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-[#D4FB46] shadow-lg hover:scale-105 transition-transform">
+        <button className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-accent shadow-lg hover:scale-105 transition-transform">
           <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
       </motion.div>
@@ -107,8 +107,8 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-[#D4FB46] animate-pulse" />
-                      <span className="text-[#D4FB46] text-[10px] font-bold uppercase tracking-widest">Next Operation</span>
+                      <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                      <span className="text-accent text-[10px] font-bold uppercase tracking-widest">Next Operation</span>
                     </div>
                     <h3 className="text-3xl font-black text-white tracking-tighter leading-none mb-1">
                       {nextGig.title}
@@ -137,7 +137,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center border-2", 
                           step.active 
-                            ? "bg-[#D4FB46] border-[#D4FB46] text-black" 
+                            ? "bg-accent border-accent text-accent-foreground" 
                             : "bg-[#1C1C1E] border-white/20 text-stone-500"
                         )}>
                           <step.icon className="w-3.5 h-3.5 fill-current" />
@@ -163,7 +163,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                     ))}
                   </div>
                   <button className="h-8 px-3 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center gap-2 text-[10px] font-bold text-white hover:bg-[#333336]">
-                    <FileText className="w-3 h-3 text-[#D4FB46]" /> View Call Sheet
+                    <FileText className="w-3 h-3 text-accent" /> View Call Sheet
                   </button>
                 </div>
               </>
@@ -182,10 +182,10 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
           <h4 className="text-sm font-black text-black uppercase tracking-wider ml-2 opacity-60 mb-2">Upcoming Gigs</h4>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-black/40" />
+              <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
             </div>
           ) : gigs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-black/40">
+            <div className="flex flex-col items-center justify-center py-8 text-foreground/40">
               <AlertCircle className="w-12 h-12 mb-4" />
               <p className="font-bold">No confirmed gigs</p>
             </div>
@@ -210,14 +210,14 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <motion.h4 layout className="text-xl font-black text-black leading-tight">{gig.title}</motion.h4>
-                      <motion.div layout className="flex items-center gap-1.5 text-black/60 mt-0.5">
+                      <motion.div layout className="flex items-center gap-1.5 text-foreground/60 mt-0.5">
                         <MapPin className="w-3 h-3" />
                         <span className="text-xs font-bold uppercase">{gig.venue}</span>
                       </motion.div>
                     </div>
                     <div className="flex flex-col items-end">
                       <span className="text-2xl font-black text-black">€{gig.amount}</span>
-                      <span className="text-[10px] font-bold uppercase bg-black/10 px-1.5 py-0.5 rounded text-black/60">{gig.date}</span>
+                      <span className="text-[10px] font-bold uppercase bg-black/10 px-1.5 py-0.5 rounded text-foreground/60">{gig.date}</span>
                     </div>
                   </div>
                   {!isExpanded && (
@@ -225,7 +225,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                       layout 
                       initial={{ opacity: 0 }} 
                       animate={{ opacity: 1 }} 
-                      className="flex items-center gap-4 text-xs font-bold text-black/70 mt-3"
+                      className="flex items-center gap-4 text-xs font-bold text-foreground/70 mt-3"
                     >
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5" /> {gig.team.length} Team
@@ -248,7 +248,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                       <div className="h-px w-full bg-black/10 mb-4" />
                       <div className="bg-white/50 rounded-xl p-3 mb-3 flex items-start justify-between">
                         <div>
-                          <span className="text-[9px] font-bold uppercase text-black/50 block mb-0.5">Address</span>
+                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Address</span>
                           <p className="text-xs font-bold text-black">{gig.address}</p>
                         </div>
                         <button className="p-1.5 bg-white rounded-lg shadow-sm hover:scale-105 transition-transform">
@@ -257,15 +257,15 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                       </div>
                       <div className="flex gap-3 mb-3">
                         <div className="flex-1 bg-white/50 rounded-xl p-3">
-                          <span className="text-[9px] font-bold uppercase text-black/50 block mb-0.5">Contact</span>
+                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Contact</span>
                           <p className="text-xs font-bold text-black">{gig.contactName}</p>
                         </div>
                         <div className="flex-1 bg-white/50 rounded-xl p-3">
-                          <span className="text-[9px] font-bold uppercase text-black/50 block mb-0.5">Timeline</span>
+                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Timeline</span>
                           <p className="text-xs font-bold text-black">{gig.timeline?.show} Show</p>
                         </div>
                       </div>
-                      <div className="flex gap-2 items-start text-[10px] font-bold text-black/70 bg-black/5 p-2 rounded-lg">
+                      <div className="flex gap-2 items-start text-[10px] font-bold text-foreground/70 bg-black/5 p-2 rounded-lg">
                         <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
                         {gig.notes}
                       </div>

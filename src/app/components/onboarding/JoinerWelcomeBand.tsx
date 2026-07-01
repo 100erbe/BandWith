@@ -74,7 +74,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
               key={i}
               className="absolute w-3 h-3 rounded-full"
               style={{
-                background: ['#D4FB46', '#0047FF', '#FF4F28', '#998878'][i % 4],
+                background: ['var(--accent)', '#0047FF', '#FF4F28', '#998878'][i % 4],
                 left: `${Math.random() * 100}%`,
                 top: '-20px',
               }}
@@ -129,7 +129,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
             Welcome to
           </h1>
-          <p className="text-[#D4FB46] text-[28px] font-black">"{bandName}"!</p>
+          <p className="text-accent text-[28px] font-black">"{bandName}"!</p>
         </motion.div>
 
         {/* Bandmates Card */}
@@ -161,7 +161,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                   <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
                     {member.name}
                     {member.isAdmin && (
-                      <span className="px-2 py-0.5 rounded-full bg-[#D4FB46]/20 text-[#D4FB46] text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
                         Admin
                       </span>
                     )}
@@ -173,20 +173,20 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
 
             {/* You (new member) */}
             <motion.div
-              className="flex items-center gap-3 bg-[#D4FB46]/10 rounded-xl p-2 -mx-2"
+              className="flex items-center gap-3 bg-accent/10 rounded-xl p-2 -mx-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.9 }}
             >
-              <div className="w-11 h-11 rounded-full bg-[#D4FB46] flex items-center justify-center flex-shrink-0">
-                <span className="text-black font-bold text-[14px]">
+              <div className="w-11 h-11 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+                <span className="text-accent-foreground font-bold text-[14px]">
                   {getInitials(profileData?.fullName || 'You')}
                 </span>
               </div>
               <div className="flex-1">
                 <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
                   {profileData?.fullName || 'You'}
-                  <span className="px-2 py-0.5 rounded-full bg-[#D4FB46] text-black text-[10px] font-bold flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center gap-1">
                     <Star className="w-3 h-3" /> NEW
                   </span>
                 </p>
@@ -224,7 +224,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
       >
         <motion.button
           onClick={onComplete}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-[#D4FB46] text-black font-bold text-[16px]"
+          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px]"
           style={{
             boxShadow: '0 4px 20px rgba(212, 251, 70, 0.3)',
           }}

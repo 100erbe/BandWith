@@ -20,7 +20,7 @@ export const RehearsalReviewMembersModal: React.FC<Props> = ({ isOpen, onClose, 
         <div className="flex flex-col h-[50vh]">
              {/* Swiss Summary Row */}
              <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <Users className="w-3 h-3" /> Total: {members.length}
                  </div>
                  <div className="px-2 py-1 bg-green-50 text-green-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
@@ -48,7 +48,7 @@ export const RehearsalReviewMembersModal: React.FC<Props> = ({ isOpen, onClose, 
                             </div>
                             <div>
                                 <div className="text-sm font-bold">{m.name}</div>
-                                <div className="text-[10px] font-bold text-black/40 uppercase">{m.role}</div>
+                                <div className="text-[10px] font-bold text-foreground/40 uppercase">{m.role}</div>
                             </div>
                         </div>
                         <div className={cn(

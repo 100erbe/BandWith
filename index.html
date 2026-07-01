@@ -8,6 +8,19 @@
     <meta name="theme-color" content="#E6E5E1" />
     <link rel="stylesheet" href="https://use.typekit.net/mzr4hzv.css">
     <title>BandWith</title>
+    <script>
+      // ═══ Dark-mode flash prevention — runs before any paint ═══
+      (function() {
+        var stored = null;
+        try { stored = localStorage.getItem('bandwith-theme-mode'); } catch(e) {}
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = stored === 'dark' || (stored !== 'light' && prefersDark);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#050505');
+        }
+      })();
+    </script>
     <style>
       html, body {
         margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -18,6 +31,8 @@
       }
       ::-webkit-scrollbar { display: none; }
       * { -ms-overflow-style: none; scrollbar-width: none; }
+      :root { color-scheme: light; }
+      :root.dark { color-scheme: dark; }
       #root {
         height: 100%; overflow-y: scroll; overflow-x: hidden;
         -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;
@@ -38,9 +53,13 @@
       }
       #css-splash {
         position: fixed; inset: 0; z-index: 99999;
-        background: #E6E5E1;
+        background: var(--bg, #E6E5E1);
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
+        transition: opacity 0.4s ease;
+      }
+      .dark #css-splash {
+        background: #050505;
       }
       #css-splash img {
         width: 64px; height: 64px; border-radius: 16px;
@@ -55,7 +74,7 @@
   <body>
     <div id="css-splash">
       <img src="/brand/app-icon.png" alt="">
-      <div class="t"><span style="color:#050505">BAND</span><span style="color:#D5FB46">WITH</span></div>
+      <div class="t"><span id="splash-band" style="color:#050505">BAND</span><span id="splash-with" style="color:#6A0DAD">WITH</span></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

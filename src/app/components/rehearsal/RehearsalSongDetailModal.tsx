@@ -33,10 +33,10 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
         {/* Tags */}
         <div className="flex gap-[4px] flex-wrap">
           <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-[12px] font-bold uppercase text-[#0147FF]">SONG</span>
+            <span className="text-[12px] font-bold uppercase text-accent-rehearsal">SONG</span>
           </div>
           <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-[12px] font-bold uppercase text-[#0147FF]">
+            <span className="text-[12px] font-bold uppercase text-accent-rehearsal">
               {data.priority?.toUpperCase() || 'MEDIUM'}
             </span>
           </div>
@@ -84,7 +84,7 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
                   onClick={() => setData({ ...data, priority: p })}
                   className={cn(
                     "flex-1 py-[8px] rounded-[8px] text-[12px] font-bold uppercase transition-all",
-                    data.priority === p ? "bg-white text-[#0147FF]" : "text-white/50"
+                    data.priority === p ? "bg-white text-accent-rehearsal" : "text-white/50"
                   )}
                 >
                   {p}
@@ -121,7 +121,7 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
 
       {/* Footer */}
       <div className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[102]"
-        style={{ backgroundColor: '#0147FF', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+        style={{ backgroundColor: 'var(--accent-rehearsal)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
       >
         <div className="flex flex-col gap-[20px] items-center">
           <div className="grid grid-cols-2 gap-[10px] w-full">
@@ -135,8 +135,8 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
               onClick={handleSave}
               className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white"
             >
-              <Plus className="w-[18px] h-[18px] text-[#0147FF]" />
-              <span className="text-[16px] font-bold text-[#0147FF] uppercase">SETLIST</span>
+              <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
+              <span className="text-[16px] font-bold text-accent-rehearsal uppercase">SETLIST</span>
             </button>
           </div>
         </div>

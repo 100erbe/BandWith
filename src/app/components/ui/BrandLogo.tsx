@@ -61,7 +61,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
         width: size,
         height: size,
         borderRadius: size * 0.22,
-        background: 'linear-gradient(145deg, #D4FB46 0%, #C8F040 100%)',
+        background: 'linear-gradient(145deg, var(--accent) 0%, #6A0DAD 100%)',
         boxShadow: `0 ${size * 0.15}px ${size * 0.5}px rgba(212, 251, 70, 0.35)`,
       }}
     >
@@ -126,11 +126,12 @@ export const LogoText: React.FC<LogoTextProps> = ({
   };
 
   const colors = {
-    lime: { band: '#D4FB46', with: '#D4FB46' },
+    lime: { band: 'var(--accent)', with: 'var(--accent)' },
     white: { band: '#FFFFFF', with: '#FFFFFF' },
     black: { band: '#000000', with: '#000000' },
-    'mixed-dark': { band: '#000000', with: '#D4FB46' },
-    'mixed-light': { band: '#FFFFFF', with: '#D4FB46' },
+    'mixed-dark': { band: '#000000', with: 'var(--accent)' },
+
+    'mixed-light': { band: '#FFFFFF', with: 'var(--accent)' },
   };
 
   const { band, with: withColor } = colors[variant];

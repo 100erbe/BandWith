@@ -67,9 +67,9 @@ const formatEventDate = (dateStr: string): string => {
 };
 
 const getTypeBg = (type: string): string => {
-  if (type === 'event_invite' || type === 'event_created') return '#D5FB46';
-  if (type.includes('rehearsal')) return '#0147FF';
-  if (type.includes('quote') || type.includes('payment')) return '#9A8878';
+  if (type === 'event_invite' || type === 'event_created') return 'var(--accent)';
+  if (type.includes('rehearsal')) return 'var(--accent-rehearsal)';
+  if (type.includes('quote') || type.includes('payment')) return 'var(--accent-quote)';
   return '#1A1A1A';
 };
 
@@ -226,7 +226,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         className="px-[10px] py-[4px] rounded-[6px]"
                         style={{
                           backgroundColor: textColor === 'white' ? 'white' : 'black',
-                          color: textColor === 'white' ? bgColor : '#D5FB46',
+                          color: textColor === 'white' ? bgColor : 'var(--accent)',
                         }}
                       >
                         <span className="text-[12px] font-bold uppercase">{typeLabel}</span>
@@ -367,7 +367,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     >
                       <span
                         className="text-[16px] font-bold uppercase"
-                        style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                        style={{ color: textColor === 'white' ? bgColor : 'var(--accent)' }}
                       >
                         ACCEPT
                       </span>
@@ -391,10 +391,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     backgroundColor: textColor === 'white' ? 'white' : 'black',
                   }}
                 >
-                  <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }} />
+                  <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : 'var(--accent)' }} />
                   <span
                     className="text-[16px] font-bold uppercase"
-                    style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                    style={{ color: textColor === 'white' ? bgColor : 'var(--accent)' }}
                   >
                     MARK ALL READ
                   </span>
@@ -410,10 +410,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           backgroundColor: textColor === 'white' ? 'white' : 'black',
                         }}
                       >
-                        <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }} />
+                        <Check className="w-[18px] h-[18px]" style={{ color: textColor === 'white' ? bgColor : 'var(--accent)' }} />
                         <span
                           className="text-[16px] font-bold uppercase"
-                          style={{ color: textColor === 'white' ? bgColor : '#D5FB46' }}
+                          style={{ color: textColor === 'white' ? bgColor : 'var(--accent)' }}
                         >
                           READ
                         </span>

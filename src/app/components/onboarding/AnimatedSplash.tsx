@@ -50,7 +50,7 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
               BAND
             </span>
             <span
-              className="text-[32px] font-black tracking-[-0.02em] leading-none text-[#D5FB46]"
+              className="text-[32px] font-black tracking-[-0.02em] leading-none text-accent"
               style={{ fontFamily: 'var(--font-display), sans-serif' }}
             >
               WITH

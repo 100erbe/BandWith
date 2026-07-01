@@ -66,13 +66,13 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
         <div className="flex flex-col h-[70vh]">
              {/* Summary Row */}
              <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <ListMusic className="w-3 h-3" /> Songs: {snapshot.songs.length}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <Clock className="w-3 h-3" /> Duration: {totalDuration}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <Layers className="w-3 h-3" /> Sources: {snapshot.sources.length}
                  </div>
                  {snapshot.mergeReport.totalDuplicatesSkipped > 0 && (
@@ -87,12 +87,12 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                 
                 {/* Sources Info */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2">Built from Templates</h4>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Built from Templates</h4>
                     <div className="space-y-2">
                         {snapshot.sources.map((src, i) => (
                             <div key={i} className="flex items-center justify-between p-2 bg-[#F2F2F0] rounded-lg">
                                 <span className="text-xs font-bold text-black">{src.templateName}</span>
-                                <span className="text-[10px] font-mono text-black/40">v{src.templateVersion}</span>
+                                <span className="text-[10px] font-mono text-foreground/40">v{src.templateVersion}</span>
                             </div>
                         ))}
                     </div>
@@ -100,8 +100,8 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
 
                 {/* Draggable Song List */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2">Final Tracklist</h4>
-                    <p className="text-[10px] text-black/30 mb-3">Drag to reorder • Swipe to remove</p>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Final Tracklist</h4>
+                    <p className="text-[10px] text-foreground/30 mb-3">Drag to reorder • Swipe to remove</p>
                     <div className="bg-[#F2F2F0] rounded-2xl p-2 space-y-1">
                         {snapshot.songs.map((song, i) => (
                             <div
@@ -113,23 +113,23 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                                 className={cn(
                                     "flex items-center gap-2 p-2 bg-white rounded-xl shadow-sm border transition-all cursor-grab active:cursor-grabbing select-none",
                                     draggedIndex === i && "opacity-40 scale-95",
-                                    dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && "border-[#0147FF] border-2",
+                                    dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && "border-accent-rehearsal border-2",
                                     draggedIndex === null && "border-transparent hover:border-black/10"
                                 )}
                             >
-                                <GripVertical className="w-4 h-4 text-black/20 shrink-0" />
-                                <span className="text-[10px] font-mono font-bold text-black/30 w-5 text-center shrink-0">{i+1}</span>
+                                <GripVertical className="w-4 h-4 text-foreground/20 shrink-0" />
+                                <span className="text-[10px] font-mono font-bold text-foreground/30 w-5 text-center shrink-0">{i+1}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-baseline">
                                         <div className="text-sm font-bold truncate">{song.titleAtSnapshot}</div>
-                                        <div className="text-[10px] font-medium text-black/40 shrink-0 ml-2">{song.durationAtSnapshot}</div>
+                                        <div className="text-[10px] font-medium text-foreground/40 shrink-0 ml-2">{song.durationAtSnapshot}</div>
                                     </div>
-                                    <div className="text-[10px] text-black/50 uppercase truncate">{song.artistAtSnapshot}</div>
+                                    <div className="text-[10px] text-foreground/50 uppercase truncate">{song.artistAtSnapshot}</div>
                                 </div>
                                 {onUpdateSnapshot && (
                                     <button
                                         onClick={() => handleRemoveSong(i)}
-                                        className="p-1.5 text-black/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                        className="p-1.5 text-foreground/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -151,7 +151,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                             {onDeselectSetlist && (
                                 <button
                                     onClick={onDeselectSetlist}
-                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-black/60 transition-colors flex items-center gap-2"
+                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-foreground/60 transition-colors flex items-center gap-2"
                                 >
                                     <X className="w-4 h-4" /> Deselect
                                 </button>
@@ -162,7 +162,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                             {onDeselectSetlist && (
                                 <button
                                     onClick={onDeselectSetlist}
-                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-black/60 transition-colors"
+                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-foreground/60 transition-colors"
                                 >
                                     Deselect
                                 </button>

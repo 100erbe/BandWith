@@ -120,7 +120,7 @@ export const getRoleTheme = (role: UserRole) => {
   if (role === 'admin') {
     return {
       backgroundColor: '#E6E5E1', // Warm gray
-      accentColor: '#D4FB46', // Lime
+      accentColor: 'var(--accent)', // Lime
       badgeColor: 'bg-amber-500',
       badgeText: 'text-amber-700',
       roleLabel: 'Admin',
@@ -129,7 +129,7 @@ export const getRoleTheme = (role: UserRole) => {
   
   return {
     backgroundColor: '#F0F7D8', // Light lime tint (harmonizes with accent)
-    accentColor: '#D4FB46', // Same lime accent
+    accentColor: 'var(--accent)', // Same lime accent
     badgeColor: 'bg-blue-500',
     badgeText: 'text-blue-700',
     roleLabel: 'Member',

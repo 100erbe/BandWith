@@ -18,9 +18,9 @@ const sizeMap = {
 
 // Color mappings
 const colorMap = {
-  default: { band: '#FFFFFF', with: '#D4FB46', icon: '#D4FB46' },
+  default: { band: '#FFFFFF', with: 'var(--accent)', icon: 'var(--accent)' },
   white: { band: '#FFFFFF', with: '#FFFFFF', icon: '#FFFFFF' },
-  lime: { band: '#D4FB46', with: '#D4FB46', icon: '#D4FB46' },
+  lime: { band: 'var(--accent)', with: 'var(--accent)', icon: 'var(--accent)' },
   black: { band: '#000000', with: '#000000', icon: '#000000' },
 };
 
@@ -149,7 +149,7 @@ export const AppIcon: React.FC<{
     style={{
       width: size,
       height: size,
-      background: '#D4FB46',
+      background: 'var(--accent)',
       boxShadow: `0 ${size * 0.1}px ${size * 0.4}px rgba(212, 251, 70, 0.4)`,
     }}
   >

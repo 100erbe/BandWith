@@ -202,7 +202,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
         <button
           onClick={handleLookup}
           disabled={!email || isLoading}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -145,7 +146,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#E6E5E1]"
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -154,18 +155,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       {/* Header */}
       <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
         <div>
-          <span className="text-black/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
+          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
             Profile
           </span>
           <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-none">
             EDIT
           </h2>
-          <p className="text-black/50 font-bold text-sm mt-1 tracking-tight">Update your information</p>
+          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">Update your information</p>
         </div>
         
         <button 
           onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-black/50 hover:text-black transition-all hover:rotate-90"
+          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-black transition-all hover:rotate-90"
         >
           <X className="w-6 h-6" />
         </button>
@@ -202,12 +203,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute -bottom-1 -right-1 w-10 h-10 bg-[#D4FB46] rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+              className="absolute -bottom-1 -right-1 w-10 h-10 bg-accent rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
             >
               {uploadingAvatar ? (
-                <Loader2 className="w-5 h-5 text-black animate-spin" />
+                <Loader2 className="w-5 h-5 text-accent-foreground animate-spin" />
               ) : (
-                <Camera className="w-5 h-5 text-black" />
+                <Camera className="w-5 h-5 text-accent-foreground" />
               )}
             </button>
           </div>
@@ -226,7 +227,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.15 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <User className="w-4 h-4" />
               Full Name
             </label>
@@ -235,7 +236,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
             />
           </motion.div>
 
@@ -245,7 +246,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <Mail className="w-4 h-4" />
               Email
             </label>
@@ -253,9 +254,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               type="email"
               value={user?.email || ''}
               disabled
-              className="w-full bg-transparent border-b-2 border-black/5 py-3 text-xl font-bold text-black/40 cursor-not-allowed"
+              className="w-full bg-transparent border-b-2 border-black/5 py-3 text-xl font-bold text-foreground/40 cursor-not-allowed"
             />
-            <p className="text-[10px] text-black/30 mt-1">Email cannot be changed</p>
+            <p className="text-[10px] text-foreground/30 mt-1">Email cannot be changed</p>
           </motion.div>
 
           {/* Phone */}
@@ -264,7 +265,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.25 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <Phone className="w-4 h-4" />
               Phone Number
             </label>
@@ -273,7 +274,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 234 567 8900"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
             />
           </motion.div>
 
@@ -283,7 +284,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-3 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3 flex items-center gap-2">
               <Music2 className="w-4 h-4" />
               Primary Instrument
             </label>
@@ -296,7 +297,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                     "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                     instrument === inst
                       ? "bg-black text-white"
-                      : "bg-white/50 text-black/60 hover:bg-white"
+                      : "bg-white/50 text-foreground/60 hover:bg-white"
                   )}
                 >
                   {inst}
@@ -311,7 +312,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.35 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">
               Bio
             </label>
             <textarea
@@ -319,7 +320,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
               rows={4}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-black/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
             />
           </motion.div>
         </div>

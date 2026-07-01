@@ -47,15 +47,15 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             
             {/* Source Selection */}
             <div className="grid grid-cols-3 gap-3">
-               <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40")}>
+               <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <Smartphone className="w-6 h-6 mb-2" />
                   <span className="text-[10px] font-bold uppercase">Local Device</span>
                </button>
-               <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40")}>
+               <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
                   <span className="text-[10px] font-bold uppercase">Google Drive</span>
                </button>
-               <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40")}>
+               <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
                   <span className="text-[10px] font-bold uppercase">Dropbox</span>
                </button>
@@ -63,11 +63,11 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
 
             {/* Upload Area */}
             <div className="border-2 border-dashed border-black/10 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-black/[0.02]">
-                <FileText className="w-10 h-10 text-black/20 mb-3" />
-                <p className="text-sm font-bold text-black/60 mb-1">
+                <FileText className="w-10 h-10 text-foreground/20 mb-3" />
+                <p className="text-sm font-bold text-foreground/60 mb-1">
                    {file ? file.name : "Drag & Drop or Click to Upload"}
                 </p>
-                <p className="text-[10px] font-bold text-black/30 uppercase">
+                <p className="text-[10px] font-bold text-foreground/30 uppercase">
                    Supports PDF, MP3, GPX
                 </p>
                 <input 
@@ -84,28 +84,28 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             {/* Manual Details */}
             <div className="space-y-4">
                 <div className="group">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Song Title *</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
                     <input 
                        type="text" 
                        value={details.title}
                        onChange={e => setDetails({...details, title: e.target.value})}
-                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-black/20"
+                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                        placeholder="e.g. Superstition"
                     />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Artist</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Artist</label>
                         <input 
                            type="text" 
                            value={details.artist}
                            onChange={e => setDetails({...details, artist: e.target.value})}
-                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-black/20"
+                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                            placeholder="e.g. Stevie Wonder"
                         />
                     </div>
                     <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Folder</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder</label>
                         <div className="space-y-2">
                              <div className="flex flex-wrap gap-2">
                                  {categories.map(cat => (
@@ -116,7 +116,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                              "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all",
                                              details.category === cat 
                                                ? "bg-black text-white border-black" 
-                                               : "bg-transparent text-black/40 border-black/10 hover:border-black/30"
+                                               : "bg-transparent text-foreground/40 border-black/10 hover:border-black/30"
                                          )}
                                      >
                                          {cat}
@@ -128,7 +128,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                          "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed transition-all flex items-center gap-1",
                                          !categories.includes(details.category) && details.category !== '' 
                                             ? "bg-black text-white border-black" 
-                                            : "text-black/40 border-black/20 hover:border-black/40"
+                                            : "text-foreground/40 border-black/20 hover:border-black/40"
                                      )}
                                  >
                                      <Plus className="w-3 h-3" /> New
@@ -139,7 +139,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                      type="text"
                                      value={details.category}
                                      onChange={(e) => setDetails({...details, category: e.target.value})}
-                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-black/20"
+                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                                      placeholder="Type new folder name..."
                                      autoFocus
                                  />

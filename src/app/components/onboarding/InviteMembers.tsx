@@ -100,7 +100,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
         {/* Progress bar */}
         <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-[#D4FB46] rounded-full"
+            className="h-full bg-accent rounded-full"
             initial={{ width: '50%' }}
             animate={{ width: '75%' }}
             transition={{ duration: 0.5 }}
@@ -143,7 +143,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="member@email.com"
-                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50 transition-colors"
+                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -156,7 +156,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
               type="button"
               onClick={handleAddEmail}
               disabled={!isValidEmail(emailInput)}
-              className="px-4 rounded-xl bg-[#D4FB46] text-black disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-4 rounded-xl bg-accent text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -213,7 +213,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
         {/* Import from Contacts */}
         <motion.button
           type="button"
-          className="flex items-center gap-3 text-[#D4FB46] py-3"
+          className="flex items-center gap-3 text-accent py-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -247,7 +247,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           disabled={isSubmitting}
           className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             invites.length > 0
-              ? 'bg-[#D4FB46] text-black hover:bg-[#c8ef3a]'
+              ? 'bg-accent text-accent-foreground hover:bg-accent/90'
               : 'bg-transparent text-muted-foreground/90 border border-border hover:border-white/40 hover:text-foreground'
           }`}
           whileTap={{ scale: 0.98 }}
@@ -307,7 +307,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
               <h3 className="text-foreground font-bold text-[20px] mb-1">
                 Invite Details
               </h3>
-              <p className="text-[#D4FB46] text-[15px] mb-6">
+              <p className="text-accent text-[15px] mb-6">
                 {currentInvite.email}
               </p>
 
@@ -326,7 +326,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                     }))
                   }
                   placeholder="John Doe"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
@@ -348,7 +348,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                       }
                       className={`px-3 py-2 rounded-xl text-[13px] font-medium ${
                         currentInvite.role === inst.label
-                          ? 'bg-[#D4FB46] text-black'
+                          ? 'bg-accent text-accent-foreground'
                           : 'bg-background/30 text-foreground border border-border'
                       }`}
                     >
@@ -376,7 +376,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   >
                     <DotRadio
                       selected={currentInvite.permission !== 'admin'}
-                      activeColor="#D4FB46"
+                      activeColor="var(--accent)"
                       inactiveColor="rgba(255,255,255,0.15)"
                     />
                     <div className="text-left">
@@ -400,7 +400,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   >
                     <DotRadio
                       selected={currentInvite.permission === 'admin'}
-                      activeColor="#D4FB46"
+                      activeColor="var(--accent)"
                       inactiveColor="rgba(255,255,255,0.15)"
                     />
                     <div className="text-left">
@@ -416,7 +416,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
               {/* Confirm Button */}
               <button
                 onClick={handleConfirmInvite}
-                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all"
+                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all"
               >
                 Add to List
               </button>

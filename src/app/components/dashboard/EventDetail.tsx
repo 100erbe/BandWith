@@ -90,11 +90,11 @@ const getEventType = (status?: string): EventType => {
 
 const THEME = {
   rehearsal: {
-    bg: '#0147FF',
+    bg: 'var(--accent-rehearsal)',
     text: 'white',
     textClass: 'text-white',
     tagBg: 'white',
-    tagText: '#0147FF',
+    tagText: 'var(--accent-rehearsal)',
     activeDot: 'white',
     inactiveDot: 'rgba(255,255,255,0.2)',
     btnEditBg: 'bg-black',
@@ -109,11 +109,11 @@ const THEME = {
     secondBtnLabel: undefined,
   },
   gig: {
-    bg: '#D5FB46',
+    bg: 'var(--accent)',
     text: 'black',
     textClass: 'text-black',
     tagBg: 'black',
-    tagText: '#D5FB46',
+    tagText: 'var(--accent)',
     activeDot: 'black',
     inactiveDot: 'rgba(0,0,0,0.2)',
     btnEditBg: 'bg-black',
@@ -128,11 +128,11 @@ const THEME = {
     secondBtnLabel: undefined,
   },
   quote: {
-    bg: '#9A8878',
+    bg: 'var(--accent-quote)',
     text: 'white',
     textClass: 'text-white',
     tagBg: 'white',
-    tagText: '#9A8878',
+    tagText: 'var(--accent-quote)',
     activeDot: 'white',
     inactiveDot: 'rgba(255,255,255,0.2)',
     btnEditBg: 'bg-black',

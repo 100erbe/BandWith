@@ -115,7 +115,7 @@ const ProDotGrid: React.FC = () => (
       <div
         key={i}
         className="rounded-[10px]"
-        style={{ backgroundColor: i < 11 ? '#D5FB46' : 'rgba(0,0,0,0.1)' }}
+        style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(0,0,0,0.1)' }}
       />
     ))}
   </div>
@@ -130,8 +130,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
   const { signOut, user } = useAuth();
 
   const quickActions = [
-    { label: 'New Quote', lines: ['NEW', 'QUOTE'], color: '#D5FB46', onClick: () => onNavigate('Quote'), adminOnly: true },
-    { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], color: '#0147FF', onClick: () => onNavigate('InviteMember'), adminOnly: true },
+    { label: 'New Quote', lines: ['NEW', 'QUOTE'], color: 'var(--accent)', onClick: () => onNavigate('Quote'), adminOnly: true },
+    { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], color: 'var(--accent-rehearsal)', onClick: () => onNavigate('InviteMember'), adminOnly: true },
     { label: 'Finance', lines: ['MONEY', 'FLOW'], color: '#22C55E', onClick: () => onNavigate('Finance'), adminOnly: true },
     { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], color: '#F59E0B', onClick: () => onNavigate('Analytics'), adminOnly: true },
   ].filter(action => isAdmin || !action.adminOnly);
@@ -241,7 +241,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                   >
                     <div className="flex flex-col items-start">
                       <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
-                      <span className="text-[10px] font-medium text-black/40 uppercase">{item.desc}</span>
+                      <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
                   </motion.button>
@@ -252,7 +252,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             {/* ═══ UPGRADE TO PRO ═══ */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-[#D5FB46] uppercase tracking-wide bg-black rounded-[6px] px-1.5 py-0.5 w-fit">PRO</span>
+                <span className="text-xs font-bold text-accent uppercase tracking-wide bg-black rounded-[6px] px-1.5 py-0.5 w-fit">PRO</span>
                 <h3 className="text-[32px] font-bold text-black leading-none uppercase">
                   UPGRADE
                 </h3>
@@ -263,20 +263,20 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-black uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-black/50">Unlimited Quotes</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-black/50">Analytics</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-black/50">Priority Support</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Unlimited Quotes</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Analytics</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Priority Support</span>
                 </div>
               </div>
 
               <button
-                className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#D5FB46] w-full active:scale-95 transition-transform"
+                className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
               >
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-black" />
-                  <span className="text-xs font-bold text-black uppercase">UPGRADE NOW</span>
+                  <Zap className="w-4 h-4 text-accent-foreground" />
+                  <span className="text-xs font-bold text-accent-foreground uppercase">UPGRADE NOW</span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-black" />
+                <ArrowUpRight className="w-4 h-4 text-accent-foreground" />
               </button>
             </div>
 
@@ -328,11 +328,11 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                 <span className="text-[12px] font-bold text-[#A73131] uppercase">SIGN OUT</span>
               </button>
               {user?.email && (
-                <p className="text-[10px] font-normal text-black/30 text-center uppercase w-full">
+                <p className="text-[10px] font-normal text-foreground/30 text-center uppercase w-full">
                   SIGNED IN AS {user.email}
                 </p>
               )}
-              <p className="text-center text-[10px] text-black/20 uppercase">
+              <p className="text-center text-[10px] text-foreground/20 uppercase">
                 BandWith v1.0.0
               </p>
             </div>

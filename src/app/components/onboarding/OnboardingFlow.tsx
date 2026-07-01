@@ -125,7 +125,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         }}
       >
         <motion.div
-          className="w-12 h-12 border-3 border-[#D5FB46]/20 border-t-[#D5FB46] rounded-full"
+          className="w-12 h-12 border-3 border-accent/20 border-t-accent rounded-full"
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         />

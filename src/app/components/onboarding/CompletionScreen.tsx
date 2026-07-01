@@ -49,8 +49,8 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', damping: 15, stiffness: 200 }}
         >
-          <div className="w-16 h-16 rounded-full border-2 border-[#D4FB46] flex items-center justify-center">
-            <Check className="w-8 h-8 text-[#D4FB46]" strokeWidth={3} />
+          <div className="w-16 h-16 rounded-full border-2 border-accent flex items-center justify-center">
+            <Check className="w-8 h-8 text-accent" strokeWidth={3} />
           </div>
         </motion.div>
 
@@ -62,7 +62,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         >
           <h1 className="text-[48px] font-black text-foreground leading-[1.05] tracking-tight mb-4">
             Ready<br />
-            <span className="text-[#D4FB46]">to rock.</span>
+            <span className="text-accent">to rock.</span>
           </h1>
         </motion.div>
 
@@ -109,12 +109,12 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         {/* Profile Badge */}
         {profileData && (
           <motion.div
-            className="mt-12 border-l-2 border-[#D4FB46] pl-4"
+            className="mt-12 border-l-2 border-accent pl-4"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: showContent ? 1 : 0, x: showContent ? 0 : -20 }}
             transition={{ duration: 0.5, delay: 0.8 }}
           >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FB46]">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
               Signed in as
             </span>
             <p className="text-foreground font-bold text-lg mt-1">
@@ -136,7 +136,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
       >
         <motion.button
           onClick={onComplete}
-          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
           whileTap={{ scale: 0.98 }}
         >
           Go to Dashboard

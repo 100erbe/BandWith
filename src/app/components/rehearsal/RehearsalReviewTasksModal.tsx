@@ -22,13 +22,13 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
         <div className="flex flex-col h-[60vh]">
              {/* Swiss Summary Row */}
              <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <CheckSquare className="w-3 h-3" /> Total: {tasks.length}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <Users className="w-3 h-3" /> Band: {bandTasks.length}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-black/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <User className="w-3 h-3" /> Assigned: {assignedTasks.length}
                  </div>
                  {completedCount > 0 && (
@@ -43,11 +43,11 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                 
                 {/* Band Tasks */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2 flex items-center gap-1">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 flex items-center gap-1">
                         <Users className="w-3 h-3" /> Band Tasks ({bandTasks.length})
                     </h4>
                     {bandTasks.length === 0 ? (
-                        <div className="text-xs text-black/30 italic pl-1">No band tasks</div>
+                        <div className="text-xs text-foreground/30 italic pl-1">No band tasks</div>
                     ) : (
                         <div className="space-y-2">
                             {bandTasks.map(task => (
@@ -57,7 +57,7 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                                     </div>
                                     <div>
                                         <div className="text-sm font-bold leading-tight">{task.text}</div>
-                                        <div className="mt-1 text-[10px] font-bold uppercase text-black/40 bg-white px-1.5 py-0.5 rounded inline-block">
+                                        <div className="mt-1 text-[10px] font-bold uppercase text-foreground/40 bg-white px-1.5 py-0.5 rounded inline-block">
                                             {task.type}
                                         </div>
                                     </div>
@@ -69,11 +69,11 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
 
                 {/* Assigned Tasks */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-2 flex items-center gap-1">
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 flex items-center gap-1">
                         <User className="w-3 h-3" /> Assigned Tasks ({assignedTasks.length})
                     </h4>
                     {assignedTasks.length === 0 ? (
-                        <div className="text-xs text-black/30 italic pl-1">No assigned tasks</div>
+                        <div className="text-xs text-foreground/30 italic pl-1">No assigned tasks</div>
                     ) : (
                         <div className="space-y-2">
                             {assignedTasks.map(task => {
@@ -85,7 +85,7 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                                          </div>
                                          <div className="flex-1 min-w-0">
                                             <div className="flex justify-between">
-                                                <div className="text-xs font-bold text-black/50 uppercase mb-0.5">{assignee?.name}</div>
+                                                <div className="text-xs font-bold text-foreground/50 uppercase mb-0.5">{assignee?.name}</div>
                                                 {task.completed && <CheckCircle2 className="w-3 h-3 text-green-600" />}
                                             </div>
                                             <div className="text-sm font-bold leading-tight">{task.text}</div>

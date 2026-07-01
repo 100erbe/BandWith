@@ -17,7 +17,7 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
   onClose,
   title,
   children,
-  bgColor = '#0147FF',
+  bgColor = 'var(--accent-rehearsal)',
   textColor = 'white',
 }) => {
   return (

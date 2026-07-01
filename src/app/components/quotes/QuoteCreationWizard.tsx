@@ -304,7 +304,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const TagPill: React.FC<{ children: React.ReactNode; active?: boolean }> = ({ children, active }) => (
     <div className={cn(
       'px-2.5 py-1 rounded-[6px] text-[12px] font-bold uppercase',
-      active ? 'bg-black text-white' : 'bg-black/30 text-[#9a8878]'
+      active ? 'bg-black text-white' : 'bg-black/30 text-accent-quote'
     )}>
       {children}
     </div>
@@ -451,7 +451,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <TagPill>{type.value.toUpperCase()}</TagPill>
               <span className={cn(
                 'text-[32px] font-bold uppercase leading-tight transition-colors',
-                isSelected ? 'text-white' : 'text-black/30'
+                isSelected ? 'text-white' : 'text-foreground/30'
               )}>
                 {type.label}
               </span>
@@ -507,7 +507,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               >
                 <div className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0',
-                  isSelected ? 'bg-[#D5FB46] text-black border-[#D5FB46]' : 'bg-transparent text-white/40 border-white/20'
+                  isSelected ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-white/40 border-white/20'
                 )}>
                   {member.name.split(' ').map(n => n[0]).join('')}
                 </div>
@@ -575,13 +575,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <TagPill active={isSelected}>${price}</TagPill>
                 <span className={cn(
                   'text-[24px] font-bold uppercase leading-tight',
-                  isSelected ? 'text-white' : 'text-black/30'
+                  isSelected ? 'text-white' : 'text-foreground/30'
                 )}>
                   {moment.name}
                 </span>
                 <span className={cn(
                   'text-[12px] font-bold uppercase',
-                  isSelected ? 'text-white/60' : 'text-black/20'
+                  isSelected ? 'text-white/60' : 'text-foreground/20'
                 )}>
                   {moment.description}
                 </span>
@@ -1004,7 +1004,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] bg-[#9a8878] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[100] bg-accent-quote flex flex-col overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -1021,7 +1021,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <h2 className="text-[32px] font-bold text-white uppercase leading-none">
               {STEPS[step].title}
             </h2>
-            <span className="text-[16px] font-bold text-black/30 uppercase">
+            <span className="text-[16px] font-bold text-foreground/30 uppercase">
               {STEPS[step].subtitle}
             </span>
           </div>
@@ -1051,7 +1051,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Footer */}
       <div
-        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-[#9a8878] rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.1)]"
+        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-accent-quote rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.1)]"
       >
         {step === STEPS.length - 1 ? (
           <div className="flex flex-col gap-3">

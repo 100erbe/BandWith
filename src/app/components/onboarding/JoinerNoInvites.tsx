@@ -87,8 +87,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
           {/* Suggestion cards */}
           <div className="space-y-3">
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-[#D4FB46]/10 flex items-center justify-center flex-shrink-0">
-                <Mail className="w-5 h-5 text-[#D4FB46]" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
                 <p className="text-foreground font-bold text-[15px] mb-0.5">Check spam folder</p>
@@ -99,8 +99,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
             </div>
 
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-[#D4FB46]/10 flex items-center justify-center flex-shrink-0">
-                <RefreshCw className="w-5 h-5 text-[#D4FB46]" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <RefreshCw className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
                 <p className="text-foreground font-bold text-[15px] mb-0.5">Try another email</p>
@@ -111,8 +111,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
             </div>
 
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-[#D4FB46]/10 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-5 h-5 text-[#D4FB46]" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
                 <p className="text-foreground font-bold text-[15px] mb-0.5">Contact your admin</p>
@@ -145,7 +145,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
           onClick={onCreateBand}
           className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
         >
-          Or <span className="text-[#D4FB46]">create your own band</span> →
+          Or <span className="text-accent">create your own band</span> →
         </button>
       </motion.div>
     </div>

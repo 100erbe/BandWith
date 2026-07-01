@@ -265,7 +265,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               className={cn(
                 "px-[10px] py-[6px] rounded-[6px] text-[12px] font-bold uppercase transition-all",
                 chatType === type
-                  ? "bg-[#D5FB46] text-black"
+                  ? "bg-accent text-accent-foreground"
                   : "bg-white/10 text-white/40"
               )}
             >
@@ -324,7 +324,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                     return (
                       <div key={band.id}>
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-bold tracking-[0.15em] text-[#D5FB46] uppercase">
+                          <span className="text-[10px] font-bold tracking-[0.15em] text-accent uppercase">
                             {band.name}
                           </span>
                         </div>
@@ -345,7 +345,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 <div className={cn(
                                   "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
                                   isSelected 
-                                    ? "bg-[#D5FB46] text-black" 
+                                    ? "bg-accent text-accent-foreground" 
                                     : "bg-white/10 text-white/60"
                                 )}>
                                   {getInitials(member.full_name, member.email)}
@@ -366,7 +366,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 </div>
                                 <DotRadio
                                   selected={isSelected}
-                                  activeColor="#D5FB46"
+                                  activeColor="var(--accent)"
                                   inactiveColor="rgba(255,255,255,0.20)"
                                 />
                               </motion.button>
@@ -405,7 +405,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm",
                           isSelected 
-                            ? "bg-[#D5FB46] text-black"
+                            ? "bg-accent text-accent-foreground"
                             : "bg-white/10 text-white/60"
                         )}>
                           {getInitials(band.name)}
@@ -426,7 +426,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="#D5FB46"
+                          activeColor="var(--accent)"
                           inactiveColor="rgba(255,255,255,0.20)"
                         />
                       </motion.button>
@@ -460,7 +460,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
                           isSelected 
-                            ? "bg-[#D5FB46]" 
+                            ? "bg-accent" 
                             : "bg-white/10"
                         )}>
                           <span className={cn(
@@ -485,14 +485,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                               {formatEventDate(event.event_date)}
                             </span>
                             <span className="text-xs text-white/20">•</span>
-                            <span className="text-xs font-bold text-[#D5FB46] uppercase">
+                            <span className="text-xs font-bold text-accent uppercase">
                               {event.bandName}
                             </span>
                           </div>
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="#D5FB46"
+                          activeColor="var(--accent)"
                           inactiveColor="rgba(255,255,255,0.20)"
                         />
                       </motion.button>
@@ -518,7 +518,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
             className={cn(
               "w-full h-14 rounded-md font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
               canCreate
-                ? "bg-[#D5FB46] text-black active:scale-[0.98]"
+                ? "bg-accent text-accent-foreground active:scale-[0.98]"
                 : "bg-white/5 text-white/30 cursor-not-allowed"
             )}
           >

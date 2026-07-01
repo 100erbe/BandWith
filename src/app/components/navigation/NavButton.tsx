@@ -28,7 +28,7 @@ export const NavButton: React.FC<NavButtonProps> = ({
       {isActive && (
         <motion.div 
           layoutId="nav-dot"
-          className="w-1 h-1 bg-[#D4FB46] rounded-full"
+          className="w-1 h-1 bg-accent rounded-full"
         />
       )}
     </button>

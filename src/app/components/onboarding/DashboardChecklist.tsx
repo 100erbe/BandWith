@@ -72,8 +72,8 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#D4FB46]/20 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-[#D4FB46]" />
+          <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-accent" />
           </div>
           <div>
             <h3 className="text-foreground font-bold text-[16px]">
@@ -87,7 +87,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       {/* Progress Bar */}
       <div className="h-2 bg-card/80 rounded-full overflow-hidden mb-5">
         <motion.div
-          className="h-full bg-[#D4FB46] rounded-full"
+          className="h-full bg-accent rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progressPercent}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -106,7 +106,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
           >
             <DotCheckbox
               checked={item.completed}
-              activeColor="#D4FB46"
+              activeColor="var(--accent)"
               inactiveColor="rgba(255,255,255,0.15)"
             />
             <span
@@ -126,7 +126,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       <div className="flex gap-3">
         <button
           onClick={onContinue}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#D4FB46] text-black font-bold text-[14px]"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-[14px]"
         >
           Continue Setup
           <ArrowRight className="w-4 h-4" />

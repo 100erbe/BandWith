@@ -98,8 +98,8 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               transition={{ type: 'spring', damping: 15, stiffness: 200 }}
               className="mb-8"
             >
-              <div className="w-24 h-24 rounded-[2rem] bg-[#D4FB46] flex items-center justify-center">
-                <Sparkles className="w-12 h-12 text-black" />
+              <div className="w-24 h-24 rounded-[2rem] bg-accent flex items-center justify-center">
+                <Sparkles className="w-12 h-12 text-accent-foreground" />
               </div>
             </motion.div>
 
@@ -112,7 +112,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               <h2 className="text-3xl font-black text-foreground mb-2">
                 🎉 "{bandName}"
               </h2>
-              <p className="text-[#D4FB46] text-xl font-bold">is born!</p>
+              <p className="text-accent text-xl font-bold">is born!</p>
             </motion.div>
 
             {/* Confetti particles */}
@@ -121,7 +121,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 key={i}
                 className="absolute w-3 h-3 rounded-full"
                 style={{
-                  background: ['#D4FB46', '#0047FF', '#FF4F28', '#998878'][i % 4],
+                  background: ['var(--accent)', '#0047FF', '#FF4F28', '#998878'][i % 4],
                   left: `${Math.random() * 100}%`,
                   top: '50%',
                 }}
@@ -161,7 +161,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         {/* Progress bar */}
         <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-[#D4FB46] rounded-full"
+            className="h-full bg-accent rounded-full"
             initial={{ width: 0 }}
             animate={{ width: '25%' }}
             transition={{ duration: 0.5 }}
@@ -201,7 +201,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             value={bandName}
             onChange={(e) => setBandName(e.target.value)}
             placeholder="The Groovemasters"
-            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[28px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-[#D4FB46] transition-colors"
+            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[28px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
             maxLength={50}
             autoFocus
           />
@@ -228,7 +228,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-28 h-28 rounded-[1.5rem] bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-[#D4FB46]/50 transition-colors overflow-hidden group"
+              className="w-28 h-28 rounded-[1.5rem] bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-accent/50 transition-colors overflow-hidden group"
             >
               {avatarPreview || avatarUrl ? (
                 <img
@@ -237,15 +237,15 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : bandName.length >= 2 ? (
-                <div className="w-full h-full bg-gradient-to-br from-[#D4FB46] to-[#98BC21] flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-accent to-[#98BC21] flex items-center justify-center">
                   <span className="text-3xl font-black text-black">
                     {getInitials(bandName)}
                   </span>
                 </div>
               ) : (
                 <>
-                  <Camera className="w-8 h-8 text-muted-foreground/60 mb-2 group-hover:text-[#D4FB46] transition-colors" />
-                  <span className="text-muted-foreground/60 text-[11px] font-medium group-hover:text-[#D4FB46]">
+                  <Camera className="w-8 h-8 text-muted-foreground/60 mb-2 group-hover:text-accent transition-colors" />
+                  <span className="text-muted-foreground/60 text-[11px] font-medium group-hover:text-accent">
                     Add photo
                   </span>
                 </>
@@ -282,7 +282,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               Preview
             </p>
             <div className="bg-card rounded-[1.5rem] p-4 flex items-center gap-4 border border-border">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4FB46] to-[#98BC21] flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-[#98BC21] flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarPreview || avatarUrl ? (
                   <img
                     src={avatarPreview || avatarUrl}
@@ -309,7 +309,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         <motion.button
           onClick={handleSubmit}
           disabled={!isValid || isSubmitting}
-          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
           whileTap={{ scale: 0.98 }}
         >
           {isSubmitting ? (

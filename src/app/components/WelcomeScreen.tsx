@@ -54,7 +54,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             transition={{ duration: 1.5 }}
           >
             {/* Subtle gradient orbs */}
-            <div className="absolute top-1/4 -left-20 w-80 h-80 bg-[#D4FB46] rounded-full blur-[120px] opacity-10" />
+            <div className="absolute top-1/4 -left-20 w-80 h-80 bg-accent rounded-full blur-[120px] opacity-10" />
             <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-[#0047FF] rounded-full blur-[150px] opacity-15" />
           </motion.div>
 
@@ -82,7 +82,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   ease: "easeInOut"
                 }}
                 style={{
-                  background: 'radial-gradient(circle, rgba(212,251,70,0.3) 0%, transparent 70%)'
+                  background: 'radial-gradient(circle, rgba(106,13,173,0.3) 0%, transparent 70%)'
                 }}
               />
               
@@ -90,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div 
                 className="relative w-20 h-20 rounded-[1.5rem] flex items-center justify-center overflow-hidden"
                 style={{
-                  background: 'linear-gradient(145deg, #D4FB46 0%, #A8D435 100%)',
+                  background: 'linear-gradient(145deg, var(--accent) 0%, #6A0DAD 100%)',
                   boxShadow: '0 25px 50px -12px rgba(212, 251, 70, 0.35), 0 10px 25px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3)'
                 }}
               >
@@ -171,7 +171,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 key={i}
                 className="w-1 h-1 rounded-full bg-white/20"
                 animate={{
-                  backgroundColor: ['rgba(255,255,255,0.2)', 'rgba(212,251,70,0.8)', 'rgba(255,255,255,0.2)'],
+                  backgroundColor: ['rgba(255,255,255,0.2)', 'rgba(106,13,173,0.8)', 'rgba(255,255,255,0.2)'],
                   scale: [1, 1.3, 1]
                 }}
                 transition={{

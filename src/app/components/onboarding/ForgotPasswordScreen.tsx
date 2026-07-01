@@ -82,7 +82,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
         >
-          <p className="text-[#D5FB46] text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
+          <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
             Account Recovery
           </p>
           <h1 className="text-[40px] font-black text-foreground tracking-tight uppercase leading-[0.95]">
@@ -111,9 +111,9 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                     damping: 15,
                     delay: 0.2,
                   }}
-                  className="w-20 h-20 rounded-full bg-[#D5FB46]/15 flex items-center justify-center mb-6"
+                  className="w-20 h-20 rounded-full bg-accent/15 flex items-center justify-center mb-6"
                 >
-                  <CheckCircle className="w-10 h-10 text-[#D5FB46]" strokeWidth={2} />
+                  <CheckCircle className="w-10 h-10 text-accent" strokeWidth={2} />
                 </motion.div>
 
                 <motion.h2
@@ -143,7 +143,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
                 onClick={onBack}
-                className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-8"
+                className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-8"
               >
                 Back to Sign In
                 <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
@@ -194,7 +194,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email address"
-                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
+                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
                     required
                     autoFocus
                   />
@@ -205,7 +205,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 <motion.button
                   type="submit"
                   disabled={loading || !email}
-                  className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mb-8"
+                  className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mb-8"
                   whileTap={{ scale: 0.98 }}
                 >
                   {loading ? (

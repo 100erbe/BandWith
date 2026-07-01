@@ -74,15 +74,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex flex-col relative group">
           {activeTab === 'Chat' ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
-              <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-[#1A1A1A] uppercase">Messages</h1>
+              <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Messages</h1>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">All caught up</span>
-                <Sparkles className="w-3 h-3 text-[#D4FB46] fill-[#D4FB46]" />
+                <Sparkles className="w-3 h-3 text-accent fill-accent" />
               </div>
             </motion.div>
           ) : activeTab === 'Events' ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
-              <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-[#1A1A1A] uppercase">Events</h1>
+              <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Events</h1>
               <span className="text-xs font-bold text-stone-400 uppercase tracking-wider mt-2">
                 {filteredEventsCount} of {totalEventsCount} events
               </span>
@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full", 
-                  selectedBand.role === 'ADMIN' ? "bg-[#D5FB46]" : "bg-[#FF0066]"
+                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[#FF0066]"
                 )} />
                 <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-black transition-colors">
                   {selectedBand.role}
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -15, opacity: 0 }}
                     transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                    className="text-5xl font-black tracking-tighter leading-[0.9] text-[#1A1A1A] uppercase max-w-[280px] hover:text-black/70"
+                    className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px] hover:text-foreground/70"
                   >
                     {selectedBand.name}
                   </motion.h1>
@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenIdentity}
             className="relative shrink-0 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-[#E6E5E1] flex items-center justify-center text-[#1A1A1A] font-bold text-lg border-2 border-white shadow-lg relative z-20">
+            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center text-foreground font-bold text-lg border-2 border-white shadow-lg relative z-20">
               {initials}
             </div>
             {/* Notification Badge */}
@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[#D4FB46] text-black text-[10px] font-black flex items-center justify-center border-2 border-[#E6E5E1] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[#E6E5E1] z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>

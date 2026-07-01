@@ -163,7 +163,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
         {/* Progress bar */}
         <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-[#D4FB46] rounded-full"
+            className="h-full bg-accent rounded-full"
             initial={{ width: '75%' }}
             animate={{ width: '100%' }}
             transition={{ duration: 0.5 }}
@@ -202,7 +202,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search song or artist..."
-              className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50 transition-colors"
+              className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
             />
           </div>
         </motion.div>
@@ -227,14 +227,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   onClick={() => toggleSuggestion(song)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
                     isAdded
-                      ? 'bg-[#D4FB46]/10 border border-[#D4FB46]/30'
+                      ? 'bg-accent/10 border border-accent/30'
                       : 'bg-card border border-border hover:border-border'
                   }`}
                   whileTap={{ scale: 0.98 }}
                 >
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isAdded ? 'bg-[#D4FB46] text-black' : 'bg-card/80 text-foreground'
+                      isAdded ? 'bg-accent text-accent-foreground' : 'bg-card/80 text-foreground'
                     }`}
                   >
                     {isAdded ? (
@@ -246,7 +246,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   <div className="flex-1 text-left">
                     <p
                       className={`font-medium text-[14px] ${
-                        isAdded ? 'text-[#D4FB46]' : 'text-foreground'
+                        isAdded ? 'text-accent' : 'text-foreground'
                       }`}
                     >
                       {song.title}
@@ -277,13 +277,13 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               {songs.map((song) => (
                 <div
                   key={song.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-[#D4FB46]/10 border border-[#D4FB46]/20"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-accent/10 border border-accent/20"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-[#D4FB46] text-black flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center">
                     <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.15)" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[14px] text-[#D4FB46] truncate">
+                    <p className="font-medium text-[14px] text-accent truncate">
                       {song.title}
                     </p>
                     <p className="text-muted-foreground text-[12px] truncate">
@@ -336,7 +336,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
           disabled={isSubmitting}
           className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             songs.length > 0
-              ? 'bg-[#D4FB46] text-black hover:bg-[#c8ef3a]'
+              ? 'bg-accent text-accent-foreground hover:bg-accent/90'
               : 'bg-transparent text-muted-foreground/90 border border-border hover:border-white/40 hover:text-foreground'
           }`}
           whileTap={{ scale: 0.98 }}
@@ -387,7 +387,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               </button>
 
               <h3 className="text-foreground font-bold text-[20px] mb-6 flex items-center gap-3">
-                <Music className="w-6 h-6 text-[#D4FB46]" />
+                <Music className="w-6 h-6 text-accent" />
                 Add Custom Song
               </h3>
 
@@ -403,7 +403,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     setCustomSong((prev) => ({ ...prev, title: e.target.value }))
                   }
                   placeholder="Enter song title"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
@@ -419,7 +419,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     setCustomSong((prev) => ({ ...prev, artist: e.target.value }))
                   }
                   placeholder="Enter artist name"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
@@ -434,7 +434,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     <input
                       type="text"
                       placeholder="3:30"
-                      className="w-full bg-background/30 border border-border rounded-xl pl-10 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                      className="w-full bg-background/30 border border-border rounded-xl pl-10 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                     />
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                       }))
                     }
                     placeholder="120"
-                    className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                    className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                   />
                 </div>
               </div>
@@ -467,7 +467,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   onChange={(e) =>
                     setCustomSong((prev) => ({ ...prev, key: e.target.value }))
                   }
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] outline-none focus:border-[#D4FB46]/50 appearance-none"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] outline-none focus:border-accent/50 appearance-none"
                 >
                   <option value="">Select key</option>
                   <option value="C">C Major</option>
@@ -491,7 +491,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               <button
                 onClick={handleAddCustomSong}
                 disabled={!customSong.title?.trim()}
-                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all disabled:opacity-40"
+                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all disabled:opacity-40"
               >
                 Add Song
               </button>
@@ -529,7 +529,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               </button>
 
               <h3 className="text-foreground font-bold text-[20px] mb-2 flex items-center gap-3">
-                <Upload className="w-6 h-6 text-[#D4FB46]" />
+                <Upload className="w-6 h-6 text-accent" />
                 Import Songs
               </h3>
               <p className="text-muted-foreground text-[14px] mb-6">

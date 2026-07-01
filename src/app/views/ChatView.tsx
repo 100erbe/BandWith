@@ -120,7 +120,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onClick={() => onStartChat?.()}
           className="bg-black rounded-full p-[5.7px]"
         >
-          <Plus className="w-[28px] h-[28px] text-[#D5FB46]" />
+          <Plus className="w-[28px] h-[28px] text-accent" />
         </button>
       </div>
 
@@ -136,12 +136,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 "px-[8px] py-[6px] rounded-[6px] text-[12px] whitespace-nowrap transition-all shrink-0 flex items-center gap-[6px]",
                 chatFilter === key
                   ? "bg-white text-black font-bold"
-                  : "bg-black/20 text-black/40 font-medium"
+                  : "bg-black/20 text-foreground/40 font-medium"
               )}
             >
               {label}
               {count > 0 && (
-                <span className="bg-[#D5FB46] text-black text-[10px] font-bold px-[5px] py-[1px] rounded-full min-w-[16px] text-center">
+                <span className="bg-accent text-accent-foreground text-[10px] font-bold px-[5px] py-[1px] rounded-full min-w-[16px] text-center">
                   {count > 99 ? '99+' : count}
                 </span>
               )}
@@ -154,9 +154,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <div className="relative -mt-[20px]">
         <div className="bg-black/[0.06] rounded-[10px] flex items-center px-[12px] gap-[8px]">
           {isSearching ? (
-            <Loader2 className="w-[16px] h-[16px] text-black/30 animate-spin shrink-0" />
+            <Loader2 className="w-[16px] h-[16px] text-foreground/30 animate-spin shrink-0" />
           ) : (
-            <Search className="w-[16px] h-[16px] text-black/30 shrink-0" />
+            <Search className="w-[16px] h-[16px] text-foreground/30 shrink-0" />
           )}
           <input 
             type="text" 
@@ -164,7 +164,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             value={chatSearch}
             onChange={(e) => setChatSearch(e.target.value)}
             onFocus={() => chatSearch.length >= 2 && setShowSearchResults(true)}
-            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-black placeholder:text-black/30 uppercase focus:outline-none" 
+            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-black placeholder:text-foreground/30 uppercase focus:outline-none" 
           />
           {chatSearch && (
             <button
@@ -174,7 +174,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               }}
               className="p-[4px] hover:bg-black/5 rounded-full shrink-0"
             >
-              <X className="w-[14px] h-[14px] text-black/30" />
+              <X className="w-[14px] h-[14px] text-foreground/30" />
             </button>
           )}
         </div>
@@ -194,7 +194,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 
                 return (
                   <div key={type}>
-                    <div className="px-[12px] py-[8px] bg-black/[0.03] text-[10px] font-bold uppercase tracking-widest text-black/30 sticky top-0">
+                    <div className="px-[12px] py-[8px] bg-black/[0.03] text-[10px] font-bold uppercase tracking-widest text-foreground/30 sticky top-0">
                       {type === 'chat' ? 'CHATS' : type === 'participant' ? 'PEOPLE' : 'MESSAGES'}
                     </div>
                     {typeResults.map((result, i) => (
@@ -205,17 +205,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       >
                         <div className={cn(
                           "w-[36px] h-[36px] rounded-full flex items-center justify-center shrink-0",
-                          result.type === 'message' ? "bg-[#0147FF]/10" :
-                          result.chat_type === 'band' ? "bg-[#D5FB46]" :
+                          result.type === 'message' ? "bg-accent-rehearsal/10" :
+                          result.chat_type === 'band' ? "bg-accent" :
                           result.chat_type === 'event' ? "bg-black/10" :
                           "bg-black"
                         )}>
                           {result.type === 'message' ? (
-                            <MessageSquare className="w-[14px] h-[14px] text-[#0147FF]" />
+                            <MessageSquare className="w-[14px] h-[14px] text-accent-rehearsal" />
                           ) : result.chat_type === 'band' ? (
                             <Music2 className="w-[14px] h-[14px] text-black" />
                           ) : result.chat_type === 'event' ? (
-                            <CalendarIcon className="w-[14px] h-[14px] text-black/60" />
+                            <CalendarIcon className="w-[14px] h-[14px] text-foreground/60" />
                           ) : (
                             <User className="w-[14px] h-[14px] text-white" />
                           )}
@@ -227,18 +227,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
                               {result.type === 'participant' ? result.participant_name : result.chat_name}
                             </span>
                             {result.message_date && (
-                              <span className="text-[10px] text-black/30 font-bold shrink-0 ml-[8px] uppercase">
+                              <span className="text-[10px] text-foreground/30 font-bold shrink-0 ml-[8px] uppercase">
                                 {formatResultDate(result.message_date)}
                               </span>
                             )}
                           </div>
                           {result.type === 'message' && result.message_content && (
-                            <p className="text-[11px] text-black/50 truncate mt-[2px] font-medium">
+                            <p className="text-[11px] text-foreground/50 truncate mt-[2px] font-medium">
                               <span className="font-bold">{result.message_sender}:</span> {result.message_content}
                             </p>
                           )}
                           {result.type === 'participant' && (
-                            <p className="text-[11px] text-black/50 truncate mt-[2px] font-medium">
+                            <p className="text-[11px] text-foreground/50 truncate mt-[2px] font-medium">
                               in {result.chat_name}
                             </p>
                           )}
@@ -330,7 +330,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     </h3>
                   </div>
                   {/* Message preview */}
-                  <p className="text-[12px] font-medium text-black/50 uppercase leading-snug line-clamp-2">
+                  <p className="text-[12px] font-medium text-foreground/50 uppercase leading-snug line-clamp-2">
                     {chat.lastMessage || 'No messages yet'}
                   </p>
                 </div>
@@ -349,7 +349,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     )}
                     {/* Open chat arrow */}
                     <div className="bg-black rounded-full p-[6px]">
-                      <ArrowUpRight className="w-[28px] h-[28px] text-[#D5FB46]" />
+                      <ArrowUpRight className="w-[28px] h-[28px] text-accent" />
                     </div>
                   </div>
                   {/* Timestamp */}
@@ -381,7 +381,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           key={idx}
                           className="rounded-[10px]"
                           style={{
-                            backgroundColor: idx >= limeStart ? '#D5FB46' : 'rgba(0,0,0,0.1)',
+                            backgroundColor: idx >= limeStart ? 'var(--accent)' : 'rgba(0,0,0,0.1)',
                           }}
                         />
                       );

@@ -146,7 +146,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                     <Euro className="w-4 h-4 text-teal-600" />
                   </div>
                 </div>
-                <span className="text-2xl font-black text-[#1A1A1A] block">€{earningsData.totalEarned}</span>
+                <span className="text-2xl font-black text-foreground block">€{earningsData.totalEarned}</span>
                 <span className="text-[10px] font-bold uppercase text-stone-400">Total Earned</span>
               </motion.div>
               
@@ -161,7 +161,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                     <Music className="w-4 h-4 text-blue-600" />
                   </div>
                 </div>
-                <span className="text-2xl font-black text-[#1A1A1A] block">{earningsData.totalGigs}</span>
+                <span className="text-2xl font-black text-foreground block">{earningsData.totalGigs}</span>
                 <span className="text-[10px] font-bold uppercase text-stone-400">Total Gigs</span>
               </motion.div>
               
@@ -176,7 +176,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                     <BarChart3 className="w-4 h-4 text-amber-600" />
                   </div>
                 </div>
-                <span className="text-2xl font-black text-[#1A1A1A] block">€{earningsData.avgPerGig}</span>
+                <span className="text-2xl font-black text-foreground block">€{earningsData.avgPerGig}</span>
                 <span className="text-[10px] font-bold uppercase text-stone-400">Avg / Gig</span>
               </motion.div>
             </div>
@@ -189,7 +189,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               className="bg-white rounded-3xl p-5 shadow-sm"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black uppercase tracking-tight text-[#1A1A1A]">Earnings Overview</h3>
+                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Earnings Overview</h3>
                 <div className="flex gap-1 p-1 bg-stone-100 rounded-full">
                   {(['month', 'quarter', 'year'] as const).map(period => (
                     <button
@@ -246,7 +246,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               className="bg-white rounded-3xl p-5 shadow-sm"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-black uppercase tracking-tight text-[#1A1A1A]">Upcoming Payments</h3>
+                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Upcoming Payments</h3>
                 <div className="px-2.5 py-1 bg-teal-100 rounded-full">
                   <span className="text-[10px] font-bold text-teal-700">{upcomingPayments.length} pending</span>
                 </div>
@@ -274,11 +274,11 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                           )}
                         </div>
                         <div>
-                          <span className="font-bold text-sm text-[#1A1A1A] block">{payment.title}</span>
+                          <span className="font-bold text-sm text-foreground block">{payment.title}</span>
                           <span className="text-[10px] text-stone-400">{payment.date}</span>
                         </div>
                       </div>
-                      <span className="font-black text-lg text-[#1A1A1A]">€{payment.amount}</span>
+                      <span className="font-black text-lg text-foreground">€{payment.amount}</span>
                     </motion.div>
                   ))}
                 </div>

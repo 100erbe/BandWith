@@ -32,18 +32,18 @@ interface EventsViewProps {
 const FILTERS = ['All', 'GIGS', 'REHEARSAL', 'QUOTE', 'DRAFT'] as const;
 
 const TAG_COLORS: Record<string, string> = {
-  gig: 'bg-[#D5FB46] text-black',
-  outdoor: 'bg-[#D5FB46] text-black',
-  confirmed: 'bg-[#D5FB46] text-black',
-  rehearsal: 'bg-[#0147FF] text-white',
-  series: 'bg-[#0147FF] text-white',
-  quote: 'bg-[#9A8878] text-white',
-  draft: 'bg-black/20 text-black/60',
-  pending: 'bg-[#9A8878] text-white',
+  gig: 'bg-accent text-accent-foreground',
+  outdoor: 'bg-accent text-accent-foreground',
+  confirmed: 'bg-accent text-accent-foreground',
+  rehearsal: 'bg-accent-rehearsal text-white',
+  series: 'bg-accent-rehearsal text-white',
+  quote: 'bg-accent-quote text-white',
+  draft: 'bg-black/20 text-foreground/60',
+  pending: 'bg-accent-quote text-white',
 };
 
 const DotGrid: React.FC<{ filled: number; total: number; cols?: number; rows?: number; activeColor?: string; height?: number; fillFromEnd?: boolean }> = ({
-  filled, total, cols = 6, rows = 2, activeColor = '#D5FB46', height = 32, fillFromEnd = false
+  filled, total, cols = 6, rows = 2, activeColor = 'var(--accent)', height = 32, fillFromEnd = false
 }) => {
   const fullCount = Math.floor(Math.min(filled, total));
   const hasHalf = filled % 1 !== 0 && fullCount < total;
@@ -238,26 +238,26 @@ const getTagStyle = (tag: string, eventStatus?: string): { bg: string; text: str
     return { bg: 'rgba(0,0,0,0.15)', text: '#000000' };
   }
   const s = eventStatus?.toUpperCase();
-  if (s === 'REHEARSAL') return { bg: '#0147FF', text: '#FFFFFF' };
-  if (s === 'QUOTED' || s === 'QUOTE') return { bg: '#9A8878', text: '#FFFFFF' };
+  if (s === 'REHEARSAL') return { bg: 'var(--accent-rehearsal)', text: 'var(--accent-rehearsal-fg)' };
+  if (s === 'QUOTED' || s === 'QUOTE') return { bg: 'var(--accent-quote)', text: 'var(--accent-quote-fg)' };
   if (s === 'DRAFT' || s === 'PENDING') return { bg: 'rgba(0,0,0,0.5)', text: '#FFFFFF' };
-  return { bg: '#D5FB46', text: '#000000' };
+  return { bg: 'var(--accent)', text: 'var(--accent-fg)' };
 };
 
 const getDotColor = (eventStatus?: string): string => {
   const s = eventStatus?.toUpperCase();
-  if (s === 'REHEARSAL') return '#0147FF';
-  if (s === 'QUOTED' || s === 'QUOTE') return '#9A8878';
-  return '#D5FB46';
+  if (s === 'REHEARSAL') return 'var(--accent-rehearsal)';
+  if (s === 'QUOTED' || s === 'QUOTE') return 'var(--accent-quote)';
+  return 'var(--accent)';
 };
 
 const getCalendarColor = (event: EventData): string => {
   const status = event.status?.toUpperCase();
-  if (status === 'REHEARSAL') return '#0147FF';
-  if (status === 'CONFIRMED' || status === 'COMPLETED') return '#D5FB46';
-  if (status === 'QUOTED' || status === 'QUOTE') return '#9A8878';
+  if (status === 'REHEARSAL') return 'var(--accent-rehearsal)';
+  if (status === 'CONFIRMED' || status === 'COMPLETED') return 'var(--accent)';
+  if (status === 'QUOTED' || status === 'QUOTE') return 'var(--accent-quote)';
   if (status === 'DRAFT' || status === 'PENDING') return 'rgba(0,0,0,0.5)';
-  return '#D5FB46';
+  return 'var(--accent)';
 };
 
 const formatEventDate = (dateStr: string): string => {
@@ -492,19 +492,19 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 className="overflow-hidden"
               >
                 <div className="flex items-center gap-[8px] bg-black/10 rounded-[10px] px-[12px] py-[8px]">
-                  <Search className="w-[16px] h-[16px] text-black/40 shrink-0" />
+                  <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
                   <input
                     ref={searchRef}
                     type="text"
                     value={eventSearch}
                     onChange={(e) => setEventSearch(e.target.value)}
                     placeholder="Search events..."
-                    className="bg-transparent text-[14px] font-medium text-black placeholder:text-black/30 focus:outline-none flex-1"
+                    className="bg-transparent text-[14px] font-medium text-black placeholder:text-foreground/30 focus:outline-none flex-1"
                     autoFocus
                   />
                   {eventSearch && (
                     <button onClick={() => setEventSearch('')}>
-                      <X className="w-[14px] h-[14px] text-black/40" />
+                      <X className="w-[14px] h-[14px] text-foreground/40" />
                     </button>
                   )}
                 </div>
@@ -518,9 +518,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
               const isActive = eventFilter === f;
               let activeBg = 'bg-white';
               let activeText = 'text-black';
-              if (f === 'GIGS') { activeBg = 'bg-[#D5FB46]'; activeText = 'text-black'; }
-              else if (f === 'REHEARSAL') { activeBg = 'bg-[#0147FF]'; activeText = 'text-white'; }
-              else if (f === 'QUOTE') { activeBg = 'bg-[#9A8878]'; activeText = 'text-white'; }
+              if (f === 'GIGS') { activeBg = 'bg-accent'; activeText = 'text-accent-foreground'; }
+              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-white'; }
+              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-white'; }
               else if (f === 'DRAFT') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
               return (
               <button
@@ -530,7 +530,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   "px-[8px] py-[6px] rounded-[6px] text-[12px] whitespace-nowrap transition-all shrink-0",
                   isActive
                     ? `${activeBg} ${activeText} font-bold`
-                    : "bg-black/20 text-black/40 font-medium"
+                    : "bg-black/20 text-foreground/40 font-medium"
                 )}
               >
                 {f}
@@ -540,7 +540,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               onClick={() => { setIsSearchOpen(!isSearchOpen); if (!isSearchOpen) setTimeout(() => searchRef.current?.focus(), 100); }}
               className={cn(
                 "w-[32px] h-[32px] rounded-full border-[1.5px] flex items-center justify-center transition-all shrink-0",
-                isSearchOpen ? "border-black bg-black text-white" : "border-black/30 bg-transparent text-black/50"
+                isSearchOpen ? "border-black bg-black text-white" : "border-black/30 bg-transparent text-foreground/50"
               )}
             >
               <Search className="w-[14px] h-[14px]" />
@@ -567,12 +567,12 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const memberCount = feat.members?.length || 0;
             const dotColor = getDotColor(feat.status);
             const arrowBg = isGig ? 'bg-black' : 'bg-white';
-            const arrowColor = isGig ? 'text-[#D5FB46]' : 'text-black';
+            const arrowColor = isGig ? 'text-accent' : 'text-black';
 
             const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
             const featTags = [nextLabel, ...tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT')];
 
-            const tagBg = isRehearsal ? '#0147FF' : isQuote ? '#9A8878' : (status === 'DRAFT' || status === 'PENDING') ? 'rgba(0,0,0,0.5)' : '#D5FB46';
+            const tagBg = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : (status === 'DRAFT' || status === 'PENDING') ? 'rgba(0,0,0,0.5)' : 'var(--accent)';
             const tagTextColor = isGig ? '#000000' : '#FFFFFF';
 
             return (
@@ -596,7 +596,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       <div className="flex flex-col gap-[2px]">
                         <span className="text-[16px] font-bold text-black uppercase">{feat.location?.split(',')[0] || 'TBD'}</span>
                         {feat.venueAddress && (
-                          <span className="text-[12px] font-medium text-black/50 uppercase">{feat.venueAddress}</span>
+                          <span className="text-[12px] font-medium text-foreground/50 uppercase">{feat.venueAddress}</span>
                         )}
                       </div>
                     </div>
@@ -750,7 +750,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         bgColor = getCalendarColor(primary);
                         const status = primary.status?.toUpperCase();
                         textColor = (status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED')
-                          ? 'text-white' : 'text-black';
+                          ? 'text-white' : 'text-accent-foreground';
 
                         if (multipleEvents) {
                           const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
@@ -872,7 +872,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[18px] h-[18px] text-black shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-black/50 uppercase">
+                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -1024,7 +1024,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[18px] h-[18px] text-black shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-black/50 uppercase">
+                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -1093,7 +1093,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               </div>
                             )}
                             <div className="bg-black rounded-full p-[6px]">
-                              <ArrowUpRight className="w-[28px] h-[28px] text-[#D5FB46]" />
+                              <ArrowUpRight className="w-[28px] h-[28px] text-accent" />
                             </div>
                           </div>
                           <div
@@ -1178,7 +1178,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[18px] h-[18px] text-black shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-black/50 uppercase">
+                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -1333,7 +1333,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <ArrowUpRight className="w-[18px] h-[18px] text-black shrink-0" />
                           </div>
                           {(event.venueAddress || event.location?.includes(',')) && (
-                            <span className="text-[12px] font-medium text-black/50 uppercase">
+                            <span className="text-[12px] font-medium text-foreground/50 uppercase">
                               {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                             </span>
                           )}
@@ -1484,7 +1484,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   const status = ev.status?.toUpperCase();
                   const isReh = status === 'REHEARSAL';
                   const isQuote = status === 'QUOTED' || status === 'QUOTE';
-                  const accentColor = isReh ? '#0147FF' : isQuote ? '#9A8878' : '#D5FB46';
+                  const accentColor = isReh ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : 'var(--accent)';
                   const label = isReh ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'GIG';
 
                   return (

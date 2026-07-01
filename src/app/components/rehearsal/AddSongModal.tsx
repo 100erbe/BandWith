@@ -231,7 +231,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#E6E5E1]"
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -240,18 +240,18 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       {/* Header */}
       <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0 max-w-4xl mx-auto w-full">
         <div>
-          <span className="text-black/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
+          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
             Step {stepInfo.num}
           </span>
           <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-none">
             {stepInfo.title}
           </h2>
-          <p className="text-black/50 font-bold text-sm mt-1 tracking-tight">{stepInfo.subtitle}</p>
+          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">{stepInfo.subtitle}</p>
         </div>
         
         <button 
           onClick={handleClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-black/50 hover:text-black transition-all hover:rotate-90"
+          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-black transition-all hover:rotate-90"
         >
           <X className="w-6 h-6" />
         </button>
@@ -270,7 +270,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* Source Selection */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Select Source</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Select Source</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'local', icon: Smartphone, label: 'Local Device' },
@@ -284,7 +284,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                         "flex flex-col items-center gap-3 py-6 rounded-3xl border-2 transition-all",
                         source === id
                           ? "bg-black border-black text-white"
-                          : "bg-white/50 border-stone-200 text-black/50 hover:bg-white"
+                          : "bg-white/50 border-stone-200 text-foreground/50 hover:bg-white"
                       )}
                     >
                       <Icon className="w-8 h-8" />
@@ -298,7 +298,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* File Upload */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Upload File</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
                 <div 
                   className={cn(
                     "border-2 border-dashed rounded-3xl p-8 text-center transition-all",
@@ -310,7 +310,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                       <FileText className="w-10 h-10 text-black" />
                       <div className="text-left">
                         <p className="font-black text-black truncate max-w-[200px]">{file.name}</p>
-                        <p className="text-sm text-black/50">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p className="text-sm text-foreground/50">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                       </div>
                       <button 
                         onClick={() => setFile(null)}
@@ -321,9 +321,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                     </div>
                   ) : (
                     <>
-                      <FileMusic className="w-12 h-12 text-black/30 mx-auto mb-4" />
+                      <FileMusic className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
                       <p className="font-black text-black text-xl mb-1">Drag & Drop or Click</p>
-                      <p className="text-sm text-black/50 uppercase tracking-wide mb-6">Supports PDF, MP3, WAV</p>
+                      <p className="text-sm text-foreground/50 uppercase tracking-wide mb-6">Supports PDF, MP3, WAV</p>
                       <label className="inline-block">
                         <input
                           type="file"
@@ -352,7 +352,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* Title */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">
                   Song Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -360,19 +360,19 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Superstition"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-3xl font-black text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-3xl font-black text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                 />
               </div>
 
               {/* Artist */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Original Artist</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Original Artist</label>
                 <input
                   type="text"
                   value={artist}
                   onChange={(e) => setArtist(e.target.value)}
                   placeholder="e.g. Stevie Wonder"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                 />
               </div>
 
@@ -381,33 +381,33 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               {/* Details Grid */}
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">BPM</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">BPM</label>
                   <input
                     type="number"
                     value={bpm}
                     onChange={(e) => setBpm(e.target.value)}
                     placeholder="120"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Key</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Key</label>
                   <input
                     type="text"
                     value={key}
                     onChange={(e) => setKey(e.target.value)}
                     placeholder="C major"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Duration (min)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Duration (min)</label>
                   <input
                     type="number"
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
                     placeholder="4"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                   />
                 </div>
               </div>
@@ -416,7 +416,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Folder */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40">Folder / Category</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder / Category</label>
                 <div className="flex flex-wrap gap-2">
                   {folders.map(folder => (
                     <button
@@ -426,7 +426,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                         "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                         selectedFolder === folder.id
                           ? "bg-black text-white"
-                          : "bg-white/50 text-black/60 hover:bg-white"
+                          : "bg-white/50 text-foreground/60 hover:bg-white"
                       )}
                     >
                       {folder.name}
@@ -440,7 +440,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                         onChange={(e) => setNewFolderName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                         placeholder="Folder name"
-                        className="w-28 bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                        className="w-28 bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                         autoFocus
                       />
                       <button
@@ -453,7 +453,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   ) : (
                     <button
                       onClick={() => setShowNewFolder(true)}
-                      className="px-4 py-2 rounded-full border-2 border-dashed border-black/20 text-sm font-bold text-black/50 flex items-center gap-1 hover:border-black/40 transition-colors"
+                      className="px-4 py-2 rounded-full border-2 border-dashed border-black/20 text-sm font-bold text-foreground/50 flex items-center gap-1 hover:border-black/40 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       NEW
@@ -474,7 +474,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* YouTube Link */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <Youtube className="w-4 h-4" />
                   YouTube Video
                 </label>
@@ -483,13 +483,13 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
                   placeholder="https://youtube.com/watch?v=..."
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                 />
               </div>
 
               {/* Chart/Sheet Music URL */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <FileMusic className="w-4 h-4" />
                   Sheet Music / Spartiti
                 </label>
@@ -498,13 +498,13 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   value={chartUrl}
                   onChange={(e) => setChartUrl(e.target.value)}
                   placeholder="URL to PDF or sheet music..."
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                 />
               </div>
 
               {/* Chords URL */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <LinkIcon className="w-4 h-4" />
                   Chords / Accordi
                 </label>
@@ -513,7 +513,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   value={chordsUrl}
                   onChange={(e) => setChordsUrl(e.target.value)}
                   placeholder="Link to chords (Ultimate Guitar, etc.)"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                 />
               </div>
 
@@ -521,7 +521,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Notes */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <StickyNote className="w-4 h-4" />
                   Notes
                 </label>
@@ -530,7 +530,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add any notes, arrangement ideas, key changes..."
                   rows={4}
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-black/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
                 />
               </div>
 
@@ -545,11 +545,11 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       </div>
 
       {/* Footer Navigation */}
-      <div className="fixed bottom-0 inset-x-0 bg-[#E6E5E1] border-t border-stone-200 px-6 py-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
+      <div className="fixed bottom-0 inset-x-0 bg-background border-t border-stone-200 px-6 py-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={prevStep}
-            className="flex items-center gap-2 text-black/50 hover:text-black transition-colors"
+            className="flex items-center gap-2 text-foreground/50 hover:text-black transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-bold text-sm uppercase">{step === 'source' ? 'Cancel' : 'Back'}</span>
@@ -577,7 +577,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 ? "bg-green-500 text-white"
                 : canProceed() && !saving
                   ? "bg-black text-white hover:scale-105"
-                  : "bg-black/20 text-black/40 cursor-not-allowed"
+                  : "bg-black/20 text-foreground/40 cursor-not-allowed"
             )}
           >
             {saving ? (

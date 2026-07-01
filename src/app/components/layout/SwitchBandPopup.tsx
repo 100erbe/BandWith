@@ -86,7 +86,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
               {bands.map((band) => {
                 const isActive = selectedBand.id === band.id;
                 const isAdmin = band.role === 'ADMIN';
-                const accentColor = isAdmin ? '#D5FB46' : '#FF0066';
+                const accentColor = isAdmin ? 'var(--accent)' : '#FF0066';
 
                 return (
                   <motion.button

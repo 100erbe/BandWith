@@ -63,11 +63,11 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
           {/* Solo Card */}
           <button
             onClick={onSelectSolo}
-            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-[#D5FB46]/50 active:scale-[0.98] transition-all group"
+            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-accent/50 active:scale-[0.98] transition-all group"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#D5FB46]/10 flex items-center justify-center shrink-0 group-hover:bg-[#D5FB46]/20 transition-colors">
-                <Calendar className="w-6 h-6 text-[#D5FB46]" />
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                <Calendar className="w-6 h-6 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-[18px] font-bold text-foreground mb-1">
@@ -75,7 +75,7 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
                 </h3>
                 <p className="text-muted-foreground text-[14px] leading-relaxed">
                   Manage personal gigs, sync private rehearsals.{' '}
-                  <span className="text-[#D5FB46] font-semibold">Free to use.</span>
+                  <span className="text-accent font-semibold">Free to use.</span>
                 </p>
               </div>
             </div>
@@ -84,11 +84,11 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
           {/* Band Admin Card */}
           <button
             onClick={onSelectBand}
-            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-[#D5FB46]/50 active:scale-[0.98] transition-all group"
+            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-accent/50 active:scale-[0.98] transition-all group"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#D5FB46]/10 flex items-center justify-center shrink-0 group-hover:bg-[#D5FB46]/20 transition-colors">
-                <Users className="w-6 h-6 text-[#D5FB46]" />
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
+                <Users className="w-6 h-6 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-[18px] font-bold text-foreground mb-1">

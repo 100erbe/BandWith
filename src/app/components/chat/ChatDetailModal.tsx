@@ -44,7 +44,7 @@ const renderMessageContent = (content: string, isMe: boolean) => {
       {parts.map((part, index) => {
         if (index % 2 === 1) {
           return (
-            <span key={index} className="font-bold text-[#D5FB46]">
+            <span key={index} className="font-bold text-accent">
               @{part}
             </span>
           );
@@ -266,7 +266,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
   const messageGroups = groupMessagesByDate(messages);
   const chatTypeLabel = chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT';
-  const accentColor = chat.type === 'event' ? '#0147FF' : '#D5FB46';
+  const accentColor = chat.type === 'event' ? 'var(--accent-rehearsal)' : 'var(--accent)';
 
   return (
     <motion.div
@@ -290,15 +290,15 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
         <div className="flex-1 flex items-center gap-3 min-w-0">
           {chat.type === 'direct' ? (
-            <div className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center text-[#D5FB46] font-black text-sm shrink-0">
+            <div className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center text-accent font-black text-sm shrink-0">
               {chat.initials}
             </div>
           ) : chat.type === 'band' ? (
-            <div className="w-10 h-10 rounded-[10px] bg-[#D5FB46] flex items-center justify-center text-black font-black text-sm shrink-0">
+            <div className="w-10 h-10 rounded-[10px] bg-accent flex items-center justify-center text-accent-foreground font-black text-sm shrink-0">
               {chat.initials}
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-[10px] bg-[#0147FF] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-[10px] bg-accent-rehearsal flex items-center justify-center shrink-0">
               <Calendar className="w-4.5 h-4.5 text-white" />
             </div>
           )}
@@ -427,8 +427,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                           : "bg-white/[0.04] rounded-[16px] rounded-bl-[4px]"
                       )}>
                         {replyTo && message.reply_to_id && replyTo.content && (
-                          <div className="mb-2 px-3 py-2 rounded-[8px] bg-white/[0.06] border-l-2 border-[#D5FB46]">
-                            <p className="text-[10px] font-bold text-[#D5FB46] uppercase mb-0.5">
+                          <div className="mb-2 px-3 py-2 rounded-[8px] bg-white/[0.06] border-l-2 border-accent">
+                            <p className="text-[10px] font-bold text-accent uppercase mb-0.5">
                               {replyTo.sender?.full_name || 'Unknown'}
                             </p>
                             <p className="text-[11px] text-white/40 line-clamp-1">
@@ -456,7 +456,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                             message.id.startsWith('temp-') ? (
                               <Check className="w-3 h-3 opacity-40" />
                             ) : isMessageRead(message.created_at) ? (
-                              <CheckCheck className="w-3 h-3 text-[#D5FB46]/60" />
+                              <CheckCheck className="w-3 h-3 text-accent/60" />
                             ) : (
                               <CheckCheck className="w-3 h-3" />
                             )
@@ -497,9 +497,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               className="overflow-hidden"
             >
               <div className="px-4 pt-3 flex items-start gap-2">
-                <div className="flex-1 bg-white/[0.04] rounded-[10px] p-3 border-l-2 border-[#D5FB46]">
+                <div className="flex-1 bg-white/[0.04] rounded-[10px] p-3 border-l-2 border-accent">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[10px] font-bold text-[#D5FB46] uppercase">
+                    <span className="text-[10px] font-bold text-accent uppercase">
                       {replyingTo.sender?.full_name || 'Message'}
                     </span>
                     <button onClick={() => setReplyingTo(null)} className="p-0.5">
@@ -533,7 +533,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       onClick={() => insertMention(participant)}
                       className="w-full px-4 py-3 text-left hover:bg-white/[0.04] flex items-center gap-3 transition-colors first:rounded-t-[12px] last:rounded-b-[12px]"
                     >
-                      <div className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-[#D5FB46] text-[9px] font-bold">
+                      <div className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-accent text-[9px] font-bold">
                         {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <span className="font-bold text-white/80 text-[12px] uppercase">{participant.name}</span>
@@ -567,7 +567,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-90",
               newMessage.trim()
-                ? "bg-[#D5FB46] text-black"
+                ? "bg-accent text-accent-foreground"
                 : "bg-white/[0.04] text-white/15"
             )}
           >

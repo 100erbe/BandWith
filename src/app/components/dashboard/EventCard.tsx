@@ -55,12 +55,12 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
             {/* Date Block */}
             <motion.div 
               layoutId={`date-block-${event.id}`}
-              className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-[#D4FB46] transition-colors shrink-0"
+              className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-accent transition-colors shrink-0"
             >
                 <span className="text-[10px] font-black uppercase text-stone-400 group-hover:text-black leading-none mb-0.5">
                   {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
                 </span>
-                <span className="text-xl font-black text-[#1A1A1A] leading-none group-hover:text-black">{event.date?.split('-')[2] || '--'}</span>
+                <span className="text-xl font-black text-foreground leading-none group-hover:text-black">{event.date?.split('-')[2] || '--'}</span>
             </motion.div>
             
             {/* Title & Status */}
@@ -70,7 +70,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
                 </motion.div>
                 <motion.h4 
                   layoutId={`title-${event.id}`}
-                  className="text-2xl font-black text-[#1A1A1A] leading-tight mt-1 group-hover:text-black/80"
+                  className="text-2xl font-black text-foreground leading-tight mt-1 group-hover:text-foreground/80"
                 >
                   {event.title}
                 </motion.h4>
@@ -108,7 +108,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
                   </div>
               )) : <span className="text-[10px] font-bold text-stone-400 uppercase">No team</span>}
           </div>
-          <span className="text-xl font-black text-[#1A1A1A]">€{event.price}</span>
+          <span className="text-xl font-black text-foreground">€{event.price}</span>
       </motion.div>
     </motion.div>
   );

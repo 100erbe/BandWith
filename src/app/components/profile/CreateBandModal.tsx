@@ -100,7 +100,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-[#E6E5E1]"
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -109,18 +109,18 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       {/* Header */}
       <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
         <div>
-          <span className="text-black/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
+          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
             New Entity
           </span>
           <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-none">
             CREATE
           </h2>
-          <p className="text-black/50 font-bold text-sm mt-1 tracking-tight">Start a new band or project</p>
+          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">Start a new band or project</p>
         </div>
         
         <button 
           onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-black/50 hover:text-black transition-all hover:rotate-90"
+          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-black transition-all hover:rotate-90"
         >
           <X className="w-6 h-6" />
         </button>
@@ -141,7 +141,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <Music2 className="w-4 h-4" />
               Band Name <span className="text-red-500">*</span>
             </label>
@@ -150,7 +150,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., The Jazz Collective"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-2xl font-black text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-2xl font-black text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
             />
           </motion.div>
 
@@ -160,7 +160,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.15 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-3">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3">
               Genre
             </label>
             <div className="flex flex-wrap gap-2">
@@ -172,7 +172,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
                     "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                     genre === g
                       ? "bg-black text-white"
-                      : "bg-white/50 text-black/60 hover:bg-white"
+                      : "bg-white/50 text-foreground/60 hover:bg-white"
                   )}
                 >
                   {g}
@@ -187,7 +187,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">
               Description
             </label>
             <textarea
@@ -195,7 +195,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Tell us about your band..."
               rows={3}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-black/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
             />
           </motion.div>
 
@@ -205,7 +205,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.25 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-2 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <Globe className="w-4 h-4" />
               Website
             </label>
@@ -214,7 +214,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://yourband.com"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-black/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
             />
           </motion.div>
 
@@ -224,7 +224,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 block mb-3 flex items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               Plan
             </label>
@@ -244,12 +244,12 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
                     <span className="font-black text-lg">{p.name}</span>
                     <span className={cn(
                       "text-sm font-bold",
-                      plan === p.id ? "text-[#D4FB46]" : "text-black/50"
+                      plan === p.id ? "text-accent" : "text-foreground/50"
                     )}>{p.price}</span>
                   </div>
                   <p className={cn(
                     "text-sm",
-                    plan === p.id ? "text-white/70" : "text-black/50"
+                    plan === p.id ? "text-white/70" : "text-foreground/50"
                   )}>{p.description}</p>
                 </button>
               ))}
@@ -263,9 +263,9 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             transition={{ delay: 0.35 }}
             className="p-6 bg-[#1A1A1A] rounded-[2rem] text-white"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#D4FB46] mb-3">Preview</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-3">Preview</p>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-[#D4FB46] flex items-center justify-center text-black font-black text-xl">
+              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-black text-xl">
                 {name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'}
               </div>
               <div>
@@ -299,7 +299,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               ? "bg-green-500 text-white"
               : name.trim()
                 ? "bg-black text-white hover:scale-[1.02]"
-                : "bg-black/20 text-black/40 cursor-not-allowed"
+                : "bg-black/20 text-foreground/40 cursor-not-allowed"
           )}
         >
           {saving ? (

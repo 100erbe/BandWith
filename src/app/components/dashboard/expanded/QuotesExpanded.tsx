@@ -261,11 +261,11 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         <div className="flex items-center gap-4">
           <button 
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-[#1A1A1A] hover:bg-white/20 transition-colors backdrop-blur-sm"
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-foreground hover:bg-white/20 transition-colors backdrop-blur-sm"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-2xl font-black tracking-tight text-[#1A1A1A]">Quotes</h2>
+          <h2 className="text-2xl font-black tracking-tight text-foreground">Quotes</h2>
         </div>
         <button 
           onClick={() => setIsCreating(true)}
@@ -294,7 +294,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 <h3 className="text-4xl font-black text-[#E6E5E1] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
               </div>
               <div className="bg-[#333336] p-2 rounded-full">
-                <BarChart3 className="w-5 h-5 text-[#D4FB46]" />
+                <BarChart3 className="w-5 h-5 text-accent" />
               </div>
             </div>
             
@@ -310,7 +310,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 const probability = getProbabilityFromStatus(quote.status);
                 let barColor = "bg-[#333336]"; 
                 if (probability > 40) barColor = "bg-[#998878]"; 
-                if (probability > 70) barColor = "bg-[#D4FB46]"; 
+                if (probability > 70) barColor = "bg-accent"; 
                 const isActive = activeChartId === quote.id; 
                 
                 return (
@@ -343,8 +343,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             <div className="flex items-center justify-between text-[10px] font-bold text-[#555555] border-t border-white/10 pt-3">
               <span>Total Deals: {activeQuotes.length}</span>
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-[#D4FB46]" />
-                <span className="text-[#D4FB46]">Accepted</span>
+                <div className="w-2 h-2 rounded-full bg-accent" />
+                <span className="text-accent">Accepted</span>
               </div>
             </div>
           </div>
@@ -352,7 +352,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         
         {/* Quote List */}
         <div className="space-y-3">
-          <h4 className="text-sm font-black text-[#1A1A1A] uppercase tracking-wider ml-2 opacity-60 mb-2">All Quotes</h4>
+          <h4 className="text-sm font-black text-foreground uppercase tracking-wider ml-2 opacity-60 mb-2">All Quotes</h4>
           {quotes.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, y: 20 }} 
@@ -360,9 +360,9 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               transition={{ delay: 0.4 }} 
               className="bg-white/30 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center"
             >
-              <FileText className="w-12 h-12 text-[#1A1A1A]/40 mb-3" />
-              <p className="text-[#1A1A1A] font-bold mb-1">No quotes yet</p>
-              <p className="text-[#1A1A1A]/60 text-sm">Create your first quote to get started</p>
+              <FileText className="w-12 h-12 text-foreground/40 mb-3" />
+              <p className="text-foreground font-bold mb-1">No quotes yet</p>
+              <p className="text-foreground/60 text-sm">Create your first quote to get started</p>
             </motion.div>
           ) : quotes.map((quote, i) => (
             <motion.div 
@@ -373,18 +373,18 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               transition={{ delay: 0.4 + (i * 0.05) }} 
               className={cn(
                 "p-5 rounded-[2rem] shadow-sm relative overflow-hidden group transition-all cursor-pointer",
-                quote.status === 'ACCEPTED' ? "bg-[#D4FB46]" : "bg-[#E6E5E1]"
+                quote.status === 'ACCEPTED' ? "bg-accent" : "bg-background"
               )}
             >
               <div className="flex justify-between items-start mb-1 relative z-10">
                 <div>
                   <span className={cn(
                     "text-[10px] font-bold uppercase tracking-widest block mb-0.5", 
-                    quote.status === 'ACCEPTED' ? "text-black/60" : "text-[#998878]"
+                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[#998878]"
                   )}>
                     {quote.clientName}
                   </span>
-                  <h4 className="text-lg font-black text-[#1A1A1A] leading-tight">{quote.eventTitle}</h4>
+                  <h4 className="text-lg font-black text-foreground leading-tight">{quote.eventTitle}</h4>
                 </div>
                 <div className={cn(
                   "px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide flex items-center gap-1",
@@ -397,12 +397,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               
               <div className="flex items-end justify-between mt-4 relative z-10">
                 <div className="flex flex-col gap-1 w-1/2">
-                  <div className="flex justify-between text-[10px] font-bold uppercase text-[#1A1A1A]/50">
+                  <div className="flex justify-between text-[10px] font-bold uppercase text-foreground/50">
                     <span>{(quote.customItems?.length || 0)} items</span>
                     <span>{new Date(quote.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <span className="text-2xl font-black text-[#1A1A1A]">€{quote.total.toLocaleString()}</span>
+                <span className="text-2xl font-black text-foreground">€{quote.total.toLocaleString()}</span>
               </div>
             </motion.div>
           ))}

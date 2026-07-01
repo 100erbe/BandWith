@@ -198,7 +198,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <p className="text-[#D5FB46] text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
+          <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
             Welcome back
           </p>
           <h1 className="text-[40px] font-black text-foreground leading-[0.95] tracking-tight uppercase">
@@ -253,7 +253,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               type="button"
               onClick={() => handleBiometricLogin()}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 h-[52px] rounded-2xl bg-[#D5FB46] text-black font-bold text-[14px] disabled:opacity-50 transition-all hover:bg-[#c8ef3a] active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 h-[52px] rounded-2xl bg-accent text-accent-foreground font-bold text-[14px] disabled:opacity-50 transition-all hover:bg-accent/90 active:scale-[0.98]"
             >
               {biometricStatus.biometryType === 'faceId' ? (
                 <ScanFace className="w-6 h-6" strokeWidth={1.5} />
@@ -308,7 +308,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
+              className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
               autoComplete="email"
               autoCapitalize="none"
             />
@@ -322,7 +322,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-[#D5FB46]/40 focus:bg-card/80 transition-all"
+              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
               autoComplete="current-password"
             />
             <button
@@ -358,7 +358,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           type="button"
           onClick={handleSubmit}
           disabled={loading || !email || !password}
-          className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-[#D5FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -392,11 +392,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             >
               <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-[#D5FB46]/10 flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
                   {biometricStatus.biometryType === 'faceId' ? (
-                    <ScanFace className="w-8 h-8 text-[#D5FB46]" strokeWidth={1.5} />
+                    <ScanFace className="w-8 h-8 text-accent" strokeWidth={1.5} />
                   ) : (
-                    <Fingerprint className="w-8 h-8 text-[#D5FB46]" strokeWidth={1.5} />
+                    <Fingerprint className="w-8 h-8 text-accent" strokeWidth={1.5} />
                   )}
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-2">
@@ -414,7 +414,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                   </button>
                   <button
                     onClick={() => handleSaveBiometric(true)}
-                    className="flex-1 h-12 rounded-xl bg-[#D5FB46] text-black font-bold text-sm hover:bg-[#c8ef3a] transition-all"
+                    className="flex-1 h-12 rounded-xl bg-accent text-accent-foreground font-bold text-sm hover:bg-accent/90 transition-all"
                   >
                     Enable
                   </button>

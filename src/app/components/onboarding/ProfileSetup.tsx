@@ -114,7 +114,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
         {/* Progress bar */}
         <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-[#D4FB46] rounded-full"
+            className="h-full bg-accent rounded-full"
             initial={{ width: isCreator ? '25%' : '33%' }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.5 }}
@@ -154,7 +154,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="John Doe"
-            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[24px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-[#D4FB46] transition-colors"
+            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[24px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
           />
         </motion.div>
 
@@ -179,7 +179,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   onClick={() => toggleInstrument(instrument.id)}
                   className={`px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 transition-all ${
                     isSelected
-                      ? 'bg-[#D4FB46] text-black'
+                      ? 'bg-accent text-accent-foreground'
                       : 'bg-card text-foreground border border-border hover:border-border'
                   }`}
                   whileTap={{ scale: 0.95 }}
@@ -204,7 +204,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                       prev.filter((i) => i !== custom)
                     )
                   }
-                  className="px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 bg-[#D4FB46] text-black"
+                  className="px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 bg-accent text-accent-foreground"
                   whileTap={{ scale: 0.95 }}
                 >
                   ✓ {custom}
@@ -224,7 +224,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 value={customInstrument}
                 onChange={(e) => setCustomInstrument(e.target.value)}
                 placeholder="Enter instrument..."
-                className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-foreground text-[14px] placeholder:text-muted-foreground/60 outline-none focus:border-[#D4FB46]/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-foreground text-[14px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -236,7 +236,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               <button
                 type="button"
                 onClick={addCustomInstrument}
-                className="px-4 py-3 rounded-xl bg-[#D4FB46] text-black font-bold text-[14px]"
+                className="px-4 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-[14px]"
               >
                 Add
               </button>
@@ -259,8 +259,8 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             transition={{ delay: 0.3, duration: 0.5 }}
             className="mt-4"
           >
-            <div className="border-l-2 border-[#D4FB46] pl-4 py-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FB46]">
+            <div className="border-l-2 border-accent pl-4 py-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
                 Your Role
               </span>
               <h3 className="text-foreground font-bold text-lg mt-1">
@@ -294,7 +294,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
         <motion.button
           onClick={handleSubmit}
           disabled={!isValid || isSubmitting}
-          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-[#D4FB46] text-black hover:bg-[#c8ef3a] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
           whileTap={{ scale: 0.98 }}
         >
           {isSubmitting ? (

@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 
@@ -46,12 +47,12 @@ const SectionDotGrid: React.FC<{ filled: number; color?: string }> = ({ filled, 
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSection = 'main' }) => {
   const { user, signOut, isAuthenticated } = useAuth();
+  const { mode, setMode, resolvedTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState<'light' | 'dark' | 'system'>('light');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const getSectionTitle = (): string => {
@@ -86,7 +87,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         >
           <div className="flex flex-col items-start">
             <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
-            <span className="text-[10px] font-medium text-black/40 uppercase">{item.desc}</span>
+            <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
           </div>
           <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
         </motion.button>
@@ -126,10 +127,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderAppearanceSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={darkMode === 'light' ? 4 : darkMode === 'dark' ? 8 : 12} />
+      <SectionDotGrid filled={mode === 'light' ? 4 : mode === 'dark' ? 8 : 12} />
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold text-black/40 uppercase tracking-wide">THEME</span>
+        <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">THEME</span>
         <div className="flex flex-col gap-0">
           {[
             { id: 'light' as const, icon: Sun, label: 'LIGHT' },
@@ -138,23 +139,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           ].map((theme) => (
             <button
               key={theme.id}
-              onClick={() => setDarkMode(theme.id)}
+              onClick={() => setMode(theme.id)}
               className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
             >
               <div className="flex items-center gap-3">
-                <theme.icon className="w-4 h-4 text-black/40" />
+                <theme.icon className="w-4 h-4 text-foreground/40" />
                 <span className="text-xs font-bold text-black uppercase tracking-wide">{theme.label}</span>
               </div>
               <DotRadio
-                selected={darkMode === theme.id}
-                activeColor={darkMode === theme.id ? '#000000' : undefined}
+                selected={mode === theme.id}
+                activeColor={mode === theme.id ? '#000000' : undefined}
                 className="!w-[60px] !h-[38px]"
               />
             </button>
           ))}
         </div>
-        <p className="text-[10px] font-medium text-black/30 uppercase mt-2">
-          Theme switching coming soon. Using light mode.
+        <p className="text-[10px] font-medium text-foreground/30 uppercase mt-2">
+          Current: {resolvedTheme === 'dark' ? 'Dark' : 'Light'} mode
         </p>
       </div>
     </div>
@@ -162,7 +163,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderPrivacySection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={6} color="#0147FF" />
+      <SectionDotGrid filled={6} color="var(--accent-rehearsal)" />
 
       <div className="flex flex-col gap-0">
         <SettingsToggle
@@ -205,7 +206,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderHelpSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={8} color="#9A8878" />
+      <SectionDotGrid filled={8} color="var(--accent-quote)" />
 
       <div className="flex flex-col gap-0">
         {[
@@ -220,7 +221,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           >
             <div className="flex flex-col items-start">
               <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
-              <span className="text-[10px] font-medium text-black/40 uppercase">{item.desc}</span>
+              <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
             </div>
             <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
           </button>
@@ -240,13 +241,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             <div
               key={i}
               className="rounded-[10px]"
-              style={{ backgroundColor: i < 18 ? '#D5FB46' : 'rgba(0,0,0,0.1)' }}
+              style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(0,0,0,0.1)' }}
             />
           ))}
         </div>
         <div className="flex flex-col">
           <span className="text-[42px] font-bold text-black leading-none">BANDWITH</span>
-          <span className="text-xs font-bold text-black/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
+          <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
         </div>
       </div>
 
@@ -266,7 +267,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         ))}
       </div>
 
-      <p className="text-[10px] font-normal text-black/30 text-center uppercase">
+      <p className="text-[10px] font-normal text-foreground/30 text-center uppercase">
         Made with love for musicians
       </p>
     </div>
@@ -274,10 +275,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderLanguageSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={3} color="#0147FF" />
+      <SectionDotGrid filled={3} color="var(--accent-rehearsal)" />
 
       <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-medium text-black/40 uppercase">
+        <span className="text-[10px] font-medium text-foreground/40 uppercase">
           More languages coming soon.
         </span>
         <button className="flex items-center justify-between w-full py-4 border-b border-black/10 active:opacity-70">
@@ -299,7 +300,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 z-[70] bg-background overflow-y-auto overflow-x-hidden"
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
@@ -357,7 +358,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#E6E5E1] rounded-[10px] p-6 max-w-sm w-full"
+              className="bg-background rounded-[10px] p-6 max-w-sm w-full"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex flex-col gap-5">
@@ -366,7 +367,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                 </div>
                 <div className="flex flex-col gap-2 text-center">
                   <h2 className="text-[22px] font-bold text-black uppercase">DELETE ACCOUNT?</h2>
-                  <p className="text-[10px] font-medium text-black/40 uppercase">
+                  <p className="text-[10px] font-medium text-foreground/40 uppercase">
                     This action cannot be undone. All your data will be permanently deleted.
                   </p>
                 </div>
@@ -407,10 +408,10 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon
     className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity cursor-pointer"
   >
     <div className="flex items-center gap-3">
-      <Icon className="w-4 h-4 text-black/40 shrink-0" />
+      <Icon className="w-4 h-4 text-foreground/40 shrink-0" />
       <div className="flex flex-col items-start">
         <span className="text-xs font-bold text-black uppercase tracking-wide">{label}</span>
-        <span className="text-[10px] font-medium text-black/40 uppercase">{desc}</span>
+        <span className="text-[10px] font-medium text-foreground/40 uppercase">{desc}</span>
       </div>
     </div>
     <DotCheckbox checked={enabled} className="!w-[60px] !h-[38px]" />

@@ -53,7 +53,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             
             {/* Total Cost Input */}
             <div>
-               <label className="text-xs font-bold uppercase tracking-widest text-black/40 mb-2 block">Total Room Cost</label>
+               <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Total Room Cost</label>
                <div className="flex items-center gap-2 border-b-2 border-black/10 py-2">
                   <span className="text-3xl font-black text-black">€</span>
                   <input 
@@ -69,13 +69,13 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             {/* Split Method */}
             {isAdmin && (
               <div>
-                 <label className="text-xs font-bold uppercase tracking-widest text-black/40 mb-3 block">Split Method</label>
+                 <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Split Method</label>
                  <div className="grid grid-cols-3 gap-3">
                     <button 
                       onClick={() => setSplitMethod('equal')}
                       className={cn(
                           "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'equal' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
+                          splitMethod === 'equal' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
                       )}
                     >
                        <Users className="w-6 h-6" />
@@ -85,7 +85,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                       onClick={() => setSplitMethod('custom')}
                       className={cn(
                           "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'custom' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
+                          splitMethod === 'custom' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
                       )}
                     >
                        <CheckCircle2 className="w-6 h-6" />
@@ -95,7 +95,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                       onClick={() => setSplitMethod('admin')}
                       className={cn(
                           "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'admin' ? "bg-black border-black text-[#D4FB46]" : "bg-transparent border-black/10 text-black/40 hover:border-black/30"
+                          splitMethod === 'admin' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
                       )}
                     >
                        <DollarSign className="w-6 h-6" />
@@ -108,7 +108,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             {/* Breakdown */}
             {isAdmin && (
               <div className="bg-black/5 rounded-[10px] p-4">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-black/40 mb-3 block">Breakdown</label>
+                 <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Breakdown</label>
                  <div className="space-y-3">
                     {data.members.map(member => (
                        <div key={member.id} className="flex items-center justify-between">
@@ -119,7 +119,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                              <span className="text-sm font-bold text-black">{member.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                             <span className="text-sm font-bold text-black/40">€</span>
+                             <span className="text-sm font-bold text-foreground/40">€</span>
                              {splitMethod === 'custom' ? (
                                 <input 
                                   type="number"
