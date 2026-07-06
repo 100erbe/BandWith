@@ -97,7 +97,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
       return (
         <RehearsalModalWrapper isOpen={isOpen} onClose={() => setView('edit')} title="Add Attachment" icon={Paperclip}>
             <div className="flex flex-col h-[60vh]">
-                <button onClick={() => setView('edit')} className="flex items-center gap-2 text-xs font-bold uppercase text-foreground/40 mb-4 hover:text-black">
+                <button onClick={() => setView('edit')} className="flex items-center gap-2 text-xs font-bold uppercase text-foreground/40 mb-4 hover:text-foreground">
                     <ArrowLeft className="w-4 h-4" /> Back to Proposal
                 </button>
 
@@ -131,7 +131,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                                         value={attUrl}
                                         onChange={e => setAttUrl(e.target.value)}
                                         placeholder="https://..."
-                                        className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+                                        className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                                     />
                                 </div>
                             )}
@@ -200,7 +200,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
            
            {/* Header Info (Read Only) */}
            <div>
-              <h3 className="font-black text-xl text-black leading-none">{proposal.title}</h3>
+              <h3 className="font-black text-xl text-foreground leading-none">{proposal.title}</h3>
               <p className="text-xs font-bold uppercase text-foreground/50 mt-1">{proposal.artist}</p>
            </div>
 
@@ -210,7 +210,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
               <textarea 
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
+                className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
                 placeholder="Why should we play this?"
               />
            </div>
@@ -219,7 +219,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
            <div>
               <div className="flex justify-between items-end mb-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Attachments</label>
-                  <button onClick={() => setView('add_attachment')} className="text-[10px] font-bold uppercase text-black hover:underline flex items-center gap-1">
+                  <button onClick={() => setView('add_attachment')} className="text-[10px] font-bold uppercase text-foreground hover:underline flex items-center gap-1">
                       <Plus className="w-3 h-3" /> Add Attachment
                   </button>
               </div>

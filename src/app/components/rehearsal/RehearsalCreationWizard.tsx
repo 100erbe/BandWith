@@ -599,7 +599,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             className={cn(
               "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
               data.audienceIds.length === 0
-                ? "bg-white text-black border-white"
+                ? "bg-white text-foreground border-white"
                 : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
             )}
           >
@@ -610,7 +610,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             className={cn(
               "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
               data.audienceIds.length > 0
-                ? "bg-white text-black border-white"
+                ? "bg-white text-foreground border-white"
                 : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
             )}
           >
@@ -754,7 +754,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               className={cn(
                 "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
                 data.recurrence === freq
-                  ? "bg-white text-black border-white"
+                  ? "bg-white text-foreground border-white"
                   : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
               )}
             >
@@ -780,7 +780,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             className={cn(
               "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
               data.venueType === 'free'
-                ? "bg-white text-black border-white"
+                ? "bg-white text-foreground border-white"
                 : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
             )}
           >
@@ -793,7 +793,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               className={cn(
                 "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
                 data.venueType === 'paid'
-                  ? "bg-white text-black border-white"
+                  ? "bg-white text-foreground border-white"
                   : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
               )}
             >
@@ -829,7 +829,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}
                     className={cn(
                       "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
-                      data.splitMethod === 'equal' ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-white/20"
+                      data.splitMethod === 'equal' ? "bg-white text-foreground border-white" : "bg-transparent text-white/60 border-white/20"
                     )}
                   >
                     Equal Split
@@ -838,7 +838,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}
                     className={cn(
                       "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
-                      data.splitMethod === 'custom' ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-white/20"
+                      data.splitMethod === 'custom' ? "bg-white text-foreground border-white" : "bg-transparent text-white/60 border-white/20"
                     )}
                   >
                     Custom
@@ -951,7 +951,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </div>
             <button
               onClick={handleBuildSnapshot}
-              className="w-full py-2.5 bg-white text-black rounded-[10px] text-[12px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/90 transition-colors"
+              className="w-full py-2.5 bg-white text-foreground rounded-[10px] text-[12px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/90 transition-colors"
             >
               <Layers className="w-3.5 h-3.5" /> {data.setlistSnapshotFinal ? 'Merge into Setlist' : 'Build Setlist'}
             </button>
@@ -964,7 +964,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <span className="text-[11px] font-bold uppercase text-white/40 tracking-wider">Available Setlists</span>
             <button
               onClick={() => openSetlistEditor(null)}
-              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> New
             </button>
@@ -1055,7 +1055,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </div>
             <button
               onClick={() => setIsProposeModalOpen(true)}
-              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Propose
             </button>
@@ -1129,7 +1129,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                         };
                         setData(prev => ({ ...prev, setlist: [...prev.setlist, song] }));
                       }}
-                      className="py-2 rounded-lg bg-white text-black text-[11px] font-bold uppercase transition-all hover:bg-white/90"
+                      className="py-2 rounded-lg bg-white text-foreground text-[11px] font-bold uppercase transition-all hover:bg-white/90"
                     >
                       Add to Rehearsal
                     </button>
@@ -1159,7 +1159,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </div>
             <button
               onClick={() => setIsAddTaskModalOpen(true)}
-              className="px-5 py-2.5 rounded-[10px] font-bold text-sm uppercase bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 rounded-[10px] font-bold text-sm uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Add Task
             </button>
@@ -1174,7 +1174,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               <p className="text-sm text-white/40 mb-5">Add preparation tasks for the band</p>
               <button
                 onClick={() => setIsAddTaskModalOpen(true)}
-                className="px-5 py-3 bg-white text-black rounded-[10px] text-sm font-bold uppercase"
+                className="px-5 py-3 bg-white text-foreground rounded-[10px] text-sm font-bold uppercase"
               >
                 Add your first task
               </button>
@@ -1192,7 +1192,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                       <button
                         key={tpl.id}
                         onClick={() => loadTaskTemplate(tpl)}
-                        className="px-4 py-2 bg-white/10 hover:bg-white hover:text-black rounded-[10px] text-[12px] font-bold uppercase transition-colors text-white/60 flex items-center gap-2"
+                        className="px-4 py-2 bg-white/10 hover:bg-white hover:text-foreground rounded-[10px] text-[12px] font-bold uppercase transition-colors text-white/60 flex items-center gap-2"
                       >
                         <Folder className="w-3.5 h-3.5" />
                         {tpl.name}
@@ -1211,7 +1211,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     <button
                       key={t}
                       onClick={() => handleAddQuickTask(t)}
-                      className="px-4 py-2 bg-white/10 hover:bg-white hover:text-black rounded-full text-[12px] font-bold uppercase transition-colors text-white/60"
+                      className="px-4 py-2 bg-white/10 hover:bg-white hover:text-foreground rounded-full text-[12px] font-bold uppercase transition-colors text-white/60"
                     >
                       + {t}
                     </button>
@@ -1311,7 +1311,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {isAdmin && (
           <div className="bg-accent rounded-[10px] p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-black">
+              <div className="flex items-center gap-2 text-foreground">
                 <Briefcase className="w-5 h-5" />
                 <h3 className="text-sm font-bold uppercase tracking-wider">Band Essentials</h3>
               </div>
@@ -1473,7 +1473,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 initial={{ x: 10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.1 + (i * 0.05) }}
-                className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-white flex items-center justify-center text-[10px] font-bold text-black"
+                className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-white flex items-center justify-center text-[10px] font-bold text-foreground"
               >
                 {m.initials}
               </motion.div>
@@ -1517,7 +1517,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   key={i}
                   className={cn(
                     "h-1 rounded-[10px] transition-all duration-300",
-                    i === step ? "w-4 bg-white" : i < step ? "w-3 bg-white/60" : "w-2 bg-white/20"
+                    i === step ? "w-4 bg-card" : i < step ? "w-3 bg-white/60" : "w-2 bg-white/20"
                   )}
                 />
               ))}

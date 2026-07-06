@@ -5,6 +5,8 @@ export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'DRAFT' | 'QUOTE' | 'REHEA
 
 export interface EventItem {
   id: number;
+  band_id?: string;
+  band_name?: string;
   eventId?: string;
   title: string;
   status: EventStatus;

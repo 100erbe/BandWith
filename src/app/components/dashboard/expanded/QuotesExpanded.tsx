@@ -294,7 +294,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 <h3 className="text-4xl font-black text-[#E6E5E1] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
               </div>
               <div className="bg-[#333336] p-2 rounded-full">
-                <BarChart3 className="w-5 h-5 text-accent" />
+                <BarChart3 className="w-5 h-5 text-accent-quote" />
               </div>
             </div>
             
@@ -310,7 +310,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 const probability = getProbabilityFromStatus(quote.status);
                 let barColor = "bg-[#333336]"; 
                 if (probability > 40) barColor = "bg-[#998878]"; 
-                if (probability > 70) barColor = "bg-accent"; 
+                if (probability > 70) barColor = "bg-accent-quote"; 
                 const isActive = activeChartId === quote.id; 
                 
                 return (
@@ -343,8 +343,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             <div className="flex items-center justify-between text-[10px] font-bold text-[#555555] border-t border-white/10 pt-3">
               <span>Total Deals: {activeQuotes.length}</span>
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-accent" />
-                <span className="text-accent">Accepted</span>
+                <div className="w-2 h-2 rounded-full bg-accent-quote" />
+                <span className="text-accent-quote">Accepted</span>
               </div>
             </div>
           </div>
@@ -373,7 +373,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               transition={{ delay: 0.4 + (i * 0.05) }} 
               className={cn(
                 "p-5 rounded-[2rem] shadow-sm relative overflow-hidden group transition-all cursor-pointer",
-                quote.status === 'ACCEPTED' ? "bg-accent" : "bg-background"
+                quote.status === 'ACCEPTED' ? "bg-accent-quote" : "bg-background"
               )}
             >
               <div className="flex justify-between items-start mb-1 relative z-10">

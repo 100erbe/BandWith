@@ -39,7 +39,7 @@ const SectionDotGrid: React.FC<{ filled: number; color?: string }> = ({ filled, 
       <div
         key={i}
         className="rounded-[10px]"
-        style={{ backgroundColor: i < filled ? color : 'rgba(0,0,0,0.1)' }}
+        style={{ backgroundColor: i < filled ? color : 'rgba(255,255,255,0.1)' }}
       />
     ))}
   </div>
@@ -83,13 +83,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.04 }}
           onClick={() => setActiveSection(item.id)}
-          className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+          className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
         >
           <div className="flex flex-col items-start">
-            <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
             <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
           </div>
-          <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
+          <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
         </motion.button>
       ))}
     </div>
@@ -140,11 +140,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             <button
               key={theme.id}
               onClick={() => setMode(theme.id)}
-              className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+              className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
             >
               <div className="flex items-center gap-3">
                 <theme.icon className="w-4 h-4 text-foreground/40" />
-                <span className="text-xs font-bold text-black uppercase tracking-wide">{theme.label}</span>
+                <span className="text-xs font-bold text-foreground uppercase tracking-wide">{theme.label}</span>
               </div>
               <DotRadio
                 selected={mode === theme.id}
@@ -182,7 +182,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         />
       </div>
 
-      <div className="flex flex-col gap-4 pt-4 border-t border-black/10">
+      <div className="flex flex-col gap-4 pt-4 border-t border-border">
         <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">ACCOUNT</span>
         <button
           onClick={async () => {
@@ -217,13 +217,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         ].map((item, i) => (
           <button
             key={i}
-            className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+            className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
           >
             <div className="flex flex-col items-start">
-              <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+              <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
               <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
             </div>
-            <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
+            <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
           </button>
         ))}
       </div>
@@ -241,12 +241,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             <div
               key={i}
               className="rounded-[10px]"
-              style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(0,0,0,0.1)' }}
+              style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(255,255,255,0.1)' }}
             />
           ))}
         </div>
         <div className="flex flex-col">
-          <span className="text-[42px] font-bold text-black leading-none">BANDWITH</span>
+          <span className="text-[42px] font-bold text-foreground leading-none">BANDWITH</span>
           <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
         </div>
       </div>
@@ -259,10 +259,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         ].map((item, i) => (
           <button
             key={i}
-            className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+            className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
           >
-            <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
-            <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
+            <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
           </button>
         ))}
       </div>
@@ -281,10 +281,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         <span className="text-[10px] font-medium text-foreground/40 uppercase">
           More languages coming soon.
         </span>
-        <button className="flex items-center justify-between w-full py-4 border-b border-black/10 active:opacity-70">
+        <button className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70">
           <div className="flex items-center gap-3">
             <span className="text-lg">🇬🇧</span>
-            <span className="text-xs font-bold text-black uppercase tracking-wide">ENGLISH</span>
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide">ENGLISH</span>
           </div>
           <DotRadio selected={true} activeColor="#000000" className="!w-[60px] !h-[38px]" />
         </button>
@@ -317,9 +317,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
             style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
-          <h1 className="text-[32px] font-bold text-black leading-none uppercase">{sectionTitle}</h1>
+          <h1 className="text-[32px] font-bold text-foreground leading-none uppercase">{sectionTitle}</h1>
         </div>
       </div>
 
@@ -366,7 +366,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                   <AlertTriangle className="w-6 h-6 text-[#A73131]" />
                 </div>
                 <div className="flex flex-col gap-2 text-center">
-                  <h2 className="text-[22px] font-bold text-black uppercase">DELETE ACCOUNT?</h2>
+                  <h2 className="text-[22px] font-bold text-foreground uppercase">DELETE ACCOUNT?</h2>
                   <p className="text-[10px] font-medium text-foreground/40 uppercase">
                     This action cannot be undone. All your data will be permanently deleted.
                   </p>
@@ -374,7 +374,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 h-12 rounded-[10px] bg-black/5 text-black font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-[10px] bg-foreground/5 text-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
                   >
                     Cancel
                   </button>
@@ -405,12 +405,12 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon
   <button
     type="button"
     onClick={() => onToggle(!enabled)}
-    className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity cursor-pointer"
+    className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity cursor-pointer"
   >
     <div className="flex items-center gap-3">
       <Icon className="w-4 h-4 text-foreground/40 shrink-0" />
       <div className="flex flex-col items-start">
-        <span className="text-xs font-bold text-black uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
         <span className="text-[10px] font-medium text-foreground/40 uppercase">{desc}</span>
       </div>
     </div>

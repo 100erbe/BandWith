@@ -408,6 +408,7 @@ export const useNotifications = (options?: {
       }
     );
 
+    console.log('[useNotifications] Realtime subscription set up, isAuthenticated:', isAuthenticated);
     return unsubscribe;
   }, [isAuthenticated]);
 
@@ -461,6 +462,7 @@ export const useUnreadCount = () => {
       setCount(prev => prev + 1);
     });
 
+    console.log('[useNotifications] Realtime subscription set up, isAuthenticated:', isAuthenticated);
     return unsubscribe;
   }, [isAuthenticated]);
 

@@ -115,7 +115,7 @@ const ProDotGrid: React.FC = () => (
       <div
         key={i}
         className="rounded-[10px]"
-        style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(0,0,0,0.1)' }}
+        style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'var(--muted)' }}
       />
     ))}
   </div>
@@ -165,7 +165,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 z-[60] bg-[#E6E5E1] overflow-y-auto overflow-x-hidden"
+          className="fixed inset-0 z-[60] bg-background overflow-y-auto overflow-x-hidden"
           style={{
             paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)',
             overscrollBehaviorX: 'none',
@@ -180,9 +180,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                 className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
                 style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
               >
-                <ArrowLeft className="w-[24px] h-[24px] text-black" />
+                <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
               </button>
-              <h2 className="text-[32px] font-bold text-black leading-none uppercase">
+              <h2 className="text-[32px] font-bold text-foreground leading-none uppercase">
                 SETTINGS
               </h2>
             </div>
@@ -190,8 +190,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             {/* ═══ QUICK ACTIONS ═══ */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col">
-                <span className="text-[32px] font-bold text-black leading-none">QUICK</span>
-                <span className="text-[32px] font-bold text-black leading-none">ACTIONS</span>
+                <span className="text-[32px] font-bold text-foreground leading-none">QUICK</span>
+                <span className="text-[32px] font-bold text-foreground leading-none">ACTIONS</span>
               </div>
 
               <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
@@ -209,10 +209,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                       >
                         <div className="flex items-start justify-between w-full">
                           <div className="flex flex-col leading-none text-left">
-                            <span className="text-xs font-bold text-black text-left">{item.lines[0]}</span>
-                            {item.lines[1] && <span className="text-xs font-bold text-black text-left">{item.lines[1]}</span>}
+                            <span className="text-xs font-bold text-foreground text-left">{item.lines[0]}</span>
+                            {item.lines[1] && <span className="text-xs font-bold text-foreground text-left">{item.lines[1]}</span>}
                           </div>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-black" />
+                          <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
                         </div>
                         {pattern && <PixelArtGrid pattern={pattern} color={item.color} />}
                       </motion.button>
@@ -225,8 +225,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             {/* ═══ APP SETTINGS ═══ */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col">
-                <span className="text-[32px] font-bold text-black leading-none">APP</span>
-                <span className="text-[32px] font-bold text-black leading-none">SETTINGS</span>
+                <span className="text-[32px] font-bold text-foreground leading-none">APP</span>
+                <span className="text-[32px] font-bold text-foreground leading-none">SETTINGS</span>
               </div>
 
               <div className="flex flex-col gap-0">
@@ -237,13 +237,13 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => onNavigate(`Settings:${item.section}`)}
-                    className="flex items-center justify-between w-full py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity"
+                    className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
                   >
                     <div className="flex flex-col items-start">
-                      <span className="text-xs font-bold text-black uppercase tracking-wide">{item.label}</span>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
                       <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
                     </div>
-                    <ArrowUpRight className="w-4 h-4 text-black shrink-0" />
+                    <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
                   </motion.button>
                 ))}
               </div>
@@ -253,7 +253,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
                 <span className="text-xs font-bold text-accent uppercase tracking-wide bg-black rounded-[6px] px-1.5 py-0.5 w-fit">PRO</span>
-                <h3 className="text-[32px] font-bold text-black leading-none uppercase">
+                <h3 className="text-[32px] font-bold text-foreground leading-none uppercase">
                   UPGRADE
                 </h3>
               </div>
@@ -261,11 +261,11 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
               <ProDotGrid />
 
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold text-black uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
+                <span className="text-xs font-bold text-foreground uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Unlimited Quotes</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Analytics</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-black/10 text-foreground/50">Priority Support</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Unlimited Quotes</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Analytics</span>
+                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Priority Support</span>
                 </div>
               </div>
 
@@ -282,14 +282,14 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
 
             {/* ═══ MORE ═══ */}
             <div className="flex flex-col gap-5">
-              <span className="text-[32px] font-bold text-black leading-none uppercase">MORE</span>
+              <span className="text-[32px] font-bold text-foreground leading-none uppercase">MORE</span>
 
               <button
                 onClick={() => window.open('mailto:support@bandwith.app?subject=Help%20Request', '_blank')}
-                className="flex items-center justify-between w-full py-3 border-b border-black/10 active:opacity-70 transition-opacity"
+                className="flex items-center justify-between w-full py-3 border-b border-border active:opacity-70 transition-opacity"
               >
-                <span className="text-xs font-bold text-black uppercase tracking-wide">HELP & SUPPORT</span>
-                <ArrowUpRight className="w-4 h-4 text-black" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wide">HELP & SUPPORT</span>
+                <ArrowUpRight className="w-4 h-4 text-foreground" />
               </button>
 
               <button
@@ -308,13 +308,13 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                   document.body.removeChild(link);
                   URL.revokeObjectURL(url);
                 }}
-                className="flex items-center justify-between w-full py-3 border-b border-black/10 active:opacity-70 transition-opacity"
+                className="flex items-center justify-between w-full py-3 border-b border-border active:opacity-70 transition-opacity"
               >
                 <div className="flex items-center gap-2">
-                  <Download className="w-3.5 h-3.5 text-black" />
-                  <span className="text-xs font-bold text-black uppercase tracking-wide">EXPORT MY DATA</span>
+                  <Download className="w-3.5 h-3.5 text-foreground" />
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wide">EXPORT MY DATA</span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-black" />
+                <ArrowUpRight className="w-4 h-4 text-foreground" />
               </button>
             </div>
 

@@ -91,7 +91,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                     <div className="space-y-2">
                         {snapshot.sources.map((src, i) => (
                             <div key={i} className="flex items-center justify-between p-2 bg-[#F2F2F0] rounded-lg">
-                                <span className="text-xs font-bold text-black">{src.templateName}</span>
+                                <span className="text-xs font-bold text-foreground">{src.templateName}</span>
                                 <span className="text-[10px] font-mono text-foreground/40">v{src.templateVersion}</span>
                             </div>
                         ))}

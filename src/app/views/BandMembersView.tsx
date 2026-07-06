@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
+import { useAuth } from '@/lib/AuthContext';
+import { notifyMemberJoined, notifyMemberRemoved } from '@/lib/services/notifications';
 import {
   getBandMembers,
   removeMember,
@@ -75,6 +77,7 @@ const MembersDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, c
 
 export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => {
   const { selectedBand, isAdmin } = useBand();
+  const { profile: currentProfile } = useAuth();
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
@@ -103,10 +106,21 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     setLoading(false);
   };
 
-  const handleRemoveMember = async (memberId: string) => {
-    const { error } = await removeMember(memberId);
+  const handleRemoveMember = async (member: BandMember) => {
+    const memberName = member.profile?.full_name || member.profile?.email || 'Unknown';
+    const { error } = await removeMember(member.id);
     if (!error) {
-      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      // Notify the removed member
+      if (selectedBand && currentProfile?.full_name) {
+        notifyMemberRemoved(
+          member.user_id,
+          memberName,
+          selectedBand.id,
+          selectedBand.name,
+          currentProfile.full_name
+        );
+      }
     }
     setActionMenuId(null);
   };
@@ -163,6 +177,18 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     } else {
       setInviteSuccess(`${user.full_name || user.email} added!`);
       await fetchMembers();
+      // Notify existing band members about the added user
+      const existingMemberIds = members
+        .filter(m => m.user_id !== currentProfile?.id)
+        .map(m => m.user_id);
+      if (existingMemberIds.length > 0 && selectedBand) {
+        notifyMemberJoined(
+          existingMemberIds,
+          selectedBand.id,
+          selectedBand.name,
+          user.full_name || user.email || 'A new member'
+        );
+      }
       setTimeout(() => {
         setShowInvite(false);
         setSearchQuery('');
@@ -188,6 +214,19 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       } else {
         setInviteSuccess('Member added!');
         await fetchMembers();
+        // Notify existing band members about the new member
+        const addedUserName = searchQuery;
+        const existingMemberIds = members
+          .filter(m => m.user_id !== currentProfile?.id)
+          .map(m => m.user_id);
+        if (existingMemberIds.length > 0 && selectedBand && addedUserName) {
+          notifyMemberJoined(
+            existingMemberIds,
+            selectedBand.id,
+            selectedBand.name,
+            addedUserName
+          );
+        }
       }
       setTimeout(() => {
         setShowInvite(false);
@@ -396,7 +435,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                   </span>
                                 </button>
                                 <button
-                                  onClick={() => handleRemoveMember(member.id)}
+                                  onClick={() => handleRemoveMember(member)}
                                   className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                 >
                                   <Trash2 className="w-4 h-4 text-[#A73131]" />

@@ -89,7 +89,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                        type="text" 
                        value={details.title}
                        onChange={e => setDetails({...details, title: e.target.value})}
-                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                        placeholder="e.g. Superstition"
                     />
                 </div>
@@ -100,7 +100,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                            type="text" 
                            value={details.artist}
                            onChange={e => setDetails({...details, artist: e.target.value})}
-                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                            placeholder="e.g. Stevie Wonder"
                         />
                     </div>
@@ -139,7 +139,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                      type="text"
                                      value={details.category}
                                      onChange={(e) => setDetails({...details, category: e.target.value})}
-                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-black focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
                                      placeholder="Type new folder name..."
                                      autoFocus
                                  />

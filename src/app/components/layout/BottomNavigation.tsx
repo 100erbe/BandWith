@@ -117,7 +117,7 @@ const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | nul
   return (
     <motion.div
       ref={pillRef}
-      className="absolute top-[4px] bottom-[4px] rounded-full bg-black/8 dark:bg-white/12 z-0"
+      className="absolute top-[4px] bottom-[4px] rounded-full bg-foreground/10 z-0"
       animate={{ left: x, width: w }}
       transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 1 }}
     />
@@ -135,8 +135,8 @@ const NavTab: React.FC<{
   isScrollingDown: boolean;
   isMenuOpen: boolean;
 }> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen }) => {
-  const activeColor = isMenuOpen ? '#FFFFFF' : '#000000';
-  const inactiveColor = isMenuOpen ? 'rgba(255,255,255,0.30)' : '#737373';
+  const activeColor = isMenuOpen ? '#FFFFFF' : 'var(--fg)';
+  const inactiveColor = isMenuOpen ? 'rgba(255,255,255,0.30)' : 'var(--muted-fg)';
   const strokeColor = isActive ? activeColor : inactiveColor;
 
   return (
@@ -334,7 +334,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           ref={navRef}
           className={cn(
             'pointer-events-auto relative flex items-center justify-center rounded-[999px]',
-            isMenuOpen ? 'bg-[rgba(28,28,30,0.92)]' : 'bg-white/90 dark:bg-[#1c1c1e]/90',
+            isMenuOpen ? 'bg-[rgba(28,28,30,0.95)]' : 'bg-background/85',
             'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
             effectiveIsScrollingDown ? 'h-12 gap-x-2 px-2' : 'h-16 gap-x-3 px-3'
           )}

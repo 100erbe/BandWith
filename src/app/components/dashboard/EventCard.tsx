@@ -6,6 +6,8 @@ import { StatusBadge } from '@/app/components/ui/StatusBadge';
 
 export interface EventData {
   id: number;
+  band_id?: string;
+  band_name?: string;
   eventId?: string;
   title: string;
   status: string;

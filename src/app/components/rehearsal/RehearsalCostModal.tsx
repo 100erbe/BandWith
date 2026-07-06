@@ -55,12 +55,12 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             <div>
                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Total Room Cost</label>
                <div className="flex items-center gap-2 border-b-2 border-black/10 py-2">
-                  <span className="text-3xl font-black text-black">€</span>
+                  <span className="text-3xl font-black text-foreground">€</span>
                   <input 
                     type="number" 
                     value={totalCost}
                     onChange={e => setTotalCost(e.target.value)}
-                    className="w-full bg-transparent text-3xl font-black text-black focus:outline-none"
+                    className="w-full bg-transparent text-3xl font-black text-foreground focus:outline-none"
                     placeholder="0"
                   />
                </div>
@@ -116,7 +116,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                              <div className="w-8 h-8 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
                                 {member.initials}
                              </div>
-                             <span className="text-sm font-bold text-black">{member.name}</span>
+                             <span className="text-sm font-bold text-foreground">{member.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
                              <span className="text-sm font-bold text-foreground/40">€</span>
@@ -128,7 +128,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                                   className="w-16 bg-transparent border-b border-black/20 text-right font-bold focus:outline-none"
                                 />
                              ) : (
-                                <span className="font-black text-black">
+                                <span className="font-black text-foreground">
                                    {splitMethod === 'equal' 
                                       ? (parseFloat(totalCost || '0') / data.members.length).toFixed(0) 
                                       : '0'}

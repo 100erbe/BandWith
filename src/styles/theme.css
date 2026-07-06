@@ -56,36 +56,36 @@
 }
 
 .dark {
-  /* ── Base ── */
-  --bg: #050505;
-  --fg: #FAFAFA;
+  /* ── Base (deep gray — softer than pure black) ── */
+  --bg: #121212;
+  --fg: #E5E7EB;
 
   /* ── Surfaces ── */
-  --card: #1C1C1E;
-  --card-fg: #FAFAFA;
-  --popover: #1C1C1E;
-  --popover-fg: #FAFAFA;
-  --muted: #2A2A2A;
-  --muted-fg: #A1A1A1;
+  --card: #1E1E1E;
+  --card-fg: #E5E7EB;
+  --popover: #1E1E1E;
+  --popover-fg: #E5E7EB;
+  --muted: #2C2C2C;
+  --muted-fg: #9CA3AF;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
   --primary-fg: #FFFFFF;
 
   /* ── Secondary ── */
-  --secondary: #998878;
-  --secondary-fg: #FFFFFF;
+  --secondary: #78716C;
+  --secondary-fg: #E5E7EB;
 
-  /* ── Action (gig) ── */
-  --accent-gig: #00C9B1;
+  /* ── Action (gig) — teal, good contrast on #121212 ── */
+  --accent-gig: #2DD4BF;
   --accent-gig-fg: #000000;
 
-  /* ── Utility (rehearsal) ── */
-  --accent-rehearsal: #007CF9;
-  --accent-rehearsal-fg: #FFFFFF;
+  /* ── Utility (rehearsal) — bright blue, good contrast ── */
+  --accent-rehearsal: #60A5FA;
+  --accent-rehearsal-fg: #000000;
 
-  /* ── Context (quote) ── */
-  --accent-quote: #00B3D7;
+  /* ── Context (quote) — cyan, good contrast ── */
+  --accent-quote: #22D3EE;
   --accent-quote-fg: #000000;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
@@ -93,10 +93,10 @@
   --accent-fg: #FFFFFF;
 
   /* ── Semantic ── */
-  --destructive: #FF4F28;
-  --destructive-fg: #FFFFFF;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.1);
+  --destructive: #FB7185;
+  --destructive-fg: #000000;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
   --ring: #6A0DAD;
 }
 

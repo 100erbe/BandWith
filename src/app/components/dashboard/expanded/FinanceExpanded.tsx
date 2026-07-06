@@ -52,7 +52,7 @@ const FinanceDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, c
           key={i}
           className="rounded-[10px]"
           style={{
-            backgroundColor: i < count && i < visible ? color : '#CDCACA',
+            backgroundColor: i < count && i < visible ? color : 'var(--muted)',
             transition: 'background-color 0.15s',
           }}
         />
@@ -158,7 +158,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         </div>
         <button
           onClick={() => setShowAddTransaction(true)}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent shrink-0 active:scale-90 transition-transform"
+          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent-gig shrink-0 active:scale-90 transition-transform"
         >
           <Plus className="w-[20px] h-[20px] text-black" />
         </button>
@@ -188,7 +188,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 </div>
                 <FinanceDotGrid
                   filled={Math.min(Math.ceil(stats.netProfit / 500), 24)}
-                  color="var(--accent)"
+                  color="var(--accent-gig)"
                 />
               </motion.div>
 
@@ -277,7 +277,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                       <div
                         className={cn(
                           'w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0',
-                          tx.type === 'income' ? 'bg-accent' : 'bg-[#CDCACA]',
+                          tx.type === 'income' ? 'bg-accent-gig' : 'bg-muted',
                         )}
                       >
                         {tx.type === 'income' ? (

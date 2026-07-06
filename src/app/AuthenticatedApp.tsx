@@ -117,10 +117,10 @@ const eventToEventItem = (event: Event): EventItem => {
     price: event.fee?.toString() || "0",
     members: [],
     color:
-      (status === "REHEARSAL") ? "bg-black text-accent"
+      (status === "REHEARSAL") ? "bg-accent-rehearsal text-white"
         : (status === "QUOTE") ? "bg-accent-quote text-white"
         : (status === "DRAFT") ? "bg-black/20 text-foreground/60"
-        : "bg-green-100 text-green-700",
+        : "bg-accent-gig text-accent-gig-foreground",
     notes: event.notes || undefined,
     createdBy: event.created_by || undefined,
     setlistId: event.setlist_id || undefined,
@@ -294,6 +294,14 @@ export default function AuthenticatedApp() {
     fetchAllMembers();
   }, [realEvents, membersRefreshKey, realBand?.members]);
 
+  // Build band lookup for event mapping
+  const bandLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    realBands?.forEach(b => { if (b.id) map[b.id] = b.name; });
+    if (realBand?.id && realBand?.name) map[realBand.id] = realBand.name;
+    return map;
+  }, [realBands, realBand]);
+
   const events = useMemo(() => {
     if (realEvents && realEvents.length > 0) {
       return realEvents.map(e => {
@@ -306,6 +314,8 @@ export default function AuthenticatedApp() {
           });
           item.memberUserIds = members.map(m => m.userId);
         }
+                  item.band_id = e.band_id || undefined;
+          item.band_name = e.band_id && bandLookup[e.band_id] ? bandLookup[e.band_id] : realBand?.name || undefined;
         return item;
       });
     }
@@ -893,6 +903,7 @@ export default function AuthenticatedApp() {
     setSelectedEventMembership(null);
     if (user?.id && event.eventId) {
       const { data: membership } = await getUserEventMembership(event.eventId, user.id);
+      // If membership exists, use it; otherwise null (which hides accept/decline buttons)
       setSelectedEventMembership(membership);
     }
   };
@@ -900,7 +911,10 @@ export default function AuthenticatedApp() {
 
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
-    await respondToEventInvite(selectedEventMembership.id, "confirmed");
+    const { data: updated } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
+    if (updated) {
+      setSelectedEventMembership(updated);
+    }
     const realEventId = selectedEvent.eventId;
     if (realEventId) {
       const { data: members } = await getEventMembers(realEventId);
@@ -917,7 +931,10 @@ export default function AuthenticatedApp() {
 
   const handleEventDecline = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
-    await respondToEventInvite(selectedEventMembership.id, "declined");
+    const { data: updated } = await respondToEventInvite(selectedEventMembership.id, "declined");
+    if (updated) {
+      setSelectedEventMembership(updated);
+    }
     const realEventId = selectedEvent.eventId;
     if (realEventId) {
       const { data: members } = await getEventMembers(realEventId);
@@ -1131,8 +1148,8 @@ export default function AuthenticatedApp() {
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
   return (
-    <div className="min-h-screen text-foreground font-sans selection:bg-accent/50">
-      <div className={cn("fixed inset-0 transition-colors duration-500 z-0", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
+      <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full relative flex flex-col z-10 overflow-y-auto" style={{
@@ -1166,11 +1183,11 @@ export default function AuthenticatedApp() {
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} />
+            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} />
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} />
+            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} />
           )}
         </AnimatePresence>
 
@@ -1345,7 +1362,7 @@ export default function AuthenticatedApp() {
                     .select('id')
                     .eq('event_id', eventId)
                     .eq('user_id', user.id)
-                    .single();
+                    .maybeSingle();
                   if (membership) {
                     await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
                   }
@@ -1381,7 +1398,7 @@ export default function AuthenticatedApp() {
                   .select('id')
                   .eq('event_id', eventId)
                   .eq('user_id', user.id)
-                  .single();
+                  .maybeSingle();
                 if (membership) await respondToEventInvite(membership.id, 'confirmed');
                 const creatorId = rsvpNotification.data?.creator_id as string;
                 if (creatorId) {
@@ -1405,7 +1422,7 @@ export default function AuthenticatedApp() {
                   .select('id')
                   .eq('event_id', eventId)
                   .eq('user_id', user.id)
-                  .single();
+                  .maybeSingle();
                 if (membership) await respondToEventInvite(membership.id, 'declined');
                 const creatorId = rsvpNotification.data?.creator_id as string;
                 if (creatorId) {

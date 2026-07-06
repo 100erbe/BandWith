@@ -133,7 +133,7 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
             </button>
             <button
               onClick={handleSave}
-              className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white"
+              className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-card"
             >
               <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
               <span className="text-[16px] font-bold text-accent-rehearsal uppercase">SETLIST</span>

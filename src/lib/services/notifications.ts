@@ -71,7 +71,6 @@ export interface Notification {
   
   // Actions
   action_url?: string;
-  action_label?: string;
   primary_action?: NotificationAction;
   secondary_action?: NotificationAction;
   
@@ -349,6 +348,7 @@ const shouldSendPush = (type: NotificationType): boolean => {
     'quote_accepted',
     'payment_received',
     'member_joined', // Interessante sapere chi si è unito
+    'member_left', // Inform if removed from band
     // Chat - real-time
     'chat_message',
     'chat_mention',
@@ -399,8 +399,7 @@ export const createNotification = async (
     data?: Record<string, unknown>;
     band_id?: string;
     action_url?: string;
-    action_label?: string;
-  },
+    },
   options?: { sendPush?: boolean }
 ): Promise<{ data: Notification | null; error: Error | null }> => {
   try {
@@ -441,8 +440,7 @@ export const createBulkNotifications = async (
     data?: Record<string, unknown>;
     band_id?: string;
     action_url?: string;
-    action_label?: string;
-  }>,
+    }>,
   options?: { sendPush?: boolean }
 ): Promise<{ error: Error | null }> => {
   try {
@@ -585,7 +583,6 @@ export const notifyInviteSent = async (
       inviter_name: options?.inviterName,
       sent_at: new Date().toISOString(),
     },
-    action_label: 'View Pending Invites',
   }).then(r => ({ error: r.error }));
 };
 
@@ -601,7 +598,6 @@ export const notifyInviteAccepted = async (
     body: `${newMemberName} has joined ${bandName}`,
     band_id: bandId,
     data: { member_name: newMemberName, band_name: bandName },
-    action_label: 'View Band',
   }).then(r => ({ error: r.error }));
 };
 
@@ -623,6 +619,23 @@ export const notifyMemberJoined = async (
 };
 
 // Event notifications
+
+export const notifyMemberRemoved = async (
+  removedMemberId: string,
+  removedMemberName: string,
+  bandId: string,
+  bandName: string,
+  adminName: string
+): Promise<{ error: Error | null }> => {
+  return createNotification(removedMemberId, {
+    type: 'member_left',
+    title: 'Band Removal',
+    body: `You have been removed from ${bandName} by ${adminName}`,
+    band_id: bandId,
+    data: { band_name: bandName, admin_name: adminName },
+  }).then(r => ({ error: r.error }));
+};
+
 export const notifyEventCreated = async (
   memberIds: string[],
   bandId: string,
@@ -638,7 +651,6 @@ export const notifyEventCreated = async (
     body: `${eventTitle} on ${new Date(eventDate).toLocaleDateString()}`,
     band_id: bandId,
     data: { event_id: eventId, event_title: eventTitle, event_date: eventDate },
-    action_label: 'RSVP',
   }));
   return createBulkNotifications(notifications);
 };
@@ -658,7 +670,6 @@ export const notifyEventReminder = async (
     body: `${eventTitle} starts ${timeText}`,
     band_id: bandId,
     data: { event_id: eventId, hours_until: hoursUntil },
-    action_label: 'View Event',
   }));
   return createBulkNotifications(notifications);
 };
@@ -677,7 +688,6 @@ export const notifyQuoteReceived = async (
     body: `${clientName} requested a quote for €${amount.toLocaleString()}`,
     band_id: bandId,
     data: { quote_id: quoteId, client_name: clientName, amount },
-    action_label: 'Review Quote',
   }).then(r => ({ error: r.error }));
 };
 
@@ -733,7 +743,6 @@ export const notifyTaskAssigned = async (
     body: `${assignedBy} assigned you: "${taskTitle}"`,
     band_id: bandId,
     data: { task_id: taskId, task_title: taskTitle, assigned_by: assignedBy },
-    action_label: 'View Task',
   }).then(r => ({ error: r.error }));
 };
 
@@ -751,7 +760,6 @@ export const notifyNewMessage = async (
     body: messagePreview.substring(0, 100) + (messagePreview.length > 100 ? '...' : ''),
     band_id: bandId,
     data: { chat_id: chatId, sender_name: senderName },
-    action_label: 'Reply',
   }).then(r => ({ error: r.error }));
 };
 
@@ -855,7 +863,6 @@ export const notifyEventMembersCreated = async (
         member_fee: additionalData?.memberFees?.[userId] ?? undefined,
         requires_rsvp: config.requiresRsvp,
       },
-      action_label: config.requiresRsvp ? 'RSVP Now' : 'View Event',
       primary_action: 'accept' as NotificationAction,
       secondary_action: 'decline' as NotificationAction,
       read: false,
@@ -915,7 +922,6 @@ export const notifyEventPendingConfirmations = async (
           event_type: eventType,
           pending_confirmations: invitedCount,
         },
-        action_label: 'View Status',
         read: false,
       });
     

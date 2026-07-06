@@ -354,7 +354,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const bcMuted = isDarkBg ? 'border-white/20' : 'border-black/20';
   const bcSolid = isDarkBg ? 'border-white' : 'border-black';
   const bgPill = isDarkBg ? 'bg-white/10' : 'bg-black/10';
-  const pillAccent = modalCategory === 'rehearsal' ? 'text-accent-rehearsal' : modalCategory === 'quote' ? 'text-accent-quote' : 'text-accent';
+  const pillAccent = modalCategory === 'rehearsal' ? 'text-accent-rehearsal' : modalCategory === 'quote' ? 'text-accent-quote' : 'text-accent-gig';
   const bgPillSelected = isDarkBg ? 'bg-white text-black' : `bg-black ${pillAccent}`;
   const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-foreground/50';
   const dotActive = isDarkBg ? '#FFFFFF' : '#000000';
@@ -837,7 +837,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           className={cn('bg-transparent text-[28px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
         >
           {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
-            <option key={m} value={m} className="text-black bg-white text-base">
+            <option key={m} value={m} className="text-foreground bg-card text-base">
               {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
             </option>
           ))}

@@ -443,7 +443,7 @@ export const respondToEventInvite = async (
       })
       .eq('id', eventMemberId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 

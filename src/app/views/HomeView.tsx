@@ -61,7 +61,7 @@ interface HomeViewProps {
 type DotGridTheme = 'lime' | 'blue' | 'beige' | 'dark';
 
 const DOT_THEME_COLORS: Record<DotGridTheme, string> = {
-  lime: 'var(--accent)',
+  lime: 'var(--accent-gig)',
   blue: 'var(--accent-rehearsal)',
   beige: 'var(--accent-quote)',
   dark: '#050505',
@@ -113,7 +113,7 @@ const StatsDotGrid: React.FC<{ theme: DotGridTheme; filled?: number; isRevenue?:
               key={i}
               className="rounded-[10px] transition-colors duration-200"
               style={{ 
-                backgroundColor: isFilled && isVisible ? themeColor : '#CDCACA',
+                backgroundColor: isFilled && isVisible ? themeColor : 'var(--muted)',
                 opacity: isVisible ? 1 : 0.4,
                 transition: 'background-color 0.2s, opacity 0.3s',
               }}
@@ -134,7 +134,7 @@ const StatsDotGrid: React.FC<{ theme: DotGridTheme; filled?: number; isRevenue?:
             key={i}
             className="rounded-[10px]"
             style={{ 
-              backgroundColor: isActive && isVisible ? themeColor : '#CDCACA',
+              backgroundColor: isActive && isVisible ? themeColor : 'var(--muted)',
               opacity: isVisible || !isActive ? 1 : 0.4,
               transition: 'background-color 0.15s, opacity 0.2s',
             }}
@@ -222,7 +222,7 @@ const PixelArtGrid: React.FC<{ pattern: GridCell[] }> = ({ pattern }) => (
         style={{
           gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
           gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-          backgroundColor: cell.d ? '#737373' : '#CDCACA',
+          backgroundColor: cell.d ? 'var(--muted-fg)' : 'var(--muted)',
         }}
       />
     ))}
@@ -249,10 +249,10 @@ const ActionCenterItem: React.FC<{ label: string; onClick: () => void }> = ({ la
     <button onClick={onClick} className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity">
       <div className="flex items-start justify-between w-full">
         <div className="flex flex-col leading-none text-left">
-          <span className="text-xs font-bold text-black text-left">{lines[0]}</span>
-          {lines[1] && <span className="text-xs font-bold text-black text-left">{lines[1]}</span>}
+          <span className="text-xs font-bold text-foreground text-left">{lines[0]}</span>
+          {lines[1] && <span className="text-xs font-bold text-foreground text-left">{lines[1]}</span>}
         </div>
-        <ArrowUpRight className="w-3.5 h-3.5 text-black" />
+        <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
       </div>
       <PixelArtGrid pattern={pattern} />
     </button>
@@ -337,9 +337,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex gap-5">
           <div className="flex-1 flex flex-col gap-2 items-start text-left">
             <div className="flex flex-col w-full">
-              <span className="text-xs font-bold text-black tracking-wide">GIGS CONFIRMED</span>
+              <span className="text-xs font-bold text-foreground tracking-wide">GIGS CONFIRMED</span>
               <div className="h-[62px] overflow-hidden">
-                <span className="text-[52px] font-bold leading-none text-black block">
+                <span className="text-[52px] font-bold leading-none text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : confirmedCount}
                 </span>
               </div>
@@ -349,9 +349,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <div className="flex-1 flex flex-col gap-2 items-start text-left">
             <div className="flex flex-col w-full">
-              <span className="text-xs font-bold text-black tracking-wide">UPCOMING REHEARSAL</span>
+              <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING REHEARSAL</span>
               <div className="h-[62px] overflow-hidden">
-                <span className="text-[52px] font-bold leading-none text-black block">
+                <span className="text-[52px] font-bold leading-none text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : rehearsalCount}
                 </span>
               </div>
@@ -367,8 +367,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* ADMIN: Quotes count */}
               <div className="flex-1 flex flex-col gap-2 items-start text-left">
                 <div className="flex flex-col w-full">
-                  <span className="text-xs font-bold text-black tracking-wide">QUOTES</span>
-                  <span className="text-[52px] font-bold leading-none text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">QUOTES</span>
+                  <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
                   </span>
                 </div>
@@ -378,8 +378,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* ADMIN: Total Revenue */}
               <div className="flex-1 flex flex-col gap-2 items-start text-left">
                 <div className="flex flex-col w-full">
-                  <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
-                  <span className="text-[52px] font-bold leading-none text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">REVENUE</span>
+                  <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
                   </span>
                 </div>
@@ -391,8 +391,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* MEMBER: My Fee — confirmed fee per event */}
               <div className="flex-1 flex flex-col gap-2 items-start text-left">
                 <div className="flex flex-col w-full">
-                  <span className="text-xs font-bold text-black tracking-wide">MY FEE</span>
-                  <span className="text-[52px] font-bold leading-none text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">MY FEE</span>
+                  <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
                   </span>
                 </div>
@@ -402,8 +402,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* MEMBER: Total Personal Earnings YTD */}
               <div className="flex-1 flex flex-col gap-2 items-start text-left">
                 <div className="flex flex-col w-full">
-                  <span className="text-xs font-bold text-black tracking-wide">MY EARNINGS</span>
-                  <span className="text-[52px] font-bold leading-none text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">MY EARNINGS</span>
+                  <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.totalEarned || 0)}
                   </span>
                 </div>
@@ -417,8 +417,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ ACTION CENTER ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
         <div className="flex flex-col">
-          <span className="text-[32px] font-bold leading-none text-black">ACTION</span>
-          <span className="text-[32px] font-bold leading-none text-black">CENTER</span>
+          <span className="text-[32px] font-bold leading-none text-foreground">ACTION</span>
+          <span className="text-[32px] font-bold leading-none text-foreground">CENTER</span>
         </div>
 
         <div className="flex flex-col gap-[60px]">
@@ -441,29 +441,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* ADMIN: Upcoming Gigs */}
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-black tracking-wide">UPCOMING GIGS</span>
-                  <span className="text-[42px] font-bold leading-tight text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING GIGS</span>
+                  <span className="text-[42px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : confirmedCount}
                   </span>
-                  <span className="text-xs font-bold text-black tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
                   className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
                 >
                   <span className="text-xs font-bold text-accent-foreground">VIEW CALENDAR</span>
-                  <ArrowUpRight className="w-5 h-5 text-black" />
+                  <ArrowUpRight className="w-5 h-5 text-foreground" />
                 </button>
               </div>
 
               {/* ADMIN: Revenue Growing */}
               <div className="flex flex-col justify-between flex-1">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-black tracking-wide">REVENUE GROWING</span>
-                  <span className="text-[42px] font-bold leading-tight text-black">
+                  <span className="text-xs font-bold text-foreground tracking-wide">REVENUE GROWING</span>
+                  <span className="text-[42px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
                   </span>
-                  <span className="text-xs font-bold text-black tracking-wide">VS LAST MONTH</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">VS LAST MONTH</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Analytics')}
@@ -479,10 +479,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* MEMBER: Next Soundcheck / Load-In */}
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-black" />
-                  <span className="text-xs font-bold text-black tracking-wide">NEXT SOUNDCHECK</span>
+                  <Clock className="w-4 h-4 text-foreground" />
+                  <span className="text-xs font-bold text-foreground tracking-wide">NEXT SOUNDCHECK</span>
                 </div>
-                <span className="text-[28px] font-bold leading-tight text-black">
+                <span className="text-[28px] font-bold leading-tight text-foreground">
                   {confirmedCount > 0 ? '2h 15m' : '—'}
                 </span>
                 <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
@@ -497,7 +497,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       <MapPin className="w-3.5 h-3.5" />
                       LOAD-IN MAP
                     </span>
-                    <ChevronRight className="w-4 h-4 text-black" />
+                    <ChevronRight className="w-4 h-4 text-foreground" />
                   </button>
                 )}
               </div>
@@ -505,10 +505,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* MEMBER: My Setlist Snapshot */}
               <div className="flex flex-col justify-between flex-1">
                 <div className="flex items-center gap-2">
-                  <ListMusic className="w-4 h-4 text-black" />
-                  <span className="text-xs font-bold text-black tracking-wide">MY SETLIST</span>
+                  <ListMusic className="w-4 h-4 text-foreground" />
+                  <span className="text-xs font-bold text-foreground tracking-wide">MY SETLIST</span>
                 </div>
-                <span className="text-[28px] font-bold leading-tight text-black">
+                <span className="text-[28px] font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : '—'}
                 </span>
                 <span className="text-[11px] font-bold text-foreground/50 tracking-wide">

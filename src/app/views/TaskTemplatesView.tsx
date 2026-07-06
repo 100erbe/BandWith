@@ -277,17 +277,17 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
             style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
           <div className="flex flex-col leading-none flex-1">
-            <span className="text-[32px] font-bold text-black leading-none">TASK</span>
-            <span className="text-[32px] font-bold text-black leading-none">TEMPLATES</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">TASK</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">TEMPLATES</span>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent shrink-0 active:scale-90 transition-transform"
           >
-            <Plus className="w-[20px] h-[20px] text-black" />
+            <Plus className="w-[20px] h-[20px] text-foreground" />
           </button>
         </div>
 
@@ -298,7 +298,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search templates..."
-            className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
+            className="w-full bg-transparent border-b-2 border-border py-3 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-colors"
           />
         </div>
       </div>
@@ -311,7 +311,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           </div>
         ) : filteredTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <LayoutTemplate className="w-12 h-12 text-black/15 mb-3" />
+            <LayoutTemplate className="w-12 h-12 text-foreground/15 mb-3" />
             <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mb-1">No templates found</span>
             <span className="text-[10px] font-medium text-foreground/30 uppercase">Create your first task template</span>
           </div>
@@ -319,8 +319,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <>
             {/* Section Title */}
             <div className="flex flex-col mb-5">
-              <span className="text-[32px] font-bold leading-none text-black">ALL</span>
-              <span className="text-[32px] font-bold leading-none text-black">TEMPLATES</span>
+              <span className="text-[32px] font-bold leading-none text-foreground">ALL</span>
+              <span className="text-[32px] font-bold leading-none text-foreground">TEMPLATES</span>
             </div>
 
             <div className="flex flex-col gap-0">
@@ -336,7 +336,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                     className="relative"
                   >
                     <div
-                      className="flex items-center justify-between py-4 border-b border-black/10 cursor-pointer active:opacity-70 transition-opacity"
+                      className="flex items-center justify-between py-4 border-b border-border cursor-pointer active:opacity-70 transition-opacity"
                       onClick={() => setSelectedTemplate(template)}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -344,7 +344,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                           <CheckSquare className="w-5 h-5 text-foreground/50" />
                         </div>
                         <div className="flex flex-col items-start min-w-0">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide truncate max-w-full">{template.name}</span>
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wide truncate max-w-full">{template.name}</span>
                           <span className="text-[10px] font-medium text-foreground/40 uppercase">
                             {template.tasks.length} TASKS · {categoryConfig.label}
                             {template.is_default ? ' · DEFAULT' : ''}
@@ -358,7 +358,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         }}
                         className="w-8 h-8 flex items-center justify-center active:opacity-70 transition-opacity shrink-0"
                       >
-                        <MoreHorizontal className="w-4 h-4 text-black" />
+                        <MoreHorizontal className="w-4 h-4 text-foreground" />
                       </button>
                     </div>
 
@@ -369,7 +369,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden border-b border-black/10"
+                          className="overflow-hidden border-b border-border"
                         >
                           <div className="py-2 flex flex-col gap-0">
                             <button
@@ -377,14 +377,14 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                               className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                             >
                               <Copy className="w-4 h-4 text-foreground/40" />
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">DUPLICATE</span>
+                              <span className="text-xs font-bold text-foreground uppercase tracking-wide">DUPLICATE</span>
                             </button>
                             <button
                               onClick={() => handleEdit(template)}
                               className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                             >
                               <Edit2 className="w-4 h-4 text-foreground/40" />
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">EDIT</span>
+                              <span className="text-xs font-bold text-foreground uppercase tracking-wide">EDIT</span>
                             </button>
                             {!template.is_default && (
                               <button
@@ -422,13 +422,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
-              className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto"
+              className="fixed inset-x-0 bottom-0 z-[90] bg-card rounded-t-3xl max-h-[85vh] overflow-y-auto"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-black">{selectedTemplate.name}</h2>
+                    <h2 className="text-xl font-bold text-foreground">{selectedTemplate.name}</h2>
                     <p className="text-sm text-foreground/50">{selectedTemplate.description}</p>
                   </div>
                   <button
@@ -447,13 +447,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   {selectedTemplate.tasks.map((task, i) => (
                     <div 
                       key={task.id}
-                      className="flex items-center gap-4 p-4 bg-white/50 rounded-xl"
+                      className="flex items-center gap-4 p-4 bg-card/50 rounded-xl"
                     >
                       <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-foreground/40">
                         {i + 1}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-black">{task.title}</p>
+                        <p className="font-medium text-foreground">{task.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-foreground/40 flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
@@ -501,11 +501,11 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
                   style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
                 >
-                  <ArrowLeft className="w-[24px] h-[24px] text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
                 </button>
                 <div className="flex flex-col leading-none">
-                  <span className="text-[32px] font-bold text-black leading-none">CREATE</span>
-                  <span className="text-[32px] font-bold text-black leading-none">TEMPLATE</span>
+                  <span className="text-[32px] font-bold text-foreground leading-none">CREATE</span>
+                  <span className="text-[32px] font-bold text-foreground leading-none">TEMPLATE</span>
                 </div>
               </div>
             </div>
@@ -525,7 +525,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g., Festival Preparation"
-                    className="w-full bg-white/50 border-b-2 border-black/10 py-4 px-0 text-xl font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-white/50 border-b-2 border-border py-4 px-0 text-xl font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors"
                   />
                 </motion.div>
                 
@@ -541,7 +541,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Short description of this template"
-                    className="w-full bg-white/50 border-b-2 border-black/10 py-3 px-0 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-white/50 border-b-2 border-border py-3 px-0 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors"
                   />
                 </motion.div>
                 
@@ -585,13 +585,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         key={task.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="p-4 bg-white rounded-2xl flex items-center gap-3"
+                        className="p-4 bg-card rounded-2xl flex items-center gap-3"
                       >
                         <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-xs font-bold text-foreground/40">
                           {index + 1}
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-black">{task.title}</p>
+                          <p className="font-medium text-foreground">{task.title}</p>
                           <p className="text-xs text-foreground/50">{formatDueOffset(task.dueOffset)} {task.required && '• Required'}</p>
                         </div>
                         <button
@@ -605,20 +605,20 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   </div>
                   
                   {/* Add Task */}
-                  <div className="p-4 bg-white/50 rounded-2xl border-2 border-dashed border-black/10 space-y-3">
+                  <div className="p-4 bg-card/50 rounded-2xl border-2 border-dashed border-border space-y-3">
                     <input
                       type="text"
                       value={newTaskTitle}
                       onChange={(e) => setNewTaskTitle(e.target.value)}
                       placeholder="New task title..."
-                      className="w-full bg-transparent text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none"
+                      className="w-full bg-transparent text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none"
                       onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
                     />
                     <div className="flex items-center gap-3">
                       <select
                         value={newTaskOffset}
                         onChange={(e) => setNewTaskOffset(parseInt(e.target.value))}
-                        className="flex-1 bg-white rounded-xl px-3 py-2 text-sm font-medium text-black outline-none"
+                        className="flex-1 bg-card rounded-xl px-3 py-2 text-sm font-medium text-foreground outline-none"
                       >
                         <option value={-14}>14 days before</option>
                         <option value={-7}>7 days before</option>

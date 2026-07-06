@@ -238,7 +238,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 />
               ) : bandName.length >= 2 ? (
                 <div className="w-full h-full bg-gradient-to-br from-accent to-[#98BC21] flex items-center justify-center">
-                  <span className="text-3xl font-black text-black">
+                  <span className="text-3xl font-black text-foreground">
                     {getInitials(bandName)}
                   </span>
                 </div>
@@ -290,7 +290,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-xl font-black text-black">
+                  <span className="text-xl font-black text-foreground">
                     {getInitials(bandName)}
                   </span>
                 )}

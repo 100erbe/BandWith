@@ -93,7 +93,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                     autoFocus
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+                    className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
                     placeholder="e.g. Learn the bridge part"
                 />
             </div>
@@ -124,7 +124,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                     )}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-black" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
+                                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-foreground" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
                                         <span className="text-xs font-bold">{m.name}</span>
                                     </div>
                                     <DotCheckbox checked={isSelected} activeColor={isSelected ? '#FFFFFF' : '#000000'} inactiveColor={isSelected ? 'rgba(255,255,255,0.3)' : undefined} />

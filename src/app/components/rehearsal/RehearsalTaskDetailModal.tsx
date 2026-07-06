@@ -78,7 +78,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
           </div>
           <div className={cn(
             "px-[10px] py-[4px] rounded-[6px]",
-            editedTask.completed ? "bg-white" : "bg-white/20"
+            editedTask.completed ? "bg-card" : "bg-white/20"
           )}>
             <span className={cn(
               "text-[12px] font-bold uppercase",
@@ -194,7 +194,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
               </button>
               <button
                 onClick={handleSave}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white"
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-card"
               >
                 <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
                 <span className="text-[16px] font-bold text-accent-rehearsal uppercase">SAVE</span>

@@ -52,11 +52,11 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
             <div className="space-y-4">
                 <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
-                   <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Superstition" />
+                   <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Superstition" />
                 </div>
                 <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Artist *</label>
-                   <input value={artist} onChange={e => setArtist(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Stevie Wonder" />
+                   <input value={artist} onChange={e => setArtist(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Stevie Wonder" />
                 </div>
             </div>
 
@@ -66,7 +66,7 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
                <textarea 
                   value={reason} 
                   onChange={e => setReason(e.target.value)}
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 font-bold text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[100px] resize-none" 
+                  className="w-full bg-transparent border-b-2 border-black/10 py-3 font-bold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[100px] resize-none" 
                   placeholder="Would be great for our funk set! The groove is amazing..."
                />
             </div>
@@ -81,12 +81,12 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
                           <input 
                             value={link}
                             onChange={e => handleLinkChange(i, e.target.value)}
-                            className="flex-1 bg-transparent border-b border-black/10 py-1 text-sm font-bold text-black focus:outline-none focus:border-black"
+                            className="flex-1 bg-transparent border-b border-black/10 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-black"
                             placeholder="https://youtube.com/..."
                           />
                       </div>
                   ))}
-                  <button onClick={handleAddLink} className="text-[10px] font-bold uppercase text-foreground/40 hover:text-black flex items-center gap-1 mt-1">
+                  <button onClick={handleAddLink} className="text-[10px] font-bold uppercase text-foreground/40 hover:text-foreground flex items-center gap-1 mt-1">
                       <Plus className="w-3 h-3" /> Add Link
                   </button>
                </div>

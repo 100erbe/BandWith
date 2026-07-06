@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
                   "w-2 h-2 rounded-full", 
                   selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[#FF0066]"
                 )} />
-                <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-black transition-colors">
+                <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-foreground transition-colors">
                   {selectedBand.role}
                 </span>
               </motion.div>
@@ -116,10 +116,12 @@ export const Header: React.FC<HeaderProps> = ({
                   </motion.h1>
                 </AnimatePresence>
                 
-                <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
-                  <span className="text-xs font-bold uppercase tracking-wider">Switch Profile</span>
-                  <ChevronDown className="w-4 h-4" />
-                </div>
+                {profile?.role === 'admin' && (
+                  <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
+                    <span className="text-xs font-bold uppercase tracking-wider">Switch Band</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                )}
               </button>
             </>
           )}

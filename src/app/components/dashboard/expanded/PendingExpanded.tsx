@@ -208,7 +208,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-stone-500 pl-1">
-                        <MapPin className="w-4 h-4 text-accent fill-[#1A1A1A]" />
+                        <MapPin className="w-4 h-4 text-foreground/50" />
                         <span className="uppercase tracking-wide">{event.location}</span>
                         <span className="w-1 h-1 rounded-full bg-stone-300 mx-1" />
                         <span>{event.travelTime} drive</span>

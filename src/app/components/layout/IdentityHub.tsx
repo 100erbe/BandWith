@@ -224,10 +224,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           onNotificationClick(group.items.map(i => i.id), item.actionType);
                         }
                       }}
-                      className="flex items-center justify-between w-full bg-white rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
+                      className="flex items-center justify-between w-full bg-card rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
                     >
                       <div className="flex items-center gap-2 w-full">
-                        <span className="text-[12px] font-bold text-black uppercase">
+                        <span className="text-[12px] font-bold text-foreground uppercase">
                           {label}
                         </span>
                         <span className="bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
@@ -265,7 +265,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 </div>
                 <div className="flex flex-col gap-2.5">
                   <div className="flex flex-col gap-0.5">
-                    <p className="text-[22px] font-bold text-black uppercase leading-tight">
+                    <p className="text-[22px] font-bold text-foreground uppercase leading-tight">
                       {displayName}
                     </p>
                     <div className="flex items-center gap-1 bg-black/20 rounded-[6px] px-1.5 py-0.5 w-fit">
@@ -284,10 +284,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     }}
                     className="flex items-center gap-1.5"
                   >
-                    <span className="text-[10px] font-medium text-black uppercase">
+                    <span className="text-[10px] font-medium text-foreground uppercase">
                       EDIT PROFILE
                     </span>
-                    <ArrowUpRight className="w-3 h-3 text-black" />
+                    <ArrowUpRight className="w-3 h-3 text-foreground" />
                   </button>
                 </div>
               </div>
@@ -331,7 +331,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         >
                           <span
                             className={`text-[12px] font-medium uppercase ${
-                              i === 0 ? 'text-accent' : 'text-black'
+                              i === 0 ? 'text-accent' : 'text-foreground'
                             }`}
                           >
                             {tag}
@@ -350,7 +350,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         <span className="text-[12px] font-bold text-accent uppercase">
                           MEMBERS
                         </span>
-                        <span className="text-[32px] font-bold text-black leading-none">
+                        <span className="text-[32px] font-bold text-foreground leading-none">
                           {selectedBand.members}
                         </span>
                       </div>
@@ -362,7 +362,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         <span className="text-[12px] font-bold text-accent uppercase">
                           GENRE
                         </span>
-                        <span className="text-[32px] font-bold text-black leading-none uppercase">
+                        <span className="text-[32px] font-bold text-foreground leading-none uppercase">
                           {selectedBand.genre}
                         </span>
                       </div>
@@ -380,8 +380,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   }}
                   className="w-full border-2 border-dashed border-black/20 rounded-[10px] py-3.5 flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-3.5 h-3.5 text-black" />
-                  <span className="text-[12px] font-medium text-black text-center uppercase">
+                  <Plus className="w-3.5 h-3.5 text-foreground" />
+                  <span className="text-[12px] font-medium text-foreground text-center uppercase">
                     ADD NEW
                   </span>
                 </button>
@@ -417,7 +417,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           <span className="text-[12px] font-bold text-accent-foreground uppercase">EDIT</span>
                         </button>
                       </div>
-                      <span className="text-[32px] font-bold text-black leading-none">
+                      <span className="text-[32px] font-bold text-foreground leading-none">
                         {item.count}
                       </span>
                     </div>

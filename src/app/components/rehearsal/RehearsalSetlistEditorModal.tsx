@@ -325,7 +325,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                             <div className="p-3 border-b border-black/5 flex items-center gap-3 bg-white shrink-0">
                                 {overlayTab === 'library' ? (
                                     <>
-                                        <Search className="w-4 h-4 text-black" />
+                                        <Search className="w-4 h-4 text-foreground" />
                                         <input 
                                             autoFocus
                                             placeholder="Search library..." 
@@ -380,7 +380,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                     </div>
 
                                     {/* Grouped Results List */}
-                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4 bg-white">
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4 bg-card">
                                         {filteredLibrary.length === 0 && (
                                              <div className="p-8 text-center opacity-40">
                                                 <p className="text-xs font-bold">No matching songs found</p>
@@ -410,7 +410,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                                             {isSelected ? (
                                                                 <CheckCircle2 className="w-5 h-5 text-accent" />
                                                             ) : (
-                                                                <Plus className="w-4 h-4 text-foreground/20 group-hover:text-black" />
+                                                                <Plus className="w-4 h-4 text-foreground/20 group-hover:text-foreground" />
                                                             )}
                                                         </button>
                                                     );

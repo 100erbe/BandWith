@@ -141,7 +141,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 transition={{ delay: 0.3 }} 
                 className="bg-white/10 rounded-[2.5rem] p-6 mb-6 border border-white/10 relative overflow-hidden"
               >
-                <div className="absolute -right-4 -top-4 w-32 h-32 bg-accent rounded-full blur-[50px] opacity-20" />
+                <div className="absolute -right-4 -top-4 w-32 h-32 bg-accent-rehearsal rounded-full blur-[50px] opacity-20" />
                 
                 <div className="relative z-10 flex justify-between items-end">
                   <div>
@@ -155,7 +155,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                       <div className="w-px h-8 bg-white/20" />
                       <div className="flex flex-col">
                         <span className="text-[9px] font-bold uppercase text-white/40">Next</span>
-                        <span className="text-xl font-bold text-accent">{upcomingRehearsals[0]?.time}</span>
+                        <span className="text-xl font-bold text-accent-rehearsal">{upcomingRehearsals[0]?.time}</span>
                       </div>
                       <div className="w-px h-8 bg-white/20" />
                       <div className="flex flex-col">
@@ -288,7 +288,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                         <div className={cn(
                           "w-2.5 h-2.5 rounded-full border-2 transition-all duration-300", 
                           step.active 
-                            ? "bg-accent border-accent scale-125 shadow-[0_0_10px_var(--accent)]" 
+                            ? "bg-accent-rehearsal border-accent-rehearsal scale-125 shadow-[0_0_10px_var(--accent-rehearsal)]" 
                             : "bg-[#0047FF] border-white/40 group-hover:border-white"
                         )} />
                         <span className={cn(
@@ -306,7 +306,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 onClick={() => setRehearsalViewMode('live')}
-                className="w-full py-4 bg-accent text-accent-foreground rounded-[2rem] font-black uppercase text-sm tracking-wider hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2 relative overflow-hidden"
+                className="w-full py-4 bg-accent-rehearsal text-accent-rehearsal-foreground rounded-[2rem] font-black uppercase text-sm tracking-wider hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2 relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]" />
                 <Play className="w-5 h-5 fill-current relative z-10" /> 
@@ -401,7 +401,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                       <div key={i} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl">
                         <DotCheckbox
                           checked={isDone}
-                          activeColor="var(--accent)"
+                          activeColor="var(--accent-rehearsal)"
                           inactiveColor="rgba(255,255,255,0.15)"
                         />
                         <div className="flex-1">
@@ -432,8 +432,8 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               className="h-full flex flex-col items-center justify-center text-center"
             >
               <div className="w-32 h-32 rounded-full border-4 border-accent flex items-center justify-center animate-pulse mb-8 relative">
-                <div className="absolute inset-0 bg-accent/20 rounded-full animate-ping" />
-                <Mic2 className="w-12 h-12 text-accent" />
+                <div className="absolute inset-0 bg-accent-rehearsal/20 rounded-full animate-ping" />
+                <Mic2 className="w-12 h-12 text-accent-rehearsal" />
               </div>
               <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-2">Live Session</h2>
               <p className="text-white/60 font-bold uppercase tracking-widest text-sm mb-12">Recording & Tracking Time</p>
@@ -458,7 +458,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
         >
           <button 
             onClick={() => setRehearsalViewMode('live')}
-            className="flex-1 h-14 bg-accent rounded-full flex items-center justify-center gap-2 text-accent-foreground font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform shadow-[0_0_20px_rgba(106,13,173,0.3)]"
+            className="flex-1 h-14 bg-accent-rehearsal rounded-full flex items-center justify-center gap-2 text-accent-rehearsal-foreground font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,85,225,0.3)]"
           >
             <Radio className="w-5 h-5 animate-pulse" /> Check In / Live
           </button>

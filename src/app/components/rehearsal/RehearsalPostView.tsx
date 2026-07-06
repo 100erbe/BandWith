@@ -9,7 +9,7 @@ interface Props {
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
   return (
     <div 
-      className="fixed inset-0 z-[200] bg-[#F7F7F5] text-black flex flex-col font-sans overflow-y-auto"
+      className="fixed inset-0 z-[200] bg-[#F7F7F5] text-foreground flex flex-col font-sans overflow-y-auto"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -121,7 +121,7 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
                  </div>
             </div>
 
-            <button onClick={onClose} className="w-full mt-6 py-4 text-stone-400 font-bold uppercase text-xs hover:text-black">
+            <button onClick={onClose} className="w-full mt-6 py-4 text-stone-400 font-bold uppercase text-xs hover:text-foreground">
                 Close Summary
             </button>
         </div>
