@@ -421,6 +421,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
     }
     // Band filter — only filter if we have bands and active selections
     if (activeBandIds.length > 0 && bandIds.length > 0 && activeBandIds.length < bandIds.length) {
+      if (true) {
+        console.log('[EventsView] Filtering by band:', activeBandIds, '| total events:', result.length, '| events with band_id:', result.filter(e => e.band_id).length);
+      }
       result = result.filter(e => e.band_id && activeBandIds.includes(e.band_id));
     }
     return result;
