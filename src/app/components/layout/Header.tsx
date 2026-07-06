@@ -99,30 +99,46 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </motion.div>
 
-              <button 
-                onClick={onOpenBandSwitcher}
-                className="text-left outline-none"
-              >
-                <AnimatePresence mode="wait">
-                  <motion.h1 
-                    key={selectedBand.id}
-                    initial={{ y: 15, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -15, opacity: 0 }}
-                    transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                    className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px] hover:text-foreground/70"
-                  >
-                    {selectedBand.name}
-                  </motion.h1>
-                </AnimatePresence>
-                
-                {profile?.role === 'admin' && (
+              {/* Band name — clickable only for admins to switch bands */}
+              {profile?.role === 'admin' ? (
+                <button 
+                  onClick={onOpenBandSwitcher}
+                  className="text-left outline-none"
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.h1 
+                      key={selectedBand.id}
+                      initial={{ y: 15, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -15, opacity: 0 }}
+                      transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px] hover:text-foreground/70"
+                    >
+                      {selectedBand.name}
+                    </motion.h1>
+                  </AnimatePresence>
+                  
                   <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
                     <span className="text-xs font-bold uppercase tracking-wider">Switch Band</span>
                     <ChevronDown className="w-4 h-4" />
                   </div>
-                )}
-              </button>
+                </button>
+              ) : (
+                <div className="text-left">
+                  <AnimatePresence mode="wait">
+                    <motion.h1 
+                      key={selectedBand.id}
+                      initial={{ y: 15, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -15, opacity: 0 }}
+                      transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px]"
+                    >
+                      {selectedBand.name}
+                    </motion.h1>
+                  </AnimatePresence>
+                </div>
+              )}
             </>
           )}
         </div>

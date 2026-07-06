@@ -104,7 +104,7 @@ export interface EventWithMembers extends Event {
 // ============================================
 
 export const getEvents = async (
-  bandId: string,
+  bandIds: string | string[],
   options?: {
     status?: EventStatus | EventStatus[];
     eventType?: EventType | EventType[];
@@ -117,8 +117,13 @@ export const getEvents = async (
     let query = supabase
       .from('events')
       .select('*')
-      .eq('band_id', bandId)
       .order('event_date', { ascending: true });
+    
+    // Filter by band(s) - single band or multiple
+    const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
+    if (bIds.length > 0) {
+      query = query.in('band_id', bIds);
+    }
 
     if (options?.status) {
       if (Array.isArray(options.status)) {

@@ -247,7 +247,19 @@ export default function AuthenticatedApp() {
 
   const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>([]);
 
-  const { events: realEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents(realBand?.id || null);
+  // For members: pass all band IDs to show events across all bands
+  // For admins: pass only the selected band's ID
+  const memberBandIds = React.useMemo(() => {
+    if (isAdmin) return null; // admins use realBand.id below
+    return (realBands || []).map(b => b.id).filter(Boolean) as string[];
+  }, [isAdmin, realBands]);
+  
+  // Determine event query scope: admin uses selected band, member uses all bands
+  const eventsBandParam: string | string[] | null = React.useMemo(() => {
+    return isAdmin ? (realBand?.id || null) : memberBandIds;
+  }, [isAdmin, realBand?.id, memberBandIds]);
+  
+  const { events: realEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents(eventsBandParam);
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({
     limit: 20,

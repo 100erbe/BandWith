@@ -84,8 +84,8 @@ export const useBandMembers = (bandId: string | null) => {
 // ============================================
 
 export const useEvents = (
-  bandId: string | null,
-  options?: Parameters<typeof eventsService.getEvents>[1]
+  bandId: string | string[] | null,
+  options?: any
 ) => {
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
