@@ -393,7 +393,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </button>
               </div>
             </div>
-          ) : (
+          ) : isAdmin ? (
+            // ADMIN view — edit / delete / chat
             <div className="flex flex-col gap-[20px] items-center">
               <div className="grid grid-cols-2 gap-[10px] w-full">
                 <button
@@ -434,6 +435,48 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     {theme.deleteLabel}
                   </span>
                 </button>
+              )}
+            </div>
+          ) : (
+            // MEMBER view (already accepted) — chat + drop out (with confirmation)
+            <div className="flex flex-col gap-[20px] items-center">
+              <div className="grid grid-cols-2 gap-[10px] w-full">
+                <button
+                  onClick={onChat}
+                  className={`rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] ${theme.btnChatBg}`}
+                >
+                  <MessageCircle className={`w-[18px] h-[18px] ${theme.btnChatText}`} />
+                  <span className={`text-[16px] font-bold uppercase ${theme.btnChatText}`}>CHAT</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isSubmitting}
+                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white disabled:opacity-50"
+                >
+                  <span className="text-[16px] font-bold text-black uppercase">
+                    {isSubmitting ? '...' : 'DROP OUT'}
+                  </span>
+                </button>
+              </div>
+              {showDeleteConfirm && (
+                <div className="flex flex-col gap-[12px] items-center">
+                  <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: theme.text }}>Are you sure you want to drop out?</p>
+                  <div className="flex items-center gap-[12px]">
+                    <button
+                      onClick={() => { onDecline?.(); setShowDeleteConfirm(false); }}
+                      disabled={isSubmitting}
+                      className="text-[12px] font-bold text-white bg-[#F23030] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
+                    >
+                      {isSubmitting ? '...' : 'CONFIRM DROP'}
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[12px] font-bold uppercase" style={{ color: theme.text }}
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}

@@ -927,6 +927,7 @@ export default function AuthenticatedApp() {
     if (updated) {
       setSelectedEventMembership(updated);
     }
+    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
     const realEventId = selectedEvent.eventId;
     if (realEventId) {
       const { data: members } = await getEventMembers(realEventId);
@@ -947,6 +948,7 @@ export default function AuthenticatedApp() {
     if (updated) {
       setSelectedEventMembership(updated);
     }
+    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
     const realEventId = selectedEvent.eventId;
     if (realEventId) {
       const { data: members } = await getEventMembers(realEventId);
