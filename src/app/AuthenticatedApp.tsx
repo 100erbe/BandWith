@@ -94,8 +94,10 @@ import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 
 const mapEventStatus = (event: Event): EventStatus => {
+  // event_type is the primary classifier
   if (event.event_type === "rehearsal") return "REHEARSAL";
   if (event.quote_id) return "QUOTE";
+  // Fall back to event status for legacy events
   const s = event.status?.toLowerCase();
   if (s === "draft") return "DRAFT";
   if (s === "tentative") return "QUOTE";
@@ -247,19 +249,16 @@ export default function AuthenticatedApp() {
 
   const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>([]);
 
-  // For members: pass all band IDs to show events across all bands
-  // For admins: pass only the selected band's ID
-  const memberBandIds = React.useMemo(() => {
-    if (isAdmin) return null; // admins use realBand.id below
+  // ═══ OPTIMIZED: Single stable event subscription for all bands ═══
+  // Always pass ALL band IDs to maintain one websocket + one global cache
+  const allMyBandIds = React.useMemo(() => {
     return (realBands || []).map(b => b.id).filter(Boolean) as string[];
-  }, [isAdmin, realBands]);
+  }, [realBands]);
   
-  // Determine event query scope: admin uses selected band, member uses all bands
-  const eventsBandParam: string | string[] | null = React.useMemo(() => {
-    return isAdmin ? (realBand?.id || null) : memberBandIds;
-  }, [isAdmin, realBand?.id, memberBandIds]);
+  const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
   
-  const { events: realEvents, loading: eventsLoading, refetch: refetchEvents } = useEvents(eventsBandParam);
+  // ═══ LOCAL CLIENT-SIDE BAND PILL FILTER (instant, <1ms) ═══
+  const [selectedBandPill, setSelectedBandPill] = useState<string>('all');
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({
     limit: 20,
@@ -275,9 +274,9 @@ export default function AuthenticatedApp() {
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!realEvents?.length) return;
+    if (!masterEventsList?.length) return;
     const fetchAllMembers = async () => {
-      const eventIds = realEvents.map(e => e.id);
+      const eventIds = masterEventsList.map(e => e.id);
       const map: Record<string, { name: string; userId: string; fee?: number }[]> = {};
 
       // Simple query WITHOUT profile join to avoid FK/schema issues
@@ -304,7 +303,7 @@ export default function AuthenticatedApp() {
       setEventMembersMap(map);
     };
     fetchAllMembers();
-  }, [realEvents, membersRefreshKey, realBand?.members]);
+  }, [masterEventsList, membersRefreshKey, realBand?.members]);
 
   // Build band lookup for event mapping
   const bandLookup = useMemo(() => {
@@ -315,8 +314,8 @@ export default function AuthenticatedApp() {
   }, [realBands, realBand]);
 
   const events = useMemo(() => {
-    if (realEvents && realEvents.length > 0) {
-      return realEvents.map(e => {
+    if (masterEventsList && masterEventsList.length > 0) {
+      return masterEventsList.map(e => {
         const item = eventToEventItem(e);
         const members = eventMembersMap[e.id] || [];
         if (members.length > 0) {
@@ -332,7 +331,39 @@ export default function AuthenticatedApp() {
       });
     }
     return [];
-  }, [realEvents, eventMembersMap]);
+  }, [masterEventsList, eventMembersMap]);
+
+  // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search) ═══
+  const visuallyFilteredEvents = useMemo(() => {
+    let result = events;
+    // Band pill filter
+    if (selectedBandPill !== 'all') {
+      result = result.filter(e => e.band_id === selectedBandPill);
+    }
+    // Status filter
+    result = result.filter((e) => {
+      const s = e.status?.toUpperCase();
+      let mf = eventFilter === "All";
+      if (!mf) {
+        if (eventFilter === "GIGS" || eventFilter === "Confirmed") mf = s === "CONFIRMED" || s === "COMPLETED";
+        else if (eventFilter === "REHEARSAL" || eventFilter === "Rehearsal") mf = s === "REHEARSAL";
+        else if (eventFilter === "QUOTE") mf = s === "QUOTE" || s === "QUOTED";
+        else if (eventFilter === "DRAFT") mf = s === "DRAFT" || s === "PENDING";
+      }
+      return mf;
+    });
+    // Search filter
+    if (eventSearch) {
+      const q = eventSearch.toLowerCase();
+      result = result.filter(e => 
+        e.title.toLowerCase().includes(q) ||
+        (e.location || '').toLowerCase().includes(q) ||
+        (e.clientName || '').toLowerCase().includes(q) ||
+        (e.notes || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [events, selectedBandPill, eventFilter, eventSearch]);
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
@@ -653,26 +684,12 @@ export default function AuthenticatedApp() {
     return counts;
   }, [convertedChats]);
 
-  const filteredEvents = useMemo(() => {
-    return events.filter((e) => {
-      const s = e.status?.toUpperCase();
-      let mf = eventFilter === "All";
-      if (!mf) {
-        if (eventFilter === "GIGS" || eventFilter === "Confirmed") mf = s === "CONFIRMED" || s === "COMPLETED";
-        else if (eventFilter === "REHEARSAL" || eventFilter === "Rehearsal") mf = s === "REHEARSAL";
-        else if (eventFilter === "QUOTE") mf = s === "QUOTE" || s === "QUOTED";
-        else if (eventFilter === "DRAFT") mf = s === "DRAFT" || s === "PENDING";
-      }
-      const ms = e.title.toLowerCase().includes(eventSearch.toLowerCase()) || e.location.toLowerCase().includes(eventSearch.toLowerCase());
-      return mf && ms;
-    });
-  }, [events, eventFilter, eventSearch]);
-
+  // ═══ GROUPED EVENTS (client-side, derived from visuallyFilteredEvents) ═══
   const groupedEvents = useMemo(() => {
     const groups: { [key: string]: EventItem[] } = {};
-    filteredEvents.forEach((e) => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
+    visuallyFilteredEvents.forEach((e) => { const d = e.date || ''; if (!groups[d]) groups[d] = []; groups[d].push(e); });
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filteredEvents]);
+  }, [visuallyFilteredEvents]);
 
   const upcomingRehearsals = useMemo(() => {
     return events.filter((e) => e.status === "REHEARSAL").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -1176,7 +1193,7 @@ export default function AuthenticatedApp() {
           activeTab={activeTab} selectedBand={selectedBand}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
-          filteredEventsCount={filteredEvents.length} totalEventsCount={events.length}
+          filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
           onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }}
           onOpenIdentity={openIdentity} unreadCount={unreadCount} isHidden={isHeaderHidden}
@@ -1197,11 +1214,11 @@ export default function AuthenticatedApp() {
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} />
+            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={events} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} />
+            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
 

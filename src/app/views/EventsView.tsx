@@ -31,6 +31,8 @@ interface EventsViewProps {
   onDayPickerOpen?: (open: boolean) => void;
   userFeeMap?: Record<string, number>;
   bands?: Array<{ id: string; name: string }>;
+  selectedBandPill?: string;
+  onBandPillClick?: (bandId: string) => void;
 }
 
 const FILTERS = ['All', 'GIGS', 'REHEARSAL', 'QUOTE', 'DRAFT'] as const;
@@ -353,6 +355,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
   setEventFilter,
   eventSearch,
   setEventSearch,
+  selectedBandPill = 'all',
+  onBandPillClick = () => {},
   allEvents,
   onEventClick,
   onCreateEvent,
@@ -377,15 +381,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [warningPopoverId, setWarningPopoverId] = useState<number | null>(null);
   const [suggestionPopoverId, setSuggestionPopoverId] = useState<number | null>(null);
-      const [activeBandIds, setActiveBandIds] = useState<string[]>([]);
   const bandIds = React.useMemo(() => (bands || []).map(b => b.id), [bands]);
-  
-  // Initialize activeBandIds to show all bands when bands prop changes
-  React.useEffect(() => {
-    if (activeBandIds.length === 0 && bandIds.length > 0) {
-      setActiveBandIds(bandIds);
-    }
-  }, [bandIds.join(','), activeBandIds.length]);
   const [dayPickerEvents, setDayPickerEvents] = useState<EventData[] | null>(null);
 
   const openDayPicker = (events: EventData[]) => {
@@ -398,42 +394,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
   };
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const filteredEvents = useMemo(() => {
-    let result = allEvents;
-    if (eventFilter !== 'All') {
-      result = result.filter(e => {
-        const s = e.status?.toUpperCase();
-        if (eventFilter === 'GIGS') return s === 'CONFIRMED' || s === 'COMPLETED';
-        if (eventFilter === 'REHEARSAL') return s === 'REHEARSAL';
-        if (eventFilter === 'QUOTE') return s === 'QUOTED' || s === 'QUOTE';
-        if (eventFilter === 'DRAFT') return s === 'DRAFT' || s === 'PENDING';
-        return true;
-      });
-    }
-    if (eventSearch.trim()) {
-      const q = eventSearch.toLowerCase();
-      result = result.filter(e =>
-        e.title.toLowerCase().includes(q) ||
-        (e.location || '').toLowerCase().includes(q) ||
-        (e.clientName || '').toLowerCase().includes(q) ||
-        (e.notes || '').toLowerCase().includes(q)
-      );
-    }
-    // Band filter — only filter if we have bands and active selections
-    if (activeBandIds.length > 0 && bandIds.length > 0 && activeBandIds.length < bandIds.length) {
-      if (true) {
-        console.log('[EventsView] Filtering by band:', activeBandIds, '| total events:', result.length, '| events with band_id:', result.filter(e => e.band_id).length);
-      }
-      result = result.filter(e => e.band_id && activeBandIds.includes(e.band_id));
-    }
-    return result;
-  }, [allEvents, eventFilter, eventSearch]);
+  // All filtering now happens in parent component (AuthenticatedApp.tsx)
+  // `allEvents` prop is already band-pill + status + search filtered
 
   const eventDatesMap = useMemo(() => {
     const map: Record<string, EventData[]> = {};
     const monthStart = new Date(calendarYear, calendarMonth, 1);
     const monthEnd = new Date(calendarYear, calendarMonth + 1, 0);
-    const source = filteredEvents;
+    const source = allEvents;
 
     const addToMap = (ev: EventData, dateObj: Date) => {
       const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
@@ -469,7 +437,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       }
     });
     return map;
-  }, [filteredEvents, calendarMonth, calendarYear]);
+  }, [allEvents, calendarMonth, calendarYear]);
 
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
@@ -533,25 +501,27 @@ export const EventsView: React.FC<EventsViewProps> = ({
             )}
           </AnimatePresence>
 
-          {/* ═══ BAND FILTER PILLS ═══ */}
+          {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
           {bands.length > 1 && !isAdmin && (
             <div className="flex gap-[4px] items-center flex-wrap pb-1 mb-1">
+              <button
+                key="all"
+                onClick={() => onBandPillClick('all')}
+                className={cn(
+                  'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[11px] font-bold uppercase flex-shrink-0 transition-all leading-tight',
+                  selectedBandPill === 'all'
+                    ? 'bg-foreground text-background'
+                    : 'bg-foreground/10 text-foreground/50'
+                )}
+              >
+                All
+              </button>
               {bands.map((band) => {
-                const isActive = !activeBandIds.length || activeBandIds.includes(band.id);
+                const isActive = selectedBandPill === band.id;
                 return (
                   <button
                     key={band.id}
-                    onClick={() => {
-                      if (activeBandIds.length === 0 || activeBandIds.length === bandIds.length) {
-                        setActiveBandIds([band.id]);
-                      } else if (activeBandIds.includes(band.id) && activeBandIds.length === 1) {
-                        setActiveBandIds(bandIds);
-                      } else if (activeBandIds.includes(band.id)) {
-                        setActiveBandIds(activeBandIds.filter(id => id !== band.id));
-                      } else {
-                        setActiveBandIds([...activeBandIds, band.id]);
-                      }
-                    }}
+                    onClick={() => onBandPillClick(band.id)}
                     className={cn(
                       'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[11px] font-bold uppercase flex-shrink-0 transition-all leading-tight',
                       isActive
@@ -605,7 +575,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {eventFilter !== 'All' && (() => {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-            const futureEvents = filteredEvents.filter(e => {
+            const futureEvents = allEvents.filter(e => {
               if (!e.date) return false;
               const d = new Date(e.date);
               d.setHours(0, 0, 0, 0);
@@ -892,8 +862,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ EVENT CARDS ═══ */}
           <div className="flex flex-col gap-[80px]">
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map((event) => {
+            {allEvents.length > 0 ? (
+              allEvents.map((event) => {
                 const status = event.status?.toUpperCase();
                 const isRehearsal = status === 'REHEARSAL';
                 const isGig = status === 'CONFIRMED' || status === 'COMPLETED';

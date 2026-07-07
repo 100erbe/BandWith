@@ -126,8 +126,10 @@ export const useEvents = (
   useEffect(() => {
     if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
 
+    const uniqueChannelName = `events-list-${Math.random().toString(36).substring(2, 9)}`;
+
     const channel = supabase
-      .channel('events-realtime')
+      .channel(uniqueChannelName)
       .on(
         'postgres_changes',
         {
@@ -201,8 +203,10 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
   useEffect(() => {
     if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
 
+    const uniqueChannelName = `events-upcoming-${Math.random().toString(36).substring(2, 9)}`;
+
     const channel = supabase
-      .channel('events-realtime')
+      .channel(uniqueChannelName)
       .on(
         'postgres_changes',
         {
@@ -755,8 +759,10 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
   useEffect(() => {
     if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
 
+    const uniqueChannelName = `events-expanded-${Math.random().toString(36).substring(2, 9)}`;
+
     const channel = supabase
-      .channel('events-realtime')
+      .channel(uniqueChannelName)
       .on(
         'postgres_changes',
         {
