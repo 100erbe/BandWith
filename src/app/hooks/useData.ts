@@ -7,6 +7,7 @@ import * as songsService from '@/lib/services/songs';
 import * as notificationsService from '@/lib/services/notifications';
 import * as transactionsService from '@/lib/services/transactions';
 import * as chatsService from '@/lib/services/chats';
+import { supabase } from '@/lib/supabase';
 
 // ============================================
 // BANDS HOOKS
@@ -121,6 +122,36 @@ export const useEvents = (
     return () => clearInterval(pollInterval);
   }, [fetchEvents, bandId]);
 
+  // Subscribe to realtime events updates
+  useEffect(() => {
+    if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
+
+    const channel = supabase
+      .channel('events-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events',
+          filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
+        },
+        () => {
+          // Refetch events on any insert/update/delete
+          fetchEvents();
+        }
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.log('[useEvents] Realtime status:', status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [bandId, fetchEvents]);
+
   return { events, loading, error, refetch: fetchEvents };
 };
 
@@ -165,6 +196,36 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  // Subscribe to realtime events updates
+  useEffect(() => {
+    if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
+
+    const channel = supabase
+      .channel('events-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events',
+          filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
+        },
+        () => {
+          // Refetch events on any insert/update/delete
+          fetchEvents();
+        }
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.log('[useEvents] Realtime status:', status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [bandId, fetchEvents]);
 
   return { events, loading, error, refetch: fetchEvents };
 };
@@ -689,6 +750,36 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  // Subscribe to realtime events updates
+  useEffect(() => {
+    if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
+
+    const channel = supabase
+      .channel('events-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events',
+          filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
+        },
+        () => {
+          // Refetch events on any insert/update/delete
+          fetchEvents();
+        }
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.log('[useEvents] Realtime status:', status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [bandId, fetchEvents]);
 
   return { events, loading, error, refetch: fetchEvents };
 };
