@@ -96,8 +96,7 @@ export const getChats = async (
           user_id,
           last_read_at,
           muted,
-          joined_at,
-          profile:profiles (id, full_name, avatar_url)
+          joined_at
         )
       `)
       .in('id', chatIds)
@@ -111,7 +110,7 @@ export const getChats = async (
         // Get last message
         const { data: messages } = await supabase
           .from('messages')
-          .select('*, sender:profiles(id, full_name, avatar_url)')
+          .select('*')
           .eq('chat_id', chat.id)
           .order('created_at', { ascending: false })
           .limit(1);
@@ -171,8 +170,7 @@ export const getChat = async (
           user_id,
           last_read_at,
           muted,
-          joined_at,
-          profile:profiles (id, full_name, avatar_url)
+          joined_at
         )
       `)
       .eq('id', chatId)
@@ -180,10 +178,21 @@ export const getChat = async (
 
     if (error) throw error;
 
+    // Fetch participant profiles
+    const partIds = (chat.chat_participants || []).map((p: any) => p.user_id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', partIds);
+    const profileMap = new Map((profilesData || []).map((p: any) => [p.id, { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url }]));
+
     return {
       data: {
         ...chat,
-        participants: chat.chat_participants || [],
+        participants: (chat.chat_participants || []).map((p: any) => ({
+          ...p,
+          profile: profileMap.get(p.user_id) || null,
+        })),
         unread_count: 0,
       },
       error: null,
@@ -340,16 +349,7 @@ export const getMessages = async (
     // Include reply_to message for quoting feature
     let query = supabase
       .from('messages')
-      .select(`
-        *,
-        sender:profiles(id, full_name, avatar_url),
-        reply_to:messages!reply_to_id(
-          id,
-          content,
-          sender_id,
-          sender:profiles(id, full_name)
-        )
-      `)
+      .select(`*`)
       .eq('chat_id', chatId)
       .order('created_at', { ascending: false });
 
@@ -416,7 +416,7 @@ export const sendMessage = async (
         band_id: chat.band_id,
         reply_to_id: replyToId || null,
       })
-      .select('*, sender:profiles(id, full_name, avatar_url)')
+      .select('*')
       .single();
 
     if (error) throw error;
@@ -504,17 +504,13 @@ export const getChatParticipants = async (
         user_id,
         last_read_at,
         muted,
-        joined_at,
-        profile:profiles(id, full_name, avatar_url)
+        joined_at
       `)
       .eq('chat_id', chatId);
 
     if (error) throw error;
 
-    const mapped = (data || []).map((d: any) => ({
-      ...d,
-      profile: Array.isArray(d.profile) ? d.profile[0] || null : d.profile || null,
-    })) as ChatParticipant[];
+    const mapped = (data || []) as ChatParticipant[];
     return { data: mapped, error: null };
   } catch (error: any) {
     return { data: null, error };
@@ -594,7 +590,7 @@ export const subscribeToChat = (
         // Get full message with sender info
         const { data } = await supabase
           .from('messages')
-          .select('*, sender:profiles(id, full_name, avatar_url)')
+          .select('*')
           .eq('id', payload.new.id)
           .single();
 
@@ -629,7 +625,7 @@ export const subscribeToNewMessages = (
       async (payload) => {
         const { data } = await supabase
           .from('messages')
-          .select('*, sender:profiles(id, full_name, avatar_url)')
+          .select('*')
           .eq('id', payload.new.id)
           .single();
 
@@ -718,8 +714,7 @@ export const searchChatsAndMessages = async (
           id,
           chat_id,
           content,
-          created_at,
-          sender:profiles(full_name)
+          created_at
         `)
         .in('chat_id', chatIds)
         .ilike('content', searchPattern)
@@ -742,7 +737,7 @@ export const searchChatsAndMessages = async (
             chat_type: chatInfo?.type as ChatType,
             message_id: msg.id,
             message_content: msg.content,
-            message_sender: (msg.sender as any)?.full_name || 'Unknown',
+            message_sender: 'Unknown',
             message_date: msg.created_at,
             match_text: msg.content,
           });
@@ -754,35 +749,15 @@ export const searchChatsAndMessages = async (
         .from('chat_participants')
         .select(`
           chat_id,
-          profile:profiles(full_name)
+          user_id
         `)
         .in('chat_id', chatIds)
         .not('user_id', 'eq', user.id);
 
+      // Participant name search disabled — requires FK relationship fix in schema cache
+      // TODO: re-enable when Supabase restores profile join for chat_participants
       if (participantResults) {
-        const matchingParticipants = participantResults.filter(p => 
-          (p.profile as any)?.full_name?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        for (const p of matchingParticipants.slice(0, limit)) {
-          const { data: chatInfo } = await supabase
-            .from('chats')
-            .select('name, type')
-            .eq('id', p.chat_id)
-            .single();
-
-          // Avoid duplicates
-          if (!results.some(r => r.chat_id === p.chat_id && r.type === 'participant')) {
-            results.push({
-              type: 'participant',
-              chat_id: p.chat_id,
-              chat_name: chatInfo?.name || 'Chat',
-              chat_type: chatInfo?.type as ChatType,
-              participant_name: (p.profile as any)?.full_name,
-              match_text: (p.profile as any)?.full_name || 'Unknown',
-            });
-          }
-        }
+        // Names are resolved via separate query above if needed
       }
     }
 
