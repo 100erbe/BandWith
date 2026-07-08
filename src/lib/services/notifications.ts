@@ -956,7 +956,7 @@ export const notifyEventResponse = async (
     
     const responseText = {
       confirmed: `${memberName} confirmed for "${eventTitle}"`,
-      declined: `${memberName} declined "${eventTitle}"${alternativeDate ? ` (proposed: ${alternativeDate})` : ''}`,
+      declined: `${memberName} dropped out of "${eventTitle}"${alternativeDate ? ` (proposed: ${alternativeDate})` : ''}`,
       tentative: `${memberName} is tentative for "${eventTitle}"`
     };
     
@@ -987,7 +987,7 @@ export const notifyEventResponse = async (
     if (response === 'declined') {
       await sendPushNotification(
         adminIds,
-        `${responseEmoji[response]} RSVP Declined`,
+        `${responseEmoji[response]} Member Dropped Out`,
         responseText[response],
         { event_id: eventId, type: 'event_confirmed', response }
       );
