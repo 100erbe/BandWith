@@ -961,10 +961,12 @@ export default function AuthenticatedApp() {
 
   const handleEventDecline = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
-    const { data: updated } = await respondToEventInvite(selectedEventMembership.id, "declined");
-    if (updated) {
-      setSelectedEventMembership(updated);
+    const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "declined");
+    if (error) {
+      console.error('[handleEventDecline] Failed to update membership:', error);
     }
+    setSelectedEventMembership(updated || null);
+    setSelectedEvent(null);
     setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
     const realEventId = selectedEvent.eventId;
     if (realEventId) {

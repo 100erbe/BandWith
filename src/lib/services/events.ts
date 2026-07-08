@@ -182,15 +182,7 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
 
     const { data: members, error: membersError } = await supabase
       .from('event_members')
-      .select(`
-        *,
-        profile:profiles (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select(`*`)
       .eq('event_id', eventId);
 
     if (membersError) throw membersError;
@@ -382,17 +374,7 @@ export const getEventMembers = async (eventId: string): Promise<{ data: EventMem
   try {
     const { data, error } = await supabase
       .from('event_members')
-      .select(`
-        *,
-        profile:profiles (
-          id,
-          email,
-          full_name,
-          avatar_url,
-          phone,
-          instrument
-        )
-      `)
+      .select(`*`)
       .eq('event_id', eventId);
 
     if (error) throw error;
@@ -480,15 +462,7 @@ export const getUserEventMembership = async (
   try {
     const { data, error } = await supabase
       .from('event_members')
-      .select(`
-        *,
-        profile:profiles (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select(`*`)
       .eq('event_id', eventId)
       .eq('user_id', userId)
       .maybeSingle();
