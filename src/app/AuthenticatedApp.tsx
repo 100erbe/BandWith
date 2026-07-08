@@ -964,6 +964,8 @@ export default function AuthenticatedApp() {
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "declined");
     if (error) {
       console.error('[handleEventDecline] Failed to update membership:', error);
+      setSaveToast({ message: 'Failed to drop out. Please check your connection and try again.', type: 'error' });
+      return;
     }
     setSelectedEventMembership(updated || null);
     setSelectedEvent(null);
