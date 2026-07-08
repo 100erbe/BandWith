@@ -218,13 +218,18 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const memberCount = event.members?.length || 0;
 
   const handleAccept = async () => {
-    if (onAccept && !isSubmitting) {
-      setIsSubmitting(true);
-      try { await onAccept(); onClose(); }
-      catch { /* handled */ }
-      finally { setIsSubmitting(false); }
+  if (onAccept && !isSubmitting) {
+    setIsSubmitting(true);
+    try { 
+      await onAccept(); 
+      onClose(); // Only runs if onAccept doesn't throw
+    } catch (err) { 
+      console.error("Action failed, keeping modal open", err);
+    } finally { 
+      setIsSubmitting(false); 
     }
-  };
+  }
+};
 
   const handleDecline = async () => {
     if (onDecline && !isSubmitting) {
@@ -463,7 +468,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: theme.text }}>Are you sure you want to drop out?</p>
                   <div className="flex items-center gap-[12px]">
                     <button
-                      onClick={() => { onDecline?.(); setShowDeleteConfirm(false); }}
+                      onClick={handleDecline}
                       disabled={isSubmitting}
                       className="text-[12px] font-bold text-white bg-[#F23030] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
                     >

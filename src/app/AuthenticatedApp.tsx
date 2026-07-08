@@ -940,9 +940,18 @@ export default function AuthenticatedApp() {
 
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
-    const { data: updated } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
+    const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
+    if (error) {
+      console.error('[handleEventAccept] Failed to update membership:', error);
+      setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
+      throw new Error('Database update failed');
+    }
     if (updated) {
       setSelectedEventMembership(updated);
+    } else {
+      // No error but no data either — membership not found, treat as error
+      setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
+      throw new Error('Membership not found');
     }
     setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
     const realEventId = selectedEvent.eventId;
@@ -965,9 +974,13 @@ export default function AuthenticatedApp() {
     if (error) {
       console.error('[handleEventDecline] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to drop out. Please check your connection and try again.', type: 'error' });
-      return;
+      throw new Error('Database update failed');
     }
-    setSelectedEventMembership(updated || null);
+    if (!updated) {
+      setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
+      throw new Error('Membership not found');
+    }
+    setSelectedEventMembership(updated);
     setSelectedEvent(null);
     setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
     const realEventId = selectedEvent.eventId;
