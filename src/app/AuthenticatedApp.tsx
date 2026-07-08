@@ -946,26 +946,32 @@ export default function AuthenticatedApp() {
       setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
       throw new Error('Database update failed');
     }
-    if (updated) {
-      setSelectedEventMembership(updated);
-    } else {
-      // No error but no data either — membership not found, treat as error
+    if (!updated) {
       setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
       throw new Error('Membership not found');
     }
-    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
-    const realEventId = selectedEvent.eventId;
-    if (realEventId) {
-      const { data: members } = await getEventMembers(realEventId);
-      const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
-      if (creator?.user_id && user?.id) {
-        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-        await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
+    setSelectedEventMembership(updated);
+
+    // --- SAFE NOTIFICATION SANDBOX ---
+    try {
+      const realEventId = selectedEvent.eventId;
+      if (realEventId) {
+        const { data: members } = await getEventMembers(realEventId);
+        const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
+        if (creator?.user_id && user?.id) {
+          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+          const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
+        }
       }
+    } catch (notificationError) {
+      console.warn('[handleEventAccept] Notification failed but DB update succeeded:', notificationError);
     }
-    await refetchEvents?.();
-    await refetchNotifications?.();
+    // ----------------------------------
+
+    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
+    if (refetchEvents) await refetchEvents();
+    if (refetchNotifications) await refetchNotifications();
   };
 
   const handleEventDecline = async () => {
@@ -980,21 +986,30 @@ export default function AuthenticatedApp() {
       setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
       throw new Error('Membership not found');
     }
+
+    // --- SAFE NOTIFICATION SANDBOX ---
+    try {
+      const realEventId = selectedEvent.eventId;
+      if (realEventId) {
+        const { data: members } = await getEventMembers(realEventId);
+        const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
+        if (creator?.user_id && user?.id) {
+          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+          const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
+        }
+      }
+    } catch (notificationError) {
+      console.warn('[handleEventDecline] Notification failed but DB update succeeded:', notificationError);
+    }
+    // ----------------------------------
+
+    // Core state sync MUST run even if push fails
     setSelectedEventMembership(updated);
     setSelectedEvent(null);
     setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
-    const realEventId = selectedEvent.eventId;
-    if (realEventId) {
-      const { data: members } = await getEventMembers(realEventId);
-      const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
-      if (creator?.user_id && user?.id) {
-        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-        await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
-      }
-    }
-    await refetchEvents?.();
-    await refetchNotifications?.();
+    if (refetchEvents) await refetchEvents();
+    if (refetchNotifications) await refetchNotifications();
   };
 
   const handleEventCreate = async (data: any) => {
