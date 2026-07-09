@@ -427,9 +427,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex flex-col gap-3 px-4 my-4 bg-transparent">
             {/* Dynamic Header Row */}
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>
-                {nextEvent ? (isRehearsal ? "Next Rehearsal" : "Next Gig") : "Next Gig"}
-              </h3>
+              <div className="flex flex-col leading-none">
+                <span className="text-[32px] font-bold leading-none text-foreground">
+                  {nextEvent ? (isRehearsal ? "Next Rehearsal" : "Next Gig") : "Next Gig"}
+                </span>
+              </div>
               <button
                 onClick={() => onViewChange?.('Events')}
                 className="text-xs font-semibold hover:underline"
