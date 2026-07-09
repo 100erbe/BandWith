@@ -508,26 +508,30 @@ export const getEventStats = async (
 
     const { data: events, error } = await supabase
       .from('events')
-      .select('status, fee, event_date')
+      .select('status, fee, event_date, event_type')
       .eq('band_id', bandId)
       .gte('event_date', startOfYear)
       .lte('event_date', endOfYear);
 
     if (error) throw error;
 
-    const currentMonthRevenue = events
+    // Confirmed gigs only (exclude rehearsals)
+    const confirmedGigs = events?.filter(e => 
+      (e.status === 'confirmed' || e.status === 'completed') &&
+      e.event_type !== 'rehearsal'
+    ) || [];
+
+    const currentMonthRevenue = confirmedGigs
       ?.filter(e => 
         e.event_date >= currentMonthStart && 
-        e.event_date <= currentMonthEnd &&
-        (e.status === 'confirmed' || e.status === 'completed')
+        e.event_date <= currentMonthEnd
       )
       .reduce((sum, e) => sum + (e.fee || 0), 0) || 0;
     
-    const prevMonthRevenue = events
+    const prevMonthRevenue = confirmedGigs
       ?.filter(e => 
         e.event_date >= prevMonthStart && 
-        e.event_date <= prevMonthEnd &&
-        (e.status === 'confirmed' || e.status === 'completed')
+        e.event_date <= prevMonthEnd
       )
       .reduce((sum, e) => sum + (e.fee || 0), 0) || 0;
     
@@ -540,9 +544,8 @@ export const getEventStats = async (
 
     const stats = {
       totalEvents: events?.length || 0,
-      confirmedEvents: events?.filter(e => e.status === 'confirmed' || e.status === 'completed').length || 0,
-      totalRevenue: events
-        ?.filter(e => e.status === 'confirmed' || e.status === 'completed')
+      confirmedEvents: confirmedGigs.length,
+      totalRevenue: confirmedGigs
         .reduce((sum, e) => sum + (e.fee || 0), 0) || 0,
       upcomingEvents: events?.filter(e => e.event_date >= today && e.status !== 'cancelled').length || 0,
       revenueChange,
@@ -574,7 +577,7 @@ export const getMemberPersonalStats = async (
 
     const { data: memberships, error } = await supabase
       .from('event_members')
-      .select('fee, status, events!inner(band_id, event_date, status)')
+      .select('fee, status, events!inner(band_id, event_date, status, event_type)')
       .eq('user_id', userId)
       .eq('events.band_id', bandId)
       .gte('events.event_date', startOfYear)
@@ -583,7 +586,11 @@ export const getMemberPersonalStats = async (
     if (error) throw error;
 
     const rows = (memberships || []) as any[];
-    const confirmed = rows.filter(r => r.status === 'confirmed' && (r.events?.status === 'confirmed' || r.events?.status === 'completed'));
+    const confirmed = rows.filter(r => 
+      r.status === 'confirmed' && 
+      (r.events?.status === 'confirmed' || r.events?.status === 'completed') &&
+      r.events?.event_type !== 'rehearsal'
+    );
     const totalEarned = confirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
     const pending = rows.filter(r => r.status === 'pending');
     const pendingFee = pending.reduce((s: number, r: any) => s + (r.fee || 0), 0);
