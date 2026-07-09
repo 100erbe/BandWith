@@ -425,52 +425,53 @@ export const HomeView: React.FC<HomeViewProps> = ({
         const isRehearsal = nextEvent?.event_type === 'rehearsal';
         return (
           <div className="flex flex-col gap-3 px-4 my-4 bg-transparent">
-            {/* Dynamic Header Row */}
+            {/* Gated Header Row */}
             <div className="flex justify-between items-center">
               <div className="flex flex-col leading-none">
+                <span className="text-[32px] font-bold leading-none text-foreground">NEXT</span>
                 <span className="text-[32px] font-bold leading-none text-foreground">
-                  {nextEvent ? (isRehearsal ? "Next Rehearsal" : "Next Gig") : "Next Gig"}
+                  {nextEvent ? (isRehearsal ? "REHEARSAL" : "GIG") : "GIG"}
                 </span>
               </div>
               <button
                 onClick={() => onViewChange?.('Events')}
-                className="text-xs font-semibold hover:underline"
+                className="text-xs font-bold tracking-wider uppercase hover:underline pb-1"
                 style={{ color: 'var(--brand-accent)' }}
               >
                 See all
               </button>
             </div>
-            {/* Transparent Info Block */}
+            {/* Main Info Row Container */}
             {nextEvent ? (
               <div
                 onClick={() => onViewChange?.('Events')}
-                className="py-3 border-b flex flex-col gap-1.5 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
+                className="py-4 border-b flex flex-col gap-1 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
                 style={{ borderColor: 'rgba(0,0,0,0.1)' }}
               >
                 <div className="flex justify-between items-baseline">
                   <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--foreground)' }}>
-                    {nextEvent.title || "Untitled Event"}
+                    {nextEvent.title?.toUpperCase() || "UNTITLED EVENT"}
                   </span>
                   <span className="text-[10px] font-black tracking-widest uppercase opacity-75" style={{ color: 'var(--brand-accent)' }}>
-                    {nextEvent.event_type || "EVENT"}
+                    {nextEvent.event_type?.toUpperCase() || "EVENT"}
                   </span>
                 </div>
-                <div className="flex flex-col gap-0.5 text-xs opacity-70" style={{ color: 'var(--foreground)' }}>
+                <div className="flex flex-col gap-0.5 text-xs uppercase tracking-wide opacity-70" style={{ color: 'var(--foreground)' }}>
                   {nextEvent.event_date && (
                     <div className="flex items-center gap-1">
-                      <span>📅 {new Date(nextEvent.event_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                      <span>📅 {new Date(nextEvent.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })?.toUpperCase()}</span>
                       {nextEvent.start_time && <span>• {nextEvent.start_time}</span>}
                     </div>
                   )}
                   {nextEvent.venue_name && (
                     <div className="flex items-center gap-1 truncate">
-                      <span>📍 {nextEvent.venue_name}</span>
+                      <span>📍 {nextEvent.venue_name?.toUpperCase()}</span>
                     </div>
                   )}
                 </div>
             </div>
             ) : (
-              <div className="text-xs py-4 italic opacity-50" style={{ color: 'var(--foreground)' }}>
+              <div className="text-xs py-4 font-bold tracking-wider uppercase opacity-40" style={{ color: 'var(--foreground)' }}>
                 No upcoming events scheduled
               </div>
             )}
