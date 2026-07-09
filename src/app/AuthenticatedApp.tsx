@@ -957,25 +957,27 @@ export default function AuthenticatedApp() {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // STEP B — UI Dismissal: Snap modal closed, fire success toast
+    // STEP B — UI Dismissal: Snap modal closed, fire optimistic toast
     // ═══════════════════════════════════════════════════════════════
     setSelectedEvent(null);
     setSelectedEventMembership(null);
-    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP C — DB Payload Processing (runs in background)
     // ═══════════════════════════════════════════════════════════════
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
-    if (error) {
+    if (error || !updated) {
       console.error('[handleEventAccept] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
+      // Rollback optimistic hide so the card re-appears on next render
+      if (eventIdToHide) {
+        setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventIdToHide));
+      }
       return;
     }
-    if (!updated) {
-      setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
-      return;
-    }
+
+    // DB succeeded — confirm with success toast
+    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP D — Safe Notification Sandbox (autonomous try/catch)
@@ -1016,25 +1018,27 @@ export default function AuthenticatedApp() {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // STEP B — UI Dismissal: Snap modal closed, fire success toast
+    // STEP B — UI Dismissal: Snap modal closed, fire optimistic toast
     // ═══════════════════════════════════════════════════════════════
     setSelectedEvent(null);
     setSelectedEventMembership(null);
-    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP C — DB Payload Processing (runs in background)
     // ═══════════════════════════════════════════════════════════════
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "declined");
-    if (error) {
+    if (error || !updated) {
       console.error('[handleEventDecline] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to drop out. Please check your connection and try again.', type: 'error' });
+      // Rollback optimistic hide so the card re-appears on next render
+      if (eventIdToHide) {
+        setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventIdToHide));
+      }
       return;
     }
-    if (!updated) {
-      setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
-      return;
-    }
+
+    // DB succeeded — confirm with success toast
+    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP D — Safe Notification Sandbox (autonomous try/catch)
