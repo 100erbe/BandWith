@@ -1145,7 +1145,7 @@ export default function AuthenticatedApp() {
           : null,
       };
 
-      const persistMembers = async (eventId: string): Promise<string> => {
+      const persistMembers = async (eventId: string, isEdit?: boolean): Promise<string> => {
         if (!data.members?.length) return 'no members in payload';
         let membersToInvite = data.members;
         if (isRehearsalWizard && data.audienceIds?.length > 0) {
@@ -1153,15 +1153,29 @@ export default function AuthenticatedApp() {
         }
         if (!membersToInvite.length) return 'filtered to 0 members';
 
+        // When editing, preserve existing membership statuses instead of resetting to pending
+        const existingStatuses = isEdit ? await (async () => {
+          const { data: existing } = await supabase
+            .from('event_members')
+            .select('user_id, status')
+            .eq('event_id', eventId);
+          const map: Record<string, string> = {};
+          (existing || []).forEach((em: any) => { map[em.user_id] = em.status; });
+          return map;
+        })() : {};
+
         const { error: delErr } = await supabase.from('event_members').delete().eq('event_id', eventId);
         if (delErr) return `delete failed: ${delErr.message}`;
 
         const errors: string[] = [];
         for (const m of membersToInvite) {
           const isCreator = m.id === user?.id;
+          const prevStatus = existingStatuses[m.id];
+          // Use existing status if available (e.g. 'confirmed'), otherwise fall back to creator rule
+          const status = prevStatus || (isCreator ? 'confirmed' : 'pending');
           const { error: insErr } = await supabase
             .from('event_members')
-            .insert({ event_id: eventId, user_id: m.id, role: m.role || null, fee: parseFloat(m.fee) || 0, status: isCreator ? 'confirmed' : 'pending' });
+            .insert({ event_id: eventId, user_id: m.id, role: m.role || null, fee: parseFloat(m.fee) || 0, status });
           if (insErr) errors.push(`${m.id}: ${insErr.message}`);
         }
 
@@ -1235,7 +1249,7 @@ export default function AuthenticatedApp() {
       if (data._editing && data._editingEventId) {
         const { error } = await updateEvent(data._editingEventId, eventData);
         if (!error) {
-          const memberResult = await persistMembers(data._editingEventId);
+          const memberResult = await persistMembers(data._editingEventId, true);
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [data._editingEventId]: optimisticMembers }));
           }
@@ -1252,7 +1266,7 @@ export default function AuthenticatedApp() {
       } else {
         const { data: saved, error } = await createEvent(eventData);
         if (!error && saved) {
-          const memberResult = await persistMembers(saved.id);
+          const memberResult = await persistMembers(saved.id, false);
           // Optimistic update
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [saved.id]: optimisticMembers }));
@@ -1595,4 +1609,5 @@ export default function AuthenticatedApp() {
     </div>
   );
 }
+
 
