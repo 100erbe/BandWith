@@ -1309,6 +1309,49 @@ export default function AuthenticatedApp() {
   const isHeaderHidden = !!expandedCard || isMenuOpen;
   const userRole: UserRole = isAdmin ? "admin" : "member";
   const permissions = getPermissions(userRole);
+
+  // Compute member dashboard stats from local eventMembersMap to ensure
+  // they always match the event card data (same source of truth)
+  const computedMemberStats = useMemo(() => {
+    if (!user?.id) return null;
+
+    // Get the current year boundaries
+    const now = new Date();
+    const startOfYear = `${now.getFullYear()}-01-01`;
+    const endOfYear = `${now.getFullYear()}-12-31`;
+
+    let confirmedFee = 0;
+    let pendingFee = 0;
+    let confirmedCount = 0;
+
+    // Iterate over confirmed events that the user is a member of
+    for (const event of confirmedEvents) {
+      // Skip events outside current year
+      if (!event.event_date || event.event_date < startOfYear || event.event_date > endOfYear) continue;
+      // Skip rehearsals
+      if (event.event_type === 'rehearsal') continue;
+
+      const members = eventMembersMap[event.id || ''] || [];
+      const myMembership = members.find((m: any) => m.userId === user.id);
+      if (!myMembership) continue;
+
+      if (myMembership.status === 'confirmed') {
+        confirmedFee += myMembership.fee || 0;
+        confirmedCount++;
+      } else if (myMembership.status === 'pending') {
+        pendingFee += myMembership.fee || 0;
+      }
+    }
+
+    return {
+      totalEarned: confirmedFee,
+      confirmedFee,
+      pendingFee,
+      revenueChange: 0,
+      confirmedCount,
+    };
+  }, [user?.id, confirmedEvents, eventMembersMap]);
+
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
   return (
@@ -1334,7 +1377,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {activeTab === "Home" && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={dashboardData} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onQuickAction={(action) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={{ ...dashboardData, memberStats: computedMemberStats || (dashboardData?.memberStats || null) }} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onQuickAction={(action) => {
               if (isSolo) return; // PLG: Solo mode has no band actions
               if (action === "Band Members") setShowBandMembers(true);
               if (action === "Setlist & Repertoire") setShowSetlistManager(true);
