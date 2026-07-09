@@ -273,7 +273,7 @@ export default function AuthenticatedApp() {
   });
   const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
 
-  const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number }[]>>({});
+  const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -301,7 +301,7 @@ export default function AuthenticatedApp() {
 
       data?.forEach((em: any) => {
         if (!map[em.event_id]) map[em.event_id] = [];
-        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee });
+        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee, status: em.status });
       });
       setEventMembersMap(map);
     };
@@ -347,6 +347,15 @@ export default function AuthenticatedApp() {
     if (optimisticallyHiddenEventIds.length > 0) {
       result = result.filter(e => !optimisticallyHiddenEventIds.includes(e.eventId || ''));
     }
+    // Exclude events where current user's membership status is "declined"
+    if (user?.id) {
+      result = result.filter(e => {
+        if (!e.eventId) return true; // no UUID key, can't filter
+        const members = eventMembersMap[e.eventId] || [];
+        const myMembership = members.find(m => m.userId === user.id);
+        return !myMembership || myMembership.status !== 'declined';
+      });
+    }
     // Status filter
     result = result.filter((e) => {
       const s = e.status?.toUpperCase();
@@ -370,7 +379,7 @@ export default function AuthenticatedApp() {
       );
     }
     return result;
-  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds]);
+  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id]);
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
