@@ -613,13 +613,15 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
   }, [fetchData]);
 
   // Subscribe to realtime changes on event_members for current user
+  // REPLICA IDENTITY FULL is set on event_members table to ensure column
+  // values are maintained during the persistMembers delete+reinsert cycle
   useEffect(() => {
     if (!bandId || !userId) return;
 
-    const channelName = `dashboard-member-stats-${Math.random().toString(36).substring(2, 9)}`;
+    const uniqueChannelName = `dash-fee-sync-${Math.random().toString(36).substring(2, 9)}`;
 
     const channel = supabase
-      .channel(channelName)
+      .channel(uniqueChannelName)
       .on(
         'postgres_changes',
         {
@@ -629,10 +631,15 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
           filter: `user_id=eq.${userId}`,
         },
         () => {
+          console.log('[useDashboardData] Member fee change detected, refreshing counters...');
           fetchData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.log('[useDashboardData] Realtime status:', status);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
