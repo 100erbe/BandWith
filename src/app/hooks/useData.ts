@@ -612,6 +612,23 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     fetchData();
   }, [fetchData]);
 
+  // Poll for dashboard updates every 60 seconds (fallback for missed realtime events)
+  useEffect(() => {
+    if (!bandId) return;
+    
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        const hasModalOpen = document.querySelector('[data-modal-open="true"]') || 
+                            document.querySelector('.fixed.inset-0.z-\\[100\\]');
+        if (!hasModalOpen) {
+          fetchData();
+        }
+      }
+    }, 60000);
+    
+    return () => clearInterval(pollInterval);
+  }, [bandId, fetchData]);
+
   // Subscribe to realtime changes on event_members for current user
   // REPLICA IDENTITY FULL is set on event_members table to ensure column
   // values are maintained during the persistMembers delete+reinsert cycle
@@ -638,6 +655,8 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
           console.log('[useDashboardData] Realtime status:', status);
+        } else {
+          console.log('[useDashboardData] Fee sync subscription active for user:', userId);
         }
       });
 
