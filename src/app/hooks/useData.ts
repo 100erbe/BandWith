@@ -612,6 +612,33 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     fetchData();
   }, [fetchData]);
 
+  // Subscribe to realtime changes on event_members for current user
+  useEffect(() => {
+    if (!bandId || !userId) return;
+
+    const channelName = `dashboard-member-stats-${Math.random().toString(36).substring(2, 9)}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_members',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [bandId, userId, fetchData]);
+
   return { data, loading, error, refetch: fetchData };
 };
 
