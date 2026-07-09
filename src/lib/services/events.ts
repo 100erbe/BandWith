@@ -559,7 +559,7 @@ export const getMemberPersonalStats = async (
   userId: string,
   year?: number
 ): Promise<{
-  data: { totalEarned: number; confirmedFee: number; pendingFee: number; revenueChange: number } | null;
+  data: { totalEarned: number; confirmedFee: number; pendingFee: number; revenueChange: number; confirmedCount: number } | null;
   error: Error | null;
 }> => {
   try {
@@ -593,7 +593,7 @@ export const getMemberPersonalStats = async (
     if (prevMonth > 0) revenueChange = Math.round(((curMonth - prevMonth) / prevMonth) * 100);
     else if (curMonth > 0) revenueChange = 100;
 
-    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange }, error: null };
+    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange, confirmedCount: confirmed.length }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

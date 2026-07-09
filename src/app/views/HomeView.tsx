@@ -310,7 +310,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const memberStats = dashboardData?.memberStats;
   const revenue = isAdmin ? (dashboardData?.eventStats?.totalRevenue || 0) : (memberStats?.totalEarned || 0);
-  const confirmedCount = dashboardData?.eventStats?.confirmedEvents || 0;
+  const confirmedCount = isAdmin
+    ? (dashboardData?.eventStats?.confirmedEvents || 0)
+    : (memberStats?.confirmedCount || 0);
   const quotesCount = dashboardData?.quoteStats?.totalQuotes || 0;
   const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;

@@ -562,6 +562,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       confirmedFee: number;
       pendingFee: number;
       revenueChange: number;
+      confirmedCount: number;
     } | null;
     upcomingEvents: eventsService.Event[];
     recentQuotes: quotesService.Quote[];
