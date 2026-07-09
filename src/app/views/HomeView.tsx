@@ -431,7 +431,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           secondLabel = displayEvents[0].event_type === 'rehearsal' ? "REHEARSAL" : "GIG";
         }
         return (
-          <div className="flex flex-col gap-6 px-4 my-6 bg-transparent">
+          <div className="flex flex-col gap-6 my-6 bg-transparent">
             {/* Structural Uppercase Header Row */}
             <div className="flex justify-between items-end">
               <div className="flex flex-col select-none">
