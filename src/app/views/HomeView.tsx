@@ -324,11 +324,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
     ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
     : '--';
 
-  // Extract the next upcoming gig from dashboard data
-  const nextGig = dashboardData?.upcomingEvents?.find(
-    (e: any) => e.event_type === 'gig' || e.status === 'confirmed'
-  ) || dashboardData?.upcomingEvents?.[0];
-
   return (
     <motion.div
       key={`dashboard-${selectedBand.id}`}
@@ -424,53 +419,63 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </motion.div>
 
-      {/* ═══ NEXT GIG PREVIEW ═══ */}
-      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3">
-        <div className="flex justify-between items-center px-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Next Gig</h3>
-          <button
-            onClick={() => onViewChange?.('Events')}
-            className="text-xs font-semibold hover:underline transition-all"
-            style={{ color: 'var(--brand-accent)' }}
-          >
-            See all
-          </button>
-        </div>
-        {nextGig ? (
-          <div
-            onClick={() => onViewChange?.('Events')}
-            className="mx-4 p-4 rounded-2xl border flex flex-col gap-2 cursor-pointer shadow-sm bg-card hover:opacity-95 transition-opacity"
-          >
-            <div className="flex justify-between items-start">
-              <span className="text-base font-bold text-foreground truncate max-w-[70%]">
-                {nextGig.title || 'Untitled Performance'}
-              </span>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider text-white"
-                style={{ backgroundColor: 'var(--brand-accent)' }}
+      {/* --- Snappy Next Event Block --- */}
+      {(() => {
+        const nextEvent = dashboardData?.upcomingEvents?.[0];
+        const isRehearsal = nextEvent?.event_type === 'rehearsal';
+        return (
+          <div className="flex flex-col gap-3 px-4 my-4 bg-transparent">
+            {/* Dynamic Header Row */}
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--foreground)' }}>
+                {nextEvent ? (isRehearsal ? "Next Rehearsal" : "Next Gig") : "Next Gig"}
+              </h3>
+              <button
+                onClick={() => onViewChange?.('Events')}
+                className="text-xs font-semibold hover:underline"
+                style={{ color: 'var(--brand-accent)' }}
               >
-                {nextGig.event_type || 'GIG'}
-              </span>
+                See all
+              </button>
             </div>
-            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-              {nextGig.event_date && (
-                <div className="flex items-center gap-1.5">
-                  <span>📅 {new Date(nextGig.event_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-                  {nextGig.start_time && <span>• {nextGig.start_time}</span>}
+            {/* Transparent Info Block */}
+            {nextEvent ? (
+              <div
+                onClick={() => onViewChange?.('Events')}
+                className="py-3 border-b flex flex-col gap-1.5 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
+                style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+              >
+                <div className="flex justify-between items-baseline">
+                  <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--foreground)' }}>
+                    {nextEvent.title || "Untitled Event"}
+                  </span>
+                  <span className="text-[10px] font-black tracking-widest uppercase opacity-75" style={{ color: 'var(--brand-accent)' }}>
+                    {nextEvent.event_type || "EVENT"}
+                  </span>
                 </div>
-              )}
-              {(nextGig.venue_name || nextGig.venue_address) && (
-                <div className="flex items-center gap-1.5 truncate">
-                  <span>📍 {nextGig.venue_name || nextGig.venue_address}</span>
+                <div className="flex flex-col gap-0.5 text-xs opacity-70" style={{ color: 'var(--foreground)' }}>
+                  {nextEvent.event_date && (
+                    <div className="flex items-center gap-1">
+                      <span>📅 {new Date(nextEvent.event_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                      {nextEvent.start_time && <span>• {nextEvent.start_time}</span>}
+                    </div>
+                  )}
+                  {nextEvent.venue_name && (
+                    <div className="flex items-center gap-1 truncate">
+                      <span>📍 {nextEvent.venue_name}</span>
+                    </div>
+                  )}
                 </div>
-              )}
             </div>
+            ) : (
+              <div className="text-xs py-4 italic opacity-50" style={{ color: 'var(--foreground)' }}>
+                No upcoming events scheduled
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="mx-4 p-4 rounded-2xl border border-dashed border-muted text-center py-6 text-xs text-muted-foreground bg-muted/20">
-            No upcoming gigs scheduled
-          </div>
-        )}
-      </motion.div>
+        );
+      })()}
+      {/* ------------------------------- */}
 
       {/* ═══ ACTION CENTER ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
