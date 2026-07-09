@@ -718,8 +718,18 @@ export default function AuthenticatedApp() {
   }, [visuallyFilteredEvents]);
 
   const upcomingRehearsals = useMemo(() => {
-    return events.filter((e) => e.status === "REHEARSAL").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events]);
+    const rehearsals = events.filter((e) => e.status === "REHEARSAL");
+    // Exclude rehearsals where current user has declined
+    if (user?.id) {
+      return rehearsals.filter(e => {
+        if (!e.eventId) return true;
+        const members = eventMembersMap[e.eventId] || [];
+        const myMembership = members.find(m => m.userId === user.id);
+        return !myMembership || myMembership.status !== 'declined';
+      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }
+    return rehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [events, eventMembersMap, user?.id]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
   const currentDetails = currentRehearsal ? rehearsalDetails[currentRehearsal.id] || rehearsalDetails[105] : null;
