@@ -629,13 +629,12 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     return () => clearInterval(pollInterval);
   }, [bandId, fetchData]);
 
-  // Subscribe to realtime changes on event_members for current user
-  // REPLICA IDENTITY FULL is set on event_members table to ensure column
-  // values are maintained during the persistMembers delete+reinsert cycle
+  // Subscribe to realtime changes on events table to refresh dashboard when event_members change
+  // (event_members changes happen via persistMembers delete+reinsert triggered by event saves)
   useEffect(() => {
-    if (!bandId || !userId) return;
+    if (!bandId) return;
 
-    const uniqueChannelName = `dash-fee-sync-${Math.random().toString(36).substring(2, 9)}`;
+    const uniqueChannelName = `dash-events-sync-${Math.random().toString(36).substring(2, 9)}`;
 
     const channel = supabase
       .channel(uniqueChannelName)
@@ -644,28 +643,28 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
         {
           event: '*',
           schema: 'public',
-          table: 'event_members',
-          filter: `user_id=eq.${userId}`,
+          table: 'events',
+          filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
         },
         () => {
-          console.log('[useDashboardData] Member fee change detected, refreshing counters...');
+          console.log('[useDashboardData] Events changed, refreshing all counters...');
           fetchData().catch((err) => {
-            console.error('[useDashboardData] Error refreshing counters:', err);
+            console.error('[useDashboardData] Error refreshing:', err);
           });
         }
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
-          console.log('[useDashboardData] Realtime status:', status);
+          console.log('[useDashboardData] Events subscription status:', status);
         } else {
-          console.log('[useDashboardData] Fee sync subscription active for user:', userId);
+          console.log('[useDashboardData] Events subscription active');
         }
       });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [bandId, userId, fetchData]);
+  }, [bandId, fetchData]);
 
   return { data, loading, error, refetch: fetchData };
 };
