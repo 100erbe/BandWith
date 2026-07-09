@@ -36,6 +36,7 @@ interface DashboardData {
     confirmedFee: number;
     pendingFee: number;
     revenueChange: number;
+    confirmedCount: number;
   } | null;
   upcomingEvents: any[];
   recentQuotes: any[];

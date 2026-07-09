@@ -290,7 +290,7 @@ export default function AuthenticatedApp() {
     if (!masterEventsList?.length) return;
     const fetchAllMembers = async () => {
       const eventIds = masterEventsList.map(e => e.id);
-      const map: Record<string, { name: string; userId: string; fee?: number }[]> = {};
+      const map: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = {};
 
       // Simple query WITHOUT profile join to avoid FK/schema issues
       const { data, error } = await supabase
