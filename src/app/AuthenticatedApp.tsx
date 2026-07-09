@@ -1324,14 +1324,18 @@ export default function AuthenticatedApp() {
     let pendingFee = 0;
     let confirmedCount = 0;
 
-    // Iterate over confirmed events that the user is a member of
-    for (const event of confirmedEvents) {
+    // Use masterEventsList (same source as event cards) to ensure consistency
+    const events = masterEventsList || [];
+    for (const event of events) {
+      // Only include confirmed or completed events
+      const evStatus = (event.status || '').toLowerCase();
+      if (evStatus !== 'confirmed' && evStatus !== 'completed') continue;
       // Skip events outside current year
       if (!event.event_date || event.event_date < startOfYear || event.event_date > endOfYear) continue;
       // Skip rehearsals
       if (event.event_type === 'rehearsal') continue;
 
-      const members = eventMembersMap[event.id || ''] || [];
+      const members = eventMembersMap[event.id] || [];
       const myMembership = members.find((m: any) => m.userId === user.id);
       if (!myMembership) continue;
 
@@ -1350,7 +1354,7 @@ export default function AuthenticatedApp() {
       revenueChange: 0,
       confirmedCount,
     };
-  }, [user?.id, confirmedEvents, eventMembersMap]);
+  }, [user?.id, masterEventsList, eventMembersMap]);
 
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
