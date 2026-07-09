@@ -210,7 +210,7 @@ export default function AuthenticatedApp() {
   const isScrollingDown = useScrollDirection(scrollContainerRef);
 
   // Data hooks
-  const { data: dashboardData, loading: dashboardLoading } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
+  const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
   const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"]);
   const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"]);
@@ -1033,6 +1033,7 @@ export default function AuthenticatedApp() {
     setSelectedEventMembership(updated);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
+    if (refetchDashboard) await refetchDashboard();
   };
 
   const handleEventDecline = async () => {
@@ -1094,6 +1095,7 @@ export default function AuthenticatedApp() {
     setSelectedEventMembership(updated);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
+    if (refetchDashboard) await refetchDashboard();
   };
 
   const handleEventCreate = async (data: any) => {
@@ -1278,6 +1280,7 @@ export default function AuthenticatedApp() {
         }
       }
       await refetchEvents();
+      if (refetchDashboard) await refetchDashboard();
       setMembersRefreshKey(k => k + 1);
     } catch (err: any) {
       setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
