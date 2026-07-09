@@ -424,7 +424,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         const nextEvent = dashboardData?.upcomingEvents?.[0];
         const isRehearsal = nextEvent?.event_type === 'rehearsal';
         return (
-          <div className="flex flex-col gap-3 px-4 my-4 bg-transparent">
+          <div className="flex flex-col gap-3 my-4 bg-transparent">
             {/* Gated Header Row */}
             <div className="flex justify-between items-center">
               <div className="flex flex-col leading-none">
