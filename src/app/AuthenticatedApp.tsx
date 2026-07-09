@@ -1335,7 +1335,7 @@ export default function AuthenticatedApp() {
       // Skip rehearsals
       if (event.event_type === 'rehearsal') continue;
 
-      const members = eventMembersMap[event.id] || [];
+      const members = eventMembersMap[event.id || ''] || [];
       const myMembership = members.find((m: any) => m.userId === user.id);
       if (!myMembership) continue;
 
@@ -1346,6 +1346,19 @@ export default function AuthenticatedApp() {
         pendingFee += myMembership.fee || 0;
       }
     }
+
+    console.log('[Dashboard] computedMemberStats:', 
+      'confirmedFee:', confirmedFee, 
+      'confirmedCount:', confirmedCount,
+      'pendingFee:', pendingFee,
+      'totalEvents:', events.length,
+      'matchingEvents:', events.filter(e => {
+        const m = eventMembersMap[e.id] || [];
+        return m.some((mem: any) => mem.userId === user.id && mem.status === 'confirmed');
+      }).length,
+      'sampleEventId:', events[0]?.id,
+      'sampleMapKey:', Object.keys(eventMembersMap)[0]
+    );
 
     return {
       totalEarned: confirmedFee,
