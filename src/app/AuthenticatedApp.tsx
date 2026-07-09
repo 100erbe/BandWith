@@ -249,6 +249,9 @@ export default function AuthenticatedApp() {
 
   const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>([]);
 
+  // ═══ OPTIMISTIC UI: Track event IDs to hide instantly before DB refetch ═══
+  const [optimisticallyHiddenEventIds, setOptimisticallyHiddenEventIds] = useState<string[]>([]);
+
   // ═══ OPTIMIZED: Single stable event subscription for all bands ═══
   // Always pass ALL band IDs to maintain one websocket + one global cache
   const allMyBandIds = React.useMemo(() => {
@@ -333,12 +336,16 @@ export default function AuthenticatedApp() {
     return [];
   }, [masterEventsList, eventMembersMap]);
 
-  // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search) ═══
+  // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search + optimistic) ═══
   const visuallyFilteredEvents = useMemo(() => {
     let result = events;
     // Band pill filter
     if (selectedBandPill !== 'all') {
       result = result.filter(e => e.band_id === selectedBandPill);
+    }
+    // Optimistic UI: instantly strip events that should be visually hidden
+    if (optimisticallyHiddenEventIds.length > 0) {
+      result = result.filter(e => !optimisticallyHiddenEventIds.includes(e.eventId || ''));
     }
     // Status filter
     result = result.filter((e) => {
@@ -363,7 +370,7 @@ export default function AuthenticatedApp() {
       );
     }
     return result;
-  }, [events, selectedBandPill, eventFilter, eventSearch]);
+  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds]);
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
@@ -940,19 +947,39 @@ export default function AuthenticatedApp() {
 
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP A — Visual Shortcut: Hide the event card instantly (<1ms)
+    // ═══════════════════════════════════════════════════════════════
+    const eventIdToHide = selectedEvent.eventId || selectedEvent.id?.toString();
+    if (eventIdToHide) {
+      setOptimisticallyHiddenEventIds(prev => [...prev, eventIdToHide]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP B — UI Dismissal: Snap modal closed, fire success toast
+    // ═══════════════════════════════════════════════════════════════
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP C — DB Payload Processing (runs in background)
+    // ═══════════════════════════════════════════════════════════════
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
     if (error) {
       console.error('[handleEventAccept] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
-      throw new Error('Database update failed');
+      return;
     }
     if (!updated) {
       setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
-      throw new Error('Membership not found');
+      return;
     }
-    setSelectedEventMembership(updated);
 
-    // --- SAFE NOTIFICATION SANDBOX ---
+    // ═══════════════════════════════════════════════════════════════
+    // STEP D — Safe Notification Sandbox (autonomous try/catch)
+    // ═══════════════════════════════════════════════════════════════
     try {
       const realEventId = selectedEvent.eventId;
       if (realEventId) {
@@ -964,30 +991,54 @@ export default function AuthenticatedApp() {
           await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
         }
       }
-    } catch (notificationError) {
-      console.warn('[handleEventAccept] Notification failed but DB update succeeded:', notificationError);
+    } catch (pushErr) {
+      // CORS / network failures must never interrupt the UI thread
+      console.warn('[handleEventAccept] Push notification failed (CORS or network):', pushErr);
     }
-    // ----------------------------------
 
-    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
+    // ═══════════════════════════════════════════════════════════════
+    // STEP E — Quiet Background Sync (realign DB cache behind scenes)
+    // ═══════════════════════════════════════════════════════════════
+    setSelectedEventMembership(updated);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
   };
 
   const handleEventDecline = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP A — Visual Shortcut: Hide the event card instantly (<1ms)
+    // ═══════════════════════════════════════════════════════════════
+    const eventIdToHide = selectedEvent.eventId || selectedEvent.id?.toString();
+    if (eventIdToHide) {
+      setOptimisticallyHiddenEventIds(prev => [...prev, eventIdToHide]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP B — UI Dismissal: Snap modal closed, fire success toast
+    // ═══════════════════════════════════════════════════════════════
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP C — DB Payload Processing (runs in background)
+    // ═══════════════════════════════════════════════════════════════
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "declined");
     if (error) {
       console.error('[handleEventDecline] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to drop out. Please check your connection and try again.', type: 'error' });
-      throw new Error('Database update failed');
+      return;
     }
     if (!updated) {
       setSaveToast({ message: 'Could not find your RSVP. Please try again.', type: 'error' });
-      throw new Error('Membership not found');
+      return;
     }
 
-    // --- SAFE NOTIFICATION SANDBOX ---
+    // ═══════════════════════════════════════════════════════════════
+    // STEP D — Safe Notification Sandbox (autonomous try/catch)
+    // ═══════════════════════════════════════════════════════════════
     try {
       const realEventId = selectedEvent.eventId;
       if (realEventId) {
@@ -999,15 +1050,15 @@ export default function AuthenticatedApp() {
           await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
         }
       }
-    } catch (notificationError) {
-      console.warn('[handleEventDecline] Notification failed but DB update succeeded:', notificationError);
+    } catch (pushErr) {
+      // CORS / network failures must never interrupt the UI thread
+      console.warn('[handleEventDecline] Push notification failed (CORS or network):', pushErr);
     }
-    // ----------------------------------
 
-    // Core state sync MUST run even if push fails
+    // ═══════════════════════════════════════════════════════════════
+    // STEP E — Quiet Background Sync (realign DB cache behind scenes)
+    // ═══════════════════════════════════════════════════════════════
     setSelectedEventMembership(updated);
-    setSelectedEvent(null);
-    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
   };
@@ -1508,3 +1559,4 @@ export default function AuthenticatedApp() {
     </div>
   );
 }
+
