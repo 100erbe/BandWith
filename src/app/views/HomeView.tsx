@@ -53,6 +53,7 @@ interface HomeViewProps {
   dashboardData?: DashboardData;
   dashboardLoading?: boolean;
   onQuickAction?: (action: string) => void;
+  onViewChange?: (tab: string) => void;
   isAdmin?: boolean;
   isSolo?: boolean;  // PLG: Solo mode hides collaborative features
 }
@@ -273,6 +274,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   dashboardData,
   dashboardLoading,
   onQuickAction,
+  onViewChange,
   isAdmin: _isAdminProp = true,
   isSolo = false,
 }) => {
@@ -321,6 +323,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const revenueChangeText = revenueChange !== undefined && revenueChange !== 0
     ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
     : '--';
+
+  // Extract the next upcoming gig from dashboard data
+  const nextGig = dashboardData?.upcomingEvents?.find(
+    (e: any) => e.event_type === 'gig' || e.status === 'confirmed'
+  ) || dashboardData?.upcomingEvents?.[0];
 
   return (
     <motion.div
@@ -415,6 +422,54 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </>
           )}
         </div>
+      </motion.div>
+
+      {/* ═══ NEXT GIG PREVIEW ═══ */}
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3">
+        <div className="flex justify-between items-center px-4">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Next Gig</h3>
+          <button
+            onClick={() => onViewChange?.('Events')}
+            className="text-xs font-semibold hover:underline transition-all"
+            style={{ color: 'var(--brand-accent)' }}
+          >
+            See all
+          </button>
+        </div>
+        {nextGig ? (
+          <div
+            onClick={() => onViewChange?.('Events')}
+            className="mx-4 p-4 rounded-2xl border flex flex-col gap-2 cursor-pointer shadow-sm bg-card hover:opacity-95 transition-opacity"
+          >
+            <div className="flex justify-between items-start">
+              <span className="text-base font-bold text-foreground truncate max-w-[70%]">
+                {nextGig.title || 'Untitled Performance'}
+              </span>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider text-white"
+                style={{ backgroundColor: 'var(--brand-accent)' }}
+              >
+                {nextGig.event_type || 'GIG'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {nextGig.event_date && (
+                <div className="flex items-center gap-1.5">
+                  <span>📅 {new Date(nextGig.event_date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                  {nextGig.start_time && <span>• {nextGig.start_time}</span>}
+                </div>
+              )}
+              {(nextGig.venue_name || nextGig.venue_address) && (
+                <div className="flex items-center gap-1.5 truncate">
+                  <span>📍 {nextGig.venue_name || nextGig.venue_address}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mx-4 p-4 rounded-2xl border border-dashed border-muted text-center py-6 text-xs text-muted-foreground bg-muted/20">
+            No upcoming gigs scheduled
+          </div>
+        )}
       </motion.div>
 
       {/* ═══ ACTION CENTER ═══ */}

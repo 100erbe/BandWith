@@ -1394,7 +1394,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {activeTab === "Home" && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={{ ...dashboardData, memberStats: computedMemberStats || (dashboardData?.memberStats || null) }} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onQuickAction={(action) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={{ ...dashboardData, memberStats: computedMemberStats || (dashboardData?.memberStats || null) }} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onQuickAction={(action) => {
               if (isSolo) return; // PLG: Solo mode has no band actions
               if (action === "Band Members") setShowBandMembers(true);
               if (action === "Setlist & Repertoire") setShowSetlistManager(true);
