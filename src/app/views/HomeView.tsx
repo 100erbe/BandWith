@@ -419,19 +419,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </motion.div>
 
-      {/* --- Snappy Next Event Block --- */}
+      {/* --- Next Event Block with Fade Mask --- */}
       {(() => {
-        const nextEvent = dashboardData?.upcomingEvents?.[0];
-        const isRehearsal = nextEvent?.event_type === 'rehearsal';
+        const displayEvents = dashboardData?.upcomingEvents?.slice(0, 2) || [];
+        // Compute stacked text labels dynamically
+        let secondLabel = "GIG";
+        if (displayEvents.length > 1) {
+          const allRehearsals = displayEvents.every((e: any) => e.event_type === 'rehearsal');
+          secondLabel = allRehearsals ? "REHEARSALS" : "EVENTS";
+        } else if (displayEvents.length === 1) {
+          secondLabel = displayEvents[0].event_type === 'rehearsal' ? "REHEARSAL" : "GIG";
+        }
         return (
-          <div className="flex flex-col gap-3 my-4 bg-transparent">
-            {/* Gated Header Row */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col leading-none">
+          <div className="flex flex-col gap-6 px-4 my-6 bg-transparent">
+            {/* Structural Uppercase Header Row */}
+            <div className="flex justify-between items-end">
+              <div className="flex flex-col select-none">
                 <span className="text-[32px] font-bold leading-none text-foreground">NEXT</span>
-                <span className="text-[32px] font-bold leading-none text-foreground">
-                  {nextEvent ? (isRehearsal ? "REHEARSAL" : "GIG") : "GIG"}
-                </span>
+                <span className="text-[32px] font-bold leading-none text-foreground">{secondLabel}</span>
               </div>
               <button
                 onClick={() => onViewChange?.('Events')}
@@ -441,38 +446,56 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 See all
               </button>
             </div>
-            {/* Main Info Row Container */}
-            {nextEvent ? (
+            {/* Mask-Faded Content List Element Wrapper */}
+            {displayEvents.length > 0 ? (
               <div
-                onClick={() => onViewChange?.('Events')}
-                className="py-4 border-b flex flex-col gap-1 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
-                style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+                className="flex flex-col bg-transparent"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
+                  maxHeight: '210px',
+                  overflow: 'hidden'
+                }}
               >
-                <div className="flex justify-between items-baseline">
-                  <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--foreground)' }}>
-                    {nextEvent.title?.toUpperCase() || "UNTITLED EVENT"}
-                  </span>
-                  <span className="text-[10px] font-black tracking-widest uppercase opacity-75" style={{ color: 'var(--brand-accent)' }}>
-                    {nextEvent.event_type?.toUpperCase() || "EVENT"}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-0.5 text-xs uppercase tracking-wide opacity-70" style={{ color: 'var(--foreground)' }}>
-                  {nextEvent.event_date && (
-                    <div className="flex items-center gap-1">
-                      <span>📅 {new Date(nextEvent.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })?.toUpperCase()}</span>
-                      {nextEvent.start_time && <span>• {nextEvent.start_time}</span>}
+                {displayEvents.map((event: any, index: number) => {
+                  return (
+                    <div
+                      key={event.id || event.eventId || index}
+                      onClick={() => onViewChange?.('Events')}
+                      className="py-4 border-b flex flex-col gap-1 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
+                      style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+                    >
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--foreground)' }}>
+                          {event.title?.toUpperCase() || "UNTITLED EVENT"}
+                        </span>
+                        <span
+                          className="text-[10px] font-black tracking-widest uppercase opacity-75"
+                          style={{ color: 'var(--brand-accent)' }}
+                        >
+                          {event.event_type?.toUpperCase() || "EVENT"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 text-xs uppercase tracking-wide opacity-70" style={{ color: 'var(--foreground)' }}>
+                        {event.event_date && (
+                          <div className="flex items-center gap-1">
+                            <span>📅 {new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })?.toUpperCase()}</span>
+                            {event.start_time && <span>• {event.start_time}</span>}
+                          </div>
+                        )}
+                        {event.venue_name && (
+                          <div className="flex items-center gap-1 truncate">
+                            <span>📍 {event.venue_name?.toUpperCase()}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {nextEvent.venue_name && (
-                    <div className="flex items-center gap-1 truncate">
-                      <span>📍 {nextEvent.venue_name?.toUpperCase()}</span>
-                    </div>
-                  )}
-                </div>
-            </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="text-xs py-4 font-bold tracking-wider uppercase opacity-40" style={{ color: 'var(--foreground)' }}>
-                No upcoming events scheduled
+                NO UPCOMING EVENTS SCHEDULED
               </div>
             )}
           </div>
