@@ -612,7 +612,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     fetchData();
   }, [fetchData]);
 
-  // Poll for dashboard updates every 60 seconds (fallback for missed realtime events)
+  // Poll for dashboard updates every 30 seconds (increased frequency for fee sync)
   useEffect(() => {
     if (!bandId) return;
     
@@ -624,7 +624,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
           fetchData();
         }
       }
-    }, 60000);
+    }, 30000);
     
     return () => clearInterval(pollInterval);
   }, [bandId, fetchData]);
@@ -649,7 +649,9 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
         },
         () => {
           console.log('[useDashboardData] Member fee change detected, refreshing counters...');
-          fetchData();
+          fetchData().catch((err) => {
+            console.error('[useDashboardData] Error refreshing counters:', err);
+          });
         }
       )
       .subscribe((status) => {
