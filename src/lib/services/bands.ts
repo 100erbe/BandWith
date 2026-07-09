@@ -31,6 +31,7 @@ export interface BandMember {
     email: string;
     full_name?: string;
     avatar_url?: string;
+    sub_tier?: string | null;
   } | null;
 }
 
@@ -113,7 +114,8 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
           id,
           email,
           full_name,
-          avatar_url
+          avatar_url,
+          sub_tier
         )
       `)
       .in('band_id', bandIds)
@@ -181,7 +183,8 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
           id,
           email,
           full_name,
-          avatar_url
+          avatar_url,
+          sub_tier
         )
       `)
       .eq('band_id', bandId)
@@ -297,7 +300,8 @@ export const getBandMembers = async (bandId: string): Promise<{ data: BandMember
           full_name,
           avatar_url,
           phone,
-          instrument
+          instrument,
+          sub_tier
         )
       `)
       .eq('band_id', bandId)

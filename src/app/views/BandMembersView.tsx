@@ -252,6 +252,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     return '??';
   };
 
+  // Check if a member has a paid subscription tier (not free_member or null)
+  const isProMember = (member: BandMember): boolean => {
+    const tier = member.profile?.sub_tier;
+    return !!tier && tier !== 'free_member';
+  };
+
   const stats = useMemo(() => {
     const admins = members.filter((m) => m.role === 'admin').length;
     const regularMembers = members.filter((m) => m.role === 'member').length;
@@ -376,6 +382,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold">
                             {getInitials(member)}
                           </div>
+                          {/* Neon Pro indicator dot — bottom-right overlap */}
+                          {isProMember(member) && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[1.5px] border-white bg-[var(--brand-accent,#BDD856)]" />
+                          )}
                           {member.role === 'admin' && (
                             <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
                               <Crown className="w-2.5 h-2.5 text-accent-foreground" />
@@ -383,9 +393,16 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           )}
                         </div>
                         <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide">
-                            {member.stage_name || member.profile?.full_name || 'Unknown'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-black uppercase tracking-wide">
+                              {member.stage_name || member.profile?.full_name || 'Unknown'}
+                            </span>
+                            {isProMember(member) && (
+                              <span className="text-[9px] font-bold uppercase leading-none px-1.5 py-0.5 rounded-sm bg-[var(--brand-accent,#BDD856)] text-black tracking-wider">
+                                PRO
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] font-medium text-foreground/40 uppercase">
                             {[member.instrument, member.role].filter(Boolean).join(' · ')}
                           </span>
@@ -425,15 +442,39 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                             )}
                             {isAdmin && (
                               <>
-                                <button
-                                  onClick={() => handleToggleRole(member)}
-                                  className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                                >
-                                  <UserCog className="w-4 h-4 text-foreground/40" />
-                                  <span className="text-xs font-bold text-black uppercase tracking-wide">
-                                    MAKE {member.role === 'admin' ? 'MEMBER' : 'ADMIN'}
-                                  </span>
-                                </button>
+                                {member.role === 'admin' ? (
+                                  <button
+                                    onClick={() => handleToggleRole(member)}
+                                    className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                                  >
+                                    <UserCog className="w-4 h-4 text-foreground/40" />
+                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                      MAKE MEMBER
+                                    </span>
+                                  </button>
+                                ) : isProMember(member) ? (
+                                  <button
+                                    onClick={() => handleToggleRole(member)}
+                                    className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
+                                  >
+                                    <UserCog className="w-4 h-4 text-foreground/40" />
+                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                      MAKE ADMIN
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center gap-3 py-3 px-2 opacity-50 cursor-not-allowed">
+                                    <UserCog className="w-4 h-4 text-foreground/40" />
+                                    <div className="flex flex-col items-start">
+                                      <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                        MAKE ADMIN
+                                      </span>
+                                      <span className="text-[9px] font-medium text-foreground/40 uppercase">
+                                        Requires a Pro account to co-manage
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
                                 <button
                                   onClick={() => handleRemoveMember(member)}
                                   className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
