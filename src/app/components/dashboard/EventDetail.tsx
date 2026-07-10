@@ -105,7 +105,7 @@ const THEME = {
     dateBadgeBg: 'rgba(255,255,255,0.2)',
     backBorderColor: 'white',
     backBg: 'rgba(216,216,216,0.2)',
-    deleteLabel: 'DELETE THIS REHARSAL',
+    deleteLabel: 'DELETE THIS REHEARSAL',
     secondBtnLabel: undefined,
   },
   gig: {
@@ -295,7 +295,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 <ArrowLeft className="w-[24px] h-[24px]" style={{ color: theme.text }} />
               </button>
               <span className="text-[32px] font-bold uppercase" style={{ color: theme.text }}>
-                {eventType === 'gig' ? 'GIG' : eventType === 'rehearsal' ? 'REHARSAL' : eventType === 'quote' ? 'QUOTE' : 'DRAFT'}
+                {eventType === 'gig' ? 'GIG' : eventType === 'rehearsal' ? 'REHEARSAL' : eventType === 'quote' ? 'QUOTE' : 'DRAFT'}
               </span>
             </div>
             {eventType === 'gig' && event.notes && (
@@ -592,7 +592,7 @@ const RehearsalSections: React.FC<{
       {/* Rehearsal Time */}
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
-          <SectionHeader label="REHARSAL TIME" color={theme.text} onTap={() => toggle('time')} expanded={expandedSection === 'time'} />
+          <SectionHeader label="REHEARSAL TIME" color={theme.text} onTap={() => toggle('time')} expanded={expandedSection === 'time'} />
           <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
             {rehearsalTime}
           </span>

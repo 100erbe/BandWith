@@ -440,7 +440,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
               <button
                 onClick={() => onViewChange?.('Events')}
-                className="text-xs font-bold tracking-wider uppercase hover:underline pb-1"
+                className="text-xs font-bold tracking-wider uppercase underline pb-1"
                 style={{ color: 'var(--brand-accent)' }}
               >
                 See all

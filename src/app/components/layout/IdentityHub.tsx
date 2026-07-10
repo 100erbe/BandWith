@@ -150,7 +150,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     if (type.includes('quote')) return 'QUOTE';
     if (type.includes('chat') || type === 'chat') return 'CHAT';
     if (type.includes('event') || type === 'event') return 'EVENT';
-    if (type.includes('rehearsal')) return 'REHARSAL';
+    if (type.includes('rehearsal')) return 'REHEARSAL';
     if (type.includes('invite')) return 'INVITE';
     if (type.includes('payment') || type === 'finance') return 'PAYMENT';
     return type.toUpperCase();

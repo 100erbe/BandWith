@@ -593,7 +593,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const arrowBg = isGig ? 'bg-black' : 'bg-white';
             const arrowColor = isGig ? 'text-accent-gig' : 'text-foreground';
 
-            const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
+            const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
             const featTags = [nextLabel, ...tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT')];
 
             const tagBg = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : (status === 'DRAFT' || status === 'PENDING') ? 'rgba(0,0,0,0.5)' : 'var(--accent-gig)';
