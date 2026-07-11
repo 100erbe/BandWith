@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -73,7 +73,7 @@ type TabDescriptor = {
   onClick: () => void;
 };
 
-/* ═══ Standalone pill that slides between tabs ═══ */
+/* ═══ Uniform sliding capsule pill — 2px inset, identical geometry ═══ */
 
 const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean }> = ({
   containerRef,
@@ -83,43 +83,39 @@ const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | nul
   const pillRef = useRef<HTMLDivElement>(null);
   const [[x, w], setRect] = useState<[number, number]>([0, 0]);
 
-  // Use useLayoutEffect so DOM reads happen synchronously after render
-  useLayoutEffect(() => {
+  const calcPill = useCallback(() => {
     if (!containerRef.current || !activeKey) return;
     const tabEl = containerRef.current.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
     if (!tabEl) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const tabRect = tabEl.getBoundingClientRect();
 
-    const pillWidth = tabRect.width - 8;
+    // Uniform pill: tab button width minus 4px total for 2px left + 2px right inset
+    const pillWidth = tabRect.width - 4;
     const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
     const pillLeft = tabCenter - (pillWidth / 2);
 
     setRect([pillLeft, pillWidth]);
-  }, [activeKey, isScrollingDown, containerRef]);
+  }, [activeKey, containerRef]);
+
+  // Use useLayoutEffect so DOM reads happen synchronously after render
+  useLayoutEffect(() => {
+    calcPill();
+  }, [calcPill, isScrollingDown]);
 
   // Resize handler
   useEffect(() => {
-    const onResize = () => {
-      if (!containerRef.current || !activeKey) return;
-      const tabEl = containerRef.current.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
-      if (!tabEl) return;
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const tabRect = tabEl.getBoundingClientRect();
-      const pillWidth = tabRect.width - 8;
-      const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
-      setRect([tabCenter - (pillWidth / 2), pillWidth]);
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [activeKey, containerRef]);
+    window.addEventListener('resize', calcPill);
+    return () => window.removeEventListener('resize', calcPill);
+  }, [calcPill]);
 
   return (
     <motion.div
       ref={pillRef}
-      className="absolute top-[4px] bottom-[4px] rounded-full bg-foreground/10 z-0"
+      className="absolute rounded-full bg-foreground/10 z-0"
+      style={{ top: '2px', bottom: '2px' }}
       animate={{ left: x, width: w }}
-      transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 1 }}
     />
   );
 };
