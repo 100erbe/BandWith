@@ -91,14 +91,19 @@ export const useEvents = (
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedOnce = useRef(false);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (isBackground = false) => {
     if (!bandId) { setLoading(false); return; }
     
-    setLoading(true);
+    // Skip visual loading indicator during background refreshes
+    if (!isBackground || !hasLoadedOnce.current) {
+      setLoading(true);
+    }
     const { data, error } = await eventsService.getEvents(bandId, options);
     setEvents(data || []);
     setError(error);
+    if (data) hasLoadedOnce.current = true;
     setLoading(false);
   }, [bandId, JSON.stringify(options)]);
 
@@ -112,9 +117,7 @@ export const useEvents = (
         const hasModalOpen = document.querySelector('[data-modal-open="true"]') || 
                             document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (!hasModalOpen) {
-          eventsService.getEvents(bandId, options).then(({ data }) => {
-            if (data) setEvents(data);
-          });
+          fetchEvents(true);
         }
       }
     }, 60000); // 60 seconds
@@ -139,13 +142,13 @@ export const useEvents = (
           filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
         },
         () => {
-          // Refetch events on any insert/update/delete
-          fetchEvents();
+          // Refetch events on any insert/update/delete (silent background)
+          fetchEvents(true);
         }
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
-          console.log('[useEvents] Realtime status:', status);
+          console.log('[useEvents] Realtime subscription status:', status);
         }
       });
 
@@ -184,14 +187,19 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedOnce = useRef(false);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) { setLoading(false); return; }
     
-    setLoading(true);
+    // Skip visual loading indicator during background refreshes
+    if (!isBackground || !hasLoadedOnce.current) {
+      setLoading(true);
+    }
     const { data, error } = await eventsService.getUpcomingEvents(bandId, limit);
     setEvents(data || []);
     setError(error);
+    if (data) hasLoadedOnce.current = true;
     setLoading(false);
   }, [isAuthenticated, bandId, limit]);
 
@@ -216,13 +224,13 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
           filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
         },
         () => {
-          // Refetch events on any insert/update/delete
-          fetchEvents();
+          // Refetch events on any insert/update/delete (silent background)
+          fetchEvents(true);
         }
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
-          console.log('[useEvents] Realtime status:', status);
+          console.log('[useUpcomingEvents] Realtime status:', status);
         }
       });
 
@@ -429,16 +437,21 @@ export const useNotifications = (options?: {
   const [notifications, setNotifications] = useState<notificationsService.Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedOnce = useRef(false);
   const onNewEventInviteRef = useRef(options?.onNewEventInvite);
   onNewEventInviteRef.current = options?.onNewEventInvite;
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) { setLoading(false); return; }
     
-    setLoading(true);
+    // Skip visual loading indicator during background refreshes
+    if (!isBackground || !hasLoadedOnce.current) {
+      setLoading(true);
+    }
     const { data, error } = await notificationsService.getNotifications(options);
     if (data) {
       setNotifications(data);
+      hasLoadedOnce.current = true;
     }
     setError(error);
     setLoading(false);
@@ -490,7 +503,7 @@ export const useNotifications = (options?: {
                             document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (!hasModalOpen) {
           console.log('[useNotifications] Polling for updates...');
-          fetchNotifications();
+          fetchNotifications(true);
         }
       }
     }, 60000); // 60 seconds - reduced frequency
@@ -542,6 +555,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
   const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedOnce = useRef(false);
   
   const [data, setData] = useState<{
     eventStats: {
@@ -574,10 +588,13 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     recentQuotes: [],
   });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
-    setLoading(true);
+    // Skip visual loading indicator during background refreshes
+    if (!isBackground || !hasLoadedOnce.current) {
+      setLoading(true);
+    }
     
     try {
       const promises: Promise<any>[] = [
@@ -601,6 +618,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
         upcomingEvents: upcomingEventsRes.data || [],
         recentQuotes: recentQuotesRes.data || [],
       });
+      hasLoadedOnce.current = true;
     } catch (err: any) {
       setError(err);
     } finally {
@@ -621,7 +639,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
         const hasModalOpen = document.querySelector('[data-modal-open="true"]') || 
                             document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (!hasModalOpen) {
-          fetchData();
+          fetchData(true);
         }
       }
     }, 30000);
@@ -648,7 +666,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
         },
         () => {
           console.log('[useDashboardData] Events changed, refreshing all counters...');
-          fetchData().catch((err) => {
+          fetchData(true).catch((err) => {
             console.error('[useDashboardData] Error refreshing:', err);
           });
         }
@@ -784,11 +802,15 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedOnce = useRef(false);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
-    setLoading(true);
+    // Skip visual loading indicator during background refreshes
+    if (!isBackground || !hasLoadedOnce.current) {
+      setLoading(true);
+    }
     
     try {
       const status = statusFilter as eventsService.EventStatus[] | undefined;
@@ -799,6 +821,7 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
 
       if (fetchError) throw fetchError;
       setEvents(data || []);
+      if (data) hasLoadedOnce.current = true;
     } catch (err: any) {
       setError(err);
     } finally {
@@ -827,13 +850,13 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
           filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
         },
         () => {
-          // Refetch events on any insert/update/delete
-          fetchEvents();
+          // Refetch events on any insert/update/delete (silent background)
+          fetchEvents(true);
         }
       )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') {
-          console.log('[useEvents] Realtime status:', status);
+          console.log('[useExpandedEventsData] Realtime status:', status);
         }
       });
 
