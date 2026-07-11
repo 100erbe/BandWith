@@ -113,7 +113,7 @@ const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | nul
     <motion.div
       ref={pillRef}
       className="absolute rounded-full bg-foreground/10 z-0"
-      style={{ top: '2px', bottom: '2px' }}
+      style={{ top: '50%', height: '36px', translateY: '-50%' }}
       animate={{ left: x, width: w }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 1 }}
     />
