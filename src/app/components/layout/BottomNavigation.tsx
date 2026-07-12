@@ -199,13 +199,14 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   // Local scroll detection — captures scroll on any scrollable container
   // (e.g., ControlDeck, which has its own scroll container not tracked by
-  // the parent's useScrollDirection hook)
+  // the parent's useScrollDirection hook). Uses a scroll event listener
+  // on the window (capture phase) and checks all scrollable elements.
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      // Also check for any scrollable element that's currently scrolled
-      const scrolledEl = document.querySelector('.overflow-y-auto, .overflow-y-scroll');
-      const scrollTop = scrolledEl ? (scrolledEl as HTMLElement).scrollTop : scrollY;
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      // Get the scrollable element that fired the event, or fall back to document
+      const scrollEl = target instanceof Document ? document.documentElement : target;
+      const scrollTop = scrollEl.scrollTop ?? 0;
       
       if (scrollTop > 10 && scrollTop > lastScrollYRef.current) {
         setLocalScrollDown(true);
@@ -223,9 +224,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const effectiveIsScrollingDown = (isScrollingDown || localScrollDown) && !forceOpen;
   const isShrunk = effectiveIsScrollingDown;
 
-  // Compute positions using offsetLeft (unaffected by scale transforms) + known widths
-  // IMPORTANT: offsetWidth reads the LIVE DOM width which may be stale during Framer
-  // Motion layout animations. Use the known constant widths instead.
+  // Compute positions using offsetLeft (layout position, unaffected by CSS transforms)
   const computePositions = useCallback(() => {
     if (!navRef.current) return;
     const tabs = ['Home', 'Events', 'Chat', 'Settings'];
@@ -236,7 +235,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     tabs.forEach((key, idx) => {
       const tabEl = navRef.current!.querySelector(`[data-tab-key="${key}"]`) as HTMLElement | null;
       if (!tabEl) return;
-      // Use offsetLeft for position (layout, unaffected by scale) + known width for center
+      // Use offsetLeft (layout, unaffected by transforms) + known width constant
       const tabCenter = tabEl.offsetLeft + (tabW / 2);
       pos[idx] = tabCenter - (pw / 2);
     });
@@ -244,15 +243,22 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     setCurrentPillSize({ w: pw, h: 40 });
   }, [isShrunk]);
 
-  // Compute on mount, on resize, and when shrink state changes
+  // Compute on mount and on resize
   useLayoutEffect(() => {
     computePositions();
   }, [computePositions]);
 
-  // Re-compute after scale animation completes (requestAnimationFrame)
+  // After shrink/expand state changes, the flex layout's centering offset
+  // may shift because the total content width changes. Use two RAFs to
+  // ensure the DOM layout has fully settled before reading offsetLeft.
   useEffect(() => {
-    const raf = requestAnimationFrame(computePositions);
-    return () => cancelAnimationFrame(raf);
+    if (!navRef.current) return;
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        computePositions();
+      });
+    });
+    return () => cancelAnimationFrame(raf1);
   }, [isShrunk, computePositions]);
 
   useEffect(() => {
