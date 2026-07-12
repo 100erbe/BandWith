@@ -84,29 +84,36 @@ export const getChats = async (
 
     const chatIds = participations.map(p => p.chat_id);
 
-    // Get chats with details
-    // Show ALL chats the user participates in (direct + band + event)
-    // If bandId is provided, we still show all chats but could filter in UI
+    // Get chats (separate query - avoid Supabase join which may 400 on FK cache miss)
     const { data: chats, error: chatsError } = await supabase
       .from('chats')
-      .select(`
-        *,
-        chat_participants (
-          id,
-          user_id,
-          last_read_at,
-          muted,
-          joined_at
-        )
-      `)
+      .select('*')
       .in('id', chatIds)
       .order('updated_at', { ascending: false });
 
     if (chatsError) throw chatsError;
 
+    // Fetch participants for all chats in one batch
+    const { data: allParticipants, error: participantsError } = await supabase
+      .from('chat_participants')
+      .select('id, chat_id, user_id, last_read_at, muted, joined_at')
+      .in('chat_id', chatIds);
+
+    if (participantsError) throw participantsError;
+
+    // Group participants by chat_id
+    const participantsByChat = new Map<string, any[]>();
+    (allParticipants || []).forEach((p: any) => {
+      const existing = participantsByChat.get(p.chat_id) || [];
+      existing.push(p);
+      participantsByChat.set(p.chat_id, existing);
+    });
+
     // Get last message for each chat and unread count
     const chatsWithDetails = await Promise.all(
       (chats || []).map(async (chat) => {
+        const chatParticipants = participantsByChat.get(chat.id) || [];
+
         // Get last message
         const { data: messages } = await supabase
           .from('messages')
@@ -116,7 +123,7 @@ export const getChats = async (
           .limit(1);
 
         // Get unread count
-        const userParticipant = chat.chat_participants?.find(
+        const userParticipant = chatParticipants.find(
           (p: ChatParticipant) => p.user_id === user.id
         );
         const lastReadAt = userParticipant?.last_read_at;
@@ -141,7 +148,7 @@ export const getChats = async (
 
         return {
           ...chat,
-          participants: chat.chat_participants || [],
+          participants: chatParticipants,
           last_message: messages?.[0] || undefined,
           unread_count: unreadCount,
         } as ChatWithDetails;
@@ -161,25 +168,25 @@ export const getChat = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Get chat (separate query - avoid Supabase join which may 400 on FK cache miss)
     const { data: chat, error } = await supabase
       .from('chats')
-      .select(`
-        *,
-        chat_participants (
-          id,
-          user_id,
-          last_read_at,
-          muted,
-          joined_at
-        )
-      `)
+      .select('*')
       .eq('id', chatId)
       .single();
 
     if (error) throw error;
 
+    // Fetch participants separately
+    const { data: chatParticipants, error: partError } = await supabase
+      .from('chat_participants')
+      .select('id, chat_id, user_id, last_read_at, muted, joined_at')
+      .eq('chat_id', chatId);
+
+    if (partError) throw partError;
+
     // Fetch participant profiles
-    const partIds = (chat.chat_participants || []).map((p: any) => p.user_id);
+    const partIds = (chatParticipants || []).map((p: any) => p.user_id);
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('id, full_name, avatar_url')
@@ -189,7 +196,7 @@ export const getChat = async (
     return {
       data: {
         ...chat,
-        participants: (chat.chat_participants || []).map((p: any) => ({
+        participants: (chatParticipants || []).map((p: any) => ({
           ...p,
           profile: profileMap.get(p.user_id) || null,
         })),
@@ -674,16 +681,23 @@ export const searchChatsAndMessages = async (
     const searchPattern = `%${query.toLowerCase()}%`;
 
     // 1. Search in chat names
+    // Use a two-step query: get the user's chat IDs first, then search names
+    const { data: userChatIdData } = await supabase
+      .from('chat_participants')
+      .select('chat_id')
+      .eq('user_id', user.id);
+
+    const userChatIds = (userChatIdData || []).map(c => c.chat_id);
+
+    if (userChatIds.length === 0) {
+      return { data: [], error: null };
+    }
+
     const { data: chatNameResults } = await supabase
       .from('chats')
-      .select(`
-        id,
-        name,
-        type,
-        chat_participants!inner(user_id)
-      `)
+      .select('id, name, type')
+      .in('id', userChatIds)
       .ilike('name', searchPattern)
-      .eq('chat_participants.user_id', user.id)
       .limit(limit);
 
     if (chatNameResults) {
