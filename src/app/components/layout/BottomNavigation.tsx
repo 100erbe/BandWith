@@ -84,6 +84,8 @@ const TAB_INDEX_MAP: Record<string, number> = {
 
 const PILL_WIDTH = 60; // uniform pill width in expanded state (w-16 - 4px)
 const PILL_WIDTH_SHRUNK = 44; // uniform pill width in shrunk state (w-12 - 4px)
+const TAB_WIDTH_EXPANDED = 64; // Tailwind w-16
+const TAB_WIDTH_SHRUNK = 48; // Tailwind w-12
 
 const SlidingPill: React.FC<{
   activeKey: string | null;
@@ -101,7 +103,6 @@ const SlidingPill: React.FC<{
 
   return (
     <motion.div
-      layoutId="activeTabPill"
       className="absolute rounded-full bg-foreground/10 z-0"
       style={{ top: '2px', bottom: '2px' }}
       animate={{ left: x, width: pillWidth }}
@@ -187,6 +188,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const [currentPillSize, setCurrentPillSize] = useState({ w: PILL_WIDTH, h: 40 });
   
   const [forceOpen, setForceOpen] = useState(false);
+  const [localScrollDown, setLocalScrollDown] = useState(false);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     if (!isScrollingDown) {
@@ -194,22 +197,47 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     }
   }, [isScrollingDown]);
 
-  const effectiveIsScrollingDown = isScrollingDown && !forceOpen;
+  // Local scroll detection — captures scroll on any scrollable container
+  // (e.g., ControlDeck, which has its own scroll container not tracked by
+  // the parent's useScrollDirection hook)
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      // Also check for any scrollable element that's currently scrolled
+      const scrolledEl = document.querySelector('.overflow-y-auto, .overflow-y-scroll');
+      const scrollTop = scrolledEl ? (scrolledEl as HTMLElement).scrollTop : scrollY;
+      
+      if (scrollTop > 10 && scrollTop > lastScrollYRef.current) {
+        setLocalScrollDown(true);
+      } else if (scrollTop <= 10 || scrollTop < lastScrollYRef.current) {
+        setLocalScrollDown(false);
+      }
+      lastScrollYRef.current = scrollTop;
+    };
+
+    // Use capture phase to catch scroll events on any descendant
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener('scroll', handleScroll, { capture: true });
+  }, []);
+
+  const effectiveIsScrollingDown = (isScrollingDown || localScrollDown) && !forceOpen;
   const isShrunk = effectiveIsScrollingDown;
 
-  // Compute positions from DOM using offsetLeft (NOT getBoundingClientRect)
-  // offsetLeft is unaffected by CSS transforms like scale, so positions
-  // remain correct regardless of shrink/expand state.
+  // Compute positions using offsetLeft (unaffected by scale transforms) + known widths
+  // IMPORTANT: offsetWidth reads the LIVE DOM width which may be stale during Framer
+  // Motion layout animations. Use the known constant widths instead.
   const computePositions = useCallback(() => {
     if (!navRef.current) return;
     const tabs = ['Home', 'Events', 'Chat', 'Settings'];
     const pos: number[] = [0, 0, 0, 0];
+    const tabW = isShrunk ? TAB_WIDTH_SHRUNK : TAB_WIDTH_EXPANDED;
     const pw = isShrunk ? PILL_WIDTH_SHRUNK : PILL_WIDTH;
 
     tabs.forEach((key, idx) => {
       const tabEl = navRef.current!.querySelector(`[data-tab-key="${key}"]`) as HTMLElement | null;
       if (!tabEl) return;
-      const tabCenter = tabEl.offsetLeft + (tabEl.offsetWidth / 2);
+      // Use offsetLeft for position (layout, unaffected by scale) + known width for center
+      const tabCenter = tabEl.offsetLeft + (tabW / 2);
       pos[idx] = tabCenter - (pw / 2);
     });
     tabPositionsRef.current = pos;
