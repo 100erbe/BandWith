@@ -90,7 +90,15 @@ export const getChats = async (
       .select('*')
       .in('id', chatIds);
 
-    if (chatsError) throw chatsError;
+    if (chatsError) {
+      console.error('[getChats] Chats query failed:', {
+        message: chatsError.message,
+        details: (chatsError as any).details,
+        hint: (chatsError as any).hint,
+        code: (chatsError as any).code,
+      });
+      throw chatsError;
+    }
 
     // Sort by updated_at descending in code
     (chats || []).sort((a, b) => {
@@ -105,7 +113,15 @@ export const getChats = async (
       .select('*')
       .in('chat_id', chatIds);
 
-    if (participantsError) throw participantsError;
+    if (participantsError) {
+      console.error('[getChats] Participants query failed:', {
+        message: participantsError.message,
+        details: (participantsError as any).details,
+        hint: (participantsError as any).hint,
+        code: (participantsError as any).code,
+      });
+      throw participantsError;
+    }
 
     // Group participants by chat_id
     const participantsByChat = new Map<string, any[]>();
@@ -495,12 +511,17 @@ export const markChatAsRead = async (
     // Best-effort: RLS or column issues shouldn't break the chat
     const { error } = await supabase
       .from('chat_participants')
-      .update({ last_read_at: new Date().toISOString() })
+      .update({ last_read_at: new Date().toISOString() } as any)
       .eq('chat_id', chatId)
       .eq('user_id', user.id);
 
     if (error) {
-      console.warn('[markChatAsRead] Non-critical error:', error.message);
+      console.warn('[markChatAsRead] Non-critical error:', {
+        message: error.message,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        code: (error as any).code,
+      });
       // Return success anyway — read receipts are non-critical
     }
 
