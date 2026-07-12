@@ -73,59 +73,81 @@ type TabDescriptor = {
   onClick: () => void;
 };
 
-/* ═══ Uniform sliding capsule pill — 2px inset, identical geometry ═══ */
+/* ═══ Uniform sliding capsule pill — 2px inset, 4 discrete positions ═══ */
 
-const PILL_LEFT_OFFSET = 2; // 2px from left edge of tab button
-const PILL_RIGHT_OFFSET = 2; // 2px from right edge of tab button
+const TAB_INDEX_MAP: Record<string, number> = {
+  Home: 0,
+  Events: 1,
+  Chat: 2,
+  Settings: 3,
+};
 
-const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean; forceOpen: boolean }> = ({
-  containerRef,
-  activeKey,
-  isScrollingDown,
-  forceOpen,
-}) => {
-  const pillRef = useRef<HTMLDivElement>(null);
+const SlidingPill: React.FC<{
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  activeKey: string | null;
+  isScrollingDown: boolean;
+  forceOpen: boolean;
+}> = ({ containerRef, activeKey, isScrollingDown, forceOpen }) => {
+  const positionsRef = useRef<number[]>([0, 0, 0, 0]);
   const [[x, w], setRect] = useState<[number, number]>([0, 0]);
 
-  const calcPill = useCallback(() => {
-    if (!containerRef.current || !activeKey) return;
+  // Measure the 4 tab positions once, then store in ref
+  const measurePositions = useCallback(() => {
+    if (!containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const tabs = ['Home', 'Events', 'Chat', 'Settings'];
+    const pos: number[] = [0, 0, 0, 0];
+
+    tabs.forEach((key, idx) => {
+      const tabEl = containerRef.current!.querySelector(`[data-tab-key="${key}"]`) as HTMLElement | null;
+      if (!tabEl) return;
+      const tabRect = tabEl.getBoundingClientRect();
+      // Pill width = tab button width minus 4px (2px left + 2px right inset)
+      const pillWidth = tabRect.width - 4;
+      const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
+      pos[idx] = tabCenter - (pillWidth / 2);
+      if (key === activeKey) {
+        setRect([pos[idx], pillWidth]);
+      }
+    });
+    positionsRef.current = pos;
+  }, [containerRef, activeKey]);
+
+  // Measure on mount, and whenever the nav transitions (shrink/expand)
+  useLayoutEffect(() => {
+    measurePositions();
+  }, [measurePositions]);
+
+  // When transitions finish, re-measure to ensure pill is correct
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      measurePositions();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isScrollingDown, forceOpen, measurePositions]);
+
+  // Resize handler
+  useEffect(() => {
+    window.addEventListener('resize', measurePositions);
+    return () => window.removeEventListener('resize', measurePositions);
+  }, [measurePositions]);
+
+  // When activeKey changes, snap to the pre-measured position
+  useEffect(() => {
+    if (!activeKey) return;
+    const idx = TAB_INDEX_MAP[activeKey];
+    if (idx === undefined || !containerRef.current) return;
     const tabEl = containerRef.current.querySelector(`[data-tab-key="${activeKey}"]`) as HTMLElement | null;
     if (!tabEl) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const tabRect = tabEl.getBoundingClientRect();
-
-    // Uniform pill: tab button width minus 4px total for 2px left + 2px right inset
     const pillWidth = tabRect.width - 4;
     const tabCenter = (tabRect.left - containerRect.left) + (tabRect.width / 2);
-    const pillLeft = tabCenter - (pillWidth / 2);
-
-    setRect([pillLeft, pillWidth]);
+    setRect([tabCenter - (pillWidth / 2), pillWidth]);
   }, [activeKey, containerRef]);
-
-  // Use useLayoutEffect so DOM reads happen synchronously after render
-  useLayoutEffect(() => {
-    calcPill();
-  }, [calcPill]);
-
-  // When the nav transitions between shrink/expand states, wait for CSS transition
-  // to finish before recalculating pill position
-  useEffect(() => {
-    // Use requestAnimationFrame to let the browser complete layout transitions first
-    const raf = requestAnimationFrame(() => {
-      calcPill();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [isScrollingDown, forceOpen, calcPill]);
-
-  // Resize handler
-  useEffect(() => {
-    window.addEventListener('resize', calcPill);
-    return () => window.removeEventListener('resize', calcPill);
-  }, [calcPill]);
 
   return (
     <motion.div
-      ref={pillRef}
       className="absolute rounded-full bg-foreground/10 z-0"
       style={{ top: '2px', bottom: '2px' }}
       animate={{ left: x, width: w }}
