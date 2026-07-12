@@ -8,16 +8,16 @@ import { TabName, CreateEventType } from '@/app/types';
 
 const IconHome: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3.75 20.25H20.25V11.25C20.2501 11.1515 20.2307 11.0539 20.1931 10.9629C20.1555 10.8718 20.1003 10.7891 20.0306 10.7194L12.5306 3.21938C12.461 3.14964 12.3783 3.09432 12.2872 3.05658C12.1962 3.01884 12.0986 2.99941 12 2.99941C11.9014 2.99941 11.8038 3.01884 11.7128 3.05658C11.6217 3.09432 11.539 3.14964 11.4694 3.21938L3.96937 10.7194C3.89975 10.7891 3.84454 10.8718 3.8069 10.9629C3.76926 11.0539 3.74992 11.1515 3.75 11.25V20.25Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.75 20.25H20.25V11.25C20.2501 11.1515 20.2307 11.0539 20.1931 10.9629C20.1555 10.8718 20.1003 10.7891 20.0306 10.7194L12.5306 3.21938C12.461 3.14964 12.3783 3.09432 12.2872 3.05658C12.1962 3.01884 12.0986 2.99941 12 2.99941C11.9014 2.99941 11.8038 3.01884 11.7128 3.05658C11.6217 3.09432 11.539 3.14964 11.4694 3.21938L3.96937 10.7194C3.89975 10.7891 3.84454 10.8718 3.8069 10.9629C3.76926 11.0539 3.74992 11.1515 3.75 11.25V20.25Z" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const IconMusic: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16.875 18C18.3247 18 19.5 16.8247 19.5 15.375C19.5 13.9253 18.3247 12.75 16.875 12.75C15.4253 12.75 14.25 13.9253 14.25 15.375C14.25 16.8247 15.4253 18 16.875 18Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.875 21C6.32475 21 7.5 19.8247 7.5 18.375C7.5 16.9253 6.32475 15.75 4.875 15.75C3.42525 15.75 2.25 16.9253 2.25 18.375C2.25 19.8247 3.42525 21 4.875 21Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19.5 6.75L7.5 9.75" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7.5 18.375V5.25L19.5 2.25V15.375" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16.875 18C18.3247 18 19.5 16.8247 19.5 15.375C19.5 13.9253 18.3247 12.75 16.875 12.75C15.4253 12.75 14.25 13.9253 14.25 15.375C14.25 16.8247 15.4253 18 16.875 18Z" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.875 21C6.32475 21 7.5 19.8247 7.5 18.375C7.5 16.9253 6.32475 15.75 4.875 15.75C3.42525 15.75 2.25 16.9253 2.25 18.375C2.25 19.8247 3.42525 21 4.875 21Z" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19.5 6.75L7.5 9.75" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7.5 18.375V5.25L19.5 2.25V15.375" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -30,22 +30,22 @@ const IconPlus: React.FC<{ color: string; className?: string }> = ({ color, clas
 
 const IconChat: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.23281 21.5728C4.12357 21.6647 3.99038 21.7235 3.84887 21.7423C3.70737 21.7612 3.56343 21.7392 3.43397 21.679C3.30451 21.6189 3.1949 21.523 3.11803 21.4028C3.04116 21.2825 3.00021 21.1428 3 21V6C3 5.80109 3.07902 5.61032 3.21967 5.46967C3.36032 5.32902 3.55109 5.25 3.75 5.25H20.25C20.4489 5.25 20.6397 5.32902 20.7803 5.46967C20.921 5.61032 21 5.80109 21 6V18C21 18.1989 20.921 18.3897 20.7803 18.5303C20.6397 18.671 20.4489 18.75 20.25 18.75H7.5L4.23281 21.5728Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.23281 21.5728C4.12357 21.6647 3.99038 21.7235 3.84887 21.7423C3.70737 21.7612 3.56343 21.7392 3.43397 21.679C3.30451 21.6189 3.1949 21.523 3.11803 21.4028C3.04116 21.2825 3.00021 21.1428 3 21V6C3 5.80109 3.07902 5.61032 3.21967 5.46967C3.36032 5.32902 3.55109 5.25 3.75 5.25H20.25C20.4489 5.25 20.6397 5.32902 20.7803 5.46967C20.921 5.61032 21 5.80109 21 6V18C21 18.1989 20.921 18.3897 20.7803 18.5303C20.6397 18.671 20.4489 18.75 20.25 18.75H7.5L4.23281 21.5728Z" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const IconMenu: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3.75 12H20.25" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.75 6H20.25" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.75 18H20.25" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.75 12H20.25" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.75 6H20.25" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3.75 18H20.25" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const IconClose: React.FC<{ color: string }> = ({ color }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.5 19.5L19.5 4.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.5 4.5L19.5 19.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.5 19.5L19.5 4.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.5 4.5L19.5 19.5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -75,10 +75,14 @@ type TabDescriptor = {
 
 /* ═══ Uniform sliding capsule pill — 2px inset, identical geometry ═══ */
 
-const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean }> = ({
+const PILL_LEFT_OFFSET = 2; // 2px from left edge of tab button
+const PILL_RIGHT_OFFSET = 2; // 2px from right edge of tab button
+
+const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | null>; activeKey: string | null; isScrollingDown: boolean; forceOpen: boolean }> = ({
   containerRef,
   activeKey,
   isScrollingDown,
+  forceOpen,
 }) => {
   const pillRef = useRef<HTMLDivElement>(null);
   const [[x, w], setRect] = useState<[number, number]>([0, 0]);
@@ -101,7 +105,17 @@ const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | nul
   // Use useLayoutEffect so DOM reads happen synchronously after render
   useLayoutEffect(() => {
     calcPill();
-  }, [calcPill, isScrollingDown]);
+  }, [calcPill]);
+
+  // When the nav transitions between shrink/expand states, wait for CSS transition
+  // to finish before recalculating pill position
+  useEffect(() => {
+    // Use requestAnimationFrame to let the browser complete layout transitions first
+    const raf = requestAnimationFrame(() => {
+      calcPill();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isScrollingDown, forceOpen, calcPill]);
 
   // Resize handler
   useEffect(() => {
@@ -113,7 +127,7 @@ const SlidingPill: React.FC<{ containerRef: React.RefObject<HTMLDivElement | nul
     <motion.div
       ref={pillRef}
       className="absolute rounded-full bg-foreground/10 z-0"
-      style={{ top: '50%', height: '36px', translateY: '-50%' }}
+      style={{ top: '2px', bottom: '2px' }}
       animate={{ left: x, width: w }}
       transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 1 }}
     />
@@ -155,7 +169,7 @@ const NavTab: React.FC<{
           isScrollingDown ? 'h-0 opacity-0' : 'h-[16px] mt-[2px] opacity-100'
         )}>
           <span className={cn(
-            'text-[10px] font-bold tracking-wide select-none leading-[14px]',
+            'text-[10px] font-black tracking-wide select-none leading-[14px]',
             isActive ? 'text-foreground' : 'text-muted-foreground'
           )}>
             {label}
@@ -228,7 +242,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     {
       key: 'Settings',
       label: 'Settings',
-      icon: ({ color }: { color: string }) => (isControlDeckOpen ? <IconClose color="#000000" /> : <IconMenu color={inactiveHamburger} />),
+      icon: ({ color }: { color: string }) => (isControlDeckOpen ? <IconClose color={color} /> : <IconMenu color={inactiveHamburger} />),
       isActive: isSettingsActive,
       onClick: () => {
         toggleControlDeck();
@@ -332,15 +346,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
             'pointer-events-auto relative flex items-center justify-center rounded-[999px]',
             isMenuOpen ? 'bg-[rgba(28,28,30,0.95)]' : 'bg-background/85',
             'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-            effectiveIsScrollingDown ? 'h-12 gap-x-2 px-2' : 'h-16 gap-x-3 px-3'
+            effectiveIsScrollingDown ? 'h-10 gap-x-1.5 px-2' : 'h-[44px] gap-x-2 px-2'
           )}
           style={{
             boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
+            border: '0.5px solid var(--nav-border, rgba(0,0,0,0.08))',
           }}
         >
-          <SlidingPill containerRef={navRef} activeKey={pillActiveKey} isScrollingDown={effectiveIsScrollingDown} />
+          <SlidingPill containerRef={navRef} activeKey={pillActiveKey} isScrollingDown={effectiveIsScrollingDown} forceOpen={forceOpen} />
 
           {tabs.slice(0, 2).map((tab) => (
             <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={effectiveIsScrollingDown} isMenuOpen={isMenuOpen} />
@@ -355,7 +370,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               className={cn(
                 'bg-accent rounded-[16px] flex items-center justify-center shrink-0 active:scale-95 shadow-[0px_4px_16px_rgba(0,0,0,0.15)]',
                 'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                effectiveIsScrollingDown ? 'w-[48px] h-[48px] -translate-y-3' : 'w-[56px] h-[56px] -translate-y-5'
+                effectiveIsScrollingDown ? 'w-[40px] h-[40px] -translate-y-2' : 'w-[44px] h-[44px] -translate-y-3'
               )}
             >
               <IconPlus color="var(--accent-fg)" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
