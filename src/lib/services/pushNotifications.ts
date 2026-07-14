@@ -155,30 +155,22 @@ const saveTokenToDatabase = async (userId: string, token: string): Promise<{ suc
   try {
     console.log('[Push] Saving token for platform:', platform);
     
-    // Delete existing tokens for this user/platform
-    await supabase
+    // Upsert using token as the unique conflict target
+    const { error } = await supabase
       .from('push_tokens')
-      .delete()
-      .eq('user_id', userId)
-      .eq('platform', platform);
-    
-    // Small delay to ensure delete is processed
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Insert fresh record
-    const { error: insertError } = await supabase
-      .from('push_tokens')
-      .insert({
-        user_id: userId,
-        token: token,
-        platform: platform,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      });
+      .upsert(
+        {
+          user_id: userId,
+          token: token,
+          platform: platform,
+          is_active: true,
+        },
+        { onConflict: 'token' }
+      );
 
-    if (insertError) {
-      console.error('[Push] Insert error:', insertError);
-      return { success: false, error: new Error(insertError.message) };
+    if (error) {
+      console.error('[Push] Upsert error:', error);
+      return { success: false, error: new Error(error.message) };
     }
     
     console.log('[Push] Token saved successfully!');
