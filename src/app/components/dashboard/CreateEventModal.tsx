@@ -683,172 +683,212 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 
   // --- RENDER STEP 3: Team & Pay ---
-  const renderStep3 = () => (
-    <div className="flex flex-col gap-8">
-      {/* Team Size */}
-      <div>
-        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>PERFORMANCE</span>
-        <span className={cn('text-[28px] font-bold uppercase block mb-3', tc)}>TYPE</span>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: 'SOLO', count: 1, type: 'solo' as PerformanceType },
-            { label: 'DUO', count: 2, type: 'duo' as PerformanceType },
-            { label: 'TRIO', count: 3, type: 'trio' as PerformanceType },
-            { label: 'QUARTET', count: 4, type: 'full_band' as PerformanceType },
-            { label: 'FULL BAND', count: MEMBERS.length || 1, type: 'full_band' as PerformanceType },
-          ].map(preset => (
-            <button
-              key={preset.label}
-              onClick={() => {
-                setPerformanceType(preset.type);
-                const newSelected = MEMBERS.slice(0, preset.count).map(m => m.id);
-                if (currentUserMemberId && !newSelected.includes(currentUserMemberId)) {
-                  newSelected[0] = currentUserMemberId;
-                }
-                setSelectedMembers(newSelected);
-                const newFees: Record<string, string> = {};
-                newSelected.forEach(id => { newFees[id] = memberFees[id] || '0'; });
-                setMemberFees(newFees);
-              }}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
-                musicianCount === preset.count
-                  ? bgPillSelected + ' border-current'
-                  : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-foreground/50 border-black/20')
-              )}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-      </div>
+  const renderStep3 = () => {
+    const selectedCount = selectedMembers.length;
+    const totalAvailable = MEMBERS.length;
 
-      {/* Musicians Count */}
-      <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
-        <div className="flex items-end justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[#F23030]' : tcMuted)}>MUSICIANS</span>
-              {warnField('members') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+    return (
+      <div className="flex flex-col gap-8">
+        {/* Performance Type Presets */}
+        <div>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>PERFORMANCE</span>
+          <span className={cn('text-[28px] font-bold uppercase block mb-3', tc)}>TYPE</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'SOLO', count: 1, type: 'solo' as PerformanceType },
+              { label: 'DUO', count: 2, type: 'duo' as PerformanceType },
+              { label: 'TRIO', count: 3, type: 'trio' as PerformanceType },
+              { label: 'QUARTET', count: 4, type: 'full_band' as PerformanceType },
+              { label: 'FULL BAND', count: totalAvailable || 1, type: 'full_band' as PerformanceType },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  setPerformanceType(preset.type);
+                  const newSelected = MEMBERS.slice(0, preset.count).map(m => m.id);
+                  if (currentUserMemberId && !newSelected.includes(currentUserMemberId)) {
+                    newSelected[0] = currentUserMemberId;
+                  }
+                  setSelectedMembers(newSelected);
+                  const newFees: Record<string, string> = {};
+                  newSelected.forEach(id => { newFees[id] = memberFees[id] || '0'; });
+                  setMemberFees(newFees);
+                }}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
+                  selectedCount === preset.count
+                    ? bgPillSelected + ' border-current'
+                    : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-foreground/50 border-black/20')
+                )}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <span className={cn('text-[10px] font-bold self-center ml-1', tcFaint)}>({selectedCount}/{totalAvailable})</span>
+          </div>
+        </div>
+
+        {/* Full Roster Checklist */}
+        <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[#F23030]' : tcMuted)}>MUSICIANS</span>
+            {warnField('members') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+          </div>
+
+          {totalAvailable === 0 ? (
+            <div className={cn('text-center py-8 px-4 rounded-[12px] border-2 border-dashed bg-black/5', bcMuted)}>
+              <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>LOADING MEMBERS...</span>
             </div>
-            <span className={cn('text-[40px] font-bold leading-none', tc)}>{musicianCount}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => adjustMusicians(-1)}
-              className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDarkBg ? 'bg-white' : 'bg-black')}
-            >
-              <Minus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
-            </button>
-            <button
-              onClick={() => adjustMusicians(1)}
-              className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDarkBg ? 'bg-white' : 'bg-black')}
-            >
-              <Plus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
-            </button>
-          </div>
-        </div>
-      </div>
+          ) : (
+            <div className="flex flex-col">
+              {MEMBERS.map((member) => {
+                const isSelected = selectedMembers.includes(member.id);
+                const isCurrentUser = member.id === currentUserMemberId;
+                const isLocked = isSelected && isCurrentUser;
+                const showFee = isSelected && isAdmin;
 
-      {/* Members List */}
-      <div className="flex flex-col gap-6">
-        {MEMBERS.length === 0 ? (
-          <div className={cn('text-center py-8 px-4 rounded-[12px] border-2 border-dashed bg-black/5', bcMuted)}>
-             <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>LOADING MEMBERS...</span>
-          </div>
-        ) : (
-          MEMBERS.map((member) => {
-            const isSelected = selectedMembers.includes(member.id);
-            if (!isSelected) return null;
-            const feeMissing = memberFees[member.id] === '';
-
-            return (
-              <div key={member.id} className="flex items-start justify-between">
-                <div className="flex flex-col gap-1 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
-                      {member.id === currentUserMemberId ? 'YOU / ' + member.role : member.role}
-                    </span>
-                  </div>
-                  <span className={cn('text-[20px] font-bold uppercase', tc)}>{member.name}</span>
-                  {isAdmin && (
-                    <div className="flex items-center gap-1">
-                      <span className={cn('font-bold text-sm', feeMissing ? 'text-[#F23030]' : tcSub)}>$</span>
-                      <input
-                        type="number"
-                        value={memberFees[member.id] || ''}
-                        onChange={(e) => updateFee(member.id, e.target.value)}
-                        placeholder="0"
-                        className={cn('bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5', feeMissing ? 'text-[#F23030] border-[#F23030]/50 focus:border-[#F23030] placeholder:text-[#F23030]/40' : (isDarkBg ? 'text-white/60 border-white/10 focus:border-white' : 'text-foreground/60 border-black/10 focus:border-black'))}
-                      />
+                return (
+                  <div
+                    key={member.id}
+                    className={cn(
+                      'flex items-start justify-between py-3 border-b last:border-0',
+                      isDarkBg ? 'border-white/10' : 'border-black/10'
+                    )}
+                  >
+                    <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          'px-2 py-0.5 text-[10px] font-bold uppercase rounded',
+                          isSelected
+                            ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white')
+                            : (isDarkBg ? 'bg-white/10 text-white/40' : 'bg-black/10 text-foreground/40')
+                        )}>
+                          {isCurrentUser ? 'YOU / ' + member.role : member.role}
+                        </span>
+                        {isLocked && (
+                          <span className={cn('text-[9px] font-bold uppercase', tcSub)}>REQUIRED</span>
+                        )}
+                      </div>
+                      <span className={cn(
+                        'text-[20px] font-bold uppercase transition-opacity',
+                        isSelected ? tc : (isDarkBg ? 'text-white/30' : 'text-foreground/30')
+                      )}>
+                        {member.name}
+                      </span>
+                      
+                      {/* Fee input — expands inline when selected */}
+                      <AnimatePresence>
+                        {showFee && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className={cn('font-bold text-sm', tcSub)}>$</span>
+                              <input
+                                type="number"
+                                value={memberFees[member.id] || ''}
+                                onChange={(e) => updateFee(member.id, e.target.value)}
+                                placeholder="0"
+                                className={cn(
+                                  'bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5',
+                                  isDarkBg
+                                    ? 'text-white/60 border-white/10 focus:border-white placeholder:text-white/20'
+                                    : 'text-foreground/60 border-black/10 focus:border-black placeholder:text-foreground/20'
+                                )}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  )}
-                </div>
-                <DotCheckbox checked={true} activeColor={dotActive} inactiveColor={dotInactive} />
-              </div>
-            );
-          })
-        )}
-        
-        {/* Friendly hint if they are alone */}
-        {MEMBERS.length <= 1 && (
-          <div className={cn('text-center py-4 px-4 rounded-[12px] border-2 border-dashed bg-black/5 mt-4', bcMuted)}>
-            <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>PLAYING SOLO?</span>
-            <span className={cn('text-[10px] font-medium block', tcFaint)}>You can add more bandmates later from your dashboard to split fees.</span>
-          </div>
-        )}
-      </div>
-
-      {/* Fee Summary */}
-      {isAdmin && (
-        <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
-          {totalPayout > 0 && (
-            <div className="flex items-center justify-between">
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
-              <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
+                    
+                    <button
+                      onClick={() => toggleMember(member.id)}
+                      className="shrink-0 mt-1"
+                    >
+                      <DotCheckbox
+                        checked={isSelected}
+                        disabled={isLocked}
+                        activeColor={dotActive}
+                        inactiveColor={dotInactive}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          <div>
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
-            <div className="flex items-center">
-              <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
-              <input
-                type="number"
-                value={extraBandFee}
-                onChange={(e) => setExtraBandFee(e.target.value)}
-                placeholder="0"
-                className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-foreground/20')}
-              />
-            </div>
-          </div>
-
-          {(grandTotalFee > 0 || details.pay) && (
-            <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
-              <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL BAND FEE</span>
-              <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee || details.pay || 0}</span>
+          {/* Empty state hint */}
+          {totalAvailable <= 1 && (
+            <div className={cn('text-center py-4 px-4 rounded-[12px] border-2 border-dashed bg-black/5 mt-4', bcMuted)}>
+              <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>PLAYING SOLO?</span>
+              <span className={cn('text-[10px] font-medium block', tcFaint)}>You can add more bandmates later from your dashboard to split fees.</span>
             </div>
           )}
         </div>
-      )}
 
-      {/* Duration */}
-      <div className={cn('pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
-        <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>DURATION</span>
-        <select
-          value={details.duration}
-          onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-          className={cn('bg-transparent text-[28px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
-        >
-          {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
-            <option key={m} value={m} className="text-black bg-white text-base">
-              {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
-            </option>
-          ))}
-        </select>
+        {/* Fee Summary */}
+        {isAdmin && (
+          <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+            {totalPayout > 0 && (
+              <div className="flex items-center justify-between">
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
+                <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
+              </div>
+            )}
+
+            <div>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
+              <div className="flex items-center">
+                <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
+                <input
+                  type="number"
+                  value={extraBandFee}
+                  onChange={(e) => setExtraBandFee(e.target.value)}
+                  placeholder="0"
+                  className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-foreground/20')}
+                />
+              </div>
+            </div>
+
+            {/* Summary bar: selected count + total */}
+            <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+              <div className="flex flex-col">
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TEAM SUMMARY</span>
+                <span className={cn('text-[14px] font-bold', tcFaint)}>
+                  {selectedCount} of {totalAvailable} musician{selectedCount !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              {grandTotalFee > 0 && (
+                <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Duration */}
+        <div className={cn('pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>DURATION</span>
+          <select
+            value={details.duration}
+            onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
+            className={cn('bg-transparent text-[28px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
+          >
+            {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
+              <option key={m} value={m} className="text-black bg-white text-base">
+                {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // --- RENDER STEP 4: Overview ---
   const renderStep4 = () => {
