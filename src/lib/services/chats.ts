@@ -460,12 +460,9 @@ export const sendMessage = async (
 
     // Send push notifications AND create in-app notifications for other participants
     try {
-      console.log('[sendMessage] Participants from DB:', JSON.stringify(participants));
       const otherParticipants = (participants || [])
         .map((p: any) => p.user_id)
         .filter((id: string) => id !== user.id);
-
-      console.log('[sendMessage] Other participants to notify:', otherParticipants);
 
       if (otherParticipants.length > 0) {
         // Get sender's name
@@ -476,23 +473,24 @@ export const sendMessage = async (
           .single();
 
         const senderName = profile?.full_name || user.email?.split('@')[0] || 'Someone';
-        console.log('[sendMessage] Sending push to', otherParticipants.length, 'users from', senderName);
 
         // Send push notification (Edge Function also creates in-app notifications)
-        // IMPORTANT: Use chat_id (snake_case) for consistency with notifications table
-        const pushResult = await sendPushToUsers(otherParticipants, 'chat_message', {
-          senderName,
-          content: content.substring(0, 100),
-          chatId,
-          chat_id: chatId, // For in-app notifications lookup
-          band_id: chat.band_id,
-        });
-        console.log('[sendMessage] Push result:', JSON.stringify(pushResult));
-      } else {
-        console.log('[sendMessage] No other participants to notify');
+        // Uses service role so RLS is bypassed
+        try {
+          const pushResult = await sendPushToUsers(otherParticipants, 'chat_message', {
+            senderName,
+            content: content.substring(0, 100),
+            chatId,
+            chat_id: chatId,
+            band_id: chat.band_id,
+          });
+          console.log('[sendMessage] Push result:', JSON.stringify(pushResult));
+        } catch (pushErr) {
+          console.warn('[sendMessage] Push notification error (non-critical):', pushErr);
+        }
       }
-    } catch (pushErr) {
-      console.warn('[sendMessage] Push/notification error (non-critical):', pushErr);
+    } catch (notifErr) {
+      console.warn('[sendMessage] Notification error (non-critical):', notifErr);
     }
 
     return { data, error: null };

@@ -2,7 +2,6 @@
 // Supports iOS APNs and Android FCM
 // Deploy with: supabase functions deploy send-push
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { encode as base64url } from "https://deno.land/std@0.177.0/encoding/base64url.ts";
 
@@ -90,7 +89,7 @@ async function generateAPNsJWT(): Promise<string> {
   try {
     cryptoKey = await crypto.subtle.importKey(
       'pkcs8',
-      binaryKey,
+      binaryKey as any,
       { name: 'ECDSA', namedCurve: 'P-256' },
       false,
       ['sign']
@@ -168,7 +167,8 @@ async function sendToAPNs(
     return { success: true };
   } catch (error) {
     console.error(`[APNs] Exception:`, error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -220,7 +220,7 @@ async function getFCMAccessToken(): Promise<string | null> {
     try {
       cryptoKey = await crypto.subtle.importKey(
         'pkcs8',
-        binaryKey,
+        binaryKey as any,
         { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
         false,
         ['sign']
@@ -326,20 +326,25 @@ async function sendToFCM(
     return { success: true };
   } catch (error) {
     console.error('[FCM] Exception:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   console.log('[send-push] Request received:', req.method);
   
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   };
 
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { 
+      status: 200, 
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -428,7 +433,7 @@ serve(async (req) => {
 
     // Send push to each token based on platform
     const results = await Promise.allSettled(
-      tokens.map(async (tokenRecord) => {
+      tokens.map(async (tokenRecord: any) => {
         const platform = tokenRecord.platform;
         const deviceToken = tokenRecord.token;
 
@@ -460,7 +465,7 @@ serve(async (req) => {
       })
     );
 
-    const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const successful = results.filter((r: any) => r.status === 'fulfilled' && r.value.success).length;
     const failed = results.length - successful;
 
     console.log(`[send-push] Complete: ${successful} success, ${failed} failed`);
@@ -470,14 +475,15 @@ serve(async (req) => {
         success: true, 
         sent: successful, 
         failed,
-        results: results.map(r => r.status === 'fulfilled' ? r.value : { error: 'promise_rejected' })
+        results: results.map((r: any) => r.status === 'fulfilled' ? r.value : { error: 'promise_rejected' })
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('[send-push] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errorMessage }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -73,7 +73,12 @@ type TabDescriptor = {
   onClick: () => void;
 };
 
-/* ═══ Uniform sliding capsule pill — 2px inset, Framer Motion layoutId ═══ */
+/* ═══ Shared spring config — snappy, controlled, no visible bounce ═══ */
+
+const SPRING = { type: 'spring' as const, stiffness: 350, damping: 27, mass: 0.8 };
+const STIFF_SPRING = { type: 'spring' as const, stiffness: 400, damping: 30, mass: 0.7 };
+
+/* ═══ Tab index map ═══ */
 
 const TAB_INDEX_MAP: Record<string, number> = {
   Home: 0,
@@ -82,31 +87,45 @@ const TAB_INDEX_MAP: Record<string, number> = {
   Settings: 3,
 };
 
-const PILL_WIDTH = 60; // uniform pill width in expanded state (w-16 - 4px)
-const PILL_WIDTH_SHRUNK = 44; // uniform pill width in shrunk state (w-12 - 4px)
-const TAB_WIDTH_EXPANDED = 64; // Tailwind w-16
-const TAB_WIDTH_SHRUNK = 48; // Tailwind w-12
+/* ═══ Discrete pill positions (hardcoded from layout) ═══
+ *
+ * Layout: px-2 (8px) | tab | gap-x-2 (8px) | tab | gap-x-2 | mx-1 (4px) | plus (44px) | mx-1 (4px) | gap-x-2 | tab | gap-x-2 | tab | px-2
+ * Tab width = w-16 = 64px
+ * Pill width = 72px
+ *
+ * Positions (left offset of pill, half-width = 36):
+ *   Home:    40 - 36 =  4
+ *   Events: 112 - 36 = 76
+ *   Chat:   244 - 36 = 208
+ *   Settings:316 - 36 = 280
+ *
+ * Note: No separate shrunk positions needed — the container scale (0.78)
+ * handles the visual shrink uniformly, avoiding conflicting layout animations.
+ */
+
+const PILL_POSITIONS = [4, 76, 208, 280];
+const PILL_WIDTH = 72;
 
 const SlidingPill: React.FC<{
   activeKey: string | null;
-  tabPositionsRef: React.MutableRefObject<number[]>;
-  pillWidth: number;
-}> = ({ activeKey, tabPositionsRef, pillWidth }) => {
-  const [x, setX] = useState(0);
+}> = ({ activeKey }) => {
+  if (!activeKey) return null;
 
-  useEffect(() => {
-    if (!activeKey) return;
-    const idx = TAB_INDEX_MAP[activeKey];
-    if (idx === undefined) return;
-    setX(tabPositionsRef.current[idx] ?? 0);
-  }, [activeKey, tabPositionsRef]);
+  const idx = TAB_INDEX_MAP[activeKey];
+  if (idx === undefined) return null;
 
   return (
     <motion.div
       className="absolute rounded-full bg-foreground/10 z-0"
       style={{ top: '2px', bottom: '2px' }}
-      animate={{ left: x, width: pillWidth }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 1 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{
+        left: PILL_POSITIONS[idx],
+        width: PILL_WIDTH,
+        opacity: 1,
+        scale: 1,
+      }}
+      transition={SPRING}
     />
   );
 };
@@ -127,42 +146,43 @@ const NavTab: React.FC<{
   const strokeColor = isActive ? activeColor : inactiveColor;
 
   return (
-    <motion.button
+    <button
       data-tab-key={tabKey}
       onClick={onClick}
-      layout
-      layoutDependency={isScrollingDown}
       className={cn(
-        'relative z-10 flex flex-col items-center justify-center outline-none px-0 shrink-0 h-full overflow-hidden',
-        isScrollingDown ? 'w-12' : 'w-16'
+        'relative z-10 outline-none px-0 shrink-0 h-full overflow-hidden w-16',
+        'flex flex-col items-center justify-center'
       )}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
     >
-      <div className="flex flex-col items-center justify-center w-full">
-        <div className="w-[24px] h-[24px] flex items-center justify-center z-10 relative shrink-0">
-          <Icon color={strokeColor} />
-        </div>
-        
-        <AnimatePresence>
-          {!isScrollingDown && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 16, opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="overflow-hidden flex items-start justify-center w-full mt-[2px]"
-            >
-              <span className={cn(
-                'text-[10px] font-black tracking-wide select-none leading-[14px]',
-                isActive ? 'text-foreground' : 'text-muted-foreground'
-              )}>
-                {label}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Icon wrapper with smooth color transition — centered regardless of label */}
+      <div
+        className="w-[24px] h-[24px] flex items-center justify-center z-10 relative"
+        style={{ transition: 'color 0.25s ease', color: strokeColor }}
+      >
+        <Icon color="currentColor" />
       </div>
-    </motion.button>
+      
+      <AnimatePresence>
+        {!isScrollingDown && (
+          <motion.div
+            key="label"
+            initial={{ scaleY: 0, opacity: 0 }}
+            animate={{ scaleY: 1, opacity: 1 }}
+            exit={{ scaleY: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            style={{ transformOrigin: 'top' }}
+            className="absolute bottom-[6px] left-0 right-0 flex items-start justify-center overflow-hidden"
+          >
+            <span className={cn(
+              'text-[10px] font-black tracking-wide select-none leading-[14px]',
+              isActive ? 'text-foreground' : 'text-muted-foreground'
+            )}>
+              {label}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </button>
   );
 };
 
@@ -184,27 +204,31 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isScrollingDown = false,
 }) => {
   const navRef = useRef<HTMLDivElement>(null);
-  const tabPositionsRef = useRef<number[]>([0, 0, 0, 0]);
-  const [currentPillSize, setCurrentPillSize] = useState({ w: PILL_WIDTH, h: 40 });
   
   const [forceOpen, setForceOpen] = useState(false);
   const [localScrollDown, setLocalScrollDown] = useState(false);
   const lastScrollYRef = useRef(0);
 
+  // When parent reports scrolling up, allow force-open to be cleared
   useEffect(() => {
     if (!isScrollingDown) {
       setForceOpen(false);
     }
   }, [isScrollingDown]);
 
+  // When local (overlay) scroll detects downward motion, allow shrinking
+  useEffect(() => {
+    if (localScrollDown) {
+      setForceOpen(false);
+    }
+  }, [localScrollDown]);
+
   // Local scroll detection — captures scroll on any scrollable container
-  // (e.g., ControlDeck, which has its own scroll container not tracked by
-  // the parent's useScrollDirection hook). Uses a scroll event listener
-  // on the window (capture phase) and checks all scrollable elements.
+  // (e.g., Settings overlay or ControlDeck, which have their own scroll
+  // containers not tracked by the parent's useScrollDirection hook).
   useEffect(() => {
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
-      // Get the scrollable element that fired the event, or fall back to document
       const scrollEl = target instanceof Document ? document.documentElement : target;
       const scrollTop = scrollEl.scrollTop ?? 0;
       
@@ -223,48 +247,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   const effectiveIsScrollingDown = (isScrollingDown || localScrollDown) && !forceOpen;
   const isShrunk = effectiveIsScrollingDown;
-
-  // Compute positions using offsetLeft (layout position, unaffected by CSS transforms)
-  const computePositions = useCallback(() => {
-    if (!navRef.current) return;
-    const tabs = ['Home', 'Events', 'Chat', 'Settings'];
-    const pos: number[] = [0, 0, 0, 0];
-    const tabW = isShrunk ? TAB_WIDTH_SHRUNK : TAB_WIDTH_EXPANDED;
-    const pw = isShrunk ? PILL_WIDTH_SHRUNK : PILL_WIDTH;
-
-    tabs.forEach((key, idx) => {
-      const tabEl = navRef.current!.querySelector(`[data-tab-key="${key}"]`) as HTMLElement | null;
-      if (!tabEl) return;
-      // Use offsetLeft (layout, unaffected by transforms) + known width constant
-      const tabCenter = tabEl.offsetLeft + (tabW / 2);
-      pos[idx] = tabCenter - (pw / 2);
-    });
-    tabPositionsRef.current = pos;
-    setCurrentPillSize({ w: pw, h: 40 });
-  }, [isShrunk]);
-
-  // Compute on mount and on resize
-  useLayoutEffect(() => {
-    computePositions();
-  }, [computePositions]);
-
-  // After shrink/expand state changes, the flex layout's centering offset
-  // may shift because the total content width changes. Use two RAFs to
-  // ensure the DOM layout has fully settled before reading offsetLeft.
-  useEffect(() => {
-    if (!navRef.current) return;
-    const raf1 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        computePositions();
-      });
-    });
-    return () => cancelAnimationFrame(raf1);
-  }, [isShrunk, computePositions]);
-
-  useEffect(() => {
-    window.addEventListener('resize', computePositions);
-    return () => window.removeEventListener('resize', computePositions);
-  }, [computePositions]);
 
   const handleTabClick = (tab: TabName) => {
     if (isSolo && tab === 'Chat') tab = 'Events';
@@ -310,7 +292,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   return (
     <>
-      {/* Plus Menu Bottom Sheet - Moved out of the flex-center container to guarantee stable full-width layout */}
+      {/* Plus Menu Bottom Sheet */}
       <AnimatePresence>
         {isPlusMenuOpen && (
           <>
@@ -318,7 +300,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.2 }}
               className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
               onClick={() => setIsPlusMenuOpen(false)}
             />
@@ -402,18 +384,19 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           className={cn(
             'pointer-events-auto relative flex items-center justify-center rounded-[999px] origin-bottom',
             isMenuOpen ? 'bg-[rgba(28,28,30,0.95)]' : 'bg-background/85',
-            'h-[44px] gap-x-2 px-2'
+            'h-[56px] gap-x-2 px-2'
           )}
-          animate={{ scale: isShrunk ? 0.85 : 1 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          animate={{ scale: isShrunk ? 0.78 : 1 }}
+          transition={SPRING}
           style={{
             boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
             border: '0.5px solid var(--nav-border, rgba(0,0,0,0.08))',
+            willChange: 'transform',
           }}
         >
-          <SlidingPill activeKey={pillActiveKey} tabPositionsRef={tabPositionsRef} pillWidth={currentPillSize.w} />
+          <SlidingPill activeKey={pillActiveKey} />
 
           {tabs.slice(0, 2).map((tab) => (
             <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
@@ -425,12 +408,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 setIsPlusMenuOpen(!isPlusMenuOpen);
                 setForceOpen(true);
               }}
-              layout
               className={cn(
-                'bg-accent rounded-[16px] flex items-center justify-center shrink-0 active:scale-95 shadow-[0px_4px_16px_rgba(0,0,0,0.15)]',
-                isShrunk ? 'w-[40px] h-[40px] -translate-y-2' : 'w-[44px] h-[44px] -translate-y-3'
+                'bg-accent rounded-[16px] flex items-center justify-center shadow-[0px_4px_16px_rgba(0,0,0,0.15)] w-[44px] h-[44px] -translate-y-3'
               )}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              animate={{ scale: isShrunk ? 1.282 : 1 }}
+              transition={SPRING}
             >
               <IconPlus color="var(--accent-fg)" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
             </motion.button>
