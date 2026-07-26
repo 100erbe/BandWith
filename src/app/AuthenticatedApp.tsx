@@ -845,11 +845,9 @@ export default function AuthenticatedApp() {
       }
     }
 
-    ids.forEach((nid) => { const rid = notificationIdMap.get(nid); if (rid) markNotificationAsRead(rid); });
-    setTimeout(() => refetchNotifications?.(), 500);
+    // Don't auto-mark-as-read anymore — let the modal handle it explicitly
     closeIdentity();
 
-    // Try to deep link to the specific event if this is an event notification
     const realId = first ? notificationIdMap.get(first.id) : undefined;
     const realNotifNav = realId ? realNotifications?.find((rn) => rn.id === realId) : null;
     const navEventId = (realNotifNav?.data as any)?.event_id;
@@ -1389,7 +1387,7 @@ export default function AuthenticatedApp() {
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
           onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }}
-          onOpenIdentity={openIdentity} unreadCount={unreadCount} isHidden={isHeaderHidden}
+          onOpenIdentity={openIdentity} onOpenNotifications={() => { setSelectedNotifications(realNotifications || []); setSelectedNotification(null); }} unreadCount={unreadCount} isHidden={isHeaderHidden}
         />
 
         <AnimatePresence mode="wait">

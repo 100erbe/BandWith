@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronDown, 
   Plus,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
@@ -21,6 +22,7 @@ interface HeaderProps {
   setEventView: (view: 'list' | 'calendar') => void;
   onCreateEvent: () => void;
   onOpenIdentity: () => void;
+  onOpenNotifications?: () => void;
   unreadCount: number;
   isHidden: boolean;
 }
@@ -36,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   setEventView,
   onCreateEvent,
   onOpenIdentity,
+  onOpenNotifications,
   unreadCount,
   isHidden
 }) => {
@@ -145,7 +148,28 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Right: Actions / Identity */}
         <div className="flex items-center gap-3">
-          {/* Removed redundant + button — use BottomNavigation + instead */}
+          {/* Bell / Notifications */}
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            onClick={onOpenNotifications}
+            className="relative shrink-0 cursor-pointer"
+          >
+            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center border-2 border-white shadow-lg">
+              <Bell className="w-6 h-6 text-foreground" />
+            </div>
+            <AnimatePresence>
+              {unreadCount > 0 && (
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[#E6E5E1] z-30 shadow-md"
+                >
+                  {unreadCount}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Identity Trigger */}
           <motion.div 

@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -106,7 +107,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onEntityDetailClick,
   onEditProfile,
   onEditBand,
-  onAddEntity
+  onAddEntity,
 }) => {
   const { signOut, user, profile } = useAuth();
   
@@ -195,66 +196,70 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               </button>
             </div>
 
-            {/* ═══ NOTIFICATIONS (if any) ═══ */}
-            {unreadCount > 0 && (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between mb-1">
-                  <div />
-                  <button
-                    onClick={handleClearAll}
-                    className="text-[12px] font-bold text-accent uppercase"
-                  >
-                    CLEAR ALL
-                  </button>
-                </div>
-                {notificationGroups.map((group) => {
-                  const label = getNotifLabel(group.type);
-                  return (
-                    <div
-                      key={group.type}
-                      onClick={() => {
-                        const item = group.items[0];
-                        onNotificationClick(group.items.map(i => i.id), item.actionType);
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
+            {/* ═══ NOTIFICATIONS ═══ */}
+            <div className="flex flex-col gap-2">
+              {notificationGroups.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[12px] font-bold text-accent uppercase">
+                      NOTIFICATIONS {unreadCount > 0 ? `(${unreadCount})` : ''}
+                    </span>
+                    {unreadCount > 0 && (
+                      <button onClick={handleClearAll} className="text-[12px] font-bold text-accent uppercase">
+                        CLEAR ALL
+                      </button>
+                    )}
+                  </div>
+                  {notificationGroups.map((group) => {
+                    const label = getNotifLabel(group.type);
+                    return (
+                      <div
+                        key={group.type}
+                        onClick={() => {
                           const item = group.items[0];
                           onNotificationClick(group.items.map(i => i.id), item.actionType);
-                        }
-                      }}
-                      className="flex items-center justify-between w-full bg-card rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 w-full">
-                        <span className="text-[12px] font-bold text-foreground uppercase">
-                          {label}
-                        </span>
-                        <span className="bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                          {group.items.length}
-                        </span>
-                        {group.items[0] && (
-                          <span className="text-[14px] text-foreground/50 font-medium truncate w-full">
-                            {group.items[0].message}
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            const item = group.items[0];
+                            onNotificationClick(group.items.map(i => i.id), item.actionType);
+                          }
+                        }}
+                        className="flex items-center justify-between w-full bg-card rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <span className="text-[12px] font-bold text-foreground uppercase">
+                            {label}
                           </span>
-                        )}
+                          <span className="bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            {group.items.length}
+                          </span>
+                          {group.items[0] && (
+                            <span className="text-[14px] text-foreground/50 font-medium truncate w-full">
+                              {group.items[0].message}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMarkGroupAsRead?.(group.items.map(i => i.id));
+                            }}
+                            className="w-6 h-6 rounded-full border border-black/20 flex items-center justify-center"
+                          >
+                            <X className="w-3 h-3 text-foreground/60" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMarkGroupAsRead?.(group.items.map(i => i.id));
-                          }}
-                          className="w-6 h-6 rounded-full border border-black/20 flex items-center justify-center"
-                        >
-                          <X className="w-3 h-3 text-foreground/60" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </>
+              )}
+
+            </div>
 
             {/* ═══ PROFILE SECTION ═══ */}
             <div className="flex flex-col gap-10">
