@@ -25,6 +25,10 @@ npm-debug.log*
 
 # Testing
 coverage/
+screenshots/
+
+# MCP (stale directory, server lives at root)
+mcp/
 
 # Capacitor
 android/

@@ -54,7 +54,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       try {
         const bioModule = await import('@/lib/services/biometric');
         biometricModuleRef.current = bioModule;
-        const status = await bioModule.checkBiometricAvailability();
+        const status = await bioModule.checkBiometricAvailability({ allowWebTest: true });
         if (mountedRef.current) {
           setBiometricStatus(status);
         }
@@ -67,11 +67,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   // Watch for OAuth completing via deep link
   useEffect(() => {
     if (isAuthenticated) {
-      // Use ref to avoid stale closure on onSuccess
       onSuccessRef.current();
     }
   }, [isAuthenticated]);
 
+  // ── Biometric login (when credentials already saved) ──
   const handleBiometricLogin = async (mod?: typeof import('@/lib/services/biometric')) => {
     const bioModule = mod || biometricModuleRef.current;
     if (!bioModule) return;
@@ -80,7 +80,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setError(null);
 
     try {
-      const credentials = await bioModule.getCredentialsWithBiometric();
+      const credentials = await bioModule.getCredentialsWithBiometric(undefined, { allowWebTest: true });
       if (!mountedRef.current) return;
       if (credentials) {
         const { error } = await signIn(credentials.email, credentials.password);
@@ -101,16 +101,37 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     }
   };
 
-  const handleSaveBiometric = async (save: boolean) => {
+  // ── Biometric save prompt: called BEFORE signIn() ──
+  const handleBiometricPromptDecision = async (save: boolean) => {
+    setShowBiometricPrompt(false);
+
     if (save && pendingCredentials && biometricModuleRef.current) {
       await biometricModuleRef.current.saveCredentialsForBiometric(
         pendingCredentials.email,
-        pendingCredentials.password
+        pendingCredentials.password,
+        { allowWebTest: true }
       );
     }
-    setShowBiometricPrompt(false);
-    setPendingCredentials(null);
-    onSuccess();
+
+    // Now actually sign in
+    if (!pendingCredentials) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await signIn(pendingCredentials.email, pendingCredentials.password);
+      if (!mountedRef.current) return;
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      onSuccess();
+    } catch (err: any) {
+      if (!mountedRef.current) return;
+      setError(err.message || 'An error occurred');
+      setLoading(false);
+    }
   };
 
   const handleOAuthGoogle = async (e: React.MouseEvent) => {
@@ -123,7 +144,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     if (error) {
       setError(error.message);
     }
-    // OAuth completes via deep link callback — don't keep the spinner spinning
     setLoading(false);
   };
 
@@ -140,6 +160,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     }
   };
 
+  /** Sign-in: show biometric save prompt BEFORE calling signIn() to avoid race conditions. */
   const handleSubmit = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -150,8 +171,23 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     }
 
     setError(null);
-    setLoading(true);
 
+    // Check if we should show the "Enable Fingerprint?" prompt BEFORE signing in
+    let bioStatus = biometricStatus;
+    if (!bioStatus && biometricModuleRef.current) {
+      bioStatus = await biometricModuleRef.current.checkBiometricAvailability({ allowWebTest: true });
+      if (mountedRef.current) setBiometricStatus(bioStatus);
+    }
+
+    if (bioStatus?.isAvailable && !bioStatus.hasCredentials) {
+      // Show prompt first — signIn() happens after user decides
+      setPendingCredentials({ email, password });
+      setShowBiometricPrompt(true);
+      return;
+    }
+
+    // No biometric prompt needed — sign in directly
+    setLoading(true);
     try {
       const { error } = await signIn(email, password);
       if (!mountedRef.current) return;
@@ -160,22 +196,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setLoading(false);
         return;
       }
-
-      // Check biometric availability at this point — it may not have resolved on mount
-      let bioStatus = biometricStatus;
-      if (!bioStatus && biometricModuleRef.current) {
-        bioStatus = await biometricModuleRef.current.checkBiometricAvailability();
-        if (mountedRef.current) setBiometricStatus(bioStatus);
-      }
-
-      if (bioStatus?.isAvailable && !bioStatus.hasCredentials) {
-        setPendingCredentials({ email, password });
-        setShowBiometricPrompt(true);
-        setLoading(false);
-      } else {
-        onSuccess();
-        setTimeout(() => { if (mountedRef.current) setLoading(false); }, 3000);
-      }
+      onSuccess();
     } catch (err: any) {
       if (!mountedRef.current) return;
       setError(err.message || 'An error occurred');
@@ -272,7 +293,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           </button>
         </motion.div>
 
-        {/* Biometric Login */}
+        {/* Biometric Login (when credentials already saved) */}
         {biometricStatus?.isAvailable && biometricStatus.hasCredentials && (
           <motion.div
             className="mb-6"
@@ -402,7 +423,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         </button>
       </motion.div>
 
-      {/* Biometric Save Prompt Modal */}
+      {/* Biometric Save Prompt Modal — shown BEFORE signIn, avoids race conditions */}
       <AnimatePresence>
         {showBiometricPrompt && biometricStatus && (
           <motion.div
@@ -413,7 +434,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           >
             <div
               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => handleSaveBiometric(false)}
+              onClick={() => handleBiometricPromptDecision(false)}
             />
             <motion.div
               className="relative w-full max-w-md mx-4 mb-8 bg-card rounded-3xl p-6 border border-border"
@@ -438,13 +459,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
-                    onClick={() => handleSaveBiometric(false)}
+                    onClick={() => handleBiometricPromptDecision(false)}
                     className="flex-1 h-12 rounded-xl bg-card/80 text-foreground font-bold text-sm hover:bg-white/15 transition-all"
                   >
                     Not now
                   </button>
                   <button
-                    onClick={() => handleSaveBiometric(true)}
+                    onClick={() => handleBiometricPromptDecision(true)}
                     className="flex-1 h-12 rounded-xl bg-accent text-accent-foreground font-bold text-sm hover:bg-accent/90 transition-all"
                   >
                     Enable

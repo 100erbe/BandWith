@@ -83,6 +83,8 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/vite": "4.1.12",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -111,5 +113,21 @@
     "overrides": {
       "vite": "6.3.5"
     }
-  }
+  },
+  "description": "This is a code bundle for Revamp Dashboard Design. The original project is available at https://www.figma.com/design/ZMCJ7Tioyq3NSFOZQFneev/Revamp-Dashboard-Design.",
+  "main": "create_admin.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/100erbe/BandWith.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/100erbe/BandWith/issues"
+  },
+  "homepage": "https://github.com/100erbe/BandWith#readme"
 }
