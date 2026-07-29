@@ -87,9 +87,9 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     // iOS uses app.bandwith.mobile://, Android uses com.bandwith.app://
     const scheme = platform === 'ios' ? 'app.bandwith.mobile' : 'com.bandwith.app';
     redirectTo = `${scheme}://auth/callback`;
+    console.log('[OAuth] Native redirect to:', redirectTo);
   } else {
     // For web (including Capacitor WebView for dev), redirect back to the auth callback page
-    // which will extract the session from the URL hash and redirect to the app root
     redirectTo = `${window.location.origin}/auth/callback`;
   }
   
@@ -100,9 +100,9 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     provider,
     options: {
       redirectTo,
-      // In web: don't skip — let the browser do a full redirect to Google, then back to callback
-      // In native: skip the browser redirect and open the Browser plugin manually
-      skipBrowserRedirect: false,
+      // Use skipBrowserRedirect: true for native so we can manually open the URL
+      // in an in-app browser (Custom Chrome Tab) instead of a full redirect
+      skipBrowserRedirect: isNative,
     },
   });
   
@@ -111,15 +111,19 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
     return { data, error };
   }
   
-  // For native, we still need to open the browser manually
+  // For native, open the browser manually using Capacitor Browser plugin
+  // This gives a clean in-app browser instead of showing the Supabase URL
   if (isNative && data?.url) {
-    console.log('[OAuth] Opening browser with URL:', data.url);
-    const { Browser } = await import('@capacitor/browser');
-    await Browser.open({ 
-      url: data.url,
-      presentationStyle: 'popover',
-      windowName: '_blank'
-    });
+    console.log('[OAuth] Opening in-app browser with URL:', data.url);
+    try {
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ 
+        url: data.url,
+        presentationStyle: 'popover',
+      });
+    } catch (browserErr) {
+      console.error('[OAuth] Failed to open browser:', browserErr);
+    }
   }
   
   return { data, error };

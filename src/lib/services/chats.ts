@@ -573,23 +573,18 @@ export const deleteChat = async (
   chatId: string
 ): Promise<{ error: Error | null }> => {
   try {
-    const { error: msgError } = await supabase
-      .from('messages')
-      .delete()
-      .eq('chat_id', chatId);
-    if (msgError) throw msgError;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
+    // Soft leave: only remove the current user from participants.
+    // The chat and messages are preserved so the chat reappears
+    // when someone sends a new message (the user gets re-added).
     const { error: partError } = await supabase
       .from('chat_participants')
       .delete()
-      .eq('chat_id', chatId);
+      .eq('chat_id', chatId)
+      .eq('user_id', user.id);
     if (partError) throw partError;
-
-    const { error: chatError } = await supabase
-      .from('chats')
-      .delete()
-      .eq('id', chatId);
-    if (chatError) throw chatError;
 
     return { error: null };
   } catch (error: any) {

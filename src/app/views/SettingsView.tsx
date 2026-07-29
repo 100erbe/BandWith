@@ -23,7 +23,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 
-type SettingsSection = 'main' | 'notifications' | 'appearance' | 'privacy' | 'help' | 'about' | 'language';
+type SettingsSection = 'main' | 'notifications' | 'appearance' | 'privacy' | 'help' | 'about' | 'language' | 'biometric';
 
 interface SettingsViewProps {
   onClose: () => void;

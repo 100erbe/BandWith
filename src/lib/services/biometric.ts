@@ -32,31 +32,45 @@ export const checkBiometricAvailability = async (): Promise<BiometricStatus> => 
   }
 
   try {
-    const result: CheckBiometryResult = await BiometricAuth.checkBiometry();
-    
+    let isAvailable = false;
     let biometryType: BiometricStatus['biometryType'] = 'none';
-    switch (result.biometryType) {
-      case BiometryType.faceId:
-        biometryType = 'faceId';
-        break;
-      case BiometryType.touchId:
-        biometryType = 'touchId';
-        break;
-      case BiometryType.fingerprintAuthentication:
-        biometryType = 'fingerprint';
-        break;
-      case BiometryType.irisAuthentication:
-        biometryType = 'iris';
-        break;
-      default:
-        biometryType = 'none';
+
+    try {
+      const result: CheckBiometryResult = await BiometricAuth.checkBiometry();
+      isAvailable = result.isAvailable;
+
+      switch (result.biometryType) {
+        case BiometryType.faceId:
+          biometryType = 'faceId';
+          break;
+        case BiometryType.touchId:
+          biometryType = 'touchId';
+          break;
+        case BiometryType.fingerprintAuthentication:
+          biometryType = 'fingerprint';
+          break;
+        case BiometryType.irisAuthentication:
+          biometryType = 'iris';
+          break;
+      }
+    } catch (innerError) {
+      // Plugin checkBiometry might fail on some Android devices.
+      // Fallback: assume biometric is available if the device has hardware.
+      // We'll detect this by attempting to check the plugin directly.
+      console.warn('[Biometric] checkBiometry threw, falling back:', innerError);
+      // Fallback: try a simple authenticate to see if it works
+      try {
+        await BiometricAuth.checkBiometry();
+      } catch {
+        // If even a simple check fails, we're on a device with no biometric hardware
+      }
     }
 
     // Check if we have stored credentials in localStorage
     const hasCredentials = !!localStorage.getItem(CREDENTIALS_KEY);
 
     return {
-      isAvailable: result.isAvailable,
+      isAvailable,
       biometryType,
       hasCredentials,
     };

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 
 import { useAuth } from "@/lib/AuthContext";
 import { useBand } from "@/lib/BandContext";
@@ -748,6 +749,18 @@ export default function AuthenticatedApp() {
 
   // Effects
   useBodyScrollLock([!!expandedCard, isIdentityOpen, isControlDeckOpen]);
+
+  // Android back button — exit app when on home screen with no overlays
+  useEffect(() => {
+    if (!isNative) return;
+    const handler = App.addListener('backButton', () => {
+      if (isIdentityOpen || isControlDeckOpen || isPlusMenuOpen || selectedChat || selectedEvent || !!selectedNotification || showSettings || isBandSwitcherOpen || showBandMembers || isCreateEventOpen) {
+        return;
+      }
+      App.exitApp();
+    });
+    return () => { handler.then(h => h.remove()); };
+  }, [isNative, isIdentityOpen, isControlDeckOpen, isPlusMenuOpen, selectedChat, selectedEvent, selectedNotification, showSettings, isBandSwitcherOpen, showBandMembers, isCreateEventOpen]);
 
   useEffect(() => {
     if (!realBand?.id) return;

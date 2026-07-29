@@ -26,7 +26,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onSuccess,
   onForgotPassword,
 }) => {
-  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, isAuthenticated } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,14 +40,37 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
   const biometricModuleRef = useRef<typeof import('@/lib/services/biometric') | null>(null);
   const mountedRef = useRef(true);
+  const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {
     mountedRef.current = true;
+    onSuccessRef.current = onSuccess;
     return () => { mountedRef.current = false; };
+  }, [onSuccess]);
+
+  // Load biometric module on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const bioModule = await import('@/lib/services/biometric');
+        biometricModuleRef.current = bioModule;
+        const status = await bioModule.checkBiometricAvailability();
+        if (mountedRef.current) {
+          setBiometricStatus(status);
+        }
+      } catch (err) {
+        console.log('[SignIn] Biometric check failed:', err);
+      }
+    })();
   }, []);
 
-  // Biometric disabled: @aparajita/capacitor-biometric-auth is not linked via SPM.
-  // Re-enable when the plugin is properly configured with a Package.swift.
+  // Watch for OAuth completing via deep link
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Use ref to avoid stale closure on onSuccess
+      onSuccessRef.current();
+    }
+  }, [isAuthenticated]);
 
   const handleBiometricLogin = async (mod?: typeof import('@/lib/services/biometric')) => {
     const bioModule = mod || biometricModuleRef.current;
@@ -99,8 +122,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     if (!mountedRef.current) return;
     if (error) {
       setError(error.message);
-      setLoading(false);
     }
+    // OAuth completes via deep link callback — don't keep the spinner spinning
+    setLoading(false);
   };
 
   const handleOAuthApple = async (e: React.MouseEvent) => {
@@ -137,7 +161,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         return;
       }
 
-      if (biometricStatus?.isAvailable && !biometricStatus.hasCredentials) {
+      // Check biometric availability at this point — it may not have resolved on mount
+      let bioStatus = biometricStatus;
+      if (!bioStatus && biometricModuleRef.current) {
+        bioStatus = await biometricModuleRef.current.checkBiometricAvailability();
+        if (mountedRef.current) setBiometricStatus(bioStatus);
+      }
+
+      if (bioStatus?.isAvailable && !bioStatus.hasCredentials) {
         setPendingCredentials({ email, password });
         setShowBiometricPrompt(true);
         setLoading(false);
