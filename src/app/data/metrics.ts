@@ -65,8 +65,8 @@ export const SMART_INSIGHTS: SmartInsight[] = [
     desc: "Rain expected for Como Wedding", 
     action: "Check Plan B",
     icon: CloudLightning,
-    color: "bg-[#1C1C1E]", 
-    textColor: "text-white",
+    color: "bg-[var(--surface-inverse)]", 
+    textColor: "text-[var(--surface-inverse-fg)]",
     accent: "text-accent"
   },
   { 
@@ -76,9 +76,9 @@ export const SMART_INSIGHTS: SmartInsight[] = [
     desc: "Wedding - Rossi hasn't signed yet", 
     action: "Resend",
     icon: FileText,
-    color: "bg-[#FF4F28]", 
-    textColor: "text-white",
-    accent: "text-white"
+    color: "bg-[var(--destructive)]", 
+    textColor: "text-[var(--destructive-fg)]",
+    accent: "text-[var(--destructive-fg)]"
   },
   { 
     id: 3, 
@@ -87,9 +87,9 @@ export const SMART_INSIGHTS: SmartInsight[] = [
     desc: "'Take Five' not played in 45 days", 
     action: "Add to Setlist",
     icon: RotateCw,
-    color: "bg-[#E6E5E1]", 
-    textColor: "text-[#1A1A1A]",
-    accent: "text-[#1A1A1A]"
+    color: "bg-[var(--bg)]", 
+    textColor: "text-[var(--fg)]",
+    accent: "text-[var(--fg)]"
   }
 ];
 

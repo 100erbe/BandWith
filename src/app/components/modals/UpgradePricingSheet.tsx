@@ -18,7 +18,7 @@ const TIERS = [
     period: '/mo forever',
     icon: Music,
     accent: 'var(--accent)',
-    bgGradient: 'from-accent to-[#bff53a]',
+    bgGradient: 'from-accent to-[var(--accent)]',
     textColor: 'text-black',
     description: 'Basic operations',
     features: [
@@ -38,8 +38,8 @@ const TIERS = [
     price: '$12',
     period: '/mo',
     icon: Layers,
-    accent: '#8B5CF6',
-    bgGradient: 'from-[#8B5CF6] to-[#7C3AED]',
+    accent: 'var(--primary)',
+    bgGradient: 'from-[var(--primary)] to-[var(--primary)]',
     textColor: 'text-white',
     description: 'Cross-band availability calendars',
     features: [
@@ -51,7 +51,7 @@ const TIERS = [
       'Priority support',
     ],
     cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[#8B5CF6] hover:scale-[1.02]',
+    ctaStyle: 'bg-white text-[var(--primary)] hover:scale-[1.02]',
   },
   {
     id: 'unlimited',
@@ -60,8 +60,8 @@ const TIERS = [
     price: '$29',
     period: '/mo',
     icon: Infinity,
-    accent: '#F59E0B',
-    bgGradient: 'from-[#F59E0B] to-[#D97706]',
+    accent: 'var(--amber)',
+    bgGradient: 'from-[var(--amber)] to-[var(--amber)]',
     textColor: 'text-white',
     description: 'Multi-agent management tools',
     features: [
@@ -74,7 +74,7 @@ const TIERS = [
       'API access & webhooks',
     ],
     cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[#F59E0B] hover:scale-[1.02]',
+    ctaStyle: 'bg-white text-[var(--amber)] hover:scale-[1.02]',
   },
 ];
 
@@ -121,7 +121,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               {/* Header */}
               <div className="mb-8 text-center">
                 <div className="inline-flex items-center gap-2 bg-black/5 rounded-full px-4 py-1.5 mb-4">
-                  <Sparkles className="w-4 h-4 text-[#8B5CF6]" />
+                  <Sparkles className="w-4 h-4 text-[var(--primary)]" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/50">
                     Unlock More Power
                   </span>

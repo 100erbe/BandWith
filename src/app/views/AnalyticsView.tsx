@@ -32,7 +32,7 @@ const AnalyticsDotGrid: React.FC<{ filled: number; color: string }> = ({ filled,
           key={i}
           className="rounded-[10px]"
           style={{
-            backgroundColor: i < count && i < visible ? color : '#CDCACA',
+            backgroundColor: i < count && i < visible ? color : 'var(--muted)',
             transition: 'background-color 0.15s',
           }}
         />
@@ -82,11 +82,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
             style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
           <div className="flex flex-col leading-none">
-            <span className="text-[32px] font-bold text-black leading-none">DATA</span>
-            <span className="text-[32px] font-bold text-black leading-none">INSIGHTS</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">DATA</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">INSIGHTS</span>
           </div>
         </div>
       </div>
@@ -108,9 +108,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.05 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">TOTAL REVENUE</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL REVENUE</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {fmt(totalRevenue)}
                     </span>
                   </div>
@@ -126,9 +126,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.1 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">TOTAL EVENTS</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL EVENTS</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {totalEvents}
                     </span>
                   </div>
@@ -143,9 +143,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.15 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">CONFIRMED</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {confirmed}
                     </span>
                   </div>
@@ -160,11 +160,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                 >
                   <span className="text-xs font-bold text-black tracking-wide">UPCOMING</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {upcoming}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={upcoming} color="#050505" />
+                  <AnalyticsDotGrid filled={upcoming} color="var(--bg)" />
                 </motion.div>
               </div>
             </div>
@@ -208,7 +208,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                     <span className="text-xs font-bold text-black w-10 tracking-wide">
                       {month}
                     </span>
-                    <div className="flex-1 h-3 bg-[#CDCACA] rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-accent rounded-full"
                         initial={{ width: 0 }}

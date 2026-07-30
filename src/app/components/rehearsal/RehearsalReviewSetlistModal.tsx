@@ -90,7 +90,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Built from Templates</h4>
                     <div className="space-y-2">
                         {snapshot.sources.map((src, i) => (
-                            <div key={i} className="flex items-center justify-between p-2 bg-[#F2F2F0] rounded-lg">
+                            <div key={i} className="flex items-center justify-between p-2 bg-[var(--surface-alt)] rounded-lg">
                                 <span className="text-xs font-bold text-foreground">{src.templateName}</span>
                                 <span className="text-[10px] font-mono text-foreground/40">v{src.templateVersion}</span>
                             </div>
@@ -102,7 +102,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                 <div>
                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Final Tracklist</h4>
                     <p className="text-[10px] text-foreground/30 mb-3">Drag to reorder • Swipe to remove</p>
-                    <div className="bg-[#F2F2F0] rounded-2xl p-2 space-y-1">
+                    <div className="bg-[var(--surface-alt)] rounded-2xl p-2 space-y-1">
                         {snapshot.songs.map((song, i) => (
                             <div
                                 key={`${song.songId}-${i}`}

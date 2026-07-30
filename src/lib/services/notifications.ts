@@ -145,18 +145,18 @@ export const getNotificationIcon = (type: NotificationType): string => {
 // Get color for notification type
 export const getNotificationColor = (type: NotificationType): string => {
   if (type.includes('accepted') || type.includes('confirmed') || type.includes('completed') || type.includes('received')) {
-    return '#22C55E'; // Green
+    return 'var(--success)'; // Green
   }
   if (type.includes('declined') || type.includes('cancelled') || type.includes('expired') || type.includes('overdue')) {
-    return '#EF4444'; // Red
+    return 'var(--destructive)'; // Red
   }
   if (type.includes('reminder') || type.includes('due') || type.includes('pending')) {
-    return '#F59E0B'; // Amber
+    return 'var(--amber)'; // Amber
   }
   if (type.includes('invite') || type.includes('joined')) {
     return 'var(--accent)'; // Brand green
   }
-  return '#6B7280'; // Gray
+  return 'var(--muted-fg)'; // Gray
 };
 
 // ============================================

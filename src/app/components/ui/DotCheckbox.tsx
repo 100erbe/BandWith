@@ -25,7 +25,7 @@ interface DotCheckboxProps {
 export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   checked,
   disabled = false,
-  activeColor = '#000000',
+  activeColor = 'var(--fg)',
   inactiveColor,
   className,
   onClick,

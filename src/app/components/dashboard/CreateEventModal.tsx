@@ -357,7 +357,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const pillAccent = modalCategory === 'rehearsal' ? 'text-accent-rehearsal' : modalCategory === 'quote' ? 'text-accent-quote' : 'text-accent-gig';
   const bgPillSelected = isDarkBg ? 'bg-white text-black' : `bg-black ${pillAccent}`;
   const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-foreground/50';
-  const dotActive = isDarkBg ? '#FFFFFF' : '#000000';
+  const dotActive = isDarkBg ? 'var(--surface-inverse-fg)' : 'var(--fg)';
   const dotInactive = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
 
   const musicianCount = selectedMembers.length;
@@ -532,17 +532,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Venue */}
-      <div className={cn(warnField('venue') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+      <div className={cn(warnField('venue') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
         <div className="flex items-center gap-2 mb-1">
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('venue') ? 'text-[#F23030]' : tcMuted)}>VENUE</span>
-          {warnField('venue') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+          <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('venue') ? 'text-[var(--warning)]' : tcMuted)}>VENUE</span>
+          {warnField('venue') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
         </div>
         <input
           type="text"
           value={details.venue}
           onChange={(e) => setDetails({ ...details, venue: e.target.value })}
           placeholder="VENUE NAME"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[var(--warning)]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
         />
         {/* Address Tags */}
         <div className="flex flex-wrap gap-2">
@@ -585,28 +585,28 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Calendar */}
-      <div className={cn(warnField('date') && 'rounded-lg p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+      <div className={cn(warnField('date') && 'rounded-lg p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
         {warnField('date') && (
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-bold text-[#F23030] uppercase tracking-wider">DATE</span>
-            <AlertCircle className="w-3 h-3 text-[#F23030]" />
+            <span className="text-[10px] font-bold text-[var(--warning)] uppercase tracking-wider">DATE</span>
+            <AlertCircle className="w-3 h-3 text-[var(--warning)]" />
           </div>
         )}
         <CalendarGrid selectedDate={details.date} onSelectDate={(d) => setDetails({ ...details, date: d })} isDark={isDarkBg} />
       </div>
 
       {/* Start / End Times */}
-      <div className={cn('grid grid-cols-2 gap-6', warnField('time') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+      <div className={cn('grid grid-cols-2 gap-6', warnField('time') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('time') ? 'text-[#F23030]' : tcMuted)}>START</span>
-            {warnField('time') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('time') ? 'text-[var(--warning)]' : tcMuted)}>START</span>
+            {warnField('time') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
           </div>
           <input
             type="time"
             value={details.startTime}
             onChange={(e) => setDetails({ ...details, startTime: e.target.value })}
-            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[#F23030]/50' : bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
+            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
           />
         </div>
         <div>
@@ -729,10 +729,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
 
         {/* Full Roster Checklist */}
-        <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[#F23030]/10 ring-2 ring-[#F23030]/30')}>
+        <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
           <div className="flex items-center gap-2 mb-4">
-            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[#F23030]' : tcMuted)}>MUSICIANS</span>
-            {warnField('members') && <AlertCircle className="w-3 h-3 text-[#F23030]" />}
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[var(--warning)]' : tcMuted)}>MUSICIANS</span>
+            {warnField('members') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
           </div>
 
           {totalAvailable === 0 ? (
@@ -1587,7 +1587,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         {songCount === 1 ? 'SONG' : 'SONGS'}
                       </span>
                     </div>
-                    <DotCheckbox checked={songCount > 0} activeColor="#000000" inactiveColor="rgba(0,0,0,0.20)" />
+                    <DotCheckbox checked={songCount > 0} activeColor="var(--fg)" inactiveColor="var(--dot-inactive)" />
                   </button>
 
                   {/* Expanded: Songs List */}

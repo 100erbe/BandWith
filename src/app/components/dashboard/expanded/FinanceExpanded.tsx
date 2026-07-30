@@ -131,7 +131,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#E6E5E1"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '12%', left: '3%', right: '42%', bottom: '62%' }}
     >

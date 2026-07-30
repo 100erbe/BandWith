@@ -29,8 +29,8 @@ export const ChecksIcon: React.FC<IconProps> = ({ className }) => (
     xmlns="http://www.w3.org/2000/svg"
     className={className}
   >
-    <path d="M3 24.4294L10.2 31.5L27 15" stroke="#17C764" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M23.6177 27L28.2002 31.5L45.0002 15" stroke="#17C764" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 24.4294L10.2 31.5L27 15" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M23.6177 27L28.2002 31.5L45.0002 15" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 

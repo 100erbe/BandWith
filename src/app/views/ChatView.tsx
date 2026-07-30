@@ -339,7 +339,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <div className="flex flex-col items-end justify-between self-stretch shrink-0">
                   <div className="flex gap-[6px]">
                     {chat.isOnline ? (
-                      <div className="bg-[#17c764] rounded-full p-[6px]">
+                      <div className="bg-[var(--success)] rounded-full p-[6px]">
                         <PlugsConnectedIcon className="w-[28px] h-[28px] text-black" />
                       </div>
                     ) : (

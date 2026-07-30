@@ -121,7 +121,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 key={i}
                 className="absolute w-3 h-3 rounded-full"
                 style={{
-                  background: ['var(--accent)', '#0047FF', '#FF4F28', '#998878'][i % 4],
+                  background: ['var(--accent)', 'var(--accent-rehearsal)', 'var(--destructive)', 'var(--secondary)'][i % 4],
                   left: `${Math.random() * 100}%`,
                   top: '50%',
                 }}
@@ -237,7 +237,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : bandName.length >= 2 ? (
-                <div className="w-full h-full bg-gradient-to-br from-accent to-[#98BC21] flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-accent to-[var(--accent)] flex items-center justify-center">
                   <span className="text-3xl font-black text-foreground">
                     {getInitials(bandName)}
                   </span>
@@ -282,7 +282,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               Preview
             </p>
             <div className="bg-card rounded-[1.5rem] p-4 flex items-center gap-4 border border-border">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-[#98BC21] flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-[var(--accent)] flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarPreview || avatarUrl ? (
                   <img
                     src={avatarPreview || avatarUrl}

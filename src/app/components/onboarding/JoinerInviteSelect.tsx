@@ -74,7 +74,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
           <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Choose
             <br />
-            <span className="text-[#0047FF]">your band</span>
+            <span className="text-[var(--accent-rehearsal)]">your band</span>
           </h1>
           <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
             You have {invites.length} pending invitations
@@ -98,7 +98,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
               transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
             >
               {/* Band avatar */}
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0047FF] to-[#0033CC] flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent-rehearsal)] to-[var(--accent-rehearsal)] flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {invite.band?.logo_url ? (
                   <img
                     src={invite.band.logo_url}

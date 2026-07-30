@@ -58,7 +58,7 @@ export const EmptyState: React.FC = () => (
           style={{
             gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
             gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-            backgroundColor: cell.filled ? '#000000' : '#ffffff',
+            backgroundColor: cell.filled ? 'var(--fg)' : 'var(--bg)',
           }}
         />
       ))}

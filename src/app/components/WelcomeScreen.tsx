@@ -41,7 +41,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     <AnimatePresence>
       {!isExiting && (
         <motion.div
-          className="fixed inset-0 z-[9999] bg-[#0A0A0A] flex items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-[9999] bg-[var(--bg)] flex items-center justify-center overflow-hidden"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
@@ -55,7 +55,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           >
             {/* Subtle gradient orbs */}
             <div className="absolute top-1/4 -left-20 w-80 h-80 bg-accent rounded-full blur-[120px] opacity-10" />
-            <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-[#0047FF] rounded-full blur-[150px] opacity-15" />
+            <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-[var(--accent-rehearsal)] rounded-full blur-[150px] opacity-15" />
           </motion.div>
 
           {/* Main content */}
@@ -90,7 +90,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div 
                 className="relative w-20 h-20 rounded-[1.5rem] flex items-center justify-center overflow-hidden"
                 style={{
-                  background: 'linear-gradient(145deg, var(--accent) 0%, #6A0DAD 100%)',
+                  background: 'linear-gradient(145deg, var(--accent) 0%, var(--primary) 100%)',
                   boxShadow: '0 25px 50px -12px rgba(212, 251, 70, 0.35), 0 10px 25px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3)'
                 }}
               >
@@ -104,7 +104,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 
                 {/* BW Monogram with typography treatment */}
                 <span 
-                  className="relative text-[1.75rem] font-black text-[#0A0A0A] tracking-[-0.05em]"
+                  className="relative text-[1.75rem] font-black text-[var(--fg)] tracking-[-0.05em]"
                   style={{ 
                     fontFamily: 'Inter, SF Pro Display, -apple-system, system-ui, sans-serif',
                     letterSpacing: '-0.02em'

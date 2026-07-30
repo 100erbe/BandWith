@@ -105,7 +105,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       >
           <div className="flex -space-x-2">
               {event.members.length > 0 ? event.members.map((m, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-[#1A1A1A] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
+                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
                       {m}
                   </div>
               )) : <span className="text-[10px] font-bold text-stone-400 uppercase">No team</span>}

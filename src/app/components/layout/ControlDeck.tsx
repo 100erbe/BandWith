@@ -99,7 +99,7 @@ const PixelArtGrid: React.FC<{ pattern: GridCell[]; color: string }> = ({ patter
         style={{
           gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
           gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-          backgroundColor: cell.d ? color : '#CDCACA',
+          backgroundColor: cell.d ? color : 'var(--muted)',
         }}
       />
     ))}
@@ -132,13 +132,13 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
   const quickActions = [
     { label: 'New Quote', lines: ['NEW', 'QUOTE'], color: 'var(--accent)', onClick: () => onNavigate('Quote'), adminOnly: true },
     { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], color: 'var(--accent-rehearsal)', onClick: () => onNavigate('InviteMember'), adminOnly: true },
-    { label: 'Finance', lines: ['MONEY', 'FLOW'], color: '#22C55E', onClick: () => onNavigate('Finance'), adminOnly: true },
-    { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], color: '#F59E0B', onClick: () => onNavigate('Analytics'), adminOnly: true },
+    { label: 'Finance', lines: ['MONEY', 'FLOW'], color: 'var(--success)', onClick: () => onNavigate('Finance'), adminOnly: true },
+    { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], color: 'var(--amber)', onClick: () => onNavigate('Analytics'), adminOnly: true },
   ].filter(action => isAdmin || !action.adminOnly);
 
   const memberActions = isAdmin ? [] : [
-    { label: 'My Schedule', lines: ['MY', 'SCHEDULE'], color: '#3B82F6', onClick: () => onNavigate('Events') },
-    { label: 'Band Info', lines: ['BAND', 'INFO'], color: '#8B5CF6', onClick: () => onNavigate('BandMembers') },
+    { label: 'My Schedule', lines: ['MY', 'SCHEDULE'], color: 'var(--accent-rehearsal)', onClick: () => onNavigate('Events') },
+    { label: 'Band Info', lines: ['BAND', 'INFO'], color: 'var(--primary)', onClick: () => onNavigate('BandMembers') },
   ];
 
   const allActions = [...quickActions, ...memberActions];
@@ -322,10 +322,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.15)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
               >
-                <LogOut className="w-4 h-4 text-[#A73131]" />
-                <span className="text-[12px] font-bold text-[#A73131] uppercase">SIGN OUT</span>
+                <LogOut className="w-4 h-4 text-[var(--destructive)]" />
+                <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>
               </button>
               {user?.email && (
                 <p className="text-[10px] font-normal text-foreground/30 text-center uppercase w-full">

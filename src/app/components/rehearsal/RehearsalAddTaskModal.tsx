@@ -127,7 +127,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                         <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-foreground" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
                                         <span className="text-xs font-bold">{m.name}</span>
                                     </div>
-                                    <DotCheckbox checked={isSelected} activeColor={isSelected ? '#FFFFFF' : '#000000'} inactiveColor={isSelected ? 'rgba(255,255,255,0.3)' : undefined} />
+                                    <DotCheckbox checked={isSelected} activeColor={isSelected ? 'var(--surface-inverse-fg)' : 'var(--fg)'} inactiveColor={isSelected ? "var(--dot-inactive)" : undefined} />
                                 </button>
                             );
                         })}

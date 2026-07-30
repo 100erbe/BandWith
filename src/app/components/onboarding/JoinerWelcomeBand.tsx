@@ -74,7 +74,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
               key={i}
               className="absolute w-3 h-3 rounded-full"
               style={{
-                background: ['var(--accent)', '#0047FF', '#FF4F28', '#998878'][i % 4],
+                background: ['var(--accent)', 'var(--accent-rehearsal)', 'var(--destructive)', 'var(--secondary)'][i % 4],
                 left: `${Math.random() * 100}%`,
                 top: '-20px',
               }}
@@ -110,7 +110,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           className="mb-8"
         >
           <div
-            className="w-28 h-28 rounded-[2.5rem] bg-[#0047FF] flex items-center justify-center"
+            className="w-28 h-28 rounded-[2.5rem] bg-[var(--accent-rehearsal)] flex items-center justify-center"
             style={{
               boxShadow: '0 16px 64px rgba(0, 71, 255, 0.5)',
             }}
@@ -152,8 +152,8 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 + index * 0.1 }}
               >
-                <div className="w-11 h-11 rounded-full bg-[#0047FF]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[#0047FF] font-bold text-[14px]">
+                <div className="w-11 h-11 rounded-full bg-[var(--accent-rehearsal)]/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[var(--accent-rehearsal)] font-bold text-[14px]">
                     {getInitials(member.name)}
                   </span>
                 </div>

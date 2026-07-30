@@ -147,7 +147,7 @@ const THEME = {
     secondBtnLabel: '+ CONVERT',
   },
   draft: {
-    bg: '#3A3A3A',
+    bg: 'var(--muted-fg)',
     text: 'white',
     textClass: 'text-white',
     tagBg: 'rgba(255,255,255,0.3)',
@@ -299,7 +299,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               </span>
             </div>
             {eventType === 'gig' && event.notes && (
-              <div className="bg-[#F23030] rounded-full p-[7px]">
+              <div className="bg-[var(--warning)] rounded-full p-[7px]">
                 <AlertCircle className="w-[36px] h-[36px] text-white" style={{ transform: 'rotate(180deg)' }} />
               </div>
             )}
@@ -423,7 +423,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 <div className="flex items-center gap-[12px]">
                   <button
                     onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
-                    className="text-[12px] font-bold text-white bg-[#F23030] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase"
                   >
                     CONFIRM DELETE
                   </button>
@@ -436,7 +436,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 </div>
               ) : (
                 <button onClick={() => setShowDeleteConfirm(true)}>
-                  <span className="text-[12px] font-medium text-[#FF7C7C] uppercase">
+                  <span className="text-[12px] font-medium text-[var(--destructive)] uppercase">
                     {theme.deleteLabel}
                   </span>
                 </button>
@@ -470,7 +470,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     <button
                       onClick={handleDecline}
                       disabled={isSubmitting}
-                      className="text-[12px] font-bold text-white bg-[#F23030] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
+                      className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
                     >
                       {isSubmitting ? '...' : 'CONFIRM DROP'}
                     </button>
@@ -753,7 +753,7 @@ const GigSections: React.FC<{
       {/* Setlist */}
       <div className="flex flex-col gap-[8px]">
         <div className="flex flex-col">
-          <SectionHeader label="SETLIST" color={theme.text} alertColor={numSongs > 0 ? undefined : '#F23030'} onTap={() => toggle('setlist')} expanded={expandedSection === 'setlist'} />
+          <SectionHeader label="SETLIST" color={theme.text} alertColor={numSongs > 0 ? undefined : 'var(--warning)'} onTap={() => toggle('setlist')} expanded={expandedSection === 'setlist'} />
           <div className="flex items-center gap-[10px]">
             <SectionValue value={`${numSongs} SONGS`} color={theme.text} />
           </div>

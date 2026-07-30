@@ -575,8 +575,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               </div>
               <DotRadio
                 selected={isSelected}
-                activeColor="#ffffff"
-                inactiveColor="rgba(255,255,255,0.2)"
+                activeColor="var(--accent-quote-fg)"
+                inactiveColor="var(--dot-inactive)"
               />
             </button>
           );
@@ -629,8 +629,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               >
                 <DotCheckbox
                   checked={isSelected}
-                  activeColor="#ffffff"
-                  inactiveColor="rgba(255,255,255,0.2)"
+                  activeColor="var(--accent-quote-fg)"
+                  inactiveColor="var(--dot-inactive)"
                 />
                 <div className="min-w-0">
                   <span className={cn("text-sm font-bold block truncate", isSelected ? "text-white" : "text-white/30")}>{m.name}</span>
@@ -712,7 +712,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   "h-10 rounded-full text-sm font-bold transition-all",
                   !day && "invisible",
                   isToday
-                    ? "bg-white text-[#0147ff]"
+                    ? "bg-white text-[var(--accent-rehearsal)]"
                     : day ? "text-white/50 hover:bg-white/10" : ""
                 )}
               >
@@ -938,7 +938,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 return (
                   <div key={`${tid}-${i}`} className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-lg">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-5 h-5 rounded-full bg-white text-[#0147ff] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <span className="w-5 h-5 rounded-full bg-white text-[var(--accent-rehearsal)] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                       <span className="font-bold text-white text-sm truncate">{t?.name || 'Unknown'}</span>
                       <span className="text-[10px] font-bold text-white/30 shrink-0">{t?.songIds.length || 0}</span>
                     </div>
@@ -1016,7 +1016,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                         className={cn(
                           "shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors",
                           inQueue
-                            ? "bg-white text-[#0147ff]"
+                            ? "bg-white text-[var(--accent-rehearsal)]"
                             : "bg-white/15 text-white/50 hover:bg-white/25 hover:text-white"
                         )}
                       >
@@ -1068,7 +1068,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   <div className="flex-1 pr-3 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <h4 className="font-bold text-sm text-white truncate">{prop.title}</h4>
-                      {prop.status === 'new' && <span className="px-1.5 py-0.5 bg-white text-[#0147ff] text-[9px] font-bold uppercase rounded-full shrink-0">NEW</span>}
+                      {prop.status === 'new' && <span className="px-1.5 py-0.5 bg-white text-[var(--accent-rehearsal)] text-[9px] font-bold uppercase rounded-full shrink-0">NEW</span>}
                     </div>
                     <span className="text-[11px] font-bold uppercase text-white/40">{prop.artist}</span>
                   </div>
@@ -1232,8 +1232,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-white/5 transition-colors cursor-pointer">
                       <DotCheckbox
                         checked={task.completed}
-                        activeColor="#ffffff"
-                        inactiveColor="rgba(255,255,255,0.2)"
+                        activeColor="var(--accent-quote-fg)"
+                        inactiveColor="var(--dot-inactive)"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-white leading-tight">{task.text}</p>
@@ -1258,7 +1258,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     const assigneeInitials = task.assignedTo.slice(0, 2).map(id => data.members.find(m => m.id === id)?.initials).join('+');
                     return (
                       <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-white/5 transition-colors cursor-pointer">
-                        <div className="w-8 h-8 rounded-full bg-white text-[#0147ff] text-[11px] font-bold flex items-center justify-center shrink-0">{assigneeInitials}</div>
+                        <div className="w-8 h-8 rounded-full bg-white text-[var(--accent-rehearsal)] text-[11px] font-bold flex items-center justify-center shrink-0">{assigneeInitials}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-white leading-tight">{task.text}</p>
                           <div className="flex gap-2 mt-1.5">
@@ -1298,8 +1298,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               >
                 <DotCheckbox
                   checked={checklistChecked.has(i)}
-                  activeColor="#ffffff"
-                  inactiveColor="rgba(255,255,255,0.2)"
+                  activeColor="var(--accent-quote-fg)"
+                  inactiveColor="var(--dot-inactive)"
                 />
                 <span className={cn("text-sm font-bold", checklistChecked.has(i) ? "text-white" : "text-white/60")}>{item}</span>
               </button>
@@ -1506,7 +1506,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed inset-0 z-[100] bg-[#0147ff] flex flex-col overflow-hidden"
+        className="fixed inset-0 z-[100] bg-[var(--accent-rehearsal)] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="px-4 pt-[env(safe-area-inset-top,12px)] shrink-0">

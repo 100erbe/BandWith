@@ -166,7 +166,7 @@ export default function AuthenticatedApp() {
         // Use system-preference check instead of Capacitor Appearance API
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         await StatusBar.setStyle({ style: prefersDark ? Style.Dark : Style.Light });
-        await StatusBar.setBackgroundColor({ color: prefersDark ? "#050505" : "#E6E5E1" });
+        await StatusBar.setBackgroundColor({ color: prefersDark ? "#121212" : "#E6E5E1" });
         if (Capacitor.getPlatform() === "ios") {
           await StatusBar.setOverlaysWebView({ overlay: true });
         }
@@ -1380,11 +1380,11 @@ export default function AuthenticatedApp() {
     };
   }, [user?.id, masterEventsList, eventMembersMap]);
 
-  const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
+  const roleBgColor = isAdmin ? "var(--bg)" : "var(--surface-alt)";
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
-      <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
+          <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-[var(--surface-inverse)]")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full relative flex flex-col z-10 overflow-y-auto" style={{
@@ -1441,12 +1441,12 @@ export default function AuthenticatedApp() {
             <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
           )}
           {selectedChat && !selectedChat.uuid && (
-            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
-                <div className="w-16 h-16 <bg-accent rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-accent-foreground" /></div>
+            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-[var(--surface-inverse)]/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 0.9 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[var(--card)] rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-accent-foreground" /></div>
                 <h3 className="text-xl font-black mb-2">Demo Chat</h3>
-                <p className="text-stone-500 text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
-                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-black text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
+                <p className="text-[var(--muted-fg)] text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
+                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-[var(--surface-inverse)] text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
               </motion.div>
             </motion.div>
           )}
@@ -1512,17 +1512,17 @@ export default function AuthenticatedApp() {
           {expandedCard === "rehearsal" && currentRehearsal ? (
             <RehearsalExpanded upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
           ) : expandedCard === "rehearsal" ? (
-            <ExpandedCardWrapper backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
+            <ExpandedCardWrapper backgroundColor="var(--accent-rehearsal)" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
               <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3" style={{ paddingTop: isAndroid && isNative ? "60px" : "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
-                <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-white" /></button>
-                <h1 className="text-lg font-bold text-white">My Rehearsals</h1>
-                {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-white" /></button> : <div className="w-10" />}
+                <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-[var(--accent-rehearsal-fg)]" /></button>
+                <h1 className="text-lg font-bold text-[var(--accent-rehearsal-fg)]">My Rehearsals</h1>
+                {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-[var(--accent-rehearsal-fg)]" /></button> : <div className="w-10" />}
               </div>
               <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-white" /></div>
-                <h2 className="text-2xl font-black text-white mb-2">No Rehearsals</h2>
-                <p className="text-white/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
-                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-white text-blue-600 px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
+                <div className="w-20 h-20 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-[var(--accent-rehearsal-fg)]" /></div>
+                <h2 className="text-2xl font-black text-[var(--accent-rehearsal-fg)] mb-2">No Rehearsals</h2>
+                <p className="text-[var(--accent-rehearsal-fg)]/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
+                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-[var(--surface-inverse-fg)] text-accent-rehearsal px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
               </div>
             </ExpandedCardWrapper>
           ) : null}
@@ -1539,7 +1539,7 @@ export default function AuthenticatedApp() {
               exit={{ opacity: 0, y: 60 }}
               className={cn(
                 "fixed bottom-24 left-4 right-4 z-[200] p-4 rounded-2xl text-sm font-bold text-center shadow-xl",
-                saveToast.type === 'error' ? "bg-red-600 text-white" : "bg-green-600 text-white"
+                saveToast.type === 'error' ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"
               )}
               onClick={() => setSaveToast(null)}
             >

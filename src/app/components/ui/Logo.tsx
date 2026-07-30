@@ -18,10 +18,10 @@ const sizeMap = {
 
 // Color mappings
 const colorMap = {
-  default: { band: '#FFFFFF', with: 'var(--accent)', icon: 'var(--accent)' },
-  white: { band: '#FFFFFF', with: '#FFFFFF', icon: '#FFFFFF' },
+  default: { band: 'var(--surface-inverse-fg)', with: 'var(--accent)', icon: 'var(--accent)' },
+  white: { band: 'var(--surface-inverse-fg)', with: 'var(--surface-inverse-fg)', icon: 'var(--surface-inverse-fg)' },
   lime: { band: 'var(--accent)', with: 'var(--accent)', icon: 'var(--accent)' },
-  black: { band: '#000000', with: '#000000', icon: '#000000' },
+  black: { band: 'var(--fg)', with: 'var(--fg)', icon: 'var(--fg)' },
 };
 
 // Icon SVG Component (Equalizer pattern)
@@ -161,18 +161,18 @@ export const AppIcon: React.FC<{
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* Left column */}
-      <rect x="8" y="8" width="18" height="18" rx="5" fill="#000000" />
-      <rect x="8" y="41" width="18" height="18" rx="5" fill="#000000" />
-      <rect x="8" y="74" width="18" height="18" rx="5" fill="#000000" />
+      <rect x="8" y="8" width="18" height="18" rx="5" fill="var(--fg)" />
+      <rect x="8" y="41" width="18" height="18" rx="5" fill="var(--fg)" />
+      <rect x="8" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
       
       {/* Middle column */}
-      <rect x="41" y="8" width="18" height="51" rx="5" fill="#000000" />
-      <rect x="41" y="74" width="18" height="18" rx="5" fill="#000000" />
+      <rect x="41" y="8" width="18" height="51" rx="5" fill="var(--fg)" />
+      <rect x="41" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
       
       {/* Right column */}
-      <rect x="74" y="8" width="18" height="18" rx="5" fill="#000000" />
-      <rect x="74" y="41" width="18" height="18" rx="5" fill="#000000" />
-      <rect x="74" y="74" width="18" height="18" rx="5" fill="#000000" />
+      <rect x="74" y="8" width="18" height="18" rx="5" fill="var(--fg)" />
+      <rect x="74" y="41" width="18" height="18" rx="5" fill="var(--fg)" />
+      <rect x="74" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
     </svg>
   </div>
 );

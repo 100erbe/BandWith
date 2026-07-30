@@ -156,7 +156,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                                     value={attLabel}
                                     onChange={e => setAttLabel(e.target.value)}
                                     placeholder={attType === 'link' ? "e.g. Live Version 2024" : "e.g. Chart PDF"}
-                                    className="w-full bg-[#F2F2F0] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-black"
+                                    className="w-full bg-[var(--surface-alt)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-black"
                                 />
                             </div>
                         </div>

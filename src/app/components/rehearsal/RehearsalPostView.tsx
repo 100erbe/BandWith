@@ -9,7 +9,7 @@ interface Props {
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
   return (
     <div 
-      className="fixed inset-0 z-[200] bg-[#F7F7F5] text-foreground flex flex-col font-sans overflow-y-auto"
+      className="fixed inset-0 z-[200] bg-[var(--surface-alt)] text-foreground flex flex-col font-sans overflow-y-auto"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -97,7 +97,7 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
              </div>
 
             {/* Next Rehearsal Suggestion */}
-            <div className="bg-[#1C1C1E] text-white p-6 rounded-[2rem] relative overflow-hidden shadow-xl">
+            <div className="bg-[var(--surface-inverse)] text-white p-6 rounded-[2rem] relative overflow-hidden shadow-xl">
                  <div className="relative z-10">
                      <div className="flex items-center gap-2 mb-4 opacity-60">
                          <Calendar className="w-4 h-4" />

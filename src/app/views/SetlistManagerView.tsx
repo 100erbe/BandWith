@@ -413,7 +413,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="mb-6 p-6 bg-gradient-to-br from-[#1A1A1A] to-[#2A2A2E] rounded-[2rem] relative overflow-hidden shadow-xl"
+                className="mb-6 p-6 bg-gradient-to-br from-[var(--surface-inverse)] to-[var(--surface-inverse)] rounded-[2rem] relative overflow-hidden shadow-xl"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-2xl" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl" />
@@ -790,12 +790,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                             onChange={e => setSetlistSearchQuery(e.target.value)}
                             className="flex-1 text-sm font-bold outline-none placeholder:text-foreground/30"
                           />
-                          <button onClick={() => { setSetlistEditorSearch(false); setSetlistSearchQuery(''); setSetlistSelectedToAdd([]); }} className="p-2 bg-[#F2F2F0] rounded-full hover:bg-black/10 transition-colors">
+                          <button onClick={() => { setSetlistEditorSearch(false); setSetlistSearchQuery(''); setSetlistSelectedToAdd([]); }} className="p-2 bg-[var(--surface-alt)] rounded-full hover:bg-black/10 transition-colors">
                             <X className="w-4 h-4 text-foreground/60" />
                           </button>
                         </div>
 
-                        <div className="px-3 py-2 bg-[#F9F9F8] border-b border-black/5 flex items-center justify-between shrink-0">
+                        <div className="px-3 py-2 bg-[var(--surface-alt)] border-b border-black/5 flex items-center justify-between shrink-0">
                           <span className="text-[10px] font-bold text-foreground/30">{editorFilteredLibrary.length} results</span>
                           {setlistSelectedToAdd.length > 0 && (
                             <span className="text-[10px] font-bold text-foreground/60">{setlistSelectedToAdd.length} selected</span>

@@ -165,7 +165,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           animate={{ y: 0 }}
           exit={{ y: '-100%' }}
           transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 z-[60] bg-[#737373] overflow-y-auto overflow-x-hidden"
+          className="fixed inset-0 z-[60] bg-[var(--muted-fg)] overflow-y-auto overflow-x-hidden"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
@@ -441,7 +441,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                className="w-full border border-[var(--destructive)] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
               >
                 <LogOut className="w-4 h-4 text-white" />
                 <span className="text-[12px] font-medium text-white text-center uppercase">

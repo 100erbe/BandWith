@@ -287,7 +287,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </div>
             <button
               onClick={() => onDelete?.(quote)}
-              className="text-[12px] font-medium text-[#FF7C7C] uppercase"
+              className="text-[12px] font-medium text-[var(--destructive)] uppercase"
             >
               DELETE THIS QUOTE
             </button>

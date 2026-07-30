@@ -146,7 +146,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           <h1 className="text-[48px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Find your
             <br />
-            <span className="text-[#0047FF]">invite</span>
+            <span className="text-[var(--accent-rehearsal)]">invite</span>
           </h1>
           <p className="text-muted-foreground/60 text-[17px] font-medium leading-relaxed max-w-[280px]">
             Enter the email where your band invitation was sent.

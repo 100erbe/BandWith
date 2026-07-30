@@ -92,13 +92,13 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#14B8A6"
+      backgroundColor="var(--accent-gig)"
       onClose={onClose}
       origin={{ top: '52%', left: '3%', right: '42%', bottom: '28%' }}
     >
       {/* Sticky Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#14B8A6]/95 backdrop-blur-md"
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--accent-gig)]/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -198,7 +198,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                       className={cn(
                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all",
                         selectedPeriod === period 
-                          ? "bg-[#14B8A6] text-white" 
+                          ? "bg-[var(--accent-gig)] text-white" 
                           : "text-stone-500 hover:text-stone-700"
                       )}
                     >
@@ -227,7 +227,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                         whileHover={{ scale: 1.05 }}
                       >
                         {/* Tooltip on hover */}
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#1A1A1A] text-white px-2 py-1 rounded-lg text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--surface-inverse)] text-white px-2 py-1 rounded-lg text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                           €{data.amount}
                         </div>
                       </motion.div>

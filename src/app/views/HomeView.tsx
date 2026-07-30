@@ -66,7 +66,7 @@ const DOT_THEME_COLORS: Record<DotGridTheme, string> = {
   lime: 'var(--accent-gig)',
   blue: 'var(--accent-rehearsal)',
   beige: 'var(--accent-quote)',
-  dark: '#050505',
+  dark: 'var(--bg)',
 };
 
 const REVENUE_CHART_PATTERN = [

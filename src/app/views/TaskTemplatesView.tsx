@@ -340,7 +340,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                       onClick={() => setSelectedTemplate(template)}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-[10px] bg-[#CDCACA] flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-[10px] bg-[var(--muted)] flex items-center justify-center shrink-0">
                           <CheckSquare className="w-5 h-5 text-foreground/50" />
                         </div>
                         <div className="flex flex-col items-start min-w-0">
@@ -391,8 +391,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                                 onClick={() => handleDelete(template.id)}
                                 className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                               >
-                                <Trash2 className="w-4 h-4 text-[#A73131]" />
-                                <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">DELETE</span>
+                                <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
+                                <span className="text-xs font-bold text-[var(--destructive)] uppercase tracking-wide">DELETE</span>
                               </button>
                             )}
                           </div>
@@ -651,7 +651,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
 
             {/* Footer */}
             <div 
-              className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[#E6E5E1] via-[#E6E5E1] to-transparent"
+              className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
             >
               <button

@@ -66,7 +66,7 @@ const MembersDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, c
           key={i}
           className="rounded-[10px]"
           style={{
-            backgroundColor: i < count && i < visible ? color : '#CDCACA',
+            backgroundColor: i < count && i < visible ? color : 'var(--muted)',
             transition: 'background-color 0.15s',
           }}
         />
@@ -479,8 +479,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                   onClick={() => handleRemoveMember(member)}
                                   className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                 >
-                                  <Trash2 className="w-4 h-4 text-[#A73131]" />
-                                  <span className="text-xs font-bold text-[#A73131] uppercase tracking-wide">
+                                  <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
+                                  <span className="text-xs font-bold text-[var(--destructive)] uppercase tracking-wide">
                                     REMOVE
                                   </span>
                                 </button>
@@ -536,16 +536,16 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 pb-32">
               {error && (
-                <div className="mb-6 py-3 px-4 border border-[#A73131]/20 rounded-[10px] flex items-center gap-3">
-                  <X className="w-4 h-4 text-[#A73131] shrink-0" />
-                  <span className="text-xs font-bold text-[#A73131] uppercase">{error}</span>
+                <div className="mb-6 py-3 px-4 border border-[var(--destructive)]/20 rounded-[10px] flex items-center gap-3">
+                  <X className="w-4 h-4 text-[var(--destructive)] shrink-0" />
+                  <span className="text-xs font-bold text-[var(--destructive)] uppercase">{error}</span>
                 </div>
               )}
 
               {inviteSuccess && (
-                <div className="mb-6 py-3 px-4 border border-[#22C55E]/20 rounded-[10px] flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#22C55E] shrink-0" />
-                  <span className="text-xs font-bold text-[#22C55E] uppercase">
+                <div className="mb-6 py-3 px-4 border border-[var(--success)]/20 rounded-[10px] flex items-center gap-3">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0" />
+                  <span className="text-xs font-bold text-[var(--success)] uppercase">
                     {inviteSuccess}
                   </span>
                 </div>
@@ -668,7 +668,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       </div>
                       <DotRadio
                         selected={inviteRole === 'member'}
-                        activeColor={inviteRole === 'member' ? '#000000' : undefined}
+                        activeColor={inviteRole === 'member' ? 'var(--fg)' : undefined}
                         className="!w-[60px] !h-[38px]"
                       />
                     </button>
@@ -689,7 +689,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       </div>
                       <DotRadio
                         selected={inviteRole === 'admin'}
-                        activeColor={inviteRole === 'admin' ? '#000000' : undefined}
+                        activeColor={inviteRole === 'admin' ? 'var(--fg)' : undefined}
                         className="!w-[60px] !h-[38px]"
                       />
                     </button>

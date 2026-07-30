@@ -68,9 +68,9 @@ const DotGrid: React.FC<{ filled: number; total: number; cols?: number; rows?: n
         const isHalf = hasHalf && (fillFromEnd ? i === total - fullCount - 1 : i === fullCount);
         const dotStyle: React.CSSProperties = isHalf
           ? { background: fillFromEnd
-              ? `linear-gradient(to right, rgba(0,0,0,0.1) 50%, ${activeColor} 50%)`
-              : `linear-gradient(to right, ${activeColor} 50%, rgba(0,0,0,0.1) 50%)` }
-          : { backgroundColor: isFull ? activeColor : 'rgba(0,0,0,0.1)' };
+              ? `linear-gradient(to right, var(--dot-inactive) 50%, ${activeColor} 50%)`
+              : `linear-gradient(to right, ${activeColor} 50%, var(--dot-inactive) 50%)` }
+          : { backgroundColor: isFull ? activeColor : 'var(--dot-inactive)' };
         return (
           <div
             key={i}
@@ -160,7 +160,7 @@ const PixelInitials: React.FC<{ name: string; activeColor: string; height?: numb
           style={{
             gridColumn: `${item.col} / span ${item.cs}`,
             gridRow: `${item.row} / span ${item.rs}`,
-            backgroundColor: item.active ? activeColor : 'rgba(0,0,0,0.1)',
+            backgroundColor: item.active ? activeColor : 'var(--dot-inactive)',
           }}
         />
       ))}
@@ -241,12 +241,12 @@ const getEventTags = (event: EventData): string[] => {
 const getTagStyle = (tag: string, eventStatus?: string): { bg: string; text: string } => {
   const secondaryLabels = ['WEEKLY', 'BI-WEEKLY', 'MONTHLY', 'BI-MONTHLY', 'ONCE', 'RECURRING', 'INDOOR', 'OUTDOOR', 'HYBRID', 'PENDING', 'DRAFT', 'TENTATIVE', 'CONFIRMED', 'SENT', 'CANCELLED', 'COMPLETED'];
   if (secondaryLabels.includes(tag)) {
-    return { bg: 'rgba(0,0,0,0.15)', text: '#000000' };
+    return { bg: 'var(--muted)', text: 'var(--fg)' };
   }
   const s = eventStatus?.toUpperCase();
   if (s === 'REHEARSAL') return { bg: 'var(--accent-rehearsal)', text: 'var(--accent-rehearsal-fg)' };
   if (s === 'QUOTED' || s === 'QUOTE') return { bg: 'var(--accent-quote)', text: 'var(--accent-quote-fg)' };
-  if (s === 'DRAFT' || s === 'PENDING') return { bg: 'rgba(0,0,0,0.5)', text: '#FFFFFF' };
+  if (s === 'DRAFT' || s === 'PENDING') return { bg: 'var(--muted-fg)', text: 'var(--surface-inverse-fg)' };
   return { bg: 'var(--accent-gig)', text: 'var(--accent-gig-fg)' };
 };
 
@@ -262,7 +262,7 @@ const getCalendarColor = (event: EventData): string => {
   if (status === 'REHEARSAL') return 'var(--accent-rehearsal)';
   if (status === 'CONFIRMED' || status === 'COMPLETED') return 'var(--accent-gig)';
   if (status === 'QUOTED' || status === 'QUOTE') return 'var(--accent-quote)';
-  if (status === 'DRAFT' || status === 'PENDING') return 'rgba(0,0,0,0.5)';
+  if (status === 'DRAFT' || status === 'PENDING') return 'var(--muted-fg)';
   return 'var(--accent-gig)';
 };
 
@@ -488,7 +488,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     value={eventSearch}
                     onChange={(e) => setEventSearch(e.target.value)}
                     placeholder="Search events..."
-                    className="bg-transparent text-[14px] font-medium text-black placeholder:text-foreground/30 focus:outline-none flex-1"
+                    className="bg-transparent text-[14px] font-medium text-[var(--fg)] placeholder:text-foreground/30 focus:outline-none flex-1"
                     autoFocus
                   />
                   {eventSearch && (
@@ -596,8 +596,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
             const featTags = [nextLabel, ...tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT')];
 
-            const tagBg = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : (status === 'DRAFT' || status === 'PENDING') ? 'rgba(0,0,0,0.5)' : 'var(--accent-gig)';
-            const tagTextColor = isGig ? '#000000' : '#FFFFFF';
+            const tagBg = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : (status === 'DRAFT' || status === 'PENDING') ? 'var(--muted-fg)' : 'var(--accent-gig)';
+            const tagTextColor = isGig ? 'var(--accent-gig-fg)' : 'var(--surface-inverse-fg)';
 
             return (
               <motion.div
@@ -829,7 +829,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         >
                           <span className="text-[16px] font-medium leading-none">{day}</span>
                           {multipleEvents && (
-                            <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-black text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-[8px] font-bold rounded-full flex items-center justify-center">
                               {eventsOnDay.length}
                             </span>
                           )}
@@ -961,7 +961,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F23030] rounded-full p-[6px]"
+                                  className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -972,13 +972,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F23030] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{w}</span>
                                         </div>
                                       ))}
@@ -991,7 +991,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F59E0B] rounded-full p-[6px]"
+                                  className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1002,13 +1002,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F59E0B] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{s}</span>
                                         </div>
                                       ))}
@@ -1138,7 +1138,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F23030] rounded-full p-[6px]"
+                                  className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1149,13 +1149,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F23030] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{w}</span>
                                         </div>
                                       ))}
@@ -1168,7 +1168,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F59E0B] rounded-full p-[6px]"
+                                  className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1179,13 +1179,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F59E0B] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{s}</span>
                                         </div>
                                       ))}
@@ -1317,7 +1317,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F23030] rounded-full p-[6px]"
+                                  className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1328,13 +1328,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F23030] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{w}</span>
                                         </div>
                                       ))}
@@ -1347,7 +1347,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[#F59E0B] rounded-full p-[6px]"
+                                  className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
                                   <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1358,13 +1358,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[#F59E0B] shrink-0" />
+                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
                                           <span className="text-[11px] font-medium text-white/80">{s}</span>
                                         </div>
                                       ))}
@@ -1472,7 +1472,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                className="bg-[#F23030] rounded-full p-[6px]"
+                                className="bg-[var(--warning)] rounded-full p-[6px]"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
                                 <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1483,13 +1483,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
                                     {warnings.map((w, wi) => (
                                       <div key={wi} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[#F23030] shrink-0" />
+                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
                                         <span className="text-[11px] font-medium text-white/80">{w}</span>
                                       </div>
                                     ))}
@@ -1502,7 +1502,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                className="bg-[#F59E0B] rounded-full p-[6px]"
+                                className="bg-[var(--amber)] rounded-full p-[6px]"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
                                 <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
@@ -1513,13 +1513,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[#1A1A1A] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
                                     {suggestions.map((s, si) => (
                                       <div key={si} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[#F59E0B] shrink-0" />
+                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
                                         <span className="text-[11px] font-medium text-white/80">{s}</span>
                                       </div>
                                     ))}

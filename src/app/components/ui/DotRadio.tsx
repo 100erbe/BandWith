@@ -25,7 +25,7 @@ interface DotRadioProps {
 export const DotRadio: React.FC<DotRadioProps> = ({
   selected,
   disabled = false,
-  activeColor = '#000000',
+  activeColor = 'var(--fg)',
   inactiveColor,
   className,
   onClick,

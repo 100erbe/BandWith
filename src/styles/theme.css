@@ -21,6 +21,10 @@
   --popover-fg: #0A0A0A;
   --muted: #D1D1D1;
   --muted-fg: #666666;
+  --surface-alt: #F2F0ED;
+  --surface-alt-fg: #0A0A0A;
+  --surface-inverse: #1A1A1A;
+  --surface-inverse-fg: #FFFFFF;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
@@ -46,9 +50,22 @@
   --accent: #6A0DAD;
   --accent-fg: #FFFFFF;
 
-  /* ── Semantic ── */
+  /* ── Semantic feedback ── */
   --destructive: #A73131;
   --destructive-fg: #FFFFFF;
+  --warning: #F23030;
+  --warning-fg: #FFFFFF;
+  --warning-subtle: rgba(244, 67, 48, 0.1);
+  --success: #22C55E;
+  --success-fg: #FFFFFF;
+  --amber: #F59E0B;
+  --amber-fg: #000000;
+
+  /* ── Dots (form/status indicators) ── */
+  --dot-active: #0A0A0A;
+  --dot-inactive: rgba(0, 0, 0, 0.2);
+
+  /* ── Layout ── */
   --border: rgba(0, 0, 0, 0.05);
   --input: rgba(0, 0, 0, 0.05);
   --ring: #6A0DAD;
@@ -67,6 +84,10 @@
   --popover-fg: #E5E7EB;
   --muted: #2C2C2C;
   --muted-fg: #9CA3AF;
+  --surface-alt: #2C2C2C;
+  --surface-alt-fg: #E5E7EB;
+  --surface-inverse: #E5E7EB;
+  --surface-inverse-fg: #0A0A0A;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
@@ -92,9 +113,22 @@
   --accent: #6A0DAD;
   --accent-fg: #FFFFFF;
 
-  /* ── Semantic ── */
+  /* ── Semantic feedback ── */
   --destructive: #FB7185;
   --destructive-fg: #000000;
+  --warning: #EF4444;
+  --warning-fg: #000000;
+  --warning-subtle: rgba(239, 68, 68, 0.15);
+  --success: #34D399;
+  --success-fg: #000000;
+  --amber: #FBBF24;
+  --amber-fg: #000000;
+
+  /* ── Dots (form/status indicators) ── */
+  --dot-active: #FFFFFF;
+  --dot-inactive: rgba(255, 255, 255, 0.2);
+
+  /* ── Layout ── */
   --border: rgba(255, 255, 255, 0.08);
   --input: rgba(255, 255, 255, 0.08);
   --ring: #6A0DAD;
@@ -116,6 +150,11 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-fg);
 
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-alt-foreground: var(--surface-alt-fg);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-surface-inverse-foreground: var(--surface-inverse-fg);
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-fg);
 
@@ -128,6 +167,17 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-fg);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-fg);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-fg);
+  --color-amber: var(--amber);
+  --color-amber-foreground: var(--amber-fg);
+
+  --color-dot-active: var(--dot-active);
+  --color-dot-inactive: var(--dot-inactive);
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -148,7 +198,7 @@
   }
 
   /* Smooth theme transitions on interactive / surface elements */
-  body, .bg-background, .bg-card, .bg-popover, .bg-muted {
+  body, .bg-background, .bg-card, .bg-popover, .bg-muted, .bg-surface-alt, .bg-surface-inverse {
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 }
