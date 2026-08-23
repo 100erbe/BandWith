@@ -92,9 +92,9 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
-          <span className="text-muted-foreground text-[13px] font-medium">Step 3/4</span>
+          <span className="text-muted-foreground text-xs font-medium">Step 3/4</span>
         </div>
 
         {/* Progress bar */}
@@ -117,10 +117,10 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-2">
             Invite your bandmates
           </h1>
-          <p className="text-muted-foreground text-[16px]">
+          <p className="text-muted-foreground text-base">
             They'll receive an email to join "{bandData?.name}"
           </p>
         </motion.div>
@@ -132,7 +132,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <label className="text-muted-foreground text-[13px] font-medium mb-3 block">
+          <label className="text-muted-foreground text-xs font-medium mb-3 block">
             EMAIL ADDRESS
           </label>
           <div className="flex gap-2">
@@ -143,7 +143,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="member@email.com"
-                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -171,7 +171,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
             animate={{ opacity: 1 }}
           >
             <div className="flex items-center justify-between mb-3">
-              <label className="text-muted-foreground text-[13px] font-medium">
+              <label className="text-muted-foreground text-xs font-medium">
                 INVITED ({invites.length})
               </label>
             </div>
@@ -190,10 +190,10 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                     <Mail className="w-5 h-5 text-[var(--secondary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-medium text-[14px] truncate">
+                    <p className="text-foreground font-medium text-sm truncate">
                       {invite.email}
                     </p>
-                    <p className="text-muted-foreground text-[12px]">
+                    <p className="text-muted-foreground text-xs">
                       {invite.role || 'Musician'}
                     </p>
                   </div>
@@ -219,7 +219,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           transition={{ delay: 0.3 }}
         >
           <Users className="w-5 h-5" />
-          <span className="text-[15px] font-medium">Import from Contacts</span>
+          <span className="text-sm font-medium">Import from Contacts</span>
         </motion.button>
 
         {/* Empty state illustration */}
@@ -233,7 +233,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
             <div className="w-20 h-20 rounded-full bg-card flex items-center justify-center mb-4">
               <Send className="w-10 h-10 text-muted-foreground/60" />
             </div>
-            <p className="text-muted-foreground text-[15px] max-w-[250px]">
+            <p className="text-muted-foreground text-sm max-w-[250px]">
               Add emails above to invite your bandmates
             </p>
           </motion.div>
@@ -268,7 +268,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
         </motion.button>
 
         {invites.length > 0 && (
-          <p className="text-center text-muted-foreground/50 text-[12px] mt-3">
+          <p className="text-center text-muted-foreground/50 text-xs mt-3">
             You can invite more members later
           </p>
         )}
@@ -304,16 +304,16 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                 <X className="w-6 h-6" />
               </button>
 
-              <h3 className="text-foreground font-bold text-[20px] mb-1">
+              <h3 className="text-foreground font-bold text-xl mb-1">
                 Invite Details
               </h3>
-              <p className="text-accent text-[15px] mb-6">
+              <p className="text-accent text-sm mb-6">
                 {currentInvite.email}
               </p>
 
               {/* Name (optional) */}
               <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   NAME (OPTIONAL)
                 </label>
                 <input
@@ -326,13 +326,13 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                     }))
                   }
                   placeholder="John Doe"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
               {/* Role/Instrument */}
               <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   ROLE/INSTRUMENT
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -346,7 +346,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                           role: inst.label,
                         }))
                       }
-                      className={`px-3 py-2 rounded-xl text-[13px] font-medium ${
+                      className={`px-3 py-2 rounded-xl text-xs font-medium ${
                         currentInvite.role === inst.label
                           ? 'bg-accent text-accent-foreground'
                           : 'bg-background/30 text-foreground border border-border'
@@ -360,7 +360,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
 
               {/* Permission */}
               <div className="mb-6">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   PERMISSION
                 </label>
                 <div className="space-y-2">
@@ -380,10 +380,10 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                       inactiveColor="rgba(255,255,255,0.15)"
                     />
                     <div className="text-left">
-                      <span className="text-foreground font-medium text-[14px]">
+                      <span className="text-foreground font-medium text-sm">
                         Member
                       </span>
-                      <p className="text-muted-foreground text-[12px]">
+                      <p className="text-muted-foreground text-xs">
                         Limited access
                       </p>
                     </div>
@@ -404,10 +404,10 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                       inactiveColor="rgba(255,255,255,0.15)"
                     />
                     <div className="text-left">
-                      <span className="text-foreground font-medium text-[14px]">
+                      <span className="text-foreground font-medium text-sm">
                         Admin
                       </span>
-                      <p className="text-muted-foreground text-[12px]">Full access</p>
+                      <p className="text-muted-foreground text-xs">Full access</p>
                     </div>
                   </button>
                 </div>

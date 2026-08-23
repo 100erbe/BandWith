@@ -54,7 +54,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[200] bg-[var(--bg)] text-white flex flex-col font-sans"
+      className="fixed inset-0 z-[200] bg-[var(--bg)] text-accent-foreground flex flex-col font-sans"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -90,7 +90,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     <div className="flex justify-between items-start mb-8">
                         <div>
                            <span className="text-accent text-xs font-bold uppercase tracking-widest mb-2 block">Now Playing</span>
-                           <h2 className="text-4xl font-black leading-none mb-1">{currentSong.title}</h2>
+                           <h2 className="text-4xl font-black leading-tight mb-1">{currentSong.title}</h2>
                            <p className="text-xl font-bold text-stone-400 uppercase">{currentSong.artist}</p>
                         </div>
                         <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-accent-foreground font-black text-2xl">
@@ -115,10 +115,10 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                         >
                             {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current" />}
                         </button>
-                        <button className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-white flex items-center justify-center hover:bg-[var(--surface-inverse)]">
+                        <button className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-accent-foreground flex items-center justify-center hover:bg-[var(--surface-inverse)]">
                             <Square className="w-6 h-6 fill-current" />
                         </button>
-                         <button onClick={() => setActiveSongIndex(i => Math.min(i+1, LIVE_SETLIST.length-1))} className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-white flex items-center justify-center hover:bg-[var(--surface-inverse)]">
+                         <button onClick={() => setActiveSongIndex(i => Math.min(i+1, LIVE_SETLIST.length-1))} className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-accent-foreground flex items-center justify-center hover:bg-[var(--surface-inverse)]">
                             <SkipForward className="w-8 h-8 fill-current" />
                         </button>
                         <button className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-red-500 flex items-center justify-center hover:bg-[var(--surface-inverse)]">
@@ -138,7 +138,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                 ].map((fb, i) => (
                     <button key={i} className="bg-[var(--surface-inverse)] p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-[var(--surface-inverse)] transition-colors border border-white/5">
                         <fb.icon className={cn("w-6 h-6", fb.color)} />
-                        <span className="text-[10px] font-bold uppercase text-stone-400">{fb.label}</span>
+                        <span className="text-xs font-bold uppercase text-stone-400">{fb.label}</span>
                     </button>
                 ))}
             </div>
@@ -165,15 +165,15 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                      <div className="grid grid-cols-3 gap-2">
                          <button onClick={() => setShowMetronome(true)} className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
                              <Clock className="w-5 h-5 text-accent" />
-                             <span className="text-[9px] font-bold uppercase">Metronome</span>
+                             <span className="text-xs font-bold uppercase">Metronome</span>
                          </button>
                           <button className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
-                             <FileText className="w-5 h-5 text-white" />
-                             <span className="text-[9px] font-bold uppercase">Scores</span>
+                             <FileText className="w-5 h-5 text-accent-foreground" />
+                             <span className="text-xs font-bold uppercase">Scores</span>
                          </button>
                           <button className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
-                             <MessageSquare className="w-5 h-5 text-white" />
-                             <span className="text-[9px] font-bold uppercase">Chat</span>
+                             <MessageSquare className="w-5 h-5 text-accent-foreground" />
+                             <span className="text-xs font-bold uppercase">Chat</span>
                          </button>
                      </div>
                  </div>

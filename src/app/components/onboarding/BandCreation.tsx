@@ -151,10 +151,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-[13px] font-medium">Step 1/4</span>
+            <span className="text-muted-foreground text-xs font-medium">Step 1/4</span>
           </div>
         </div>
 
@@ -178,10 +178,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-2">
             Name your band
           </h1>
-          <p className="text-muted-foreground text-[16px]">
+          <p className="text-muted-foreground text-base">
             This is how your band will appear to members and clients.
           </p>
         </motion.div>
@@ -193,7 +193,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <label className="text-muted-foreground text-[13px] font-medium mb-2 block">
+          <label className="text-muted-foreground text-xs font-medium mb-2 block">
             BAND NAME *
           </label>
           <input
@@ -201,15 +201,15 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             value={bandName}
             onChange={(e) => setBandName(e.target.value)}
             placeholder="The Groovemasters"
-            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[28px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
+            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-3xl font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
             maxLength={50}
             autoFocus
           />
           <div className="flex justify-between mt-2">
-            <p className="text-muted-foreground/60 text-[12px]">
+            <p className="text-muted-foreground/60 text-xs">
               {bandName.length < 2 ? 'At least 2 characters' : ''}
             </p>
-            <p className="text-muted-foreground/60 text-[12px]">{bandName.length}/50</p>
+            <p className="text-muted-foreground/60 text-xs">{bandName.length}/50</p>
           </div>
         </motion.div>
 
@@ -220,7 +220,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <label className="text-muted-foreground text-[13px] font-medium mb-4 block">
+          <label className="text-muted-foreground text-xs font-medium mb-4 block">
             BAND AVATAR
           </label>
           
@@ -253,10 +253,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             </button>
             
             <div className="flex-1">
-              <p className="text-muted-foreground/70 text-[14px] mb-1">
+              <p className="text-muted-foreground/70 text-sm mb-1">
                 {avatarPreview ? 'Looking good! 🎸' : 'Tap to add a photo'}
               </p>
-              <p className="text-muted-foreground/60 text-[12px]">
+              <p className="text-muted-foreground/60 text-xs">
                 Skip for now, add later
               </p>
             </div>
@@ -296,8 +296,8 @@ export const BandCreation: React.FC<BandCreationProps> = ({
                 )}
               </div>
               <div>
-                <h3 className="text-foreground font-bold text-[18px]">{bandName}</h3>
-                <p className="text-muted-foreground text-[13px]">1 member • New band</p>
+                <h3 className="text-foreground font-bold text-lg">{bandName}</h3>
+                <p className="text-muted-foreground text-xs">1 member • New band</p>
               </div>
             </div>
           </motion.div>

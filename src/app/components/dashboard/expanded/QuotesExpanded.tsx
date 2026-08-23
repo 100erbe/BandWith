@@ -269,7 +269,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </div>
         <button 
           onClick={() => setIsCreating(true)}
-          className="w-10 h-10 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform"
+          className="w-10 h-10 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-accent-foreground shadow-lg hover:scale-105 transition-transform"
         >
           <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
@@ -290,7 +290,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
           <div className="relative z-10 flex flex-col gap-6">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[var(--secondary)] text-[10px] font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
+                <span className="text-[var(--secondary)] text-xs font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
                 <h3 className="text-4xl font-black text-[var(--bg)] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
               </div>
               <div className="bg-[var(--surface-inverse)] p-2 rounded-full">
@@ -330,7 +330,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                       />
                     )}
                     <div className={cn(
-                      "absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] font-bold px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap pointer-events-none z-20", 
+                      "absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-foreground text-xs font-bold px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap pointer-events-none z-20", 
                       isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     )}>
                       €{(quote.total / 1000).toFixed(1)}k
@@ -340,7 +340,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               })}
             </div>
             
-            <div className="flex items-center justify-between text-[10px] font-bold text-[var(--muted-fg)] border-t border-white/10 pt-3">
+            <div className="flex items-center justify-between text-xs font-bold text-[var(--muted-fg)] border-t border-white/10 pt-3">
               <span>Total Deals: {activeQuotes.length}</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-accent-quote" />
@@ -379,7 +379,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               <div className="flex justify-between items-start mb-1 relative z-10">
                 <div>
                   <span className={cn(
-                    "text-[10px] font-bold uppercase tracking-widest block mb-0.5", 
+                    "text-xs font-bold uppercase tracking-widest block mb-0.5", 
                     quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[var(--secondary)]"
                   )}>
                     {quote.clientName}
@@ -387,7 +387,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                   <h4 className="text-lg font-black text-foreground leading-tight">{quote.eventTitle}</h4>
                 </div>
                 <div className={cn(
-                  "px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide flex items-center gap-1",
+                  "px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wide flex items-center gap-1",
                   getStatusColor(quote.status)
                 )}>
                   {getStatusIcon(quote.status)}
@@ -397,7 +397,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               
               <div className="flex items-end justify-between mt-4 relative z-10">
                 <div className="flex flex-col gap-1 w-1/2">
-                  <div className="flex justify-between text-[10px] font-bold uppercase text-foreground/50">
+                  <div className="flex justify-between text-xs font-bold uppercase text-foreground/50">
                     <span>{(quote.customItems?.length || 0)} items</span>
                     <span>{new Date(quote.createdAt).toLocaleDateString()}</span>
                   </div>

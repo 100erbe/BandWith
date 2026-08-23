@@ -125,7 +125,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               {/* Main title with letter stagger */}
               <div className="overflow-hidden">
                 <motion.h1
-                  className="text-4xl font-black text-white tracking-tight"
+                  className="text-4xl font-black text-accent-foreground tracking-tight"
                   initial={{ y: 40 }}
                   animate={{ y: phase !== 'logo' ? 0 : 40 }}
                   transition={{ 
@@ -140,7 +140,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               {/* Tagline */}
               <div className="overflow-hidden mt-2">
                 <motion.p
-                  className="text-xs font-bold tracking-[0.3em] text-white/40 uppercase"
+                  className="text-xs font-bold tracking-[0.3em] text-accent-foreground/40 uppercase"
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ 
                     y: phase !== 'logo' ? 0 : 20,

@@ -49,15 +49,15 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             <div className="grid grid-cols-3 gap-3">
                <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <Smartphone className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Local Device</span>
+                  <span className="text-xs font-bold uppercase">Local Device</span>
                </button>
                <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Google Drive</span>
+                  <span className="text-xs font-bold uppercase">Google Drive</span>
                </button>
                <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Dropbox</span>
+                  <span className="text-xs font-bold uppercase">Dropbox</span>
                </button>
             </div>
 
@@ -67,7 +67,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                 <p className="text-sm font-bold text-foreground/60 mb-1">
                    {file ? file.name : "Drag & Drop or Click to Upload"}
                 </p>
-                <p className="text-[10px] font-bold text-foreground/30 uppercase">
+                <p className="text-xs font-bold text-foreground/30 uppercase">
                    Supports PDF, MP3, GPX
                 </p>
                 <input 
@@ -84,7 +84,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             {/* Manual Details */}
             <div className="space-y-4">
                 <div className="group">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
                     <input 
                        type="text" 
                        value={details.title}
@@ -95,7 +95,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Artist</label>
+                        <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Artist</label>
                         <input 
                            type="text" 
                            value={details.artist}
@@ -105,7 +105,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                         />
                     </div>
                     <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder</label>
+                        <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Folder</label>
                         <div className="space-y-2">
                              <div className="flex flex-wrap gap-2">
                                  {categories.map(cat => (
@@ -113,9 +113,9 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                          key={cat}
                                          onClick={() => setDetails({...details, category: cat})}
                                          className={cn(
-                                             "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all",
+                                             "px-3 py-1.5 rounded-lg text-xs font-bold uppercase border transition-all",
                                              details.category === cat 
-                                               ? "bg-black text-white border-black" 
+                                               ? "bg-black text-accent-foreground border-black" 
                                                : "bg-transparent text-foreground/40 border-black/10 hover:border-black/30"
                                          )}
                                      >
@@ -125,9 +125,9 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                  <button
                                      onClick={() => setDetails({...details, category: ''})} // Clear to trigger input or use a 'custom' state
                                      className={cn(
-                                         "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed transition-all flex items-center gap-1",
+                                         "px-3 py-1.5 rounded-lg text-xs font-bold uppercase border border-dashed transition-all flex items-center gap-1",
                                          !categories.includes(details.category) && details.category !== '' 
-                                            ? "bg-black text-white border-black" 
+                                            ? "bg-black text-accent-foreground border-black" 
                                             : "text-foreground/40 border-black/20 hover:border-black/40"
                                      )}
                                  >
@@ -152,7 +152,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             <button 
                onClick={handleSave}
                disabled={!details.title}
-               className="w-full py-4 bg-black text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+               className="w-full py-4 bg-black text-surface-inverse-foreground rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
                Add to Setlist
             </button>

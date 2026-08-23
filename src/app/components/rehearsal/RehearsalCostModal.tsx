@@ -79,7 +79,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                       )}
                     >
                        <Users className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Split Equally</span>
+                       <span className="text-xs font-bold uppercase">Split Equally</span>
                     </button>
                     <button 
                       onClick={() => setSplitMethod('custom')}
@@ -89,7 +89,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                       )}
                     >
                        <CheckCircle2 className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Custom Split</span>
+                       <span className="text-xs font-bold uppercase">Custom Split</span>
                     </button>
                     <button 
                       onClick={() => setSplitMethod('admin')}
@@ -99,7 +99,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                       )}
                     >
                        <DollarSign className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Admin / Band</span>
+                       <span className="text-xs font-bold uppercase">Admin / Band</span>
                     </button>
                  </div>
               </div>
@@ -108,12 +108,12 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             {/* Breakdown */}
             {isAdmin && (
               <div className="bg-black/5 rounded-[10px] p-4">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Breakdown</label>
+                 <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Breakdown</label>
                  <div className="space-y-3">
                     {data.members.map(member => (
                        <div key={member.id} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
+                             <div className="w-8 h-8 rounded-full bg-black text-surface-inverse-foreground text-xs font-bold flex items-center justify-center">
                                 {member.initials}
                              </div>
                              <span className="text-sm font-bold text-foreground">{member.name}</span>
@@ -143,7 +143,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
 
             <button 
                onClick={handleApply}
-               className="w-full py-4 bg-black text-white rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
+               className="w-full py-4 bg-black text-surface-inverse-foreground rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
             >
                Save & Apply
             </button>

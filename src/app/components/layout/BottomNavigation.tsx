@@ -174,7 +174,7 @@ const NavTab: React.FC<{
             className="absolute bottom-[6px] left-0 right-0 flex items-start justify-center overflow-hidden"
           >
             <span className={cn(
-              'text-[10px] font-black tracking-wide select-none leading-[14px]',
+              'text-xs font-black tracking-wide select-none leading-[14px]',
               isActive ? 'text-foreground' : 'text-muted-foreground'
             )}>
               {label}
@@ -316,7 +316,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 <div className="w-10 h-1 rounded-full bg-foreground/20" />
               </div>
               <div className="flex items-end justify-between mb-8">
-                <p className="text-[12px] font-bold text-foreground/50 uppercase">START</p>
+                <p className="text-xs font-bold text-foreground/50 uppercase">START</p>
                 <button onClick={() => setIsPlusMenuOpen(false)} className="w-9 h-9 rounded-full border border-foreground/20 flex items-center justify-center">
                   <X className="w-5 h-5 text-foreground" />
                 </button>
@@ -333,8 +333,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                       <div className="col-span-3 bg-accent-gig rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-foreground uppercase">NEW GIG</span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
+                      <span className="text-xl font-bold text-foreground uppercase">NEW GIG</span>
+                      <span className="text-xs font-medium text-foreground/60 leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
                     </div>
                   </button>
                 )}
@@ -347,8 +347,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-accent-rehearsal rounded-[10px]" />
                   </div>
                   <div className="flex flex-col gap-2 flex-1">
-                    <span className="text-[22px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
-                    <span className="text-[12px] font-medium text-foreground/60 leading-normal">Plan the session, share details, and keep everyone in sync.</span>
+                    <span className="text-xl font-bold text-foreground uppercase">NEW REHEARSAL</span>
+                    <span className="text-xs font-medium text-foreground/60 leading-normal">Plan the session, share details, and keep everyone in sync.</span>
                   </div>
                 </button>
                 {isAdmin && (
@@ -361,8 +361,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                       <div className="col-span-3 bg-accent-quote rounded-[10px]" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-foreground uppercase">NEW QUOTE</span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
+                      <span className="text-xl font-bold text-foreground uppercase">NEW QUOTE</span>
+                      <span className="text-xs font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
                     </div>
                   </button>
                 )}

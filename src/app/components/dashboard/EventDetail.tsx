@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, MessageCircle } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
+import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { supabase } from '@/lib/supabase';
 
@@ -18,35 +19,6 @@ interface EventDetailProps {
   memberFee?: number;
   isAdmin?: boolean;
 }
-
-const DetailDotGrid: React.FC<{
-  filled: number;
-  total: number;
-  cols?: number;
-  rows?: number;
-  activeColor: string;
-  inactiveColor: string;
-}> = ({ filled, total, cols = 6, rows = 2, activeColor, inactiveColor }) => {
-  const capped = Math.min(filled, total);
-  return (
-    <div
-      className="grid w-full gap-[4px]"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        height: rows * 15 + (rows - 1) * 4,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{ backgroundColor: i < capped ? activeColor : inactiveColor }}
-        />
-      ))}
-    </div>
-  );
-};
 
 const formatEventDate = (dateStr: string): string => {
   if (!dateStr) return 'TBD';
@@ -92,15 +64,15 @@ const THEME = {
   rehearsal: {
     bg: 'var(--accent-rehearsal)',
     text: 'white',
-    textClass: 'text-white',
+    textClass: 'text-accent-foreground',
     tagBg: 'white',
     tagText: 'var(--accent-rehearsal)',
     activeDot: 'white',
     inactiveDot: 'rgba(255,255,255,0.2)',
     btnEditBg: 'bg-black',
-    btnEditText: 'text-white',
+    btnEditText: 'text-accent-foreground',
     btnChatBg: 'bg-white',
-    btnChatText: 'text-black',
+    btnChatText: 'text-foreground',
     subtitleOpacity: 'rgba(255,255,255,0.5)',
     dateBadgeBg: 'rgba(255,255,255,0.2)',
     backBorderColor: 'white',
@@ -117,9 +89,9 @@ const THEME = {
     activeDot: 'black',
     inactiveDot: 'rgba(0,0,0,0.2)',
     btnEditBg: 'bg-black',
-    btnEditText: 'text-white',
+    btnEditText: 'text-accent-foreground',
     btnChatBg: 'bg-white',
-    btnChatText: 'text-black',
+    btnChatText: 'text-foreground',
     subtitleOpacity: 'rgba(0,0,0,0.5)',
     dateBadgeBg: 'rgba(0,0,0,0.2)',
     backBorderColor: 'black',
@@ -130,15 +102,15 @@ const THEME = {
   quote: {
     bg: 'var(--accent-quote)',
     text: 'white',
-    textClass: 'text-white',
+    textClass: 'text-accent-foreground',
     tagBg: 'white',
     tagText: 'var(--accent-quote)',
     activeDot: 'white',
     inactiveDot: 'rgba(255,255,255,0.2)',
     btnEditBg: 'bg-black',
-    btnEditText: 'text-white',
+    btnEditText: 'text-accent-foreground',
     btnChatBg: 'bg-black',
-    btnChatText: 'text-white',
+    btnChatText: 'text-accent-foreground',
     subtitleOpacity: 'rgba(255,255,255,0.5)',
     dateBadgeBg: 'rgba(255,255,255,0.2)',
     backBorderColor: 'white',
@@ -149,15 +121,15 @@ const THEME = {
   draft: {
     bg: 'var(--muted-fg)',
     text: 'white',
-    textClass: 'text-white',
+    textClass: 'text-accent-foreground',
     tagBg: 'rgba(255,255,255,0.3)',
     tagText: 'white',
     activeDot: 'white',
     inactiveDot: 'rgba(255,255,255,0.2)',
     btnEditBg: 'bg-white',
-    btnEditText: 'text-black',
+    btnEditText: 'text-foreground',
     btnChatBg: 'bg-white/20',
-    btnChatText: 'text-white',
+    btnChatText: 'text-accent-foreground',
     subtitleOpacity: 'rgba(255,255,255,0.5)',
     dateBadgeBg: 'rgba(255,255,255,0.2)',
     backBorderColor: 'white',
@@ -294,15 +266,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               >
                 <ArrowLeft className="w-[24px] h-[24px]" style={{ color: theme.text }} />
               </button>
-              <span className="text-[32px] font-bold uppercase" style={{ color: theme.text }}>
-                {eventType === 'gig' ? 'GIG' : eventType === 'rehearsal' ? 'REHEARSAL' : eventType === 'quote' ? 'QUOTE' : 'DRAFT'}
-              </span>
+              <StatusBadge status={event.status} />
             </div>
-            {eventType === 'gig' && event.notes && (
-              <div className="bg-[var(--warning)] rounded-full p-[7px]">
-                <AlertCircle className="w-[36px] h-[36px] text-white" style={{ transform: 'rotate(180deg)' }} />
-              </div>
-            )}
           </div>
 
           {/* Event Info */}
@@ -315,22 +280,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     className="rounded-[6px] px-[10px] py-[4px]"
                     style={{ backgroundColor: theme.tagBg, color: theme.tagText }}
                   >
-                    <span className="text-[12px] font-bold uppercase whitespace-nowrap">{tag}</span>
+                    <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
                   </div>
                 ))}
               </div>
-              <h2 className="text-[32px] font-bold uppercase leading-tight" style={{ color: theme.text }}>
+              <h2 className="text-3xl font-bold uppercase leading-tight" style={{ color: theme.text }}>
                 {event.title}
               </h2>
               <div className="flex flex-col gap-[2px]">
                 <div className="flex items-center gap-[8px]">
-                  <span className="text-[16px] font-bold uppercase" style={{ color: theme.text }}>
+                  <span className="text-base font-bold uppercase leading-tight" style={{ color: theme.text }}>
                     {venueName}
                   </span>
                   <ArrowUpRight className="w-[18px] h-[18px]" style={{ color: theme.text }} />
                 </div>
                 {venueAddress && (
-                  <span className="text-[12px] font-medium uppercase" style={{ color: theme.subtitleOpacity }}>
+                  <span className="text-xs font-medium uppercase leading-tight" style={{ color: theme.subtitleOpacity }}>
                     {venueAddress}
                   </span>
                 )}
@@ -347,7 +312,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 className="rounded-[10px] px-[10px] py-[10px]"
                 style={{ backgroundColor: theme.dateBadgeBg }}
               >
-                <span className="text-[12px] font-bold uppercase whitespace-nowrap" style={{ color: theme.text }}>
+                <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight" style={{ color: theme.text }}>
                   {dateLabel}{timeLabel ? ` - ${timeLabel}` : ''}
                 </span>
               </div>
@@ -385,7 +350,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   disabled={isSubmitting}
                   className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black disabled:opacity-50"
                 >
-                  <span className="text-[16px] font-bold text-white uppercase">
+                  <span className="text-base font-bold text-accent-foreground uppercase">
                     {isSubmitting ? '...' : 'ACCEPT'}
                   </span>
                 </button>
@@ -394,7 +359,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   disabled={isSubmitting}
                   className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white disabled:opacity-50"
                 >
-                  <span className="text-[16px] font-bold text-black uppercase">DECLINE</span>
+                  <span className="text-base font-bold text-foreground uppercase">DECLINE</span>
                 </button>
               </div>
             </div>
@@ -407,14 +372,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   className={`rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] ${theme.btnEditBg}`}
                 >
                   <Plus className={`w-[18px] h-[18px] ${theme.btnEditText}`} />
-                  <span className={`text-[16px] font-bold uppercase ${theme.btnEditText}`}>EDIT</span>
+                  <span className={`text-base font-bold uppercase ${theme.btnEditText}`}>EDIT</span>
                 </button>
                 <button
                   onClick={onChat}
                   className={`rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] ${theme.btnChatBg}`}
                 >
                   <MessageCircle className={`w-[18px] h-[18px] ${theme.btnChatText}`} />
-                  <span className={`text-[16px] font-bold uppercase ${theme.btnChatText}`}>
+                  <span className={`text-base font-bold uppercase ${theme.btnChatText}`}>
                     {eventType === 'quote' ? (THEME.quote.secondBtnLabel || 'CONVERT') : 'CHAT'}
                   </span>
                 </button>
@@ -423,20 +388,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 <div className="flex items-center gap-[12px]">
                   <button
                     onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
-                    className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    className="text-xs font-bold text-accent-foreground bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase"
                   >
                     CONFIRM DELETE
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="text-[12px] font-bold uppercase" style={{ color: theme.text }}
+                    className="text-xs font-bold uppercase" style={{ color: theme.text }}
                   >
                     CANCEL
                   </button>
                 </div>
               ) : (
                 <button onClick={() => setShowDeleteConfirm(true)}>
-                  <span className="text-[12px] font-medium text-[var(--destructive)] uppercase">
+                  <span className="text-xs font-medium text-[var(--destructive)] uppercase">
                     {theme.deleteLabel}
                   </span>
                 </button>
@@ -451,14 +416,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   className={`rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] ${theme.btnChatBg}`}
                 >
                   <MessageCircle className={`w-[18px] h-[18px] ${theme.btnChatText}`} />
-                  <span className={`text-[16px] font-bold uppercase ${theme.btnChatText}`}>CHAT</span>
+                  <span className={`text-base font-bold uppercase ${theme.btnChatText}`}>CHAT</span>
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isSubmitting}
                   className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white disabled:opacity-50"
                 >
-                  <span className="text-[16px] font-bold text-black uppercase">
+                  <span className="text-base font-bold text-foreground uppercase">
                     {isSubmitting ? '...' : 'DROP OUT'}
                   </span>
                 </button>
@@ -470,13 +435,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     <button
                       onClick={handleDecline}
                       disabled={isSubmitting}
-                      className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
+                      className="text-xs font-bold text-accent-foreground bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase disabled:opacity-50"
                     >
                       {isSubmitting ? '...' : 'CONFIRM DROP'}
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="text-[12px] font-bold uppercase" style={{ color: theme.text }}
+                      className="text-xs font-bold uppercase" style={{ color: theme.text }}
                     >
                       CANCEL
                     </button>
@@ -504,7 +469,7 @@ const SectionHeader: React.FC<{
     onClick={onTap}
     disabled={!onTap}
   >
-    <span className="text-[12px] font-bold uppercase" style={{ color: alertColor || color }}>
+    <span className="text-xs font-bold uppercase leading-tight" style={{ color: alertColor || color }}>
       {label}
     </span>
     {showArrow && (
@@ -519,7 +484,7 @@ const SectionHeader: React.FC<{
 );
 
 const SectionValue: React.FC<{ value: string | number; color: string }> = ({ value, color }) => (
-  <span className="text-[42px] font-bold leading-none" style={{ color }}>{value}</span>
+  <span className="text-4xl font-bold leading-tight" style={{ color }}>{value}</span>
 );
 
 const ExpandableDetail: React.FC<{
@@ -550,8 +515,8 @@ const DetailRow: React.FC<{
   subtitleColor: string;
 }> = ({ label, value, color, subtitleColor }) => (
   <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor: subtitleColor }}>
-    <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>{label}</span>
-    <span className="text-[14px] font-bold" style={{ color }}>{value}</span>
+    <span className="text-xs font-medium uppercase leading-tight" style={{ color: subtitleColor }}>{label}</span>
+    <span className="text-sm font-bold leading-tight" style={{ color }}>{value}</span>
   </div>
 );
 
@@ -593,11 +558,10 @@ const RehearsalSections: React.FC<{
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
           <SectionHeader label="REHEARSAL TIME" color={theme.text} onTap={() => toggle('time')} expanded={expandedSection === 'time'} />
-          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
+          <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>
             {rehearsalTime}
           </span>
         </div>
-        <DetailDotGrid filled={event.time ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'time'}>
           <DetailRow label="Start" value={event.time ? formatEventTime(event.time) : 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
           {event.endTime && <DetailRow label="End" value={formatEventTime(event.endTime)} color={theme.text} subtitleColor={theme.subtitleOpacity} />}
@@ -611,7 +575,6 @@ const RehearsalSections: React.FC<{
           <SectionHeader label="SONGS TO PLAY" color={theme.text} onTap={() => toggle('songs')} expanded={expandedSection === 'songs'} />
           <SectionValue value={numSongs || 0} color={theme.text} />
         </div>
-        <DetailDotGrid filled={numSongs} total={Math.max(12, numSongs)} cols={6} rows={Math.max(2, Math.ceil(Math.max(12, numSongs) / 6))} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'songs'}>
           {setlistSongs.length > 0 ? setlistSongs.slice(0, 5).map((song, i) => (
             <DetailRow key={i} label={`Song ${i + 1}`} value={song.title} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -627,7 +590,6 @@ const RehearsalSections: React.FC<{
           <SectionHeader label="CONFIRMED MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
           <SectionValue value={memberCount} color={theme.text} />
         </div>
-        <DetailDotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'members'}>
           {event.members?.length ? event.members.map((m, i) => (
             <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -701,7 +663,6 @@ const GigSections: React.FC<{
             <SectionHeader label="LOAD IN" color={theme.text} onTap={() => toggle('loadin')} expanded={expandedSection === 'loadin'} />
             <SectionValue value={loadInTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={loadInTime !== 'TBD' ? 4 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'loadin'}>
             <DetailRow label="Time" value={loadInTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Location" value={event.location?.split(',')[0] || 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -714,7 +675,6 @@ const GigSections: React.FC<{
             <SectionHeader label="SOUND CHECK" color={theme.text} onTap={() => toggle('soundcheck')} expanded={expandedSection === 'soundcheck'} />
             <SectionValue value={soundCheckTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={soundCheckTime !== 'TBD' ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'soundcheck'}>
             <DetailRow label="Time" value={soundCheckTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
@@ -726,7 +686,6 @@ const GigSections: React.FC<{
             <SectionHeader label="SHOW START" color={theme.text} onTap={() => toggle('showstart')} expanded={expandedSection === 'showstart'} />
             <SectionValue value={showTime} color={theme.text} />
           </div>
-          <DetailDotGrid filled={showTime !== 'TBD' ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'showstart'}>
             <DetailRow label="Show Time" value={showTime} color={theme.text} subtitleColor={theme.subtitleOpacity} />
           </ExpandableDetail>
@@ -738,7 +697,6 @@ const GigSections: React.FC<{
             <SectionHeader label={isAdmin ? "BAND TOTAL FEE" : "YOUR FEE"} color={theme.text} onTap={() => toggle('fee')} expanded={expandedSection === 'fee'} />
             <SectionValue value={isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal)} color={theme.text} />
           </div>
-          <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 10 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           {isAdmin && (
             <ExpandableDetail expanded={expandedSection === 'fee'}>
               {members.map((m, i) => (
@@ -758,7 +716,6 @@ const GigSections: React.FC<{
             <SectionValue value={`${numSongs} SONGS`} color={theme.text} />
           </div>
         </div>
-        <DetailDotGrid filled={numSongs} total={96} cols={12} rows={8} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'setlist'}>
           {numSongs > 0 ? (
             <>
@@ -766,13 +723,13 @@ const GigSections: React.FC<{
                 <DetailRow key={i} label={`${i + 1}`} value={song.title} color={theme.text} subtitleColor={theme.subtitleOpacity} />
               ))}
               {numSongs > 10 && (
-                <span className="text-[12px] font-medium pt-[4px]" style={{ color: theme.subtitleOpacity }}>
+                <span className="text-xs font-medium pt-[4px]" style={{ color: theme.subtitleOpacity }}>
                   + {numSongs - 10} more songs
                 </span>
               )}
             </>
           ) : (
-            <span className="text-[12px] font-medium" style={{ color: theme.subtitleOpacity }}>
+            <span className="text-xs font-medium" style={{ color: theme.subtitleOpacity }}>
               No setlist assigned
             </span>
           )}
@@ -785,13 +742,11 @@ const GigSections: React.FC<{
           className="flex items-center gap-[6px] appearance-none bg-transparent border-none p-0 m-0 cursor-pointer"
           onClick={() => toggle('lineup')}
         >
-          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>LINEUP</span>
+          <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>LINEUP</span>
           <motion.div animate={{ rotate: expandedSection === 'lineup' ? 90 : 0 }} transition={{ duration: 0.2 }}>
             <ArrowUpRight className="w-[42px] h-[42px]" style={{ color: theme.text }} />
           </motion.div>
         </button>
-
-        <InstrumentGrid members={members} theme={theme} />
 
         <AnimatePresence>
           {expandedSection === 'lineup' && (
@@ -810,10 +765,10 @@ const GigSections: React.FC<{
                     style={{ backgroundColor: theme.inactiveDot }}
                   >
                     <div className="flex-1 flex flex-col">
-                      <span className="text-[12px] font-medium" style={{ color: theme.subtitleOpacity }}>{m.role}</span>
-                      <span className="text-[22px] font-bold" style={{ color: theme.text }}>{m.name}</span>
+                      <span className="text-xs font-medium" style={{ color: theme.subtitleOpacity }}>{m.role}</span>
+                      <span className="text-xl font-bold" style={{ color: theme.text }}>{m.name}</span>
                     </div>
-                    <span className="text-[22px] font-bold" style={{ color: theme.text }}>{m.fee}</span>
+                    <span className="text-xl font-bold" style={{ color: theme.text }}>{m.fee}</span>
                   </div>
                 ))}
               </div>
@@ -821,75 +776,13 @@ const GigSections: React.FC<{
           )}
         </AnimatePresence>
 
-        {/* Accepted Status */}
+        {/* Accepted Status — typographic only, no SVG icon */}
         <div className="flex items-center justify-center gap-[6px] mt-[10px]">
-          <div className="bg-black rounded-full p-[2px]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M10 3L4.5 8.5L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-[12px] font-bold uppercase" style={{ color: theme.subtitleOpacity }}>
-            YOU HAVE ACCEPTED THIS EVENT.
+          <span className="text-xs font-bold uppercase leading-tight" style={{ color: theme.subtitleOpacity }}>
+            • YOU HAVE ACCEPTED THIS EVENT
           </span>
         </div>
       </div>
-    </div>
-  );
-};
-
-const InstrumentGrid: React.FC<{
-  members: { role: string; name: string }[];
-  theme: typeof THEME.gig;
-}> = ({ members, theme }) => {
-  const instruments = members.map(m => m.role);
-  const grid = Array.from({ length: 30 }, () => ({ filled: false, label: '' }));
-
-  const placeInstrument = (col: number, row: number, span: number, label: string) => {
-    for (let c = col; c < col + span && c < 6; c++) {
-      const idx = row * 6 + c;
-      if (idx < 30) {
-        grid[idx] = { filled: true, label: c === col ? label : '' };
-      }
-    }
-  };
-
-  const placed = new Set<string>();
-  const instrumentList = [...new Set(instruments)];
-  const positions: [number, number, number, string][] = [
-    [2, 0, 2, 'DRUMS'],
-    [0, 1, 1, 'PIANO'],
-    [4, 1, 1, 'SAX'],
-    [5, 1, 1, 'TRUMP'],
-    [1, 3, 1, 'GUITAR'],
-    [4, 3, 1, 'BASS'],
-    [2, 4, 1, 'SINGER'],
-    [3, 4, 1, 'SINGER'],
-  ];
-
-  positions.forEach(([col, row, span, label]) => {
-    if (instrumentList.includes(label) || placed.size < instrumentList.length) {
-      placeInstrument(col, row, span, label);
-      placed.add(label);
-    }
-  });
-
-  return (
-    <div className="grid grid-cols-6 gap-[4px] w-full" style={{ height: 130 }}>
-      {grid.map((cell, i) => (
-        <div
-          key={i}
-          className="rounded-[10px] flex items-center justify-center relative"
-          style={{
-            backgroundColor: cell.filled ? theme.activeDot : theme.inactiveDot,
-          }}
-        >
-          {cell.label && (
-            <span className="text-[10px] font-medium text-center absolute" style={{ color: cell.filled ? theme.bg : theme.text }}>
-              {cell.label}
-            </span>
-          )}
-        </div>
-      ))}
     </div>
   );
 };
@@ -915,7 +808,7 @@ const QuoteSections: React.FC<{
       <div className="flex gap-[20px]">
         <div className="flex-1 flex flex-col">
           <SectionHeader label="YEAR" color={theme.text} onTap={() => toggle('year')} expanded={expandedSection === 'year'} />
-          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>{eventYear || new Date().getFullYear()}</span>
+          <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>{eventYear || new Date().getFullYear()}</span>
           <ExpandableDetail expanded={expandedSection === 'year'}>
             <DetailRow label="Year" value={String(eventYear || new Date().getFullYear())} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Season" value={(() => { const m = new Date(event.date).getMonth(); return m >= 5 && m <= 8 ? 'Summer' : m >= 2 && m <= 4 ? 'Spring' : m >= 9 && m <= 10 ? 'Autumn' : 'Winter'; })()} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -923,7 +816,7 @@ const QuoteSections: React.FC<{
         </div>
         <div className="flex-1 flex flex-col">
           <SectionHeader label="DATE" color={theme.text} onTap={() => toggle('date')} expanded={expandedSection === 'date'} />
-          <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>{eventMonthDay}</span>
+          <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>{eventMonthDay}</span>
           <ExpandableDetail expanded={expandedSection === 'date'}>
             <DetailRow label="Day" value={new Date(event.date).toLocaleDateString('en-US', { weekday: 'long' })} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Time" value={event.time ? formatEventTime(event.time) : 'TBD'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -937,7 +830,7 @@ const QuoteSections: React.FC<{
           <div className="flex">
             {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
               <div key={i} className="flex-1 text-center">
-                <span className="text-[10px] font-bold" style={{ color: theme.text }}>{d}</span>
+                <span className="text-xs font-bold leading-tight" style={{ color: theme.text }}>{d}</span>
               </div>
             ))}
           </div>
@@ -957,7 +850,7 @@ const QuoteSections: React.FC<{
                   }}
                 >
                   <span
-                    className="text-[12px] font-medium"
+                    className="text-xs font-medium leading-tight"
                     style={{ color: isEventDay ? theme.bg : theme.text }}
                   >
                     {day}
@@ -975,15 +868,14 @@ const QuoteSections: React.FC<{
           <div className="flex flex-col">
             <SectionHeader label="CLIENT" color={theme.text} onTap={() => toggle('client')} expanded={expandedSection === 'client'} />
             <div className="flex flex-col">
-              <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
+              <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>
                 {(event.clientName || event.title || '—').split(' ')[0]?.toUpperCase()}
               </span>
-              <span className="text-[22px] font-bold leading-none" style={{ color: theme.text }}>
+              <span className="text-xl font-bold leading-tight" style={{ color: theme.text }}>
                 {(event.clientName || event.title || '').split(' ').slice(1).join(' ')?.toUpperCase()}
               </span>
             </div>
           </div>
-          <DetailDotGrid filled={event.clientName ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           <ExpandableDetail expanded={expandedSection === 'client'}>
             <DetailRow label="Name" value={event.clientName || '—'} color={theme.text} subtitleColor={theme.subtitleOpacity} />
             <DetailRow label="Event Type" value={(event.eventType || '—').toUpperCase()} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -995,12 +887,11 @@ const QuoteSections: React.FC<{
           <div className="flex flex-col">
             <SectionHeader label={isAdmin ? "PRICING" : "YOUR FEE"} color={theme.text} onTap={() => toggle('pricing')} expanded={expandedSection === 'pricing'} />
             <div className="flex flex-col">
-              <span className="text-[42px] font-bold leading-none" style={{ color: theme.text }}>
+              <span className="text-4xl font-bold leading-tight" style={{ color: theme.text }}>
                 {isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal)}
               </span>
             </div>
           </div>
-          <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 8 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
           {isAdmin && (
             <ExpandableDetail expanded={expandedSection === 'pricing'}>
               <DetailRow label="Band Total" value={bandTotal} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -1016,7 +907,6 @@ const QuoteSections: React.FC<{
           <SectionHeader label="MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
           <SectionValue value={memberCount} color={theme.text} />
         </div>
-        <DetailDotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'members'}>
           {event.members?.length ? event.members.map((m, i) => (
             <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -1047,7 +937,6 @@ const DraftSections: React.FC<{
           <SectionHeader label="TEAM MEMBERS" color={theme.text} onTap={() => toggle('members')} expanded={expandedSection === 'members'} />
           <SectionValue value={memberCount} color={theme.text} />
         </div>
-        <DetailDotGrid filled={memberCount} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         <ExpandableDetail expanded={expandedSection === 'members'}>
           {event.members?.length ? event.members.map((m, i) => (
             <DetailRow key={i} label={`Member ${i + 1}`} value={m} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -1062,7 +951,6 @@ const DraftSections: React.FC<{
           <SectionHeader label={isAdmin ? "BAND TOTAL" : "YOUR FEE"} color={theme.text} onTap={() => toggle('total')} expanded={expandedSection === 'total'} />
           <SectionValue value={isAdmin ? formatBandTotal(event.price) : (memberFee != null ? `$${memberFee}` : formatBandTotal(event.price))} color={theme.text} />
         </div>
-        <DetailDotGrid filled={parseFloat(event.price || '0') > 0 ? 6 : 1} total={12} cols={6} rows={2} activeColor={theme.activeDot} inactiveColor={theme.inactiveDot} />
         {isAdmin && (
           <ExpandableDetail expanded={expandedSection === 'total'}>
             <DetailRow label="Total" value={formatBandTotal(event.price)} color={theme.text} subtitleColor={theme.subtitleOpacity} />
@@ -1073,7 +961,7 @@ const DraftSections: React.FC<{
       {event.notes && (
         <div className="flex flex-col gap-[10px]">
           <SectionHeader label="NOTES" color={theme.text} showArrow={false} />
-          <p className="text-[14px] leading-relaxed" style={{ color: theme.subtitleOpacity }}>{event.notes}</p>
+          <p className="text-sm leading-relaxed" style={{ color: theme.subtitleOpacity }}>{event.notes}</p>
         </div>
       )}
     </div>

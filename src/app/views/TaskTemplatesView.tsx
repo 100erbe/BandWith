@@ -279,9 +279,9 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           >
             <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
-          <div className="flex flex-col leading-none flex-1">
-            <span className="text-[32px] font-bold text-foreground leading-none">TASK</span>
-            <span className="text-[32px] font-bold text-foreground leading-none">TEMPLATES</span>
+          <div className="flex flex-col leading-tight flex-1">
+            <span className="text-3xl font-bold text-foreground leading-tight">TASK</span>
+            <span className="text-3xl font-bold text-foreground leading-tight">TEMPLATES</span>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -313,14 +313,14 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <div className="flex flex-col items-center justify-center py-20">
             <LayoutTemplate className="w-12 h-12 text-foreground/15 mb-3" />
             <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mb-1">No templates found</span>
-            <span className="text-[10px] font-medium text-foreground/30 uppercase">Create your first task template</span>
+            <span className="text-xs font-medium text-foreground/30 uppercase">Create your first task template</span>
           </div>
         ) : (
           <>
             {/* Section Title */}
             <div className="flex flex-col mb-5">
-              <span className="text-[32px] font-bold leading-none text-foreground">ALL</span>
-              <span className="text-[32px] font-bold leading-none text-foreground">TEMPLATES</span>
+              <span className="text-3xl font-bold leading-tight text-foreground">ALL</span>
+              <span className="text-3xl font-bold leading-tight text-foreground">TEMPLATES</span>
             </div>
 
             <div className="flex flex-col gap-0">
@@ -345,7 +345,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         </div>
                         <div className="flex flex-col items-start min-w-0">
                           <span className="text-xs font-bold text-foreground uppercase tracking-wide truncate max-w-full">{template.name}</span>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                          <span className="text-xs font-medium text-foreground/40 uppercase">
                             {template.tasks.length} TASKS · {categoryConfig.label}
                             {template.is_default ? ' · DEFAULT' : ''}
                           </span>
@@ -439,7 +439,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   </button>
                 </div>
 
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-3">
                   Tasks ({selectedTemplate.tasks.length})
                 </h3>
                 
@@ -503,9 +503,9 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                 >
                   <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
                 </button>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[32px] font-bold text-foreground leading-none">CREATE</span>
-                  <span className="text-[32px] font-bold text-foreground leading-none">TEMPLATE</span>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-3xl font-bold text-foreground leading-tight">CREATE</span>
+                  <span className="text-3xl font-bold text-foreground leading-tight">TEMPLATE</span>
                 </div>
               </div>
             </div>
@@ -519,7 +519,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.1 }}
                 >
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">Template Name</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 block mb-2">Template Name</label>
                   <input
                     type="text"
                     value={formName}
@@ -535,7 +535,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.15 }}
                 >
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">Description</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 block mb-2">Description</label>
                   <input
                     type="text"
                     value={formDescription}
@@ -551,7 +551,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3">Category</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 block mb-3">Category</label>
                   <div className="flex flex-wrap gap-2">
                     {(['gig', 'rehearsal', 'meeting', 'other'] as const).map((cat: any) => (
                       <button
@@ -560,7 +560,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         className={cn(
                           "px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition-all",
                           formCategory === cat
-                            ? "bg-black text-white"
+                            ? "bg-black text-accent-foreground"
                             : "bg-white/50 text-foreground/50 hover:bg-white"
                         )}
                       >
@@ -576,7 +576,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.25 }}
                 >
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3">Tasks ({formTasks.length})</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 block mb-3">Tasks ({formTasks.length})</label>
                   
                   {/* Tasks List */}
                   <div className="space-y-2 mb-4">
@@ -641,7 +641,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         disabled={!newTaskTitle.trim()}
                         className="w-10 h-10 rounded-full bg-black flex items-center justify-center disabled:opacity-30 transition-opacity"
                       >
-                        <Plus className="w-5 h-5 text-white" />
+                        <Plus className="w-5 h-5 text-accent-foreground" />
                       </button>
                     </div>
                   </div>
@@ -657,7 +657,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
               <button
                 onClick={handleSaveTemplate}
                 disabled={!formName.trim() || formTasks.length === 0 || saving}
-                className="w-full h-14 rounded-full bg-black text-white font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 active:scale-[0.98] transition-all"
+                className="w-full h-14 rounded-full bg-black text-surface-inverse-foreground font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-30 active:scale-[0.98] transition-all"
               >
                 {saving ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

@@ -85,7 +85,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
             Account Recovery
           </p>
-          <h1 className="text-[40px] font-black text-foreground tracking-tight uppercase leading-[0.95]">
+          <h1 className="text-4xl font-black text-foreground tracking-tight uppercase leading-[0.95]">
             Reset
             <br />
             <span className="text-muted-foreground/30">Password</span>
@@ -129,7 +129,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="text-muted-foreground/60 text-[14px] leading-relaxed max-w-xs"
+                  className="text-muted-foreground/60 text-sm leading-relaxed max-w-xs"
                 >
                   We've sent a password reset link to{' '}
                   <span className="text-foreground font-bold">{email}</span>.
@@ -143,7 +143,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
                 onClick={onBack}
-                className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-8"
+                className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-8"
               >
                 Back to Sign In
                 <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
@@ -158,7 +158,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
               className="flex-1 flex flex-col"
             >
               <motion.p
-                className="text-muted-foreground/55 text-[14px] leading-relaxed mb-8"
+                className="text-muted-foreground/55 text-sm leading-relaxed mb-8"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
@@ -182,7 +182,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/10"
                     >
                       <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                      <p className="text-red-400 text-[13px] font-medium">{error}</p>
+                      <p className="text-red-400 text-xs font-medium">{error}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -194,7 +194,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email address"
-                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
+                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
                     required
                     autoFocus
                   />
@@ -205,7 +205,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                 <motion.button
                   type="submit"
                   disabled={loading || !email}
-                  className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mb-8"
+                  className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mb-8"
                   whileTap={{ scale: 0.98 }}
                 >
                   {loading ? (

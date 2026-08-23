@@ -243,7 +243,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
           <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
             Step {stepInfo.num}
           </span>
-          <h2 className="text-4xl font-black text-foreground tracking-tighter uppercase leading-none">
+          <h2 className="text-4xl font-black text-foreground tracking-tighter uppercase leading-tight">
             {stepInfo.title}
           </h2>
           <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">{stepInfo.subtitle}</p>
@@ -270,7 +270,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* Source Selection */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Select Source</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Select Source</label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: 'local', icon: Smartphone, label: 'Local Device' },
@@ -283,7 +283,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                       className={cn(
                         "flex flex-col items-center gap-3 py-6 rounded-3xl border-2 transition-all",
                         source === id
-                          ? "bg-black border-black text-white"
+                          ? "bg-black border-black text-accent-foreground"
                           : "bg-white/50 border-stone-200 text-foreground/50 hover:bg-card"
                       )}
                     >
@@ -298,7 +298,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* File Upload */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
                 <div 
                   className={cn(
                     "border-2 border-dashed rounded-3xl p-8 text-center transition-all",
@@ -331,7 +331,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                           onChange={handleFileChange}
                           className="hidden"
                         />
-                        <span className="px-8 py-3 bg-black text-white rounded-full font-bold text-sm cursor-pointer hover:scale-105 transition-transform inline-block">
+                        <span className="px-8 py-3 bg-black text-surface-inverse-foreground rounded-full font-bold text-sm cursor-pointer hover:scale-105 transition-transform inline-block">
                           CHOOSE FILE
                         </span>
                       </label>
@@ -352,7 +352,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* Title */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">
                   Song Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -366,7 +366,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Artist */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Original Artist</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Original Artist</label>
                 <input
                   type="text"
                   value={artist}
@@ -381,7 +381,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               {/* Details Grid */}
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">BPM</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">BPM</label>
                   <input
                     type="number"
                     value={bpm}
@@ -391,7 +391,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Key</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Key</label>
                   <input
                     type="text"
                     value={key}
@@ -401,7 +401,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Duration (min)</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Duration (min)</label>
                   <input
                     type="number"
                     value={duration}
@@ -416,7 +416,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Folder */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder / Category</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Folder / Category</label>
                 <div className="flex flex-wrap gap-2">
                   {folders.map(folder => (
                     <button
@@ -425,7 +425,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                       className={cn(
                         "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                         selectedFolder === folder.id
-                          ? "bg-black text-white"
+                          ? "bg-black text-accent-foreground"
                           : "bg-white/50 text-foreground/60 hover:bg-card"
                       )}
                     >
@@ -447,7 +447,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                         onClick={handleCreateFolder}
                         className="w-8 h-8 bg-black rounded-full flex items-center justify-center"
                       >
-                        <Check className="w-4 h-4 text-white" />
+                        <Check className="w-4 h-4 text-accent-foreground" />
                       </button>
                     </div>
                   ) : (
@@ -474,7 +474,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               {/* YouTube Link */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <Youtube className="w-4 h-4" />
                   YouTube Video
                 </label>
@@ -489,7 +489,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Chart/Sheet Music URL */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <FileMusic className="w-4 h-4" />
                   Sheet Music / Spartiti
                 </label>
@@ -504,7 +504,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Chords URL */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <LinkIcon className="w-4 h-4" />
                   Chords / Accordi
                 </label>
@@ -521,7 +521,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Notes */}
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
                   <StickyNote className="w-4 h-4" />
                   Notes
                 </label>
@@ -574,9 +574,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             className={cn(
               "flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm uppercase transition-all",
               success
-                ? "bg-green-500 text-white"
+                ? "bg-green-500 text-accent-foreground"
                 : canProceed() && !saving
-                  ? "bg-black text-white hover:scale-105"
+                  ? "bg-black text-accent-foreground hover:scale-105"
                   : "bg-black/20 text-foreground/40 cursor-not-allowed"
             )}
           >

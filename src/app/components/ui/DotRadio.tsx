@@ -1,18 +1,6 @@
 import React from 'react';
 import { cn } from './utils';
 
-/**
- * Swiss Brutalist dot-grid radio indicator.
- * Renders a 4×3 grid of rounded pills forming a "V" (checkmark) pattern when selected.
- * Unselected: all dots uniform light color. Disabled: all dots even lighter, no pattern.
- */
-
-const V_PATTERN = new Set([3, 4, 6, 9]);
-// Grid layout (4 cols × 3 rows, indices 0-11):
-//  0  1  2  3       ○ ○ ○ ●
-//  4  5  6  7  →    ● ○ ● ○
-//  8  9 10 11       ○ ● ○ ○
-
 interface DotRadioProps {
   selected: boolean;
   disabled?: boolean;
@@ -30,28 +18,39 @@ export const DotRadio: React.FC<DotRadioProps> = ({
   className,
   onClick,
 }) => {
-  const inactive = disabled
-    ? 'rgba(0,0,0,0.06)'
-    : inactiveColor || 'rgba(0,0,0,0.15)';
-  const active = disabled ? 'rgba(0,0,0,0.06)' : activeColor;
+  const borderColor = disabled
+    ? 'rgba(0,0,0,0.1)'
+    : selected
+      ? activeColor
+      : inactiveColor || 'rgba(0,0,0,0.2)';
 
-  const gridClasses = cn(
-    'grid grid-cols-4 grid-rows-3 gap-1 w-[100px] h-[64px] shrink-0',
+  const circleClasses = cn(
+    'w-[32px] h-[32px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
     onClick && 'focus:outline-none',
     onClick && (disabled ? 'cursor-not-allowed' : 'cursor-pointer'),
     !onClick && 'pointer-events-none',
     className,
   );
 
-  const dots = Array.from({ length: 12 }).map((_, i) => (
+  const innerDot = (
     <div
-      key={i}
-      className="rounded-[10px]"
+      className="w-[14px] h-[14px] rounded-full transition-all"
       style={{
-        backgroundColor: selected && V_PATTERN.has(i) ? active : inactive,
+        backgroundColor: selected ? activeColor : 'transparent',
+        opacity: selected ? 1 : 0,
+        transform: selected ? 'scale(1)' : 'scale(0)',
       }}
     />
-  ));
+  );
+
+  const circle = (
+    <div
+      className={circleClasses}
+      style={{ borderColor }}
+    >
+      {innerDot}
+    </div>
+  );
 
   if (onClick) {
     return (
@@ -61,16 +60,16 @@ export const DotRadio: React.FC<DotRadioProps> = ({
         aria-checked={selected}
         disabled={disabled}
         onClick={onClick}
-        className={gridClasses}
+        className="shrink-0"
       >
-        {dots}
+        {circle}
       </button>
     );
   }
 
   return (
-    <div role="radio" aria-checked={selected} className={gridClasses}>
-      {dots}
+    <div role="radio" aria-checked={selected} className="shrink-0">
+      {circle}
     </div>
   );
 };

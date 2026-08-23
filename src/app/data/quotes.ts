@@ -438,14 +438,14 @@ export const calculateTotal = (subtotal: number, discount: number, tax: number):
 // Status display helpers
 export const getStatusColor = (status: QuoteStatus): string => {
   switch (status) {
-    case 'DRAFT': return 'bg-gray-200 text-gray-700';
+    case 'DRAFT': return 'bg-gray-200 text-muted-foreground';
     case 'SENT': return 'bg-blue-100 text-blue-700';
     case 'ACCEPTED': return 'bg-green-100 text-green-700';
     case 'DECLINED': return 'bg-red-100 text-red-700';
     case 'EXPIRED': return 'bg-orange-100 text-orange-700';
     case 'NEGOTIATING': return 'bg-yellow-100 text-yellow-700';
-    case 'ARCHIVED': return 'bg-gray-100 text-gray-500';
-    default: return 'bg-gray-200 text-gray-700';
+    case 'ARCHIVED': return 'bg-gray-100 text-muted-foreground';
+    default: return 'bg-gray-200 text-muted-foreground';
   }
 };
 

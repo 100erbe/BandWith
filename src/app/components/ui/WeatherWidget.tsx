@@ -120,21 +120,21 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             className="absolute inset-0 flex flex-col items-end justify-start text-right"
           >
             <div className="flex items-baseline gap-[2px]">
-              <span className="text-[32px] font-bold leading-none">
+              <span className="text-3xl font-bold leading-tight">
                 {weather?.temp ?? '--'}
               </span>
-              <span className="text-[20px] font-bold leading-none">°</span>
-              <span className="text-[32px] font-bold leading-none">C</span>
+              <span className="text-xl font-bold leading-tight">°</span>
+              <span className="text-3xl font-bold leading-tight">C</span>
             </div>
             <div className="mt-[8px] w-[110px]">
-              <span className="text-[12px] font-light block">PRECIPITATION</span>
-              <span className="text-[12px] font-bold block">
+              <span className="text-xs font-light block">PRECIPITATION</span>
+              <span className="text-xs font-bold block">
                 {weather?.precipitation ?? '0 MM'}
               </span>
             </div>
             <div className="mt-[4px] w-[110px]">
-              <span className="text-[12px] font-light block">HUMIDITY</span>
-              <span className="text-[12px] font-bold block">
+              <span className="text-xs font-light block">HUMIDITY</span>
+              <span className="text-xs font-bold block">
                 {weather?.humidity ?? 60}%
               </span>
             </div>

@@ -97,7 +97,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         <div className="flex items-center gap-4">
           <button 
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black border border-stone-200 hover:bg-stone-50 transition-colors shadow-sm"
+            className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-foreground border border-stone-200 hover:bg-stone-50 transition-colors shadow-sm"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -135,8 +135,8 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
               className={cn(
                 "px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors", 
                 eventFilter === filter 
-                  ? "bg-black text-white" 
-                  : "bg-white text-black border border-stone-100 shadow-sm hover:bg-stone-50"
+                  ? "bg-black text-accent-foreground" 
+                  : "bg-white text-foreground border border-stone-100 shadow-sm hover:bg-stone-50"
               )}
             >
               {filter}
@@ -164,7 +164,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
             >
               <div className="flex items-baseline justify-between mb-3 px-2">
                 <h3 className="text-sm font-black text-foreground uppercase tracking-wider">{group.date}</h3>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{group.label}</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{group.label}</span>
               </div>
               <div className="space-y-3">
                 {group.events.map((event) => (
@@ -181,7 +181,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         <div className="text-right">
                           <span className="block text-xl font-black text-foreground">€{event.price}</span>
                           {!event.contractSigned && (
-                            <div className="flex items-center gap-1 justify-end text-[10px] text-red-500 font-bold mt-1 uppercase">
+                            <div className="flex items-center gap-1 justify-end text-xs text-red-500 font-bold mt-1 uppercase">
                               <AlertCircle className="w-3 h-3" /> No Contract
                             </div>
                           )}
@@ -193,7 +193,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                             <Clock className="w-4 h-4" />
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-stone-400 font-bold uppercase">Time</span>
+                            <span className="text-xs text-stone-400 font-bold uppercase">Time</span>
                             <span className="text-sm font-bold text-foreground">{event.time}</span>
                           </div>
                         </div>
@@ -202,7 +202,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                             {event.weather === 'rain' ? <CloudRain className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-stone-400 font-bold uppercase">Forecast</span>
+                            <span className="text-xs text-stone-400 font-bold uppercase">Forecast</span>
                             <span className="text-sm font-bold text-foreground">{event.temp}</span>
                           </div>
                         </div>
@@ -217,18 +217,18 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                     <div className="bg-[var(--surface-alt)] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
                       <div className="flex -space-x-2 pl-2">
                         {event.members.length > 0 ? event.members.map((initial: any, i: number) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white relative z-10">
+                          <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-accent-foreground text-xs font-bold border-2 border-white relative z-10">
                             {initial}
                           </div>
                         )) : (
-                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">No members assigned</span>
+                          <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">No members assigned</span>
                         )}
                       </div>
                       <div className="flex gap-2">
                         <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-foreground hover:bg-stone-50 transition-colors">
                           <Phone className="w-3.5 h-3.5" /> Call
                         </button>
-                        <button className="h-9 px-4 rounded-xl bg-[var(--surface-inverse)] flex items-center gap-2 text-xs font-bold text-white shadow-lg hover:bg-black transition-colors">
+                        <button className="h-9 px-4 rounded-xl bg-[var(--surface-inverse)] flex items-center gap-2 text-xs font-bold text-surface-inverse-foreground shadow-lg hover:bg-black transition-colors">
                           <Navigation className="w-3.5 h-3.5" /> Go
                         </button>
                       </div>

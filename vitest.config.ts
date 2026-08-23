@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  server: {
+    allowedHosts: true, // Allows the Localtunnel URL to bypass Vite's strict host check
+  },
   test: {
     globals: true,
     environment: 'jsdom',

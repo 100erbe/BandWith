@@ -42,39 +42,6 @@ interface SearchUser {
   avatar_url?: string;
 }
 
-const MembersDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, color }) => {
-  const total = 24;
-  const count = Math.min(filled, total);
-  const [visible, setVisible] = useState(0);
-
-  useEffect(() => {
-    setVisible(0);
-    if (count === 0) return;
-    let c = 0;
-    const iv = setInterval(() => {
-      c++;
-      setVisible(c);
-      if (c >= count) clearInterval(iv);
-    }, 40);
-    return () => clearInterval(iv);
-  }, [count]);
-
-  return (
-    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{
-            backgroundColor: i < count && i < visible ? color : 'var(--muted)',
-            transition: 'background-color 0.15s',
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
 export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => {
   const { selectedBand, isAdmin } = useBand();
   const { profile: currentProfile } = useAuth();
@@ -284,11 +251,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
             style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
-          <div className="flex flex-col leading-none flex-1">
-            <span className="text-[32px] font-bold text-black leading-none">BAND</span>
-            <span className="text-[32px] font-bold text-black leading-none">MEMBERS</span>
+          <div className="flex flex-col leading-tight flex-1">
+            <span className="text-3xl font-bold text-foreground leading-tight">BAND</span>
+            <span className="text-3xl font-bold text-foreground leading-tight">MEMBERS</span>
           </div>
           {isAdmin && (
             <button
@@ -310,10 +277,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         ) : members.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <UserPlus className="w-12 h-12 text-foreground/20 mb-4" />
-            <span className="text-xs font-bold text-black uppercase tracking-wide mb-1">
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">
               No members yet
             </span>
-            <span className="text-[10px] font-medium text-foreground/40 uppercase mb-6">
+            <span className="text-xs font-medium text-foreground/40 uppercase mb-6">
               Invite your bandmates to collaborate
             </span>
             {isAdmin && (
@@ -335,13 +302,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 transition={{ delay: 0.05 }}
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
-                <span className="text-xs font-bold text-black tracking-wide">TOTAL</span>
+                <span className="text-xs font-bold text-foreground tracking-wide">TOTAL</span>
                 <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-black block">
+                  <span className="text-5xl font-bold leading-tight text-foreground block">
                     {stats.total}
                   </span>
                 </div>
-                <MembersDotGrid filled={stats.total} color="var(--accent)" />
               </motion.div>
 
               <motion.div
@@ -350,21 +316,20 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 transition={{ delay: 0.1 }}
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
-                <span className="text-xs font-bold text-black tracking-wide">ADMINS</span>
+                <span className="text-xs font-bold text-foreground tracking-wide">ADMINS</span>
                 <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-black block">
+                  <span className="text-5xl font-bold leading-tight text-foreground block">
                     {stats.admins}
                   </span>
                 </div>
-                <MembersDotGrid filled={stats.admins} color="var(--accent-rehearsal)" />
               </motion.div>
             </div>
 
             {/* Members List */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col">
-                <span className="text-[32px] font-bold leading-none text-black">ALL</span>
-                <span className="text-[32px] font-bold leading-none text-black">MEMBERS</span>
+                <span className="text-3xl font-bold leading-tight text-foreground">ALL</span>
+                <span className="text-3xl font-bold leading-tight text-foreground">MEMBERS</span>
               </div>
 
               <div className="flex flex-col gap-0">
@@ -379,7 +344,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     <div className="flex items-center justify-between py-4 border-b border-black/10">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold">
+                          <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-surface-inverse-foreground text-xs font-bold">
                             {getInitials(member)}
                           </div>
                           {/* Neon Pro indicator dot — bottom-right overlap */}
@@ -394,16 +359,16 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         </div>
                         <div className="flex flex-col items-start">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-black uppercase tracking-wide">
+                            <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                               {member.stage_name || member.profile?.full_name || 'Unknown'}
                             </span>
                             {isProMember(member) && (
-                              <span className="text-[9px] font-bold uppercase leading-none px-1.5 py-0.5 rounded-sm bg-[var(--brand-accent,#BDD856)] text-black tracking-wider">
+                              <span className="text-xs font-bold uppercase leading-tight px-1.5 py-0.5 rounded-sm bg-[var(--brand-accent,#BDD856)] text-foreground tracking-wider">
                                 PRO
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                          <span className="text-xs font-medium text-foreground/40 uppercase">
                             {[member.instrument, member.role].filter(Boolean).join(' · ')}
                           </span>
                         </div>
@@ -415,7 +380,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         }
                         className="w-8 h-8 flex items-center justify-center active:opacity-70 transition-opacity"
                       >
-                        <MoreHorizontal className="w-4 h-4 text-black" />
+                        <MoreHorizontal className="w-4 h-4 text-foreground" />
                       </button>
                     </div>
 
@@ -435,7 +400,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                 className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                               >
                                 <Mail className="w-4 h-4 text-foreground/40" />
-                                <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                   EMAIL
                                 </span>
                               </button>
@@ -448,7 +413,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                     className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                   >
                                     <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                       MAKE MEMBER
                                     </span>
                                   </button>
@@ -458,7 +423,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                     className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                   >
                                     <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                       MAKE ADMIN
                                     </span>
                                   </button>
@@ -466,10 +431,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                   <div className="flex items-center gap-3 py-3 px-2 opacity-50 cursor-not-allowed">
                                     <UserCog className="w-4 h-4 text-foreground/40" />
                                     <div className="flex flex-col items-start">
-                                      <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                         MAKE ADMIN
                                       </span>
-                                      <span className="text-[9px] font-medium text-foreground/40 uppercase">
+                                      <span className="text-xs font-medium text-foreground/40 uppercase">
                                         Requires a Pro account to co-manage
                                       </span>
                                     </div>
@@ -524,11 +489,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
                   style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
                 >
-                  <ArrowLeft className="w-[24px] h-[24px] text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
                 </button>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[32px] font-bold text-black leading-none">INVITE</span>
-                  <span className="text-[32px] font-bold text-black leading-none">MEMBER</span>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-3xl font-bold text-foreground leading-tight">INVITE</span>
+                  <span className="text-3xl font-bold text-foreground leading-tight">MEMBER</span>
                 </div>
               </div>
             </div>
@@ -563,7 +528,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Name or email address..."
-                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
+                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
                     />
                     {isSearching && (
                       <Loader2 className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/40 animate-spin" />
@@ -588,7 +553,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           className="flex items-center justify-between py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity disabled:opacity-50"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-surface-inverse-foreground text-xs font-bold shrink-0">
                               {user.full_name
                                 ?.split(' ')
                                 .map((n) => n[0])
@@ -597,17 +562,17 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                 .toUpperCase() || user.email.slice(0, 2).toUpperCase()}
                             </div>
                             <div className="flex flex-col items-start">
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">
+                              <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                 {user.full_name || 'No name'}
                               </span>
-                              <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                              <span className="text-xs font-medium text-foreground/40 uppercase">
                                 {user.email}
                               </span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1 px-3 py-1.5 bg-black rounded-full">
-                            <UserCheck className="w-3 h-3 text-white" />
-                            <span className="text-[10px] font-bold text-white uppercase">ADD</span>
+                            <UserCheck className="w-3 h-3 text-accent-foreground" />
+                            <span className="text-xs font-bold text-accent-foreground uppercase">ADD</span>
                           </div>
                         </motion.button>
                       ))}
@@ -621,7 +586,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   !isSearching && (
                     <div className="flex flex-col items-center py-8">
                       <UserPlus className="w-10 h-10 text-foreground/20 mb-3" />
-                      <span className="text-[10px] font-medium text-foreground/40 uppercase mb-4 text-center">
+                      <span className="text-xs font-medium text-foreground/40 uppercase mb-4 text-center">
                         {searchQuery.includes('@')
                           ? 'User not found. Send them an invitation?'
                           : 'No users found. Enter an email to invite.'}
@@ -633,11 +598,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           className="flex items-center gap-2 px-5 py-3 bg-black rounded-[10px] active:scale-95 transition-transform disabled:opacity-50"
                         >
                           {inviting ? (
-                            <Loader2 className="w-4 h-4 text-white animate-spin" />
+                            <Loader2 className="w-4 h-4 text-accent-foreground animate-spin" />
                           ) : (
-                            <Send className="w-4 h-4 text-white" />
+                            <Send className="w-4 h-4 text-accent-foreground" />
                           )}
-                          <span className="text-xs font-bold text-white uppercase">
+                          <span className="text-xs font-bold text-accent-foreground uppercase">
                             INVITE {searchQuery}
                           </span>
                         </button>
@@ -658,10 +623,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       <div className="flex items-center gap-3">
                         <Music2 className="w-4 h-4 text-foreground/40" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide">
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                             MEMBER
                           </span>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                          <span className="text-xs font-medium text-foreground/40 uppercase">
                             Can view band content
                           </span>
                         </div>
@@ -679,10 +644,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       <div className="flex items-center gap-3">
                         <Crown className="w-4 h-4 text-foreground/40" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide">
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                             ADMIN
                           </span>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                          <span className="text-xs font-medium text-foreground/40 uppercase">
                             Manage members, events & settings
                           </span>
                         </div>

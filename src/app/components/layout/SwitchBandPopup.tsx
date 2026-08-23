@@ -69,13 +69,13 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
 
             {/* Header */}
             <div className="flex items-end justify-between mb-8">
-              <p className="text-xs font-bold text-white/50 uppercase tracking-wider"
+              <p className="text-xs font-bold text-accent-foreground/50 uppercase tracking-wider"
                  style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}>
                 YOUR BANDS
               </p>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
+                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -114,7 +114,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                       </div>
                       {isActive && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase text-[var(--success)]"
+                          <span className="text-xs font-bold uppercase text-[var(--success)]"
                                 style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}>
                             ACTIVE
                           </span>
@@ -125,7 +125,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
 
                     {/* Band name */}
                     <h3
-                      className="text-[22px] font-bold text-white uppercase leading-tight"
+                      className="text-xl font-bold text-accent-foreground uppercase leading-tight"
                       style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}
                     >
                       {band.name}
@@ -146,9 +146,9 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
               }}
               className="w-full py-[18px] px-1.5 border-2 border-dashed border-white/20 rounded-[10px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
-              <Plus className="w-3.5 h-3.5 text-white/50" />
+              <Plus className="w-3.5 h-3.5 text-accent-foreground/50" />
               <span
-                className="text-base font-medium text-white/50 uppercase"
+                className="text-base font-medium text-accent-foreground/50 uppercase"
                 style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}
               >
                 ADD NEW BAND

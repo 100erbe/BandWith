@@ -89,12 +89,12 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         </div>
 
         <div className="flex items-end justify-between mb-6">
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider">
+          <p className="text-xs font-bold text-accent-foreground/50 uppercase tracking-wider">
             EVENT INVITATION
           </p>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
+            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>
@@ -108,41 +108,41 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
               </span>
               <ArrowUpRight className="w-3.5 h-3.5" style={{ color: accentColor }} />
             </div>
-            <h3 className="text-[22px] font-bold text-white uppercase leading-tight">
+            <h3 className="text-xl font-bold text-accent-foreground uppercase leading-tight">
               {eventTitle}
             </h3>
           </div>
 
           <div className="flex flex-col gap-3">
             {eventDate && (
-              <div className="flex items-center gap-3 text-white/50">
+              <div className="flex items-center gap-3 text-accent-foreground/50">
                 <Calendar className="w-4 h-4 shrink-0" />
-                <span className="text-[13px] font-bold">{formatDate(eventDate)}</span>
+                <span className="text-xs font-bold">{formatDate(eventDate)}</span>
               </div>
             )}
             {eventTime && (
-              <div className="flex items-center gap-3 text-white/50">
+              <div className="flex items-center gap-3 text-accent-foreground/50">
                 <Clock className="w-4 h-4 shrink-0" />
-                <span className="text-[13px] font-bold">{formatTime(eventTime)}</span>
+                <span className="text-xs font-bold">{formatTime(eventTime)}</span>
               </div>
             )}
             {venue && (
-              <div className="flex items-center gap-3 text-white/50">
+              <div className="flex items-center gap-3 text-accent-foreground/50">
                 <MapPin className="w-4 h-4 shrink-0" />
-                <span className="text-[13px] font-bold">{venue}</span>
+                <span className="text-xs font-bold">{venue}</span>
               </div>
             )}
             {displayFee != null && displayFee > 0 && (
-              <div className="flex items-center gap-3 text-white/50">
+              <div className="flex items-center gap-3 text-accent-foreground/50">
                 <Euro className="w-4 h-4 shrink-0" />
-                <span className="text-[13px] font-bold">{feeLabel}: €{displayFee.toLocaleString()}</span>
+                <span className="text-xs font-bold">{feeLabel}: €{displayFee.toLocaleString()}</span>
               </div>
             )}
           </div>
 
           {creatorName && (
-            <p className="text-[12px] font-medium text-white/30">
-              Invited by <span className="text-white/60">{creatorName}</span>
+            <p className="text-xs font-medium text-accent-foreground/30">
+              Invited by <span className="text-accent-foreground/60">{creatorName}</span>
             </p>
           )}
 
@@ -161,7 +161,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           <button
             onClick={() => handleAction('decline')}
             disabled={isSubmitting}
-            className="py-4 rounded-[10px] border-2 border-white/20 text-white font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
+            className="py-4 rounded-[10px] border-2 border-white/20 text-accent-foreground font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
           >
             DECLINE
           </button>

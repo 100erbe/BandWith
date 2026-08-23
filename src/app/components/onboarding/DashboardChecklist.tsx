@@ -76,10 +76,10 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
             <Sparkles className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h3 className="text-foreground font-bold text-[16px]">
+            <h3 className="text-foreground font-bold text-base">
               Complete Your Setup
             </h3>
-            <p className="text-muted-foreground text-[13px]">{progressPercent}% done</p>
+            <p className="text-muted-foreground text-xs">{progressPercent}% done</p>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
               inactiveColor="rgba(255,255,255,0.15)"
             />
             <span
-              className={`text-[14px] ${
+              className={`text-sm ${
                 item.completed
                   ? 'text-muted-foreground line-through'
                   : 'text-foreground font-medium'
@@ -126,7 +126,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       <div className="flex gap-3">
         <button
           onClick={onContinue}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-[14px]"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
         >
           Continue Setup
           <ArrowRight className="w-4 h-4" />
@@ -136,7 +136,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
       {/* Dismiss */}
       <button
         onClick={handleDismiss}
-        className="w-full mt-3 text-center text-muted-foreground/60 text-[13px] py-2 hover:text-muted-foreground transition-colors flex items-center justify-center gap-1"
+        className="w-full mt-3 text-center text-muted-foreground/60 text-xs py-2 hover:text-muted-foreground transition-colors flex items-center justify-center gap-1"
       >
         <X className="w-3 h-3" />
         Dismiss

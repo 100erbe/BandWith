@@ -126,10 +126,10 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-2">
             Welcome to
           </h1>
-          <p className="text-accent text-[28px] font-black">"{bandName}"!</p>
+          <p className="text-accent text-3xl font-black">"{bandName}"!</p>
         </motion.div>
 
         {/* Bandmates Card */}
@@ -139,7 +139,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <p className="text-muted-foreground text-[12px] font-medium mb-4 uppercase">
+          <p className="text-muted-foreground text-xs font-medium mb-4 uppercase">
             Your Bandmates
           </p>
 
@@ -153,20 +153,20 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                 transition={{ delay: 0.7 + index * 0.1 }}
               >
                 <div className="w-11 h-11 rounded-full bg-[var(--accent-rehearsal)]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[var(--accent-rehearsal)] font-bold text-[14px]">
+                  <span className="text-[var(--accent-rehearsal)] font-bold text-sm">
                     {getInitials(member.name)}
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
+                  <p className="text-foreground font-medium text-sm flex items-center gap-2">
                     {member.name}
                     {member.isAdmin && (
-                      <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-bold">
                         Admin
                       </span>
                     )}
                   </p>
-                  <p className="text-muted-foreground text-[12px]">{member.role}</p>
+                  <p className="text-muted-foreground text-xs">{member.role}</p>
                 </div>
               </motion.div>
             ))}
@@ -179,18 +179,18 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
               transition={{ delay: 0.9 }}
             >
               <div className="w-11 h-11 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="text-accent-foreground font-bold text-[14px]">
+                <span className="text-accent-foreground font-bold text-sm">
                   {getInitials(profileData?.fullName || 'You')}
                 </span>
               </div>
               <div className="flex-1">
-                <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
+                <p className="text-foreground font-medium text-sm flex items-center gap-2">
                   {profileData?.fullName || 'You'}
-                  <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-xs font-bold flex items-center gap-1">
                     <Star className="w-3 h-3" /> NEW
                   </span>
                 </p>
-                <p className="text-muted-foreground text-[12px]">
+                <p className="text-muted-foreground text-xs">
                   {profileData?.instruments?.join(', ') || 'Musician'}
                 </p>
               </div>
@@ -205,12 +205,12 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
         >
-          <p className="text-muted-foreground text-[12px] font-medium mb-3 uppercase">
+          <p className="text-muted-foreground text-xs font-medium mb-3 uppercase">
             Upcoming
           </p>
           <div className="flex items-center gap-3 text-muted-foreground/70">
             <Calendar className="w-5 h-5" />
-            <p className="text-[14px]">No gigs scheduled yet</p>
+            <p className="text-sm">No gigs scheduled yet</p>
           </div>
         </motion.div>
       </div>
@@ -224,7 +224,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
       >
         <motion.button
           onClick={onComplete}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px]"
+          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-base"
           style={{
             boxShadow: '0 4px 20px rgba(212, 251, 70, 0.3)',
           }}

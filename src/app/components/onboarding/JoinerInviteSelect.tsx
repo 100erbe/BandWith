@@ -71,12 +71,12 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Choose
             <br />
             <span className="text-[var(--accent-rehearsal)]">your band</span>
           </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
+          <p className="text-muted-foreground/60 text-base font-medium leading-relaxed">
             You have {invites.length} pending invitations
           </p>
         </motion.div>
@@ -114,10 +114,10 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
 
               {/* Band info */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-foreground font-bold text-[17px] truncate">
+                <h3 className="text-foreground font-bold text-base truncate">
                   {invite.band?.name || 'Unknown Band'}
                 </h3>
-                <div className="flex items-center gap-3 text-muted-foreground/60 text-[13px] mt-0.5">
+                <div className="flex items-center gap-3 text-muted-foreground/60 text-xs mt-0.5">
                   <span className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
                     {invite.member_count || 0} members
@@ -143,7 +143,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.5 }}
       >
-        <p className="text-center text-muted-foreground/30 text-[13px] font-medium">
+        <p className="text-center text-muted-foreground/30 text-xs font-medium">
           Tap a band to view invitation details
         </p>
       </motion.div>

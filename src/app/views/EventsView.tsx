@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
+import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { 
   ArrowUpRight,
   ChevronRight,
@@ -16,6 +16,12 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { EventData } from '@/app/components/dashboard/EventCard';
+import {
+  CalendarEventCard,
+  getEventAccent,
+  EVENT_ACCENT_MAP,
+} from '@/app/components/events/CalendarEventCard';
+import type { EventAccent } from '@/app/components/events/CalendarEventCard';
 
 interface EventsViewProps {
   eventFilter: string;
@@ -41,11 +47,11 @@ const TAG_COLORS: Record<string, string> = {
   gig: 'bg-accent-gig text-accent-gig-foreground',
   outdoor: 'bg-accent-gig text-accent-gig-foreground',
   confirmed: 'bg-accent-gig text-accent-gig-foreground',
-  rehearsal: 'bg-accent-rehearsal text-white',
-  series: 'bg-accent-rehearsal text-white',
-  quote: 'bg-accent-quote text-white',
-  draft: 'bg-black/20 text-foreground/60',
-  pending: 'bg-accent-quote text-white',
+  rehearsal: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
+  series: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
+  quote: 'bg-accent-quote text-accent-quote-foreground',
+  draft: 'bg-muted/40 text-muted-foreground',
+  pending: 'bg-accent-quote text-accent-quote-foreground',
 };
 
 const DotGrid: React.FC<{ filled: number; total: number; cols?: number; rows?: number; activeColor?: string; height?: number; fillFromEnd?: boolean }> = ({
@@ -199,7 +205,7 @@ const BarChart: React.FC<{ bars: number; activeColor: string; seed?: number; row
           style={{
             gridColumn: `${item.col} / span ${item.cs}`,
             gridRow: `${item.row} / span ${item.rs}`,
-            backgroundColor: item.active ? activeColor : 'rgba(0,0,0,0.1)',
+            backgroundColor: item.active ? activeColor : 'var(--muted)',
           }}
         />
       ))}
@@ -350,6 +356,109 @@ const getEventSuggestions = (event: EventData): string[] => {
   return suggestions;
 };
 
+interface MonthEntry {
+  year: number;
+  month: number;
+}
+
+interface MonthGridProps {
+  year: number;
+  month: number;
+  eventsByDate: Record<string, EventData[]>;
+  onSelectDay: (eventsOnDay: EventData[]) => void;
+}
+
+const MONTHS_PER_EXTEND = 12;
+
+const MonthGrid: React.FC<MonthGridProps> = ({ year, month, eventsByDate, onSelectDay }) => {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7;
+  const totalCells = firstDayOfWeek + daysInMonth;
+  const numRows = Math.ceil(totalCells / 7);
+
+  return (
+    <div className="w-full shrink-0 flex flex-col gap-[10px]">
+      <div className="bg-muted/50 rounded-[10px] flex">
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} className="flex-1 py-[4px] text-center">
+            <span className="text-xs font-medium text-muted-foreground">{d}</span>
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="grid grid-cols-7 gap-[4px]"
+        style={{
+          gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
+          height: numRows * 28,
+        }}
+      >
+        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateKey = `${year}-${month}-${day}`;
+          const eventsOnDay = eventsByDate[dateKey] || [];
+          const hasEvents = eventsOnDay.length > 0;
+          const multipleEvents = eventsOnDay.length > 1;
+
+          let bgColor = 'var(--muted)';
+          let textColor = 'text-foreground';
+          let bgStyle: React.CSSProperties = { backgroundColor: bgColor };
+
+          if (hasEvents) {
+            const primary = eventsOnDay[0];
+            bgColor = getCalendarColor(primary);
+            const status = primary.status?.toUpperCase();
+            textColor = (status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED')
+              ? 'text-accent-rehearsal-foreground' : 'text-accent-gig-foreground';
+
+            if (multipleEvents) {
+              const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
+              if (colors.length > 1) {
+                bgStyle = { background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
+                textColor = 'text-accent-rehearsal-foreground';
+              } else {
+                bgStyle = { backgroundColor: bgColor };
+              }
+            } else {
+              bgStyle = { backgroundColor: bgColor };
+            }
+          }
+
+          return hasEvents ? (
+            <button
+              key={day}
+              onClick={() => onSelectDay(eventsOnDay)}
+              className={cn(
+                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 relative",
+                textColor
+              )}
+              style={bgStyle}
+            >
+              <span className="text-base font-medium leading-tight">{day}</span>
+              {multipleEvents && (
+                <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-xs font-bold rounded-full flex items-center justify-center">
+                  {eventsOnDay.length}
+                </span>
+              )}
+            </button>
+          ) : (
+            <div
+              key={day}
+              className="rounded-[10px] flex items-center justify-center text-foreground/60 dark:text-muted-foreground"
+              style={{ backgroundColor: 'var(--muted)' }}
+            >
+              <span className="text-base font-medium leading-tight">{day}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const EventsView: React.FC<EventsViewProps> = ({
   eventFilter,
   setEventFilter,
@@ -357,6 +466,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   setEventSearch,
   selectedBandPill = 'all',
   onBandPillClick = () => {},
+  eventView,
   allEvents,
   onEventClick,
   onCreateEvent,
@@ -376,8 +486,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return 'BAND TOTAL';
   };
 
-    const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [currentIndex, setCurrentIndex] = useState(MONTHS_PER_EXTEND);
+  const [months, setMonths] = useState<MonthEntry[]>(() => {
+    const now = new Date();
+    const arr: MonthEntry[] = [];
+    for (let i = -MONTHS_PER_EXTEND; i <= MONTHS_PER_EXTEND; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      arr.push({ year: d.getFullYear(), month: d.getMonth() });
+    }
+    return arr;
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [warningPopoverId, setWarningPopoverId] = useState<number | null>(null);
   const [suggestionPopoverId, setSuggestionPopoverId] = useState<number | null>(null);
@@ -393,14 +511,128 @@ export const EventsView: React.FC<EventsViewProps> = ({
     onDayPickerOpen?.(false);
   };
   const searchRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widthRef = useRef(0);
+  const [width, setWidth] = useState(0);
+  const currentIndexRef = useRef(currentIndex);
+  const skipAnimRef = useRef(false);
+  const x = useMotionValue(0);
+  const animRef = useRef<ReturnType<typeof animate> | null>(null);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    return () => animRef.current?.stop();
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      widthRef.current = w;
+      setWidth(w);
+      if (w) x.set(-currentIndexRef.current * w);
+    };
+    update();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (skipAnimRef.current) {
+      animRef.current?.stop();
+      x.set(-currentIndex * widthRef.current);
+      skipAnimRef.current = false;
+    }
+  }, [months]);
+
+  const extendBackward = () => {
+    skipAnimRef.current = true;
+    setMonths(prev => {
+      const first = prev[0];
+      const added: MonthEntry[] = [];
+      let y = first.year;
+      let m = first.month;
+      for (let i = 0; i < MONTHS_PER_EXTEND; i++) {
+        m -= 1;
+        if (m < 0) { m = 11; y -= 1; }
+        added.unshift({ year: y, month: m });
+      }
+      return [...added, ...prev];
+    });
+  };
+
+  const extendForward = () => {
+    setMonths(prev => {
+      const last = prev[prev.length - 1];
+      const added: MonthEntry[] = [];
+      let y = last.year;
+      let m = last.month;
+      for (let i = 0; i < MONTHS_PER_EXTEND; i++) {
+        m += 1;
+        if (m > 11) { m = 0; y += 1; }
+        added.push({ year: y, month: m });
+      }
+      return [...prev, ...added];
+    });
+  };
+
+  const snapTo = (index: number) => {
+    setCurrentIndex(index);
+    animRef.current?.stop();
+    animRef.current = animate(x, -index * widthRef.current, {
+      duration: 0.3,
+      ease: 'easeOut',
+    });
+  };
+
+  const goToIndex = (target: number) => {
+    if (target <= 1) {
+      extendBackward();
+      setCurrentIndex(target + MONTHS_PER_EXTEND);
+    } else if (target >= months.length - 2) {
+      extendForward();
+      snapTo(target);
+    } else {
+      snapTo(target);
+    }
+  };
+
+  const scrollToMonth = (dir: 1 | -1) => goToIndex(currentIndex + dir);
+
+  const handleDragEnd = (_: any, info: any) => {
+    const w = widthRef.current;
+    if (!w) return;
+    let current = -x.get() / w;
+    current = Math.max(0, Math.min(months.length - 1, current));
+    let target = Math.round(current);
+    if (info.velocity.x < -500) target = Math.floor(current) + 1;
+    else if (info.velocity.x > 500) target = Math.ceil(current) - 1;
+    target = Math.max(0, Math.min(months.length - 1, target));
+    goToIndex(target);
+  };
+
+  const handleSelectDay = (eventsOnDay: EventData[]) => {
+    if (eventsOnDay.length > 1) openDayPicker(eventsOnDay);
+    else onEventClick(eventsOnDay[0]);
+  };
 
   // All filtering now happens in parent component (AuthenticatedApp.tsx)
   // `allEvents` prop is already band-pill + status + search filtered
 
   const eventDatesMap = useMemo(() => {
     const map: Record<string, EventData[]> = {};
-    const monthStart = new Date(calendarYear, calendarMonth, 1);
-    const monthEnd = new Date(calendarYear, calendarMonth + 1, 0);
+    if (months.length === 0) return map;
+    const first = months[0];
+    const last = months[months.length - 1];
+    const rangeStart = new Date(first.year, first.month, 1);
+    const rangeEnd = new Date(last.year, last.month + 1, 0);
     const source = allEvents;
 
     const addToMap = (ev: EventData, dateObj: Date) => {
@@ -419,7 +651,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
         const rule = rec.recurrence_rule;
         const freq = rule.freq || rule.frequency;
         if (!freq) return;
-        const until = rule.until ? new Date(rule.until) : new Date(calendarYear, calendarMonth + 3, 0);
+        const until = rule.until ? new Date(rule.until) : rangeEnd;
         const maxCount = rule.count || 52;
         let cursor = new Date(d);
         let generated = 0;
@@ -429,7 +661,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
           else break;
           if (cursor > until) break;
-          if (cursor >= monthStart && cursor <= monthEnd) {
+          if (cursor >= rangeStart && cursor <= rangeEnd) {
             addToMap(ev, new Date(cursor));
           }
           generated++;
@@ -437,23 +669,27 @@ export const EventsView: React.FC<EventsViewProps> = ({
       }
     });
     return map;
-  }, [allEvents, calendarMonth, calendarYear]);
+  }, [allEvents, months]);
 
-  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-  const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
-  const monthName = new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+  const currentMonth = months[currentIndex] ?? { year: new Date().getFullYear(), month: new Date().getMonth() };
+  const monthName = new Date(currentMonth.year, currentMonth.month).toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
 
-  const prevMonth = () => {
-    if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
-    else setCalendarMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
-    else setCalendarMonth(m => m + 1);
-  };
-
-  const today = new Date();
-  const isCurrentMonth = calendarMonth === today.getMonth() && calendarYear === today.getFullYear();
+  const monthEvents = useMemo(() => {
+    const seen = new Set<number>();
+    const result: EventData[] = [];
+    const daysInMonth = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = `${currentMonth.year}-${currentMonth.month}-${day}`;
+      const events = eventDatesMap[key] || [];
+      events.forEach(ev => {
+        if (!seen.has(ev.id)) {
+          seen.add(ev.id);
+          result.push(ev);
+        }
+      });
+    }
+    return result;
+  }, [eventDatesMap, currentMonth]);
 
   const EmptyStateHero = () => <EmptyState />;
 
@@ -480,7 +716,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="flex items-center gap-[8px] bg-black/10 rounded-[10px] px-[12px] py-[8px]">
+                <div className="flex items-center gap-[8px] bg-muted/50 rounded-[10px] px-[12px] py-[8px]">
                   <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
                   <input
                     ref={searchRef}
@@ -488,7 +724,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     value={eventSearch}
                     onChange={(e) => setEventSearch(e.target.value)}
                     placeholder="Search events..."
-                    className="bg-transparent text-[14px] font-medium text-[var(--fg)] placeholder:text-foreground/30 focus:outline-none flex-1"
+                    className="bg-transparent text-sm font-medium text-[var(--fg)] placeholder:text-foreground/30 focus:outline-none flex-1"
                     autoFocus
                   />
                   {eventSearch && (
@@ -540,21 +776,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
           <div className="flex gap-[12px] items-center overflow-x-auto scrollbar-hide">
             {FILTERS.map((f) => {
               const isActive = eventFilter === f;
-              let activeBg = 'bg-white';
+              let activeBg = 'bg-card';
               let activeText = 'text-foreground';
               if (f === 'GIGS') { activeBg = 'bg-accent-gig'; activeText = 'text-accent-gig-foreground'; }
-              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-white'; }
-              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-white'; }
-              else if (f === 'DRAFT') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
+              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-accent-rehearsal-foreground'; }
+              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-accent-quote-foreground'; }
+              else if (f === 'DRAFT') { activeBg = 'bg-muted'; activeText = 'text-foreground'; }
               return (
               <button
                 key={f}
                 onClick={() => setEventFilter(f)}
                 className={cn(
-                  "px-[8px] py-[6px] rounded-[6px] text-[12px] whitespace-nowrap transition-all shrink-0",
+                  "px-[8px] py-[6px] rounded-[6px] text-xs whitespace-nowrap transition-all shrink-0",
                   isActive
                     ? `${activeBg} ${activeText} font-bold`
-                    : "bg-black/20 text-foreground/40 font-medium"
+                    : "bg-muted/20 text-muted-foreground font-medium"
                 )}
               >
                 {f}
@@ -564,7 +800,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               onClick={() => { setIsSearchOpen(!isSearchOpen); if (!isSearchOpen) setTimeout(() => searchRef.current?.focus(), 100); }}
               className={cn(
                 "w-[32px] h-[32px] rounded-full border-[1.5px] flex items-center justify-center transition-all shrink-0",
-                isSearchOpen ? "border-black bg-black text-white" : "border-black/30 bg-transparent text-foreground/50"
+                isSearchOpen ? "border-foreground bg-foreground text-background" : "border-foreground/30 bg-transparent text-muted-foreground"
               )}
             >
               <Search className="w-[14px] h-[14px]" />
@@ -590,7 +826,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const isQuote = status === 'QUOTED' || status === 'QUOTE';
             const memberCount = feat.members?.length || 0;
             const dotColor = getDotColor(feat.status);
-            const arrowBg = isGig ? 'bg-black' : 'bg-white';
+            const arrowBg = isGig ? 'bg-foreground' : 'bg-background';
             const arrowColor = isGig ? 'text-accent-gig' : 'text-foreground';
 
             const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
@@ -614,7 +850,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         <div className="flex gap-[4px] items-center flex-wrap">
                           {featTags.map((tag, i) => (
                             <div key={i} className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
+                              <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
                             </div>
                           ))}
                         </div>
@@ -624,11 +860,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         <div className="flex gap-[4px] items-center flex-wrap">
                           {feat.band_name && (
                             <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{feat.band_name}</span>
+                              <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{feat.band_name}</span>
                             </div>
                           )}
                           <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{isGig ? 'GIG' : isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT'}</span>
+                            <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{isGig ? 'GIG' : isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT'}</span>
                           </div>
                         </div>
                       )}
@@ -642,13 +878,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 </div>
                               )}
                               {/* ═══ EVENT TITLE ═══ */}
-                              <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">{feat.title}</h3>
+                              <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">{feat.title}</h3>
                             </div>
                           </div>
                       <div className="flex flex-col gap-[2px]">
-                        <span className="text-[16px] font-bold text-foreground uppercase">{feat.location?.split(',')[0] || 'TBD'}</span>
+                        <span className="text-base font-bold text-foreground uppercase">{feat.location?.split(',')[0] || 'TBD'}</span>
                         {feat.venueAddress && (
-                          <span className="text-[12px] font-medium text-foreground/50 uppercase">{feat.venueAddress}</span>
+                          <span className="text-xs font-medium text-foreground/50 uppercase">{feat.venueAddress}</span>
                         )}
                       </div>
                     </div>
@@ -657,7 +893,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         <ArrowUpRight className={cn("w-[28px] h-[28px]", arrowColor)} />
                       </div>
                       <div className="bg-muted rounded-[10px] px-[10px] py-[10px]">
-                        <span className="text-[12px] font-bold text-foreground uppercase whitespace-nowrap">
+                        <span className="text-xs font-bold text-foreground uppercase whitespace-nowrap">
                           {feat.date ? formatEventDate(feat.date) : 'TBD'}{feat.time ? ` - ${formatEventTime(feat.time)}` : ''}
                         </span>
                       </div>
@@ -669,20 +905,20 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       <DotGrid filled={memberCount} total={Math.max(9, memberCount)} cols={9} rows={1} activeColor={dotColor} height={15} />
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col items-start">
-                          <span className="text-[12px] font-bold text-foreground/70">LOAD IN</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">
+                          <span className="text-xs font-bold text-foreground/70">LOAD IN</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">
                             {feat.loadInTime ? formatEventTime(feat.loadInTime) : feat.time ? formatEventTime(feat.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3)))) : 'TBD'}
                           </span>
                         </div>
                         <div className="flex flex-col items-center">
-                          <span className="text-[12px] font-bold text-foreground/70">SOUNDCHECK</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">
+                          <span className="text-xs font-bold text-foreground/70">SOUNDCHECK</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">
                             {feat.soundcheckTime ? formatEventTime(feat.soundcheckTime) : feat.time ? formatEventTime(feat.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2)))) : 'TBD'}
                           </span>
                         </div>
                         <div className="flex flex-col items-end">
-                          <span className="text-[12px] font-bold text-foreground/70">SHOW</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">{feat.time ? formatEventTime(feat.time) : 'TBD'}</span>
+                          <span className="text-xs font-bold text-foreground/70">SHOW</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">{feat.time ? formatEventTime(feat.time) : 'TBD'}</span>
                         </div>
                       </div>
                     </div>
@@ -691,8 +927,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       <div className="flex-1 flex flex-col gap-[20px]">
                         <DotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={dotColor} height={15 * 2 + 4} />
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-foreground/70">CONFIRMED MEMBERS</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">{memberCount}</span>
+                          <span className="text-xs font-bold text-foreground/70">CONFIRMED MEMBERS</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">{memberCount}</span>
                         </div>
                       </div>
                     </div>
@@ -700,15 +936,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     <div className="grid grid-cols-2 gap-x-[20px] gap-y-[40px]">
                       <div className="flex flex-col gap-[8px]">
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-foreground/70">CLIENT</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none uppercase">{feat.clientName || 'TBD'}</span>
+                          <span className="text-xs font-bold text-foreground/70">CLIENT</span>
+                          <span className="text-xl font-bold text-foreground leading-tight uppercase">{feat.clientName || 'TBD'}</span>
                         </div>
                         <PixelInitials name={feat.clientName || 'TBD'} activeColor={dotColor} height={91} />
                       </div>
                       <div className="flex flex-col gap-[8px]">
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-foreground/70">{isAdmin ? 'PRICING & FINANCE' : 'YOUR FEE'}</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">{getDisplayFee(feat)}</span>
+                          <span className="text-xs font-bold text-foreground/70">{isAdmin ? 'PRICING & FINANCE' : 'YOUR FEE'}</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">{getDisplayFee(feat)}</span>
                         </div>
                         <div className="h-[91px]">
                           <BarChart bars={8} activeColor={dotColor} seed={feat.id + 3} rows={5} />
@@ -718,17 +954,17 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   ) : (
                     <div className="flex gap-[20px] items-end">
                       <div className="flex-1 flex flex-col gap-[10px]">
-                        <DotGrid filled={memberCount} total={12} cols={6} rows={2} activeColor="rgba(0,0,0,0.2)" />
+                        <DotGrid filled={memberCount} total={12} cols={6} rows={2} activeColor="var(--dot-inactive)" />
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-foreground/70">TEAM MEMBERS</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">{memberCount}</span>
+                          <span className="text-xs font-bold text-foreground/70">TEAM MEMBERS</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">{memberCount}</span>
                         </div>
                       </div>
                       <div className="flex-1 flex flex-col gap-[10px]">
-                        <DotGrid filled={0} total={12} cols={6} rows={2} activeColor="rgba(0,0,0,0.2)" />
+                        <DotGrid filled={0} total={12} cols={6} rows={2} activeColor="var(--dot-inactive)" />
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-foreground/70">{getFeeLabel(feat)}</span>
-                          <span className="text-[22px] font-bold text-foreground leading-none">{getDisplayFee(feat)}</span>
+                          <span className="text-xs font-bold text-foreground/70">{getFeeLabel(feat)}</span>
+                          <span className="text-xl font-bold text-foreground leading-tight">{getDisplayFee(feat)}</span>
                         </div>
                       </div>
                     </div>
@@ -744,126 +980,64 @@ export const EventsView: React.FC<EventsViewProps> = ({
             <div className="flex gap-[16px] items-center">
               <div className="flex gap-[12px] items-center">
                 <button
-                  onClick={prevMonth}
+                  onClick={() => scrollToMonth(-1)}
                   className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
                 >
                   <ChevronLeft className="w-[20px] h-[20px]" />
                 </button>
                 <button
-                  onClick={nextMonth}
+                  onClick={() => scrollToMonth(1)}
                   className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
                 >
                   <ChevronRight className="w-[20px] h-[20px]" />
                 </button>
               </div>
-              <span className="text-[16px] font-bold text-foreground uppercase">
-                {monthName} {calendarYear}
+              <span className="text-base font-bold text-foreground uppercase">
+                {monthName} {currentMonth.year}
               </span>
             </div>
 
-            {/* Day Labels */}
-            <div className="flex flex-col gap-[10px]">
-              <div className="bg-black/10 rounded-[10px] flex">
-                {['M','T','W','T','F','S','S'].map((d, i) => (
-                  <div key={i} className="flex-1 py-[4px] text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground">{d}</span>
-                  </div>
+            {/* Month drag track */}
+            <div ref={containerRef} className="overflow-hidden w-full">
+              <motion.div
+                className="flex"
+                drag="x"
+                dragConstraints={{ left: -(months.length - 1) * width, right: 0 }}
+                dragMomentum={false}
+                style={{ x }}
+                onDragEnd={handleDragEnd}
+              >
+                {months.map((m) => (
+                  <MonthGrid
+                    key={`${m.year}-${m.month}`}
+                    year={m.year}
+                    month={m.month}
+                    eventsByDate={eventDatesMap}
+                    onSelectDay={handleSelectDay}
+                  />
                 ))}
-              </div>
-
-              {/* Day Grid */}
-              {(() => {
-                const totalCells = firstDayOfWeek + daysInMonth;
-                const numRows = Math.ceil(totalCells / 7);
-                return (
-                  <div
-                    className="grid grid-cols-7 gap-[4px]"
-                    style={{
-                      gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
-                      height: numRows * 28,
-                    }}
-                  >
-                    {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                      <div key={`empty-${i}`} />
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const dateKey = `${calendarYear}-${calendarMonth}-${day}`;
-                      const eventsOnDay = eventDatesMap[dateKey] || [];
-                      const hasEvents = eventsOnDay.length > 0;
-                      const multipleEvents = eventsOnDay.length > 1;
-
-                      let bgColor = 'rgba(0,0,0,0.1)';
-                      let textColor = 'text-foreground';
-                      let bgStyle: React.CSSProperties = { backgroundColor: bgColor };
-
-                      if (hasEvents) {
-                        const primary = eventsOnDay[0];
-                        bgColor = getCalendarColor(primary);
-                        const status = primary.status?.toUpperCase();
-                        textColor = (status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED')
-                          ? 'text-white' : 'text-accent-gig-foreground';
-
-                        if (multipleEvents) {
-                          const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
-                          if (colors.length > 1) {
-                            bgStyle = { background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
-                            textColor = 'text-white';
-                          } else {
-                            bgStyle = { backgroundColor: bgColor };
-                          }
-                        } else {
-                          bgStyle = { backgroundColor: bgColor };
-                        }
-                      }
-
-                      return hasEvents ? (
-                        <button
-                          key={day}
-                          onClick={() => multipleEvents ? openDayPicker(eventsOnDay) : onEventClick(eventsOnDay[0])}
-                          className={cn(
-                            "rounded-[10px] flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 relative",
-                            textColor
-                          )}
-                          style={bgStyle}
-                        >
-                          <span className="text-[16px] font-medium leading-none">{day}</span>
-                          {multipleEvents && (
-                            <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-[8px] font-bold rounded-full flex items-center justify-center">
-                              {eventsOnDay.length}
-                            </span>
-                          )}
-                        </button>
-                      ) : (
-                        <div
-                          key={day}
-                          className="rounded-[10px] flex items-center justify-center text-foreground/60 dark:text-muted-foreground"
-                          style={{ backgroundColor: 'var(--muted)' }}
-                        >
-                          <span className="text-[16px] font-medium leading-none">{day}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+              </motion.div>
             </div>
           </div>
 
           {/* ═══ LIST HEADER ═══ */}
           <div className="flex flex-col gap-[4px]">
-            <span className="text-[12px] font-bold text-foreground uppercase leading-none">
+            <span className="text-xs font-bold text-foreground uppercase leading-tight">
               LIST
             </span>
-            <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
+            <h2 className="text-3xl font-bold text-foreground uppercase leading-tight">
               UPCOMING
             </h2>
           </div>
 
           {/* ═══ EVENT CARDS ═══ */}
-          <div className="flex flex-col gap-[80px]">
-            {allEvents.length > 0 ? (
-              allEvents.map((event) => {
+          <motion.div
+            layout
+            className="flex flex-col gap-[80px]"
+            transition={{ layout: { duration: 0.3, ease: 'easeInOut' } }}
+          >
+            {monthEvents.length > 0 ? (
+              monthEvents.map((event) => {
                 const status = event.status?.toUpperCase();
                 const isRehearsal = status === 'REHEARSAL';
                 const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
@@ -881,75 +1055,43 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 const warnings = getEventWarnings(event);
                 const suggestions = getEventSuggestions(event);
 
-                const tags = getEventTags(event);
-                const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
-
                 if (isRehearsal) {
                   return (
                     <motion.div
                       key={event.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
+                      className="p-4 rounded-2xl shadow-sm bg-card border border-border/40 flex flex-col gap-2.5 cursor-pointer"
                       onClick={() => onEventClick(event)}
                     >
+                      {/* Top Metadata Row */}
+                      <div className="flex justify-between items-center gap-2 mb-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-rehearsal truncate">REHEARSAL</span>
+                      
+                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                          <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
+                            {event.date ? formatEventDate(event.date) : 'TBD'}
+                          </span>
+                        </div>
+                      </div>
                       {/* Section 1: Event Info + Icons + Date */}
                       <div className="flex gap-[30px] items-start w-full">
                         <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">REHEARSAL</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* Multi-band member: band name pill + event type pill */}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">REHEARSAL</span>
-                              </div>
-                            </div>
-                          )}
                           <div className="flex flex-col gap-0.5 min-w-0">
-                              {/* ═══ EYEBROW ROW — Event type text (single-band member only) ═══ */}
-                              {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                                <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                  <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                                </div>
-                              )}
                               {/* ═══ EVENT TITLE ═══ */}
-                              <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
+                              <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
                           <div className="flex flex-col gap-[2px] mt-1">
                             <div className="flex gap-[2px] items-center">
-                              <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap">
+                              <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
                               <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
+                              <span className="text-xs font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -964,7 +1106,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -975,11 +1117,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -994,7 +1136,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1005,11 +1147,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1021,40 +1163,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
                             </div>
                           </div>
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                            style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                          >
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">
-                              {event.date ? (() => {
-                                const d = new Date(event.date);
-                                const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                                const day = d.getDate();
-                                const year = d.getFullYear();
-                                return `${month} ${day} ${year}`;
-                              })() : 'TBD'}
-                            </span>
-                          </div>
+
                         </div>
                       </div>
 
-                      {/* Section 2: Grids (left) + Labels (right) */}
-                      <div className="flex gap-[69px] items-center w-full">
-                        <div className="flex-1 flex flex-col gap-[12px] items-start min-w-0">
-                          <DotGrid filled={event.time ? parseEventHour(event.time) : 0} total={12} cols={6} rows={2} activeColor={dotColor} height={68} />
-                          <DotGrid filled={memberCount} total={Math.max(16, memberCount)} cols={8} rows={2} activeColor={dotColor} fillFromEnd height={68} />
+                      {/* Section 2: Bottom Values Row */}
+                      <div className="mt-3 flex justify-between items-end gap-4 w-full">
+                        <div>
+                          <span className="text-xs font-bold text-foreground/70 uppercase">TEAM MEMBERS</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block">{memberCount}</span>
                         </div>
-                        <div className="flex flex-col gap-[16px] items-end w-[95px] shrink-0">
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground/70 text-right w-full uppercase">TIME</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none whitespace-nowrap">
-                              {event.time ? formatEventTime(event.time) : 'TBD'}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground/70 whitespace-nowrap">TEAM MEMBERS</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none">{memberCount}</span>
-                          </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-foreground/70 uppercase">TIME</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block whitespace-nowrap">
+                            {event.time ? formatEventTime(event.time) : 'TBD'}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
@@ -1067,66 +1190,37 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       key={event.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
+                      className="p-4 rounded-2xl shadow-sm bg-card border border-border/40 flex flex-col gap-2.5 cursor-pointer"
                       onClick={() => onEventClick(event)}
                     >
+                      {/* Top Metadata Row */}
+                      <div className="flex justify-between items-center gap-2 mb-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-gig truncate">GIG</span>
+                      
+                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                          <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
+                            {event.date ? formatEventDate(event.date) : 'TBD'}
+                          </span>
+                        </div>
+                      </div>
                       {/* Section 1: Event Info + Icons + Date */}
                       <div className="flex gap-[30px] items-start w-full">
                         <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">GIG</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* Multi-band member: band name pill + event type pill */}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">GIG</span>
-                              </div>
-                            </div>
-                          )}
                           <div className="flex flex-col gap-0.5 min-w-0">
-                              {/* ═══ EYEBROW ROW — Event type text (single-band member only) ═══ */}
-                              {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                                <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                  <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                                </div>
-                              )}
                               {/* ═══ EVENT TITLE ═══ */}
-                              <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
+                              <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
                           <div className="flex flex-col gap-[2px] mt-1">
                             <div className="flex gap-[2px] items-center">
-                              <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap">
+                              <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
                               <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
+                              <span className="text-xs font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -1141,7 +1235,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -1152,11 +1246,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1171,7 +1265,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1182,11 +1276,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1198,42 +1292,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[28px] h-[28px] text-accent-gig-foreground" />
                             </div>
                           </div>
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                            style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                          >
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">
-                              {event.date ? (() => {
-                                const d = new Date(event.date);
-                                const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                                const day = d.getDate();
-                                const year = d.getFullYear();
-                                return `${month} ${day} ${year}`;
-                              })() : 'TBD'}
-                            </span>
-                          </div>
+
                         </div>
                       </div>
 
-                      {/* Section 2: Bar Chart + Team Members (left) + Labels (right) */}
-                      <div className="flex gap-[69px] items-center w-full">
-                        <div className="flex-1 flex flex-col gap-[12px] items-start min-w-0">
-                          <div className="w-full h-[68px]">
-                            <BarChart bars={10} activeColor={dotColor} seed={event.id} />
-                          </div>
-                          <DotGrid filled={memberCount} total={16} cols={8} rows={2} activeColor={dotColor} fillFromEnd height={68} />
+                      {/* Section 2: Bottom Values Row */}
+                      <div className="mt-3 flex justify-between items-end gap-4 w-full">
+                        <div>
+                          <span className="text-xs font-bold text-foreground/70 uppercase">TEAM MEMBERS</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block">{memberCount}</span>
                         </div>
-                        <div className="flex flex-col gap-[16px] items-end w-[95px] shrink-0">
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground text-right w-full uppercase">{isAdmin ? 'DUE TOTAL' : 'YOUR FEE'}</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none whitespace-nowrap">
-                              {getDisplayFee(event)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground/70 whitespace-nowrap">TEAM MEMBERS</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none">{memberCount}</span>
-                          </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-foreground uppercase">{isAdmin ? 'DUE TOTAL' : 'YOUR FEE'}</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block whitespace-nowrap">
+                            {getDisplayFee(event)}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
@@ -1246,66 +1319,37 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       key={event.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
+                      className="p-4 rounded-2xl shadow-sm bg-card border border-border/40 flex flex-col gap-2.5 cursor-pointer"
                       onClick={() => onEventClick(event)}
                     >
+                      {/* Top Metadata Row */}
+                      <div className="flex justify-between items-center gap-2 mb-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-quote truncate">QUOTE</span>
+                      
+                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                          <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
+                            {event.date ? formatEventDate(event.date) : 'TBD'}
+                          </span>
+                        </div>
+                      </div>
                       {/* Section 1: Event Info + Icons + Date */}
                       <div className="flex gap-[30px] items-start w-full">
                         <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">QUOTE</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* Multi-band member: band name pill + event type pill */}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">QUOTE</span>
-                              </div>
-                            </div>
-                          )}
                           <div className="flex flex-col gap-0.5 min-w-0">
-                              {/* ═══ EYEBROW ROW — Event type text (single-band member only) ═══ */}
-                              {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                                <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                  <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                                </div>
-                              )}
                               {/* ═══ EVENT TITLE ═══ */}
-                              <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
+                              <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
                           <div className="flex flex-col gap-[2px] mt-1">
                             <div className="flex gap-[2px] items-center">
-                              <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap">
+                              <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
                               <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase">
+                              <span className="text-xs font-medium text-foreground/50 uppercase">
                                 {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                               </span>
                             )}
@@ -1320,7 +1364,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--warning)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -1331,11 +1375,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1350,7 +1394,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   className="bg-[var(--amber)] rounded-full p-[6px]"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1361,11 +1405,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                                      <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
                                           <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
+                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1377,42 +1421,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
                             </div>
                           </div>
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                            style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                          >
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">
-                              {event.date ? (() => {
-                                const d = new Date(event.date);
-                                const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                                const day = d.getDate();
-                                const year = d.getFullYear();
-                                return `${month} ${day} ${year}`;
-                              })() : 'TBD'}
-                            </span>
-                          </div>
+
                         </div>
                       </div>
 
-                      {/* Section 2: Bar Chart + Team Members (left) + Labels (right) */}
-                      <div className="flex gap-[69px] items-center w-full">
-                        <div className="flex-1 flex flex-col gap-[12px] items-start min-w-0">
-                          <div className="w-full h-[68px]">
-                            <BarChart bars={10} activeColor={dotColor} seed={event.id} />
-                          </div>
-                          <DotGrid filled={memberCount} total={16} cols={8} rows={2} activeColor={dotColor} fillFromEnd height={68} />
+                      {/* Section 2: Bottom Values Row */}
+                      <div className="mt-3 flex justify-between items-end gap-4 w-full">
+                        <div>
+                          <span className="text-xs font-bold text-foreground/70 uppercase">TEAM MEMBERS</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block">{memberCount}</span>
                         </div>
-                        <div className="flex flex-col gap-[16px] items-end w-[95px] shrink-0">
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground text-right w-full uppercase">{isAdmin ? 'DUE TOTAL' : 'YOUR FEE'}</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none whitespace-nowrap">
-                              {getDisplayFee(event)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-end w-full">
-                            <span className="text-[12px] font-bold text-foreground/70 whitespace-nowrap">TEAM MEMBERS</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none">{memberCount}</span>
-                          </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-foreground uppercase">{isAdmin ? 'DUE TOTAL' : 'YOUR FEE'}</span>
+                          <span className="text-3xl font-bold text-foreground leading-tight block whitespace-nowrap">
+                            {getDisplayFee(event)}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
@@ -1424,43 +1447,34 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     key={event.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col gap-[12px] items-end cursor-pointer"
+                    className="p-4 rounded-2xl shadow-sm bg-card border border-border/40 flex flex-col gap-2.5 cursor-pointer"
                     onClick={() => onEventClick(event)}
                   >
+                    {/* Top Metadata Row */}
+                    <div className="flex justify-between items-center gap-2 mb-3">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">DRAFT</span>
+                    
+                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                          <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
+                            {event.date ? formatEventDate(event.date) : 'TBD'}
+                          </span>
+                        </div>
+                      </div>
                     {/* Section 1: Event Info + Icons + Date */}
                     <div className="flex gap-[30px] items-start w-full">
                       <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                        <div className="flex gap-[4px] items-start">
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                            style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                          >
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">
-                              {event.date ? formatEventDate(event.date) : 'TBD'}
-                            </span>
-                          </div>
-                          {secondaryTags.map((tag, i) => (
-                            <div
-                              key={i}
-                              className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                              style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                            >
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <h3 className="text-[32px] font-bold text-foreground uppercase leading-none">
+                        <h3 className="text-3xl font-bold text-foreground uppercase leading-tight">
                           {event.title}
                         </h3>
                         <div className="flex flex-col gap-[2px]">
                           <div className="flex gap-[2px] items-center">
-                            <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap">
+                            <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                               {event.location?.split(',')[0] || 'TBD'}
                             </span>
                             <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
                           </div>
                           {(event.venueAddress || event.location?.includes(',')) && (
-                            <span className="text-[12px] font-medium text-foreground/50 uppercase">
+                            <span className="text-xs font-medium text-foreground/50 uppercase">
                               {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
                             </span>
                           )}
@@ -1475,7 +1489,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 className="bg-[var(--warning)] rounded-full p-[6px]"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
-                                <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                               </button>
                               <AnimatePresence>
                                 {warningPopoverId === event.id && (
@@ -1486,11 +1500,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                                    <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                     {warnings.map((w, wi) => (
                                       <div key={wi} className="flex items-center gap-2 py-1">
                                         <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-white/80">{w}</span>
+                                        <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
                                       </div>
                                     ))}
                                   </motion.div>
@@ -1505,7 +1519,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 className="bg-[var(--amber)] rounded-full p-[6px]"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
-                                <AlertCircle className="w-[28px] h-[28px] text-white" style={{ transform: 'rotate(180deg)' }} />
+                                <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                               </button>
                               <AnimatePresence>
                                 {suggestionPopoverId === event.id && (
@@ -1516,11 +1530,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                                    <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                     {suggestions.map((s, si) => (
                                       <div key={si} className="flex items-center gap-2 py-1">
                                         <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-white/80">{s}</span>
+                                        <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
                                       </div>
                                     ))}
                                   </motion.div>
@@ -1532,42 +1546,34 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
                           </div>
                         </div>
-                        <div
-                          className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                          style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                        >
-                          <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">
-                            {event.date ? formatEventDate(event.date) : 'TBD'}
-                          </span>
-                        </div>
+
                       </div>
                     </div>
 
-                    {/* Section 2: Grids (left) + Labels (right) */}
-                    <div className="flex gap-[69px] items-center w-full">
-                      <div className="flex-1 flex flex-col gap-[12px] items-start min-w-0">
-                        <DotGrid filled={memberCount} total={16} cols={8} rows={2} activeColor={dotColor} fillFromEnd height={68} />
+                    {/* Section 2: Bottom Values Row */}
+                    <div className="mt-3 flex justify-between items-end gap-4 w-full">
+                      <div>
+                        <span className="text-xs font-bold text-foreground/70 uppercase">TEAM MEMBERS</span>
+                        <span className="text-3xl font-bold text-foreground leading-tight block">{memberCount}</span>
                       </div>
-                      <div className="flex flex-col gap-[16px] items-end w-[95px] shrink-0">
-                        <div className="flex flex-col items-end w-full">
-                          <span className="text-[12px] font-bold text-foreground/70 text-right w-full uppercase">{rightLabel}</span>
-                          <span className="text-[42px] font-bold text-foreground leading-none whitespace-nowrap">
-                            {rightValue}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end w-full">
-                          <span className="text-[12px] font-bold text-foreground/70 whitespace-nowrap">TEAM MEMBERS</span>
-                          <span className="text-[42px] font-bold text-foreground leading-none">{memberCount}</span>
-                        </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-foreground/70 uppercase">{rightLabel}</span>
+                        <span className="text-3xl font-bold text-foreground leading-tight block whitespace-nowrap">
+                          {rightValue}
+                        </span>
                       </div>
                     </div>
                   </motion.div>
                 );
               })
             ) : (
-              <EmptyState />
+              <div className="py-12 text-center">
+                <p className="text-sm font-bold text-foreground/40 uppercase">
+                  No events in {monthName} {currentMonth.year}
+                </p>
+              </div>
             )}
-          </div>
+          </motion.div>
         </>
       )}
       {/* Multi-event day picker */}
@@ -1579,7 +1585,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+              className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-[10px]"
               onClick={closeDayPicker}
             />
             <motion.div
@@ -1587,20 +1593,20 @@ export const EventsView: React.FC<EventsViewProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+              className="fixed bottom-0 left-0 right-0 z-[91] bg-surface-inverse rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
               style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
             >
               <div className="flex justify-center mb-4">
-                <div className="w-10 h-1 rounded-full bg-white/30" />
+                <div className="w-10 h-1 rounded-full bg-surface-inverse-foreground/30" />
               </div>
 
               <div className="flex items-end justify-between mb-8">
-                <p className="text-xs font-bold text-white/50 uppercase tracking-wider">
+                <p className="text-xs font-bold text-surface-inverse-foreground/50 uppercase tracking-wider">
                   {dayPickerEvents[0]?.date ? formatEventDate(dayPickerEvents[0].date) : ''} — {dayPickerEvents.length} EVENTS
                 </p>
                 <button
                   onClick={closeDayPicker}
-                  className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
+                  className="w-9 h-9 rounded-full border border-surface-inverse-foreground/20 flex items-center justify-center text-surface-inverse-foreground active:scale-90 transition-transform"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1627,12 +1633,12 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         </span>
                         <ArrowUpRight className="w-3.5 h-3.5" style={{ color: accentColor }} />
                       </div>
-                      <h3 className="text-[22px] font-bold text-white uppercase leading-tight">
+                      <h3 className="text-xl font-bold text-surface-inverse-foreground uppercase leading-tight">
                         {ev.title}
                       </h3>
-                      <div className="flex items-center gap-2 text-white/50 text-[12px] font-bold">
+                      <div className="flex items-center gap-2 text-surface-inverse-foreground/50 text-xs font-bold">
                         {ev.time && <span>{formatEventTime(ev.time)}</span>}
-                        {ev.time && ev.location && <span className="text-white/20">·</span>}
+                        {ev.time && ev.location && <span className="text-surface-inverse-foreground/20">·</span>}
                         {ev.location && <span>{ev.location.split(',')[0]}</span>}
                       </div>
                       <div className="grid grid-cols-6 gap-1 w-full">
@@ -1640,7 +1646,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           <div
                             key={i}
                             className="h-[15px] rounded-[10px]"
-                            style={{ backgroundColor: i < (ev.members?.length || 0) ? accentColor : 'rgba(255,255,255,0.2)' }}
+                            style={{ backgroundColor: i < (ev.members?.length || 0) ? accentColor : 'var(--dot-inactive)' }}
                           />
                         ))}
                       </div>

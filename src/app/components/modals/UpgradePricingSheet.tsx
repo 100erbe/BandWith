@@ -19,7 +19,7 @@ const TIERS = [
     icon: Music,
     accent: 'var(--accent)',
     bgGradient: 'from-accent to-[var(--accent)]',
-    textColor: 'text-black',
+    textColor: 'text-foreground',
     description: 'Basic operations',
     features: [
       'Manage 1 band',
@@ -29,7 +29,7 @@ const TIERS = [
       'Standard support',
     ],
     cta: 'Current Plan',
-    ctaStyle: 'bg-white/30 text-black border-white/30 cursor-default',
+    ctaStyle: 'bg-white/30 text-foreground border-white/30 cursor-default',
   },
   {
     id: 'multi_band',
@@ -40,7 +40,7 @@ const TIERS = [
     icon: Layers,
     accent: 'var(--primary)',
     bgGradient: 'from-[var(--primary)] to-[var(--primary)]',
-    textColor: 'text-white',
+    textColor: 'text-accent-foreground',
     description: 'Cross-band availability calendars',
     features: [
       'Manage up to 5 bands',
@@ -62,7 +62,7 @@ const TIERS = [
     icon: Infinity,
     accent: 'var(--amber)',
     bgGradient: 'from-[var(--amber)] to-[var(--amber)]',
-    textColor: 'text-white',
+    textColor: 'text-accent-foreground',
     description: 'Multi-agent management tools',
     features: [
       'Unlimited bands',
@@ -111,7 +111,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               <div className="w-10 h-1 rounded-full bg-black/20 mb-4" />
               <button
                 onClick={onClose}
-                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-foreground/50 hover:text-black hover:bg-black/5 transition-all"
+                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-foreground/50 hover:text-foreground hover:bg-black/5 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -122,11 +122,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               <div className="mb-8 text-center">
                 <div className="inline-flex items-center gap-2 bg-black/5 rounded-full px-4 py-1.5 mb-4">
                   <Sparkles className="w-4 h-4 text-[var(--primary)]" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/50">
+                  <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">
                     Unlock More Power
                   </span>
                 </div>
-                <h2 className="text-[28px] font-black text-black leading-tight uppercase tracking-tight">
+                <h2 className="text-3xl font-black text-foreground leading-tight uppercase tracking-tight">
                   Choose Your Plan
                 </h2>
                 <p className="text-sm font-medium text-foreground/50 mt-2 max-w-xs mx-auto">
@@ -155,7 +155,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       {/* Current Plan Badge */}
                       {isCurrentPlan && (
                         <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm rounded-full px-3 py-1">
-                          <span className="text-[10px] font-bold uppercase text-foreground/70">
+                          <span className="text-xs font-bold uppercase text-foreground/70">
                             Current
                           </span>
                         </div>
@@ -164,37 +164,37 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       <div className="flex items-start gap-4 mb-4">
                         <div className={cn(
                           'w-12 h-12 rounded-full flex items-center justify-center shrink-0',
-                          tier.textColor === 'text-black' ? 'bg-black/10' : 'bg-white/20'
+                          tier.textColor === 'text-foreground' ? 'bg-black/10' : 'bg-white/20'
                         )}>
                           <Icon className={cn(
                             'w-6 h-6',
-                            isCurrentPlan ? 'text-black' : tier.textColor
+                            isCurrentPlan ? 'text-foreground' : tier.textColor
                           )} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className={cn(
-                            'text-[18px] font-black uppercase leading-tight',
+                            'text-lg font-black uppercase leading-tight',
                             tier.textColor
                           )}>
                             {tier.name}
                           </h3>
                           <p className={cn(
-                            'text-[12px] font-bold mt-0.5',
-                            tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
+                            'text-xs font-bold mt-0.5',
+                            tier.textColor === 'text-foreground' ? 'text-foreground/60' : 'text-accent-foreground/70'
                           )}>
                             {tier.tagline}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
                           <span className={cn(
-                            'text-[24px] font-black',
+                            'text-2xl font-black',
                             tier.textColor
                           )}>
                             {tier.price}
                           </span>
                           <span className={cn(
-                            'text-[10px] font-bold ml-0.5',
-                            tier.textColor === 'text-black' ? 'text-foreground/50' : 'text-white/60'
+                            'text-xs font-bold ml-0.5',
+                            tier.textColor === 'text-foreground' ? 'text-foreground/50' : 'text-accent-foreground/60'
                           )}>
                             {tier.period}
                           </span>
@@ -203,7 +203,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
 
                       <p className={cn(
                         'text-[11px] font-medium mb-4',
-                        tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
+                        tier.textColor === 'text-foreground' ? 'text-foreground/60' : 'text-accent-foreground/70'
                       )}>
                         {tier.description}
                       </p>
@@ -214,11 +214,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           <div key={fi} className="flex items-start gap-2.5">
                             <Check className={cn(
                               'w-4 h-4 mt-0.5 shrink-0',
-                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
+                              tier.textColor === 'text-foreground' ? 'text-foreground/70' : 'text-accent-foreground/80'
                             )} />
                             <span className={cn(
-                              'text-[12px] font-medium',
-                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
+                              'text-xs font-medium',
+                              tier.textColor === 'text-foreground' ? 'text-foreground/70' : 'text-accent-foreground/80'
                             )}>
                               {feature}
                             </span>
@@ -249,7 +249,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               </div>
 
               {/* Footer */}
-              <p className="text-center text-[10px] font-medium text-foreground/30 mt-6">
+              <p className="text-center text-xs font-medium text-foreground/30 mt-6">
                 Upgrade anytime. Cancel anytime. Plans are per account.
               </p>
             </div>

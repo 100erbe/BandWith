@@ -25,7 +25,7 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
       <div className="px-6 pt-14 pb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-[15px] font-medium"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
             <path d="M12 4L6 10L12 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -42,13 +42,13 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
           transition={{ duration: 0.5 }}
           className="mb-2"
         >
-          <p className="text-muted-foreground text-[13px] font-semibold uppercase tracking-widest mb-3">
+          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-3">
             Step 2 of 5
           </p>
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-3">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-3">
             What brings you here today?
           </h1>
-          <p className="text-muted-foreground text-[15px] font-medium leading-relaxed max-w-[300px]">
+          <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[300px]">
             Choose how you want to use BandWith. You can always change this later.
           </p>
         </motion.div>
@@ -70,10 +70,10 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
                 <Calendar className="w-6 h-6 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-[18px] font-bold text-foreground mb-1">
+                <h3 className="text-lg font-bold text-foreground mb-1">
                   Organize My Schedule
                 </h3>
-                <p className="text-muted-foreground text-[14px] leading-relaxed">
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Manage personal gigs, sync private rehearsals.{' '}
                   <span className="text-accent font-semibold">Free to use.</span>
                 </p>
@@ -91,10 +91,10 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
                 <Users className="w-6 h-6 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-[18px] font-bold text-foreground mb-1">
+                <h3 className="text-lg font-bold text-foreground mb-1">
                   Manage My Band
                 </h3>
-                <p className="text-muted-foreground text-[14px] leading-relaxed">
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Coordinate shared schedules, automate quotes, and track finances.
                 </p>
               </div>

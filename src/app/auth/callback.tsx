@@ -128,14 +128,14 @@ export default function AuthCallback() {
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-white" />
+      <Loader2 className="w-8 h-8 animate-spin text-accent-foreground" />
       {error ? (
         <>
           <span className="text-red-400 text-sm font-medium">{error}</span>
-          <span className="text-white/40 text-xs">Redirecting back...</span>
+          <span className="text-accent-foreground/40 text-xs">Redirecting back...</span>
         </>
       ) : (
-        <span className="text-white/60 text-sm font-medium">
+        <span className="text-accent-foreground/60 text-sm font-medium">
           {status === 'processing' ? 'Completing sign in...' : 'Redirecting...'}
         </span>
       )}

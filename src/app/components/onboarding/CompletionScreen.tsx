@@ -60,7 +60,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 30 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <h1 className="text-[48px] font-black text-foreground leading-[1.05] tracking-tight mb-4">
+          <h1 className="text-5xl font-black text-foreground leading-[1.05] tracking-tight mb-4">
             Ready<br />
             <span className="text-accent">to rock.</span>
           </h1>
@@ -87,7 +87,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         >
           {/* Members */}
           <div className="flex items-baseline gap-4">
-            <span className="text-[56px] font-black text-foreground leading-none">
+            <span className="text-5xl font-black text-foreground leading-tight">
               {invites.length || 1}
             </span>
             <span className="text-muted-foreground/60 text-lg">
@@ -97,7 +97,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
 
           {/* Songs */}
           <div className="flex items-baseline gap-4">
-            <span className="text-[56px] font-black text-foreground leading-none">
+            <span className="text-5xl font-black text-foreground leading-tight">
               {songs.length || '—'}
             </span>
             <span className="text-muted-foreground/60 text-lg">
@@ -114,7 +114,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
             animate={{ opacity: showContent ? 1 : 0, x: showContent ? 0 : -20 }}
             transition={{ duration: 0.5, delay: 0.8 }}
           >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-accent">
               Signed in as
             </span>
             <p className="text-foreground font-bold text-lg mt-1">

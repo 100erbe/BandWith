@@ -44,13 +44,13 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
             transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
             <span
-              className="text-[32px] font-black tracking-[-0.02em] leading-none text-foreground"
+              className="text-3xl font-black tracking-[-0.02em] leading-tight text-foreground"
               style={{ fontFamily: 'var(--font-display), sans-serif' }}
             >
               BAND
             </span>
             <span
-              className="text-[32px] font-black tracking-[-0.02em] leading-none text-accent"
+              className="text-3xl font-black tracking-[-0.02em] leading-tight text-accent"
               style={{ fontFamily: 'var(--font-display), sans-serif' }}
             >
               WITH

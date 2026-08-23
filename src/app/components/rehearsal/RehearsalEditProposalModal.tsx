@@ -104,7 +104,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                 <div className="flex-1 space-y-6">
                     {/* Type Selection */}
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Attachment Type</label>
+                        <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Attachment Type</label>
                         <div className="grid grid-cols-2 gap-2">
                             {(['link', 'pdf', 'image', 'audio'] as const).map(t => (
                                 <button 
@@ -112,7 +112,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                                     onClick={() => setAttType(t)}
                                     className={cn(
                                         "p-3 rounded-[10px] border flex items-center justify-center gap-2 text-xs font-bold uppercase transition-all",
-                                        attType === t ? "bg-black text-white border-black shadow-md" : "bg-white border-black/10 text-foreground/60 hover:border-black/30"
+                                        attType === t ? "bg-black text-accent-foreground border-black shadow-md" : "bg-white border-black/10 text-foreground/60 hover:border-black/30"
                                     )}
                                 >
                                     {getIconForType(t)} {t}
@@ -126,7 +126,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                             {/* URL Input for Links */}
                             {attType === 'link' && (
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">URL Link</label>
+                                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">URL Link</label>
                                     <input 
                                         value={attUrl}
                                         onChange={e => setAttUrl(e.target.value)}
@@ -139,7 +139,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                             {/* File Upload Mock */}
                             {attType !== 'link' && (
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
+                                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
                                     <div className="border-2 border-dashed border-black/10 rounded-[10px] p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-black/5 transition-colors">
                                         <div className="w-10 h-10 bg-black/5 rounded-full flex items-center justify-center mb-2 text-foreground/40">
                                             {getIconForType(attType)}
@@ -151,7 +151,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
 
                             {/* Label Input */}
                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Label (Required)</label>
+                                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Label (Required)</label>
                                 <input 
                                     value={attLabel}
                                     onChange={e => setAttLabel(e.target.value)}
@@ -167,7 +167,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                                     <button 
                                         onClick={handleSaveAttachment}
                                         disabled={!attType || !attLabel || (attType === 'link' && !attUrl)}
-                                        className="w-full py-3 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full py-3 bg-black text-surface-inverse-foreground rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Add Attachment
                     </button>
@@ -184,14 +184,14 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
         
         {/* Swiss Summary Row */}
         <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-             <div className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1", proposal.status === 'approved' ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>
+             <div className={cn("px-2 py-1 rounded text-xs font-bold uppercase flex items-center gap-1", proposal.status === 'approved' ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>
                  {proposal.status === 'approved' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                  {proposal.status}
              </div>
-             <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
+             <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                  <User className="w-3 h-3" /> By {proposal.proposer}
              </div>
-             <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
+             <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                  <Paperclip className="w-3 h-3" /> {attachments.length} Attachments
              </div>
         </div>
@@ -200,13 +200,13 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
            
            {/* Header Info (Read Only) */}
            <div>
-              <h3 className="font-black text-xl text-foreground leading-none">{proposal.title}</h3>
+              <h3 className="font-black text-xl text-foreground leading-tight">{proposal.title}</h3>
               <p className="text-xs font-bold uppercase text-foreground/50 mt-1">{proposal.artist}</p>
            </div>
 
            {/* Reason */}
            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Reason for proposal</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Reason for proposal</label>
               <textarea 
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -218,8 +218,8 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
            {/* Attachments */}
            <div>
               <div className="flex justify-between items-end mb-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Attachments</label>
-                  <button onClick={() => setView('add_attachment')} className="text-[10px] font-bold uppercase text-foreground hover:underline flex items-center gap-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Attachments</label>
+                  <button onClick={() => setView('add_attachment')} className="text-xs font-bold uppercase text-foreground hover:underline flex items-center gap-1">
                       <Plus className="w-3 h-3" /> Add Attachment
                   </button>
               </div>
@@ -238,7 +238,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
                               </div>
                               <div className="truncate">
                                   <div className="text-xs font-bold truncate">{att.label}</div>
-                                  <div className="text-[9px] text-foreground/40 truncate">{att.url || att.fileMeta?.name || att.type}</div>
+                                  <div className="text-xs text-foreground/40 truncate">{att.url || att.fileMeta?.name || att.type}</div>
                               </div>
                           </div>
                                     <button onClick={() => handleRemoveAttachment(i)} className="p-2 text-foreground/20 hover:text-red-500 transition-colors shrink-0">
@@ -253,7 +253,7 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
         <div className="pt-4 mt-4 border-t border-black/10 shrink-0">
                 <button 
                     onClick={handleSave}
-                    className="w-full py-3 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+                    className="w-full py-3 bg-black text-surface-inverse-foreground rounded-[10px] font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
             >
                 <Save className="w-4 h-4" /> Save Changes
             </button>

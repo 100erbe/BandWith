@@ -19,13 +19,13 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
         <div className="flex flex-col h-[60vh]">
              {/* Swiss Summary Row */}
              <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <MessageCircle className="w-3 h-3" /> Total: {proposals.length}
                  </div>
-                 <div className="px-2 py-1 bg-green-50 text-green-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                 <div className="px-2 py-1 bg-green-50 text-green-800 rounded text-xs font-bold uppercase flex items-center gap-1">
                      <CheckCircle2 className="w-3 h-3" /> Approved: {approved.length}
                  </div>
-                 <div className="px-2 py-1 bg-amber-50 text-amber-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
+                 <div className="px-2 py-1 bg-amber-50 text-amber-800 rounded text-xs font-bold uppercase flex items-center gap-1">
                      <Clock className="w-3 h-3" /> Pending: {pending.length}
                  </div>
             </div>
@@ -35,7 +35,7 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
                 
                 {/* Approved */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 text-green-700">Approved</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2 text-green-700">Approved</h4>
                     {approved.length === 0 ? <div className="text-xs text-foreground/30 italic">None</div> : (
                         <div className="space-y-2">
                             {approved.map(p => (
@@ -43,13 +43,13 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
                                     <div className="flex justify-between items-start mb-1">
                                         <div>
                                             <div className="text-sm font-bold">{p.title}</div>
-                                            <div className="text-[10px] text-foreground/50 uppercase">{p.artist}</div>
+                                            <div className="text-xs text-foreground/50 uppercase">{p.artist}</div>
                                         </div>
-                                        <div className="flex gap-2 text-[10px] font-bold text-foreground/40">
+                                        <div className="flex gap-2 text-xs font-bold text-foreground/40">
                                             <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {p.votes.yes}</span>
                                         </div>
                                     </div>
-                                    <div className="text-[10px] text-foreground/60 italic bg-[var(--surface-alt)] p-1.5 rounded mt-2">"{p.reason}"</div>
+                                    <div className="text-xs text-foreground/60 italic bg-[var(--surface-alt)] p-1.5 rounded mt-2">"{p.reason}"</div>
                                 </div>
                             ))}
                         </div>
@@ -58,7 +58,7 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
 
                 {/* Pending */}
                 <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Pending</h4>
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2">Pending</h4>
                     {pending.length === 0 ? <div className="text-xs text-foreground/30 italic">None</div> : (
                         <div className="space-y-2">
                             {pending.map(p => (
@@ -66,9 +66,9 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
                                     <div className="flex justify-between items-start mb-1">
                                         <div>
                                             <div className="text-sm font-bold text-foreground/70">{p.title}</div>
-                                            <div className="text-[10px] text-foreground/40 uppercase">{p.artist}</div>
+                                            <div className="text-xs text-foreground/40 uppercase">{p.artist}</div>
                                         </div>
-                                        <div className="flex gap-2 text-[10px] font-bold text-foreground/30">
+                                        <div className="flex gap-2 text-xs font-bold text-foreground/30">
                                             <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {p.votes.yes}</span>
                                         </div>
                                     </div>

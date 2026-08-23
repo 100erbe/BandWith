@@ -155,9 +155,9 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
-          <span className="text-muted-foreground text-[13px] font-medium">Step 4/4</span>
+          <span className="text-muted-foreground text-xs font-medium">Step 4/4</span>
         </div>
 
         {/* Progress bar */}
@@ -180,10 +180,10 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-[28px] font-black text-foreground leading-tight mb-2">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-2">
             Build your repertoire
           </h1>
-          <p className="text-muted-foreground text-[15px]">
+          <p className="text-muted-foreground text-sm">
             Add songs your band plays. This helps create setlists later.
           </p>
         </motion.div>
@@ -202,7 +202,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search song or artist..."
-              className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
+              className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
             />
           </div>
         </motion.div>
@@ -214,7 +214,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <label className="text-muted-foreground text-[12px] font-medium mb-3 block uppercase">
+          <label className="text-muted-foreground text-xs font-medium mb-3 block uppercase">
             Popular songs
           </label>
 
@@ -245,15 +245,15 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   </div>
                   <div className="flex-1 text-left">
                     <p
-                      className={`font-medium text-[14px] ${
+                      className={`font-medium text-sm ${
                         isAdded ? 'text-accent' : 'text-foreground'
                       }`}
                     >
                       {song.title}
                     </p>
-                    <p className="text-muted-foreground text-[12px]">{song.artist}</p>
+                    <p className="text-muted-foreground text-xs">{song.artist}</p>
                   </div>
-                  <span className="text-muted-foreground text-[13px] tabular-nums">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {formatDuration(song.duration)}
                   </span>
                 </motion.button>
@@ -269,7 +269,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <label className="text-muted-foreground text-[12px] font-medium mb-3 block uppercase">
+            <label className="text-muted-foreground text-xs font-medium mb-3 block uppercase">
               Your songs ({songs.length})
             </label>
 
@@ -283,14 +283,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     <DotCheckbox checked={true} activeColor="var(--fg)" inactiveColor="var(--dot-inactive)" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[14px] text-accent truncate">
+                    <p className="font-medium text-sm text-accent truncate">
                       {song.title}
                     </p>
-                    <p className="text-muted-foreground text-[12px] truncate">
+                    <p className="text-muted-foreground text-xs truncate">
                       {song.artist || 'Unknown artist'}
                     </p>
                   </div>
-                  <span className="text-muted-foreground text-[13px] tabular-nums">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {formatDuration(song.duration)}
                   </span>
                   <button
@@ -314,14 +314,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
         >
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-card border border-border text-foreground font-medium text-[14px] hover:border-border"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-card border border-border text-foreground font-medium text-sm hover:border-border"
           >
             <Plus className="w-5 h-5" />
             Add Song
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-card border border-border text-foreground font-medium text-[14px] hover:border-border"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-card border border-border text-foreground font-medium text-sm hover:border-border"
           >
             <Upload className="w-5 h-5" />
             Import
@@ -386,14 +386,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                 <X className="w-6 h-6" />
               </button>
 
-              <h3 className="text-foreground font-bold text-[20px] mb-6 flex items-center gap-3">
+              <h3 className="text-foreground font-bold text-xl mb-6 flex items-center gap-3">
                 <Music className="w-6 h-6 text-accent" />
                 Add Custom Song
               </h3>
 
               {/* Song Title */}
               <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   SONG TITLE *
                 </label>
                 <input
@@ -403,13 +403,13 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     setCustomSong((prev) => ({ ...prev, title: e.target.value }))
                   }
                   placeholder="Enter song title"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
               {/* Artist */}
               <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   ARTIST
                 </label>
                 <input
@@ -419,14 +419,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     setCustomSong((prev) => ({ ...prev, artist: e.target.value }))
                   }
                   placeholder="Enter artist name"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 />
               </div>
 
               {/* Duration & BPM */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
-                  <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                  <label className="text-muted-foreground text-xs font-medium mb-2 block">
                     DURATION
                   </label>
                   <div className="relative">
@@ -434,12 +434,12 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     <input
                       type="text"
                       placeholder="3:30"
-                      className="w-full bg-background/30 border border-border rounded-xl pl-10 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                      className="w-full bg-background/30 border border-border rounded-xl pl-10 pr-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                  <label className="text-muted-foreground text-xs font-medium mb-2 block">
                     BPM
                   </label>
                   <input
@@ -452,14 +452,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                       }))
                     }
                     placeholder="120"
-                    className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                    className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                   />
                 </div>
               </div>
 
               {/* Key */}
               <div className="mb-6">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
+                <label className="text-muted-foreground text-xs font-medium mb-2 block">
                   KEY
                 </label>
                 <select
@@ -467,7 +467,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   onChange={(e) =>
                     setCustomSong((prev) => ({ ...prev, key: e.target.value }))
                   }
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] outline-none focus:border-accent/50 appearance-none"
+                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-sm outline-none focus:border-accent/50 appearance-none"
                 >
                   <option value="">Select key</option>
                   <option value="C">C Major</option>
@@ -528,11 +528,11 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                 <X className="w-6 h-6" />
               </button>
 
-              <h3 className="text-foreground font-bold text-[20px] mb-2 flex items-center gap-3">
+              <h3 className="text-foreground font-bold text-xl mb-2 flex items-center gap-3">
                 <Upload className="w-6 h-6 text-accent" />
                 Import Songs
               </h3>
-              <p className="text-muted-foreground text-[14px] mb-6">
+              <p className="text-muted-foreground text-sm mb-6">
                 Choose a source to import your repertoire from:
               </p>
 
@@ -549,8 +549,8 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                       </svg>
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-foreground font-medium text-[15px]">Spotify</p>
-                      <p className="text-muted-foreground text-[13px]">Import from playlists</p>
+                      <p className="text-foreground font-medium text-sm">Spotify</p>
+                      <p className="text-muted-foreground text-xs">Import from playlists</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-muted-foreground" />
                   </button>
@@ -562,8 +562,8 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                       </svg>
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-foreground font-medium text-[15px]">Apple Music</p>
-                      <p className="text-muted-foreground text-[13px]">Import from library</p>
+                      <p className="text-foreground font-medium text-sm">Apple Music</p>
+                      <p className="text-muted-foreground text-xs">Import from library</p>
                     </div>
                     <ArrowRight className="w-5 h-5 text-muted-foreground" />
                   </button>
@@ -580,14 +580,14 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     <Upload className="w-5 h-5 text-foreground" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-foreground font-medium text-[15px]">Upload CSV/Excel</p>
-                    <p className="text-muted-foreground text-[13px]">Import from local file</p>
+                    <p className="text-foreground font-medium text-sm">Upload CSV/Excel</p>
+                    <p className="text-muted-foreground text-xs">Import from local file</p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
 
-              <p className="text-muted-foreground/60 text-[12px] text-center">
+              <p className="text-muted-foreground/60 text-xs text-center">
                 More import options coming soon
               </p>
             </motion.div>

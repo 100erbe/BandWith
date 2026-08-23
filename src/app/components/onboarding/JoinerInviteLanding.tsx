@@ -112,12 +112,12 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             You're
             <br />
             <span className="text-[var(--accent-rehearsal)]">invited</span>
           </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
+          <p className="text-muted-foreground/60 text-base font-medium leading-relaxed">
             {inviterName} invited you to join as <span className="text-accent font-bold">{memberRole}</span>
           </p>
         </motion.div>
@@ -146,11 +146,11 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="text-foreground font-bold text-[20px] leading-tight truncate">
+              <h2 className="text-foreground font-bold text-xl leading-tight truncate">
                 {bandName}
               </h2>
               {inviteData?.band?.description && (
-                <p className="text-muted-foreground/50 text-[13px] line-clamp-1 mt-0.5">
+                <p className="text-muted-foreground/50 text-xs line-clamp-1 mt-0.5">
                   {inviteData.band.description}
                 </p>
               )}
@@ -161,14 +161,14 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           <div className="flex gap-6 mt-5 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-muted-foreground/60">
               <Users className="w-4 h-4" strokeWidth={1.5} />
-              <span className="text-[13px] font-medium">
+              <span className="text-xs font-medium">
                 {memberCount} {memberCount === 1 ? 'member' : 'members'}
               </span>
             </div>
             {inviteData?.created_at && (
               <div className="flex items-center gap-2 text-muted-foreground/60">
                 <Calendar className="w-4 h-4" strokeWidth={1.5} />
-                <span className="text-[13px] font-medium">
+                <span className="text-xs font-medium">
                   Sent {formatDate(inviteData.created_at)}
                 </span>
               </div>
@@ -194,7 +194,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           ].map((item, index) => (
             <div key={index} className="flex items-center gap-3 text-muted-foreground/80">
               <CheckCircle className="w-4 h-4 text-accent" strokeWidth={1.5} />
-              <span className="text-[14px] font-medium">{item}</span>
+              <span className="text-sm font-medium">{item}</span>
             </div>
           ))}
         </motion.div>
@@ -210,7 +210,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         {/* Primary CTA */}
         <button
           onClick={onAccept}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >
           Accept & Continue
           <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
@@ -219,7 +219,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         {/* Decline */}
         <button
           onClick={onDecline}
-          className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
+          className="w-full text-center py-3 text-muted-foreground/50 text-sm font-medium hover:text-muted-foreground/80 transition-colors"
         >
           Decline invitation
         </button>

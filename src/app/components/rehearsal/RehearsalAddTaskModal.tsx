@@ -88,7 +88,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
             
             {/* Description Input */}
             <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Task Description</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Task Description</label>
                 <input 
                     autoFocus
                     value={text}
@@ -100,13 +100,13 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
 
             {/* Assignment Mode Selector */}
             <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Assign To</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Assign To</label>
                 
                 {/* Mode Tabs */}
                 <div className="flex p-1 bg-black/5 rounded-[10px] mb-2">
-                    <button onClick={() => { setAssignMode('all'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'all' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>Entire Band</button>
-                    <button onClick={() => { setAssignMode('single'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'single' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>One Member</button>
-                    <button onClick={() => { setAssignMode('multiple'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'multiple' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>Multiple</button>
+                    <button onClick={() => { setAssignMode('all'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all", assignMode === 'all' ? "bg-black text-accent-foreground shadow-sm" : "text-foreground/40")}>Entire Band</button>
+                    <button onClick={() => { setAssignMode('single'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all", assignMode === 'single' ? "bg-black text-accent-foreground shadow-sm" : "text-foreground/40")}>One Member</button>
+                    <button onClick={() => { setAssignMode('multiple'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all", assignMode === 'multiple' ? "bg-black text-accent-foreground shadow-sm" : "text-foreground/40")}>Multiple</button>
                 </div>
 
                 {/* Member Selection Grid (Only if not All) */}
@@ -120,11 +120,11 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                                     onClick={() => handleToggleMember(m.id)}
                                     className={cn(
                                         "flex flex-col items-start justify-start gap-[10px] px-3 py-2 rounded-[10px] border transition-all text-left group",
-                                        isSelected ? "bg-black border-black text-white" : "bg-white border-black/10 hover:border-black/30 text-foreground/60"
+                                        isSelected ? "bg-black border-black text-accent-foreground" : "bg-white border-black/10 hover:border-black/30 text-foreground/60"
                                     )}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-foreground" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
+                                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold", isSelected ? "bg-white text-foreground" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
                                         <span className="text-xs font-bold">{m.name}</span>
                                     </div>
                                     <DotCheckbox checked={isSelected} activeColor={isSelected ? 'var(--surface-inverse-fg)' : 'var(--fg)'} inactiveColor={isSelected ? "var(--dot-inactive)" : undefined} />
@@ -136,7 +136,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                 
                 {/* Helper Note for Multiple */}
                 {assignMode === 'multiple' && selectedMemberIds.length > 0 && (
-                     <div className="flex items-center gap-2 p-2 bg-black/5 rounded-lg text-[10px] text-foreground/50 font-medium">
+                     <div className="flex items-center gap-2 p-2 bg-black/5 rounded-lg text-xs text-foreground/50 font-medium">
                          <AlertCircle className="w-3 h-3" />
                          Creates {selectedMemberIds.length} separate tasks (one for each member).
                      </div>
@@ -145,15 +145,15 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
 
             {/* Task Type */}
             <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Category</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40">Category</label>
                 <div className="flex flex-wrap gap-2">
                     {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
                         <button 
                             key={t}
                             onClick={() => setType(t as any)}
                             className={cn(
-                                "px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase transition-all",
-                                type === t ? "bg-black text-white border-black" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
+                                "px-3 py-1.5 rounded-lg border text-xs font-bold uppercase transition-all",
+                                type === t ? "bg-black text-accent-foreground border-black" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
                             )}
                         >
                             {t}
@@ -167,7 +167,7 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
                 <button 
                     onClick={handleAdd}
                     disabled={!text || (assignMode !== 'all' && selectedMemberIds.length === 0)}
-                    className="w-full py-4 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-4 bg-black text-surface-inverse-foreground rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="w-4 h-4" /> {getButtonText()}
                 </button>

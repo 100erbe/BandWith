@@ -13,33 +13,6 @@ interface QuoteDetailModalProps {
   onDelete?: (quote: Quote) => void;
 }
 
-const QDotGrid: React.FC<{
-  filled: number;
-  total: number;
-  cols?: number;
-  rows?: number;
-}> = ({ filled, total, cols = 6, rows = 2 }) => {
-  const capped = Math.min(filled, total);
-  return (
-    <div
-      className="grid w-full gap-[4px]"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        height: rows * 15 + (rows - 1) * 4,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{ backgroundColor: i < capped ? 'white' : 'rgba(255,255,255,0.2)' }}
-        />
-      ))}
-    </div>
-  );
-};
-
 const formatBandTotal = (total: number): string => {
   if (total >= 1000) return `€${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}K`;
   return `€${total}`;
@@ -93,9 +66,9 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-white"
               style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
             >
-              <ArrowLeft className="w-[24px] h-[24px] text-white" />
+              <ArrowLeft className="w-[24px] h-[24px] text-accent-foreground" />
             </button>
-            <span className="text-[32px] font-bold text-white uppercase">QUOTE</span>
+            <span className="text-3xl font-bold text-accent-foreground uppercase">QUOTE</span>
           </div>
 
           {/* Event Info */}
@@ -103,23 +76,23 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <div className="flex-1 flex flex-col gap-[4px] min-w-0">
               <div className="flex gap-[4px] items-center flex-wrap">
                 <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
-                  <span className="text-[12px] font-bold uppercase text-accent-quote">QUOTE</span>
+                  <span className="text-xs font-bold uppercase text-accent-quote">QUOTE</span>
                 </div>
                 <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
-                  <span className="text-[12px] font-bold uppercase text-accent-quote">
+                  <span className="text-xs font-bold uppercase text-accent-quote">
                     {quote.eventTitle?.split(' ')[0]?.toUpperCase() || 'EVENT'}
                   </span>
                 </div>
               </div>
-              <h2 className="text-[32px] font-bold text-white uppercase leading-tight">
+              <h2 className="text-3xl font-bold text-accent-foreground uppercase leading-tight">
                 {quote.eventTitle || 'UNTITLED'}
               </h2>
               <div className="flex flex-col gap-[2px]">
                 <div className="flex items-center gap-[8px]">
-                  <span className="text-[16px] font-bold text-white uppercase">
+                  <span className="text-base font-bold text-accent-foreground uppercase">
                     {quote.clientName || 'TBD'}
                   </span>
-                  <ArrowUpRight className="w-[18px] h-[18px] text-white" />
+                  <ArrowUpRight className="w-[18px] h-[18px] text-accent-foreground" />
                 </div>
               </div>
             </div>
@@ -131,7 +104,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 textColor="white"
               />
               <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                <span className="text-[12px] font-bold text-white uppercase whitespace-nowrap">
+                <span className="text-xs font-bold text-accent-foreground uppercase whitespace-nowrap">
                   START - 3:30 PM
                 </span>
               </div>
@@ -142,16 +115,16 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           <div className="flex gap-[20px]">
             <div className="flex-1 flex flex-col">
               <div className="flex items-center gap-[6px]">
-                <span className="text-[12px] font-bold text-white uppercase">YEAR</span>
+                <span className="text-xs font-bold text-accent-foreground uppercase">YEAR</span>
               </div>
-              <span className="text-[42px] font-bold text-white leading-none">{year || '2028'}</span>
+              <span className="text-4xl font-bold text-accent-foreground leading-tight">{year || '2028'}</span>
             </div>
             <div className="flex-1 flex flex-col">
               <div className="flex items-center gap-[6px]">
-                <span className="text-[12px] font-bold text-white uppercase">DATE</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                <span className="text-xs font-bold text-accent-foreground uppercase">DATE</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
               </div>
-              <span className="text-[42px] font-bold text-white leading-none">{monthDay}</span>
+              <span className="text-4xl font-bold text-accent-foreground leading-tight">{monthDay}</span>
             </div>
           </div>
 
@@ -161,7 +134,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               <div className="flex">
                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
                   <div key={i} className="flex-1 text-center">
-                    <span className="text-[10px] font-bold text-white">{d}</span>
+                    <span className="text-xs font-bold text-accent-foreground">{d}</span>
                   </div>
                 ))}
               </div>
@@ -179,7 +152,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       style={{ backgroundColor: isEventDay ? 'white' : 'transparent' }}
                     >
                       <span
-                        className="text-[12px] font-medium"
+                        className="text-xs font-medium"
                         style={{ color: isEventDay ? 'var(--accent-quote)' : 'white' }}
                       >
                         {day}
@@ -196,33 +169,31 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <div className="flex items-center gap-[6px]">
-                  <span className="text-[12px] font-bold text-white uppercase">CLIENT</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <span className="text-xs font-bold text-accent-foreground uppercase">CLIENT</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">
+                <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {(quote.clientName || 'MIA').split(' ')[0]?.toUpperCase()}
                 </span>
-                <span className="text-[22px] font-bold text-white leading-none">
+                <span className="text-xl font-bold text-accent-foreground leading-tight">
                   {(quote.clientName || 'MIA CALIFA').split(' ').slice(1).join(' ')?.toUpperCase() || 'CALIFA'}
                 </span>
               </div>
-              <QDotGrid filled={6} total={40} cols={8} rows={5} />
             </div>
 
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <div className="flex items-center gap-[6px]">
-                  <span className="text-[12px] font-bold text-white uppercase">PRICING & FINANCE</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <span className="text-xs font-bold text-accent-foreground uppercase">PRICING & FINANCE</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">
+                <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {formatBandTotal(quote.total)}
                 </span>
-                <span className="text-[22px] font-bold text-white leading-none">
+                <span className="text-xl font-bold text-accent-foreground leading-tight">
                   DP{dp}%
                 </span>
               </div>
-              <QDotGrid filled={8} total={40} cols={8} rows={5} />
             </div>
           </div>
 
@@ -230,12 +201,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           <div className="flex flex-col gap-[20px]">
             <div className="flex flex-col">
               <div className="flex items-center gap-[6px]">
-                <span className="text-[12px] font-bold text-white uppercase">GUESTS</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                <span className="text-xs font-bold text-accent-foreground uppercase">GUESTS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
               </div>
-              <span className="text-[42px] font-bold text-white leading-none">150</span>
+              <span className="text-4xl font-bold text-accent-foreground leading-tight">150</span>
             </div>
-            <QDotGrid filled={150} total={200} cols={20} rows={10} />
           </div>
 
           {/* Music Moments + Members */}
@@ -243,25 +213,23 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <div className="flex items-center gap-[6px]">
-                  <span className="text-[12px] font-bold text-white uppercase">MUSIC MOMENTS</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <span className="text-xs font-bold text-accent-foreground uppercase">MUSIC MOMENTS</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">
+                <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {quote.lineItems?.length || 3}
                 </span>
               </div>
-              <QDotGrid filled={quote.lineItems?.length || 3} total={12} cols={6} rows={2} />
             </div>
 
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <div className="flex items-center gap-[6px]">
-                  <span className="text-[12px] font-bold text-white uppercase">MEMBERS</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <span className="text-xs font-bold text-accent-foreground uppercase">MEMBERS</span>
+                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">8</span>
+                <span className="text-4xl font-bold text-accent-foreground leading-tight">8</span>
               </div>
-              <QDotGrid filled={8} total={12} cols={6} rows={2} />
             </div>
           </div>
         </div>
@@ -277,17 +245,17 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 onClick={() => canEdit && onEdit?.(quote)}
                 className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black"
               >
-                <Plus className="w-[18px] h-[18px] text-white" />
-                <span className="text-[16px] font-bold text-white uppercase">EDIT</span>
+                <Plus className="w-[18px] h-[18px] text-accent-foreground" />
+                <span className="text-base font-bold text-accent-foreground uppercase">EDIT</span>
               </button>
               <button className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black">
-                <Plus className="w-[18px] h-[18px] text-white" />
-                <span className="text-[16px] font-bold text-white uppercase">CONVERT</span>
+                <Plus className="w-[18px] h-[18px] text-accent-foreground" />
+                <span className="text-base font-bold text-accent-foreground uppercase">CONVERT</span>
               </button>
             </div>
             <button
               onClick={() => onDelete?.(quote)}
-              className="text-[12px] font-medium text-[var(--destructive)] uppercase"
+              className="text-xs font-medium text-[var(--destructive)] uppercase"
             >
               DELETE THIS QUOTE
             </button>

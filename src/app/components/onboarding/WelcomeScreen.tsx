@@ -37,7 +37,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         }}
       >
         <Loader2 className="w-8 h-8 text-accent animate-spin mb-4" />
-        <p className="text-muted-foreground text-[15px] font-medium">
+        <p className="text-muted-foreground text-sm font-medium">
           Checking invite code…
         </p>
       </div>
@@ -85,14 +85,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
           >
-            <h1 className="text-[40px] font-black text-foreground leading-[1.05] tracking-tight mb-4">
+            <h1 className="text-4xl font-black text-foreground leading-[1.05] tracking-tight mb-4">
               Your music,
               <br />
               your schedule,
               <br />
               <span className="text-accent">your way.</span>
             </h1>
-            <p className="text-muted-foreground text-[15px] font-medium leading-relaxed max-w-[280px]">
+            <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[280px]">
               Manage gigs, rehearsals, and sync your band — or just keep your own calendar in tune.
             </p>
         </motion.div>
@@ -112,7 +112,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                <span className="text-[13px] text-muted-foreground/70 font-medium">
+                <span className="text-xs text-muted-foreground/70 font-medium">
                   {feature}
                 </span>
               </div>
@@ -130,7 +130,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {/* Primary CTA */}
           <button
             onClick={onGetStarted}
-            className="w-full h-14 rounded-full text-[13px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            className="w-full h-14 rounded-full text-xs font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
           >
             Get Started
             <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
@@ -153,7 +153,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     setSubmitted(false);
                   }}
                   placeholder="Enter invite code"
-                  className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
+                  className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-sm font-medium placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleInviteSubmit();
@@ -162,13 +162,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <button
                   onClick={handleInviteSubmit}
                   disabled={inviteCode.trim().length < 2}
-                  className="h-12 px-5 rounded-xl bg-accent text-accent-foreground text-[13px] font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
+                  className="h-12 px-5 rounded-xl bg-accent text-accent-foreground text-xs font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
                 >
                   Join
                 </button>
               </div>
               {inviteCodeError && (
-                <p className="text-red-400 text-[13px] font-medium px-1">
+                <p className="text-red-400 text-xs font-medium px-1">
                   {inviteCodeError}
                 </p>
               )}
@@ -178,7 +178,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   setInviteCode('');
                   setSubmitted(false);
                 }}
-                className="text-muted-foreground/40 text-[12px] font-semibold hover:text-muted-foreground/70 transition-colors"
+                className="text-muted-foreground/40 text-xs font-semibold hover:text-muted-foreground/70 transition-colors"
               >
                 Cancel
               </button>
@@ -186,7 +186,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           ) : (
             <button
               onClick={() => setShowInviteInput(true)}
-              className="w-full h-14 rounded-full text-[13px] font-bold uppercase tracking-[0.1em] text-muted-foreground/55 hover:text-muted-foreground/90 hover:bg-card active:scale-[0.98] transition-all flex items-center justify-center border border-border"
+              className="w-full h-14 rounded-full text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground/55 hover:text-muted-foreground/90 hover:bg-card active:scale-[0.98] transition-all flex items-center justify-center border border-border"
             >
               I have an invite code
             </button>
@@ -196,7 +196,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <div className="text-center pt-3">
             <button
               onClick={onSignIn}
-              className="text-muted-foreground/40 text-[13px] font-semibold hover:text-muted-foreground/80 transition-colors"
+              className="text-muted-foreground/40 text-xs font-semibold hover:text-muted-foreground/80 transition-colors"
             >
               Already have an account?{' '}
               <span className="text-muted-foreground/60 underline underline-offset-4 decoration-border">

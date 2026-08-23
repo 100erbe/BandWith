@@ -120,8 +120,8 @@ const eventToEventItem = (event: Event): EventItem => {
     price: event.fee?.toString() || "0",
     members: [],
     color:
-      (status === "REHEARSAL") ? "bg-accent-rehearsal text-white"
-        : (status === "QUOTE") ? "bg-accent-quote text-white"
+      (status === "REHEARSAL") ? "bg-accent-rehearsal text-accent-foreground"
+        : (status === "QUOTE") ? "bg-accent-quote text-accent-foreground"
         : (status === "DRAFT") ? "bg-black/20 text-foreground/60"
         : "bg-accent-gig text-accent-gig-foreground",
     notes: event.notes || undefined,

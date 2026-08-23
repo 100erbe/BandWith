@@ -338,8 +338,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1">Music</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">REPERTOIRE</h1>
+            <p className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-1">Music</p>
+            <h1 className="text-4xl font-black text-foreground tracking-tight uppercase">REPERTOIRE</h1>
             <p className="text-sm text-foreground/50 font-bold tracking-tight mt-1">{selectedBand?.name}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -347,7 +347,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
               onClick={() => viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true)}
               className="w-12 h-12 rounded-full bg-accent flex items-center justify-center active:scale-95 transition-transform"
             >
-              <Plus className="w-5 h-5 text-black" />
+              <Plus className="w-5 h-5 text-foreground" />
             </button>
             <button
               onClick={onClose}
@@ -365,7 +365,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             className={cn(
               "flex-1 py-3 rounded-full font-bold text-sm transition-all flex items-center justify-center gap-2",
               viewMode === 'songs'
-                ? "bg-black text-white"
+                ? "bg-black text-accent-foreground"
                 : "bg-white/60 text-foreground/50 hover:bg-white"
             )}
           >
@@ -377,7 +377,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             className={cn(
               "flex-1 py-3 rounded-full font-bold text-sm transition-all flex items-center justify-center gap-2",
               viewMode === 'setlists'
-                ? "bg-black text-white"
+                ? "bg-black text-accent-foreground"
                 : "bg-white/60 text-foreground/50 hover:bg-white"
             )}
           >
@@ -394,7 +394,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={viewMode === 'songs' ? "Search songs..." : "Search setlists..."}
-            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-sm font-medium text-black placeholder:text-foreground/30 border border-black/5 focus:outline-none focus:border-black/20 transition-colors"
+            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-sm font-medium text-foreground placeholder:text-foreground/30 border border-black/5 focus:outline-none focus:border-black/20 transition-colors"
           />
         </div>
       </div>
@@ -421,9 +421,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 <div className="relative z-10">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <span className="text-accent text-[10px] font-bold uppercase tracking-widest block mb-1">Repertoire</span>
+                      <span className="text-accent text-xs font-bold uppercase tracking-widest block mb-1">Repertoire</span>
                       <div className="flex items-baseline gap-3">
-                        <h3 className="text-4xl font-black text-white tracking-tighter">{stats.totalSongs}</h3>
+                        <h3 className="text-4xl font-black text-accent-foreground tracking-tighter">{stats.totalSongs}</h3>
                         <span className="text-stone-500 text-lg font-medium">songs</span>
                       </div>
                     </div>
@@ -436,31 +436,31 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <div className="flex items-center gap-2 mb-1">
                         <Timer className="w-4 h-4 text-accent" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Duration</span>
+                        <span className="text-xs font-bold text-stone-500 uppercase">Duration</span>
                       </div>
-                      <span className="text-xl font-black text-white">{stats.totalDuration || '0m'}</span>
+                      <span className="text-xl font-black text-accent-foreground">{stats.totalDuration || '0m'}</span>
                     </motion.div>
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.25 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
                       <div className="flex items-center gap-2 mb-1">
                         <ListMusic className="w-4 h-4 text-purple-400" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Setlists</span>
+                        <span className="text-xs font-bold text-stone-500 uppercase">Setlists</span>
                       </div>
-                      <span className="text-xl font-black text-white">{stats.totalSetlists}</span>
+                      <span className="text-xl font-black text-accent-foreground">{stats.totalSetlists}</span>
                     </motion.div>
                     {stats.avgBpm && (
                       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.3 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
                         <div className="flex items-center gap-2 mb-1">
                           <Zap className="w-4 h-4 text-amber-400" />
-                          <span className="text-[10px] font-bold text-stone-500 uppercase">Avg BPM</span>
+                          <span className="text-xs font-bold text-stone-500 uppercase">Avg BPM</span>
                         </div>
-                        <span className="text-xl font-black text-white">{stats.avgBpm}</span>
+                        <span className="text-xl font-black text-accent-foreground">{stats.avgBpm}</span>
                       </motion.div>
                     )}
                   </div>
 
                   {stats.totalSongs > 0 && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                      <div className="flex items-center justify-between text-[10px] font-bold text-stone-500 mb-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-stone-500 mb-2">
                         <span>SONG STATUS</span>
                         <span>{stats.ready} of {stats.totalSongs} ready</span>
                       </div>
@@ -469,7 +469,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                         <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.learning / stats.totalSongs) * 100}%` }} transition={{ delay: 0.5, duration: 0.5 }} className="bg-yellow-500 h-full" />
                         <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.suggested / stats.totalSongs) * 100}%` }} transition={{ delay: 0.6, duration: 0.5 }} className="bg-stone-500 h-full" />
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-[10px] font-bold">
+                      <div className="flex items-center gap-4 mt-2 text-xs font-bold">
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> Ready</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500" /> Learning</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-stone-500" /> Suggested</span>
@@ -489,7 +489,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   <div className="flex flex-col items-center gap-3 mt-6">
                     <button 
                       onClick={() => setShowAddSong(true)}
-                      className="px-6 py-3 bg-black text-white rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                      className="px-6 py-3 bg-black text-surface-inverse-foreground rounded-full font-bold text-sm hover:scale-105 transition-transform"
                     >
                       Add First Song
                     </button>
@@ -508,7 +508,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 </div>
               ) : (
                 <>
-                  <h4 className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest mb-3 px-1">All Songs</h4>
+                  <h4 className="text-xs font-bold text-foreground/40 uppercase tracking-widest mb-3 px-1">All Songs</h4>
                   <div className="space-y-2">
                     {filteredSongs.map((song, i) => (
                       <motion.div
@@ -522,7 +522,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           <GripVertical className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-black truncate">{song.title}</h3>
+                          <h3 className="font-bold text-foreground truncate">{song.title}</h3>
                           <div className="flex items-center gap-3 mt-1">
                             {song.artist && <span className="text-xs text-foreground/50 truncate">{song.artist}</span>}
                             {song.bpm && <span className="text-xs text-foreground/40">{song.bpm} BPM</span>}
@@ -534,7 +534,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           <span className="text-xs font-medium">{formatDuration(song.duration_seconds)}</span>
                         </div>
                         <span className={cn(
-                          "text-[10px] font-bold uppercase px-2 py-1 rounded-full",
+                          "text-xs font-bold uppercase px-2 py-1 rounded-full",
                           song.status === 'ready' ? "bg-green-100 text-green-600" :
                           song.status === 'learning' ? "bg-yellow-100 text-yellow-600" :
                           "bg-black/5 text-foreground/50"
@@ -582,7 +582,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   <p className="text-sm text-center">Create setlists to organize your performances</p>
                   <button 
                     onClick={() => setShowAddSetlist(true)}
-                    className="mt-6 px-6 py-3 bg-black text-white rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                    className="mt-6 px-6 py-3 bg-black text-surface-inverse-foreground rounded-full font-bold text-sm hover:scale-105 transition-transform"
                   >
                     Create First Setlist
                   </button>
@@ -599,10 +599,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       className="bg-white rounded-[1.5rem] p-5 border border-black/5 shadow-sm cursor-pointer hover:border-black/15 hover:shadow-md transition-all active:scale-[0.99] group"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-black text-lg text-black">{setlist.name}</h3>
+                        <h3 className="font-black text-lg text-foreground">{setlist.name}</h3>
                         <div className="flex items-center gap-2">
                           {setlist.is_template && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 bg-accent text-accent-foreground rounded-full">
+                            <span className="text-xs font-bold uppercase px-2 py-1 bg-accent text-accent-foreground rounded-full">
                               Template
                             </span>
                           )}
@@ -662,23 +662,23 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
               onClick={e => e.stopPropagation()}
             >
               <div className="w-12 h-1 bg-black/10 rounded-full mx-auto mb-6" />
-              <h2 className="text-2xl font-black text-black mb-6">Create Setlist</h2>
+              <h2 className="text-2xl font-black text-foreground mb-6">Create Setlist</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-foreground/40 uppercase tracking-widest mb-2">Name *</label>
+                  <label className="block text-xs font-bold text-foreground/40 uppercase tracking-widest mb-2">Name *</label>
                   <input
                     type="text"
                     value={newSetlistName}
                     onChange={(e) => setNewSetlistName(e.target.value)}
                     placeholder="e.g., Jazz Night Set"
-                    className="w-full h-14 px-4 rounded-2xl bg-black/[0.03] text-black font-medium placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="w-full h-14 px-4 rounded-2xl bg-black/[0.03] text-foreground font-medium placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
                 <button
                   onClick={handleAddSetlist}
                   disabled={!newSetlistName}
                   className={cn(
-                    "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-black text-white hover:scale-[1.02] active:scale-[0.98]",
+                    "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-black text-accent-foreground hover:scale-[1.02] active:scale-[0.98]",
                     !newSetlistName && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -713,7 +713,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={closeSetlistEditor}
-                      className="flex items-center gap-2 text-foreground/60 hover:text-black transition-colors font-bold text-sm"
+                      className="flex items-center gap-2 text-foreground/60 hover:text-foreground transition-colors font-bold text-sm"
                     >
                       <ArrowLeft className="w-5 h-5" /> Back
                     </button>
@@ -727,7 +727,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       <button
                         onClick={handleSaveSetlist}
                         disabled={setlistEditorSaving || !editingSetlistName.trim()}
-                        className="px-5 py-2.5 bg-black text-white rounded-full font-bold text-sm flex items-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50"
+                        className="px-5 py-2.5 bg-black text-surface-inverse-foreground rounded-full font-bold text-sm flex items-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50"
                       >
                         {setlistEditorSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Save
@@ -736,7 +736,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   </div>
 
                   <div className="mb-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Setlist Name</label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Setlist Name</label>
                     <input
                       type="text"
                       value={editingSetlistName}
@@ -747,7 +747,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   </div>
 
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">
+                    <span className="text-xs font-bold uppercase tracking-widest text-foreground/40">
                       {editorSongs.length} songs
                     </span>
                   </div>
@@ -762,7 +762,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                     >
                       <Search className="w-4 h-4 text-foreground/40" />
                       <span className="text-sm font-bold text-foreground/40 group-hover:text-foreground/60">Add songs from library...</span>
-                      <div className="ml-auto bg-white px-2 py-1 rounded text-[10px] font-bold text-foreground/40 shadow-sm border border-black/5">
+                      <div className="ml-auto bg-white px-2 py-1 rounded text-xs font-bold text-foreground/40 shadow-sm border border-black/5">
                         {songs.length} available
                       </div>
                     </button>
@@ -782,7 +782,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       >
                         {/* Search Header */}
                         <div className="p-3 border-b border-black/5 flex items-center gap-3 bg-white shrink-0">
-                          <Search className="w-4 h-4 text-black" />
+                          <Search className="w-4 h-4 text-foreground" />
                           <input
                             autoFocus
                             placeholder="Search library..."
@@ -796,9 +796,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                         </div>
 
                         <div className="px-3 py-2 bg-[var(--surface-alt)] border-b border-black/5 flex items-center justify-between shrink-0">
-                          <span className="text-[10px] font-bold text-foreground/30">{editorFilteredLibrary.length} results</span>
+                          <span className="text-xs font-bold text-foreground/30">{editorFilteredLibrary.length} results</span>
                           {setlistSelectedToAdd.length > 0 && (
-                            <span className="text-[10px] font-bold text-foreground/60">{setlistSelectedToAdd.length} selected</span>
+                            <span className="text-xs font-bold text-foreground/60">{setlistSelectedToAdd.length} selected</span>
                           )}
                         </div>
 
@@ -816,17 +816,17 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 onClick={() => handleEditorToggleSelect(song.id)}
                                 className={cn(
                                   "w-full p-3 rounded-xl flex items-center justify-between transition-all text-left border",
-                                  isSelected ? "border-black bg-black text-white" : "border-black/5 bg-white hover:border-black/20"
+                                  isSelected ? "border-black bg-black text-accent-foreground" : "border-black/5 bg-white hover:border-black/20"
                                 )}
                               >
                                 <div className="min-w-0">
                                   <div className="font-bold text-sm truncate">{song.title}</div>
-                                  <div className={cn("text-[10px] uppercase", isSelected ? "text-white/60" : "text-foreground/50")}>
+                                  <div className={cn("text-xs uppercase", isSelected ? "text-accent-foreground/60" : "text-foreground/50")}>
                                     {song.artist || 'Unknown'}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                                  <span className={cn("text-[10px] font-medium", isSelected ? "text-white/40" : "text-foreground/30")}>
+                                  <span className={cn("text-xs font-medium", isSelected ? "text-accent-foreground/40" : "text-foreground/30")}>
                                     {formatDuration(song.duration_seconds)}
                                   </span>
                                   {isSelected ? (
@@ -877,14 +877,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           )}
                         >
                           <GripVertical className="w-4 h-4 text-foreground/20 shrink-0" />
-                          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-black text-surface-inverse-foreground flex items-center justify-center text-xs font-bold shrink-0">
                             {i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-bold text-sm truncate">{song.title}</div>
-                            <div className="text-[10px] text-foreground/50 uppercase truncate">{song.artist || 'Unknown'}</div>
+                            <div className="text-xs text-foreground/50 uppercase truncate">{song.artist || 'Unknown'}</div>
                           </div>
-                          <span className="text-[10px] font-medium text-foreground/30 shrink-0">
+                          <span className="text-xs font-medium text-foreground/30 shrink-0">
                             {formatDuration(song.duration_seconds)}
                           </span>
                           <button

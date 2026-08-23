@@ -60,15 +60,15 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
+          <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             No invites
             <br />
             <span className="text-muted-foreground/30">found</span>
           </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
+          <p className="text-muted-foreground/60 text-base font-medium leading-relaxed">
             We couldn't find pending invitations for
           </p>
-          <p className="text-foreground font-bold text-[16px] mt-1">
+          <p className="text-foreground font-bold text-base mt-1">
             {email}
           </p>
         </motion.div>
@@ -80,7 +80,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
         >
-          <p className="text-muted-foreground/50 text-[12px] font-bold uppercase tracking-[0.15em] mb-3">
+          <p className="text-muted-foreground/50 text-xs font-bold uppercase tracking-[0.15em] mb-3">
             What to do
           </p>
           
@@ -91,8 +91,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
                 <Mail className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Check spam folder</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
+                <p className="text-foreground font-bold text-sm mb-0.5">Check spam folder</p>
+                <p className="text-muted-foreground/60 text-xs leading-relaxed">
                   The invite email might be in spam or promotions
                 </p>
               </div>
@@ -103,8 +103,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
                 <RefreshCw className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Try another email</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
+                <p className="text-foreground font-bold text-sm mb-0.5">Try another email</p>
+                <p className="text-muted-foreground/60 text-xs leading-relaxed">
                   The invite might have been sent to a different address
                 </p>
               </div>
@@ -115,8 +115,8 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
                 <MessageCircle className="w-5 h-5 text-accent" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Contact your admin</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
+                <p className="text-foreground font-bold text-sm mb-0.5">Contact your admin</p>
+                <p className="text-muted-foreground/60 text-xs leading-relaxed">
                   Ask them to resend the invitation
                 </p>
               </div>
@@ -135,7 +135,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
         {/* Primary CTA */}
         <button
           onClick={onBack}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-card/80 text-foreground hover:bg-white/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-card/80 text-foreground hover:bg-white/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >
           Try Another Email
         </button>
@@ -143,7 +143,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
         {/* Secondary action */}
         <button
           onClick={onCreateBand}
-          className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
+          className="w-full text-center py-3 text-muted-foreground/50 text-sm font-medium hover:text-muted-foreground/80 transition-colors"
         >
           Or <span className="text-accent">create your own band</span> →
         </button>

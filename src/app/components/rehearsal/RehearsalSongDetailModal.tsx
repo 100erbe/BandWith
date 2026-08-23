@@ -33,10 +33,10 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
         {/* Tags */}
         <div className="flex gap-[4px] flex-wrap">
           <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-[12px] font-bold uppercase text-accent-rehearsal">SONG</span>
+            <span className="text-xs font-bold uppercase text-accent-rehearsal">SONG</span>
           </div>
           <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-[12px] font-bold uppercase text-accent-rehearsal">
+            <span className="text-xs font-bold uppercase text-accent-rehearsal">
               {data.priority?.toUpperCase() || 'MEDIUM'}
             </span>
           </div>
@@ -45,19 +45,19 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
         {/* Title + Artist */}
         <div className="flex flex-col gap-[20px]">
           <div className="flex flex-col gap-[4px]">
-            <span className="text-[12px] font-bold text-white uppercase">TITLE</span>
+            <span className="text-xs font-bold text-accent-foreground uppercase">TITLE</span>
             <input
               value={data.title}
               onChange={e => setData({ ...data, title: e.target.value })}
-              className="bg-transparent border-b-2 border-white/30 py-[8px] text-[32px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all"
+              className="bg-transparent border-b-2 border-white/30 py-[8px] text-3xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-white transition-all"
             />
           </div>
           <div className="flex flex-col gap-[4px]">
-            <span className="text-[12px] font-bold text-white uppercase">ARTIST</span>
+            <span className="text-xs font-bold text-accent-foreground uppercase">ARTIST</span>
             <input
               value={data.artist}
               onChange={e => setData({ ...data, artist: e.target.value })}
-              className="bg-transparent border-b-2 border-white/30 py-[8px] text-[22px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all"
+              className="bg-transparent border-b-2 border-white/30 py-[8px] text-xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-white transition-all"
             />
           </div>
         </div>
@@ -66,25 +66,25 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
         <div className="grid grid-cols-2 gap-[20px]">
           <div className="flex flex-col gap-[4px]">
             <div className="flex items-center gap-[6px]">
-              <span className="text-[12px] font-bold text-white uppercase">DURATION</span>
-              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              <span className="text-xs font-bold text-accent-foreground uppercase">DURATION</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
             </div>
             <input
               value={data.duration}
               onChange={e => setData({ ...data, duration: e.target.value })}
-              className="bg-transparent border-b-2 border-white/30 py-[8px] text-[42px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all"
+              className="bg-transparent border-b-2 border-white/30 py-[8px] text-4xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-white transition-all"
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <span className="text-[12px] font-bold text-white uppercase">PRIORITY</span>
+            <span className="text-xs font-bold text-accent-foreground uppercase">PRIORITY</span>
             <div className="flex bg-white/10 rounded-[10px] p-[4px]">
               {(['high', 'medium', 'low'] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setData({ ...data, priority: p })}
                   className={cn(
-                    "flex-1 py-[8px] rounded-[8px] text-[12px] font-bold uppercase transition-all",
-                    data.priority === p ? "bg-white text-accent-rehearsal" : "text-white/50"
+                    "flex-1 py-[8px] rounded-[8px] text-xs font-bold uppercase transition-all",
+                    data.priority === p ? "bg-white text-accent-rehearsal" : "text-accent-foreground/50"
                   )}
                 >
                   {p}
@@ -96,23 +96,23 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
 
         {/* Notes */}
         <div className="flex flex-col gap-[4px]">
-          <span className="text-[12px] font-bold text-white uppercase">NOTES</span>
+          <span className="text-xs font-bold text-accent-foreground uppercase">NOTES</span>
           <textarea
             value={data.notes || ''}
             onChange={e => setData({ ...data, notes: e.target.value })}
-            className="bg-transparent border-b-2 border-white/30 py-[8px] text-[14px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all min-h-[100px] resize-none"
+            className="bg-transparent border-b-2 border-white/30 py-[8px] text-sm font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-white transition-all min-h-[100px] resize-none"
             placeholder="Notes for the band..."
           />
         </div>
 
         {/* Resources */}
         <div className="flex flex-col gap-[8px]">
-          <span className="text-[12px] font-bold text-white uppercase">RESOURCES</span>
+          <span className="text-xs font-bold text-accent-foreground uppercase">RESOURCES</span>
           <div className="grid grid-cols-2 gap-[8px]">
-            <button className="py-[16px] bg-white/20 rounded-[10px] flex items-center justify-center gap-[8px] text-[12px] font-bold uppercase text-white">
+            <button className="py-[16px] bg-white/20 rounded-[10px] flex items-center justify-center gap-[8px] text-xs font-bold uppercase text-accent-foreground">
               <LinkIcon className="w-[16px] h-[16px]" /> LINKS
             </button>
-            <button className="py-[16px] bg-white/20 rounded-[10px] flex items-center justify-center gap-[8px] text-[12px] font-bold uppercase text-white">
+            <button className="py-[16px] bg-white/20 rounded-[10px] flex items-center justify-center gap-[8px] text-xs font-bold uppercase text-accent-foreground">
               <FileText className="w-[16px] h-[16px]" /> SCORE/TABS
             </button>
           </div>
@@ -129,14 +129,14 @@ export const RehearsalSongDetailModal: React.FC<Props> = ({ isOpen, onClose, son
               onClick={handleSave}
               className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white/20"
             >
-              <span className="text-[16px] font-bold text-white uppercase">SAVE</span>
+              <span className="text-base font-bold text-accent-foreground uppercase">SAVE</span>
             </button>
             <button
               onClick={handleSave}
               className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-card"
             >
               <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
-              <span className="text-[16px] font-bold text-accent-rehearsal uppercase">SETLIST</span>
+              <span className="text-base font-bold text-accent-rehearsal uppercase">SETLIST</span>
             </button>
           </div>
         </div>

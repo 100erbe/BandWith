@@ -65,25 +65,25 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   const themeColors = useMemo(() => {
     switch (theme) {
       case 'blue': return {
-        bg: 'bg-[var(--accent-rehearsal)]', text: 'text-white', subtext: 'text-white/50',
-        input: 'border-white/20 text-white placeholder:text-white/30 focus:border-white',
-        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[var(--accent-rehearsal)]',
+        bg: 'bg-[var(--accent-rehearsal)]', text: 'text-accent-foreground', subtext: 'text-accent-foreground/50',
+        input: 'border-white/20 text-accent-foreground placeholder:text-accent-foreground/30 focus:border-white',
+        pill: 'bg-white/20 text-accent-foreground', pillActive: 'bg-white text-[var(--accent-rehearsal)]',
         card: 'bg-white/10', accent: 'bg-accent text-accent-foreground',
-        btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
+        btnPrimary: 'bg-black text-accent-foreground', btnSecondary: 'bg-white/20 text-accent-foreground',
       };
       case 'beige': return {
-        bg: 'bg-[var(--secondary)]', text: 'text-white', subtext: 'text-white/50',
-        input: 'border-white/20 text-white placeholder:text-white/30 focus:border-white',
-        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[var(--secondary-foreground)]',
-        card: 'bg-white/10', accent: 'bg-white text-black',
-        btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
+        bg: 'bg-[var(--secondary)]', text: 'text-accent-foreground', subtext: 'text-accent-foreground/50',
+        input: 'border-white/20 text-accent-foreground placeholder:text-accent-foreground/30 focus:border-white',
+        pill: 'bg-white/20 text-accent-foreground', pillActive: 'bg-white text-[var(--secondary-foreground)]',
+        card: 'bg-white/10', accent: 'bg-white text-foreground',
+        btnPrimary: 'bg-black text-accent-foreground', btnSecondary: 'bg-white/20 text-accent-foreground',
       };
       default: return {
         bg: 'bg-accent', text: 'text-accent-foreground', subtext: 'text-accent-foreground/50',
-        input: 'border-black/10 text-black placeholder:text-foreground/20 focus:border-black',
-        pill: 'bg-black/10 text-black', pillActive: 'bg-black text-white',
+        input: 'border-black/10 text-foreground placeholder:text-foreground/20 focus:border-black',
+        pill: 'bg-black/10 text-foreground', pillActive: 'bg-black text-accent-foreground',
         card: 'bg-white', accent: 'bg-black text-accent',
-        btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white text-black',
+        btnPrimary: 'bg-black text-accent-foreground', btnSecondary: 'bg-white text-foreground',
       };
     }
   }, [theme]);
@@ -216,16 +216,16 @@ export const SongPicker: React.FC<SongPickerProps> = ({
             'w-10 h-10 rounded-full border-2 flex items-center justify-center',
             theme === 'lime' ? 'border-black' : 'border-white'
           )}>
-            <ArrowLeft className={cn('w-5 h-5', theme === 'lime' ? 'text-black' : 'text-white')} />
+            <ArrowLeft className={cn('w-5 h-5', theme === 'lime' ? 'text-foreground' : 'text-accent-foreground')} />
           </button>
-          <span className={cn('text-[18px] font-bold uppercase', themeColors.text)}>
+          <span className={cn('text-lg font-bold uppercase', themeColors.text)}>
             {tab === 'library' ? 'SONG LIBRARY' : 'ADD NEW SONG'}
           </span>
           <button onClick={onClose} className={cn(
             'w-[44px] h-[44px] rounded-full border-2 flex items-center justify-center',
             theme === 'lime' ? 'border-black bg-[rgba(216,216,216,0.3)]' : 'border-white bg-white/10'
           )}>
-            <X className={cn('w-5 h-5', theme === 'lime' ? 'text-black' : 'text-white')} />
+            <X className={cn('w-5 h-5', theme === 'lime' ? 'text-foreground' : 'text-accent-foreground')} />
           </button>
         </div>
 
@@ -234,7 +234,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
           <button
             onClick={() => setTab('library')}
             className={cn(
-              'flex-1 py-2.5 rounded-[10px] text-[12px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5',
+              'flex-1 py-2.5 rounded-[10px] text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5',
               tab === 'library' ? themeColors.pillActive : themeColors.pill
             )}
           >
@@ -243,7 +243,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
           <button
             onClick={() => setTab('add')}
             className={cn(
-              'flex-1 py-2.5 rounded-[10px] text-[12px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5',
+              'flex-1 py-2.5 rounded-[10px] text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5',
               tab === 'add' ? themeColors.pillActive : themeColors.pill
             )}
           >
@@ -283,7 +283,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                   <button
                     onClick={() => setFilterCategory(null)}
                     className={cn(
-                      'px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all',
+                      'px-3 py-1 rounded-full text-xs font-bold uppercase transition-all',
                       !filterCategory ? themeColors.pillActive : themeColors.pill
                     )}
                   >
@@ -294,7 +294,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                       key={cat}
                       onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
                       className={cn(
-                        'px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all',
+                        'px-3 py-1 rounded-full text-xs font-bold uppercase transition-all',
                         filterCategory === cat ? themeColors.pillActive : themeColors.pill
                       )}
                     >
@@ -339,7 +339,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                           <div className="flex items-center gap-2">
                             <span className={cn('text-sm font-bold block truncate', themeColors.text)}>{song.title}</span>
                             {selectedIds.includes(song.id) && !multiSelected.has(song.id) && (
-                              <span className={cn('text-[9px] font-bold uppercase px-1.5 py-0.5 rounded', theme === 'lime' ? 'bg-black/10 text-foreground/50' : 'bg-white/15 text-white/60')}>
+                              <span className={cn('text-xs font-bold uppercase px-1.5 py-0.5 rounded', theme === 'lime' ? 'bg-black/10 text-foreground/50' : 'bg-white/15 text-accent-foreground/60')}>
                                 In set
                               </span>
                             )}
@@ -359,7 +359,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                             {song.category && (
                               <>
                                 <span className={cn('w-1 h-1 rounded-full', theme === 'lime' ? 'bg-black/20' : 'bg-white/20')} />
-                                <span className={cn('text-[10px] font-bold uppercase', themeColors.subtext)}>
+                                <span className={cn('text-xs font-bold uppercase', themeColors.subtext)}>
                                   {song.category}
                                 </span>
                               </>
@@ -381,7 +381,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
             <motion.div key="add" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="flex flex-col gap-5 pt-2">
                 <div>
-                  <span className={cn('text-[10px] font-bold uppercase block mb-1', themeColors.subtext)}>SONG TITLE *</span>
+                  <span className={cn('text-xs font-bold uppercase block mb-1', themeColors.subtext)}>SONG TITLE *</span>
                   <input
                     type="text"
                     value={newTitle}
@@ -391,7 +391,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                   />
                 </div>
                 <div>
-                  <span className={cn('text-[10px] font-bold uppercase block mb-1', themeColors.subtext)}>ARTIST</span>
+                  <span className={cn('text-xs font-bold uppercase block mb-1', themeColors.subtext)}>ARTIST</span>
                   <input
                     type="text"
                     value={newArtist}
@@ -401,7 +401,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                   />
                 </div>
                 <div>
-                  <span className={cn('text-[10px] font-bold uppercase block mb-1', themeColors.subtext)}>
+                  <span className={cn('text-xs font-bold uppercase block mb-1', themeColors.subtext)}>
                     LINK (SPOTIFY, YOUTUBE, DRIVE)
                   </span>
                   <div className="relative">
@@ -414,7 +414,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                       className={cn('w-full bg-transparent border-b-2 pl-6 py-2 text-sm font-bold focus:outline-none transition-all', themeColors.input)}
                     />
                   </div>
-                  <span className={cn('text-[10px] font-bold mt-1 block', themeColors.subtext)}>
+                  <span className={cn('text-xs font-bold mt-1 block', themeColors.subtext)}>
                     Spotify, YouTube, Google Drive, or any audio link
                   </span>
                 </div>
@@ -439,7 +439,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
               disabled={!newTitle.trim() || saving}
               className={cn(
                 'py-4 rounded-[10px] flex items-center justify-center gap-2 font-bold text-sm uppercase transition-all',
-                newTitle.trim() && !saving ? themeColors.btnPrimary : 'bg-black/30 text-white/50 cursor-not-allowed'
+                newTitle.trim() && !saving ? themeColors.btnPrimary : 'bg-black/30 text-accent-foreground/50 cursor-not-allowed'
               )}
             >
               {saving ? 'Saving...' : 'Add & Select'}

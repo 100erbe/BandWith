@@ -30,21 +30,6 @@ interface SettingsViewProps {
   initialSection?: SettingsSection;
 }
 
-const SectionDotGrid: React.FC<{ filled: number; color?: string }> = ({ filled, color = 'var(--fg)' }) => (
-  <div
-    className="grid gap-1 w-full h-[32px]"
-    style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(2, 1fr)' }}
-  >
-    {Array.from({ length: 12 }).map((_, i) => (
-      <div
-        key={i}
-        className="rounded-[10px]"
-        style={{ backgroundColor: i < filled ? color : 'rgba(255,255,255,0.1)' }}
-      />
-    ))}
-  </div>
-);
-
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSection = 'main' }) => {
   const { user, signOut, isAuthenticated } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
@@ -87,7 +72,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         >
           <div className="flex flex-col items-start">
             <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
-            <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
+            <span className="text-xs font-medium text-foreground/40 uppercase">{item.desc}</span>
           </div>
           <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
         </motion.button>
@@ -97,8 +82,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderNotificationsSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={pushEnabled && emailEnabled && soundEnabled ? 12 : pushEnabled && emailEnabled ? 8 : pushEnabled ? 4 : 0} />
-
       <div className="flex flex-col gap-0">
         <SettingsToggle
           label="PUSH NOTIFICATIONS"
@@ -127,8 +110,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderAppearanceSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={mode === 'light' ? 4 : mode === 'dark' ? 8 : 12} />
-
       <div className="flex flex-col gap-2">
         <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">THEME</span>
         <div className="flex flex-col gap-0">
@@ -154,7 +135,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             </button>
           ))}
         </div>
-        <p className="text-[10px] font-medium text-foreground/30 uppercase mt-2">
+        <p className="text-xs font-medium text-foreground/30 uppercase mt-2">
           Current: {resolvedTheme === 'dark' ? 'Dark' : 'Light'} mode
         </p>
       </div>
@@ -163,8 +144,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderPrivacySection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={6} color="var(--accent-rehearsal)" />
-
       <div className="flex flex-col gap-0">
         <SettingsToggle
           label="SHOW ONLINE STATUS"
@@ -191,14 +170,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           }}
           className="w-full border border-black bg-black rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
-          <span className="text-[12px] font-bold text-white uppercase">SIGN OUT</span>
+          <span className="text-xs font-bold text-accent-foreground uppercase">SIGN OUT</span>
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
           className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
           <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
-          <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">DELETE ACCOUNT</span>
+          <span className="text-xs font-bold text-[var(--destructive)] uppercase">DELETE ACCOUNT</span>
         </button>
       </div>
     </div>
@@ -206,8 +185,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderHelpSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={8} color="var(--accent-quote)" />
-
       <div className="flex flex-col gap-0">
         {[
           { label: 'FAQ', desc: 'Common questions answered' },
@@ -221,7 +198,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           >
             <div className="flex flex-col items-start">
               <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
-              <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
+              <span className="text-xs font-medium text-foreground/40 uppercase">{item.desc}</span>
             </div>
             <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
           </button>
@@ -233,20 +210,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
   const renderAboutSection = () => (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-5">
-        <div
-          className="grid gap-1 w-[120px] h-[72px]"
-          style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(4, 1fr)' }}
-        >
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-[10px]"
-              style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'rgba(255,255,255,0.1)' }}
-            />
-          ))}
-        </div>
         <div className="flex flex-col">
-          <span className="text-[42px] font-bold text-foreground leading-none">BANDWITH</span>
+          <span className="text-4xl font-bold text-foreground leading-tight">BANDWITH</span>
           <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
         </div>
       </div>
@@ -267,7 +232,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         ))}
       </div>
 
-      <p className="text-[10px] font-normal text-foreground/30 text-center uppercase">
+      <p className="text-xs font-normal text-foreground/30 text-center uppercase">
         Made with love for musicians
       </p>
     </div>
@@ -275,10 +240,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderLanguageSection = () => (
     <div className="flex flex-col gap-8">
-      <SectionDotGrid filled={3} color="var(--accent-rehearsal)" />
-
       <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-medium text-foreground/40 uppercase">
+        <span className="text-xs font-medium text-foreground/40 uppercase">
           More languages coming soon.
         </span>
         <button className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70">
@@ -319,7 +282,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
           >
             <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
-          <h1 className="text-[32px] font-bold text-foreground leading-none uppercase">{sectionTitle}</h1>
+          <h1 className="text-3xl font-bold text-foreground leading-tight uppercase">{sectionTitle}</h1>
         </div>
       </div>
 
@@ -366,8 +329,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                   <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
                 </div>
                 <div className="flex flex-col gap-2 text-center">
-                  <h2 className="text-[22px] font-bold text-foreground uppercase">DELETE ACCOUNT?</h2>
-                  <p className="text-[10px] font-medium text-foreground/40 uppercase">
+                  <h2 className="text-xl font-bold text-foreground uppercase">DELETE ACCOUNT?</h2>
+                  <p className="text-xs font-medium text-foreground/40 uppercase">
                     This action cannot be undone. All your data will be permanently deleted.
                   </p>
                 </div>
@@ -379,7 +342,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                     Cancel
                   </button>
                   <button
-                    className="flex-1 h-12 rounded-[10px] bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-[10px] bg-[var(--destructive)] text-accent-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
                   >
                     Delete
                   </button>
@@ -411,7 +374,7 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon
       <Icon className="w-4 h-4 text-foreground/40 shrink-0" />
       <div className="flex flex-col items-start">
         <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
-        <span className="text-[10px] font-medium text-foreground/40 uppercase">{desc}</span>
+        <span className="text-xs font-medium text-foreground/40 uppercase">{desc}</span>
       </div>
     </div>
     <DotCheckbox checked={enabled} className="!w-[60px] !h-[38px]" />

@@ -105,17 +105,17 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
       >
         <button 
           onClick={(e) => { e.stopPropagation(); onClose(); }} 
-          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-accent-foreground hover:bg-white/30 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <span className="text-xs font-bold tracking-[0.2em] text-white/60 uppercase block">My Earnings</span>
-          <span className="text-sm font-black text-white">{bandName}</span>
+          <span className="text-xs font-bold tracking-[0.2em] text-accent-foreground/60 uppercase block">My Earnings</span>
+          <span className="text-sm font-black text-accent-foreground">{bandName}</span>
         </div>
         <div className={cn(
           "px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5",
-          earningsData.trend >= 0 ? "bg-white/20 text-white" : "bg-red-500/20 text-red-200"
+          earningsData.trend >= 0 ? "bg-white/20 text-accent-foreground" : "bg-red-500/20 text-red-200"
         )}>
           {earningsData.trend >= 0 ? (
             <TrendingUp className="w-3.5 h-3.5" />
@@ -129,7 +129,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
       <div className="px-3 pb-32 space-y-6">
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <Loader2 className="w-8 h-8 animate-spin text-white" />
+            <Loader2 className="w-8 h-8 animate-spin text-accent-foreground" />
           </div>
         ) : (
           <>
@@ -147,7 +147,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">€{earningsData.totalEarned}</span>
-                <span className="text-[10px] font-bold uppercase text-stone-400">Total Earned</span>
+                <span className="text-xs font-bold uppercase text-stone-400">Total Earned</span>
               </motion.div>
               
               <motion.div 
@@ -162,7 +162,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">{earningsData.totalGigs}</span>
-                <span className="text-[10px] font-bold uppercase text-stone-400">Total Gigs</span>
+                <span className="text-xs font-bold uppercase text-stone-400">Total Gigs</span>
               </motion.div>
               
               <motion.div 
@@ -177,7 +177,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">€{earningsData.avgPerGig}</span>
-                <span className="text-[10px] font-bold uppercase text-stone-400">Avg / Gig</span>
+                <span className="text-xs font-bold uppercase text-stone-400">Avg / Gig</span>
               </motion.div>
             </div>
 
@@ -196,9 +196,9 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                       key={period}
                       onClick={() => setSelectedPeriod(period)}
                       className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all",
+                        "px-3 py-1 rounded-full text-xs font-bold uppercase transition-all",
                         selectedPeriod === period 
-                          ? "bg-[var(--accent-gig)] text-white" 
+                          ? "bg-[var(--accent-gig)] text-accent-foreground" 
                           : "text-stone-500 hover:text-stone-700"
                       )}
                     >
@@ -227,11 +227,11 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                         whileHover={{ scale: 1.05 }}
                       >
                         {/* Tooltip on hover */}
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--surface-inverse)] text-white px-2 py-1 rounded-lg text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--surface-inverse)] text-accent-foreground px-2 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                           €{data.amount}
                         </div>
                       </motion.div>
-                      <span className="text-[10px] font-bold text-stone-400">{data.month}</span>
+                      <span className="text-xs font-bold text-stone-400">{data.month}</span>
                     </motion.div>
                   );
                 })}
@@ -248,7 +248,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Upcoming Payments</h3>
                 <div className="px-2.5 py-1 bg-teal-100 rounded-full">
-                  <span className="text-[10px] font-bold text-teal-700">{upcomingPayments.length} pending</span>
+                  <span className="text-xs font-bold text-teal-700">{upcomingPayments.length} pending</span>
                 </div>
               </div>
               
@@ -275,7 +275,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                         </div>
                         <div>
                           <span className="font-bold text-sm text-foreground block">{payment.title}</span>
-                          <span className="text-[10px] text-stone-400">{payment.date}</span>
+                          <span className="text-xs text-stone-400">{payment.date}</span>
                         </div>
                       </div>
                       <span className="font-black text-lg text-foreground">€{payment.amount}</span>
@@ -302,12 +302,12 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest block mb-1">Your Default Fee</span>
-                  <span className="text-3xl font-black text-white">€{memberFee || '--'}</span>
-                  <span className="text-white/60 text-xs block mt-1">per event</span>
+                  <span className="text-accent-foreground/70 text-xs font-bold uppercase tracking-widest block mb-1">Your Default Fee</span>
+                  <span className="text-3xl font-black text-accent-foreground">€{memberFee || '--'}</span>
+                  <span className="text-accent-foreground/60 text-xs block mt-1">per event</span>
                 </div>
                 <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-                  <Wallet className="w-8 h-8 text-white" />
+                  <Wallet className="w-8 h-8 text-accent-foreground" />
                 </div>
               </div>
             </motion.div>

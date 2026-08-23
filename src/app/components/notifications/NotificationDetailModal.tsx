@@ -150,7 +150,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             >
               <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
             </button>
-            <h1 className="text-[20px] font-bold uppercase text-foreground">
+            <h1 className="text-xl font-bold uppercase text-foreground">
               {viewingIndex !== null ? 'DETAILS' : (isListView ? 'NOTIFICATIONS' : getTypeLabel(detailNotif?.type || ''))}
             </h1>
           </div>
@@ -171,7 +171,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     >
                       {/* Type badge */}
                       <div className={cn(
-                        'px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 mt-[2px]',
+                        'px-2 py-0.5 rounded text-xs font-bold uppercase shrink-0 mt-[2px]',
                         isRead ? 'bg-foreground/10 text-muted-foreground' : 'bg-foreground text-background'
                       )}>
                         {label}
@@ -180,17 +180,17 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <span className={cn(
-                            'text-[12px] font-bold uppercase truncate',
+                            'text-xs font-bold uppercase truncate',
                             isRead ? 'text-muted-foreground' : 'text-foreground'
                           )}>
                             {notif.title}
                           </span>
-                          <span className="text-[10px] font-bold text-foreground/40 shrink-0 mt-px">
+                          <span className="text-xs font-bold text-foreground/40 shrink-0 mt-px">
                             {formatTime(notif.created_at)}
                           </span>
                         </div>
                         {notif.body && (
-                          <p className="text-[10px] font-medium text-foreground/50 truncate mt-1">
+                          <p className="text-xs font-medium text-foreground/50 truncate mt-1">
                             {notif.body}
                           </p>
                         )}
@@ -205,18 +205,18 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 {/* Title section */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground text-background">
+                    <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-foreground text-background">
                       {getTypeLabel(detailNotif.type)}
                     </span>
-                    <span className="text-[10px] font-bold text-foreground/40">
+                    <span className="text-xs font-bold text-foreground/40">
                       {formatTime(detailNotif.created_at)}
                     </span>
                   </div>
-                  <h2 className="text-[20px] font-bold uppercase text-foreground leading-tight">
+                  <h2 className="text-xl font-bold uppercase text-foreground leading-tight">
                     {detailNotif.title}
                   </h2>
                   {detailNotif.body && (
-                    <p className="text-[12px] font-medium text-muted-foreground leading-relaxed">
+                    <p className="text-xs font-medium text-muted-foreground leading-relaxed">
                       {detailNotif.body}
                     </p>
                   )}
@@ -235,33 +235,33 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         <>
                           {d.event_title && (
                             <div className="flex flex-col gap-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">EVENT</span>
-                              <span className="text-[16px] font-bold uppercase text-foreground">{String(d.event_title)}</span>
+                              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">EVENT</span>
+                              <span className="text-base font-bold uppercase text-foreground">{String(d.event_title)}</span>
                             </div>
                           )}
                           <div className="grid grid-cols-2 gap-6">
                             {d.event_date && (
                               <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">DATE & TIME</span>
-                                <span className="text-[16px] font-bold text-foreground">{formatEventDate(String(d.event_date))}</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">DATE & TIME</span>
+                                <span className="text-base font-bold text-foreground">{formatEventDate(String(d.event_date))}</span>
                                 {d.event_time && (
-                                  <span className="text-[12px] font-bold text-muted-foreground">{String(d.event_time)}</span>
+                                  <span className="text-xs font-bold text-muted-foreground">{String(d.event_time)}</span>
                                 )}
                               </div>
                             )}
                             {d.venue && (
                               <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">VENUE</span>
-                                <span className="text-[16px] font-bold text-foreground uppercase">{String(d.venue)}</span>
+                                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">VENUE</span>
+                                <span className="text-base font-bold text-foreground uppercase">{String(d.venue)}</span>
                               </div>
                             )}
                           </div>
                           {(d.member_fee || d.fee) && (
                             <div className="flex flex-col gap-1">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 {d.member_fee ? 'YOUR FEE' : 'TOTAL FEE'}
                               </span>
-                              <span className="text-[16px] font-bold text-foreground">€{Number(d.member_fee || d.fee).toLocaleString()}</span>
+                              <span className="text-base font-bold text-foreground">€{Number(d.member_fee || d.fee).toLocaleString()}</span>
                             </div>
                           )}
                           <button
@@ -270,7 +270,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             className="w-full py-3 rounded-[10px] flex items-center justify-center gap-2 bg-foreground/10"
                           >
                             <CalendarPlus className="w-4 h-4 text-foreground/60" />
-                            <span className="text-[12px] font-bold uppercase text-foreground/60">
+                            <span className="text-xs font-bold uppercase text-foreground/60">
                               {isAddingToCalendar ? 'ADDING...' : 'ADD TO CALENDAR'}
                             </span>
                           </button>
@@ -280,20 +280,20 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         <div className="flex flex-col gap-3">
                           {d.invitee_email && (
                             <div className="flex justify-between items-center py-3 border-b border-border">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">EMAIL</span>
-                              <span className="text-[12px] font-bold text-foreground">{String(d.invitee_email)}</span>
+                              <span className="text-xs font-bold uppercase text-muted-foreground">EMAIL</span>
+                              <span className="text-xs font-bold text-foreground">{String(d.invitee_email)}</span>
                             </div>
                           )}
                           {d.inviter_name && (
                             <div className="flex justify-between items-center py-3 border-b border-border">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">INVITED BY</span>
-                              <span className="text-[12px] font-bold text-foreground">{String(d.inviter_name)}</span>
+                              <span className="text-xs font-bold uppercase text-muted-foreground">INVITED BY</span>
+                              <span className="text-xs font-bold text-foreground">{String(d.inviter_name)}</span>
                             </div>
                           )}
                           {d.member_name && (
                             <div className="flex justify-between items-center py-3 border-b border-border">
-                              <span className="text-[10px] font-bold uppercase text-muted-foreground">MEMBER</span>
-                              <span className="text-[12px] font-bold text-foreground">{String(d.member_name)}</span>
+                              <span className="text-xs font-bold uppercase text-muted-foreground">MEMBER</span>
+                              <span className="text-xs font-bold text-foreground">{String(d.member_name)}</span>
                             </div>
                           )}
                         </div>
@@ -313,7 +313,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 className="w-full py-4 rounded-[10px] flex items-center justify-center gap-2 bg-foreground"
               >
                 <Check className="w-4 h-4 text-background" />
-                <span className="text-[14px] font-bold uppercase text-background">MARK ALL READ</span>
+                <span className="text-sm font-bold uppercase text-background">MARK ALL READ</span>
               </button>
             ) : detailNotif?.type === 'event_invite' ? (
               <div className="flex flex-col gap-3 items-center">
@@ -322,13 +322,13 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     onClick={() => handleAction('decline_event')}
                     className="rounded-[10px] py-4 flex items-center justify-center bg-foreground/10"
                   >
-                    <span className="text-[14px] font-bold uppercase text-foreground">DECLINE</span>
+                    <span className="text-sm font-bold uppercase text-foreground">DECLINE</span>
                   </button>
                   <button
                     onClick={() => handleAction('accept_event')}
                     className="rounded-[10px] py-4 flex items-center justify-center bg-foreground"
                   >
-                    <span className="text-[14px] font-bold uppercase text-background">ACCEPT</span>
+                    <span className="text-sm font-bold uppercase text-background">ACCEPT</span>
                   </button>
                 </div>
                 {!detailNotif.read && (
@@ -349,14 +349,14 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       className="rounded-[10px] py-4 flex items-center justify-center gap-2 bg-foreground"
                     >
                       <Check className="w-4 h-4 text-background" />
-                      <span className="text-[14px] font-bold uppercase text-background">READ</span>
+                      <span className="text-sm font-bold uppercase text-background">READ</span>
                     </button>
                   )}
                   <button
                     onClick={() => onDelete?.(detailNotif?.id)}
                     className="rounded-[10px] py-4 flex items-center justify-center bg-foreground/10"
                   >
-                    <span className="text-[14px] font-bold uppercase text-[var(--destructive)]">DELETE</span>
+                    <span className="text-sm font-bold uppercase text-[var(--destructive)]">DELETE</span>
                   </button>
                 </div>
               </div>

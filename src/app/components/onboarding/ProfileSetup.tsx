@@ -102,10 +102,10 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-[13px] font-medium">
+            <span className="text-muted-foreground text-xs font-medium">
               Step {stepNumber}/{totalSteps}
             </span>
           </div>
@@ -131,10 +131,10 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
+          <h1 className="text-3xl font-black text-foreground leading-tight mb-2">
             Tell us about you
           </h1>
-          <p className="text-muted-foreground text-[16px]">
+          <p className="text-muted-foreground text-base">
             How should your bandmates know you?
           </p>
         </motion.div>
@@ -146,7 +146,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <label className="text-muted-foreground text-[13px] font-medium mb-2 block">
+          <label className="text-muted-foreground text-xs font-medium mb-2 block">
             YOUR NAME *
           </label>
           <input
@@ -154,7 +154,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="John Doe"
-            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[24px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
+            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-2xl font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
           />
         </motion.div>
 
@@ -165,7 +165,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <label className="text-muted-foreground text-[13px] font-medium mb-4 block">
+          <label className="text-muted-foreground text-xs font-medium mb-4 block">
             YOUR ROLE/INSTRUMENT *
           </label>
 
@@ -177,7 +177,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   key={instrument.id}
                   type="button"
                   onClick={() => toggleInstrument(instrument.id)}
-                  className={`px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 transition-all ${
+                  className={`px-4 py-3 rounded-2xl font-medium text-sm flex items-center gap-2 transition-all ${
                     isSelected
                       ? 'bg-accent text-accent-foreground'
                       : 'bg-card text-foreground border border-border hover:border-border'
@@ -204,7 +204,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                       prev.filter((i) => i !== custom)
                     )
                   }
-                  className="px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 bg-accent text-accent-foreground"
+                  className="px-4 py-3 rounded-2xl font-medium text-sm flex items-center gap-2 bg-accent text-accent-foreground"
                   whileTap={{ scale: 0.95 }}
                 >
                   ✓ {custom}
@@ -224,7 +224,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 value={customInstrument}
                 onChange={(e) => setCustomInstrument(e.target.value)}
                 placeholder="Enter instrument..."
-                className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-foreground text-[14px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
+                className="flex-1 bg-card border border-border rounded-xl px-4 py-3 text-foreground text-sm placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -236,14 +236,14 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               <button
                 type="button"
                 onClick={addCustomInstrument}
-                className="px-4 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-[14px]"
+                className="px-4 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm"
               >
                 Add
               </button>
               <button
                 type="button"
                 onClick={() => setShowCustomInput(false)}
-                className="px-4 py-3 rounded-xl bg-card text-muted-foreground/70 font-medium text-[14px] border border-border"
+                className="px-4 py-3 rounded-xl bg-card text-muted-foreground/70 font-medium text-sm border border-border"
               >
                 Cancel
               </button>
@@ -260,13 +260,13 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             className="mt-4"
           >
             <div className="border-l-2 border-accent pl-4 py-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-accent">
                 Your Role
               </span>
               <h3 className="text-foreground font-bold text-lg mt-1">
                 Band Admin
               </h3>
-              <p className="text-muted-foreground/60 text-[13px] mt-0.5">
+              <p className="text-muted-foreground/60 text-xs mt-0.5">
                 Full control over settings, events, and members.
               </p>
             </div>
@@ -284,7 +284,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             <p className="text-muted-foreground text-[11px] font-medium mb-2 uppercase">
               Joining
             </p>
-            <h3 className="text-foreground font-bold text-[18px]">{bandData.name}</h3>
+            <h3 className="text-foreground font-bold text-lg">{bandData.name}</h3>
           </motion.div>
         )}
       </div>

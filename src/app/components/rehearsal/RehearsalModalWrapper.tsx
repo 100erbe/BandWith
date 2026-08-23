@@ -52,7 +52,7 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
                   <ArrowLeft className="w-[24px] h-[24px]" style={{ color: textColor }} />
                 </button>
                 <span
-                  className="text-[32px] font-bold uppercase"
+                  className="text-3xl font-bold uppercase"
                   style={{ color: textColor }}
                 >
                   {title}

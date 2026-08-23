@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>
@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>

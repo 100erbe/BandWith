@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Clock, MapPin, MoreHorizontal } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 
@@ -59,10 +58,10 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
               layoutId={`date-block-${event.id}`}
               className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-accent transition-colors shrink-0"
             >
-                <span className="text-[10px] font-black uppercase text-stone-400 group-hover:text-black leading-none mb-0.5">
+                <span className="text-xs font-black uppercase text-stone-400 group-hover:text-foreground leading-tight mb-0.5">
                   {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
                 </span>
-                <span className="text-xl font-black text-foreground leading-none group-hover:text-black">{event.date?.split('-')[2] || '--'}</span>
+                <span className="text-xl font-black text-foreground leading-tight group-hover:text-foreground">{event.date?.split('-')[2] || '--'}</span>
             </motion.div>
             
             {/* Title & Status */}
@@ -78,24 +77,19 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
                 </motion.h4>
             </div>
         </div>
-        
-        {/* Menu Button */}
-        <motion.button 
-          layoutId={`menu-btn-${event.id}`}
-          className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:text-black hover:bg-stone-100 transition-colors"
-        >
-            <MoreHorizontal className="w-4 h-4" />
-        </motion.button>
+
+        {/* Pill badge replaces the top-right menu icon */}
+        <StatusBadge status={event.status} />
       </div>
       
-      {/* Metadata */}
+      {/* Metadata — typographic only, no icons */}
       <motion.div 
         layoutId={`meta-${event.id}`}
         className="flex items-center gap-3 text-xs font-bold text-stone-400 uppercase tracking-wide mb-6 pl-1"
       >
-          <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+          <span>{event.time}</span>
           <span className="w-1 h-1 rounded-full bg-stone-300" />
-          <span className="flex items-center gap-1.5 truncate max-w-[150px]"><MapPin className="w-3.5 h-3.5" /> {event.location}</span>
+          <span className="truncate max-w-[150px]">{event.location}</span>
       </motion.div>
 
       {/* Footer */}
@@ -105,10 +99,10 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       >
           <div className="flex -space-x-2">
               {event.members.length > 0 ? event.members.map((m, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
+                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-accent-foreground text-xs font-bold">
                       {m}
                   </div>
-              )) : <span className="text-[10px] font-bold text-stone-400 uppercase">No team</span>}
+              )) : <span className="text-xs font-bold text-stone-400 uppercase">No team</span>}
           </div>
           <span className="text-xl font-black text-foreground">€{event.price}</span>
       </motion.div>
