@@ -64,7 +64,7 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
 
   return (
     <motion.div
-      className="bg-card rounded-[2rem] p-6 border border-border"
+      className="bg-card rounded-4xl p-6 border border-border"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}

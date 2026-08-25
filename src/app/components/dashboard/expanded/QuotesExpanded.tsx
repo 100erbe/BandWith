@@ -253,7 +253,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     >
       {/* Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--secondary)]/95 backdrop-blur-md" 
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-secondary/95 backdrop-blur-md" 
         initial={{ opacity: 0, y: -20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -261,7 +261,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         <div className="flex items-center gap-4">
           <button 
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-foreground hover:bg-white/20 transition-colors backdrop-blur-sm"
+            className="w-10 h-10 rounded-full bg-surface-inverse-foreground/10 flex items-center justify-center text-foreground hover:bg-muted/20 transition-colors backdrop-blur-sm"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -269,7 +269,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </div>
         <button 
           onClick={() => setIsCreating(true)}
-          className="w-10 h-10 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-accent-foreground shadow-lg hover:scale-105 transition-transform"
+          className="w-10 h-10 rounded-full bg-surface-inverse flex items-center justify-center text-accent-foreground shadow-lg hover:scale-105 transition-transform"
         >
           <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
@@ -284,16 +284,16 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
           initial={{ opacity: 0, scale: 0.95 }} 
           animate={{ opacity: 1, scale: 1 }} 
           transition={{ delay: 0.3 }} 
-          className="mb-8 p-6 bg-[var(--surface-inverse)] rounded-[2.5rem] relative overflow-hidden shadow-2xl" 
+          className="mb-8 p-6 bg-surface-inverse rounded-[2.5rem] relative overflow-hidden shadow-2xl" 
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative z-10 flex flex-col gap-6">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[var(--secondary)] text-xs font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
-                <h3 className="text-4xl font-black text-[var(--bg)] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
+                <span className="text-secondary text-xs font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
+                <h3 className="text-4xl font-black text-background tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
               </div>
-              <div className="bg-[var(--surface-inverse)] p-2 rounded-full">
+              <div className="bg-surface-inverse p-2 rounded-full">
                 <BarChart3 className="w-5 h-5 text-accent-quote" />
               </div>
             </div>
@@ -302,14 +302,14 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             <div className="h-28 flex items-end justify-between gap-1.5 px-1 pb-2 relative">
               {activeQuotes.length === 0 ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                  <BarChart3 className="w-8 h-8 text-stone-600 mb-2" />
-                  <p className="text-stone-500 text-xs">No pipeline data</p>
+                  <BarChart3 className="w-8 h-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground text-xs">No pipeline data</p>
                 </div>
               ) : activeQuotes.slice(0, 7).map((quote, i) => { 
                 const heightPct = Math.min(100, Math.max(20, (quote.total / 12000) * 100)); 
                 const probability = getProbabilityFromStatus(quote.status);
-                let barColor = "bg-[var(--surface-inverse)]"; 
-                if (probability > 40) barColor = "bg-[var(--secondary)]"; 
+                let barColor = "bg-surface-inverse"; 
+                if (probability > 40) barColor = "bg-secondary"; 
                 if (probability > 70) barColor = "bg-accent-quote"; 
                 const isActive = activeChartId === quote.id; 
                 
@@ -320,17 +320,17 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     initial={{ height: "0%" }} 
                     animate={{ height: `${heightPct}%` }} 
                     transition={{ delay: 0.2 + (i * 0.03), type: "tween", duration: 0.3, ease: "easeOut" }} 
-                    className={cn("flex-1 rounded-t-lg relative group min-w-[12px] cursor-pointer", barColor)}
+                    className={cn("flex-1 rounded-t-lg relative group min-w-3 cursor-pointer", barColor)}
                   >
                     {probability > 70 && (
                       <motion.div 
                         animate={{ opacity: [0.5, 1, 0.5] }} 
                         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} 
-                        className="absolute inset-0 bg-white/20 rounded-t-lg" 
+                        className="absolute inset-0 bg-muted/20 rounded-t-lg" 
                       />
                     )}
                     <div className={cn(
-                      "absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-foreground text-xs font-bold px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap pointer-events-none z-20", 
+                      "absolute -top-8 left-1/2 -translate-x-1/2 bg-card text-foreground text-xs font-bold px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap pointer-events-none z-20", 
                       isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     )}>
                       €{(quote.total / 1000).toFixed(1)}k
@@ -340,7 +340,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               })}
             </div>
             
-            <div className="flex items-center justify-between text-xs font-bold text-[var(--muted-fg)] border-t border-white/10 pt-3">
+            <div className="flex items-center justify-between text-xs font-bold text-muted-foreground border-t border-border pt-3">
               <span>Total Deals: {activeQuotes.length}</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-accent-quote" />
@@ -358,7 +358,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: 0.4 }} 
-              className="bg-white/30 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center"
+              className="bg-card/30 p-8 rounded-4xl flex flex-col items-center justify-center text-center"
             >
               <FileText className="w-12 h-12 text-foreground/40 mb-3" />
               <p className="text-foreground font-bold mb-1">No quotes yet</p>
@@ -372,7 +372,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               animate={{ opacity: 1, x: 0 }} 
               transition={{ delay: 0.4 + (i * 0.05) }} 
               className={cn(
-                "p-5 rounded-[2rem] shadow-sm relative overflow-hidden group transition-all cursor-pointer",
+                "p-5 rounded-4xl shadow-sm relative overflow-hidden group transition-all cursor-pointer",
                 quote.status === 'ACCEPTED' ? "bg-accent-quote" : "bg-background"
               )}
             >
@@ -380,7 +380,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 <div>
                   <span className={cn(
                     "text-xs font-bold uppercase tracking-widest block mb-0.5", 
-                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[var(--secondary)]"
+                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-secondary"
                   )}>
                     {quote.clientName}
                   </span>

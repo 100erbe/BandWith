@@ -95,7 +95,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   return (
     <button
       onClick={() => setExpanded(!expanded)}
-      className="relative w-[110px] h-[110px] shrink-0"
+      className="relative w-27.5 h-27.5 shrink-0"
       style={{ color: textColor }}
     >
       <AnimatePresence mode="wait">
@@ -106,9 +106,9 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="absolute right-0 top-0 w-[90px] h-[90px] flex items-center justify-center"
+            className="absolute right-0 top-0 w-22.5 h-22.5 flex items-center justify-center"
           >
-            <IconComponent className="w-[70px] h-[70px]" strokeWidth={1.5} />
+            <IconComponent className="w-18 h-18" strokeWidth={1.5} />
           </motion.div>
         ) : (
           <motion.div
@@ -119,20 +119,20 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             transition={{ duration: 0.3 }}
             className="absolute inset-0 flex flex-col items-end justify-start text-right"
           >
-            <div className="flex items-baseline gap-[2px]">
+            <div className="flex items-baseline gap-0.5">
               <span className="text-3xl font-bold leading-tight">
                 {weather?.temp ?? '--'}
               </span>
               <span className="text-xl font-bold leading-tight">°</span>
               <span className="text-3xl font-bold leading-tight">C</span>
             </div>
-            <div className="mt-[8px] w-[110px]">
+            <div className="mt-2 w-27.5">
               <span className="text-xs font-light block">PRECIPITATION</span>
               <span className="text-xs font-bold block">
                 {weather?.precipitation ?? '0 MM'}
               </span>
             </div>
-            <div className="mt-[4px] w-[110px]">
+            <div className="mt-1 w-27.5">
               <span className="text-xs font-light block">HUMIDITY</span>
               <span className="text-xs font-bold block">
                 {weather?.humidity ?? 60}%

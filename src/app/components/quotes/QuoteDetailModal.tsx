@@ -58,27 +58,26 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         className="fixed inset-0 z-[120] flex flex-col overflow-y-auto"
         style={{ backgroundColor: 'var(--accent-quote)' }}
       >
-        <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
+        <div className="flex-1 flex flex-col gap-10 px-4 pt-16 pb-52">
           {/* Header */}
-          <div className="flex items-center gap-[20px]">
+          <div className="flex items-center gap-5">
             <button
               onClick={onClose}
-              className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-white"
-              style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+              className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-border"
             >
-              <ArrowLeft className="w-[24px] h-[24px] text-accent-foreground" />
+              <ArrowLeft className="w-6 h-6 text-accent-foreground" />
             </button>
             <span className="text-3xl font-bold text-accent-foreground uppercase">QUOTE</span>
           </div>
 
           {/* Event Info */}
-          <div className="flex gap-[20px] items-start">
-            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-              <div className="flex gap-[4px] items-center flex-wrap">
-                <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
+          <div className="flex gap-5 items-start">
+            <div className="flex-1 flex flex-col gap-1 min-w-0">
+              <div className="flex gap-1 items-center flex-wrap">
+                <div className="rounded-full px-2.5 py-1 bg-card">
                   <span className="text-xs font-bold uppercase text-accent-quote">QUOTE</span>
                 </div>
-                <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
+                <div className="rounded-full px-2.5 py-1 bg-card">
                   <span className="text-xs font-bold uppercase text-accent-quote">
                     {quote.eventTitle?.split(' ')[0]?.toUpperCase() || 'EVENT'}
                   </span>
@@ -87,23 +86,23 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               <h2 className="text-3xl font-bold text-accent-foreground uppercase leading-tight">
                 {quote.eventTitle || 'UNTITLED'}
               </h2>
-              <div className="flex flex-col gap-[2px]">
-                <div className="flex items-center gap-[8px]">
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
                   <span className="text-base font-bold text-accent-foreground uppercase">
                     {quote.clientName || 'TBD'}
                   </span>
-                  <ArrowUpRight className="w-[18px] h-[18px] text-accent-foreground" />
+                  <ArrowUpRight className="w-4.5 h-4.5 text-accent-foreground" />
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col items-end justify-between self-stretch shrink-0 gap-[4px]">
+            <div className="flex flex-col items-end justify-between self-stretch shrink-0 gap-1">
               <WeatherWidget
                 eventDate={quote.eventDate}
                 location={quote.clientName}
                 textColor="white"
               />
-              <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+              <div className="rounded-xl px-2.5 py-2.5" style={{ backgroundColor: 'var(--dot-inactive)' }}>
                 <span className="text-xs font-bold text-accent-foreground uppercase whitespace-nowrap">
                   START - 3:30 PM
                 </span>
@@ -112,17 +111,17 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </div>
 
           {/* Year + Date */}
-          <div className="flex gap-[20px]">
+          <div className="flex gap-5">
             <div className="flex-1 flex flex-col">
-              <div className="flex items-center gap-[6px]">
+              <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-accent-foreground uppercase">YEAR</span>
               </div>
               <span className="text-4xl font-bold text-accent-foreground leading-tight">{year || '2028'}</span>
             </div>
             <div className="flex-1 flex flex-col">
-              <div className="flex items-center gap-[6px]">
+              <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-accent-foreground uppercase">DATE</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
               </div>
               <span className="text-4xl font-bold text-accent-foreground leading-tight">{monthDay}</span>
             </div>
@@ -130,7 +129,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
           {/* Mini Calendar */}
           {miniCal && (
-            <div className="flex flex-col gap-[4px]">
+            <div className="flex flex-col gap-1">
               <div className="flex">
                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
                   <div key={i} className="flex-1 text-center">
@@ -138,9 +137,9 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-[2px]">
+              <div className="grid grid-cols-7 gap-0.5">
                 {Array.from({ length: miniCal.firstDay }).map((_, i) => (
-                  <div key={`e-${i}`} className="h-[24px]" />
+                  <div key={`e-${i}`} className="h-6" />
                 ))}
                 {Array.from({ length: miniCal.daysInMonth }).map((_, i) => {
                   const day = i + 1;
@@ -148,7 +147,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   return (
                     <div
                       key={day}
-                      className="h-[24px] flex items-center justify-center rounded-[6px]"
+                      className="h-6 flex items-center justify-center rounded-full"
                       style={{ backgroundColor: isEventDay ? 'white' : 'transparent' }}
                     >
                       <span
@@ -165,12 +164,12 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           )}
 
           {/* Client + Pricing */}
-          <div className="grid grid-cols-2 gap-[20px]">
-            <div className="flex flex-col gap-[8px]">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-col">
-                <div className="flex items-center gap-[6px]">
+                <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-accent-foreground uppercase">CLIENT</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                  <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
                 </div>
                 <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {(quote.clientName || 'MIA').split(' ')[0]?.toUpperCase()}
@@ -181,11 +180,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-col">
-                <div className="flex items-center gap-[6px]">
+                <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-accent-foreground uppercase">PRICING & FINANCE</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                  <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
                 </div>
                 <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {formatBandTotal(quote.total)}
@@ -198,23 +197,23 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </div>
 
           {/* Guests */}
-          <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col gap-5">
             <div className="flex flex-col">
-              <div className="flex items-center gap-[6px]">
+              <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-accent-foreground uppercase">GUESTS</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
               </div>
               <span className="text-4xl font-bold text-accent-foreground leading-tight">150</span>
             </div>
           </div>
 
           {/* Music Moments + Members */}
-          <div className="grid grid-cols-2 gap-[20px]">
-            <div className="flex flex-col gap-[8px]">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-col">
-                <div className="flex items-center gap-[6px]">
+                <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-accent-foreground uppercase">MUSIC MOMENTS</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                  <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
                 </div>
                 <span className="text-4xl font-bold text-accent-foreground leading-tight">
                   {quote.lineItems?.length || 3}
@@ -222,11 +221,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-2">
               <div className="flex flex-col">
-                <div className="flex items-center gap-[6px]">
+                <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-accent-foreground uppercase">MEMBERS</span>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-accent-foreground" />
+                  <ArrowUpRight className="w-3.5 h-3.5 text-accent-foreground" />
                 </div>
                 <span className="text-4xl font-bold text-accent-foreground leading-tight">8</span>
               </div>
@@ -236,26 +235,26 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
         {/* Footer */}
         <div
-          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[130]"
-          style={{ backgroundColor: 'var(--accent-quote)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+          className="fixed bottom-0 left-0 right-0 rounded-t-3xl px-4 pt-5 pb-8 z-[130]"
+          style={{ backgroundColor: 'var(--accent-quote)', boxShadow: '0px -4px 20px var(--dot-inactive)' }}
         >
-          <div className="flex flex-col gap-[20px] items-center">
-            <div className="grid grid-cols-2 gap-[10px] w-full">
+          <div className="flex flex-col gap-5 items-center">
+            <div className="grid grid-cols-2 gap-2.5 w-full">
               <button
                 onClick={() => canEdit && onEdit?.(quote)}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black"
+                className="rounded-xl py-4 flex items-center justify-center gap-2 bg-surface-inverse"
               >
-                <Plus className="w-[18px] h-[18px] text-accent-foreground" />
+                <Plus className="w-4.5 h-4.5 text-accent-foreground" />
                 <span className="text-base font-bold text-accent-foreground uppercase">EDIT</span>
               </button>
-              <button className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black">
-                <Plus className="w-[18px] h-[18px] text-accent-foreground" />
+              <button className="rounded-xl py-4 flex items-center justify-center gap-2 bg-surface-inverse">
+                <Plus className="w-4.5 h-4.5 text-accent-foreground" />
                 <span className="text-base font-bold text-accent-foreground uppercase">CONVERT</span>
               </button>
             </div>
             <button
               onClick={() => onDelete?.(quote)}
-              className="text-xs font-medium text-[var(--destructive)] uppercase"
+              className="text-xs font-medium text-destructive uppercase"
             >
               DELETE THIS QUOTE
             </button>

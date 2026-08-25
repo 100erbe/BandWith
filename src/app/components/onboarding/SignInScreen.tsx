@@ -250,7 +250,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
+          <p className="text-accent text-xs font-bold uppercase tracking-[0.25em] mb-3">
             Welcome back
           </p>
           <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight uppercase">
@@ -269,7 +269,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             type="button"
             onClick={handleOAuthGoogle}
             disabled={loading}
-            className="w-full flex items-center gap-4 h-[52px] px-5 rounded-2xl bg-card border border-border text-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-card/80 active:scale-[0.98]"
+            className="w-full flex items-center gap-4 h-13 px-5 rounded-2xl bg-card border border-border text-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-card/80 active:scale-[0.98]"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -284,7 +284,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             type="button"
             onClick={handleOAuthApple}
             disabled={loading}
-            className="w-full flex items-center gap-4 h-[52px] px-5 rounded-2xl bg-card border border-border text-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-card/80 active:scale-[0.98]"
+            className="w-full flex items-center gap-4 h-13 px-5 rounded-2xl bg-card border border-border text-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-card/80 active:scale-[0.98]"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
@@ -305,7 +305,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               type="button"
               onClick={() => handleBiometricLogin()}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 h-[52px] rounded-2xl bg-accent text-accent-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-accent/90 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 h-13 rounded-2xl bg-accent text-accent-foreground font-bold text-sm disabled:opacity-50 transition-all hover:bg-accent/90 active:scale-[0.98]"
             >
               {biometricStatus.biometryType === 'faceId' ? (
                 <ScanFace className="w-6 h-6" strokeWidth={1.5} />
@@ -344,10 +344,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/10"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/100/10 border border-destructive/10"
               >
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" strokeWidth={1.5} />
-                <p className="text-red-400 text-xs font-medium">{error}</p>
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" strokeWidth={1.5} />
+                <p className="text-destructive text-xs font-medium">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -360,7 +360,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
+              className="w-full h-13 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
               autoComplete="email"
               autoCapitalize="none"
             />
@@ -374,7 +374,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full h-[52px] pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
+              className="w-full h-13 pl-12 pr-12 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
               autoComplete="current-password"
             />
             <button
@@ -460,7 +460,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => handleBiometricPromptDecision(false)}
-                    className="flex-1 h-12 rounded-xl bg-card/80 text-foreground font-bold text-sm hover:bg-white/15 transition-all"
+                    className="flex-1 h-12 rounded-xl bg-card/80 text-foreground font-bold text-sm hover:bg-muted/15 transition-all"
                   >
                     Not now
                   </button>

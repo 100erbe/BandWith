@@ -74,7 +74,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
           <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Choose
             <br />
-            <span className="text-[var(--accent-rehearsal)]">your band</span>
+            <span className="text-accent-rehearsal">your band</span>
           </h1>
           <p className="text-muted-foreground/60 text-base font-medium leading-relaxed">
             You have {invites.length} pending invitations

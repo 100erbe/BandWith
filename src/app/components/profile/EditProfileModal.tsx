@@ -166,7 +166,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         
         <button 
           onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all hover:rotate-90"
+          className="w-12 h-12 rounded-full bg-surface-inverse/5 hover:bg-surface-inverse/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all hover:rotate-90"
         >
           <X className="w-6 h-6" />
         </button>
@@ -189,7 +189,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 className="w-24 h-24 rounded-full object-cover"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-accent-foreground font-black text-2xl">
+              <div className="w-24 h-24 rounded-full bg-surface-inverse flex items-center justify-center text-accent-foreground font-black text-2xl">
                 {fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U'}
               </div>
             )}
@@ -215,7 +215,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         </motion.div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-2xl text-destructive text-sm font-medium">
             {error}
           </div>
         )}
@@ -236,7 +236,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-all"
             />
           </motion.div>
 
@@ -254,7 +254,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               type="email"
               value={user?.email || ''}
               disabled
-              className="w-full bg-transparent border-b-2 border-black/5 py-3 text-xl font-bold text-foreground/40 cursor-not-allowed"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-xl font-bold text-foreground/40 cursor-not-allowed"
             />
             <p className="text-xs text-foreground/30 mt-1">Email cannot be changed</p>
           </motion.div>
@@ -274,7 +274,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 234 567 8900"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-all"
             />
           </motion.div>
 
@@ -296,8 +296,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                     instrument === inst
-                      ? "bg-black text-accent-foreground"
-                      : "bg-white/50 text-foreground/60 hover:bg-white"
+                      ? "bg-surface-inverse text-surface-inverse-foreground"
+                      : "bg-muted/50 text-foreground/60 hover:bg-muted"
                   )}
                 >
                   {inst}
@@ -320,7 +320,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
               rows={4}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-all min-h-30 resize-none"
             />
           </motion.div>
         </div>
@@ -328,7 +328,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       {/* Footer */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
+        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-background via-background to-transparent"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
       >
         <button
@@ -337,8 +337,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           className={cn(
             "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
             success
-              ? "bg-green-500 text-accent-foreground"
-              : "bg-black text-accent-foreground hover:scale-[1.02]"
+              ? "bg-success text-accent-foreground"
+              : "bg-surface-inverse text-surface-inverse-foreground hover:scale-[1.02]"
           )}
         >
           {saving ? (

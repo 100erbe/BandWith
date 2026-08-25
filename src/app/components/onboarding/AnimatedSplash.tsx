@@ -58,7 +58,7 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
           </motion.div>
 
           <motion.p
-            className="mt-3 text-[11px] font-medium tracking-[0.2em] uppercase text-muted-foreground/40"
+            className="mt-3 text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.5 }}

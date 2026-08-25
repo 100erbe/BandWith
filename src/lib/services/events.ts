@@ -100,6 +100,73 @@ export interface EventWithMembers extends Event {
 }
 
 // ============================================
+// FINANCIAL COLUMN PROTECTION (member / freemium)
+// ============================================
+
+// Columns that are safe to expose to non-admin (member) viewers.
+// Excludes all financial, client-contact PII and internal-only fields
+// (fee, price, deposits, payment status, client email/phone/company,
+// internal notes, contract links, quote id).
+const MEMBER_EVENT_COLUMNS = `id, band_id, title, event_type, status, description,
+  event_date, start_time, end_time, load_in_time, soundcheck_time,
+  venue_name, venue_address, venue_city, venue_country, venue_coordinates, indoor_outdoor,
+  dress_code, setlist_id, notes, client_name, is_recurring, recurrence_rule, parent_event_id,
+  created_by, created_at, updated_at`;
+
+/**
+ * Returns true when the current viewer should NOT receive financial columns
+ * (i.e. they are not an admin of any of the given bands). Fails closed.
+ */
+const shouldRestrictFinancials = async (bandIds: string | string[]): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return true;
+    const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
+    if (bIds.length === 0) return true;
+
+    // Admins (by role) OR band creators can see financials.
+    const [adminRes, creatorRes] = await Promise.all([
+      supabase
+        .from('band_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .in('band_id', bIds)
+        .limit(1),
+      supabase
+        .from('bands')
+        .select('id')
+        .eq('created_by', user.id)
+        .in('id', bIds)
+        .limit(1),
+    ]);
+
+    const isAdmin =
+      (adminRes.data && adminRes.data.length > 0) ||
+      (creatorRes.data && creatorRes.data.length > 0);
+    return !isAdmin;
+  } catch {
+    return true;
+  }
+};
+
+const shouldRestrictFinancialsForEvent = async (eventId: string): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return true;
+    const { data: ev } = await supabase
+      .from('events')
+      .select('band_id')
+      .eq('id', eventId)
+      .maybeSingle();
+    if (!ev?.band_id) return true;
+    return shouldRestrictFinancials([ev.band_id]);
+  } catch {
+    return true;
+  }
+};
+
+// ============================================
 // EVENTS CRUD
 // ============================================
 
@@ -111,16 +178,21 @@ export const getEvents = async (
     fromDate?: string;
     toDate?: string;
     limit?: number;
+    memberView?: boolean;
   }
 ): Promise<{ data: Event[] | null; error: Error | null }> => {
   try {
+    const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
+    if (bIds.length === 0) return { data: [], error: null };
+    const memberView = options?.memberView ?? await shouldRestrictFinancials(bIds);
+    const select = memberView ? MEMBER_EVENT_COLUMNS : '*';
+
     let query = supabase
       .from('events')
-      .select('*')
+      .select(select)
       .order('event_date', { ascending: true });
-    
+
     // Filter by band(s) - single band or multiple
-    const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
     if (bIds.length > 0) {
       query = query.in('band_id', bIds);
     }
@@ -163,12 +235,14 @@ export const getEvents = async (
   }
 };
 
-export const getEvent = async (eventId: string): Promise<{ data: EventWithMembers | null; error: Error | null }> => {
+export const getEvent = async (eventId: string, memberView?: boolean): Promise<{ data: EventWithMembers | null; error: Error | null }> => {
   try {
+    const restrict = memberView ?? await shouldRestrictFinancialsForEvent(eventId);
+    const select = restrict ? MEMBER_EVENT_COLUMNS : '*';
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
-        *,
+        ${select},
         band:bands (
           id,
           name,
@@ -204,15 +278,18 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
 
 export const getUpcomingEvents = async (
   bandId?: string,
-  limit: number = 10
+  limit: number = 10,
+  memberView?: boolean
 ): Promise<{ data: Event[] | null; error: Error | null }> => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+    const restrict = memberView ?? await shouldRestrictFinancials(bandId ? [bandId] : []);
+    const select = restrict ? MEMBER_EVENT_COLUMNS : '*';
+
     let query = supabase
       .from('events')
       .select(`
-        *,
+        ${select},
         band:bands (
           id,
           name,

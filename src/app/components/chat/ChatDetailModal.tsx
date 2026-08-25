@@ -44,7 +44,7 @@ const renderMessageContent = (content: string, isMe: boolean) => {
       {parts.map((part, index) => {
         if (index % 2 === 1) {
           return (
-            <span key={index} className="font-bold text-accent">
+            <span key={index} className={cn("font-bold", isMe ? "text-accent-foreground" : "text-accent")}>
               @{part}
             </span>
           );
@@ -274,37 +274,37 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[80] bg-black flex flex-col"
+      className="fixed inset-0 z-[80] bg-background flex flex-col"
     >
       {/* ── Header ── */}
       <div
-        className="flex items-center gap-3 px-4 py-3 bg-black border-b border-white/[0.06]"
+        className="flex items-center gap-3 px-4 py-3 bg-background border-b border-border"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
       >
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full border border-white/[0.12] flex items-center justify-center active:scale-90 transition-transform"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center active:scale-90 transition-transform"
         >
-          <ChevronLeft className="w-5 h-5 text-accent-foreground" />
+          <ChevronLeft className="w-5 h-5 text-foreground" />
         </button>
 
         <div className="flex-1 flex items-center gap-3 min-w-0">
           {chat.type === 'direct' ? (
-            <div className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center text-accent font-black text-sm shrink-0">
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-accent font-black text-sm shrink-0">
               {chat.initials}
             </div>
           ) : chat.type === 'band' ? (
-            <div className="w-10 h-10 rounded-[10px] bg-accent flex items-center justify-center text-accent-foreground font-black text-sm shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-accent-foreground font-black text-sm shrink-0">
               {chat.initials}
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-[10px] bg-accent-rehearsal flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-accent-rehearsal flex items-center justify-center shrink-0">
               <Calendar className="w-4.5 h-4.5 text-accent-foreground" />
             </div>
           )}
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-black text-sm text-accent-foreground truncate uppercase leading-tight">
+            <h3 className="font-black text-sm text-foreground truncate uppercase leading-tight">
               {chat.name}
             </h3>
             <div className="flex items-center gap-1.5">
@@ -313,8 +313,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               </span>
               {(chat.type === 'band' || chat.type === 'event') && chat.members && (
                 <>
-                  <span className="text-accent-foreground/20 text-xs">•</span>
-                  <span className="text-xs font-bold text-accent-foreground/30 uppercase">
+                  <span className="text-muted-foreground text-xs">•</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase">
                     {chat.members} members
                   </span>
                 </>
@@ -325,9 +325,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-10 h-10 rounded-full border border-white/[0.06] flex items-center justify-center active:scale-90 transition-transform"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center active:scale-90 transition-transform"
         >
-          <Trash2 className="w-4 h-4 text-accent-foreground/30" />
+          <Trash2 className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
 
@@ -338,24 +338,24 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-x-0 top-0 z-10 bg-black/90 backdrop-blur-sm flex items-center justify-between px-4 py-3"
+            className="absolute inset-x-0 top-0 z-10 bg-background/95 backdrop-blur-sm flex items-center justify-between px-4 py-3"
             style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
           >
             <div className="flex-1 min-w-0 mr-3">
-              <p className="text-xs font-bold text-accent-foreground/70 uppercase">Delete this chat?</p>
-              <p className="text-xs text-accent-foreground/30 mt-0.5">All messages will be permanently removed</p>
+              <p className="text-xs font-bold text-foreground uppercase">Delete this chat?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">All messages will be permanently removed</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="h-9 px-4 rounded-full border border-white/[0.1] text-[11px] font-bold text-accent-foreground/50 uppercase active:scale-95 transition-transform"
+                className="h-9 px-4 rounded-full border border-border text-xs font-bold text-foreground/70 uppercase active:scale-95 transition-transform"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteChat}
                 disabled={deleting}
-                className="h-9 px-4 rounded-full bg-red-500/90 text-[11px] font-bold text-accent-foreground uppercase flex items-center gap-1.5 active:scale-95 transition-transform"
+                className="h-9 px-4 rounded-full bg-destructive/90 text-xs font-bold text-destructive-foreground uppercase flex items-center gap-1.5 active:scale-95 transition-transform"
               >
                 {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 Delete
@@ -366,23 +366,23 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       </AnimatePresence>
 
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-[var(--bg)]">
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-background">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-accent-foreground/20" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-white/[0.04] flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
               {chat.type === 'band' ? (
-                <Users className="w-7 h-7 text-accent-foreground/10" />
+                <Users className="w-7 h-7 text-muted-foreground" />
               ) : (
-                <ArrowUpRight className="w-7 h-7 text-accent-foreground/10" />
+                <ArrowUpRight className="w-7 h-7 text-muted-foreground" />
               )}
             </div>
             <div>
-              <h4 className="font-black text-sm text-accent-foreground/60 uppercase mb-1">No messages yet</h4>
-              <p className="text-[11px] font-medium text-accent-foreground/20 uppercase">
+              <h4 className="font-black text-sm text-foreground/60 uppercase mb-1">No messages yet</h4>
+              <p className="text-xs font-medium text-muted-foreground uppercase">
                 Start the conversation
               </p>
             </div>
@@ -393,7 +393,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               <div key={groupIndex} className="flex flex-col gap-1.5">
                 {/* Date separator */}
                 <div className="flex items-center justify-center py-2">
-                  <span className="px-3 py-1 rounded-full bg-white/[0.04] text-xs font-bold text-accent-foreground/25 uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-full bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     {formatDate(group.date)}
                   </span>
                 </div>
@@ -414,49 +414,52 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       {isMe && (
                         <button
                           onClick={() => handleReply(message)}
-                          className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full bg-white/[0.07] flex items-center justify-center transition-all active:scale-90 self-center"
+                          className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full bg-muted flex items-center justify-center transition-all active:scale-90 self-center"
                         >
-                          <Reply className="w-4 h-4 text-accent-foreground/40" />
+                          <Reply className="w-4 h-4 text-muted-foreground" />
                         </button>
                       )}
 
                       <div className={cn(
                         "max-w-[78%] px-4 py-2.5",
                         isMe
-                          ? "bg-white/[0.08] rounded-[16px] rounded-br-[4px]"
-                          : "bg-white/[0.04] rounded-[16px] rounded-bl-[4px]"
+                          ? "bg-accent text-accent-foreground rounded-2xl rounded-br"
+                          : "bg-card text-foreground border border-border/40 rounded-2xl rounded-bl"
                       )}>
                         {replyTo && message.reply_to_id && replyTo.content && (
-                          <div className="mb-2 px-3 py-2 rounded-[8px] bg-white/[0.06] border-l-2 border-accent">
+                          <div className={cn(
+                            "mb-2 px-3 py-2 rounded-xl border-l-2 border-accent",
+                            isMe ? "bg-accent-foreground/10" : "bg-muted"
+                          )}>
                             <p className="text-xs font-bold text-accent uppercase mb-0.5">
                               {replyTo.sender?.full_name || 'Unknown'}
                             </p>
-                            <p className="text-[11px] text-accent-foreground/40 line-clamp-1">
+                            <p className="text-xs line-clamp-1 opacity-60">
                               {replyTo.content}
                             </p>
                           </div>
                         )}
 
                         {!isMe && (chat.type === 'band' || chat.type === 'event') && (
-                          <p className="text-xs font-bold text-accent-foreground/30 uppercase mb-1 tracking-wide">
+                          <p className="text-xs font-bold text-muted-foreground uppercase mb-1 tracking-wide">
                             {message.sender?.full_name || 'Member'}
                           </p>
                         )}
 
-                        <p className="text-sm text-accent-foreground/90 leading-[1.45]">
+                        <p className="text-sm leading-[1.45]">
                           {renderMessageContent(message.content, isMe)}
                         </p>
 
                         <div className={cn(
                           "flex items-center justify-end gap-1 mt-1",
-                          isMe ? "text-accent-foreground/25" : "text-accent-foreground/15"
+                          isMe ? "text-accent-foreground/60" : "text-muted-foreground"
                         )}>
                           <span className="text-xs font-medium">{formatTime(message.created_at)}</span>
                           {isMe && (
                             message.id.startsWith('temp-') ? (
                               <Check className="w-3 h-3 opacity-40" />
                             ) : isMessageRead(message.created_at) ? (
-                              <CheckCheck className="w-3 h-3 text-accent/60" />
+                              <CheckCheck className="w-3 h-3" />
                             ) : (
                               <CheckCheck className="w-3 h-3" />
                             )
@@ -467,9 +470,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       {!isMe && (
                         <button
                           onClick={() => handleReply(message)}
-                          className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full bg-white/[0.07] flex items-center justify-center transition-all active:scale-90 self-center"
+                          className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full bg-muted flex items-center justify-center transition-all active:scale-90 self-center"
                         >
-                          <Reply className="w-4 h-4 text-accent-foreground/40" />
+                          <Reply className="w-4 h-4 text-muted-foreground" />
                         </button>
                       )}
                     </motion.div>
@@ -484,7 +487,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
       {/* ── Input ── */}
       <div
-        className="bg-black border-t border-white/[0.06] flex-shrink-0"
+        className="bg-background border-t border-border flex-shrink-0"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
       >
         {/* Reply preview */}
@@ -497,16 +500,16 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               className="overflow-hidden"
             >
               <div className="px-4 pt-3 flex items-start gap-2">
-                <div className="flex-1 bg-white/[0.04] rounded-[10px] p-3 border-l-2 border-accent">
+                <div className="flex-1 bg-muted rounded-xl p-3 border-l-2 border-accent">
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="text-xs font-bold text-accent uppercase">
                       {replyingTo.sender?.full_name || 'Message'}
                     </span>
                     <button onClick={() => setReplyingTo(null)} className="p-0.5">
-                      <X className="w-3.5 h-3.5 text-accent-foreground/30" />
+                      <X className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   </div>
-                  <p className="text-[11px] text-accent-foreground/40 line-clamp-1">{replyingTo.content}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{replyingTo.content}</p>
                 </div>
               </div>
             </motion.div>
@@ -514,8 +517,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         </AnimatePresence>
         
         <div className="px-4 py-3 flex items-center gap-2.5">
-          <button className="w-10 h-10 rounded-full border border-white/[0.08] flex items-center justify-center active:scale-90 transition-transform shrink-0">
-            <Paperclip className="w-4 h-4 text-accent-foreground/30" />
+          <button className="w-10 h-10 rounded-full border border-border flex items-center justify-center active:scale-90 transition-transform shrink-0">
+            <Paperclip className="w-4 h-4 text-muted-foreground" />
           </button>
           
           <div className="flex-1 relative">
@@ -525,18 +528,18 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
-                  className="absolute bottom-full left-0 right-0 mb-2 bg-[var(--surface-inverse)] rounded-[12px] border border-white/[0.06] max-h-40 overflow-y-auto z-10"
+                  className="absolute bottom-full left-0 right-0 mb-2 bg-card rounded-xl border border-border max-h-40 overflow-y-auto z-10"
                 >
                   {filteredParticipants.map((participant) => (
                     <button
                       key={participant.id}
                       onClick={() => insertMention(participant)}
-                      className="w-full px-4 py-3 text-left hover:bg-white/[0.04] flex items-center gap-3 transition-colors first:rounded-t-[12px] last:rounded-b-[12px]"
+                      className="w-full px-4 py-3 text-left hover:bg-muted flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
                     >
-                      <div className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-accent text-xs font-bold">
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-accent text-xs font-bold">
                         {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
-                      <span className="font-bold text-accent-foreground/80 text-xs uppercase">{participant.name}</span>
+                      <span className="font-bold text-foreground/80 text-xs uppercase">{participant.name}</span>
                     </button>
                   ))}
                 </motion.div>
@@ -557,7 +560,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 }
               }}
               placeholder={replyingTo ? "Reply..." : "Message..."}
-              className="w-full h-11 px-4 rounded-full bg-white/[0.06] text-accent-foreground/90 text-sm font-medium placeholder:text-accent-foreground/20 focus:outline-none focus:bg-white/[0.09] transition-colors"
+              className="w-full h-11 px-4 rounded-full bg-muted text-foreground/90 text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus:bg-muted transition-colors"
             />
           </div>
           
@@ -568,7 +571,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               "w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-90",
               newMessage.trim()
                 ? "bg-accent text-accent-foreground"
-                : "bg-white/[0.04] text-accent-foreground/15"
+                : "bg-muted text-muted-foreground"
             )}
           >
             {sending ? (

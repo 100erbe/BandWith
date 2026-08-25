@@ -200,7 +200,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   <button
                     type="button"
                     onClick={() => removeInvite(invite.email)}
-                    className="w-8 h-8 rounded-full bg-card flex items-center justify-center hover:bg-red-500/20 transition-colors"
+                    className="w-8 h-8 rounded-full bg-card flex items-center justify-center hover:bg-destructive/20 transition-colors"
                   >
                     <X className="w-4 h-4 text-muted-foreground" />
                   </button>
@@ -248,7 +248,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             invites.length > 0
               ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-              : 'bg-transparent text-muted-foreground/90 border border-border hover:border-white/40 hover:text-foreground'
+              : 'bg-transparent text-muted-foreground/90 border border-border hover:border-border/40 hover:text-foreground'
           }`}
           whileTap={{ scale: 0.98 }}
         >

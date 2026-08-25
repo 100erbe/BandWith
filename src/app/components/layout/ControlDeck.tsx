@@ -72,10 +72,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex items-center gap-4 w-full">
               <button
                 onClick={onClose}
-                className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-                style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+                className="w-12 h-12 rounded-full flex items-center justify-center border border-border bg-muted shrink-0 active:scale-90 transition-transform"
               >
-                <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+                <ArrowLeft className="w-6 h-6 text-foreground" />
               </button>
               <h2 className="text-3xl font-bold text-foreground leading-tight uppercase">
                 SETTINGS
@@ -143,7 +142,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             {/* ═══ UPGRADE TO PRO ═══ */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide bg-black rounded-[6px] px-1.5 py-0.5 w-fit">PRO</span>
+                <span className="text-xs font-bold text-accent uppercase tracking-wide bg-surface-inverse rounded-full px-1.5 py-0.5 w-fit">PRO</span>
                 <h3 className="text-3xl font-bold text-foreground leading-tight uppercase">
                   UPGRADE
                 </h3>
@@ -152,14 +151,14 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-foreground uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Unlimited Quotes</span>
-                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Analytics</span>
-                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Priority Support</span>
+                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-muted text-foreground/50">Unlimited Quotes</span>
+                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-muted text-foreground/50">Analytics</span>
+                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-muted text-foreground/50">Priority Support</span>
                 </div>
               </div>
 
               <button
-                className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-accent w-full active:scale-95 transition-transform"
               >
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-accent-foreground" />
@@ -211,10 +210,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                className="w-full border border-destructive bg-warning-subtle rounded-xl py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
               >
-                <LogOut className="w-4 h-4 text-[var(--destructive)]" />
-                <span className="text-xs font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>
+                <LogOut className="w-4 h-4 text-destructive" />
+                <span className="text-xs font-bold text-destructive uppercase">SIGN OUT</span>
               </button>
               {user?.email && (
                 <p className="text-xs font-normal text-foreground/30 text-center uppercase w-full">

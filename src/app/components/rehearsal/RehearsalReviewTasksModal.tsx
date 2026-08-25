@@ -21,18 +21,18 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
     <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Rehearsal Tasks" icon={CheckSquare}>
         <div className="flex flex-col h-[60vh]">
              {/* Swiss Summary Row */}
-             <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
+             <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-border shrink-0">
+                 <div className="px-2 py-1 bg-surface-inverse/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <CheckSquare className="w-3 h-3" /> Total: {tasks.length}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-surface-inverse/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <Users className="w-3 h-3" /> Band: {bandTasks.length}
                  </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
+                 <div className="px-2 py-1 bg-surface-inverse/5 rounded text-xs font-bold uppercase text-foreground/60 flex items-center gap-1">
                      <User className="w-3 h-3" /> Assigned: {assignedTasks.length}
                  </div>
                  {completedCount > 0 && (
-                     <div className="px-2 py-1 bg-green-50 text-green-800 rounded text-xs font-bold uppercase flex items-center gap-1">
+                     <div className="px-2 py-1 bg-success/10 text-success rounded text-xs font-bold uppercase flex items-center gap-1">
                          <CheckCircle2 className="w-3 h-3" /> Done: {completedCount}
                      </div>
                  )}
@@ -51,13 +51,13 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                     ) : (
                         <div className="space-y-2">
                             {bandTasks.map(task => (
-                                <div key={task.id} className="p-3 bg-[var(--surface-alt)] rounded-xl flex items-start gap-3">
-                                    <div className={cn("mt-0.5 w-4 h-4 rounded border flex items-center justify-center", task.completed ? "bg-black border-black text-accent-foreground" : "border-black/20")}>
+                                <div key={task.id} className="p-3 bg-surface-alt rounded-xl flex items-start gap-3">
+                                    <div className={cn("mt-0.5 w-4 h-4 rounded border flex items-center justify-center", task.completed ? "bg-surface-inverse border-surface-inverse text-accent-foreground" : "border-border")}>
                                         {task.completed && <CheckCircle2 className="w-3 h-3" />}
                                     </div>
                                     <div>
                                         <div className="text-sm font-bold leading-tight">{task.text}</div>
-                                        <div className="mt-1 text-xs font-bold uppercase text-foreground/40 bg-white px-1.5 py-0.5 rounded inline-block">
+                                        <div className="mt-1 text-xs font-bold uppercase text-foreground/40 bg-card px-1.5 py-0.5 rounded inline-block">
                                             {task.type}
                                         </div>
                                     </div>
@@ -79,14 +79,14 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                             {assignedTasks.map(task => {
                                 const assignee = members.find(m => Array.isArray(task.assignedTo) ? task.assignedTo.includes(m.id) : m.id === task.assignedTo);
                                 return (
-                                    <div key={task.id} className="p-3 bg-[var(--surface-alt)] rounded-xl flex items-start gap-3">
-                                         <div className="mt-0.5 w-5 h-5 rounded-full bg-black text-surface-inverse-foreground text-xs font-bold flex items-center justify-center border-2 border-white shadow-sm shrink-0">
+                                    <div key={task.id} className="p-3 bg-surface-alt rounded-xl flex items-start gap-3">
+                                         <div className="mt-0.5 w-5 h-5 rounded-full bg-surface-inverse text-surface-inverse-foreground text-xs font-bold flex items-center justify-center border-2 border-border shadow-sm shrink-0">
                                             {assignee?.initials || '?'}
                                          </div>
                                          <div className="flex-1 min-w-0">
                                             <div className="flex justify-between">
                                                 <div className="text-xs font-bold text-foreground/50 uppercase mb-0.5">{assignee?.name}</div>
-                                                {task.completed && <CheckCircle2 className="w-3 h-3 text-green-600" />}
+                                                {task.completed && <CheckCircle2 className="w-3 h-3 text-success" />}
                                             </div>
                                             <div className="text-sm font-bold leading-tight">{task.text}</div>
                                          </div>

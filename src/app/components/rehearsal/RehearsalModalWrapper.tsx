@@ -38,18 +38,17 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
             className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
             style={{ backgroundColor: bgColor }}
           >
-            <div className="flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[40px]">
+            <div className="flex flex-col gap-10 px-4 pt-16 pb-10">
               {/* Header */}
-              <div className="flex items-center gap-[20px]">
+              <div className="flex items-center gap-5">
                 <button
                   onClick={onClose}
-                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2"
+                  className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2"
                   style={{
-                    backgroundColor: 'rgba(216,216,216,0.2)',
                     borderColor: textColor,
                   }}
                 >
-                  <ArrowLeft className="w-[24px] h-[24px]" style={{ color: textColor }} />
+                  <ArrowLeft className="w-6 h-6" style={{ color: textColor }} />
                 </button>
                 <span
                   className="text-3xl font-bold uppercase"

@@ -1,5 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Dark surfaces match the app dark background token
+// (src/styles/theme.css: .dark { --bg: #121212 }). Avoid pure black.
+const DARK_BACKGROUND = '#121212';
+
 const config: CapacitorConfig = {
   appId: 'com.bandwith.app',
   appName: 'BandWith',
@@ -13,12 +17,12 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 0,
       launchAutoHide: true,
-      backgroundColor: '#000000',
+      backgroundColor: DARK_BACKGROUND,
       showSpinner: false
     },
     StatusBar: {
       style: 'Dark',
-      backgroundColor: '#000000'
+      backgroundColor: DARK_BACKGROUND
     },
     Keyboard: {
       resize: 'body',
@@ -28,7 +32,7 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
-    backgroundColor: '#000000'
+    backgroundColor: DARK_BACKGROUND
   },
   android: {
     allowMixedContent: true,

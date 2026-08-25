@@ -97,7 +97,7 @@ export const generateOnboardingEmailHtml = (
     display: inline-block;
     padding: 18px 48px;
     background-color: #6A0DAD;
-    color: #000000;
+    color: #ffffff;
     text-decoration: none;
     font-size: 16px;
     font-weight: 700;

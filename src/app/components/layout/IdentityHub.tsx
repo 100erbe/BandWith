@@ -11,13 +11,7 @@ import {
 } from 'lucide-react';
 import { USER } from '@/app/data/user';
 import { Band } from '@/app/data/bands';
-import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
-
-interface NotificationGroup {
-  type: string;
-  items: NotificationItem[];
-}
 
 interface IdentityHubProps {
   isOpen: boolean;
@@ -25,11 +19,6 @@ interface IdentityHubProps {
   bands: Band[];
   selectedBand: Band;
   setSelectedBand: (band: Band) => void;
-  notificationGroups: NotificationGroup[];
-  unreadCount: number;
-  onNotificationClick: (ids: number[], actionType: string) => void;
-  onMarkAsRead?: (id: number) => void;
-  onMarkGroupAsRead?: (ids: number[]) => void;
   entityCounts?: { templates: number; documents: number; inventory: number; repertoire: number };
   onEntityDetailClick?: (label: string) => void;
   onEditProfile?: () => void;
@@ -42,10 +31,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onClose,
   bands,
   selectedBand,
-  notificationGroups,
-  unreadCount,
-  onNotificationClick,
-  onMarkGroupAsRead,
   entityCounts,
   onEntityDetailClick,
   onEditProfile,
@@ -84,22 +69,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
   const bandTags = bands.map(b => b.name);
 
-  const handleClearAll = () => {
-    notificationGroups.forEach(g => {
-      onMarkGroupAsRead?.(g.items.map(i => i.id));
-    });
-  };
-
-  const getNotifLabel = (type: string) => {
-    if (type.includes('quote')) return 'QUOTE';
-    if (type.includes('chat') || type === 'chat') return 'CHAT';
-    if (type.includes('event') || type === 'event') return 'EVENT';
-    if (type.includes('rehearsal')) return 'REHEARSAL';
-    if (type.includes('invite')) return 'INVITE';
-    if (type.includes('payment') || type === 'finance') return 'PAYMENT';
-    return type.toUpperCase();
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -108,7 +77,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           animate={{ y: 0 }}
           exit={{ y: '-100%' }}
           transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 z-[60] bg-[var(--muted-fg)] overflow-y-auto overflow-x-hidden"
+          className="fixed inset-0 z-[60] bg-muted-foreground overflow-y-auto overflow-x-hidden"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
@@ -133,82 +102,17 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               </div>
               <button
                 onClick={onClose}
-                className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.2)] border-2 border-white flex items-center justify-center shrink-0"
+                className="w-12 h-12 rounded-full bg-muted border-2 border-border flex items-center justify-center shrink-0"
               >
                 <X className="w-6 h-6 text-accent-foreground" />
               </button>
-            </div>
-
-            {/* ═══ NOTIFICATIONS ═══ */}
-            <div className="flex flex-col gap-2">
-              {notificationGroups.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-accent uppercase">
-                      NOTIFICATIONS {unreadCount > 0 ? `(${unreadCount})` : ''}
-                    </span>
-                    {unreadCount > 0 && (
-                      <button onClick={handleClearAll} className="text-xs font-bold text-accent uppercase">
-                        CLEAR ALL
-                      </button>
-                    )}
-                  </div>
-                  {notificationGroups.map((group) => {
-                    const label = getNotifLabel(group.type);
-                    return (
-                      <div
-                        key={group.type}
-                        onClick={() => {
-                          const item = group.items[0];
-                          onNotificationClick(group.items.map(i => i.id), item.actionType);
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            const item = group.items[0];
-                            onNotificationClick(group.items.map(i => i.id), item.actionType);
-                          }
-                        }}
-                        className="flex items-center justify-between w-full bg-card rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <span className="text-xs font-bold text-foreground uppercase">
-                            {label}
-                          </span>
-                          <span className="bg-accent text-accent-foreground text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                            {group.items.length}
-                          </span>
-                          {group.items[0] && (
-                            <span className="text-sm text-foreground/50 font-medium truncate w-full">
-                              {group.items[0].message}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMarkGroupAsRead?.(group.items.map(i => i.id));
-                            }}
-                            className="w-6 h-6 rounded-full border border-black/20 flex items-center justify-center"
-                          >
-                            <X className="w-3 h-3 text-foreground/60" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-
             </div>
 
             {/* ═══ PROFILE SECTION ═══ */}
             <div className="flex flex-col gap-10">
               {/* Avatar + Name */}
               <div className="flex items-start gap-5">
-                <div className="w-[74px] h-[74px] rounded-full bg-accent border-2 border-white flex items-center justify-center text-accent-foreground font-bold text-xl shrink-0 overflow-hidden">
+                <div className="w-18 h-18 rounded-full bg-accent border-2 border-border flex items-center justify-center text-accent-foreground font-bold text-xl shrink-0 overflow-hidden">
                   {displayInitials}
                 </div>
                 <div className="flex flex-col gap-2.5">
@@ -216,7 +120,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     <p className="text-xl font-bold text-foreground uppercase leading-tight">
                       {displayName}
                     </p>
-                    <div className="flex items-center gap-1 bg-black/20 rounded-[6px] px-1.5 py-0.5 w-fit">
+                    <div className="flex items-center gap-1 bg-surface-inverse/20 rounded-full px-1.5 py-0.5 w-fit">
                       <Fingerprint className="w-4 h-4 text-accent" />
                       <span className="text-xs font-bold text-accent uppercase">
                         {displayRole}
@@ -241,8 +145,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               </div>
 
               {/* ═══ BAND SECTION ═══ */}
-              <div className="flex flex-col gap-[30px]">
-                <div className="flex flex-col gap-[30px]">
+              <div className="flex flex-col gap-7.5">
+                <div className="flex flex-col gap-7.5">
                   {/* Band Header */}
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-start justify-between">
@@ -261,7 +165,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                             onClose();
                           }
                         }}
-                        className="bg-accent rounded-[6px] px-2.5 py-1 shrink-0"
+                        className="bg-accent rounded-full px-2.5 py-1 shrink-0"
                       >
                         <span className="text-xs font-bold text-accent-foreground uppercase">EDIT</span>
                       </button>
@@ -271,10 +175,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       {bandTags.map((tag, i) => (
                         <div
                           key={i}
-                          className={`rounded-[6px] px-1.5 py-1 ${
+                          className={`rounded-full px-1.5 py-1 ${
                             i === 0
-                              ? 'bg-black'
-                              : 'bg-white/20'
+                              ? 'bg-surface-inverse'
+                              : 'bg-muted/20'
                           }`}
                         >
                           <span
@@ -324,7 +228,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       onClose();
                     }
                   }}
-                  className="w-full border-2 border-dashed border-black/20 rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                  className="w-full border-2 border-dashed border-border rounded-xl py-3.5 flex items-center justify-center gap-2"
                 >
                   <Plus className="w-3.5 h-3.5 text-foreground" />
                   <span className="text-xs font-medium text-foreground text-center uppercase">
@@ -358,7 +262,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                             onEntityDetailClick?.(item.label);
                             onClose();
                           }}
-                          className="bg-accent rounded-[6px] px-2.5 py-1"
+                          className="bg-accent rounded-full px-2.5 py-1"
                         >
                           <span className="text-xs font-bold text-accent-foreground uppercase">EDIT</span>
                         </button>
@@ -376,7 +280,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[var(--destructive)] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                className="w-full border border-destructive bg-destructive/20 rounded-xl py-3.5 flex items-center justify-center gap-2"
               >
                 <LogOut className="w-4 h-4 text-accent-foreground" />
                 <span className="text-xs font-medium text-accent-foreground text-center uppercase">

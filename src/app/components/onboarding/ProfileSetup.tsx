@@ -281,7 +281,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            <p className="text-muted-foreground text-[11px] font-medium mb-2 uppercase">
+            <p className="text-muted-foreground text-xs font-medium mb-2 uppercase">
               Joining
             </p>
             <h3 className="text-foreground font-bold text-lg">{bandData.name}</h3>

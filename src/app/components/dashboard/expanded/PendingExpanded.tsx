@@ -89,7 +89,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
       origin={{ top: '12%', left: '61%', right: '3%', bottom: '62%' }}
     >
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--surface-alt)]/95 backdrop-blur-md" 
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-surface-alt/95 backdrop-blur-md" 
         initial={{ opacity: 0, y: -20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -97,7 +97,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         <div className="flex items-center gap-4">
           <button 
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-foreground border border-stone-200 hover:bg-stone-50 transition-colors shadow-sm"
+            className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-foreground border border-border hover:bg-muted transition-colors shadow-sm"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -112,13 +112,13 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
           transition={{ delay: 0.3 }} 
           className="relative mb-6"
         >
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
             <Search className="w-5 h-5" />
           </div>
           <input 
             type="text" 
             placeholder="Search events..." 
-            className="w-full bg-white h-12 pl-12 pr-4 rounded-[1.2rem] text-sm font-medium text-foreground placeholder:text-stone-400 border border-stone-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent" 
+            className="w-full bg-card h-12 pl-12 pr-4 rounded-2xl text-sm font-medium text-foreground placeholder:text-muted-foreground border border-border shadow-sm focus:outline-none focus:ring-2 focus:ring-accent" 
           />
         </motion.div>
         
@@ -135,8 +135,8 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
               className={cn(
                 "px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors", 
                 eventFilter === filter 
-                  ? "bg-black text-accent-foreground" 
-                  : "bg-white text-foreground border border-stone-100 shadow-sm hover:bg-stone-50"
+                  ? "bg-surface-inverse text-surface-inverse-foreground" 
+                  : "bg-card text-foreground border border-border shadow-sm hover:bg-muted"
               )}
             >
               {filter}
@@ -147,10 +147,10 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         <div className="space-y-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : eventsByDate.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-stone-400">
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <AlertCircle className="w-12 h-12 mb-4" />
               <p className="font-bold">No pending events</p>
             </div>
@@ -164,13 +164,13 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
             >
               <div className="flex items-baseline justify-between mb-3 px-2">
                 <h3 className="text-sm font-black text-foreground uppercase tracking-wider">{group.date}</h3>
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{group.label}</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{group.label}</span>
               </div>
               <div className="space-y-3">
                 {group.events.map((event) => (
                   <div 
                     key={event.id} 
-                    className="bg-white rounded-[1.8rem] border border-stone-100 shadow-lg shadow-stone-200/50 relative overflow-hidden group hover:scale-[1.01] transition-all"
+                    className="bg-card rounded-3xl border border-border shadow-lg shadow-stone-200/50 relative overflow-hidden group hover:scale-[1.01] transition-all"
                   >
                     <div className="p-5 pb-4">
                       <div className="flex justify-between items-start mb-4">
@@ -181,54 +181,54 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         <div className="text-right">
                           <span className="block text-xl font-black text-foreground">€{event.price}</span>
                           {!event.contractSigned && (
-                            <div className="flex items-center gap-1 justify-end text-xs text-red-500 font-bold mt-1 uppercase">
+                            <div className="flex items-center gap-1 justify-end text-xs text-destructive font-bold mt-1 uppercase">
                               <AlertCircle className="w-3 h-3" /> No Contract
                             </div>
                           )}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-stone-50 rounded-2xl p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-stone-100 text-stone-500">
+                        <div className="bg-muted rounded-2xl p-3 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border text-muted-foreground">
                             <Clock className="w-4 h-4" />
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-stone-400 font-bold uppercase">Time</span>
+                            <span className="text-xs text-muted-foreground font-bold uppercase">Time</span>
                             <span className="text-sm font-bold text-foreground">{event.time}</span>
                           </div>
                         </div>
-                        <div className="bg-stone-50 rounded-2xl p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-stone-100 text-stone-500">
+                        <div className="bg-muted rounded-2xl p-3 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center border border-border text-muted-foreground">
                             {event.weather === 'rain' ? <CloudRain className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-stone-400 font-bold uppercase">Forecast</span>
+                            <span className="text-xs text-muted-foreground font-bold uppercase">Forecast</span>
                             <span className="text-sm font-bold text-foreground">{event.temp}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs font-bold text-stone-500 pl-1">
+                      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground pl-1">
                         <MapPin className="w-4 h-4 text-foreground/50" />
                         <span className="uppercase tracking-wide">{event.location}</span>
-                        <span className="w-1 h-1 rounded-full bg-stone-300 mx-1" />
+                        <span className="w-1 h-1 rounded-full bg-muted mx-1" />
                         <span>{event.travelTime} drive</span>
                       </div>
                     </div>
-                    <div className="bg-[var(--surface-alt)] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
+                    <div className="bg-surface-alt border-t border-border p-2 flex items-center justify-between gap-2">
                       <div className="flex -space-x-2 pl-2">
                         {event.members.length > 0 ? event.members.map((initial: any, i: number) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-accent-foreground text-xs font-bold border-2 border-white relative z-10">
+                          <div key={i} className="w-8 h-8 rounded-full bg-surface-inverse flex items-center justify-center text-accent-foreground text-xs font-bold border-2 border-border relative z-10">
                             {initial}
                           </div>
                         )) : (
-                          <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">No members assigned</span>
+                          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">No members assigned</span>
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-foreground hover:bg-stone-50 transition-colors">
+                        <button className="h-9 px-4 rounded-xl bg-card border border-border flex items-center gap-2 text-xs font-bold text-foreground hover:bg-muted transition-colors">
                           <Phone className="w-3.5 h-3.5" /> Call
                         </button>
-                        <button className="h-9 px-4 rounded-xl bg-[var(--surface-inverse)] flex items-center gap-2 text-xs font-bold text-surface-inverse-foreground shadow-lg hover:bg-black transition-colors">
+                        <button className="h-9 px-4 rounded-xl bg-surface-inverse flex items-center gap-2 text-xs font-bold text-surface-inverse-foreground shadow-lg hover:bg-surface-inverse transition-colors">
                           <Navigation className="w-3.5 h-3.5" /> Go
                         </button>
                       </div>

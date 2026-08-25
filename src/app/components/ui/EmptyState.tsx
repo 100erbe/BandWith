@@ -43,7 +43,7 @@ export const EmptyState: React.FC = () => (
     className="flex flex-col items-center justify-center py-16 gap-4"
   >
     <div
-      className="grid gap-[8px]"
+      className="grid gap-2"
       style={{
         gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
         gridTemplateRows: 'repeat(5, minmax(0, 1fr))',
@@ -54,7 +54,7 @@ export const EmptyState: React.FC = () => (
       {EMPTY_GRID.map((cell, i) => (
         <div
           key={i}
-          className="rounded-[20px]"
+          className="rounded-2xl"
           style={{
             gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
             gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,

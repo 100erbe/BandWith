@@ -82,7 +82,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
         >
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
+          <p className="text-accent text-xs font-bold uppercase tracking-[0.25em] mb-3">
             Account Recovery
           </p>
           <h1 className="text-4xl font-black text-foreground tracking-tight uppercase leading-[0.95]">
@@ -179,10 +179,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/10"
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/100/10 border border-destructive/10"
                     >
-                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                      <p className="text-red-400 text-xs font-medium">{error}</p>
+                      <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                      <p className="text-destructive text-xs font-medium">{error}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -194,7 +194,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email address"
-                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
+                    className="w-full h-13 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
                     required
                     autoFocus
                   />

@@ -18,7 +18,7 @@ const TIERS = [
     period: '/mo forever',
     icon: Music,
     accent: 'var(--accent)',
-    bgGradient: 'from-accent to-[var(--accent)]',
+    bgGradient: 'from-accent to-accent',
     textColor: 'text-foreground',
     description: 'Basic operations',
     features: [
@@ -29,7 +29,7 @@ const TIERS = [
       'Standard support',
     ],
     cta: 'Current Plan',
-    ctaStyle: 'bg-white/30 text-foreground border-white/30 cursor-default',
+    ctaStyle: 'bg-card/30 text-foreground border-border/30 cursor-default',
   },
   {
     id: 'multi_band',
@@ -39,7 +39,7 @@ const TIERS = [
     period: '/mo',
     icon: Layers,
     accent: 'var(--primary)',
-    bgGradient: 'from-[var(--primary)] to-[var(--primary)]',
+    bgGradient: 'from-primary to-primary',
     textColor: 'text-accent-foreground',
     description: 'Cross-band availability calendars',
     features: [
@@ -51,7 +51,7 @@ const TIERS = [
       'Priority support',
     ],
     cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[var(--primary)] hover:scale-[1.02]',
+    ctaStyle: 'bg-card text-primary hover:scale-[1.02]',
   },
   {
     id: 'unlimited',
@@ -61,7 +61,7 @@ const TIERS = [
     period: '/mo',
     icon: Infinity,
     accent: 'var(--amber)',
-    bgGradient: 'from-[var(--amber)] to-[var(--amber)]',
+    bgGradient: 'from-amber to-amber',
     textColor: 'text-accent-foreground',
     description: 'Multi-agent management tools',
     features: [
@@ -74,7 +74,7 @@ const TIERS = [
       'API access & webhooks',
     ],
     cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[var(--amber)] hover:scale-[1.02]',
+    ctaStyle: 'bg-card text-amber hover:scale-[1.02]',
   },
 ];
 
@@ -93,7 +93,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[8px]"
+            className="fixed inset-0 z-[80] bg-overlay/40 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -103,15 +103,15 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed bottom-0 left-0 right-0 z-[81] bg-background rounded-t-[26px] max-h-[90vh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 z-[81] bg-background rounded-t-3xl max-h-[90vh] overflow-y-auto"
             style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Pill handle */}
             <div className="sticky top-0 z-10 bg-background pt-4 pb-2 flex flex-col items-center">
-              <div className="w-10 h-1 rounded-full bg-black/20 mb-4" />
+              <div className="w-10 h-1 rounded-full bg-surface-inverse/20 mb-4" />
               <button
                 onClick={onClose}
-                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-foreground/50 hover:text-foreground hover:bg-black/5 transition-all"
+                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-border flex items-center justify-center text-foreground/50 hover:text-foreground hover:bg-surface-inverse/5 transition-all"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -120,8 +120,8 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
             <div className="px-4 pb-6">
               {/* Header */}
               <div className="mb-8 text-center">
-                <div className="inline-flex items-center gap-2 bg-black/5 rounded-full px-4 py-1.5 mb-4">
-                  <Sparkles className="w-4 h-4 text-[var(--primary)]" />
+                <div className="inline-flex items-center gap-2 bg-surface-inverse/5 rounded-full px-4 py-1.5 mb-4">
+                  <Sparkles className="w-4 h-4 text-primary" />
                   <span className="text-xs font-bold uppercase tracking-widest text-foreground/50">
                     Unlock More Power
                   </span>
@@ -147,14 +147,14 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.08 }}
                       className={cn(
-                        'relative rounded-[20px] p-5 bg-gradient-to-br overflow-hidden',
+                        'relative rounded-2xl p-5 bg-gradient-to-br overflow-hidden',
                         tier.bgGradient,
-                        isCurrentPlan && 'ring-2 ring-black/20'
+                        isCurrentPlan && 'ring-2 ring-border'
                       )}
                     >
                       {/* Current Plan Badge */}
                       {isCurrentPlan && (
-                        <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm rounded-full px-3 py-1">
+                        <div className="absolute top-3 right-3 bg-surface-inverse/20 backdrop-blur-sm rounded-full px-3 py-1">
                           <span className="text-xs font-bold uppercase text-foreground/70">
                             Current
                           </span>
@@ -164,7 +164,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       <div className="flex items-start gap-4 mb-4">
                         <div className={cn(
                           'w-12 h-12 rounded-full flex items-center justify-center shrink-0',
-                          tier.textColor === 'text-foreground' ? 'bg-black/10' : 'bg-white/20'
+                          tier.textColor === 'text-foreground' ? 'bg-surface-inverse/10' : 'bg-muted/20'
                         )}>
                           <Icon className={cn(
                             'w-6 h-6',
@@ -202,7 +202,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       </div>
 
                       <p className={cn(
-                        'text-[11px] font-medium mb-4',
+                        'text-xs font-medium mb-4',
                         tier.textColor === 'text-foreground' ? 'text-foreground/60' : 'text-accent-foreground/70'
                       )}>
                         {tier.description}

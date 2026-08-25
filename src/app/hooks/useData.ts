@@ -86,8 +86,10 @@ export const useBandMembers = (bandId: string | null) => {
 
 export const useEvents = (
   bandId: string | string[] | null,
-  options?: any
+  options?: any,
+  memberView: boolean = false
 ) => {
+  const { user } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -100,12 +102,12 @@ export const useEvents = (
     if (!isBackground || !hasLoadedOnce.current) {
       setLoading(true);
     }
-    const { data, error } = await eventsService.getEvents(bandId, options);
+    const { data, error } = await eventsService.getEvents(bandId, { ...(options || {}), memberView });
     setEvents(data || []);
     setError(error);
     if (data) hasLoadedOnce.current = true;
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, JSON.stringify(options), memberView]);
 
   useEffect(() => {
     fetchEvents();
@@ -131,9 +133,25 @@ export const useEvents = (
 
     const uniqueChannelName = `events-list-${Math.random().toString(36).substring(2, 9)}`;
 
-    const channel = supabase
-      .channel(uniqueChannelName)
-      .on(
+    const channel = supabase.channel(uniqueChannelName);
+
+    if (memberView) {
+      // Members subscribe to their own membership rows (RLS-safe and never
+      // streams the events row, which contains financial columns).
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_members',
+          filter: `user_id=eq.${user?.id ?? ''}`,
+        },
+        () => {
+          fetchEvents(true);
+        }
+      );
+    } else {
+      channel.on(
         'postgres_changes',
         {
           event: '*',
@@ -145,17 +163,19 @@ export const useEvents = (
           // Refetch events on any insert/update/delete (silent background)
           fetchEvents(true);
         }
-      )
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.log('[useEvents] Realtime subscription status:', status);
-        }
-      });
+      );
+    }
+
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') {
+        console.log('[useEvents] Realtime subscription status:', status);
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [bandId, fetchEvents]);
+  }, [bandId, fetchEvents, memberView, user?.id]);
 
   return { events, loading, error, refetch: fetchEvents };
 };
@@ -182,8 +202,8 @@ export const useEvent = (eventId: string | null) => {
   return { event, loading, error, refetch: fetchEvent };
 };
 
-export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
-  const { isAuthenticated } = useAuth();
+export const useUpcomingEvents = (bandId?: string, limit: number = 10, memberView: boolean = false) => {
+  const { isAuthenticated, user } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -196,12 +216,12 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
     if (!isBackground || !hasLoadedOnce.current) {
       setLoading(true);
     }
-    const { data, error } = await eventsService.getUpcomingEvents(bandId, limit);
+    const { data, error } = await eventsService.getUpcomingEvents(bandId, limit, memberView);
     setEvents(data || []);
     setError(error);
     if (data) hasLoadedOnce.current = true;
     setLoading(false);
-  }, [isAuthenticated, bandId, limit]);
+  }, [isAuthenticated, bandId, limit, memberView]);
 
   useEffect(() => {
     fetchEvents();
@@ -213,9 +233,23 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
 
     const uniqueChannelName = `events-upcoming-${Math.random().toString(36).substring(2, 9)}`;
 
-    const channel = supabase
-      .channel(uniqueChannelName)
-      .on(
+    const channel = supabase.channel(uniqueChannelName);
+
+    if (memberView) {
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_members',
+          filter: `user_id=eq.${user?.id ?? ''}`,
+        },
+        () => {
+          fetchEvents(true);
+        }
+      );
+    } else {
+      channel.on(
         'postgres_changes',
         {
           event: '*',
@@ -227,17 +261,19 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
           // Refetch events on any insert/update/delete (silent background)
           fetchEvents(true);
         }
-      )
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.log('[useUpcomingEvents] Realtime status:', status);
-        }
-      });
+      );
+    }
+
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') {
+        console.log('[useUpcomingEvents] Realtime status:', status);
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [bandId, fetchEvents]);
+  }, [bandId, fetchEvents, memberView, user?.id]);
 
   return { events, loading, error, refetch: fetchEvents };
 };
@@ -597,27 +633,41 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     }
     
     try {
-      const promises: Promise<any>[] = [
-        eventsService.getEventStats(bandId),
-        quotesService.getQuoteStats(bandId),
-        eventsService.getUpcomingEvents(bandId, 5),
-        quotesService.getQuotes(bandId, { limit: 5 }),
-      ];
       if (userId) {
-        promises.push(eventsService.getMemberPersonalStats(bandId, userId));
+        // Member view: only personal stats + their invited upcoming events.
+        // Never fetch band-level financials (event stats, quote pipeline).
+        const [upcomingRes, memberStatsRes] = await Promise.all([
+          eventsService.getUpcomingEvents(bandId, 5, true),
+          eventsService.getMemberPersonalStats(bandId, userId),
+        ]);
+
+        setData({
+          eventStats: null,
+          quoteStats: null,
+          memberStats: memberStatsRes.data || null,
+          upcomingEvents: upcomingRes.data || [],
+          recentQuotes: [],
+        });
+      } else {
+        // Admin view: full band metrics.
+        const promises: Promise<any>[] = [
+          eventsService.getEventStats(bandId),
+          quotesService.getQuoteStats(bandId),
+          eventsService.getUpcomingEvents(bandId, 5),
+          quotesService.getQuotes(bandId, { limit: 5 }),
+        ];
+
+        const results = await Promise.all(promises);
+        const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = results;
+
+        setData({
+          eventStats: eventStatsRes.data,
+          quoteStats: quoteStatsRes.data,
+          memberStats: null,
+          upcomingEvents: upcomingEventsRes.data || [],
+          recentQuotes: recentQuotesRes.data || [],
+        });
       }
-
-      const results = await Promise.all(promises);
-      const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = results;
-      const memberStatsRes = userId ? results[4] : null;
-
-      setData({
-        eventStats: eventStatsRes.data,
-        quoteStats: quoteStatsRes.data,
-        memberStats: memberStatsRes?.data || null,
-        upcomingEvents: upcomingEventsRes.data || [],
-        recentQuotes: recentQuotesRes.data || [],
-      });
       hasLoadedOnce.current = true;
     } catch (err: any) {
       setError(err);
@@ -654,9 +704,27 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
 
     const uniqueChannelName = `dash-events-sync-${Math.random().toString(36).substring(2, 9)}`;
 
-    const channel = supabase
-      .channel(uniqueChannelName)
-      .on(
+    const channel = supabase.channel(uniqueChannelName);
+
+    if (userId) {
+      // Members listen on their own membership rows (no financial columns).
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_members',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          console.log('[useDashboardData] Membership changed, refreshing...');
+          fetchData(true).catch((err) => {
+            console.error('[useDashboardData] Error refreshing:', err);
+          });
+        }
+      );
+    } else {
+      channel.on(
         'postgres_changes',
         {
           event: '*',
@@ -670,19 +738,21 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
             console.error('[useDashboardData] Error refreshing:', err);
           });
         }
-      )
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.log('[useDashboardData] Events subscription status:', status);
-        } else {
-          console.log('[useDashboardData] Events subscription active');
-        }
-      });
+      );
+    }
+
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') {
+        console.log('[useDashboardData] Events subscription status:', status);
+      } else {
+        console.log('[useDashboardData] Events subscription active');
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [bandId, fetchData]);
+  }, [bandId, fetchData, userId]);
 
   return { data, loading, error, refetch: fetchData };
 };
@@ -797,7 +867,7 @@ export const useExpandedFinanceData = (bandId: string | null) => {
   return { data, loading, error, refetch: fetchData };
 };
 
-export const useExpandedEventsData = (bandId: string | null, statusFilter?: string[]) => {
+export const useExpandedEventsData = (bandId: string | null, statusFilter?: string[], memberView: boolean = false) => {
   const { isAuthenticated } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -816,7 +886,8 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
       const status = statusFilter as eventsService.EventStatus[] | undefined;
       const { data, error: fetchError } = await eventsService.getEvents(bandId, { 
         status,
-        limit: 20 
+        limit: 20,
+        memberView
       });
 
       if (fetchError) throw fetchError;
@@ -827,7 +898,7 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId, JSON.stringify(statusFilter)]);
+  }, [isAuthenticated, bandId, JSON.stringify(statusFilter), memberView]);
 
   useEffect(() => {
     fetchEvents();

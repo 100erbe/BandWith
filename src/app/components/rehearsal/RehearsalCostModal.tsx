@@ -54,7 +54,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
             {/* Total Cost Input */}
             <div>
                <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Total Room Cost</label>
-               <div className="flex items-center gap-2 border-b-2 border-black/10 py-2">
+               <div className="flex items-center gap-2 border-b-2 border-border py-2">
                   <span className="text-3xl font-black text-foreground">€</span>
                   <input 
                     type="number" 
@@ -74,8 +74,8 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                     <button 
                       onClick={() => setSplitMethod('equal')}
                       className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'equal' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
+                          "p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all",
+                          splitMethod === 'equal' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40 hover:border-surface-inverse/30"
                       )}
                     >
                        <Users className="w-6 h-6" />
@@ -84,8 +84,8 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                     <button 
                       onClick={() => setSplitMethod('custom')}
                       className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'custom' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
+                          "p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all",
+                          splitMethod === 'custom' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40 hover:border-surface-inverse/30"
                       )}
                     >
                        <CheckCircle2 className="w-6 h-6" />
@@ -94,8 +94,8 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                     <button 
                       onClick={() => setSplitMethod('admin')}
                       className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'admin' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
+                          "p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all",
+                          splitMethod === 'admin' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40 hover:border-surface-inverse/30"
                       )}
                     >
                        <DollarSign className="w-6 h-6" />
@@ -107,13 +107,13 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
 
             {/* Breakdown */}
             {isAdmin && (
-              <div className="bg-black/5 rounded-[10px] p-4">
+              <div className="bg-surface-inverse/5 rounded-xl p-4">
                  <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Breakdown</label>
                  <div className="space-y-3">
                     {data.members.map(member => (
                        <div key={member.id} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-black text-surface-inverse-foreground text-xs font-bold flex items-center justify-center">
+                             <div className="w-8 h-8 rounded-full bg-surface-inverse text-surface-inverse-foreground text-xs font-bold flex items-center justify-center">
                                 {member.initials}
                              </div>
                              <span className="text-sm font-bold text-foreground">{member.name}</span>
@@ -125,7 +125,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                                   type="number"
                                   value={customFees[member.id] || ''}
                                   onChange={e => handleCustomFeeChange(member.id, e.target.value)}
-                                  className="w-16 bg-transparent border-b border-black/20 text-right font-bold focus:outline-none"
+                                  className="w-16 bg-transparent border-b border-border text-right font-bold focus:outline-none"
                                 />
                              ) : (
                                 <span className="font-black text-foreground">
@@ -143,7 +143,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
 
             <button 
                onClick={handleApply}
-               className="w-full py-4 bg-black text-surface-inverse-foreground rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
+               className="w-full py-4 bg-surface-inverse text-surface-inverse-foreground rounded-xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
             >
                Save & Apply
             </button>

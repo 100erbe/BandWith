@@ -110,7 +110,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           className="mb-8"
         >
           <div
-            className="w-28 h-28 rounded-[2.5rem] bg-[var(--accent-rehearsal)] flex items-center justify-center"
+            className="w-28 h-28 rounded-[2.5rem] bg-accent-rehearsal flex items-center justify-center"
             style={{
               boxShadow: '0 16px 64px rgba(0, 71, 255, 0.5)',
             }}
@@ -134,7 +134,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
 
         {/* Bandmates Card */}
         <motion.div
-          className="w-full max-w-sm bg-card rounded-[2rem] p-6 border border-border"
+          className="w-full max-w-sm bg-card rounded-4xl p-6 border border-border"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -152,8 +152,8 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 + index * 0.1 }}
               >
-                <div className="w-11 h-11 rounded-full bg-[var(--accent-rehearsal)]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[var(--accent-rehearsal)] font-bold text-sm">
+                <div className="w-11 h-11 rounded-full bg-accent-rehearsal/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-accent-rehearsal font-bold text-sm">
                     {getInitials(member.name)}
                   </span>
                 </div>

@@ -25,6 +25,7 @@
   --surface-alt-fg: #0A0A0A;
   --surface-inverse: #1A1A1A;
   --surface-inverse-fg: #FFFFFF;
+  --overlay: #000000;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
@@ -36,7 +37,7 @@
 
   /* ── Action (gig) ── */
   --accent-gig: #00C9B1;
-  --accent-gig-fg: #000000;
+  --accent-gig-fg: #0A0A0A;
 
   /* ── Utility (rehearsal) ── */
   --accent-rehearsal: #0055E1;
@@ -59,7 +60,7 @@
   --success: #22C55E;
   --success-fg: #FFFFFF;
   --amber: #F59E0B;
-  --amber-fg: #000000;
+  --amber-fg: #0A0A0A;
 
   /* ── Dots (form/status indicators) ── */
   --dot-active: #0A0A0A;
@@ -88,6 +89,7 @@
   --surface-alt-fg: #E5E7EB;
   --surface-inverse: #E5E7EB;
   --surface-inverse-fg: #0A0A0A;
+  --overlay: #000000;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
@@ -99,15 +101,15 @@
 
   /* ── Action (gig) — teal, good contrast on #121212 ── */
   --accent-gig: #2DD4BF;
-  --accent-gig-fg: #000000;
+  --accent-gig-fg: #0A0A0A;
 
   /* ── Utility (rehearsal) — bright blue, good contrast ── */
   --accent-rehearsal: #60A5FA;
-  --accent-rehearsal-fg: #000000;
+  --accent-rehearsal-fg: #0A0A0A;
 
   /* ── Context (quote) — cyan, good contrast ── */
   --accent-quote: #22D3EE;
-  --accent-quote-fg: #000000;
+  --accent-quote-fg: #0A0A0A;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
   --accent: #6A0DAD;
@@ -115,14 +117,14 @@
 
   /* ── Semantic feedback ── */
   --destructive: #FB7185;
-  --destructive-fg: #000000;
+  --destructive-fg: #0A0A0A;
   --warning: #EF4444;
-  --warning-fg: #000000;
+  --warning-fg: #0A0A0A;
   --warning-subtle: rgba(239, 68, 68, 0.15);
   --success: #34D399;
-  --success-fg: #000000;
+  --success-fg: #0A0A0A;
   --amber: #FBBF24;
-  --amber-fg: #000000;
+  --amber-fg: #0A0A0A;
 
   /* ── Dots (form/status indicators) ── */
   --dot-active: #FFFFFF;
@@ -154,6 +156,7 @@
   --color-surface-alt-foreground: var(--surface-alt-fg);
   --color-surface-inverse: var(--surface-inverse);
   --color-surface-inverse-foreground: var(--surface-inverse-fg);
+  --color-overlay: var(--overlay);
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-fg);

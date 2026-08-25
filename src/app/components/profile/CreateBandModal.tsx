@@ -120,7 +120,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
         
         <button 
           onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all hover:rotate-90"
+          className="w-12 h-12 rounded-full bg-surface-inverse/5 hover:bg-surface-inverse/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all hover:rotate-90"
         >
           <X className="w-6 h-6" />
         </button>
@@ -129,7 +129,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-32">
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-2xl text-destructive text-sm font-medium">
             {error}
           </div>
         )}
@@ -143,14 +143,14 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
           >
             <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
               <Music2 className="w-4 h-4" />
-              Band Name <span className="text-red-500">*</span>
+              Band Name <span className="text-destructive">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., The Jazz Collective"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-2xl font-black text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-2xl font-black text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-all"
             />
           </motion.div>
 
@@ -171,8 +171,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
                     genre === g
-                      ? "bg-black text-accent-foreground"
-                      : "bg-white/50 text-foreground/60 hover:bg-white"
+                      ? "bg-surface-inverse text-surface-inverse-foreground"
+                      : "bg-muted/50 text-foreground/60 hover:bg-muted"
                   )}
                 >
                   {g}
@@ -195,7 +195,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Tell us about your band..."
               rows={3}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-all min-h-24 resize-none"
             />
           </motion.div>
 
@@ -214,7 +214,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://yourband.com"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
+              className="w-full bg-transparent border-b-2 border-border py-3 text-lg font-medium text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-all"
             />
           </motion.div>
 
@@ -236,8 +236,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
                   className={cn(
                     "p-4 rounded-2xl border-2 transition-all text-left",
                     plan === p.id
-                      ? "border-black bg-black text-accent-foreground"
-                      : "border-black/10 bg-white/50 text-foreground hover:border-black/30"
+                      ? "border-surface-inverse bg-surface-inverse text-surface-inverse-foreground"
+                      : "border-border bg-muted/50 text-foreground hover:border-border"
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -261,7 +261,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.35 }}
-            className="p-6 bg-[var(--surface-inverse)] rounded-[2rem] text-accent-foreground"
+            className="p-6 bg-surface-inverse rounded-4xl text-accent-foreground"
           >
             <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">Preview</p>
             <div className="flex items-center gap-4">
@@ -272,9 +272,9 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
                 <h3 className="font-black text-xl">{name || 'Band Name'}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   {genre && (
-                    <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">{genre}</span>
+                    <span className="text-xs bg-surface-inverse-foreground/10 px-2 py-0.5 rounded-full">{genre}</span>
                   )}
-                  <span className="text-xs text-stone-500 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Users className="w-3 h-3" />
                     1 member
                   </span>
@@ -287,7 +287,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
       {/* Footer */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
+        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-background via-background to-transparent"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
       >
         <button
@@ -296,10 +296,10 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
           className={cn(
             "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
             success
-              ? "bg-green-500 text-accent-foreground"
+              ? "bg-success text-accent-foreground"
               : name.trim()
-                ? "bg-black text-accent-foreground hover:scale-[1.02]"
-                : "bg-black/20 text-foreground/40 cursor-not-allowed"
+                ? "bg-surface-inverse text-surface-inverse-foreground hover:scale-[1.02]"
+                : "bg-surface-inverse/20 text-foreground/40 cursor-not-allowed"
           )}
         >
           {saving ? (

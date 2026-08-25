@@ -21,7 +21,7 @@ export const NavButton: React.FC<NavButtonProps> = ({
       onClick={onClick}
       className={cn(
         "flex flex-col items-center justify-center gap-1.5 w-12 transition-all duration-300 group",
-        isActive ? "text-[var(--fg)]" : "text-[var(--muted-fg)] hover:text-[var(--fg)]"
+        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       )}
     >
       <Icon className={cn("w-6 h-6 transition-all", isActive && "stroke-[2.5]")} />

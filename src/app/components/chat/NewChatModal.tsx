@@ -211,7 +211,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+        className="fixed inset-0 z-[90] bg-surface-inverse/50 backdrop-blur-md"
         onClick={onClose}
       />
 
@@ -221,7 +221,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[91] bg-surface-inverse rounded-t-3xl px-4 pt-4 shadow-lg flex flex-col"
         style={{ 
           maxHeight: '85vh',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
@@ -230,7 +230,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
       >
         {/* Pill handle */}
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-white/30" />
+          <div className="w-10 h-1 rounded-full bg-card/30" />
         </div>
 
         {/* Header */}
@@ -240,14 +240,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           </p>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
+            className="w-9 h-9 rounded-full border border-border/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-[12px] mb-6">
+        <div className="flex gap-3 mb-6">
           {[
             { type: 'direct' as const, label: 'DIRECT' },
             { type: 'band' as const, label: 'BAND' },
@@ -263,10 +263,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                 setSearchQuery('');
               }}
               className={cn(
-                "px-[10px] py-[6px] rounded-[6px] text-xs font-bold uppercase transition-all",
+                "px-2.5 py-1.5 rounded-full text-xs font-bold uppercase transition-all",
                 chatType === type
                   ? "bg-accent text-accent-foreground"
-                  : "bg-white/10 text-accent-foreground/40"
+                  : "bg-surface-inverse-foreground/10 text-accent-foreground/40"
               )}
             >
               {label}
@@ -275,8 +275,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </div>
 
         {/* Search */}
-        <div className="bg-white/10 rounded-[10px] flex items-center px-[12px] gap-[8px] mb-6">
-          <Search className="w-[16px] h-[16px] text-accent-foreground/30 shrink-0" />
+        <div className="bg-surface-inverse-foreground/10 rounded-xl flex items-center px-3 gap-2 mb-6">
+          <Search className="w-4 h-4 text-accent-foreground/30 shrink-0" />
           <input
             type="text"
             value={searchQuery}
@@ -286,7 +286,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               chatType === 'band' ? 'SEARCH BANDS...' :
               'SEARCH EVENTS...'
             }
-            className="w-full h-[40px] bg-transparent text-xs font-bold text-accent-foreground placeholder:text-accent-foreground/30 uppercase focus:outline-none"
+            className="w-full h-10 bg-transparent text-xs font-bold text-accent-foreground placeholder:text-accent-foreground/30 uppercase focus:outline-none"
           />
         </div>
 
@@ -299,7 +299,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               exit={{ opacity: 0, height: 0 }}
               className="mb-4"
             >
-              <div className="p-3 bg-red-500/20 border-l-2 border-red-500 text-red-300 text-sm">
+              <div className="p-3 bg-destructive/20 border-l-2 border-destructive text-destructive text-sm">
                 {error}
               </div>
             </motion.div>
@@ -338,15 +338,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 onClick={() => handleSelect('direct', member)}
                                 whileTap={{ scale: 0.98 }}
                                 className={cn(
-                                  "w-full p-3 rounded-[10px] flex items-center gap-3 transition-all",
-                                  isSelected ? "bg-white/10" : "hover:bg-white/5"
+                                  "w-full p-3 rounded-xl flex items-center gap-3 transition-all",
+                                  isSelected ? "bg-surface-inverse-foreground/10" : "hover:bg-surface-inverse-foreground/5"
                                 )}
                               >
                                 <div className={cn(
                                   "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
                                   isSelected 
                                     ? "bg-accent text-accent-foreground" 
-                                    : "bg-white/10 text-accent-foreground/60"
+                                    : "bg-surface-inverse-foreground/10 text-accent-foreground/60"
                                 )}>
                                   {getInitials(member.full_name, member.email)}
                                 </div>
@@ -367,7 +367,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 <DotRadio
                                   selected={isSelected}
                                   activeColor="var(--accent)"
-                                  inactiveColor="rgba(255,255,255,0.20)"
+                                  inactiveColor="var(--dot-inactive)"
                                 />
                               </motion.button>
                             );
@@ -398,15 +398,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('band', band)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all",
-                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
+                          "w-full p-4 rounded-xl flex items-center gap-4 transition-all",
+                          isSelected ? "bg-surface-inverse-foreground/10" : "bg-surface-inverse-foreground/5 hover:bg-muted/[0.07]"
                         )}
                       >
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm",
                           isSelected 
                             ? "bg-accent text-accent-foreground"
-                            : "bg-white/10 text-accent-foreground/60"
+                            : "bg-surface-inverse-foreground/10 text-accent-foreground/60"
                         )}>
                           {getInitials(band.name)}
                         </div>
@@ -427,7 +427,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <DotRadio
                           selected={isSelected}
                           activeColor="var(--accent)"
-                          inactiveColor="rgba(255,255,255,0.20)"
+                          inactiveColor="var(--dot-inactive)"
                         />
                       </motion.button>
                     );
@@ -453,15 +453,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('event', event)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all text-left",
-                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
+                          "w-full p-4 rounded-xl flex items-center gap-4 transition-all text-left",
+                          isSelected ? "bg-surface-inverse-foreground/10" : "bg-surface-inverse-foreground/5 hover:bg-muted/[0.07]"
                         )}
                       >
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
                           isSelected 
                             ? "bg-accent" 
-                            : "bg-white/10"
+                            : "bg-surface-inverse-foreground/10"
                         )}>
                           <span className={cn(
                             "text-xs font-bold uppercase",
@@ -493,7 +493,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <DotRadio
                           selected={isSelected}
                           activeColor="var(--accent)"
-                          inactiveColor="rgba(255,255,255,0.20)"
+                          inactiveColor="var(--dot-inactive)"
                         />
                       </motion.button>
                     );
@@ -511,7 +511,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </div>
 
         {/* Action Button */}
-        <div className="pt-4 border-t border-white/10">
+        <div className="pt-4 border-t border-border">
           <button
             onClick={handleCreateChat}
             disabled={!canCreate || creating}
@@ -519,7 +519,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               "w-full h-14 rounded-md font-bold text-xs uppercase flex items-center justify-center gap-3 transition-all",
               canCreate
                 ? "bg-accent text-accent-foreground active:scale-[0.98]"
-                : "bg-white/5 text-accent-foreground/30 cursor-not-allowed"
+                : "bg-surface-inverse-foreground/5 text-accent-foreground/30 cursor-not-allowed"
             )}
           >
             {creating ? (

@@ -42,7 +42,13 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
     return (selectedBand.user_role as MemberRole) || null;
   }, [selectedBand]);
 
-  const isAdmin = useMemo(() => currentMemberRole === 'admin', [currentMemberRole]);
+  const isAdmin = useMemo(() => {
+    if (currentMemberRole === 'admin') return true;
+    // Fallback: the band creator is always an admin, even if their
+    // band_members row is missing or has an unexpected role.
+    if (selectedBand?.created_by && user?.id && selectedBand.created_by === user.id) return true;
+    return false;
+  }, [currentMemberRole, selectedBand, user?.id]);
 
   // Fetch bands when authenticated with retry
   const fetchBands = useCallback(async (retryCount = 0) => {

@@ -131,7 +131,7 @@ export default function AuthCallback() {
       <Loader2 className="w-8 h-8 animate-spin text-accent-foreground" />
       {error ? (
         <>
-          <span className="text-red-400 text-sm font-medium">{error}</span>
+          <span className="text-destructive text-sm font-medium">{error}</span>
           <span className="text-accent-foreground/40 text-xs">Redirecting back...</span>
         </>
       ) : (

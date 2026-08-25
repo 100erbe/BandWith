@@ -146,9 +146,9 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           <h1 className="text-5xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Find your
             <br />
-            <span className="text-[var(--accent-rehearsal)]">invite</span>
+            <span className="text-accent-rehearsal">invite</span>
           </h1>
-          <p className="text-muted-foreground/60 text-base font-medium leading-relaxed max-w-[280px]">
+          <p className="text-muted-foreground/60 text-base font-medium leading-relaxed max-w-70">
             Enter the email where your band invitation was sent.
           </p>
         </motion.div>
@@ -171,7 +171,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
               }}
               onKeyDown={handleKeyDown}
               placeholder="your@email.com"
-              className="w-full h-14 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-base placeholder:text-muted-foreground/30 focus:outline-none focus:border-white/30 focus:bg-card/80 transition-all"
+              className="w-full h-14 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-base placeholder:text-muted-foreground/30 focus:outline-none focus:border-border/30 focus:bg-card/80 transition-all"
               autoComplete="email"
               autoCapitalize="none"
               autoFocus
@@ -183,7 +183,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
             <motion.p
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-red-400/80 text-sm font-medium px-1"
+              className="text-destructive/80 text-sm font-medium px-1"
             >
               {error}
             </motion.p>

@@ -337,7 +337,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
           className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
             songs.length > 0
               ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-              : 'bg-transparent text-muted-foreground/90 border border-border hover:border-white/40 hover:text-foreground'
+              : 'bg-transparent text-muted-foreground/90 border border-border hover:border-border/40 hover:text-foreground'
           }`}
           whileTap={{ scale: 0.98 }}
         >
@@ -538,7 +538,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
 
               {/* Streaming Services */}
               <div className="mb-4">
-                <label className="text-muted-foreground/60 text-[11px] font-medium mb-2 block uppercase">
+                <label className="text-muted-foreground/60 text-xs font-medium mb-2 block uppercase">
                   Streaming Services
                 </label>
                 <div className="space-y-2">
@@ -572,7 +572,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
 
               {/* File Upload */}
               <div className="mb-4">
-                <label className="text-muted-foreground/60 text-[11px] font-medium mb-2 block uppercase">
+                <label className="text-muted-foreground/60 text-xs font-medium mb-2 block uppercase">
                   File Upload
                 </label>
                 <button className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-border transition-colors">

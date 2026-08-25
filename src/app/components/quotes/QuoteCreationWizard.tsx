@@ -109,9 +109,9 @@ const DEPOSIT_OPTIONS = [
 
 const QuoteField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
   <div className={cn('flex flex-col gap-1', className)}>
-    <span className="text-xs font-bold uppercase tracking-wide text-accent-foreground">{label}</span>
+    <span className="text-xs font-bold uppercase tracking-wide text-foreground">{label}</span>
     {children}
-    <div className="h-px bg-white/20 mt-1" />
+    <div className="h-px bg-muted mt-1" />
   </div>
 );
 
@@ -290,8 +290,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div
           key={i}
           className={cn(
-            'h-1 rounded-[10px] transition-all',
-            i === step ? 'w-4 bg-white' : 'w-2 bg-white/20'
+            'h-1 rounded-xl transition-all',
+            i === step ? 'w-4 bg-accent-quote' : 'w-2 bg-foreground/20'
           )}
         />
       ))}
@@ -303,8 +303,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // === TAG PILL ===
   const TagPill: React.FC<{ children: React.ReactNode; active?: boolean }> = ({ children, active }) => (
     <div className={cn(
-      'px-2.5 py-1 rounded-[6px] text-xs font-bold uppercase',
-      active ? 'bg-black text-accent-foreground' : 'bg-black/30 text-accent-quote'
+      'px-2.5 py-1 rounded-full text-xs font-bold uppercase',
+      active ? 'bg-accent-quote text-accent-quote-foreground' : 'bg-muted text-muted-foreground'
     )}>
       {children}
     </div>
@@ -321,20 +321,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           value={clientName}
           onChange={e => setClientName(e.target.value)}
           placeholder="EG. PAOLO ROSSI"
-          className="w-full bg-transparent text-2xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none uppercase"
+          className="w-full bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none uppercase"
           autoFocus
         />
       </QuoteField>
 
       <QuoteField label="EMAIL">
         <div className="flex items-center gap-3">
-          <Mail className="w-5 h-5 text-accent-foreground/40 shrink-0" />
+          <Mail className="w-5 h-5 text-foreground/40 shrink-0" />
           <input
             type="email"
             value={clientEmail}
             onChange={e => setClientEmail(e.target.value)}
             placeholder="EMAIL@EXAMPLE.COM"
-            className="w-full bg-transparent text-2xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none uppercase"
           />
         </div>
       </QuoteField>
@@ -344,7 +344,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <select
             value={phoneCountry}
             onChange={e => setPhoneCountry(e.target.value)}
-            className="w-full bg-transparent text-2xl font-bold text-accent-foreground focus:outline-none appearance-none uppercase"
+            className="w-full bg-transparent text-2xl font-bold text-foreground focus:outline-none appearance-none uppercase"
           >
             {COUNTRY_PHONE_CODES.map(c => (
               <option key={c.code} value={c.code} className="text-foreground">{c.code} {c.prefix}</option>
@@ -353,13 +353,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </QuoteField>
         <QuoteField label="PHONE NUMBER">
           <div className="flex items-center gap-2">
-            <Phone className="w-5 h-5 text-accent-foreground/40 shrink-0" />
+            <Phone className="w-5 h-5 text-foreground/40 shrink-0" />
             <input
               type="tel"
               value={clientPhone}
               onChange={e => setClientPhone(e.target.value)}
               placeholder="123-123-1234"
-              className="w-full bg-transparent text-2xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none"
+              className="w-full bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
         </QuoteField>
@@ -371,7 +371,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             type="date"
             value={eventDate}
             onChange={e => setEventDate(e.target.value)}
-            className="w-full bg-transparent text-2xl font-bold text-accent-foreground focus:outline-none uppercase"
+            className="w-full bg-transparent text-2xl font-bold text-foreground focus:outline-none uppercase"
             style={{ colorScheme: 'dark' }}
           />
         </QuoteField>
@@ -380,7 +380,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             type="time"
             value={eventTimeStart}
             onChange={e => setEventTimeStart(e.target.value)}
-            className="w-full bg-transparent text-2xl font-bold text-accent-foreground focus:outline-none uppercase"
+            className="w-full bg-transparent text-2xl font-bold text-foreground focus:outline-none uppercase"
             style={{ colorScheme: 'dark' }}
           />
         </QuoteField>
@@ -388,13 +388,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       <QuoteField label="VENUE">
         <div className="flex items-center gap-3">
-          <MapPin className="w-5 h-5 text-accent-foreground/40 shrink-0" />
+          <MapPin className="w-5 h-5 text-foreground/40 shrink-0" />
           <input
             type="text"
             value={venueName}
             onChange={e => setVenueName(e.target.value)}
             placeholder="VILLA REGINA"
-            className="w-full bg-transparent text-2xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none uppercase"
           />
         </div>
       </QuoteField>
@@ -406,14 +406,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             value={venueCity}
             onChange={e => setVenueCity(e.target.value)}
             placeholder="CITY"
-            className="w-full bg-transparent text-xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none uppercase"
           />
         </QuoteField>
         <QuoteField label="COUNTRY">
           <select
             value={venueCountry}
             onChange={e => setVenueCountry(e.target.value)}
-            className="w-full bg-transparent text-xl font-bold text-accent-foreground focus:outline-none appearance-none uppercase"
+            className="w-full bg-transparent text-xl font-bold text-foreground focus:outline-none appearance-none uppercase"
           >
             {Object.keys(VAT_RATES).map(code => (
               <option key={code} value={code} className="text-foreground">{VAT_RATES[code].name.toUpperCase()}</option>
@@ -425,7 +425,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {venueCity && (
         <div className="flex flex-wrap gap-2">
           {[venueCity, VAT_RATES[venueCountry]?.name].filter(Boolean).map((tag, i) => (
-            <div key={i} className="px-3 py-1.5 rounded-[6px] bg-white/10 text-xs font-bold text-accent-foreground/60 uppercase">
+            <div key={i} className="px-3 py-1.5 rounded-full bg-muted/60 text-xs font-bold text-foreground/60 uppercase">
               {tag}
             </div>
           ))}
@@ -451,7 +451,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <TagPill>{type.value.toUpperCase()}</TagPill>
               <span className={cn(
                 'text-3xl font-bold uppercase leading-tight transition-colors',
-                isSelected ? 'text-accent-foreground' : 'text-foreground/30'
+                isSelected ? 'text-foreground' : 'text-foreground/30'
               )}>
                 {type.label}
               </span>
@@ -473,7 +473,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const renderPerformanceStep = () => (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
-        <span className="text-xs font-bold uppercase tracking-wide text-accent-foreground/50">TYPE</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">TYPE</span>
         <div className="flex flex-wrap gap-2">
           {PERFORMANCE_TYPES.map(type => (
             <button
@@ -482,8 +482,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className={cn(
                 'px-4 py-2 rounded-full text-xs font-bold uppercase border transition-all',
                 performanceType === type.value
-                  ? 'bg-black text-accent-foreground border-black'
-                  : 'bg-transparent text-accent-foreground/60 border-white/20'
+                  ? 'bg-muted text-foreground border-border'
+                  : 'bg-transparent text-foreground/60 border-border'
               )}
             >
               {type.label}
@@ -492,10 +492,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-muted/60" />
 
       <div className="flex flex-col gap-4">
-        <span className="text-xs font-bold uppercase tracking-wide text-accent-foreground/50">BAND MEMBERS</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">BAND MEMBERS</span>
         <div className="flex flex-col gap-3">
           {BAND_MEMBERS.map(member => {
             const isSelected = !!selectedMusicians.find(m => m.id === member.id);
@@ -507,16 +507,16 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               >
                 <div className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0',
-                  isSelected ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-accent-foreground/40 border-white/20'
+                  isSelected ? 'bg-accent-quote text-accent-quote-foreground border-accent-quote' : 'bg-transparent text-foreground/40 border-border'
                 )}>
                   {member.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-white/10 text-accent-foreground/60">{member.instrument}</span>
-                    {isSelected && <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-black text-surface-inverse-foreground">MANDATORY</span>}
+                    <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-muted/60 text-foreground/60">{member.instrument}</span>
+                    {isSelected && <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-surface-inverse text-surface-inverse-fg">MANDATORY</span>}
                   </div>
-                  <p className={cn('text-base font-bold uppercase mt-1', isSelected ? 'text-accent-foreground' : 'text-accent-foreground/40')}>{member.name}</p>
+                  <p className={cn('text-base font-bold uppercase mt-1', isSelected ? 'text-foreground' : 'text-foreground/40')}>{member.name}</p>
                 </div>
                 <DotCheckbox
                   checked={isSelected}
@@ -529,10 +529,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-muted/60" />
 
       <div className="flex flex-col gap-4">
-        <span className="text-xs font-bold uppercase tracking-wide text-accent-foreground/50">GENRES</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">GENRES</span>
         <div className="flex flex-wrap gap-2">
           {MUSIC_GENRES.map(genre => (
             <button
@@ -541,8 +541,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className={cn(
                 'px-4 py-2 rounded-full text-xs font-bold uppercase border transition-all',
                 selectedGenres.includes(genre)
-                  ? 'bg-black text-accent-foreground border-black'
-                  : 'bg-transparent text-accent-foreground/60 border-white/20'
+                  ? 'bg-muted text-foreground border-border'
+                  : 'bg-transparent text-foreground/60 border-border'
               )}
             >
               {genre}
@@ -575,13 +575,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <TagPill active={isSelected}>${price}</TagPill>
                 <span className={cn(
                   'text-2xl font-bold uppercase leading-tight',
-                  isSelected ? 'text-accent-foreground' : 'text-foreground/30'
+                  isSelected ? 'text-foreground' : 'text-foreground/30'
                 )}>
                   {moment.name}
                 </span>
                 <span className={cn(
                   'text-xs font-bold uppercase',
-                  isSelected ? 'text-accent-foreground/60' : 'text-foreground/20'
+                  isSelected ? 'text-foreground/60' : 'text-foreground/20'
                 )}>
                   {moment.description}
                 </span>
@@ -597,25 +597,25 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold uppercase text-accent-foreground/50">MUSICIANS</span>
+                    <span className="text-xs font-bold uppercase text-muted-foreground">MUSICIANS</span>
                     {musicians > selectedMusicians.length && selectedMusicians.length > 0 && (
-                      <span className="text-xs font-bold text-orange-400 mt-1">
+                      <span className="text-xs font-bold text-warning mt-1">
                         Exceeds band size ({selectedMusicians.length})
                       </span>
                     )}
                   </div>
-                  <span className="text-3xl font-bold text-accent-foreground">{musicians}</span>
+                  <span className="text-3xl font-bold text-foreground">{musicians}</span>
                 </div>
                 <div className="flex items-center justify-end gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); updateMoment(moment.id, { customMusicians: Math.max(1, musicians - 1) }); }}
-                    className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-surface-inverse-foreground"
+                    className="w-10 h-10 rounded-full bg-surface-inverse flex items-center justify-center text-surface-inverse-fg"
                   >
                     <Minus className="w-5 h-5" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); updateMoment(moment.id, { customMusicians: Math.min(10, musicians + 1) }); }}
-                    className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-surface-inverse-foreground"
+                    className="w-10 h-10 rounded-full bg-surface-inverse flex items-center justify-center text-surface-inverse-fg"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -624,7 +624,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 {isSelected && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setExpandedMoment(isExpanded ? null : moment.id); }}
-                    className="flex items-center gap-2 text-accent-foreground/50 text-xs font-bold uppercase mt-1"
+                    className="flex items-center gap-2 text-muted-foreground text-xs font-bold uppercase mt-1"
                   >
                     CUSTOMIZE
                     <ChevronUp className={cn('w-4 h-4 transition-transform', !isExpanded && 'rotate-180')} />
@@ -639,9 +639,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col gap-5 pt-3 border-t border-white/10">
+                      <div className="flex flex-col gap-5 pt-3 border-t border-border">
                         <div className="flex flex-col gap-3">
-                          <span className="text-xs font-bold uppercase text-accent-foreground/50">PERFORMANCE TYPE</span>
+                          <span className="text-xs font-bold uppercase text-muted-foreground">PERFORMANCE TYPE</span>
                           <div className="flex flex-wrap gap-2">
                             {PERFORMANCE_TYPES.map(type => (
                               <button
@@ -650,8 +650,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                                 className={cn(
                                   'px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
                                   performanceType === type.value
-                                    ? 'bg-black text-accent-foreground border-black'
-                                    : 'bg-transparent text-accent-foreground/60 border-white/20'
+                                    ? 'bg-muted text-foreground border-border'
+                                    : 'bg-transparent text-foreground/60 border-border'
                                 )}
                               >
                                 {type.label}
@@ -663,13 +663,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                           <QuoteField label="PRICE">
                             <div className="flex items-center gap-1">
-                              <span className="text-accent-foreground/40 font-bold">$</span>
+                              <span className="text-foreground/40 font-bold">$</span>
                               <input
                                 type="number"
                                 value={price}
                                 onChange={e => updateMoment(moment.id, { customPrice: parseInt(e.target.value) || 0 })}
                                 onClick={e => e.stopPropagation()}
-                                className="w-full bg-transparent text-2xl font-bold text-accent-foreground focus:outline-none"
+                                className="w-full bg-transparent text-2xl font-bold text-foreground focus:outline-none"
                               />
                             </div>
                           </QuoteField>
@@ -679,7 +679,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                               value={duration}
                               onChange={e => updateMoment(moment.id, { customDuration: parseInt(e.target.value) || 0 })}
                               onClick={e => e.stopPropagation()}
-                              className="w-full bg-transparent text-2xl font-bold text-accent-foreground focus:outline-none"
+                              className="w-full bg-transparent text-2xl font-bold text-foreground focus:outline-none"
                             />
                           </QuoteField>
                         </div>
@@ -690,7 +690,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
             )}
 
-            <div className="h-px bg-white/10 mt-6" />
+            <div className="h-px bg-muted/60 mt-6" />
           </div>
         );
       })}
@@ -709,19 +709,19 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div className="flex flex-col gap-1 flex-1">
           <TagPill active>PERFORMANCE FEE</TagPill>
           <div className="flex items-center gap-1">
-            <span className="text-accent-foreground/40 text-3xl font-bold">$</span>
+            <span className="text-foreground/40 text-3xl font-bold">$</span>
             <input
               type="number"
               value={baseFee || ''}
               onChange={e => setBaseFee(parseInt(e.target.value) || 0)}
               placeholder="0"
-              className="w-full bg-transparent text-4xl font-bold text-accent-foreground placeholder:text-accent-foreground/20 focus:outline-none"
+              className="w-full bg-transparent text-4xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
           </div>
           {selectedMomentsTotal > 0 && baseFee !== selectedMomentsTotal && (
             <button
               onClick={() => setBaseFee(selectedMomentsTotal)}
-              className="text-[11px] font-bold text-accent-foreground/40 underline decoration-white/20 hover:text-accent-foreground/70 transition-colors"
+              className="text-xs font-bold text-foreground/40 underline decoration-white/20 hover:text-foreground/70 transition-colors"
             >
               Use moments total (${selectedMomentsTotal})
             </button>
@@ -730,12 +730,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <DotCheckbox checked={baseFee > 0} activeColor="var(--accent-quote-fg)" inactiveColor="var(--dot-inactive)" />
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-muted/60" />
 
       {/* Additional Fees */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">ADDITIONAL FEES</span>
-        <span className="text-2xl font-bold uppercase text-accent-foreground">EXTRA</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">ADDITIONAL FEES</span>
+        <span className="text-2xl font-bold uppercase text-foreground">EXTRA</span>
       </div>
 
       <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} fee={travelFee} onFeeChange={setTravelFee} />
@@ -745,7 +745,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Custom Fee Items */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">CUSTOM FEES</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">CUSTOM FEES</span>
         {customItems.map((item, i) => (
           <div key={item.id || i} className="flex items-center gap-3">
             <input
@@ -753,21 +753,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               value={item.name}
               onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, name: e.target.value } : ci))}
               placeholder="Fee name..."
-              className="flex-1 bg-white/10 rounded-[8px] px-3 py-2 text-sm font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none"
+              className="flex-1 bg-muted/60 rounded-xl px-3 py-2 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             <div className="flex items-center gap-1">
-              <span className="text-accent-foreground/50 font-bold text-sm">$</span>
+              <span className="text-muted-foreground font-bold text-sm">$</span>
               <input
                 type="number"
                 value={item.amount || ''}
                 onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, amount: parseFloat(e.target.value) || 0 } : ci))}
                 placeholder="0"
-                className="bg-white/10 rounded-[8px] px-3 py-2 text-sm font-bold text-accent-foreground focus:outline-none w-24"
+                className="bg-muted/60 rounded-xl px-3 py-2 text-sm font-bold text-foreground focus:outline-none w-24"
               />
             </div>
             <button
               onClick={() => setCustomItems(prev => prev.filter((_, idx) => idx !== i))}
-              className="text-accent-foreground/30 hover:text-red-400 transition-colors"
+              className="text-foreground/30 hover:text-destructive transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -775,30 +775,30 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         ))}
         <button
           onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, description: '', amount: 0, quantity: 1 }])}
-          className="flex items-center gap-2 text-xs font-bold text-accent-foreground/40 uppercase hover:text-accent-foreground transition-colors"
+          className="flex items-center gap-2 text-xs font-bold text-foreground/40 uppercase hover:text-foreground transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Custom Fee
         </button>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-muted/60" />
 
       {/* Tax Options */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">TAX OPTIONS</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">TAX OPTIONS</span>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setVatExempt(!vatExempt)}
-            className={cn('px-3 py-1.5 rounded-[6px] text-xs font-bold uppercase border transition-all',
-              vatExempt ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+            className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
+              vatExempt ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
             )}
           >
             VAT EXEMPT
           </button>
           <button
             onClick={() => setReverseCharge(!reverseCharge)}
-            className={cn('px-3 py-1.5 rounded-[6px] text-xs font-bold uppercase border transition-all',
-              reverseCharge ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+            className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
+              reverseCharge ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
             )}
           >
             REVERSE CHARGE
@@ -808,14 +808,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Quote Validity */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">QUOTE VALIDITY</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">QUOTE VALIDITY</span>
         <div className="flex flex-wrap gap-2">
           {VALIDITY_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setValidityDays(opt.value)}
               className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
-                validityDays === opt.value ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+                validityDays === opt.value ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
               )}
             >
               {opt.label}
@@ -826,14 +826,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Deposit */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">DEPOSIT REQUIRED</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">DEPOSIT REQUIRED</span>
         <div className="flex flex-wrap gap-2">
           {DEPOSIT_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setDepositPercentage(opt.value)}
               className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
-                depositPercentage === opt.value ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+                depositPercentage === opt.value ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
               )}
             >
               {opt.label}
@@ -844,14 +844,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Payment Methods */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">PAYMENT METHODS</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">PAYMENT METHODS</span>
         <div className="flex flex-wrap gap-2">
           {(['bank_transfer', 'credit_card', 'paypal', 'cash'] as PaymentMethod[]).map(method => (
             <button
               key={method}
               onClick={() => togglePaymentMethod(method)}
               className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
-                paymentMethods.includes(method) ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+                paymentMethods.includes(method) ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
               )}
             >
               {method.replace('_', ' ')}
@@ -862,14 +862,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Cancellation Policy */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">CANCELLATION POLICY</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">CANCELLATION POLICY</span>
         <div className="flex flex-wrap gap-2">
           {(['flexible', 'moderate', 'strict'] as CancellationPolicy[]).map(policy => (
             <button
               key={policy}
               onClick={() => setCancellationPolicy(policy)}
               className={cn('px-3 py-1.5 rounded-full text-xs font-bold uppercase border transition-all',
-                cancellationPolicy === policy ? 'bg-black text-accent-foreground border-black' : 'bg-transparent text-accent-foreground/40 border-white/20'
+                cancellationPolicy === policy ? 'bg-muted text-foreground border-border' : 'bg-transparent text-foreground/40 border-border'
               )}
             >
               {policy}
@@ -880,13 +880,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Notes */}
       <div className="flex flex-col gap-3">
-        <span className="text-xs font-bold uppercase text-accent-foreground/50">NOTES</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">NOTES</span>
         <textarea
           value={clientNotes}
           onChange={e => setClientNotes(e.target.value)}
           placeholder="ANY NOTES TO INCLUDE IN THE QUOTE..."
           rows={3}
-          className="w-full bg-transparent border border-white/20 rounded-[10px] p-4 text-accent-foreground text-sm font-bold placeholder:text-accent-foreground/20 focus:outline-none focus:border-white/40 resize-none uppercase"
+          className="w-full bg-transparent border border-border rounded-xl p-4 text-foreground text-sm font-bold placeholder:text-muted-foreground focus:outline-none focus:border-accent-quote resize-none uppercase"
         />
       </div>
     </div>
@@ -911,73 +911,73 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <TagPill active>QUOTE</TagPill>
             <TagPill active>{eventType.toUpperCase()}</TagPill>
           </div>
-          <h2 className="text-3xl font-bold text-accent-foreground uppercase leading-tight">
+          <h2 className="text-3xl font-bold text-foreground uppercase leading-tight">
             {eventName || 'UNTITLED EVENT'}
           </h2>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-accent-foreground/60" />
-              <span className="text-sm font-bold text-accent-foreground uppercase">{venueName || venueCity || 'TBD'}</span>
+              <MapPin className="w-4 h-4 text-foreground/60" />
+              <span className="text-sm font-bold text-foreground uppercase">{venueName || venueCity || 'TBD'}</span>
             </div>
-            <div className="px-3 py-1.5 rounded-[6px] bg-white/10 text-xs font-bold text-accent-foreground/60 uppercase">
+            <div className="px-3 py-1.5 rounded-full bg-muted/60 text-xs font-bold text-foreground/60 uppercase">
               START - {eventTimeStart || 'TBD'}
             </div>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-muted/60" />
 
         {/* Year & Date */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">YEAR</span>
-            <span className="text-4xl font-bold text-accent-foreground leading-tight">{yearNum}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">YEAR</span>
+            <span className="text-4xl font-bold text-foreground leading-tight">{yearNum}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">DATE</span>
-            <span className="text-4xl font-bold text-accent-foreground leading-tight">{monthName} {dayNum}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">DATE</span>
+            <span className="text-4xl font-bold text-foreground leading-tight">{monthName} {dayNum}</span>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-muted/60" />
 
         {/* Client & Pricing */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">CLIENT</span>
-            <span className="text-3xl font-bold text-accent-foreground uppercase leading-tight">{clientName || 'TBD'}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">CLIENT</span>
+            <span className="text-3xl font-bold text-foreground uppercase leading-tight">{clientName || 'TBD'}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">PRICING & FINANCE</span>
-            <span className="text-3xl font-bold text-accent-foreground leading-tight">
+            <span className="text-xs font-bold text-muted-foreground uppercase">PRICING & FINANCE</span>
+            <span className="text-3xl font-bold text-foreground leading-tight">
               ${totals.total >= 1000 ? `${(totals.total / 1000).toFixed(1)}K` : totals.total}
             </span>
-            <span className="text-sm font-bold text-accent-foreground/50 uppercase">DP{depositPercentage}%</span>
+            <span className="text-sm font-bold text-muted-foreground uppercase">DP{depositPercentage}%</span>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-muted/60" />
 
         {/* Guests */}
         {guestCount && (
           <>
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-accent-foreground/50 uppercase">GUESTS</span>
-              <span className="text-4xl font-bold text-accent-foreground leading-tight">{guestCount}</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase">GUESTS</span>
+              <span className="text-4xl font-bold text-foreground leading-tight">{guestCount}</span>
             </div>
-            <div className="h-px bg-white/10" />
+            <div className="h-px bg-muted/60" />
           </>
         )}
 
         {/* Moments & Members */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">MUSIC MOMENTS</span>
-            <span className="text-3xl font-bold text-accent-foreground leading-tight">{selectedMomentCount}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">MUSIC MOMENTS</span>
+            <span className="text-3xl font-bold text-foreground leading-tight">{selectedMomentCount}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground/50 uppercase">MEMBERS</span>
-            <span className="text-3xl font-bold text-accent-foreground leading-tight">{allMusicians.length}</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">MEMBERS</span>
+            <span className="text-3xl font-bold text-foreground leading-tight">{allMusicians.length}</span>
           </div>
         </div>
       </div>
@@ -1004,21 +1004,24 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] bg-accent-quote flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {/* Header */}
-      <div className="px-4 pt-[62px] pb-4 flex flex-col gap-2 shrink-0 relative z-20">
+      <div className="px-4 pt-16 pb-4 flex flex-col gap-2 shrink-0 relative z-20">
         <StepIndicators />
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-accent-foreground uppercase">
+            <span className="text-xs font-bold text-foreground/60 uppercase">
               STEP {String(step + 1).padStart(2, '0')}
             </span>
-            <h2 className="text-3xl font-bold text-accent-foreground uppercase leading-tight">
+            <span className="text-xs font-bold text-accent-quote uppercase">
+              NEW QUOTE
+            </span>
+            <h2 className="text-3xl font-bold text-foreground uppercase leading-tight">
               {STEPS[step].title}
             </h2>
             <span className="text-base font-bold text-foreground/30 uppercase">
@@ -1027,9 +1030,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.3)] border-2 border-white flex items-center justify-center shrink-0"
+            className="w-12 h-12 rounded-full bg-muted/40 border-2 border-border flex items-center justify-center shrink-0"
           >
-            <X className="w-6 h-6 text-accent-foreground" />
+            <X className="w-6 h-6 text-foreground" />
           </button>
         </div>
       </div>
@@ -1051,28 +1054,28 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Footer */}
       <div
-        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-accent-quote rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.1)]"
+        className="px-4 pt-5 pb-8 shrink-0 relative z-20 border-t border-border rounded-t-3xl shadow-lg"
       >
         {step === STEPS.length - 1 ? (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleCreate(false)}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                className="bg-muted rounded-xl py-4 flex items-center justify-center gap-2"
               >
                 <span className="text-base font-bold text-foreground uppercase">SAVE DRAFT</span>
               </button>
               <button
                 onClick={() => handleCreate(true)}
-                className="bg-black rounded-[10px] py-4 flex items-center justify-center gap-2"
+                className="bg-accent-quote rounded-xl py-4 flex items-center justify-center gap-2"
               >
-                <span className="text-base font-bold text-accent-foreground uppercase">SEND QUOTE</span>
-                <ArrowRight className="w-4 h-4 text-accent-foreground" />
+                <span className="text-base font-bold text-accent-quote-foreground uppercase">SEND QUOTE</span>
+                <ArrowRight className="w-4 h-4 text-accent-quote-foreground" />
               </button>
             </div>
             <button
               onClick={onClose}
-              className="text-xs font-bold text-[var(--destructive)] uppercase text-center py-2"
+              className="text-xs font-bold text-destructive uppercase text-center py-2"
             >
               DISCARD
             </button>
@@ -1081,14 +1084,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           /* Billing step footer with total */
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-bold text-accent-foreground/60 uppercase">TOTAL + TAXES</span>
-              <span className="text-xs font-bold text-accent-foreground/40">${totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
-              <span className="text-3xl font-bold text-accent-foreground">${totals.total.toFixed(0)}</span>
+              <span className="text-xs font-bold text-foreground/60 uppercase">TOTAL + TAXES</span>
+              <span className="text-xs font-bold text-foreground/40">${totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
+              <span className="text-3xl font-bold text-foreground">${totals.total.toFixed(0)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={handleBack}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                className="bg-muted rounded-xl py-4 flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4 text-foreground" />
                 <span className="text-base font-bold text-foreground uppercase">BACK</span>
@@ -1097,12 +1100,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 onClick={handleNext}
                 disabled={!canProceed()}
                 className={cn(
-                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
-                  canProceed() ? 'bg-black' : 'bg-black/30'
+                  'rounded-xl py-4 flex items-center justify-center gap-2 transition-all',
+                  canProceed() ? 'bg-accent-quote text-accent-quote-foreground' : 'bg-muted text-muted-foreground'
                 )}
               >
-                <span className={cn('text-base font-bold uppercase', canProceed() ? 'text-accent-foreground' : 'text-accent-foreground/30')}>NEXT</span>
-                <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-accent-foreground' : 'text-accent-foreground/30')} />
+                <span className="text-base font-bold uppercase">NEXT</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1110,15 +1113,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex flex-col gap-3">
             {step === 3 && musicalMoments.some(m => m.selected) && (
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-bold uppercase text-accent-foreground/60">PARTIAL</span>
-                <span className="text-3xl font-bold text-accent-foreground">${selectedMomentsTotal}</span>
+                <span className="text-xs font-bold uppercase text-foreground/60">PARTIAL</span>
+                <span className="text-3xl font-bold text-foreground">${selectedMomentsTotal}</span>
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5">
               {step > 0 ? (
                 <button
                   onClick={handleBack}
-                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                  className="bg-muted rounded-xl py-4 flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4 text-foreground" />
                   <span className="text-base font-bold text-foreground uppercase">BACK</span>
@@ -1126,7 +1129,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               ) : (
                 <button
                   onClick={onClose}
-                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                  className="bg-muted rounded-xl py-4 flex items-center justify-center gap-2"
                 >
                   <X className="w-4 h-4 text-foreground" />
                   <span className="text-base font-bold text-foreground uppercase">CANCEL</span>
@@ -1141,14 +1144,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 }}
                 disabled={!canProceed()}
                 className={cn(
-                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
-                  canProceed() ? 'bg-black' : 'bg-black/30'
+                  'rounded-xl py-4 flex items-center justify-center gap-2 transition-all',
+                  canProceed() ? 'bg-accent-quote text-accent-quote-foreground' : 'bg-muted text-muted-foreground'
                 )}
               >
-                <span className={cn('text-base font-bold uppercase', canProceed() ? 'text-accent-foreground' : 'text-accent-foreground/30')}>
+                <span className="text-base font-bold uppercase">
                   NEXT
                 </span>
-                <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-accent-foreground' : 'text-accent-foreground/30')} />
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1170,12 +1173,12 @@ const FeeRow: React.FC<{
   <div className="flex flex-col gap-2">
     <button onClick={onToggle} className="flex items-start justify-between gap-5 w-full text-left">
       <div className="flex flex-col gap-1 flex-1">
-        <div className="px-2.5 py-1 rounded-[6px] bg-white/10 text-xs font-bold text-accent-foreground/40 uppercase self-start">
+        <div className="px-2.5 py-1 rounded-full bg-muted/60 text-xs font-bold text-foreground/40 uppercase self-start">
           {tag}
         </div>
         <span className={cn(
           'text-xl font-bold uppercase',
-          !included ? 'text-accent-foreground' : 'text-accent-foreground/30'
+          !included ? 'text-foreground' : 'text-foreground/30'
         )}>
           {label}
         </span>
@@ -1188,13 +1191,13 @@ const FeeRow: React.FC<{
   </button>
   {!included && onFeeChange && (
     <div className="flex items-center gap-2 pl-2">
-      <span className="text-accent-foreground/50 font-bold text-sm">$</span>
+      <span className="text-muted-foreground font-bold text-sm">$</span>
       <input
         type="number"
         value={fee || ''}
         onChange={(e) => onFeeChange(parseFloat(e.target.value) || 0)}
         placeholder="0"
-        className="bg-white/10 rounded-[8px] px-3 py-2 text-base font-bold text-accent-foreground focus:outline-none w-32"
+        className="bg-muted/60 rounded-xl px-3 py-2 text-base font-bold text-foreground focus:outline-none w-32"
         onClick={(e) => e.stopPropagation()}
       />
     </div>

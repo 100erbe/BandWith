@@ -20,17 +20,17 @@ export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   onClick,
 }) => {
   const borderColor = disabled
-    ? 'rgba(0,0,0,0.1)'
-    : inactiveColor || 'rgba(0,0,0,0.2)';
-  const bg = disabled ? 'rgba(0,0,0,0.04)' : checked ? activeColor : 'transparent';
+    ? 'var(--border)'
+    : inactiveColor || 'var(--dot-inactive)';
+  const bg = disabled ? 'var(--muted)' : checked ? activeColor : 'transparent';
   const fg = disabled
-    ? 'rgba(0,0,0,0.2)'
+    ? 'var(--dot-inactive)'
     : checked
       ? 'var(--surface-inverse-fg)'
       : 'transparent';
 
   const boxClasses = cn(
-    'w-[32px] h-[32px] rounded-[8px] border-2 flex items-center justify-center shrink-0 transition-all',
+    'w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all',
     onClick && 'focus:outline-none',
     onClick && (disabled ? 'cursor-not-allowed' : 'cursor-pointer'),
     !onClick && 'pointer-events-none',
@@ -46,7 +46,7 @@ export const DotCheckbox: React.FC<DotCheckboxProps> = ({
       }}
     >
       <Check
-        className="w-[18px] h-[18px] transition-all"
+        className="w-4.5 h-4.5 transition-all"
         style={{ color: fg, opacity: checked ? 1 : 0 }}
         strokeWidth={3}
       />

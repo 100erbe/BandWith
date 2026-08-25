@@ -378,6 +378,7 @@ const sendPushNotification = async (
         title,
         body: body || '',
         data: pushData,
+        create_in_app: false,
       },
     });
   } catch (error) {

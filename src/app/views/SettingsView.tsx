@@ -130,7 +130,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
               <DotRadio
                 selected={mode === theme.id}
                 activeColor={mode === theme.id ? 'var(--fg)' : undefined}
-                className="!w-[60px] !h-[38px]"
+                className="!w-15 !h-9.5"
               />
             </button>
           ))}
@@ -162,22 +162,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
       </div>
 
       <div className="flex flex-col gap-4 pt-4 border-t border-border">
-        <span className="text-xs font-bold text-[var(--destructive)] uppercase tracking-wide">ACCOUNT</span>
+        <span className="text-xs font-bold text-destructive uppercase tracking-wide">ACCOUNT</span>
         <button
           onClick={async () => {
             await signOut();
             onClose();
           }}
-          className="w-full border border-black bg-black rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          className="w-full bg-surface-inverse rounded-xl py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
-          <span className="text-xs font-bold text-accent-foreground uppercase">SIGN OUT</span>
+          <span className="text-xs font-bold text-surface-inverse-foreground uppercase">SIGN OUT</span>
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          className="w-full border border-destructive bg-warning-subtle rounded-xl py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
         >
-          <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
-          <span className="text-xs font-bold text-[var(--destructive)] uppercase">DELETE ACCOUNT</span>
+          <Trash2 className="w-4 h-4 text-destructive" />
+          <span className="text-xs font-bold text-destructive uppercase">DELETE ACCOUNT</span>
         </button>
       </div>
     </div>
@@ -249,7 +249,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             <span className="text-lg">🇬🇧</span>
             <span className="text-xs font-bold text-foreground uppercase tracking-wide">ENGLISH</span>
           </div>
-          <DotRadio selected={true} activeColor="var(--fg)" className="!w-[60px] !h-[38px]" />
+          <DotRadio selected={true} activeColor="var(--fg)" className="!w-15 !h-9.5" />
         </button>
       </div>
     </div>
@@ -277,10 +277,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={activeSection === 'main' ? onClose : () => setActiveSection('main')}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+            className="w-12 h-12 rounded-full flex items-center justify-center border border-border bg-muted shrink-0 active:scale-90 transition-transform"
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+            <ArrowLeft className="w-6 h-6 text-foreground" />
           </button>
           <h1 className="text-3xl font-bold text-foreground leading-tight uppercase">{sectionTitle}</h1>
         </div>
@@ -314,19 +313,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[80] bg-overlay/60 backdrop-blur-sm flex items-center justify-center p-6"
             onClick={() => setShowDeleteConfirm(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-background rounded-[10px] p-6 max-w-sm w-full"
+              className="bg-card rounded-xl p-6 max-w-sm w-full"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex flex-col gap-5">
-                <div className="w-12 h-12 mx-auto bg-[var(--warning-subtle)] rounded-[10px] flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
+                <div className="w-12 h-12 mx-auto bg-warning-subtle rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-destructive" />
                 </div>
                 <div className="flex flex-col gap-2 text-center">
                   <h2 className="text-xl font-bold text-foreground uppercase">DELETE ACCOUNT?</h2>
@@ -337,12 +336,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 h-12 rounded-[10px] bg-foreground/5 text-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-xl bg-foreground/5 text-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
                   >
                     Cancel
                   </button>
                   <button
-                    className="flex-1 h-12 rounded-[10px] bg-[var(--destructive)] text-accent-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-xl bg-destructive text-destructive-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
                   >
                     Delete
                   </button>
@@ -377,7 +376,7 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon
         <span className="text-xs font-medium text-foreground/40 uppercase">{desc}</span>
       </div>
     </div>
-    <DotCheckbox checked={enabled} className="!w-[60px] !h-[38px]" />
+    <DotCheckbox checked={enabled} className="!w-15 !h-9.5" />
   </button>
 );
 

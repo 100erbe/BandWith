@@ -92,7 +92,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <br />
               <span className="text-accent">your way.</span>
             </h1>
-            <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-[280px]">
+            <p className="text-muted-foreground text-sm font-medium leading-relaxed max-w-70">
               Manage gigs, rehearsals, and sync your band — or just keep your own calendar in tune.
             </p>
         </motion.div>
@@ -168,7 +168,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </button>
               </div>
               {inviteCodeError && (
-                <p className="text-red-400 text-xs font-medium px-1">
+                <p className="text-destructive text-xs font-medium px-1">
                   {inviteCodeError}
                 </p>
               )}

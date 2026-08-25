@@ -98,14 +98,14 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
     >
       {/* Sticky Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--accent-gig)]/95 backdrop-blur-md"
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-accent-gig/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
       >
         <button 
           onClick={(e) => { e.stopPropagation(); onClose(); }} 
-          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-accent-foreground hover:bg-white/30 transition-colors"
+          className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center text-accent-foreground hover:bg-muted/30 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -115,7 +115,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
         </div>
         <div className={cn(
           "px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5",
-          earningsData.trend >= 0 ? "bg-white/20 text-accent-foreground" : "bg-red-500/20 text-red-200"
+          earningsData.trend >= 0 ? "bg-muted/20 text-accent-foreground" : "bg-destructive/20 text-destructive"
         )}>
           {earningsData.trend >= 0 ? (
             <TrendingUp className="w-3.5 h-3.5" />
@@ -139,45 +139,45 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl p-4 shadow-sm"
+                className="bg-card rounded-2xl p-4 shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
-                    <Euro className="w-4 h-4 text-teal-600" />
+                  <div className="w-8 h-8 rounded-full bg-accent-gig/10 flex items-center justify-center">
+                    <Euro className="w-4 h-4 text-accent-gig" />
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">€{earningsData.totalEarned}</span>
-                <span className="text-xs font-bold uppercase text-stone-400">Total Earned</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground">Total Earned</span>
               </motion.div>
               
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="bg-white rounded-2xl p-4 shadow-sm"
+                className="bg-card rounded-2xl p-4 shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Music className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-full bg-accent-quote/10 flex items-center justify-center">
+                    <Music className="w-4 h-4 text-accent-quote" />
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">{earningsData.totalGigs}</span>
-                <span className="text-xs font-bold uppercase text-stone-400">Total Gigs</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground">Total Gigs</span>
               </motion.div>
               
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white rounded-2xl p-4 shadow-sm"
+                className="bg-card rounded-2xl p-4 shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-amber-600" />
+                  <div className="w-8 h-8 rounded-full bg-amber/10 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-amber" />
                   </div>
                 </div>
                 <span className="text-2xl font-black text-foreground block">€{earningsData.avgPerGig}</span>
-                <span className="text-xs font-bold uppercase text-stone-400">Avg / Gig</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground">Avg / Gig</span>
               </motion.div>
             </div>
 
@@ -186,11 +186,11 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className="bg-white rounded-3xl p-5 shadow-sm"
+              className="bg-card rounded-3xl p-5 shadow-sm"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Earnings Overview</h3>
-                <div className="flex gap-1 p-1 bg-stone-100 rounded-full">
+                <div className="flex gap-1 p-1 bg-muted rounded-full">
                   {(['month', 'quarter', 'year'] as const).map(period => (
                     <button
                       key={period}
@@ -198,8 +198,8 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-bold uppercase transition-all",
                         selectedPeriod === period 
-                          ? "bg-[var(--accent-gig)] text-accent-foreground" 
-                          : "text-stone-500 hover:text-stone-700"
+                          ? "bg-accent-gig text-accent-foreground" 
+                          : "text-muted-foreground hover:text-muted-foreground"
                       )}
                     >
                       {period === 'month' ? '6M' : period === 'quarter' ? '1Y' : 'All'}
@@ -222,16 +222,16 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                       style={{ transformOrigin: 'bottom' }}
                     >
                       <motion.div 
-                        className="w-full bg-gradient-to-t from-teal-500 to-teal-400 rounded-xl relative group cursor-pointer"
+                        className="w-full bg-gradient-to-t from-accent-gig to-accent-gig rounded-xl relative group cursor-pointer"
                         style={{ height: `${height}%`, minHeight: '8px' }}
                         whileHover={{ scale: 1.05 }}
                       >
                         {/* Tooltip on hover */}
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--surface-inverse)] text-accent-foreground px-2 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-inverse text-accent-foreground px-2 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                           €{data.amount}
                         </div>
                       </motion.div>
-                      <span className="text-xs font-bold text-stone-400">{data.month}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{data.month}</span>
                     </motion.div>
                   );
                 })}
@@ -243,12 +243,12 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-white rounded-3xl p-5 shadow-sm"
+              className="bg-card rounded-3xl p-5 shadow-sm"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Upcoming Payments</h3>
-                <div className="px-2.5 py-1 bg-teal-100 rounded-full">
-                  <span className="text-xs font-bold text-teal-700">{upcomingPayments.length} pending</span>
+                <div className="px-2.5 py-1 bg-accent-gig/10 rounded-full">
+                  <span className="text-xs font-bold text-accent-gig">{upcomingPayments.length} pending</span>
                 </div>
               </div>
               
@@ -260,22 +260,22 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.45 + index * 0.05 }}
-                      className="flex items-center justify-between p-3 bg-stone-50 rounded-2xl"
+                      className="flex items-center justify-between p-3 bg-muted rounded-2xl"
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center",
-                          payment.type === 'gig' ? "bg-blue-100" : "bg-teal-100"
+                          payment.type === 'gig' ? "bg-accent-quote/10" : "bg-accent-gig/10"
                         )}>
                           {payment.type === 'gig' ? (
-                            <Music className="w-4 h-4 text-blue-600" />
+                            <Music className="w-4 h-4 text-accent-quote" />
                           ) : (
-                            <Calendar className="w-4 h-4 text-teal-600" />
+                            <Calendar className="w-4 h-4 text-accent-gig" />
                           )}
                         </div>
                         <div>
                           <span className="font-bold text-sm text-foreground block">{payment.title}</span>
-                          <span className="text-xs text-stone-400">{payment.date}</span>
+                          <span className="text-xs text-muted-foreground">{payment.date}</span>
                         </div>
                       </div>
                       <span className="font-black text-lg text-foreground">€{payment.amount}</span>
@@ -284,11 +284,11 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mb-3">
-                    <Clock className="w-6 h-6 text-stone-400" />
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Clock className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-bold text-stone-400">No upcoming payments</span>
-                  <span className="text-xs text-stone-300 mt-1">Payments will appear here when gigs are confirmed</span>
+                  <span className="text-sm font-bold text-muted-foreground">No upcoming payments</span>
+                  <span className="text-xs text-muted-foreground mt-1">Payments will appear here when gigs are confirmed</span>
                 </div>
               )}
             </motion.div>
@@ -298,7 +298,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl p-5 shadow-lg"
+              className="bg-gradient-to-br from-accent-gig to-accent-gig rounded-3xl p-5 shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -306,7 +306,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                   <span className="text-3xl font-black text-accent-foreground">€{memberFee || '--'}</span>
                   <span className="text-accent-foreground/60 text-xs block mt-1">per event</span>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
                   <Wallet className="w-8 h-8 text-accent-foreground" />
                 </div>
               </div>

@@ -62,7 +62,7 @@ const DotGrid: React.FC<{ filled: number; total: number; cols?: number; rows?: n
 
   return (
     <div
-      className="grid w-full gap-[4px]"
+      className="grid w-full gap-1"
       style={{
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
@@ -80,7 +80,7 @@ const DotGrid: React.FC<{ filled: number; total: number; cols?: number; rows?: n
         return (
           <div
             key={i}
-            className="rounded-[10px]"
+            className="rounded-xl"
             style={dotStyle}
           />
         );
@@ -152,7 +152,7 @@ const PixelInitials: React.FC<{ name: string; activeColor: string; height?: numb
 
   return (
     <div
-      className="grid w-full gap-[4px]"
+      className="grid w-full gap-1"
       style={{
         gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
         gridTemplateRows: 'repeat(5, minmax(0, 1fr))',
@@ -162,7 +162,7 @@ const PixelInitials: React.FC<{ name: string; activeColor: string; height?: numb
       {items.map((item, i) => (
         <div
           key={i}
-          className="rounded-[10px]"
+          className="rounded-xl"
           style={{
             gridColumn: `${item.col} / span ${item.cs}`,
             gridRow: `${item.row} / span ${item.rs}`,
@@ -192,7 +192,7 @@ const BarChart: React.FC<{ bars: number; activeColor: string; seed?: number; row
 
   return (
     <div
-      className="grid w-full h-full gap-[4px]"
+      className="grid w-full h-full gap-1"
       style={{
         gridTemplateColumns: `repeat(${bars}, minmax(0, 1fr))`,
         gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
@@ -201,7 +201,7 @@ const BarChart: React.FC<{ bars: number; activeColor: string; seed?: number; row
       {items.map((item, i) => (
         <div
           key={i}
-          className="rounded-[10px]"
+          className="rounded-xl"
           style={{
             gridColumn: `${item.col} / span ${item.cs}`,
             gridRow: `${item.row} / span ${item.rs}`,
@@ -377,17 +377,17 @@ const MonthGrid: React.FC<MonthGridProps> = ({ year, month, eventsByDate, onSele
   const numRows = Math.ceil(totalCells / 7);
 
   return (
-    <div className="w-full shrink-0 flex flex-col gap-[10px]">
-      <div className="bg-muted/50 rounded-[10px] flex">
+    <div className="w-full shrink-0 flex flex-col gap-2.5">
+      <div className="bg-muted/50 rounded-xl flex">
         {['M','T','W','T','F','S','S'].map((d, i) => (
-          <div key={i} className="flex-1 py-[4px] text-center">
+          <div key={i} className="flex-1 py-1 text-center">
             <span className="text-xs font-medium text-muted-foreground">{d}</span>
           </div>
         ))}
       </div>
 
       <div
-        className="grid grid-cols-7 gap-[4px]"
+        className="grid grid-cols-7 gap-1"
         style={{
           gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
           height: numRows * 28,
@@ -432,14 +432,14 @@ const MonthGrid: React.FC<MonthGridProps> = ({ year, month, eventsByDate, onSele
               key={day}
               onClick={() => onSelectDay(eventsOnDay)}
               className={cn(
-                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 relative",
+                "rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 relative",
                 textColor
               )}
               style={bgStyle}
             >
               <span className="text-base font-medium leading-tight">{day}</span>
               {multipleEvents && (
-                <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-xs font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-surface-inverse text-surface-inverse-foreground text-xs font-bold rounded-full flex items-center justify-center">
                   {eventsOnDay.length}
                 </span>
               )}
@@ -447,7 +447,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({ year, month, eventsByDate, onSele
           ) : (
             <div
               key={day}
-              className="rounded-[10px] flex items-center justify-center text-foreground/60 dark:text-muted-foreground"
+              className="rounded-xl flex items-center justify-center text-foreground/60 dark:text-muted-foreground"
               style={{ backgroundColor: 'var(--muted)' }}
             >
               <span className="text-base font-medium leading-tight">{day}</span>
@@ -476,13 +476,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
   bands = []
 }) => {
   const getDisplayFee = (event: EventData): string => {
-    if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) {
-      return formatBandTotal(String(userFeeMap[event.eventId]));
+    if (!isAdmin) {
+      if (event.eventId && userFeeMap[event.eventId] != null) {
+        return formatBandTotal(String(userFeeMap[event.eventId]));
+      }
+      return '\u2014';
     }
     return formatBandTotal(event.price);
   };
   const getFeeLabel = (event: EventData): string => {
-    if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) return 'YOUR FEE';
+    if (!isAdmin) return 'YOUR FEE';
     return 'BAND TOTAL';
   };
 
@@ -700,7 +703,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
+      className="flex flex-col gap-10 relative z-10 pb-32 min-h-[50vh]"
     >
       {allEvents.length === 0 ? (
         <EmptyStateHero />
@@ -716,20 +719,20 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="flex items-center gap-[8px] bg-muted/50 rounded-[10px] px-[12px] py-[8px]">
-                  <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
+                <div className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2">
+                  <Search className="w-4 h-4 text-foreground/40 shrink-0" />
                   <input
                     ref={searchRef}
                     type="text"
                     value={eventSearch}
                     onChange={(e) => setEventSearch(e.target.value)}
                     placeholder="Search events..."
-                    className="bg-transparent text-sm font-medium text-[var(--fg)] placeholder:text-foreground/30 focus:outline-none flex-1"
+                    className="bg-transparent text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none flex-1"
                     autoFocus
                   />
                   {eventSearch && (
                     <button onClick={() => setEventSearch('')}>
-                      <X className="w-[14px] h-[14px] text-foreground/40" />
+                      <X className="w-3.5 h-3.5 text-foreground/40" />
                     </button>
                   )}
                 </div>
@@ -739,12 +742,12 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
           {bands.length > 1 && !isAdmin && (
-            <div className="flex gap-[4px] items-center flex-wrap pb-1 mb-1">
+            <div className="flex gap-1 items-center flex-wrap pb-1 mb-1">
               <button
                 key="all"
                 onClick={() => onBandPillClick('all')}
                 className={cn(
-                  'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[11px] font-bold uppercase flex-shrink-0 transition-all leading-tight',
+                  'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-bold uppercase flex-shrink-0 transition-all leading-tight',
                   selectedBandPill === 'all'
                     ? 'bg-foreground text-background'
                     : 'bg-foreground/10 text-foreground/50'
@@ -759,7 +762,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     key={band.id}
                     onClick={() => onBandPillClick(band.id)}
                     className={cn(
-                      'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[11px] font-bold uppercase flex-shrink-0 transition-all leading-tight',
+                      'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-xs font-bold uppercase flex-shrink-0 transition-all leading-tight',
                       isActive
                         ? 'bg-foreground text-background'
                         : 'bg-foreground/10 text-foreground/50'
@@ -773,7 +776,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           )}
 
           {/* ═══ FILTER PILLS ═══ */}
-          <div className="flex gap-[12px] items-center overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3 items-center overflow-x-auto scrollbar-hide">
             {FILTERS.map((f) => {
               const isActive = eventFilter === f;
               let activeBg = 'bg-card';
@@ -787,7 +790,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 key={f}
                 onClick={() => setEventFilter(f)}
                 className={cn(
-                  "px-[8px] py-[6px] rounded-[6px] text-xs whitespace-nowrap transition-all shrink-0",
+                  "px-2 py-1.5 rounded-full text-xs whitespace-nowrap transition-all shrink-0",
                   isActive
                     ? `${activeBg} ${activeText} font-bold`
                     : "bg-muted/20 text-muted-foreground font-medium"
@@ -799,11 +802,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
             <button
               onClick={() => { setIsSearchOpen(!isSearchOpen); if (!isSearchOpen) setTimeout(() => searchRef.current?.focus(), 100); }}
               className={cn(
-                "w-[32px] h-[32px] rounded-full border-[1.5px] flex items-center justify-center transition-all shrink-0",
+                "w-8 h-8 rounded-full border-[1.5px] flex items-center justify-center transition-all shrink-0",
                 isSearchOpen ? "border-foreground bg-foreground text-background" : "border-foreground/30 bg-transparent text-muted-foreground"
               )}
             >
-              <Search className="w-[14px] h-[14px]" />
+              <Search className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -839,17 +842,17 @@ export const EventsView: React.FC<EventsViewProps> = ({
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-[10px] p-[20px] cursor-pointer overflow-hidden"
+                className="bg-card rounded-xl p-5 cursor-pointer overflow-hidden"
                 onClick={() => onEventClick(feat)}
               >
-                <div className="flex flex-col gap-[20px]">
-                  <div className="flex gap-[20px] items-start">
-                    <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+                <div className="flex flex-col gap-5">
+                  <div className="flex gap-5 items-start">
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
                       {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
                       {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                        <div className="flex gap-[4px] items-center flex-wrap">
+                        <div className="flex gap-1 items-center flex-wrap">
                           {featTags.map((tag, i) => (
-                            <div key={i} className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
+                            <div key={i} className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
                               <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
                             </div>
                           ))}
@@ -857,13 +860,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       )}
                       {/* Multi-band member: band name pill + event type pill */}
                       {!isAdmin && bands.length > 1 && (
-                        <div className="flex gap-[4px] items-center flex-wrap">
+                        <div className="flex gap-1 items-center flex-wrap">
                           {feat.band_name && (
-                            <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
+                            <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
                               <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{feat.band_name}</span>
                             </div>
                           )}
-                          <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
+                          <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
                             <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">{isGig ? 'GIG' : isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT'}</span>
                           </div>
                         </div>
@@ -873,7 +876,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <div className="flex flex-col gap-0.5 min-w-0">
                               {/* ═══ EYEBROW ROW — Event type text (single-band member only) ═══ */}
                               {!isAdmin && bands.length <= 1 && (isGig || isRehearsal || isQuote) && (
-                                <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
+                                <div className="inline-flex items-center gap-1 text-xs uppercase tracking-wider leading-normal">
                                   <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
                                 </div>
                               )}
@@ -881,7 +884,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">{feat.title}</h3>
                             </div>
                           </div>
-                      <div className="flex flex-col gap-[2px]">
+                      <div className="flex flex-col gap-0.5">
                         <span className="text-base font-bold text-foreground uppercase">{feat.location?.split(',')[0] || 'TBD'}</span>
                         {feat.venueAddress && (
                           <span className="text-xs font-medium text-foreground/50 uppercase">{feat.venueAddress}</span>
@@ -889,10 +892,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       </div>
                     </div>
                     <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                      <div className={cn("rounded-full p-[6px]", arrowBg)}>
-                        <ArrowUpRight className={cn("w-[28px] h-[28px]", arrowColor)} />
+                      <div className={cn("rounded-full p-1.5", arrowBg)}>
+                        <ArrowUpRight className={cn("w-7 h-7", arrowColor)} />
                       </div>
-                      <div className="bg-muted rounded-[10px] px-[10px] py-[10px]">
+                      <div className="bg-muted rounded-xl px-2.5 py-2.5">
                         <span className="text-xs font-bold text-foreground uppercase whitespace-nowrap">
                           {feat.date ? formatEventDate(feat.date) : 'TBD'}{feat.time ? ` - ${formatEventTime(feat.time)}` : ''}
                         </span>
@@ -901,7 +904,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   </div>
 
                   {isGig ? (
-                    <div className="flex flex-col gap-[12px]">
+                    <div className="flex flex-col gap-3">
                       <DotGrid filled={memberCount} total={Math.max(9, memberCount)} cols={9} rows={1} activeColor={dotColor} height={15} />
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col items-start">
@@ -923,8 +926,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       </div>
                     </div>
                   ) : isRehearsal ? (
-                    <div className="flex gap-[20px] items-end">
-                      <div className="flex-1 flex flex-col gap-[20px]">
+                    <div className="flex gap-5 items-end">
+                      <div className="flex-1 flex flex-col gap-5">
                         <DotGrid filled={memberCount} total={Math.max(12, memberCount)} cols={6} rows={2} activeColor={dotColor} height={15 * 2 + 4} />
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground/70">CONFIRMED MEMBERS</span>
@@ -933,34 +936,34 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       </div>
                     </div>
                   ) : isQuote ? (
-                    <div className="grid grid-cols-2 gap-x-[20px] gap-y-[40px]">
-                      <div className="flex flex-col gap-[8px]">
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-10">
+                      <div className="flex flex-col gap-2">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground/70">CLIENT</span>
                           <span className="text-xl font-bold text-foreground leading-tight uppercase">{feat.clientName || 'TBD'}</span>
                         </div>
                         <PixelInitials name={feat.clientName || 'TBD'} activeColor={dotColor} height={91} />
                       </div>
-                      <div className="flex flex-col gap-[8px]">
+                      <div className="flex flex-col gap-2">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground/70">{isAdmin ? 'PRICING & FINANCE' : 'YOUR FEE'}</span>
                           <span className="text-xl font-bold text-foreground leading-tight">{getDisplayFee(feat)}</span>
                         </div>
-                        <div className="h-[91px]">
+                        <div className="h-23">
                           <BarChart bars={8} activeColor={dotColor} seed={feat.id + 3} rows={5} />
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-[20px] items-end">
-                      <div className="flex-1 flex flex-col gap-[10px]">
+                    <div className="flex gap-5 items-end">
+                      <div className="flex-1 flex flex-col gap-2.5">
                         <DotGrid filled={memberCount} total={12} cols={6} rows={2} activeColor="var(--dot-inactive)" />
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground/70">TEAM MEMBERS</span>
                           <span className="text-xl font-bold text-foreground leading-tight">{memberCount}</span>
                         </div>
                       </div>
-                      <div className="flex-1 flex flex-col gap-[10px]">
+                      <div className="flex-1 flex flex-col gap-2.5">
                         <DotGrid filled={0} total={12} cols={6} rows={2} activeColor="var(--dot-inactive)" />
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-foreground/70">{getFeeLabel(feat)}</span>
@@ -975,21 +978,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
           })()}
 
           {/* ═══ CALENDAR ═══ */}
-          <div className="flex flex-col gap-[20px]">
+          <div className="flex flex-col gap-5">
             {/* Month Navigation */}
-            <div className="flex gap-[16px] items-center">
-              <div className="flex gap-[12px] items-center">
+            <div className="flex gap-4 items-center">
+              <div className="flex gap-3 items-center">
                 <button
                   onClick={() => scrollToMonth(-1)}
-                  className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
+                  className="border-[1.5px] border-border border-solid rounded-full p-1 flex items-center"
                 >
-                  <ChevronLeft className="w-[20px] h-[20px]" />
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => scrollToMonth(1)}
-                  className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
+                  className="border-[1.5px] border-border border-solid rounded-full p-1 flex items-center"
                 >
-                  <ChevronRight className="w-[20px] h-[20px]" />
+                  <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
               <span className="text-base font-bold text-foreground uppercase">
@@ -1021,7 +1024,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </div>
 
           {/* ═══ LIST HEADER ═══ */}
-          <div className="flex flex-col gap-[4px]">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-foreground uppercase leading-tight">
               LIST
             </span>
@@ -1033,7 +1036,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {/* ═══ EVENT CARDS ═══ */}
           <motion.div
             layout
-            className="flex flex-col gap-[80px]"
+            className="flex flex-col gap-20"
             transition={{ layout: { duration: 0.3, ease: 'easeInOut' } }}
           >
             {monthEvents.length > 0 ? (
@@ -1066,29 +1069,29 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     >
                       {/* Top Metadata Row */}
                       <div className="flex justify-between items-center gap-2 mb-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-rehearsal truncate">REHEARSAL</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-accent-rehearsal truncate">REHEARSAL</span>
                       
-                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                        <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
                           <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
                             {event.date ? formatEventDate(event.date) : 'TBD'}
                           </span>
                         </div>
                       </div>
                       {/* Section 1: Event Info + Icons + Date */}
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+                      <div className="flex gap-7.5 items-start w-full">
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
                           <div className="flex flex-col gap-0.5 min-w-0">
                               {/* ═══ EVENT TITLE ═══ */}
                               <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <div className="flex gap-[2px] items-center">
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <div className="flex gap-0.5 items-center">
                               <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
-                              <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
+                              <ArrowUpRight className="w-4.5 h-4.5 text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
                               <span className="text-xs font-medium text-foreground/50 uppercase">
@@ -1098,15 +1101,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           </div>
                         </div>
                         <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
+                          <div className="flex gap-1.5 items-start">
                             {warnings.length > 0 && (
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
+                                  className="bg-warning rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -1114,14 +1117,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1133,10 +1136,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
+                                  className="bg-amber rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1144,14 +1147,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1159,8 +1162,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 </AnimatePresence>
                               </div>
                             )}
-                            <div className="bg-background rounded-full p-[6px]">
-                              <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
+                            <div className="bg-background rounded-full p-1.5">
+                              <ArrowUpRight className="w-7 h-7 text-foreground" />
                             </div>
                           </div>
 
@@ -1195,29 +1198,29 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     >
                       {/* Top Metadata Row */}
                       <div className="flex justify-between items-center gap-2 mb-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-gig truncate">GIG</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-accent-gig truncate">GIG</span>
                       
-                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                        <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
                           <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
                             {event.date ? formatEventDate(event.date) : 'TBD'}
                           </span>
                         </div>
                       </div>
                       {/* Section 1: Event Info + Icons + Date */}
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+                      <div className="flex gap-7.5 items-start w-full">
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
                           <div className="flex flex-col gap-0.5 min-w-0">
                               {/* ═══ EVENT TITLE ═══ */}
                               <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <div className="flex gap-[2px] items-center">
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <div className="flex gap-0.5 items-center">
                               <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
-                              <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
+                              <ArrowUpRight className="w-4.5 h-4.5 text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
                               <span className="text-xs font-medium text-foreground/50 uppercase">
@@ -1227,15 +1230,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           </div>
                         </div>
                         <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
+                          <div className="flex gap-1.5 items-start">
                             {warnings.length > 0 && (
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
+                                  className="bg-warning rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -1243,14 +1246,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1262,10 +1265,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
+                                  className="bg-amber rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1273,14 +1276,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1288,8 +1291,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 </AnimatePresence>
                               </div>
                             )}
-                            <div className="bg-accent-gig rounded-full p-[6px]">
-                              <ArrowUpRight className="w-[28px] h-[28px] text-accent-gig-foreground" />
+                            <div className="bg-accent-gig rounded-full p-1.5">
+                              <ArrowUpRight className="w-7 h-7 text-accent-gig-foreground" />
                             </div>
                           </div>
 
@@ -1324,29 +1327,29 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     >
                       {/* Top Metadata Row */}
                       <div className="flex justify-between items-center gap-2 mb-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-accent-quote truncate">QUOTE</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-accent-quote truncate">QUOTE</span>
                       
-                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                        <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
                           <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
                             {event.date ? formatEventDate(event.date) : 'TBD'}
                           </span>
                         </div>
                       </div>
                       {/* Section 1: Event Info + Icons + Date */}
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+                      <div className="flex gap-7.5 items-start w-full">
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
                           <div className="flex flex-col gap-0.5 min-w-0">
                               {/* ═══ EVENT TITLE ═══ */}
                               <h3 className="text-3xl font-bold text-foreground uppercase leading-tight truncate">
                                 {event.title}
                               </h3>
                             </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <div className="flex gap-[2px] items-center">
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            <div className="flex gap-0.5 items-center">
                               <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                                 {event.location?.split(',')[0] || 'TBD'}
                               </span>
-                              <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
+                              <ArrowUpRight className="w-4.5 h-4.5 text-foreground/50 shrink-0" />
                             </div>
                             {(event.venueAddress || event.location?.includes(',')) && (
                               <span className="text-xs font-medium text-foreground/50 uppercase">
@@ -1356,15 +1359,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           </div>
                         </div>
                         <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
+                          <div className="flex gap-1.5 items-start">
                             {warnings.length > 0 && (
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
+                                  className="bg-warning rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {warningPopoverId === event.id && (
@@ -1372,14 +1375,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                       {warnings.map((w, wi) => (
                                         <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{w}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1391,10 +1394,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               <div className="relative">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
+                                  className="bg-amber rounded-full p-1.5"
                                   style={{ transform: 'rotate(180deg)' }}
                                 >
-                                  <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                  <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                                 </button>
                                 <AnimatePresence>
                                   {suggestionPopoverId === event.id && (
@@ -1402,14 +1405,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                       initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                       animate={{ opacity: 1, scale: 1, y: 0 }}
                                       exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                      className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                       {suggestions.map((s, si) => (
                                         <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                                          <span className="text-xs font-medium text-surface-inverse-foreground/80">{s}</span>
                                         </div>
                                       ))}
                                     </motion.div>
@@ -1417,8 +1420,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 </AnimatePresence>
                               </div>
                             )}
-                            <div className="bg-background rounded-full p-[6px]">
-                              <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
+                            <div className="bg-background rounded-full p-1.5">
+                              <ArrowUpRight className="w-7 h-7 text-foreground" />
                             </div>
                           </div>
 
@@ -1452,26 +1455,26 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   >
                     {/* Top Metadata Row */}
                     <div className="flex justify-between items-center gap-2 mb-3">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">DRAFT</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">DRAFT</span>
                     
-                        <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
+                        <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 leading-tight shrink-0" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
                           <span className="text-xs font-bold uppercase whitespace-nowrap leading-tight">
                             {event.date ? formatEventDate(event.date) : 'TBD'}
                           </span>
                         </div>
                       </div>
                     {/* Section 1: Event Info + Icons + Date */}
-                    <div className="flex gap-[30px] items-start w-full">
-                      <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+                    <div className="flex gap-7.5 items-start w-full">
+                      <div className="flex-1 flex flex-col gap-1 min-w-0">
                         <h3 className="text-3xl font-bold text-foreground uppercase leading-tight">
                           {event.title}
                         </h3>
-                        <div className="flex flex-col gap-[2px]">
-                          <div className="flex gap-[2px] items-center">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex gap-0.5 items-center">
                             <span className="text-base font-bold text-foreground uppercase whitespace-nowrap">
                               {event.location?.split(',')[0] || 'TBD'}
                             </span>
-                            <ArrowUpRight className="w-[18px] h-[18px] text-foreground/50 shrink-0" />
+                            <ArrowUpRight className="w-4.5 h-4.5 text-foreground/50 shrink-0" />
                           </div>
                           {(event.venueAddress || event.location?.includes(',')) && (
                             <span className="text-xs font-medium text-foreground/50 uppercase">
@@ -1481,15 +1484,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         </div>
                       </div>
                       <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                        <div className="flex gap-[6px] items-start">
+                        <div className="flex gap-1.5 items-start">
                           {warnings.length > 0 && (
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                className="bg-[var(--warning)] rounded-full p-[6px]"
+                                className="bg-warning rounded-full p-1.5"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
-                                <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                               </button>
                               <AnimatePresence>
                                 {warningPopoverId === event.id && (
@@ -1497,14 +1500,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Missing Info</span>
                                     {warnings.map((w, wi) => (
                                       <div key={wi} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{w}</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                                        <span className="text-xs font-medium text-surface-inverse-foreground/80">{w}</span>
                                       </div>
                                     ))}
                                   </motion.div>
@@ -1516,10 +1519,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <div className="relative">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                className="bg-[var(--amber)] rounded-full p-[6px]"
+                                className="bg-amber rounded-full p-1.5"
                                 style={{ transform: 'rotate(180deg)' }}
                               >
-                                <AlertCircle className="w-[28px] h-[28px] text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
+                                <AlertCircle className="w-7 h-7 text-surface-inverse-foreground" style={{ transform: 'rotate(180deg)' }} />
                               </button>
                               <AnimatePresence>
                                 {suggestionPopoverId === event.id && (
@@ -1527,14 +1530,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                     initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    className="absolute top-full right-0 mt-2 bg-surface-inverse rounded-xl p-3 z-50 min-w-45 shadow-lg"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <span className="text-xs font-bold text-surface-inverse-foreground/50 uppercase block mb-2">Suggestions</span>
                                     {suggestions.map((s, si) => (
                                       <div key={si} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-surface-inverse-foreground/80">{s}</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                                        <span className="text-xs font-medium text-surface-inverse-foreground/80">{s}</span>
                                       </div>
                                     ))}
                                   </motion.div>
@@ -1542,8 +1545,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               </AnimatePresence>
                             </div>
                           )}
-                          <div className="bg-background rounded-full p-[6px]">
-                            <ArrowUpRight className="w-[28px] h-[28px] text-foreground" />
+                          <div className="bg-background rounded-full p-1.5">
+                            <ArrowUpRight className="w-7 h-7 text-foreground" />
                           </div>
                         </div>
 
@@ -1585,7 +1588,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-[10px]"
+              className="fixed inset-0 z-[90] bg-background/80 backdrop-blur-md"
               onClick={closeDayPicker}
             />
             <motion.div
@@ -1593,7 +1596,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed bottom-0 left-0 right-0 z-[91] bg-surface-inverse rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+              className="fixed bottom-0 left-0 right-0 z-[91] bg-surface-inverse rounded-t-3xl px-4 pt-4 shadow-lg"
               style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
             >
               <div className="flex justify-center mb-4">
@@ -1645,7 +1648,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         {Array.from({ length: 12 }).map((_, i) => (
                           <div
                             key={i}
-                            className="h-[15px] rounded-[10px]"
+                            className="h-4 rounded-xl"
                             style={{ backgroundColor: i < (ev.members?.length || 0) ? accentColor : 'var(--dot-inactive)' }}
                           />
                         ))}

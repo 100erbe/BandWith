@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useBand } from '@/lib/BandContext';
+import { useAuth } from '@/lib/AuthContext';
 import { useDashboardData } from '@/app/hooks/useData';
 
 interface AnalyticsViewProps {
@@ -18,15 +19,23 @@ const MONTHLY_DATA = [
 ];
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
-  const { selectedBand } = useBand();
-  const { data: dashboardData, loading } = useDashboardData(selectedBand?.id || null);
+  const { selectedBand, isAdmin } = useBand();
+  const { user } = useAuth();
+  const { data: dashboardData, loading } = useDashboardData(selectedBand?.id || null, isAdmin ? null : (user?.id || null));
 
   const fmt = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1)}k` : `€${v}`);
 
-  const totalRevenue = dashboardData?.eventStats?.totalRevenue || 0;
-  const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
-  const confirmed = dashboardData?.eventStats?.confirmedEvents || 0;
-  const upcoming = dashboardData?.eventStats?.upcomingEvents || 0;
+  // Admins see band totals; members (defense-in-depth) only see personal earnings.
+  const totalRevenue = isAdmin
+    ? (dashboardData?.eventStats?.totalRevenue || 0)
+    : (dashboardData?.memberStats?.totalEarned || 0);
+  const totalEvents = isAdmin
+    ? (dashboardData?.eventStats?.totalEvents || 0)
+    : (dashboardData?.memberStats?.confirmedCount || 0);
+  const confirmed = isAdmin
+    ? (dashboardData?.eventStats?.confirmedEvents || 0)
+    : (dashboardData?.memberStats?.confirmedCount || 0);
+  const upcoming = isAdmin ? (dashboardData?.eventStats?.upcomingEvents || 0) : 0;
   const change = dashboardData?.memberStats?.revenueChange || 0;
 
   return (
@@ -46,10 +55,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
         <div className="flex items-center gap-4 mb-10">
           <button
             onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+            className="w-12 h-12 rounded-full flex items-center justify-center border border-border bg-muted shrink-0 active:scale-90 transition-transform"
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+            <ArrowLeft className="w-6 h-6 text-foreground" />
           </button>
           <div className="flex flex-col leading-tight">
             <span className="text-3xl font-bold text-foreground leading-tight">DATA</span>
@@ -76,7 +84,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
                   <span className="text-xs font-bold text-foreground tracking-wide">TOTAL REVENUE</span>
-                  <div className="h-[62px] overflow-hidden">
+                  <div className="h-16 overflow-hidden">
                     <span className="text-5xl font-bold leading-tight text-foreground block">
                       {fmt(totalRevenue)}
                     </span>
@@ -90,7 +98,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
                   <span className="text-xs font-bold text-foreground tracking-wide">TOTAL EVENTS</span>
-                  <div className="h-[62px] overflow-hidden">
+                  <div className="h-16 overflow-hidden">
                     <span className="text-5xl font-bold leading-tight text-foreground block">
                       {totalEvents}
                     </span>
@@ -106,7 +114,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
                   <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED</span>
-                  <div className="h-[62px] overflow-hidden">
+                  <div className="h-16 overflow-hidden">
                     <span className="text-5xl font-bold leading-tight text-foreground block">
                       {confirmed}
                     </span>
@@ -120,7 +128,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
                   <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING</span>
-                  <div className="h-[62px] overflow-hidden">
+                  <div className="h-16 overflow-hidden">
                     <span className="text-5xl font-bold leading-tight text-foreground block">
                       {upcoming}
                     </span>
@@ -163,12 +171,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.04 }}
-                    className="flex items-center gap-4 py-4 border-b border-black/10 last:border-0"
+                    className="flex items-center gap-4 py-4 border-b border-border last:border-0"
                   >
                     <span className="text-xs font-bold text-foreground w-10 tracking-wide">
                       {month}
                     </span>
-                    <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-accent rounded-full"
                         initial={{ width: 0 }}

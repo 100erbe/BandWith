@@ -72,7 +72,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+        className="fixed inset-0 z-[90] bg-surface-inverse/50 backdrop-blur-md"
         onClick={onClose}
       />
 
@@ -81,11 +81,11 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+        className="fixed bottom-0 left-0 right-0 z-[91] bg-surface-inverse rounded-t-3xl px-4 pt-4 shadow-lg"
         style={{ paddingBottom: 'calc(40px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-white/30" />
+          <div className="w-10 h-1 rounded-full bg-card/30" />
         </div>
 
         <div className="flex items-end justify-between mb-6">
@@ -94,7 +94,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           </p>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
+            className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>
@@ -150,8 +150,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             {Array.from({ length: 12 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[15px] rounded-[10px]"
-                style={{ backgroundColor: i < 1 ? accentColor : 'rgba(255,255,255,0.2)' }}
+                className="h-4 rounded-xl"
+                style={{ backgroundColor: i < 1 ? accentColor : 'var(--dot-inactive)' }}
               />
             ))}
           </div>
@@ -161,14 +161,14 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           <button
             onClick={() => handleAction('decline')}
             disabled={isSubmitting}
-            className="py-4 rounded-[10px] border-2 border-white/20 text-accent-foreground font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
+            className="py-4 rounded-xl border-2 border-border text-accent-foreground font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
           >
             DECLINE
           </button>
           <button
             onClick={() => handleAction('accept')}
             disabled={isSubmitting}
-            className="py-4 rounded-[10px] font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
+            className="py-4 rounded-xl font-bold text-sm uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
             style={{ backgroundColor: accentColor, color: accentText }}
           >
             {isSubmitting ? '...' : 'ACCEPT'}

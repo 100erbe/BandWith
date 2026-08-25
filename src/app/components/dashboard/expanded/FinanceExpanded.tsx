@@ -114,10 +114,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             e.stopPropagation();
             onClose();
           }}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-          style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+          className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-surface-inverse shrink-0 active:scale-90 transition-transform"
         >
-          <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+          <ArrowLeft className="w-6 h-6 text-foreground" />
         </button>
         <div className="flex flex-col leading-tight flex-1">
           <span className="text-3xl font-bold text-foreground leading-tight">MONEY</span>
@@ -125,9 +124,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         </div>
         <button
           onClick={() => setShowAddTransaction(true)}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent-gig shrink-0 active:scale-90 transition-transform"
+          className="w-12 h-12 rounded-full flex items-center justify-center bg-accent-gig shrink-0 active:scale-90 transition-transform"
         >
-          <Plus className="w-[20px] h-[20px] text-foreground" />
+          <Plus className="w-5 h-5 text-foreground" />
         </button>
       </motion.div>
 
@@ -144,7 +143,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
                 <span className="text-xs font-bold text-foreground tracking-wide">NET PROFIT</span>
-                <div className="h-[62px] overflow-hidden">
+                <div className="h-16 overflow-hidden">
                   {loading ? (
                     <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
@@ -162,7 +161,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
                 <span className="text-xs font-bold text-foreground tracking-wide">REVENUE</span>
-                <div className="h-[62px] overflow-hidden">
+                <div className="h-16 overflow-hidden">
                   {loading ? (
                     <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
@@ -182,7 +181,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
                 <span className="text-xs font-bold text-foreground tracking-wide">EXPENSES</span>
-                <div className="h-[62px] overflow-hidden">
+                <div className="h-16 overflow-hidden">
                   {loading ? (
                     <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
                   ) : (
@@ -226,12 +225,12 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 + i * 0.03 }}
-                    className="flex items-center justify-between py-4 border-b border-black/10 last:border-0"
+                    className="flex items-center justify-between py-4 border-b border-border last:border-0"
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className={cn(
-                          'w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0',
+                          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                           tx.type === 'income' ? 'bg-accent-gig' : 'bg-muted',
                         )}
                       >
@@ -273,7 +272,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+            className="fixed inset-0 z-[200] bg-overlay/60 backdrop-blur-sm flex items-end justify-center"
             onClick={() => setShowAddTransaction(false)}
           >
             <motion.div
@@ -281,18 +280,18 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="w-full max-w-md bg-background rounded-t-[20px] p-6"
+              className="w-full max-w-md bg-background rounded-t-2xl p-6"
               onClick={(e) => e.stopPropagation()}
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
             >
-              <div className="w-12 h-1 bg-black/20 rounded-full mx-auto mb-6" />
+              <div className="w-12 h-1 bg-surface-inverse/20 rounded-full mx-auto mb-6" />
 
               <span className="text-3xl font-bold text-foreground leading-tight block mb-6">
                 ADD TRANSACTION
               </span>
 
               {/* Type Toggle */}
-              <div className="flex gap-0 mb-6 border-b border-black/10">
+              <div className="flex gap-0 mb-6 border-b border-border">
                 <button
                   onClick={() => {
                     setTxType('income');
@@ -301,7 +300,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   className={cn(
                     'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'income'
-                      ? 'border-black'
+                      ? 'border-surface-inverse'
                       : 'border-transparent text-foreground/40',
                   )}
                 >
@@ -316,7 +315,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   className={cn(
                     'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
                     txType === 'expense'
-                      ? 'border-black'
+                      ? 'border-surface-inverse'
                       : 'border-transparent text-foreground/40',
                   )}
                 >
@@ -336,7 +335,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     value={txTitle}
                     onChange={(e) => setTxTitle(e.target.value)}
                     placeholder="e.g., Jazz Night @ Blue Note"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-transparent border-b-2 border-border py-3 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-surface-inverse transition-colors"
                   />
                 </div>
 
@@ -350,7 +349,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
+                    className="w-full bg-transparent border-b-2 border-border py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-surface-inverse transition-colors"
                   />
                 </div>
 
@@ -364,7 +363,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                       type="date"
                       value={txDate}
                       onChange={(e) => setTxDate(e.target.value)}
-                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-foreground focus:outline-none focus:border-black transition-colors"
+                      className="w-full bg-transparent border-b-2 border-border py-3 text-sm font-bold text-foreground focus:outline-none focus:border-surface-inverse transition-colors"
                     />
                     <Calendar className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
                   </div>
@@ -383,8 +382,8 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                         className={cn(
                           'px-3 py-1.5 rounded-full text-xs font-bold uppercase transition-all',
                           txCategory === cat
-                            ? 'bg-black text-accent-foreground'
-                            : 'bg-black/5 text-foreground/40 active:bg-black/10',
+                            ? 'bg-surface-inverse text-surface-inverse-foreground'
+                            : 'bg-surface-inverse/5 text-foreground/40 active:bg-surface-inverse/10',
                         )}
                       >
                         {cat}
@@ -398,10 +397,10 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   onClick={handleAddTransaction}
                   disabled={!txTitle.trim() || !txAmount || saving}
                   className={cn(
-                    'w-full h-14 rounded-[10px] font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all mt-2',
+                    'w-full h-14 rounded-xl font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all mt-2',
                     txTitle.trim() && txAmount
-                      ? 'bg-black text-accent-foreground active:scale-[0.98]'
-                      : 'bg-black/10 text-foreground/30 cursor-not-allowed',
+                      ? 'bg-surface-inverse text-surface-inverse-foreground active:scale-[0.98]'
+                      : 'bg-surface-inverse/10 text-foreground/30 cursor-not-allowed',
                   )}
                 >
                   {saving ? (

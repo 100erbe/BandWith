@@ -19,13 +19,13 @@ export const DotRadio: React.FC<DotRadioProps> = ({
   onClick,
 }) => {
   const borderColor = disabled
-    ? 'rgba(0,0,0,0.1)'
+    ? 'var(--border)'
     : selected
       ? activeColor
-      : inactiveColor || 'rgba(0,0,0,0.2)';
+      : inactiveColor || 'var(--dot-inactive)';
 
   const circleClasses = cn(
-    'w-[32px] h-[32px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+    'w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
     onClick && 'focus:outline-none',
     onClick && (disabled ? 'cursor-not-allowed' : 'cursor-pointer'),
     !onClick && 'pointer-events-none',
@@ -34,7 +34,7 @@ export const DotRadio: React.FC<DotRadioProps> = ({
 
   const innerDot = (
     <div
-      className="w-[14px] h-[14px] rounded-full transition-all"
+      className="w-3.5 h-3.5 rounded-full transition-all"
       style={{
         backgroundColor: selected ? activeColor : 'transparent',
         opacity: selected ? 1 : 0,

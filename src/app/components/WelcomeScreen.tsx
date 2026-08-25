@@ -55,7 +55,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           >
             {/* Subtle gradient orbs */}
             <div className="absolute top-1/4 -left-20 w-80 h-80 bg-accent rounded-full blur-[120px] opacity-10" />
-            <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-[var(--accent-rehearsal)] rounded-full blur-[150px] opacity-15" />
+            <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-accent-rehearsal rounded-full blur-[150px] opacity-15" />
           </motion.div>
 
           {/* Main content */}
@@ -104,7 +104,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 
                 {/* BW Monogram with typography treatment */}
                 <span 
-                  className="relative text-[1.75rem] font-black text-[var(--fg)] tracking-[-0.05em]"
+                  className="relative text-[1.75rem] font-black text-foreground tracking-[-0.05em]"
                   style={{ 
                     fontFamily: 'Inter, SF Pro Display, -apple-system, system-ui, sans-serif',
                     letterSpacing: '-0.02em'

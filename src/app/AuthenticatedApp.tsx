@@ -31,12 +31,14 @@ import {
   respondToEventInvite,
   getUserEventMembership,
   getEventMembers,
+  getEvent,
   inviteToEvent,
   createEvent,
   updateEvent,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist } from "@/lib/services/songs";
+import { createChat } from "@/lib/services/chats";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -122,7 +124,7 @@ const eventToEventItem = (event: Event): EventItem => {
     color:
       (status === "REHEARSAL") ? "bg-accent-rehearsal text-accent-foreground"
         : (status === "QUOTE") ? "bg-accent-quote text-accent-foreground"
-        : (status === "DRAFT") ? "bg-black/20 text-foreground/60"
+        : (status === "DRAFT") ? "bg-muted text-muted-foreground"
         : "bg-accent-gig text-accent-gig-foreground",
     notes: event.notes || undefined,
     createdBy: event.created_by || undefined,
@@ -212,10 +214,10 @@ export default function AuthenticatedApp() {
 
   // Data hooks
   const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
-  const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
-  const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"]);
-  const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"]);
-  const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading } = useExpandedQuotesData(realBand?.id || null);
+  const { data: financeData, loading: financeLoading } = useExpandedFinanceData(isAdmin ? (realBand?.id || null) : null);
+  const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"], !isAdmin);
+  const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"], !isAdmin);
+  const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading } = useExpandedQuotesData(isAdmin ? (realBand?.id || null) : null);
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
@@ -259,7 +261,7 @@ export default function AuthenticatedApp() {
     return (realBands || []).map(b => b.id).filter(Boolean) as string[];
   }, [realBands]);
   
-  const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
+  const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds, undefined, !isAdmin);
   
   // ═══ LOCAL CLIENT-SIDE BAND PILL FILTER (instant, <1ms) ═══
   const [selectedBandPill, setSelectedBandPill] = useState<string>('all');
@@ -276,6 +278,8 @@ export default function AuthenticatedApp() {
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
+  const [eventMembersLoaded, setEventMembersLoaded] = useState(false);
+  const [eventMembersFailed, setEventMembersFailed] = useState(false);
 
   // Filter confirmed events to exclude those where current user has declined
   const myConfirmedEvents = useMemo(() => {
@@ -289,35 +293,93 @@ export default function AuthenticatedApp() {
 
   useEffect(() => {
     if (!masterEventsList?.length) return;
+    const eventIds = masterEventsList.map(e => e.id);
+
+    // Resolve names from band members already in memory
+    const bandNameMap: Record<string, string> = {};
+    realBand?.members?.forEach((m: any) => {
+      if (m.user_id) bandNameMap[m.user_id] = m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member';
+    });
+
     const fetchAllMembers = async () => {
-      const eventIds = masterEventsList.map(e => e.id);
       const map: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = {};
 
-      // Simple query WITHOUT profile join to avoid FK/schema issues
-      const { data, error } = await supabase
-        .from('event_members')
-        .select('event_id, user_id, fee, status')
-        .in('event_id', eventIds);
+      try {
+        if (isAdmin) {
+          // Admin: read all memberships (with fees) for these events.
+          const { data, error } = await supabase
+            .from('event_members')
+            .select('event_id, user_id, fee, status')
+            .in('event_id', eventIds);
 
-      if (error) {
-        console.error('event_members query failed:', error.message);
-        return; // Keep previous map rather than overwriting with empty
+          if (error) {
+            console.error('event_members query failed:', error.message);
+            setEventMembersLoaded(true);
+            setEventMembersFailed(true);
+            return; // Keep previous map rather than overwriting with empty
+          }
+
+          data?.forEach((em: any) => {
+            if (!map[em.event_id]) map[em.event_id] = [];
+            map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee, status: em.status });
+          });
+        } else {
+          // Member: read their OWN membership rows (fee/status) + the
+          // non-financial roster (names/status only) for everyone on the gig.
+          const [myRowsRes, rosterRows] = await Promise.all([
+            supabase
+              .from('event_members')
+              .select('event_id, user_id, fee, status')
+              .in('event_id', eventIds),
+            Promise.all(
+              eventIds.map(async (id) => {
+                const { data, error } = await supabase.rpc('get_event_roster', { p_event_id: id });
+                return { eventId: id, data, error };
+              })
+            ),
+          ]);
+
+          if (myRowsRes.error) {
+            console.error('event_members query failed:', myRowsRes.error.message);
+          }
+
+          // Seed with own rows first (always readable) so members still see
+          // their gigs even if the roster helper is unavailable.
+          const myFeeByEvent: Record<string, number | undefined> = {};
+          (myRowsRes.data || []).forEach((em: any) => {
+            myFeeByEvent[em.event_id] = em.fee;
+            if (!map[em.event_id]) map[em.event_id] = [];
+            map[em.event_id].push({
+              name: bandNameMap[em.user_id] || 'Member',
+              userId: em.user_id,
+              fee: em.fee,
+              status: em.status,
+            });
+          });
+
+          // Overlay the non-financial roster (names/status for everyone).
+          rosterRows.forEach(({ eventId, data, error }) => {
+            if (error || !data || data.length === 0) return;
+            map[eventId] = data.map((r: any) => ({
+              name: r.full_name || bandNameMap[r.user_id] || 'Member',
+              userId: r.user_id,
+              fee: r.user_id === user?.id ? myFeeByEvent[eventId] : undefined,
+              status: r.status,
+            }));
+          });
+        }
+
+        setEventMembersMap(map);
+        setEventMembersLoaded(true);
+        setEventMembersFailed(false);
+      } catch (err) {
+        console.error('event_members map build failed:', err);
+        setEventMembersLoaded(true);
+        setEventMembersFailed(true);
       }
-
-      // Resolve names from band members already in memory
-      const bandNameMap: Record<string, string> = {};
-      realBand?.members?.forEach((m: any) => {
-        if (m.user_id) bandNameMap[m.user_id] = m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member';
-      });
-
-      data?.forEach((em: any) => {
-        if (!map[em.event_id]) map[em.event_id] = [];
-        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee, status: em.status });
-      });
-      setEventMembersMap(map);
     };
     fetchAllMembers();
-  }, [masterEventsList, membersRefreshKey, realBand?.members]);
+  }, [masterEventsList, membersRefreshKey, realBand?.members, isAdmin, user?.id]);
 
   // Build band lookup for event mapping
   const bandLookup = useMemo(() => {
@@ -358,10 +420,19 @@ export default function AuthenticatedApp() {
     if (optimisticallyHiddenEventIds.length > 0) {
       result = result.filter(e => !optimisticallyHiddenEventIds.includes(e.eventId || ''));
     }
-    // Exclude events where current user's membership status is "declined"
-    if (user?.id) {
+    // Members: only show events they've been invited to (and not declined).
+    // Admins: only hide events they explicitly declined.
+    if (user?.id && !isAdmin) {
+      if (!eventMembersLoaded || eventMembersFailed) return result; // wait for map / fail-safe
       result = result.filter(e => {
-        if (!e.eventId) return true; // no UUID key, can't filter
+        if (!e.eventId) return false;
+        const members = eventMembersMap[e.eventId] || [];
+        const myMembership = members.find(m => m.userId === user.id);
+        return !!myMembership && myMembership.status !== 'declined';
+      });
+    } else if (user?.id && isAdmin) {
+      result = result.filter(e => {
+        if (!e.eventId) return true;
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
         return !myMembership || myMembership.status !== 'declined';
@@ -390,7 +461,7 @@ export default function AuthenticatedApp() {
       );
     }
     return result;
-  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id]);
+  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id, isAdmin, eventMembersLoaded, eventMembersFailed]);
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
@@ -414,9 +485,17 @@ export default function AuthenticatedApp() {
         handleEventCardClickRef.current(ev);
       } else {
         await refetchEvents();
-        setTimeout(() => {
+        setTimeout(async () => {
           const evRetry = eventsRef.current.find(e => e.eventId === eventDbId);
-          if (evRetry) handleEventCardClickRef.current(evRetry);
+          if (evRetry) {
+            handleEventCardClickRef.current(evRetry);
+          } else {
+            // Fallback: fetch the event directly (RLS permits it if invited).
+            const { data: directEvent } = await getEvent(eventDbId);
+            if (directEvent) {
+              handleEventCardClickRef.current(eventToEventItem(directEvent) as unknown as EventData);
+            }
+          }
         }, 500);
       }
     }, 200);
@@ -614,13 +693,6 @@ export default function AuthenticatedApp() {
   });
 
   // Computed values
-  const notificationGroups = useMemo(() => {
-    const unread = notifications.filter((n) => !n.read);
-    const groups: { [key: string]: typeof unread } = {};
-    unread.forEach((n) => { if (!groups[n.type]) groups[n.type] = []; groups[n.type].push(n); });
-    return Object.entries(groups).map(([type, items]) => ({ type, items }));
-  }, [notifications]);
-
   const convertedChats = useMemo(() => {
     if (!realChats?.length) return [];
     return realChats.map((chat) => {
@@ -810,81 +882,16 @@ export default function AuthenticatedApp() {
     setIsControlDeckOpen(false);
     setActiveTab("Home");
     if (item === "Messages") setActiveTab("Chat");
-    if (item === "Finance") setExpandedCard("finance");
+    if (item === "Finance" && isAdmin) setExpandedCard("finance");
     if (item === "Events") setActiveTab("Events");
     if (item === "Settings") { setSettingsInitialSection("main"); setShowSettings(true); }
     if (item.startsWith("Settings:")) {
       setSettingsInitialSection(item.split(":")[1] as any);
       setShowSettings(true);
     }
-    if (item === "Analytics") setShowAnalytics(true);
-    if (item === "Quote") { setCreateEventType("quote"); setIsCreateEventOpen(true); }
-    if (item === "InviteMember") setShowBandMembers(true);
-  };
-
-  const handleNotificationClick = async (ids: number[], actionType: string) => {
-    const clicked = notifications.filter((n) => ids.includes(n.id));
-    const first = clicked[0];
-
-    if (first && (first.type === "chat" || actionType === "NAV_CHAT")) {
-      const realId = notificationIdMap.get(first.id);
-      const realNotif = realNotifications?.find((rn) => rn.id === realId);
-      const chatId = first.chatId || (realNotif?.data as any)?.chat_id || (realNotif?.data as any)?.chatId;
-
-      if (chatId) {
-        ids.forEach((nid) => { const rid = notificationIdMap.get(nid); if (rid) markNotificationAsRead(rid); });
-        setTimeout(() => refetchNotifications?.(), 500);
-        closeIdentity();
-        setTimeout(() => {
-          setActiveTab("Chat");
-          const sn = (realNotif?.data as any)?.senderName || realNotif?.title?.replace("💬 ", "") || "Chat";
-          setSelectedChat({ id: Date.now(), uuid: String(chatId), type: "direct", name: sn, initials: sn.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(), lastMessage: "", time: "now", unread: 0, status: "received" });
-        }, 300);
-        return;
-      }
-    }
-
-    const detailTypes = ["invite_sent", "invite_received", "invite_accepted", "invite_declined", "member_joined", "member_left", "quote_received", "task_assigned", "event_invite", "payment_received", "payment_due"];
-    const realNotifForType = first ? realNotifications?.find((rn) => { const nid = parseInt(rn.id.replace(/-/g, "").slice(0, 8), 16) || 0; return nid === first.id; }) : null;
-    const realType = realNotifForType?.type || first?.type;
-
-    if (first && realType && detailTypes.includes(realType)) {
-      const realData = clicked.map((n) => { const rid = notificationIdMap.get(n.id); return realNotifications?.find((rn) => rn.id === rid); }).filter(Boolean).map((n) => ({ id: n!.id, type: n!.type, title: n!.title, body: n!.body, data: n!.data as Record<string, unknown>, band_id: n!.band_id, created_at: n!.created_at, read: n!.read }));
-      if (realData.length > 0) {
-        if (realData.length === 1) { setSelectedNotification(realData[0]); setSelectedNotifications([]); }
-        else { setSelectedNotifications(realData); setSelectedNotification(null); }
-        closeIdentity();
-        return;
-      }
-    }
-
-    // Don't auto-mark-as-read anymore — let the modal handle it explicitly
-    closeIdentity();
-
-    const realId = first ? notificationIdMap.get(first.id) : undefined;
-    const realNotifNav = realId ? realNotifications?.find((rn) => rn.id === realId) : null;
-    const navEventId = (realNotifNav?.data as any)?.event_id;
-    if (navEventId && (actionType === "NAV_EVENTS" || actionType === "NAV_EVENTS_CONFIRMED")) {
-      setTimeout(() => navigateToEvent(navEventId), 300);
-      return;
-    }
-
-    setTimeout(() => {
-      if (actionType === "NAV_CHAT") setActiveTab("Chat");
-      else if (actionType === "NAV_EVENTS") { setActiveTab("Events"); setEventFilter("All"); }
-      else if (actionType === "NAV_EVENTS_CONFIRMED") { setActiveTab("Events"); setEventFilter("Confirmed"); }
-      else if (actionType === "NAV_FINANCE") setExpandedCard("finance");
-    }, 300);
-  };
-
-  const handleMarkSingleAsRead = async (numericId: number) => {
-    const rid = notificationIdMap.get(numericId);
-    if (rid) { await markNotificationAsRead(rid); refetchNotifications?.(); }
-  };
-
-  const handleMarkGroupAsRead = async (numericIds: number[]) => {
-    await Promise.all(numericIds.map((nid) => { const rid = notificationIdMap.get(nid); return rid ? markNotificationAsRead(rid) : Promise.resolve({ error: null }); }));
-    refetchNotifications?.();
+    if (item === "Analytics" && isAdmin) setShowAnalytics(true);
+    if (item === "Quote" && isAdmin) { setCreateEventType("quote"); setIsCreateEventOpen(true); }
+    if (item === "InviteMember" && isAdmin) setShowBandMembers(true);
   };
 
   const handleCreateEvent = (type: CreateEventType) => { setCreateEventType(type); setIsCreateEventOpen(true); };
@@ -974,6 +981,29 @@ export default function AuthenticatedApp() {
     setActiveTab('Chat');
   };
 
+  const handleStartDirectChat = async (member: { userId: string; bandId: string; name: string }) => {
+    if (!member.userId || !member.bandId) return;
+    const { data, error } = await createChat({
+      type: 'direct',
+      band_id: member.bandId,
+      participant_ids: [member.userId],
+    });
+    if (data && !error) {
+      setSelectedChat({
+        id: Date.now(),
+        uuid: data.id,
+        type: 'direct',
+        name: member.name || 'Chat',
+        initials: (member.name || 'C').substring(0, 2).toUpperCase(),
+        lastMessage: 'Start chatting...',
+        time: 'now',
+        unread: 0,
+        status: 'read',
+      });
+      setActiveTab('Chat');
+    }
+  };
+
   const handleEventCardClick = async (event: EventData) => {
     setSelectedEvent(event);
     setSelectedEventMembership(null);
@@ -1024,14 +1054,11 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     try {
       const realEventId = selectedEvent.eventId;
-      if (realEventId) {
-        const { data: members } = await getEventMembers(realEventId);
-        const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
-        if (creator?.user_id && user?.id) {
-          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-          const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
-        }
+      const creatorId = selectedEvent.createdBy;
+      if (realEventId && creatorId && user?.id && creatorId !== user.id) {
+        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+        await notifyEventResponse([creatorId], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
       }
     } catch (pushErr) {
       // CORS / network failures must never interrupt the UI thread
@@ -1086,14 +1113,11 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     try {
       const realEventId = selectedEvent.eventId;
-      if (realEventId) {
-        const { data: members } = await getEventMembers(realEventId);
-        const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
-        if (creator?.user_id && user?.id) {
-          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-          const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
-        }
+      const creatorId = selectedEvent.createdBy;
+      if (realEventId && creatorId && user?.id && creatorId !== user.id) {
+        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
+        await notifyEventResponse([creatorId], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
       }
     } catch (pushErr) {
       // CORS / network failures must never interrupt the UI thread
@@ -1109,7 +1133,11 @@ export default function AuthenticatedApp() {
     if (refetchDashboard) await refetchDashboard();
   };
 
+  const eventSaveInFlight = useRef(false);
+
   const handleEventCreate = async (data: any) => {
+    if (eventSaveInFlight.current) return;
+    eventSaveInFlight.current = true;
     const isRehearsalWizard = !data.details && data.title;
     const title = isRehearsalWizard ? data.title : data.details?.title;
     const date = isRehearsalWizard ? data.date : data.details?.date;
@@ -1123,6 +1151,7 @@ export default function AuthenticatedApp() {
       setSaveToast({ message: 'No band selected', type: 'error' });
       setEditingEventData(null);
       setIsCreateEventOpen(false);
+      eventSaveInFlight.current = false;
       return;
     }
 
@@ -1258,6 +1287,13 @@ export default function AuthenticatedApp() {
       }));
 
       if (data._editing && data._editingEventId) {
+        // Capture previously-invited members so we can notify only newly-added ones.
+        const { data: existingMemberships } = await supabase
+          .from('event_members')
+          .select('user_id')
+          .eq('event_id', data._editingEventId);
+        const oldInvitedIds = new Set((existingMemberships || []).map((m: any) => m.user_id));
+
         const { error } = await updateEvent(data._editingEventId, eventData);
         if (!error) {
           const memberResult = await persistMembers(data._editingEventId, true);
@@ -1270,6 +1306,21 @@ export default function AuthenticatedApp() {
             setSaveToast({ message: 'Event updated, but there was a problem saving members.', type: 'error' });
           } else {
             setSaveToast({ message: 'Event updated!', type: 'success' });
+
+            // Notify members who were newly added to this existing event.
+            if (user?.id) {
+              try {
+                const newMemberIds = optimisticMembers
+                  .map((m: any) => m.userId)
+                  .filter((id: string) => id !== user.id && !oldInvitedIds.has(id));
+                if (newMemberIds.length > 0) {
+                  const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+                  const perMemberFees: Record<string, number> = {};
+                  (data.members || []).forEach((m: any) => { if (m.id && m.fee) perMemberFees[m.id] = parseFloat(m.fee) || 0; });
+                  await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, newMemberIds, { venue: location, fee: parseFloat(price) || undefined, memberFees: perMemberFees });
+                }
+              } catch (err) { console.error("Notify error:", err); }
+            }
           }
         } else {
           setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
@@ -1313,6 +1364,7 @@ export default function AuthenticatedApp() {
 
     setEditingEventData(null);
     setIsCreateEventOpen(false);
+    eventSaveInFlight.current = false;
   };
 
   // Render
@@ -1384,7 +1436,7 @@ export default function AuthenticatedApp() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
-          <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-[var(--surface-inverse)]")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
+          <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-surface-inverse")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full relative flex flex-col z-10 overflow-y-auto" style={{
@@ -1415,7 +1467,7 @@ export default function AuthenticatedApp() {
             }} isSolo={isSolo} />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} onStartDirectChat={handleStartDirectChat} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
@@ -1441,12 +1493,12 @@ export default function AuthenticatedApp() {
             <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
           )}
           {selectedChat && !selectedChat.uuid && (
-            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-[var(--surface-inverse)]/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 0.9 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[var(--card)] rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-surface-inverse/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 0.9 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-card rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
                 <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-accent-foreground" /></div>
                 <h3 className="text-xl font-black mb-2">Demo Chat</h3>
-                <p className="text-[var(--muted-fg)] text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
-                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-[var(--surface-inverse)] text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
+                <p className="text-muted-foreground text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
+                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-surface-inverse text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
               </motion.div>
             </motion.div>
           )}
@@ -1488,7 +1540,7 @@ export default function AuthenticatedApp() {
 
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
-          selectedBand={selectedBand} setSelectedBand={setSelectedBand} notificationGroups={notificationGroups} unreadCount={unreadCount} onNotificationClick={handleNotificationClick} onMarkAsRead={handleMarkSingleAsRead} onMarkGroupAsRead={handleMarkGroupAsRead}
+          selectedBand={selectedBand} setSelectedBand={setSelectedBand}
           onEntityDetailClick={(l) => { if (l === "INVENTORY") setShowInventory(true); if (l === "REPERTOIRE") setShowSetlistManager(true); if (l === "TEMPLATES") setShowTaskTemplates(true); if (l === "DOCUMENTS") setShowContracts(true); }}
           entityCounts={entityCounts}
           onEditProfile={() => setShowEditProfile(true)} onEditBand={() => setShowBandMembers(true)} onAddEntity={handleRequestCreateBand} />
@@ -1514,15 +1566,15 @@ export default function AuthenticatedApp() {
           ) : expandedCard === "rehearsal" ? (
             <ExpandedCardWrapper backgroundColor="var(--accent-rehearsal)" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
               <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3" style={{ paddingTop: isAndroid && isNative ? "60px" : "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
-                <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-[var(--accent-rehearsal-fg)]" /></button>
-                <h1 className="text-lg font-bold text-[var(--accent-rehearsal-fg)]">My Rehearsals</h1>
-                {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-[var(--accent-rehearsal-fg)]" /></button> : <div className="w-10" />}
+                <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-surface-inverse-foreground/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-accent-rehearsal-foreground" /></button>
+                <h1 className="text-lg font-bold text-accent-rehearsal-foreground">My Rehearsals</h1>
+                {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-surface-inverse-foreground/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-accent-rehearsal-foreground" /></button> : <div className="w-10" />}
               </div>
               <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
-                <div className="w-20 h-20 bg-[var(--surface-inverse-fg)]/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-[var(--accent-rehearsal-fg)]" /></div>
-                <h2 className="text-2xl font-black text-[var(--accent-rehearsal-fg)] mb-2">No Rehearsals</h2>
-                <p className="text-[var(--accent-rehearsal-fg)]/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
-                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-[var(--surface-inverse-fg)] text-accent-rehearsal px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
+                <div className="w-20 h-20 bg-surface-inverse-foreground/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-accent-rehearsal-foreground" /></div>
+                <h2 className="text-2xl font-black text-accent-rehearsal-foreground mb-2">No Rehearsals</h2>
+                <p className="text-accent-rehearsal-foreground/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
+                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-surface-inverse-foreground text-accent-rehearsal px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
               </div>
             </ExpandedCardWrapper>
           ) : null}

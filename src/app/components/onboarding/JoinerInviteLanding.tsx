@@ -115,7 +115,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           <h1 className="text-4xl font-black text-foreground leading-[0.95] tracking-tight mb-4">
             You're
             <br />
-            <span className="text-[var(--accent-rehearsal)]">invited</span>
+            <span className="text-accent-rehearsal">invited</span>
           </h1>
           <p className="text-muted-foreground/60 text-base font-medium leading-relaxed">
             {inviterName} invited you to join as <span className="text-accent font-bold">{memberRole}</span>
@@ -183,7 +183,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
         >
-          <p className="text-muted-foreground/30 text-[11px] font-bold uppercase tracking-[0.15em] mb-3">
+          <p className="text-muted-foreground/30 text-xs font-bold uppercase tracking-[0.15em] mb-3">
             What you'll get
           </p>
           

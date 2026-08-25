@@ -47,22 +47,22 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             
             {/* Source Selection */}
             <div className="grid grid-cols-3 gap-3">
-               <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
+               <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40")}>
                   <Smartphone className="w-6 h-6 mb-2" />
                   <span className="text-xs font-bold uppercase">Local Device</span>
                </button>
-               <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
+               <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
                   <span className="text-xs font-bold uppercase">Google Drive</span>
                </button>
-               <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
+               <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-surface-inverse border-surface-inverse text-accent" : "bg-transparent border-border text-foreground/40")}>
                   <UploadCloud className="w-6 h-6 mb-2" />
                   <span className="text-xs font-bold uppercase">Dropbox</span>
                </button>
             </div>
 
             {/* Upload Area */}
-            <div className="border-2 border-dashed border-black/10 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-black/[0.02]">
+            <div className="border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-surface-inverse/[0.02]">
                 <FileText className="w-10 h-10 text-foreground/20 mb-3" />
                 <p className="text-sm font-bold text-foreground/60 mb-1">
                    {file ? file.name : "Drag & Drop or Click to Upload"}
@@ -76,7 +76,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                    id="file-upload"
                    onChange={(e) => setFile(e.target.files?.[0] || null)}
                 />
-                <label htmlFor="file-upload" className="mt-4 px-4 py-2 bg-black/5 rounded-full text-xs font-bold uppercase cursor-pointer hover:bg-black/10 transition-colors">
+                <label htmlFor="file-upload" className="mt-4 px-4 py-2 bg-surface-inverse/5 rounded-full text-xs font-bold uppercase cursor-pointer hover:bg-surface-inverse/10 transition-colors">
                    Choose File
                 </label>
             </div>
@@ -89,7 +89,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                        type="text" 
                        value={details.title}
                        onChange={e => setDetails({...details, title: e.target.value})}
-                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                       className="w-full bg-transparent border-b-2 border-border py-2 text-xl font-bold text-foreground focus:outline-none focus:border-surface-inverse transition-all placeholder:text-foreground/20"
                        placeholder="e.g. Superstition"
                     />
                 </div>
@@ -100,7 +100,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                            type="text" 
                            value={details.artist}
                            onChange={e => setDetails({...details, artist: e.target.value})}
-                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                           className="w-full bg-transparent border-b-2 border-border py-2 text-lg font-bold text-foreground focus:outline-none focus:border-surface-inverse transition-all placeholder:text-foreground/20"
                            placeholder="e.g. Stevie Wonder"
                         />
                     </div>
@@ -115,8 +115,8 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                          className={cn(
                                              "px-3 py-1.5 rounded-lg text-xs font-bold uppercase border transition-all",
                                              details.category === cat 
-                                               ? "bg-black text-accent-foreground border-black" 
-                                               : "bg-transparent text-foreground/40 border-black/10 hover:border-black/30"
+                                               ? "bg-surface-inverse text-surface-inverse-foreground border-surface-inverse" 
+                                               : "bg-transparent text-foreground/40 border-border hover:border-surface-inverse/30"
                                          )}
                                      >
                                          {cat}
@@ -127,8 +127,8 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                      className={cn(
                                          "px-3 py-1.5 rounded-lg text-xs font-bold uppercase border border-dashed transition-all flex items-center gap-1",
                                          !categories.includes(details.category) && details.category !== '' 
-                                            ? "bg-black text-accent-foreground border-black" 
-                                            : "text-foreground/40 border-black/20 hover:border-black/40"
+                                            ? "bg-surface-inverse text-surface-inverse-foreground border-surface-inverse" 
+                                            : "text-foreground/40 border-border hover:border-surface-inverse/40"
                                      )}
                                  >
                                      <Plus className="w-3 h-3" /> New
@@ -139,7 +139,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
                                      type="text"
                                      value={details.category}
                                      onChange={(e) => setDetails({...details, category: e.target.value})}
-                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
+                                     className="w-full bg-transparent border-b-2 border-border py-1 text-sm font-bold text-foreground focus:outline-none focus:border-surface-inverse transition-all placeholder:text-foreground/20"
                                      placeholder="Type new folder name..."
                                      autoFocus
                                  />
@@ -152,7 +152,7 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
             <button 
                onClick={handleSave}
                disabled={!details.title}
-               className="w-full py-4 bg-black text-surface-inverse-foreground rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+               className="w-full py-4 bg-surface-inverse text-surface-inverse-foreground rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
                Add to Setlist
             </button>

@@ -135,7 +135,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
         {/* Primary CTA */}
         <button
           onClick={onBack}
-          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-card/80 text-foreground hover:bg-white/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-card/80 text-foreground hover:bg-muted/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >
           Try Another Email
         </button>

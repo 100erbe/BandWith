@@ -75,7 +75,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
     >
       {/* Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--accent-rehearsal)]/95 backdrop-blur-md"
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-accent-rehearsal/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -83,7 +83,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
         <div className="flex items-center gap-4">
           <button 
             onClick={handleBack} 
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-accent-foreground border border-white/20 hover:bg-white/20 transition-colors"
+            className="w-10 h-10 rounded-full bg-surface-inverse-foreground/10 flex items-center justify-center text-accent-foreground border border-border hover:bg-muted/20 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -104,14 +104,14 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               <div className="flex items-center gap-2 mt-1">
                 <button 
                   onClick={() => setRehearsalIndex(prev => prev > 0 ? prev - 1 : upcomingRehearsals.length - 1)} 
-                  className="p-1 hover:bg-white/10 rounded"
+                  className="p-1 hover:bg-surface-inverse-foreground/10 rounded"
                 >
                   <ChevronDown className="w-3 h-3 rotate-90 text-accent-foreground" />
                 </button>
                 <span className="text-xs font-bold text-accent-foreground tabular-nums">{rehearsalIndex + 1}/{upcomingRehearsals.length}</span>
                 <button 
                   onClick={() => setRehearsalIndex(prev => prev < upcomingRehearsals.length - 1 ? prev + 1 : 0)} 
-                  className="p-1 hover:bg-white/10 rounded"
+                  className="p-1 hover:bg-surface-inverse-foreground/10 rounded"
                 >
                   <ChevronDown className="w-3 h-3 -rotate-90 text-accent-foreground" />
                 </button>
@@ -139,9 +139,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 initial={{ opacity: 0, scale: 0.95 }} 
                 animate={{ opacity: 1, scale: 1 }} 
                 transition={{ delay: 0.3 }} 
-                className="bg-white/10 rounded-[2.5rem] p-6 mb-6 border border-white/10 relative overflow-hidden"
+                className="bg-surface-inverse-foreground/10 rounded-[2.5rem] p-6 mb-6 border border-border relative overflow-hidden"
               >
-                <div className="absolute -right-4 -top-4 w-32 h-32 bg-accent-rehearsal rounded-full blur-[50px] opacity-20" />
+                <div className="absolute -right-4 -top-4 w-32 h-32 bg-accent-rehearsal rounded-full blur-2xl opacity-20" />
                 
                 <div className="relative z-10 flex justify-between items-end">
                   <div>
@@ -152,19 +152,19 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                         <span className="text-xs font-bold uppercase text-accent-foreground/40">Total</span>
                         <span className="text-xl font-bold text-accent-foreground">{upcomingRehearsals.length}</span>
                       </div>
-                      <div className="w-px h-8 bg-white/20" />
+                      <div className="w-px h-8 bg-muted/20" />
                       <div className="flex flex-col">
                         <span className="text-xs font-bold uppercase text-accent-foreground/40">Next</span>
                         <span className="text-xl font-bold text-accent-rehearsal">{upcomingRehearsals[0]?.time}</span>
                       </div>
-                      <div className="w-px h-8 bg-white/20" />
+                      <div className="w-px h-8 bg-muted/20" />
                       <div className="flex flex-col">
                         <span className="text-xs font-bold uppercase text-accent-foreground/40">Focus</span>
                         <span className="text-xl font-bold text-accent-foreground">Jazz</span>
                       </div>
                     </div>
                   </div>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center animate-spin-slow">
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center animate-spin-slow">
                     <RotateCw className="w-6 h-6 text-accent-foreground/40" />
                   </div>
                 </div>
@@ -181,37 +181,37 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                     setRehearsalIndex(i);
                     setRehearsalViewMode('overview');
                   }}
-                  className="bg-white rounded-[2rem] p-5 relative overflow-hidden cursor-pointer group hover:scale-[0.98] transition-transform shadow-lg"
+                  className="bg-card rounded-4xl p-5 relative overflow-hidden cursor-pointer group hover:scale-[0.98] transition-transform shadow-lg"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      {i === 0 && <span className="w-2 h-2 rounded-full bg-[var(--accent-rehearsal)] animate-pulse" />}
-                      <span className="text-xs font-bold uppercase text-[var(--accent-rehearsal)] tracking-widest">
+                      {i === 0 && <span className="w-2 h-2 rounded-full bg-accent-rehearsal animate-pulse" />}
+                      <span className="text-xs font-bold uppercase text-accent-rehearsal tracking-widest">
                         {i === 0 ? 'Next Up' : 'Scheduled'}
                       </span>
                     </div>
-                    <span className="text-sm font-black text-foreground tabular-nums bg-stone-100 px-2 py-0.5 rounded-lg">
+                    <span className="text-sm font-black text-foreground tabular-nums bg-muted px-2 py-0.5 rounded-lg">
                       {rehearsal.time}
                     </span>
                   </div>
                   
                   <h3 className="text-2xl font-black text-foreground uppercase leading-tight mb-4 truncate">{rehearsal.title}</h3>
                   
-                  <div className="flex items-center gap-3 text-stone-500">
+                  <div className="flex items-center gap-3 text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <CalendarIcon className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase">{rehearsal.date}</span>
+                      <span className="text-xs font-bold uppercase">{rehearsal.date}</span>
                     </div>
-                    <div className="w-[1px] h-3 bg-stone-300" />
+                    <div className="w-px h-3 bg-muted" />
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase truncate max-w-[120px]">{rehearsal.location}</span>
+                      <span className="text-xs font-bold uppercase truncate max-w-30">{rehearsal.location}</span>
                     </div>
                   </div>
                   
                   <div className="absolute bottom-5 right-5 flex -space-x-2">
                     {rehearsal.members.map((m: string, idx: number) => (
-                      <div key={idx} className="w-6 h-6 rounded-full bg-stone-100 border border-white flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
+                      <div key={idx} className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
                         {m}
                       </div>
                     ))}
@@ -232,40 +232,40 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               className="space-y-3"
             >
               {/* Swiss Hero Detail */}
-              <div className="bg-white rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group">
+              <div className="bg-card rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03] transform rotate-12 group-hover:rotate-0 transition-transform duration-700">
                   <Music className="w-40 h-40 text-foreground" />
                 </div>
 
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="flex flex-col gap-1">
-                    <span className="inline-flex items-center gap-1.5 bg-[var(--accent-rehearsal)]/10 text-[var(--accent-rehearsal)] px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide w-fit">
+                    <span className="inline-flex items-center gap-1.5 bg-accent-rehearsal/10 text-accent-rehearsal px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide w-fit">
                       <Activity className="w-3 h-3" /> {currentRehearsal.status}
                     </span>
-                    <span className="text-xs font-bold uppercase text-stone-400 tracking-widest pl-1">{currentRehearsal.date}</span>
+                    <span className="text-xs font-bold uppercase text-muted-foreground tracking-widest pl-1">{currentRehearsal.date}</span>
                   </div>
-                  <div className="bg-black text-surface-inverse-foreground px-3 py-1.5 rounded-xl">
+                  <div className="bg-surface-inverse text-surface-inverse-foreground px-3 py-1.5 rounded-xl">
                     <span className="text-lg font-black tracking-tight">{currentRehearsal.time}</span>
                   </div>
                 </div>
 
-                <h2 className="text-4xl font-black text-foreground tracking-tighter uppercase leading-[0.85] mb-6 relative z-10 max-w-[280px]">
+                <h2 className="text-4xl font-black text-foreground tracking-tighter uppercase leading-[0.85] mb-6 relative z-10 max-w-70">
                   {currentRehearsal.title}
                 </h2>
 
-                <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100 flex items-center justify-between relative z-10">
+                <div className="bg-muted rounded-2xl p-4 border border-border flex items-center justify-between relative z-10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 flex items-center justify-center shadow-sm text-foreground">
+                    <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center shadow-sm text-foreground">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold uppercase text-stone-400 block leading-tight mb-0.5">Location</span>
+                      <span className="text-xs font-bold uppercase text-muted-foreground block leading-tight mb-0.5">Location</span>
                       <span className="text-xs font-bold text-foreground uppercase">{currentRehearsal.location}</span>
                     </div>
                   </div>
                   <div className="flex -space-x-2">
                     {currentRehearsal.members.map((m: string, i: number) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-white border-2 border-stone-50 flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
+                      <div key={i} className="w-8 h-8 rounded-full bg-card border-2 border-border flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
                         {m}
                       </div>
                     ))}
@@ -279,17 +279,17 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   initial={{ opacity: 0, y: 10 }} 
                   animate={{ opacity: 1, y: 0 }} 
                   transition={{ delay: 0.1 }} 
-                  className="bg-white/10 rounded-[2rem] p-5 border border-white/10 backdrop-blur-md"
+                  className="bg-surface-inverse-foreground/10 rounded-4xl p-5 border border-border backdrop-blur-md"
                 >
                   <div className="flex justify-between items-center relative">
-                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/20 -translate-y-1/2" />
+                    <div className="absolute top-1/2 left-0 right-0 h-px bg-muted/20 -translate-y-1/2" />
                     {currentDetails.timeline.map((step: any, i: number) => (
                       <div key={i} className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer">
                         <div className={cn(
                           "w-2.5 h-2.5 rounded-full border-2 transition-all duration-300", 
                           step.active 
                             ? "bg-accent-rehearsal border-accent-rehearsal scale-125 shadow-[0_0_10px_var(--accent-rehearsal)]" 
-                            : "bg-[var(--accent-rehearsal)] border-white/40 group-hover:border-white"
+                            : "bg-accent-rehearsal border-border/40 group-hover:border-border"
                         )} />
                         <span className={cn(
                           "text-xs font-bold tabular-nums", 
@@ -306,9 +306,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 onClick={() => setRehearsalViewMode('live')}
-                className="w-full py-4 bg-accent-rehearsal text-accent-rehearsal-foreground rounded-[2rem] font-black uppercase text-sm tracking-wider hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2 relative overflow-hidden"
+                className="w-full py-4 bg-accent-rehearsal text-accent-rehearsal-foreground rounded-4xl font-black uppercase text-sm tracking-wider hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]" />
+                <div className="absolute inset-0 bg-muted/20 animate-[pulse_2s_infinite]" />
                 <Play className="w-5 h-5 fill-current relative z-10" /> 
                 <span className="relative z-10">Enter Live Mode</span>
               </motion.button>
@@ -320,9 +320,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   animate={{ opacity: 1, x: 0 }} 
                   transition={{ delay: 0.5 }}
                   onClick={() => setRehearsalViewMode('setlist')}
-                  className="bg-white/10 p-6 rounded-[2rem] border border-white/20 hover:bg-white/20 transition-colors cursor-pointer group"
+                  className="bg-surface-inverse-foreground/10 p-6 rounded-4xl border border-border hover:bg-muted/20 transition-colors cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-accent-foreground mb-4 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-full bg-surface-inverse-foreground/10 flex items-center justify-center text-accent-foreground mb-4 group-hover:scale-110 transition-transform">
                     <ListMusic className="w-5 h-5" />
                   </div>
                   <span className="text-3xl font-black text-accent-foreground block mb-1">{currentDetails?.setlist?.length || 0}</span>
@@ -334,9 +334,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   animate={{ opacity: 1, x: 0 }} 
                   transition={{ delay: 0.5 }}
                   onClick={() => setRehearsalViewMode('tasks')}
-                  className="bg-white/10 p-6 rounded-[2rem] border border-white/20 hover:bg-white/20 transition-colors cursor-pointer group"
+                  className="bg-surface-inverse-foreground/10 p-6 rounded-4xl border border-border hover:bg-muted/20 transition-colors cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-accent-foreground mb-4 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-full bg-surface-inverse-foreground/10 flex items-center justify-center text-accent-foreground mb-4 group-hover:scale-110 transition-transform">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <span className="text-3xl font-black text-accent-foreground block mb-1">
@@ -357,13 +357,13 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               exit={{ opacity: 0, x: -20 }} 
               className="space-y-4"
             >
-              <div className="bg-white/10 rounded-[2rem] p-6 border border-white/20">
+              <div className="bg-surface-inverse-foreground/10 rounded-4xl p-6 border border-border">
                 <h3 className="text-xl font-black text-accent-foreground mb-4 flex items-center gap-2">
                   <ListMusic className="w-5 h-5" /> Setlist
                 </h3>
                 <div className="space-y-2">
                   {currentDetails?.setlist?.map((song: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-black/20 rounded-xl hover:bg-black/30 transition-colors">
+                    <div key={i} className="flex items-center justify-between p-3 bg-surface-inverse/20 rounded-xl hover:bg-surface-inverse/50 transition-colors">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-accent-foreground/40 w-4">{i + 1}</span>
                         <div>
@@ -390,7 +390,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               exit={{ opacity: 0, x: -20 }} 
               className="space-y-4"
             >
-              <div className="bg-white/10 rounded-[2rem] p-6 border border-white/20">
+              <div className="bg-surface-inverse-foreground/10 rounded-4xl p-6 border border-border">
                 <h3 className="text-xl font-black text-accent-foreground mb-4 flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5" /> Tasks
                 </h3>
@@ -398,11 +398,11 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   {currentDetails?.tasks?.map((task: any, i: number) => {
                     const isDone = task.done || task.completed;
                     return (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl">
+                      <div key={i} className="flex items-center gap-3 p-3 bg-surface-inverse/20 rounded-xl">
                         <DotCheckbox
                           checked={isDone}
                           activeColor="var(--accent-rehearsal)"
-                          inactiveColor="rgba(255,255,255,0.15)"
+                          inactiveColor="var(--dot-inactive)"
                         />
                         <div className="flex-1">
                           <span className={cn(
@@ -440,7 +440,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               <div className="text-6xl font-black text-accent-foreground tabular-nums tracking-tighter mb-8">00:00:00</div>
               <button 
                 onClick={() => setRehearsalViewMode('overview')} 
-                className="px-8 py-3 bg-red-500 rounded-full font-black uppercase text-accent-foreground shadow-xl hover:scale-105 transition-transform"
+                className="px-8 py-3 bg-destructive/100 rounded-full font-black uppercase text-accent-foreground shadow-xl hover:scale-105 transition-transform"
               >
                 End Session
               </button>
@@ -454,17 +454,17 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 p-6 bg-[var(--accent-rehearsal)]/95 backdrop-blur-md border-t border-white/10 z-50 flex gap-4 max-w-md mx-auto"
+          className="fixed bottom-0 left-0 right-0 p-6 bg-accent-rehearsal/95 backdrop-blur-md border-t border-border z-50 flex gap-4 max-w-md mx-auto"
         >
           <button 
             onClick={() => setRehearsalViewMode('live')}
-            className="flex-1 h-14 bg-accent-rehearsal rounded-full flex items-center justify-center gap-2 text-accent-rehearsal-foreground font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,85,225,0.3)]"
+            className="flex-1 h-14 bg-accent-rehearsal rounded-full flex items-center justify-center gap-2 text-accent-rehearsal-foreground font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform shadow-lg"
           >
             <Radio className="w-5 h-5 animate-pulse" /> Check In / Live
           </button>
           <button 
             onClick={onDecline}
-            className="h-14 w-14 rounded-full border border-white/30 flex items-center justify-center text-surface-inverse-foreground/70 hover:text-surface-inverse-foreground hover:border-white transition-colors bg-black/20"
+            className="h-14 w-14 rounded-full border border-border/30 flex items-center justify-center text-surface-inverse-foreground/70 hover:text-surface-inverse-foreground hover:border-border transition-colors bg-surface-inverse/20"
           >
             <X className="w-6 h-6" />
           </button>

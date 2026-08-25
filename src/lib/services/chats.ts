@@ -266,6 +266,7 @@ export const createChat = async (
       
       if (existingBandChat) {
         console.log('[createChat] Found existing band chat:', existingBandChat.id);
+        await ensureParticipants(existingBandChat.id, allParticipants);
         return { data: existingBandChat, error: null };
       }
     }
@@ -281,6 +282,7 @@ export const createChat = async (
       
       if (existingEventChat) {
         console.log('[createChat] Found existing event chat:', existingEventChat.id);
+        await ensureParticipants(existingEventChat.id, allParticipants);
         return { data: existingEventChat, error: null };
       }
     }
@@ -318,6 +320,21 @@ export const createChat = async (
     return { data: chat, error: null };
   } catch (error: any) {
     return { data: null, error };
+  }
+};
+
+// Ensure the given users are participants of a chat (idempotent).
+const ensureParticipants = async (chatId: string, userIds: string[]) => {
+  const unique = [...new Set(userIds.filter(Boolean))];
+  if (!unique.length) return;
+  const { error } = await supabase
+    .from('chat_participants')
+    .upsert(unique.map(userId => ({ chat_id: chatId, user_id: userId })), {
+      onConflict: 'chat_id,user_id',
+      ignoreDuplicates: true,
+    });
+  if (error) {
+    console.warn('[createChat] ensureParticipants warning:', error.message);
   }
 };
 
@@ -683,6 +700,8 @@ export interface SearchResult {
   message_date?: string;
   participant_name?: string;
   match_text: string;
+  member_id?: string;
+  band_id?: string;
 }
 
 export const searchChatsAndMessages = async (
@@ -709,27 +728,25 @@ export const searchChatsAndMessages = async (
 
     const userChatIds = (userChatIdData || []).map(c => c.chat_id);
 
-    if (userChatIds.length === 0) {
-      return { data: [], error: null };
-    }
+    if (userChatIds.length > 0) {
+      const { data: chatNameResults } = await supabase
+        .from('chats')
+        .select('id, name, type')
+        .in('id', userChatIds)
+        .ilike('name', searchPattern)
+        .limit(limit);
 
-    const { data: chatNameResults } = await supabase
-      .from('chats')
-      .select('id, name, type')
-      .in('id', userChatIds)
-      .ilike('name', searchPattern)
-      .limit(limit);
-
-    if (chatNameResults) {
-      chatNameResults.forEach(chat => {
-        results.push({
-          type: 'chat',
-          chat_id: chat.id,
-          chat_name: chat.name || 'Chat',
-          chat_type: chat.type as ChatType,
-          match_text: chat.name || 'Chat',
+      if (chatNameResults) {
+        chatNameResults.forEach(chat => {
+          results.push({
+            type: 'chat',
+            chat_id: chat.id,
+            chat_name: chat.name || 'Chat',
+            chat_type: chat.type as ChatType,
+            match_text: chat.name || 'Chat',
+          });
         });
-      });
+      }
     }
 
     // 2. Search in messages content
@@ -795,7 +812,46 @@ export const searchChatsAndMessages = async (
       }
     }
 
-    // Sort: chats first, then participants, then messages
+    // 3. Search band members (people the user shares a band with)
+    const { data: myBandRows } = await supabase
+      .from('band_members')
+      .select('band_id')
+      .eq('user_id', user.id);
+    const myBandIds = (myBandRows || []).map(b => b.band_id);
+
+    if (myBandIds.length > 0) {
+      const { data: memberRows } = await supabase
+        .from('band_members')
+        .select(`
+          user_id,
+          band_id,
+          profiles:user_id ( id, full_name, email, avatar_url )
+        `)
+        .in('band_id', myBandIds)
+        .eq('is_active', true)
+        .not('user_id', 'eq', user.id);
+
+      const q = query.toLowerCase();
+      const seen = new Set<string>();
+      (memberRows || []).forEach((m: any) => {
+        const name = m.profiles?.full_name || '';
+        const email = m.profiles?.email || '';
+        if (!name.toLowerCase().includes(q) && !email.toLowerCase().includes(q)) return;
+        if (seen.has(m.user_id)) return;
+        seen.add(m.user_id);
+        results.push({
+          type: 'participant',
+          chat_id: '',
+          chat_name: name,
+          participant_name: name || email,
+          member_id: m.user_id,
+          band_id: m.band_id,
+          match_text: name || email,
+        });
+      });
+    }
+
+    // Sort: chats first, then people, then messages
     results.sort((a, b) => {
       const order = { chat: 0, participant: 1, message: 2 };
       return order[a.type] - order[b.type];

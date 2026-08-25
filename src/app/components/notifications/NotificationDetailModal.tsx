@@ -146,9 +146,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
           <div className="flex items-center gap-4 px-4 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
             <button
               onClick={viewingIndex !== null ? backToList : onClose}
-              className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-foreground/20"
+              className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-foreground/20"
             >
-              <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+              <ArrowLeft className="w-6 h-6 text-foreground" />
             </button>
             <h1 className="text-xl font-bold uppercase text-foreground">
               {viewingIndex !== null ? 'DETAILS' : (isListView ? 'NOTIFICATIONS' : getTypeLabel(detailNotif?.type || ''))}
@@ -171,7 +171,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     >
                       {/* Type badge */}
                       <div className={cn(
-                        'px-2 py-0.5 rounded text-xs font-bold uppercase shrink-0 mt-[2px]',
+                        'px-2 py-0.5 rounded text-xs font-bold uppercase shrink-0 mt-0.5',
                         isRead ? 'bg-foreground/10 text-muted-foreground' : 'bg-foreground text-background'
                       )}>
                         {label}
@@ -267,7 +267,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           <button
                             onClick={handleAddToCalendar}
                             disabled={isAddingToCalendar}
-                            className="w-full py-3 rounded-[10px] flex items-center justify-center gap-2 bg-foreground/10"
+                            className="w-full py-3 rounded-xl flex items-center justify-center gap-2 bg-foreground/10"
                           >
                             <CalendarPlus className="w-4 h-4 text-foreground/60" />
                             <span className="text-xs font-bold uppercase text-foreground/60">
@@ -310,7 +310,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             {isListView ? (
               <button
                 onClick={onMarkAllAsRead}
-                className="w-full py-4 rounded-[10px] flex items-center justify-center gap-2 bg-foreground"
+                className="w-full py-4 rounded-xl flex items-center justify-center gap-2 bg-foreground"
               >
                 <Check className="w-4 h-4 text-background" />
                 <span className="text-sm font-bold uppercase text-background">MARK ALL READ</span>
@@ -320,13 +320,13 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 <div className="grid grid-cols-2 gap-2.5 w-full">
                   <button
                     onClick={() => handleAction('decline_event')}
-                    className="rounded-[10px] py-4 flex items-center justify-center bg-foreground/10"
+                    className="rounded-xl py-4 flex items-center justify-center bg-foreground/10"
                   >
                     <span className="text-sm font-bold uppercase text-foreground">DECLINE</span>
                   </button>
                   <button
                     onClick={() => handleAction('accept_event')}
-                    className="rounded-[10px] py-4 flex items-center justify-center bg-foreground"
+                    className="rounded-xl py-4 flex items-center justify-center bg-foreground"
                   >
                     <span className="text-sm font-bold uppercase text-background">ACCEPT</span>
                   </button>
@@ -334,7 +334,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 {!detailNotif.read && (
                   <button
                     onClick={() => onMarkAsRead?.(detailNotif.id)}
-                    className="text-[11px] font-medium uppercase text-foreground/40"
+                    className="text-xs font-medium uppercase text-foreground/40"
                   >
                     MARK AS READ
                   </button>
@@ -346,7 +346,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   {!detailNotif?.read && (
                     <button
                       onClick={() => onMarkAsRead?.(detailNotif?.id)}
-                      className="rounded-[10px] py-4 flex items-center justify-center gap-2 bg-foreground"
+                      className="rounded-xl py-4 flex items-center justify-center gap-2 bg-foreground"
                     >
                       <Check className="w-4 h-4 text-background" />
                       <span className="text-sm font-bold uppercase text-background">READ</span>
@@ -354,9 +354,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   )}
                   <button
                     onClick={() => onDelete?.(detailNotif?.id)}
-                    className="rounded-[10px] py-4 flex items-center justify-center bg-foreground/10"
+                    className="rounded-xl py-4 flex items-center justify-center bg-foreground/10"
                   >
-                    <span className="text-sm font-bold uppercase text-[var(--destructive)]">DELETE</span>
+                    <span className="text-sm font-bold uppercase text-destructive">DELETE</span>
                   </button>
                 </div>
               </div>

@@ -45,7 +45,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
     <motion.div
       layoutId={`card-${event.id}`}
       onClick={onClick}
-      className="bg-white p-5 rounded-[2rem] relative overflow-hidden group shadow-sm border border-transparent hover:border-black/5 cursor-pointer"
+      className="bg-card p-5 rounded-4xl relative overflow-hidden group shadow-sm border border-transparent hover:border-border cursor-pointer"
       whileHover={{ scale: 1.02 }}
       transition={springs.smooth}
       style={{ borderRadius: "2rem" }}
@@ -56,9 +56,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
             {/* Date Block */}
             <motion.div 
               layoutId={`date-block-${event.id}`}
-              className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-accent transition-colors shrink-0"
+              className="flex flex-col items-center justify-center w-14 h-14 bg-muted rounded-2xl group-hover:bg-accent transition-colors shrink-0"
             >
-                <span className="text-xs font-black uppercase text-stone-400 group-hover:text-foreground leading-tight mb-0.5">
+                <span className="text-xs font-black uppercase text-muted-foreground group-hover:text-foreground leading-tight mb-0.5">
                   {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
                 </span>
                 <span className="text-xl font-black text-foreground leading-tight group-hover:text-foreground">{event.date?.split('-')[2] || '--'}</span>
@@ -85,24 +85,24 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       {/* Metadata — typographic only, no icons */}
       <motion.div 
         layoutId={`meta-${event.id}`}
-        className="flex items-center gap-3 text-xs font-bold text-stone-400 uppercase tracking-wide mb-6 pl-1"
+        className="flex items-center gap-3 text-xs font-bold text-muted-foreground uppercase tracking-wide mb-6 pl-1"
       >
           <span>{event.time}</span>
-          <span className="w-1 h-1 rounded-full bg-stone-300" />
-          <span className="truncate max-w-[150px]">{event.location}</span>
+          <span className="w-1 h-1 rounded-full bg-muted" />
+          <span className="truncate max-w-37.5">{event.location}</span>
       </motion.div>
 
       {/* Footer */}
       <motion.div 
         layoutId={`footer-${event.id}`}
-        className="flex items-center justify-between border-t border-stone-100 pt-4"
+        className="flex items-center justify-between border-t border-border pt-4"
       >
           <div className="flex -space-x-2">
               {event.members.length > 0 ? event.members.map((m, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-accent-foreground text-xs font-bold">
+                  <div key={i} className="w-8 h-8 rounded-full bg-surface-inverse border-2 border-border flex items-center justify-center text-accent-foreground text-xs font-bold">
                       {m}
                   </div>
-              )) : <span className="text-xs font-bold text-stone-400 uppercase">No team</span>}
+              )) : <span className="text-xs font-bold text-muted-foreground uppercase">No team</span>}
           </div>
           <span className="text-xl font-black text-foreground">€{event.price}</span>
       </motion.div>

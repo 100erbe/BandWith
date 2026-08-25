@@ -67,18 +67,18 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
 
   return (
     <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Task Details">
-      <div className="flex flex-col gap-[40px]">
+      <div className="flex flex-col gap-10">
         {/* Status badges */}
-        <div className="flex flex-wrap gap-[4px]">
-          <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-xs font-bold uppercase text-accent-rehearsal flex items-center gap-[4px]">
+        <div className="flex flex-wrap gap-1">
+          <div className="px-2.5 py-1 bg-card rounded-full">
+            <span className="text-xs font-bold uppercase text-accent-rehearsal flex items-center gap-1">
               {isAssignedToAll ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
               {isAssignedToAll ? 'BAND TASK' : 'ASSIGNED'}
             </span>
           </div>
           <div className={cn(
-            "px-[10px] py-[4px] rounded-[6px]",
-            editedTask.completed ? "bg-card" : "bg-white/20"
+            "px-2.5 py-1 rounded-full",
+            editedTask.completed ? "bg-card" : "bg-muted/20"
           )}>
             <span className={cn(
               "text-xs font-bold uppercase",
@@ -90,7 +90,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
         </div>
 
         {/* Description */}
-        <div className="flex flex-col gap-[8px]">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-bold text-accent-foreground uppercase">DESCRIPTION</span>
           {readOnly ? (
             <span className="text-xl font-bold text-accent-foreground">{editedTask.text}</span>
@@ -98,35 +98,35 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
             <input
               value={editedTask.text}
               onChange={(e) => setEditedTask({ ...editedTask, text: e.target.value })}
-              className="bg-transparent border-b-2 border-white/30 py-[8px] text-xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-white transition-all"
+              className="bg-transparent border-b-2 border-border/30 py-2 text-xl font-bold text-accent-foreground placeholder:text-accent-foreground/30 focus:outline-none focus:border-border transition-all"
             />
           )}
         </div>
 
         {/* Assigned To */}
-        <div className="flex flex-col gap-[12px]">
+        <div className="flex flex-col gap-3">
           <span className="text-xs font-bold text-accent-foreground uppercase">ASSIGNED TO</span>
           {readOnly ? (
             <span className="text-xl font-bold text-accent-foreground">{assignedNames || 'Unassigned'}</span>
           ) : (
-            <div className="flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => handleToggleMember('all')}
                 className={cn(
-                  "w-full px-[16px] py-[12px] rounded-[10px] text-sm font-bold flex items-center justify-between transition-all",
+                  "w-full px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-between transition-all",
                   isAssignedToAll
-                    ? "bg-white text-accent-rehearsal"
-                    : "bg-white/20 text-accent-rehearsal"
+                    ? "bg-card text-accent-rehearsal"
+                    : "bg-muted/20 text-accent-rehearsal"
                 )}
               >
                 <span>ENTIRE BAND</span>
                 <div className={cn(
-                  "w-[20px] h-[20px] rounded-full border-2",
-                  isAssignedToAll ? "bg-accent-rehearsal border-accent-rehearsal" : "border-white/50"
+                  "w-5 h-5 rounded-full border-2",
+                  isAssignedToAll ? "bg-accent-rehearsal border-accent-rehearsal" : "border-border/50"
                 )} />
               </button>
 
-              <div className="grid grid-cols-2 gap-[8px]">
+              <div className="grid grid-cols-2 gap-2">
                 {members.map(m => {
                   const isSelected = editedTask.assignedTo.includes(m.id);
                   return (
@@ -135,15 +135,15 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                       onClick={() => handleToggleMember(m.id)}
                       disabled={isAssignedToAll}
                       className={cn(
-                        "px-[12px] py-[10px] rounded-[10px] text-xs font-bold flex items-center justify-between transition-all text-left",
-                        isSelected ? "bg-white text-accent-rehearsal" : "bg-white/20 text-accent-rehearsal",
+                        "px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all text-left",
+                        isSelected ? "bg-card text-accent-rehearsal" : "bg-muted/20 text-accent-rehearsal",
                         isAssignedToAll && "opacity-40"
                       )}
                     >
                       <span>{m.name}</span>
                       <div className={cn(
-                        "w-[16px] h-[16px] rounded-full border-2",
-                        isSelected ? "bg-accent-rehearsal border-accent-rehearsal" : "border-white/50"
+                        "w-4 h-4 rounded-full border-2",
+                        isSelected ? "bg-accent-rehearsal border-accent-rehearsal" : "border-border/50"
                       )} />
                     </button>
                   );
@@ -154,21 +154,21 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
         </div>
 
         {/* Category */}
-        <div className="flex flex-col gap-[12px]">
+        <div className="flex flex-col gap-3">
           <span className="text-xs font-bold text-accent-foreground uppercase">CATEGORY</span>
           {readOnly ? (
             <span className="text-xl font-bold text-accent-foreground capitalize">{editedTask.type}</span>
           ) : (
-            <div className="flex flex-wrap gap-[8px]">
+            <div className="flex flex-wrap gap-2">
               {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
                 <button
                   key={t}
                   onClick={() => setEditedTask({ ...editedTask, type: t as RehearsalTask['type'] })}
                   className={cn(
-                    "px-[16px] py-[8px] rounded-[10px] text-xs font-bold uppercase transition-all",
+                    "px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all",
                     editedTask.type === t
-                      ? "bg-white text-accent-rehearsal"
-                      : "bg-white/20 text-accent-rehearsal"
+                      ? "bg-card text-accent-rehearsal"
+                      : "bg-muted/20 text-accent-rehearsal"
                   )}
                 >
                   {t}
@@ -181,22 +181,22 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
 
       {/* Footer */}
       {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[102]"
-          style={{ backgroundColor: 'var(--accent-rehearsal)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+        <div className="fixed bottom-0 left-0 right-0 rounded-t-3xl px-4 pt-5 pb-8 z-[102]"
+          style={{ backgroundColor: 'var(--accent-rehearsal)', boxShadow: '0px -4px 20px var(--dot-inactive)' }}
         >
-          <div className="flex flex-col gap-[20px] items-center">
-            <div className="grid grid-cols-2 gap-[10px] w-full">
+          <div className="flex flex-col gap-5 items-center">
+            <div className="grid grid-cols-2 gap-2.5 w-full">
               <button
                 onClick={handleDelete}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white/20"
+                className="rounded-xl py-4 flex items-center justify-center gap-2 bg-muted/20"
               >
                 <span className="text-base font-bold text-accent-foreground uppercase">DELETE</span>
               </button>
               <button
                 onClick={handleSave}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-card"
+                className="rounded-xl py-4 flex items-center justify-center gap-2 bg-card"
               >
-                <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
+                <Plus className="w-4.5 h-4.5 text-accent-rehearsal" />
                 <span className="text-base font-bold text-accent-rehearsal uppercase">SAVE</span>
               </button>
             </div>

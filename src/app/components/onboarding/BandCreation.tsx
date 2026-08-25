@@ -98,7 +98,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               transition={{ type: 'spring', damping: 15, stiffness: 200 }}
               className="mb-8"
             >
-              <div className="w-24 h-24 rounded-[2rem] bg-accent flex items-center justify-center">
+              <div className="w-24 h-24 rounded-4xl bg-accent flex items-center justify-center">
                 <Sparkles className="w-12 h-12 text-accent-foreground" />
               </div>
             </motion.div>
@@ -228,7 +228,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-28 h-28 rounded-[1.5rem] bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-accent/50 transition-colors overflow-hidden group"
+              className="w-28 h-28 rounded-3xl bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-accent/50 transition-colors overflow-hidden group"
             >
               {avatarPreview || avatarUrl ? (
                 <img
@@ -245,7 +245,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               ) : (
                 <>
                   <Camera className="w-8 h-8 text-muted-foreground/60 mb-2 group-hover:text-accent transition-colors" />
-                  <span className="text-muted-foreground/60 text-[11px] font-medium group-hover:text-accent">
+                  <span className="text-muted-foreground/60 text-xs font-medium group-hover:text-accent">
                     Add photo
                   </span>
                 </>
@@ -278,10 +278,10 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p className="text-muted-foreground/60 text-[11px] font-medium mb-3 uppercase tracking-wider">
+            <p className="text-muted-foreground/60 text-xs font-medium mb-3 uppercase tracking-wider">
               Preview
             </p>
-            <div className="bg-card rounded-[1.5rem] p-4 flex items-center gap-4 border border-border">
+            <div className="bg-card rounded-3xl p-4 flex items-center gap-4 border border-border">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-[var(--accent)] flex items-center justify-center overflow-hidden flex-shrink-0">
                 {avatarPreview || avatarUrl ? (
                   <img

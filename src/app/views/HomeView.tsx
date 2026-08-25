@@ -141,7 +141,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex-1 rounded-xl border border-border/40 bg-card border-l-4 border-l-accent-gig overflow-hidden">
             <div className="flex flex-col py-3 px-4 items-start text-left">
               <span className="text-xs font-bold text-foreground tracking-wide">GIGS CONFIRMED</span>
-              <div className="h-[62px] overflow-hidden">
+              <div className="h-16 overflow-hidden">
                 <span className="text-5xl font-bold leading-tight text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : confirmedCount}
                 </span>
@@ -153,7 +153,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex-1 rounded-xl border border-border/40 bg-card border-l-4 border-l-accent-rehearsal overflow-hidden">
             <div className="flex flex-col py-3 px-4 items-start text-left">
               <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING REHEARSAL</span>
-              <div className="h-[62px] overflow-hidden">
+              <div className="h-16 overflow-hidden">
                 <span className="text-5xl font-bold leading-tight text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : rehearsalCount}
                 </span>
@@ -242,12 +242,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Mask-Faded Content List Element Wrapper */}
             {displayEvents.length > 0 ? (
               <div
-                className="flex flex-col bg-transparent"
+                className="flex flex-col bg-transparent overflow-hidden max-h-52"
                 style={{
                   maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
                   WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
-                  maxHeight: '210px',
-                  overflow: 'hidden'
                 }}
               >
                 {displayEvents.map((event: any, index: number) => {
@@ -255,11 +253,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     <div
                       key={event.id || event.eventId || index}
                       onClick={() => onViewChange?.('Events')}
-                      className="py-4 border-b flex flex-col gap-1 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
-                      style={{ borderColor: 'rgba(0,0,0,0.1)' }}
+                      className="py-4 border-b border-border flex flex-col gap-1 cursor-pointer bg-transparent hover:opacity-80 transition-opacity"
                     >
                       <div className="flex justify-between items-baseline">
-                        <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--foreground)' }}>
+                        <span className="text-base font-bold truncate max-w-[75%]" style={{ color: 'var(--fg)' }}>
                           {event.title?.toUpperCase() || "UNTITLED EVENT"}
                         </span>
                         <span
@@ -269,7 +266,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                           {event.event_type?.toUpperCase() || "EVENT"}
                         </span>
                       </div>
-                      <div className="flex flex-col gap-0.5 text-xs uppercase tracking-wide opacity-70" style={{ color: 'var(--foreground)' }}>
+                      <div className="flex flex-col gap-0.5 text-xs uppercase tracking-wide opacity-70" style={{ color: 'var(--fg)' }}>
                         {event.event_date && (
                           <div className="flex items-center gap-1">
                             <span>📅 {new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })?.toUpperCase()}</span>
@@ -287,7 +284,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 })}
               </div>
             ) : (
-              <div className="text-xs py-4 font-bold tracking-wider uppercase opacity-40" style={{ color: 'var(--foreground)' }}>
+              <div className="text-xs py-4 font-bold tracking-wider uppercase opacity-40" style={{ color: 'var(--fg)' }}>
                 NO UPCOMING EVENTS SCHEDULED
               </div>
             )}
@@ -303,7 +300,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <span className="text-3xl font-bold leading-tight text-foreground">CENTER</span>
         </div>
 
-        <div className="flex flex-col gap-[60px]">
+        <div className="flex flex-col gap-15">
           {/* Scrollable Action Tiles */}
           <div className="overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             <div className="flex gap-10 w-max">
@@ -338,7 +335,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-accent w-full active:scale-95 transition-transform"
                 >
                   <span className="text-xs font-bold text-accent-foreground">VIEW CALENDAR</span>
                   <ArrowUpRight className="w-5 h-5 text-foreground" />
@@ -356,7 +353,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Analytics')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-surface-inverse w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-surface-inverse w-full active:scale-95 transition-transform"
                 >
                   <span className="text-xs font-bold text-accent">VIEW ANALYTICS</span>
                   <ArrowUpRight className="w-5 h-5 text-accent" />
@@ -374,13 +371,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="text-3xl font-bold leading-tight text-foreground">
                   {confirmedCount > 0 ? '2h 15m' : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
+                <span className="text-xs font-bold text-foreground/50 tracking-wide">
                   {confirmedCount > 0 ? 'BEFORE DOORS OPEN' : 'NO UPCOMING GIGS'}
                 </span>
                 {confirmedCount > 0 && (
                   <button
                     onClick={() => onQuickAction?.('View Calendar')}
-                    className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-accent w-full active:scale-95 transition-transform"
                   >
                     <span className="text-xs font-bold text-accent-foreground flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" />
@@ -400,12 +397,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="text-3xl font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
+                <span className="text-xs font-bold text-foreground/50 tracking-wide">
                   NEXT GIG SONGS
                 </span>
                 <button
                   onClick={() => onQuickAction?.('Setlist & Repertoire')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-surface-inverse w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-surface-inverse w-full active:scale-95 transition-transform"
                 >
                   <span className="text-xs font-bold text-accent">VIEW SETLIST</span>
                   <ChevronRight className="w-4 h-4 text-accent" />

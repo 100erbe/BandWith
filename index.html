@@ -17,7 +17,7 @@
         var isDark = stored === 'dark' || (stored !== 'light' && prefersDark);
         if (isDark) {
           document.documentElement.classList.add('dark');
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#050505');
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#121212');
         }
       })();
     </script>
@@ -26,7 +26,10 @@
         margin: 0; padding: 0; height: 100%; overflow: hidden;
         overscroll-behavior: none;
         -webkit-tap-highlight-color: transparent;
-        background: var(--background, #E6E5E1);
+        background: var(--bg, #E6E5E1);
+      }
+      html.dark, html.dark body {
+        background: #121212;
       }
       ::-webkit-scrollbar { display: none; }
       * { -ms-overflow-style: none; scrollbar-width: none; }
@@ -42,8 +45,8 @@
       input:-webkit-autofill, input:-webkit-autofill:hover,
       input:-webkit-autofill:focus, input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px #E6E5E1 inset !important;
-        -webkit-text-fill-color: #050505 !important;
-        caret-color: #050505 !important;
+        -webkit-text-fill-color: #0A0A0A !important;
+        caret-color: #0A0A0A !important;
         transition: background-color 5000s ease-in-out 0s;
       }
       input:focus, textarea:focus, select:focus {
@@ -57,11 +60,14 @@
         transition: opacity 0.4s ease;
       }
       .dark #css-splash {
-        background: #050505;
+        background: #121212;
       }
       #css-splash img {
         width: 64px; height: 64px; border-radius: 16px;
       }
+      #splash-band { color: #0A0A0A; }
+      #splash-with { color: #6A0DAD; }
+      html.dark #splash-band { color: #E5E7EB; }
       #css-splash .t {
         margin-top: 24px;
         font-family: 'neue-haas-grotesk-display', -apple-system, sans-serif;
@@ -72,7 +78,7 @@
   <body>
     <div id="css-splash">
       <img src="/brand/app-icon.png" alt="">
-      <div class="t"><span id="splash-band" style="color:#050505">BAND</span><span id="splash-with" style="color:#6A0DAD">WITH</span></div>
+      <div class="t"><span id="splash-band">BAND</span><span id="splash-with">WITH</span></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

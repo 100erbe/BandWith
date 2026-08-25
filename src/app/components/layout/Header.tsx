@@ -79,14 +79,14 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Messages</h1>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider">All caught up</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">All caught up</span>
                 <Sparkles className="w-3 h-3 text-accent fill-accent" />
               </div>
             </motion.div>
           ) : activeTab === 'Events' ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Events</h1>
-              <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider mt-2">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-2">
                 {filteredEventsCount} of {totalEventsCount} events
               </span>
             </motion.div>
@@ -95,9 +95,9 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full", 
-                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[var(--warning)]"
+                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-warning"
                 )} />
-                <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-foreground transition-colors">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
                   {selectedBand.role}
                 </span>
               </motion.div>
@@ -115,13 +115,13 @@ export const Header: React.FC<HeaderProps> = ({
                       animate={{ y: 0, opacity: 1 }}
                       exit={{ y: -15, opacity: 0 }}
                       transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px] hover:text-foreground/70"
+                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-70 hover:text-foreground/70"
                     >
                       {selectedBand.name}
                     </motion.h1>
                   </AnimatePresence>
                   
-                  <div className="flex items-center gap-2 mt-2 text-[var(--muted-fg)] group-hover:text-[var(--destructive)] transition-colors">
+                  <div className="flex items-center gap-2 mt-2 text-muted-foreground group-hover:text-destructive transition-colors">
                     <span className="text-xs font-bold uppercase tracking-wider">Switch Band</span>
                     <ChevronDown className="w-4 h-4" />
                   </div>
@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
                       animate={{ y: 0, opacity: 1 }}
                       exit={{ y: -15, opacity: 0 }}
                       transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-[280px]"
+                      className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase max-w-70"
                     >
                       {selectedBand.name}
                     </motion.h1>
@@ -152,18 +152,16 @@ export const Header: React.FC<HeaderProps> = ({
           <motion.div 
             whileHover={{ scale: 1.05 }}
             onClick={onOpenNotifications}
-            className="relative shrink-0 cursor-pointer"
+            className="relative shrink-0 cursor-pointer p-1.5"
           >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center border-2 border-white shadow-lg">
-              <Bell className="w-6 h-6 text-foreground" />
-            </div>
+            <Bell className="w-6 h-6 text-foreground" />
             <AnimatePresence>
               {unreadCount > 0 && (
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-black flex items-center justify-center border-2 border-background z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>
@@ -177,22 +175,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenIdentity}
             className="relative shrink-0 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center text-foreground font-bold text-lg border-2 border-white shadow-lg relative z-20">
+            <div className="w-14 h-14 rounded-2xl bg-background flex items-center justify-center text-foreground font-bold text-lg border-2 border-border shadow-lg relative z-20">
               {initials}
             </div>
-            {/* Notification Badge */}
-            <AnimatePresence>
-              {unreadCount > 0 && (
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
-                >
-                  {unreadCount}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         </div>
       </div>

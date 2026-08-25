@@ -23,8 +23,8 @@ const MemberPills: React.FC<{ count: number; accentColor: string }> = ({ count, 
       {Array.from({ length: TOTAL_SLOTS }).map((_, i) => (
         <div
           key={i}
-          className="h-[15px] rounded-[10px]"
-          style={{ backgroundColor: i < capped ? accentColor : 'rgba(255,255,255,0.2)' }}
+          className="h-4 rounded-xl"
+          style={{ backgroundColor: i < capped ? accentColor : 'var(--dot-inactive)' }}
         />
       ))}
     </div>
@@ -49,7 +49,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[70] bg-black/30 backdrop-blur-[10px]"
+            className="fixed inset-0 z-[70] bg-surface-inverse/50 backdrop-blur-md"
             onClick={onClose}
           />
 
@@ -59,12 +59,12 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed bottom-0 left-0 right-0 z-[71] bg-black rounded-t-[26px] px-4 pt-4 pb-[60px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
+            className="fixed bottom-0 left-0 right-0 z-[71] bg-surface-inverse rounded-t-3xl px-4 pt-4 pb-15 shadow-lg"
             style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Pill handle */}
             <div className="flex justify-center mb-4">
-              <div className="w-10 h-1 rounded-full bg-white/30" />
+              <div className="w-10 h-1 rounded-full bg-card/30" />
             </div>
 
             {/* Header */}
@@ -75,7 +75,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
               </p>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
+                className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-accent-foreground active:scale-90 transition-transform"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -114,11 +114,11 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                       </div>
                       {isActive && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold uppercase text-[var(--success)]"
+                          <span className="text-xs font-bold uppercase text-success"
                                 style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}>
                             ACTIVE
                           </span>
-                          <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-success" />
                         </div>
                       )}
                     </div>
@@ -144,7 +144,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                 onAddNewBand();
                 onClose();
               }}
-              className="w-full py-[18px] px-1.5 border-2 border-dashed border-white/20 rounded-[10px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              className="w-full py-4.5 px-1.5 border-2 border-dashed border-border rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
               <Plus className="w-3.5 h-3.5 text-accent-foreground/50" />
               <span
