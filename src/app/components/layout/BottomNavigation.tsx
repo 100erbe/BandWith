@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, Mic, Headphones, FileText } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 
@@ -323,14 +323,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               </div>
               <div className="flex flex-col gap-10">
                 {isAdmin && (
-                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-10 h-18 shrink-0">
-                      <div className="col-span-3 bg-accent-gig rounded-xl" />
-                      <div className="bg-accent-gig rounded-xl row-span-3" />
-                      <div className="bg-foreground/10 rounded-xl" /><div className="bg-foreground/10 rounded-xl" /><div className="bg-foreground/10 rounded-xl" />
-                      <div className="bg-foreground/10 rounded-xl" /><div className="bg-foreground/10 rounded-xl" />
-                      <div className="bg-accent-gig rounded-xl" />
-                      <div className="col-span-3 bg-accent-gig rounded-xl" />
+                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-4 w-full text-left">
+                    <div className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 bg-[var(--accent-gig)]/10 text-[var(--accent-gig)]">
+                      <Mic className="w-6 h-6" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
                       <span className="text-xl font-bold text-foreground uppercase">NEW GIG</span>
@@ -338,13 +333,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     </div>
                   </button>
                 )}
-                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                  <div className="grid grid-cols-3 grid-rows-5 gap-1 w-10 h-18 shrink-0">
-                    <div className="col-span-3 bg-accent-rehearsal rounded-xl" />
-                    <div className="bg-accent-rehearsal rounded-xl" /><div className="bg-foreground/10 rounded-xl" />
-                    <div className="bg-accent-rehearsal rounded-xl" /><div className="col-span-3 bg-accent-rehearsal rounded-xl" />
-                    <div className="bg-accent-rehearsal rounded-xl row-span-2" /><div className="bg-accent-rehearsal rounded-xl" />
-                    <div className="bg-foreground/10 rounded-xl" /><div className="bg-foreground/10 rounded-xl" /><div className="bg-accent-rehearsal rounded-xl" />
+                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-4 w-full text-left">
+                  <div className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 bg-[var(--accent-rehearsal)]/10 text-[var(--accent-rehearsal)]">
+                    <Headphones className="w-6 h-6" />
                   </div>
                   <div className="flex flex-col gap-2 flex-1">
                     <span className="text-xl font-bold text-foreground uppercase">NEW REHEARSAL</span>
@@ -352,13 +343,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   </div>
                 </button>
                 {isAdmin && (
-                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-10 h-18 shrink-0">
-                      <div className="col-span-3 bg-accent-quote rounded-xl" />
-                      <div className="bg-accent-quote rounded-xl row-span-3" /><div className="bg-foreground/10 rounded-xl" />
-                      <div className="bg-accent-quote rounded-xl row-span-3" /><div className="bg-foreground/10 rounded-xl" />
-                      <div className="bg-accent-quote rounded-xl" />
-                      <div className="col-span-3 bg-accent-quote rounded-xl" />
+                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-4 w-full text-left">
+                    <div className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 bg-[var(--accent-quote)]/10 text-[var(--accent-quote)]">
+                      <FileText className="w-6 h-6" />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
                       <span className="text-xl font-bold text-foreground uppercase">NEW QUOTE</span>

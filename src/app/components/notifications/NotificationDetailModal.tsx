@@ -5,6 +5,7 @@ import {
   Check,
   CalendarPlus,
   ArrowUpRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Capacitor } from '@capacitor/core';
@@ -19,6 +20,7 @@ export interface NotificationData {
   band_id?: string;
   created_at: string;
   read: boolean;
+  priority?: string;
 }
 
 interface NotificationDetailModalProps {
@@ -67,6 +69,9 @@ const getTypeLabel = (type: string): string => {
   if (type.includes('chat')) return 'CHAT';
   return 'NOTIFICATION';
 };
+
+const isUrgent = (notif: NotificationData): boolean =>
+  notif.priority === 'urgent' || String(notif.data?.response ?? '') === 'declined';
 
 const addToCalendar = async (data: Record<string, unknown>) => {
   try {
@@ -163,11 +168,15 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 {allNotifications.map((notif, i) => {
                   const isRead = notif.read;
                   const label = getTypeLabel(notif.type);
+                  const urgent = isUrgent(notif);
                   return (
                     <button
                       key={notif.id}
                       onClick={() => setViewingIndex(i)}
-                      className="w-full text-left flex items-start gap-3 py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
+                      className={cn(
+                        'w-full text-left flex items-start gap-3 py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity',
+                        urgent && 'bg-warning-subtle'
+                      )}
                     >
                       {/* Type badge */}
                       <div className={cn(
@@ -176,6 +185,11 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       )}>
                         {label}
                       </div>
+                      {urgent && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-warning text-warning-foreground shrink-0 mt-0.5">
+                          URGENT
+                        </span>
+                      )}
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
@@ -202,6 +216,19 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             ) : detailNotif ? (
               /* ═══ DETAIL VIEW — single notification expanded ═══ */
               <div className="flex flex-col gap-8">
+                {isUrgent(detailNotif) && (
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-warning-subtle border border-warning/30">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-bold uppercase text-warning">Urgent — member dropped out</span>
+                      <span className="text-xs font-medium text-foreground/60">
+                        {detailNotif.data?.member_name
+                          ? `${String(detailNotif.data.member_name)} dropped out of ${String(detailNotif.data.event_title || 'an event')}. Review availability or find a replacement.`
+                          : 'Review the event and find a replacement or reschedule.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {/* Title section */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">

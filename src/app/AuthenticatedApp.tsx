@@ -19,6 +19,7 @@ import {
   useExpandedFinanceData,
   useExpandedEventsData,
   useExpandedQuotesData,
+  useMemberEarnings,
   useChats,
 } from "@/app/hooks/useData";
 import {
@@ -215,6 +216,7 @@ export default function AuthenticatedApp() {
   // Data hooks
   const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(isAdmin ? (realBand?.id || null) : null);
+  const { data: memberEarnings, loading: memberEarningsLoading } = useMemberEarnings(isAdmin ? null : (realBand?.id || null), isAdmin ? null : (user?.id || null));
   const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"], !isAdmin);
   const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"], !isAdmin);
   const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading } = useExpandedQuotesData(isAdmin ? (realBand?.id || null) : null);
@@ -667,7 +669,7 @@ export default function AuthenticatedApp() {
 
   const [selectedNotifications, setSelectedNotifications] = useState<Array<{
     id: string; type: string; title: string; body?: string;
-    data?: Record<string, unknown>; band_id?: string; created_at: string; read: boolean;
+    data?: Record<string, unknown>; band_id?: string; created_at: string; read: boolean; priority?: string;
   }>>([]);
 
   const [rehearsalDetails, setRehearsalDetails] = useState<{ [key: number]: any }>({
@@ -1557,7 +1559,7 @@ export default function AuthenticatedApp() {
         />
 
         <AnimatePresence>
-          {expandedCard === "finance" && <FinanceExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
+          {expandedCard === "finance" && <FinanceExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} summary={financeData.summary} loading={financeLoading} />}
           {expandedCard === "pending" && <PendingExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
           {expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
@@ -1578,7 +1580,7 @@ export default function AuthenticatedApp() {
               </div>
             </ExpandedCardWrapper>
           ) : null}
-          {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={myConfirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
+          {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={memberEarningsLoading} earnings={memberEarnings} />}
         </AnimatePresence>
 
         <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates} isAdmin={isAdmin} isSolo={userMode === 'solo'} />

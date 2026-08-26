@@ -103,15 +103,23 @@ export interface EventWithMembers extends Event {
 // FINANCIAL COLUMN PROTECTION (member / freemium)
 // ============================================
 
-// Columns that are safe to expose to non-admin (member) viewers.
-// Excludes all financial, client-contact PII and internal-only fields
-// (fee, price, deposits, payment status, client email/phone/company,
-// internal notes, contract links, quote id).
-const MEMBER_EVENT_COLUMNS = `id, band_id, title, event_type, status, description,
-  event_date, start_time, end_time, load_in_time, soundcheck_time,
-  venue_name, venue_address, venue_city, venue_country, venue_coordinates, indoor_outdoor,
-  dress_code, setlist_id, notes, client_name, is_recurring, recurrence_rule, parent_event_id,
-  created_by, created_at, updated_at`;
+// Fields that must never reach non-admin (member) viewers.
+// These are stripped client-side (the DB query uses `*` so it can never
+// fail because of a schema mismatch on a member column allow-list).
+const MEMBER_STRIP_FIELDS: string[] = [
+  'fee', 'price', 'currency', 'deposit_amount', 'deposit_paid', 'payment_status',
+  'client_email', 'client_phone', 'client_company', 'internal_notes',
+  'contract_url', 'contract_signed', 'attachments', 'quote_id',
+];
+
+const stripSensitiveFields = (rows: any[] | null | undefined): any[] | null => {
+  if (!rows) return rows;
+  return rows.map((row: any) => {
+    const copy = { ...row };
+    MEMBER_STRIP_FIELDS.forEach((k) => { delete copy[k]; });
+    return copy;
+  });
+};
 
 /**
  * Returns true when the current viewer should NOT receive financial columns
@@ -185,11 +193,10 @@ export const getEvents = async (
     const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
     if (bIds.length === 0) return { data: [], error: null };
     const memberView = options?.memberView ?? await shouldRestrictFinancials(bIds);
-    const select = memberView ? MEMBER_EVENT_COLUMNS : '*';
 
     let query = supabase
       .from('events')
-      .select(select)
+      .select('*')
       .order('event_date', { ascending: true });
 
     // Filter by band(s) - single band or multiple
@@ -229,7 +236,7 @@ export const getEvents = async (
 
     if (error) throw error;
 
-    return { data, error: null };
+    return { data: memberView ? stripSensitiveFields(data) : data, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -238,11 +245,10 @@ export const getEvents = async (
 export const getEvent = async (eventId: string, memberView?: boolean): Promise<{ data: EventWithMembers | null; error: Error | null }> => {
   try {
     const restrict = memberView ?? await shouldRestrictFinancialsForEvent(eventId);
-    const select = restrict ? MEMBER_EVENT_COLUMNS : '*';
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
-        ${select},
+        *,
         band:bands (
           id,
           name,
@@ -254,6 +260,8 @@ export const getEvent = async (eventId: string, memberView?: boolean): Promise<{
 
     if (eventError) throw eventError;
 
+    const safeEvent = restrict && event ? stripSensitiveFields([event])?.[0] : event;
+
     const { data: members, error: membersError } = await supabase
       .from('event_members')
       .select(`*`)
@@ -263,7 +271,7 @@ export const getEvent = async (eventId: string, memberView?: boolean): Promise<{
 
     return {
       data: {
-        ...event,
+        ...safeEvent,
         members: (members || []).map((m: any) => ({
           ...m,
           profile: m.profile || null,
@@ -284,12 +292,11 @@ export const getUpcomingEvents = async (
   try {
     const today = new Date().toISOString().split('T')[0];
     const restrict = memberView ?? await shouldRestrictFinancials(bandId ? [bandId] : []);
-    const select = restrict ? MEMBER_EVENT_COLUMNS : '*';
 
     let query = supabase
       .from('events')
       .select(`
-        ${select},
+        *,
         band:bands (
           id,
           name,
@@ -309,7 +316,7 @@ export const getUpcomingEvents = async (
 
     if (error) throw error;
 
-    return { data, error: null };
+    return { data: restrict ? stripSensitiveFields(data) : data, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -678,6 +685,80 @@ export const getMemberPersonalStats = async (
     else if (curMonth > 0) revenueChange = 100;
 
     return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange, confirmedCount: confirmed.length }, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+// ============================================
+// MEMBER EARNINGS (personal, own fees only)
+// ============================================
+
+export interface MemberEarningsGig {
+  eventId: string;
+  title: string;
+  event_date: string;
+  fee: number;
+  status: string;
+}
+
+export interface MemberEarnings {
+  totalEarned: number;
+  past: { total: number; gigs: MemberEarningsGig[] };
+  upcoming: { total: number; gigs: MemberEarningsGig[] };
+}
+
+export const getMemberEarnings = async (
+  bandId: string,
+  userId: string
+): Promise<{ data: MemberEarnings | null; error: Error | null }> => {
+  try {
+    const { data: memberships, error } = await supabase
+      .from('event_members')
+      .select('fee, status, events!inner(id, band_id, event_date, status, event_type, title)')
+      .eq('user_id', userId)
+      .eq('events.band_id', bandId)
+      .neq('events.event_type', 'rehearsal');
+
+    if (error) throw error;
+
+    const today = new Date().toISOString().split('T')[0];
+    const rows = (memberships || []) as any[];
+    const past: MemberEarningsGig[] = [];
+    const upcoming: MemberEarningsGig[] = [];
+
+    rows.forEach((r: any) => {
+      const ev = r.events;
+      if (!ev) return;
+      const gig: MemberEarningsGig = {
+        eventId: ev.id || r.event_id,
+        title: ev.title || 'Gig',
+        event_date: ev.event_date,
+        fee: Number(r.fee || 0),
+        status: ev.status,
+      };
+      const played = (ev.status === 'confirmed' || ev.status === 'completed') && r.status === 'confirmed';
+      if (played && ev.event_date < today) {
+        past.push(gig);
+      } else if (ev.status === 'confirmed' && r.status === 'confirmed' && ev.event_date >= today) {
+        upcoming.push(gig);
+      }
+    });
+
+    past.sort((a, b) => (a.event_date < b.event_date ? 1 : -1));
+    upcoming.sort((a, b) => (a.event_date < b.event_date ? -1 : 1));
+
+    const pastTotal = past.reduce((s, g) => s + g.fee, 0);
+    const upcomingTotal = upcoming.reduce((s, g) => s + g.fee, 0);
+
+    return {
+      data: {
+        totalEarned: pastTotal,
+        past: { total: pastTotal, gigs: past },
+        upcoming: { total: upcomingTotal, gigs: upcoming },
+      },
+      error: null,
+    };
   } catch (error: any) {
     return { data: null, error };
   }

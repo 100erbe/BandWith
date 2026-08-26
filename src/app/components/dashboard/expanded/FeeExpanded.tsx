@@ -1,34 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
+import React from 'react';
+import { motion } from 'motion/react';
+import {
   ArrowLeft,
   Wallet,
-  TrendingUp,
-  TrendingDown,
   Calendar,
   Music,
-  CheckCircle,
-  Clock,
-  Euro,
-  BarChart3,
-  Loader2
+  Loader2,
 } from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
+import type { MemberEarnings } from '@/lib/services/events';
 
 interface FeeExpandedProps {
   onClose: () => void;
   bandName?: string;
   memberFee?: number;
   loading?: boolean;
-  events?: Array<{
-    id: string;
-    title: string;
-    date: string;
-    fee: number;
-    status: 'confirmed' | 'pending' | 'completed';
-    type: 'gig' | 'rehearsal';
-  }>;
+  earnings?: MemberEarnings | null;
 }
 
 export const FeeExpanded: React.FC<FeeExpandedProps> = ({
@@ -36,59 +23,15 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
   bandName = 'Band',
   memberFee = 0,
   loading = false,
-  events = []
+  earnings = null,
 }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
-  
-  // Calculate earnings data
-  const earningsData = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    
-    // Mock monthly data - will be replaced with real data
-    const monthlyEarnings = [
-      { month: 'Jan', amount: 450, gigs: 3 },
-      { month: 'Feb', amount: 380, gigs: 2 },
-      { month: 'Mar', amount: 520, gigs: 4 },
-      { month: 'Apr', amount: 290, gigs: 2 },
-      { month: 'May', amount: 610, gigs: 5 },
-      { month: 'Jun', amount: 440, gigs: 3 },
-    ];
-    
-    const totalEarned = monthlyEarnings.reduce((sum, m) => sum + m.amount, 0);
-    const totalGigs = monthlyEarnings.reduce((sum, m) => sum + m.gigs, 0);
-    const avgPerGig = totalGigs > 0 ? Math.round(totalEarned / totalGigs) : 0;
-    const maxAmount = Math.max(...monthlyEarnings.map(m => m.amount));
-    
-    // Calculate trend
-    const lastMonth = monthlyEarnings[monthlyEarnings.length - 1].amount;
-    const prevMonth = monthlyEarnings[monthlyEarnings.length - 2].amount;
-    const trend = prevMonth > 0 ? Math.round(((lastMonth - prevMonth) / prevMonth) * 100) : 0;
-    
-    return {
-      monthlyEarnings,
-      totalEarned,
-      totalGigs,
-      avgPerGig,
-      maxAmount,
-      trend
-    };
-  }, []);
+  const past = earnings?.past || { total: 0, gigs: [] };
+  const upcoming = earnings?.upcoming || { total: 0, gigs: [] };
 
-  // Upcoming payments
-  const upcomingPayments = useMemo(() => {
-    return events
-      .filter(e => e.status === 'confirmed' && e.fee > 0)
-      .slice(0, 5)
-      .map(e => ({
-        id: e.id,
-        title: e.title,
-        date: e.date,
-        amount: e.fee,
-        type: e.type
-      }));
-  }, [events]);
+  const formatShortDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <ExpandedCardWrapper
@@ -113,17 +56,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
           <span className="text-xs font-bold tracking-[0.2em] text-accent-foreground/60 uppercase block">My Earnings</span>
           <span className="text-sm font-black text-accent-foreground">{bandName}</span>
         </div>
-        <div className={cn(
-          "px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5",
-          earningsData.trend >= 0 ? "bg-muted/20 text-accent-foreground" : "bg-destructive/20 text-destructive"
-        )}>
-          {earningsData.trend >= 0 ? (
-            <TrendingUp className="w-3.5 h-3.5" />
-          ) : (
-            <TrendingDown className="w-3.5 h-3.5" />
-          )}
-          {earningsData.trend >= 0 ? '+' : ''}{earningsData.trend}%
-        </div>
+        <div className="w-10" />
       </motion.div>
       
       <div className="px-3 pb-32 space-y-6">
@@ -133,162 +66,103 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
           </div>
         ) : (
           <>
-            {/* Stats Overview */}
-            <div className="grid grid-cols-3 gap-3">
-              <motion.div 
+            {/* Totals */}
+            <div className="grid grid-cols-2 gap-3">
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
                 className="bg-card rounded-2xl p-4 shadow-sm"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-accent-gig/10 flex items-center justify-center">
-                    <Euro className="w-4 h-4 text-accent-gig" />
-                  </div>
-                </div>
-                <span className="text-2xl font-black text-foreground block">€{earningsData.totalEarned}</span>
+                <span className="text-2xl font-black text-foreground block">€{past.total.toLocaleString()}</span>
                 <span className="text-xs font-bold uppercase text-muted-foreground">Total Earned</span>
               </motion.div>
-              
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
                 className="bg-card rounded-2xl p-4 shadow-sm"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-accent-quote/10 flex items-center justify-center">
-                    <Music className="w-4 h-4 text-accent-quote" />
-                  </div>
-                </div>
-                <span className="text-2xl font-black text-foreground block">{earningsData.totalGigs}</span>
-                <span className="text-xs font-bold uppercase text-muted-foreground">Total Gigs</span>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-card rounded-2xl p-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-amber/10 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-amber" />
-                  </div>
-                </div>
-                <span className="text-2xl font-black text-foreground block">€{earningsData.avgPerGig}</span>
-                <span className="text-xs font-bold uppercase text-muted-foreground">Avg / Gig</span>
+                <span className="text-2xl font-black text-foreground block">€{upcoming.total.toLocaleString()}</span>
+                <span className="text-xs font-bold uppercase text-muted-foreground">Upcoming Revenue</span>
               </motion.div>
             </div>
 
-            {/* Earnings Chart */}
-            <motion.div 
+            {/* Past Earnings */}
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
+              transition={{ delay: 0.2 }}
               className="bg-card rounded-3xl p-5 shadow-sm"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Earnings Overview</h3>
-                <div className="flex gap-1 p-1 bg-muted rounded-full">
-                  {(['month', 'quarter', 'year'] as const).map(period => (
-                    <button
-                      key={period}
-                      onClick={() => setSelectedPeriod(period)}
-                      className={cn(
-                        "px-3 py-1 rounded-full text-xs font-bold uppercase transition-all",
-                        selectedPeriod === period 
-                          ? "bg-accent-gig text-accent-foreground" 
-                          : "text-muted-foreground hover:text-muted-foreground"
-                      )}
-                    >
-                      {period === 'month' ? '6M' : period === 'quarter' ? '1Y' : 'All'}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Past Earnings</h3>
+                <span className="text-xs font-bold text-accent-gig">{past.gigs.length} gigs</span>
               </div>
-              
-              {/* Bar Chart */}
-              <div className="flex items-end justify-between gap-2 h-32">
-                {earningsData.monthlyEarnings.map((data, index) => {
-                  const height = (data.amount / earningsData.maxAmount) * 100;
-                  return (
-                    <motion.div 
-                      key={data.month}
-                      className="flex-1 flex flex-col items-center gap-2"
-                      initial={{ opacity: 0, scaleY: 0 }}
-                      animate={{ opacity: 1, scaleY: 1 }}
-                      transition={{ delay: 0.3 + index * 0.05, duration: 0.3 }}
-                      style={{ transformOrigin: 'bottom' }}
-                    >
-                      <motion.div 
-                        className="w-full bg-gradient-to-t from-accent-gig to-accent-gig rounded-xl relative group cursor-pointer"
-                        style={{ height: `${height}%`, minHeight: '8px' }}
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        {/* Tooltip on hover */}
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-inverse text-accent-foreground px-2 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          €{data.amount}
-                        </div>
-                      </motion.div>
-                      <span className="text-xs font-bold text-muted-foreground">{data.month}</span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            {/* Upcoming Payments */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-card rounded-3xl p-5 shadow-sm"
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Upcoming Payments</h3>
-                <div className="px-2.5 py-1 bg-accent-gig/10 rounded-full">
-                  <span className="text-xs font-bold text-accent-gig">{upcomingPayments.length} pending</span>
-                </div>
-              </div>
-              
-              {upcomingPayments.length > 0 ? (
+              {past.gigs.length > 0 ? (
                 <div className="space-y-3">
-                  {upcomingPayments.map((payment, index) => (
-                    <motion.div
-                      key={payment.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.45 + index * 0.05 }}
-                      className="flex items-center justify-between p-3 bg-muted rounded-2xl"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center",
-                          payment.type === 'gig' ? "bg-accent-quote/10" : "bg-accent-gig/10"
-                        )}>
-                          {payment.type === 'gig' ? (
-                            <Music className="w-4 h-4 text-accent-quote" />
-                          ) : (
-                            <Calendar className="w-4 h-4 text-accent-gig" />
-                          )}
+                  {past.gigs.map((gig, i) => (
+                    <div key={gig.eventId} className="flex items-center justify-between p-3 bg-muted rounded-2xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent-quote/10 shrink-0">
+                          <Music className="w-4 h-4 text-accent-quote" />
                         </div>
-                        <div>
-                          <span className="font-bold text-sm text-foreground block">{payment.title}</span>
-                          <span className="text-xs text-muted-foreground">{payment.date}</span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-sm text-foreground block truncate">{gig.title}</span>
+                          <span className="text-xs text-muted-foreground">{formatShortDate(gig.event_date)}</span>
                         </div>
                       </div>
-                      <span className="font-black text-lg text-foreground">€{payment.amount}</span>
-                    </motion.div>
+                      <span className="font-black text-lg text-foreground shrink-0 ml-2">€{gig.fee.toLocaleString()}</span>
+                    </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Clock className="w-6 h-6 text-muted-foreground" />
+                    <Wallet className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <span className="text-sm font-bold text-muted-foreground">No upcoming payments</span>
-                  <span className="text-xs text-muted-foreground mt-1">Payments will appear here when gigs are confirmed</span>
+                  <span className="text-sm font-bold text-muted-foreground">No past earnings yet</span>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Upcoming Revenue */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-card rounded-3xl p-5 shadow-sm"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Upcoming Revenue</h3>
+                <span className="px-2.5 py-1 bg-accent-gig/10 rounded-full">
+                  <span className="text-xs font-bold text-accent-gig">{upcoming.gigs.length} confirmed</span>
+                </span>
+              </div>
+              {upcoming.gigs.length > 0 ? (
+                <div className="space-y-3">
+                  {upcoming.gigs.map((gig, i) => (
+                    <div key={gig.eventId} className="flex items-center justify-between p-3 bg-muted rounded-2xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent-gig/10 shrink-0">
+                          <Calendar className="w-4 h-4 text-accent-gig" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-sm text-foreground block truncate">{gig.title}</span>
+                          <span className="text-xs text-muted-foreground">{formatShortDate(gig.event_date)}</span>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg text-foreground shrink-0 ml-2">€{gig.fee.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Calendar className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-bold text-muted-foreground">No upcoming gigs</span>
+                  <span className="text-xs text-muted-foreground mt-1">Confirmed gigs will appear here</span>
                 </div>
               )}
             </motion.div>

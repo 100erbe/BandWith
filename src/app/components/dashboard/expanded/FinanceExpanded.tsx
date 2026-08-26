@@ -13,17 +13,12 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { createTransaction } from '@/lib/services/transactions';
-import type { Transaction } from '@/lib/services/transactions';
+import type { BandFinancialSummary } from '@/lib/services/transactions';
 
 interface FinanceExpandedProps {
   bandId: string;
   onClose: () => void;
-  financialStats?: {
-    totalIncome: number;
-    totalExpenses: number;
-    netProfit: number;
-  } | null;
-  transactions?: Transaction[];
+  summary?: BandFinancialSummary | null;
   loading?: boolean;
   onTransactionAdded?: () => void;
 }
@@ -31,8 +26,7 @@ interface FinanceExpandedProps {
 export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   bandId,
   onClose,
-  financialStats,
-  transactions: realTransactions,
+  summary,
   loading,
   onTransactionAdded,
 }) => {
@@ -73,7 +67,19 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     setSaving(false);
   };
 
-  const stats = financialStats || { totalIncome: 0, totalExpenses: 0, netProfit: 0 };
+  const data = summary || {
+    income: { gigIncome: 0, otherIncome: 0, total: 0, gigs: [] },
+    expenses: { musicianPayouts: 0, otherExpenses: 0, total: 0, payouts: [] },
+    net: 0,
+    recentTransactions: [],
+  };
+
+  const realTransactions = data.recentTransactions;
+  const stats = {
+    totalIncome: data.income.total,
+    totalExpenses: data.expenses.total,
+    netProfit: data.net,
+  };
 
   const displayTransactions =
     realTransactions && realTransactions.length > 0
@@ -95,6 +101,11 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
       : [];
 
   const fmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0));
+  const fmtEuro = (v: number) => `€${fmt(v)}`;
+  const formatShortDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <ExpandedCardWrapper
@@ -119,8 +130,8 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
           <ArrowLeft className="w-6 h-6 text-foreground" />
         </button>
         <div className="flex flex-col leading-tight flex-1">
-          <span className="text-3xl font-bold text-foreground leading-tight">MONEY</span>
-          <span className="text-3xl font-bold text-foreground leading-tight">FLOW</span>
+          <span className="text-3xl font-bold text-foreground leading-tight">FINANCIAL</span>
+          <span className="text-3xl font-bold text-foreground leading-tight">OVERVIEW</span>
         </div>
         <button
           onClick={() => setShowAddTransaction(true)}
@@ -193,6 +204,70 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
               </motion.div>
               <div className="flex-1" />
             </div>
+          </div>
+
+          {/* Income */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <span className="text-3xl font-bold leading-tight text-foreground">INCOME</span>
+              <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
+                GIG INCOME {fmtEuro(data.income.gigIncome)} · OTHER INCOME {fmtEuro(data.income.otherIncome)}
+              </span>
+            </div>
+
+            {data.income.gigs.length === 0 && data.income.otherIncome === 0 ? (
+              <div className="flex flex-col items-center py-8">
+                <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
+                  No income recorded
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {data.income.gigs.map((g) => (
+                  <div key={g.eventId} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                    <div className="flex flex-col items-start min-w-0">
+                      <span className="text-xs font-bold text-foreground uppercase truncate">{g.title}</span>
+                      <span className="text-xs font-medium text-foreground/40 uppercase">
+                        GIG · {formatShortDate(g.event_date)}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-foreground shrink-0 ml-2">{fmtEuro(g.fee)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Expenses */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <span className="text-3xl font-bold leading-tight text-foreground">EXPENSES</span>
+              <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
+                MUSICIAN PAYOUTS {fmtEuro(data.expenses.musicianPayouts)} · OTHER EXPENSES {fmtEuro(data.expenses.otherExpenses)}
+              </span>
+            </div>
+
+            {data.expenses.payouts.length === 0 && data.expenses.otherExpenses === 0 ? (
+              <div className="flex flex-col items-center py-8">
+                <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
+                  No expenses recorded
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {data.expenses.payouts.map((p, i) => (
+                  <div key={`${p.eventId}-${i}`} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                    <div className="flex flex-col items-start min-w-0">
+                      <span className="text-xs font-bold text-foreground uppercase truncate">{p.memberName}</span>
+                      <span className="text-xs font-medium text-foreground/40 uppercase truncate">
+                        {p.title} · {formatShortDate(p.event_date)}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-foreground/70 shrink-0 ml-2">-{fmtEuro(p.fee)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Recent Activity */}

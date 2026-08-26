@@ -184,3 +184,118 @@ export const getFinancialStats = async (
     return { data: null, error };
   }
 };
+
+// ============================================
+// BAND FINANCIAL SUMMARY (admin)
+// ============================================
+
+export interface BandFinancialSummary {
+  income: {
+    gigIncome: number;
+    otherIncome: number;
+    total: number;
+    gigs: { eventId: string; title: string; event_date: string; fee: number }[];
+  };
+  expenses: {
+    musicianPayouts: number;
+    otherExpenses: number;
+    total: number;
+    payouts: { eventId: string; title: string; event_date: string; memberName: string; fee: number }[];
+  };
+  net: number;
+  recentTransactions: Transaction[];
+}
+
+export const getBandFinancialSummary = async (
+  bandId: string,
+  options?: { limit?: number }
+): Promise<{ data: BandFinancialSummary | null; error: Error | null }> => {
+  try {
+    const limit = options?.limit || 10;
+
+    // 1) Confirmed/completed gigs = income
+    const { data: gigs, error: gigsError } = await supabase
+      .from('events')
+      .select('id, title, event_date, fee')
+      .eq('band_id', bandId)
+      .in('status', ['confirmed', 'completed'])
+      .neq('event_type', 'rehearsal')
+      .order('event_date', { ascending: false });
+
+    if (gigsError) throw gigsError;
+
+    const confirmedGigs = gigs || [];
+    const gigIncome = confirmedGigs.reduce((s, g) => s + Number(g.fee || 0), 0);
+    const gigIds = confirmedGigs.map((g) => g.id);
+
+    // 2) Confirmed members' payouts on those gigs = expense
+    let payouts: BandFinancialSummary['expenses']['payouts'] = [];
+    let musicianPayouts = 0;
+    if (gigIds.length > 0) {
+      const { data: memberRows, error: membersError } = await supabase
+        .from('event_members')
+        .select('event_id, user_id, fee, profiles:user_id ( full_name )')
+        .in('event_id', gigIds)
+        .eq('status', 'confirmed');
+
+      if (membersError) throw membersError;
+
+      const gigById = new Map(confirmedGigs.map((g) => [g.id, g]));
+      payouts = (memberRows || []).map((m: any) => {
+        const gig = gigById.get(m.event_id);
+        return {
+          eventId: m.event_id,
+          title: gig?.title || 'Gig',
+          event_date: gig?.event_date || '',
+          memberName: m.profiles?.full_name || 'Musician',
+          fee: Number(m.fee || 0),
+        };
+      });
+      musicianPayouts = payouts.reduce((s, p) => s + p.fee, 0);
+    }
+
+    // 3) Manual transactions (income + expenses)
+    const { data: transactions, error: txError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('band_id', bandId)
+      .order('date', { ascending: false });
+
+    if (txError) throw txError;
+
+    const txs = transactions || [];
+    const otherIncome = txs.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const otherExpenses = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+
+    const income = {
+      gigIncome,
+      otherIncome,
+      total: gigIncome + otherIncome,
+      gigs: confirmedGigs.map((g) => ({
+        eventId: g.id,
+        title: g.title || 'Gig',
+        event_date: g.event_date,
+        fee: Number(g.fee || 0),
+      })),
+    };
+
+    const expenses = {
+      musicianPayouts,
+      otherExpenses,
+      total: musicianPayouts + otherExpenses,
+      payouts,
+    };
+
+    return {
+      data: {
+        income,
+        expenses,
+        net: income.total - expenses.total,
+        recentTransactions: txs.slice(0, limit),
+      },
+      error: null,
+    };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};

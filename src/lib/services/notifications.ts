@@ -967,6 +967,7 @@ export const notifyEventResponse = async (
       title: `${responseEmoji[response]} ${config.label} RSVP`,
       body: responseText[response],
       band_id: bandId,
+      priority: (response === 'declined' ? 'urgent' : 'medium') as NotificationPriority,
       data: { 
         event_id: eventId, 
         event_title: eventTitle,
@@ -990,7 +991,7 @@ export const notifyEventResponse = async (
         adminIds,
         `${responseEmoji[response]} Member Dropped Out`,
         responseText[response],
-        { event_id: eventId, type: 'event_confirmed', response }
+        { event_id: eventId, type: 'event_confirmed', response, priority: 'urgent' }
       );
     }
     

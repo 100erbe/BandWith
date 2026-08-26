@@ -823,15 +823,9 @@ export const useExpandedFinanceData = (bandId: string | null) => {
   const [error, setError] = useState<Error | null>(null);
   
   const [data, setData] = useState<{
-    financialStats: {
-      totalIncome: number;
-      totalExpenses: number;
-      netProfit: number;
-    } | null;
-    recentTransactions: transactionsService.Transaction[];
+    summary: transactionsService.BandFinancialSummary | null;
   }>({
-    financialStats: null,
-    recentTransactions: [],
+    summary: null,
   });
 
   const fetchData = useCallback(async () => {
@@ -840,25 +834,35 @@ export const useExpandedFinanceData = (bandId: string | null) => {
     setLoading(true);
     
     try {
-      const [statsRes, transactionsRes] = await Promise.all([
-        transactionsService.getFinancialStats(bandId),
-        transactionsService.getTransactions(bandId, { limit: 10 }),
-      ]);
-
-      setData({
-        financialStats: statsRes.data ? {
-          totalIncome: statsRes.data.totalIncome,
-          totalExpenses: statsRes.data.totalExpenses,
-          netProfit: statsRes.data.netProfit,
-        } : null,
-        recentTransactions: transactionsRes.data || [],
-      });
+      const { data: summary } = await transactionsService.getBandFinancialSummary(bandId);
+      setData({ summary });
     } catch (err: any) {
       setError(err);
     } finally {
       setLoading(false);
     }
   }, [isAuthenticated, bandId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+};
+
+export const useMemberEarnings = (bandId: string | null, userId: string | null) => {
+  const [data, setData] = useState<eventsService.MemberEarnings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!bandId || !userId) { setLoading(false); return; }
+    setLoading(true);
+    const { data, error } = await eventsService.getMemberEarnings(bandId, userId);
+    setData(data);
+    setError(error);
+    setLoading(false);
+  }, [bandId, userId]);
 
   useEffect(() => {
     fetchData();
