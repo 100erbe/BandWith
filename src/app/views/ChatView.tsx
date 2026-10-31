@@ -361,42 +361,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 </div>
               </div>
 
-              {/* ── Bottom: Dots grid + Unread ── */}
-              <div className="flex items-end justify-between">
-                {/* Dot grid — 16 cols × 3 rows */}
-                <div className="flex-1 max-w-[220px]">
-                  <div
-                    className="grid w-full gap-[4px]"
-                    style={{
-                      gridTemplateColumns: 'repeat(16, minmax(0, 1fr))',
-                      gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
-                      height: 62,
-                    }}
-                  >
-                    {Array.from({ length: 48 }).map((_, idx) => {
-                      const unreadDots = chat.unread || 0;
-                      const limeStart = 48 - unreadDots;
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-[10px]"
-                          style={{
-                            backgroundColor: idx >= limeStart ? 'var(--accent)' : 'rgba(0,0,0,0.1)',
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
+              {/* ── Bottom: Unread / Read status ── */}
+              <div className="flex items-center justify-between pt-2 border-t border-black/10">
+                <span className="text-[11px] font-bold tracking-wider text-black/40 uppercase">
+                  {chat.type === 'direct' ? 'Direct Message' : chat.type === 'band' ? 'Band Channel' : 'Event Channel'}
+                </span>
                 {chat.unread > 0 ? (
-                  <div className="flex flex-col items-end w-[50px] shrink-0">
-                    <span className="text-[12px] font-bold text-black uppercase">UNREAD</span>
-                    <span className="text-[42px] font-bold text-black leading-none">{chat.unread}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-black/70 uppercase">UNREAD</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-black text-white text-[13px] font-black leading-tight">
+                      {chat.unread}
+                    </span>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-end w-[48px] shrink-0">
-                    <span className="text-[12px] font-bold text-black uppercase">READ</span>
-                    <ChecksIcon className="w-[48px] h-[48px]" />
+                  <div className="flex items-center gap-1.5 text-black/60">
+                    <span className="text-[11px] font-bold uppercase">READ</span>
+                    <ChecksIcon className="w-5 h-5 text-black/70" />
                   </div>
                 )}
               </div>

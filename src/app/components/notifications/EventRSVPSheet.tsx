@@ -145,16 +145,6 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
               Invited by <span className="text-white/60">{creatorName}</span>
             </p>
           )}
-
-          <div className="grid grid-cols-6 gap-1 w-full">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-[15px] rounded-[10px]"
-                style={{ backgroundColor: i < 1 ? accentColor : 'rgba(255,255,255,0.2)' }}
-              />
-            ))}
-          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

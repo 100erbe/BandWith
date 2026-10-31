@@ -1,67 +1,32 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { Sparkles } from 'lucide-react';
 
-type EmptyGridCell = {
-  c: number;
-  r: number;
-  cs?: number;
-  rs?: number;
-  filled: boolean;
-};
+interface EmptyStateProps {
+  title?: string;
+  description?: string;
+  icon?: React.ReactNode;
+}
 
-const EMPTY_GRID: EmptyGridCell[] = [
-  // "E" letter (cols 1-3)
-  { c: 1, r: 1, cs: 3, filled: true },
-  { c: 1, r: 2, filled: true },
-  { c: 2, r: 2, filled: false },
-  { c: 3, r: 2, filled: false },
-  { c: 1, r: 3, cs: 3, filled: true },
-  { c: 1, r: 4, filled: true },
-  { c: 2, r: 4, filled: false },
-  { c: 3, r: 4, filled: false },
-  { c: 1, r: 5, cs: 3, filled: true },
-  // Gap column (col 4)
-  { c: 4, r: 1, filled: false },
-  { c: 4, r: 2, filled: false },
-  { c: 4, r: 3, filled: false },
-  { c: 4, r: 4, filled: false },
-  { c: 4, r: 5, filled: false },
-  // "M" letter (cols 5-7)
-  { c: 5, r: 1, rs: 5, filled: true },
-  { c: 6, r: 1, rs: 2, filled: true },
-  { c: 6, r: 3, filled: false },
-  { c: 6, r: 4, filled: false },
-  { c: 6, r: 5, filled: false },
-  { c: 7, r: 1, rs: 5, filled: true },
-];
-
-export const EmptyState: React.FC = () => (
+export const EmptyState: React.FC<EmptyStateProps> = ({
+  title = 'Nothing here yet',
+  description = 'When new items are created, they will show up here.',
+  icon,
+}) => (
   <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ duration: 0.4 }}
-    className="flex flex-col items-center justify-center py-16 gap-4"
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
+    className="flex flex-col items-center justify-center py-16 px-6 text-center"
   >
-    <div
-      className="grid gap-[8px]"
-      style={{
-        gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-        gridTemplateRows: 'repeat(5, minmax(0, 1fr))',
-        width: 200,
-        height: 182,
-      }}
-    >
-      {EMPTY_GRID.map((cell, i) => (
-        <div
-          key={i}
-          className="rounded-[20px]"
-          style={{
-            gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
-            gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-            backgroundColor: cell.filled ? 'var(--fg)' : 'var(--bg)',
-          }}
-        />
-      ))}
+    <div className="w-16 h-16 rounded-2xl bg-foreground/5 border border-foreground/10 flex items-center justify-center mb-4 text-foreground/40">
+      {icon || <Sparkles className="w-8 h-8" />}
     </div>
+    <h4 className="text-base font-bold text-foreground uppercase tracking-wider mb-1">
+      {title}
+    </h4>
+    <p className="text-xs text-foreground/50 max-w-xs leading-relaxed">
+      {description}
+    </p>
   </motion.div>
 );

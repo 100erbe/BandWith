@@ -13,24 +13,6 @@ interface SwitchBandPopupProps {
   onAddNewBand: () => void;
 }
 
-const TOTAL_SLOTS = 12;
-const COLUMNS = 6;
-
-const MemberPills: React.FC<{ count: number; accentColor: string }> = ({ count, accentColor }) => {
-  const capped = Math.min(count, TOTAL_SLOTS);
-  return (
-    <div className="grid grid-cols-6 gap-1 w-full">
-      {Array.from({ length: TOTAL_SLOTS }).map((_, i) => (
-        <div
-          key={i}
-          className="h-[15px] rounded-[10px]"
-          style={{ backgroundColor: i < capped ? accentColor : 'rgba(255,255,255,0.2)' }}
-        />
-      ))}
-    </div>
-  );
-};
-
 export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
   isOpen,
   onClose,
@@ -131,8 +113,10 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                       {band.name}
                     </h3>
 
-                    {/* Member pills */}
-                    <MemberPills count={band.members} accentColor={accentColor} />
+                    {/* Member count */}
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-white/50 uppercase tracking-wider">
+                      <span>{band.members} {band.members === 1 ? 'member' : 'members'}</span>
+                    </div>
                   </motion.button>
                 );
               })}

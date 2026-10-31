@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X, Calendar, Music, FileText } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 
@@ -321,47 +321,34 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   <X className="w-5 h-5 text-foreground" />
                 </button>
               </div>
-              <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-6">
                 {isAdmin && (
-                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                      <div className="col-span-3 bg-accent-gig rounded-[10px]" />
-                      <div className="bg-accent-gig rounded-[10px] row-span-3" />
-                      <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-accent-gig rounded-[10px]" />
-                      <div className="col-span-3 bg-accent-gig rounded-[10px]" />
+                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                    <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                      <Calendar className="w-7 h-7 text-accent-gig" />
                     </div>
-                    <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-foreground uppercase">NEW GIG</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <span className="text-[20px] font-bold text-foreground uppercase">NEW GIG</span>
                       <span className="text-[12px] font-medium text-foreground/60 leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
                     </div>
                   </button>
                 )}
-                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                  <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                    <div className="col-span-3 bg-accent-rehearsal rounded-[10px]" />
-                    <div className="bg-accent-rehearsal rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" />
-                    <div className="bg-accent-rehearsal rounded-[10px]" /><div className="col-span-3 bg-accent-rehearsal rounded-[10px]" />
-                    <div className="bg-accent-rehearsal rounded-[10px] row-span-2" /><div className="bg-accent-rehearsal rounded-[10px]" />
-                    <div className="bg-foreground/10 rounded-[10px]" /><div className="bg-foreground/10 rounded-[10px]" /><div className="bg-accent-rehearsal rounded-[10px]" />
+                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                    <Music className="w-7 h-7 text-accent-rehearsal" />
                   </div>
-                  <div className="flex flex-col gap-2 flex-1">
-                    <span className="text-[22px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <span className="text-[20px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
                     <span className="text-[12px] font-medium text-foreground/60 leading-normal">Plan the session, share details, and keep everyone in sync.</span>
                   </div>
                 </button>
                 {isAdmin && (
-                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-start gap-5 w-full text-left">
-                    <div className="grid grid-cols-3 grid-rows-5 gap-1 w-[40px] h-[70px] shrink-0">
-                      <div className="col-span-3 bg-accent-quote rounded-[10px]" />
-                      <div className="bg-accent-quote rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-accent-quote rounded-[10px] row-span-3" /><div className="bg-foreground/10 rounded-[10px]" />
-                      <div className="bg-accent-quote rounded-[10px]" />
-                      <div className="col-span-3 bg-accent-quote rounded-[10px]" />
+                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                    <div className="w-14 h-14 rounded-2xl bg-accent-quote/15 border border-accent-quote/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                      <FileText className="w-7 h-7 text-accent-quote" />
                     </div>
-                    <div className="flex flex-col gap-2 flex-1">
-                      <span className="text-[22px] font-bold text-foreground uppercase">NEW QUOTE</span>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <span className="text-[20px] font-bold text-foreground uppercase">NEW QUOTE</span>
                       <span className="text-[12px] font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
                     </div>
                   </button>
