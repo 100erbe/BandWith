@@ -329,20 +329,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     [eventType, modalCategory]
   );
 
-  const modalBg = modalCategory === 'rehearsal' ? 'var(--accent-rehearsal)' : modalCategory === 'quote' ? 'var(--accent-quote)' : 'var(--accent-gig)';
-  const isDarkBg = modalCategory === 'rehearsal' || modalCategory === 'quote';
-  const tc = isDarkBg ? 'text-white' : 'text-black';
-  const tcMuted = isDarkBg ? 'text-white/50' : 'text-foreground/50';
-  const tcFaint = isDarkBg ? 'text-white/30' : 'text-foreground/30';
-  const tcSub = isDarkBg ? 'text-white/40' : 'text-foreground/40';
-  const bcMuted = isDarkBg ? 'border-white/20' : 'border-black/20';
-  const bcSolid = isDarkBg ? 'border-white' : 'border-black';
-  const bgPill = isDarkBg ? 'bg-white/10' : 'bg-black/10';
-  const pillAccent = modalCategory === 'rehearsal' ? 'text-accent-rehearsal' : modalCategory === 'quote' ? 'text-accent-quote' : 'text-accent-gig';
-  const bgPillSelected = isDarkBg ? 'bg-white text-black' : `bg-black ${pillAccent}`;
-  const bgPillUnselected = isDarkBg ? 'bg-white/10 text-white/50' : 'bg-black/10 text-foreground/50';
-  const dotActive = isDarkBg ? 'var(--surface-inverse-fg)' : 'var(--fg)';
-  const dotInactive = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+  const modalBg = 'var(--bg)';
+  const isDarkBg = true;
+  const tc = 'text-white';
+  const tcMuted = 'text-white/60';
+  const tcFaint = 'text-white/30';
+  const tcSub = 'text-white/40';
+  const bcMuted = 'border-white/20';
+  const bcSolid = 'border-white';
+  const bgPill = 'bg-white/10';
+  const pillAccent = 'text-white';
+  const bgPillSelected = 'bg-white text-black';
+  const bgPillUnselected = 'bg-white/10 text-white/50';
+  const dotActive = activeAccentColor;
+  const dotInactive = 'rgba(255,255,255,0.2)';
 
   const musicianCount = selectedMembers.length;
 
@@ -1667,10 +1667,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </button>
           <button
             onClick={handleSongsViewDone}
-            className="py-4 bg-black rounded-[10px] flex items-center justify-center gap-2"
+            style={{ backgroundColor: activeAccentColor }}
+            className="py-4 text-black rounded-[10px] flex items-center justify-center gap-2 font-bold"
           >
-            <span className="text-[16px] font-bold" style={{ color: modalBg }}>DONE</span>
-            <ArrowRight className="w-4 h-4" style={{ color: modalBg }} />
+            <span className="text-[16px] font-bold text-black">DONE</span>
+            <ArrowRight className="w-4 h-4 text-black" />
           </button>
         </div>
       </div>
@@ -1790,42 +1791,40 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-5 shrink-0">
+        <div className="px-4 py-5 shrink-0 border-t border-white/10 bg-background/95 backdrop-blur-md">
           <div className="grid grid-cols-2 gap-2.5">
             {isFirstStep ? (
               <button
                 onClick={onClose}
-                className="py-4 bg-white rounded-[10px] flex items-center justify-center gap-2"
+                className="py-4 bg-white/10 hover:bg-white/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
-                <X className="w-4 h-4 text-black" />
-                <span className="text-[16px] font-bold text-black">CANCEL</span>
+                <X className="w-4 h-4 text-white" />
+                <span className="text-[16px] font-bold text-white">CANCEL</span>
               </button>
             ) : (
               <button
                 onClick={handleBack}
-                className="py-4 bg-white rounded-[10px] flex items-center justify-center gap-2"
+                className="py-4 bg-white/10 hover:bg-white/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 text-black" />
-                <span className="text-[16px] font-bold text-black">BACK</span>
+                <ArrowLeft className="w-4 h-4 text-white" />
+                <span className="text-[16px] font-bold text-white">BACK</span>
               </button>
             )}
             <button
               onClick={rightButtonAction}
               disabled={!canProceed}
+              style={{
+                backgroundColor: canProceed ? activeAccentColor : undefined,
+              }}
               className={cn(
-                'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all',
+                'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
                 canProceed
-                  ? 'bg-black'
-                  : 'bg-black/30'
+                  ? 'text-black shadow-lg shadow-black/30 hover:opacity-95'
+                  : 'bg-white/10 text-white/30 cursor-not-allowed'
               )}
             >
-              <span className={cn(
-                'text-[16px] font-bold',
-                canProceed ? 'text-white' : 'text-white/50'
-              )}>
-                {rightButtonLabel}
-              </span>
-              <ArrowRight className={cn('w-4 h-4', canProceed ? 'text-white' : 'text-white/50')} />
+              <span>{rightButtonLabel}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>

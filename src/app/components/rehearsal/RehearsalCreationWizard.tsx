@@ -1509,7 +1509,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed inset-0 z-[100] bg-[var(--accent-rehearsal)] flex flex-col overflow-hidden"
+        className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden"
       >
         <WizardAccentRail color={activeAccentColor} />
         {/* Header */}
@@ -1560,12 +1560,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         </div>
 
         {/* Footer */}
-        <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0">
+        <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0 border-t border-white/10 bg-background/95 backdrop-blur-md">
           <div className="grid grid-cols-2 gap-3">
             {step > 0 ? (
               <button
                 onClick={handleBack}
-                className="bg-white/20 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
+                className="bg-white/10 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 BACK
@@ -1573,7 +1573,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             ) : (
               <button
                 onClick={onClose}
-                className="bg-white/20 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
+                className="bg-white/10 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
               >
                 <X className="w-4 h-4" />
                 CANCEL
@@ -1584,11 +1584,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               <button
                 onClick={handleNext}
                 disabled={!STEPS[step].skippable && !canProceed}
+                style={{
+                  backgroundColor: (STEPS[step].skippable || canProceed) ? activeAccentColor : undefined,
+                }}
                 className={cn(
-                  "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all",
+                  "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
                   (STEPS[step].skippable || canProceed)
-                    ? "bg-black text-white hover:bg-black/80"
-                    : "bg-black/30 text-white/30 cursor-not-allowed"
+                    ? "text-black shadow-lg shadow-black/20 hover:opacity-95"
+                    : "bg-white/10 text-white/30 cursor-not-allowed"
                 )}
               >
                 {STEPS[step].skippable ? (
@@ -1599,7 +1602,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             ) : (
               <button
                 onClick={handleSubmit}
-                className="bg-accent text-accent-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-accent/90 transition-colors"
+                style={{ backgroundColor: activeAccentColor }}
+                className="text-black rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:opacity-95 transition-opacity"
               >
                 {isEditing ? 'SAVE REHEARSAL' : 'CREATE REHEARSAL'}
               </button>

@@ -1007,7 +1007,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] bg-accent-quote flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden"
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -1055,23 +1055,24 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Footer */}
       <div
-        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-accent-quote rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.1)]"
+        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-background/95 backdrop-blur-md border-t border-white/10 rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.3)]"
       >
         {step === STEPS.length - 1 ? (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleCreate(false)}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
               >
-                <span className="text-[16px] font-bold text-black uppercase">SAVE DRAFT</span>
+                <span className="text-[16px] font-bold text-white uppercase">SAVE DRAFT</span>
               </button>
               <button
                 onClick={() => handleCreate(true)}
-                className="bg-black rounded-[10px] py-4 flex items-center justify-center gap-2"
+                style={{ backgroundColor: activeAccentColor }}
+                className="rounded-[10px] py-4 flex items-center justify-center gap-2 font-bold text-black"
               >
-                <span className="text-[16px] font-bold text-white uppercase">SEND QUOTE</span>
-                <ArrowRight className="w-4 h-4 text-white" />
+                <span className="text-[16px] font-bold text-black uppercase">SEND QUOTE</span>
+                <ArrowRight className="w-4 h-4 text-black" />
               </button>
             </div>
             <button
@@ -1092,21 +1093,22 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={handleBack}
-                className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 text-black" />
-                <span className="text-[16px] font-bold text-black uppercase">BACK</span>
+                <ArrowLeft className="w-4 h-4 text-white" />
+                <span className="text-[16px] font-bold text-white uppercase">BACK</span>
               </button>
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
+                style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
                 className={cn(
-                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
-                  canProceed() ? 'bg-black' : 'bg-black/30'
+                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
+                  canProceed() ? 'text-black shadow-lg shadow-black/20' : 'bg-white/10 text-white/30 cursor-not-allowed'
                 )}
               >
-                <span className={cn('text-[16px] font-bold uppercase', canProceed() ? 'text-white' : 'text-white/30')}>NEXT</span>
-                <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-white' : 'text-white/30')} />
+                <span className="uppercase">NEXT</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1122,18 +1124,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               {step > 0 ? (
                 <button
                   onClick={handleBack}
-                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                  className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4 text-black" />
-                  <span className="text-[16px] font-bold text-black uppercase">BACK</span>
+                  <ArrowLeft className="w-4 h-4 text-white" />
+                  <span className="text-[16px] font-bold text-white uppercase">BACK</span>
                 </button>
               ) : (
                 <button
                   onClick={onClose}
-                  className="bg-white/20 rounded-[10px] py-4 flex items-center justify-center gap-2"
+                  className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
                 >
-                  <X className="w-4 h-4 text-black" />
-                  <span className="text-[16px] font-bold text-black uppercase">CANCEL</span>
+                  <X className="w-4 h-4 text-white" />
+                  <span className="text-[16px] font-bold text-white uppercase">CANCEL</span>
                 </button>
               )}
               <button
@@ -1144,15 +1146,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   handleNext();
                 }}
                 disabled={!canProceed()}
+                style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
                 className={cn(
-                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all',
-                  canProceed() ? 'bg-black' : 'bg-black/30'
+                  'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
+                  canProceed() ? 'text-black shadow-lg shadow-black/20' : 'bg-white/10 text-white/30 cursor-not-allowed'
                 )}
               >
-                <span className={cn('text-[16px] font-bold uppercase', canProceed() ? 'text-white' : 'text-white/30')}>
-                  NEXT
-                </span>
-                <ArrowRight className={cn('w-4 h-4', canProceed() ? 'text-white' : 'text-white/30')} />
+                <span className="uppercase">NEXT</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
