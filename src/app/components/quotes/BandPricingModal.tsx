@@ -181,10 +181,14 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       <div className="p-4 flex-1 flex flex-col gap-6 max-w-2xl mx-auto w-full pb-32">
         {activeTab === 'rates' && (
           <div className="flex flex-col gap-4">
-            <div className="p-4 rounded-[20px] bg-primary/5 border border-primary/20 text-xs text-foreground/80 leading-relaxed">
-              Quotes automatically calculate the first{' '}
-              <strong>{settings.core_members_count} musicians</strong> at the Core rate, and additional
-              players at the Session rate.
+            <div className="p-4 rounded-[16px] bg-primary/5 border border-primary/20 text-xs text-foreground/80 leading-relaxed">
+              Quotes automatically calculate the{' '}
+              <strong>
+                {settings.core_members_count === 1
+                  ? 'first musician'
+                  : `first ${settings.core_members_count} musicians`}
+              </strong>{' '}
+              at the Core rate, and additional players at the Session rate.
             </div>
 
             <div className="flex flex-col gap-3">
