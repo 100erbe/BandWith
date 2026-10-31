@@ -576,21 +576,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <TagPill active={isSelected}>${price}</TagPill>
                 <span className={cn(
                   'text-[24px] font-bold uppercase leading-tight',
-                  isSelected ? 'text-white' : 'text-foreground/30'
+                  isSelected ? 'text-foreground' : 'text-foreground/30'
                 )}>
                   {moment.name}
                 </span>
                 <span className={cn(
                   'text-[12px] font-bold uppercase',
-                  isSelected ? 'text-white/60' : 'text-foreground/20'
+                  isSelected ? 'text-foreground/60' : 'text-foreground/30'
                 )}>
                   {moment.description}
                 </span>
               </div>
               <DotCheckbox
                 checked={isSelected}
-                activeColor="var(--accent-quote-fg)"
-                inactiveColor="var(--dot-inactive)"
+                activeColor="var(--accent-quote)"
+                inactiveColor="var(--border)"
               />
             </button>
 
@@ -598,25 +598,25 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="text-[12px] font-bold uppercase text-white/50">MUSICIANS</span>
+                    <span className="text-[12px] font-bold uppercase text-foreground/50">MUSICIANS</span>
                     {musicians > selectedMusicians.length && selectedMusicians.length > 0 && (
                       <span className="text-[10px] font-bold text-orange-400 mt-1">
                         Exceeds band size ({selectedMusicians.length})
                       </span>
                     )}
                   </div>
-                  <span className="text-[32px] font-bold text-white">{musicians}</span>
+                  <span className="text-[32px] font-bold text-foreground">{musicians}</span>
                 </div>
                 <div className="flex items-center justify-end gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); updateMoment(moment.id, { customMusicians: Math.max(1, musicians - 1) }); }}
-                    className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white"
+                    className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center text-background"
                   >
                     <Minus className="w-5 h-5" />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); updateMoment(moment.id, { customMusicians: Math.min(10, musicians + 1) }); }}
-                    className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white"
+                    className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center text-background"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -625,7 +625,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 {isSelected && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setExpandedMoment(isExpanded ? null : moment.id); }}
-                    className="flex items-center gap-2 text-white/50 text-[12px] font-bold uppercase mt-1"
+                    className="flex items-center gap-2 text-foreground/50 text-[12px] font-bold uppercase mt-1"
                   >
                     CUSTOMIZE
                     <ChevronUp className={cn('w-4 h-4 transition-transform', !isExpanded && 'rotate-180')} />
@@ -640,9 +640,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col gap-5 pt-3 border-t border-white/10">
+                      <div className="flex flex-col gap-5 pt-3 border-t border-foreground/15">
                         <div className="flex flex-col gap-3">
-                          <span className="text-[12px] font-bold uppercase text-white/50">PERFORMANCE TYPE</span>
+                          <span className="text-[12px] font-bold uppercase text-foreground/50">PERFORMANCE TYPE</span>
                           <div className="flex flex-wrap gap-2">
                             {PERFORMANCE_TYPES.map(type => (
                               <button
@@ -651,8 +651,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                                 className={cn(
                                   'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all',
                                   performanceType === type.value
-                                    ? 'bg-black text-white border-black'
-                                    : 'bg-transparent text-white/60 border-white/20'
+                                    ? 'bg-foreground text-background border-foreground'
+                                    : 'bg-transparent text-foreground/60 border-foreground/20'
                                 )}
                               >
                                 {type.label}
@@ -664,13 +664,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                           <QuoteField label="PRICE">
                             <div className="flex items-center gap-1">
-                              <span className="text-white/40 font-bold">$</span>
+                              <span className="text-foreground/40 font-bold">$</span>
                               <input
                                 type="number"
                                 value={price}
                                 onChange={e => updateMoment(moment.id, { customPrice: parseInt(e.target.value) || 0 })}
                                 onClick={e => e.stopPropagation()}
-                                className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none"
+                                className="w-full bg-transparent text-[24px] font-bold text-foreground focus:outline-none"
                               />
                             </div>
                           </QuoteField>
@@ -680,7 +680,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                               value={duration}
                               onChange={e => updateMoment(moment.id, { customDuration: parseInt(e.target.value) || 0 })}
                               onClick={e => e.stopPropagation()}
-                              className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none"
+                              className="w-full bg-transparent text-[24px] font-bold text-foreground focus:outline-none"
                             />
                           </QuoteField>
                         </div>
@@ -691,7 +691,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
             )}
 
-            <div className="h-px bg-white/10 mt-6" />
+            <div className="h-px bg-foreground/10 mt-6" />
           </div>
         );
       })}
@@ -710,33 +710,33 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div className="flex flex-col gap-1 flex-1">
           <TagPill active>PERFORMANCE FEE</TagPill>
           <div className="flex items-center gap-1">
-            <span className="text-white/40 text-[32px] font-bold">$</span>
+            <span className="text-foreground/40 text-[32px] font-bold">$</span>
             <input
               type="number"
               value={baseFee || ''}
               onChange={e => setBaseFee(parseInt(e.target.value) || 0)}
               placeholder="0"
-              className="w-full bg-transparent text-[42px] font-bold text-white placeholder:text-white/20 focus:outline-none"
+              className="w-full bg-transparent text-[42px] font-bold text-foreground placeholder:text-foreground/20 focus:outline-none"
             />
           </div>
           {selectedMomentsTotal > 0 && baseFee !== selectedMomentsTotal && (
             <button
               onClick={() => setBaseFee(selectedMomentsTotal)}
-              className="text-[11px] font-bold text-white/40 underline decoration-white/20 hover:text-white/70 transition-colors"
+              className="text-[11px] font-bold text-foreground/40 underline decoration-foreground/20 hover:text-foreground/70 transition-colors"
             >
               Use moments total (${selectedMomentsTotal})
             </button>
           )}
         </div>
-        <DotCheckbox checked={baseFee > 0} activeColor="var(--accent-quote-fg)" inactiveColor="var(--dot-inactive)" />
+        <DotCheckbox checked={baseFee > 0} activeColor="var(--accent-quote)" inactiveColor="var(--border)" />
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-foreground/10" />
 
       {/* Additional Fees */}
       <div className="flex flex-col gap-2">
-        <span className="text-[12px] font-bold uppercase text-white/50">ADDITIONAL FEES</span>
-        <span className="text-[24px] font-bold uppercase text-white">EXTRA</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">ADDITIONAL FEES</span>
+        <span className="text-[24px] font-bold uppercase text-foreground">EXTRA</span>
       </div>
 
       <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} fee={travelFee} onFeeChange={setTravelFee} />
@@ -746,7 +746,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Custom Fee Items */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">CUSTOM FEES</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">CUSTOM FEES</span>
         {customItems.map((item, i) => (
           <div key={item.id || i} className="flex items-center gap-3">
             <input
@@ -754,21 +754,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               value={item.name}
               onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, name: e.target.value } : ci))}
               placeholder="Fee name..."
-              className="flex-1 bg-white/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-white placeholder:text-white/30 focus:outline-none"
+              className="flex-1 bg-foreground/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none"
             />
             <div className="flex items-center gap-1">
-              <span className="text-white/50 font-bold text-sm">$</span>
+              <span className="text-foreground/50 font-bold text-sm">$</span>
               <input
                 type="number"
                 value={item.amount || ''}
                 onChange={(e) => setCustomItems(prev => prev.map((ci, idx) => idx === i ? { ...ci, amount: parseFloat(e.target.value) || 0 } : ci))}
                 placeholder="0"
-                className="bg-white/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-white focus:outline-none w-24"
+                className="bg-foreground/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-foreground focus:outline-none w-24"
               />
             </div>
             <button
               onClick={() => setCustomItems(prev => prev.filter((_, idx) => idx !== i))}
-              className="text-white/30 hover:text-red-400 transition-colors"
+              className="text-foreground/30 hover:text-red-500 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -776,22 +776,22 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         ))}
         <button
           onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, description: '', amount: 0, quantity: 1 }])}
-          className="flex items-center gap-2 text-[12px] font-bold text-white/40 uppercase hover:text-white transition-colors"
+          className="flex items-center gap-2 text-[12px] font-bold text-foreground/40 uppercase hover:text-foreground transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Custom Fee
         </button>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-foreground/10" />
 
       {/* Tax Options */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">TAX OPTIONS</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">TAX OPTIONS</span>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setVatExempt(!vatExempt)}
             className={cn('px-3 py-1.5 rounded-[6px] text-[12px] font-bold uppercase border transition-all',
-              vatExempt ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+              vatExempt ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
             )}
           >
             VAT EXEMPT
@@ -799,7 +799,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <button
             onClick={() => setReverseCharge(!reverseCharge)}
             className={cn('px-3 py-1.5 rounded-[6px] text-[12px] font-bold uppercase border transition-all',
-              reverseCharge ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+              reverseCharge ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
             )}
           >
             REVERSE CHARGE
@@ -809,14 +809,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Quote Validity */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">QUOTE VALIDITY</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">QUOTE VALIDITY</span>
         <div className="flex flex-wrap gap-2">
           {VALIDITY_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setValidityDays(opt.value)}
               className={cn('px-3 py-1.5 rounded-full text-[12px] font-bold uppercase border transition-all',
-                validityDays === opt.value ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+                validityDays === opt.value ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
               )}
             >
               {opt.label}
@@ -827,14 +827,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Deposit */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">DEPOSIT REQUIRED</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">DEPOSIT REQUIRED</span>
         <div className="flex flex-wrap gap-2">
           {DEPOSIT_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setDepositPercentage(opt.value)}
               className={cn('px-3 py-1.5 rounded-full text-[12px] font-bold uppercase border transition-all',
-                depositPercentage === opt.value ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+                depositPercentage === opt.value ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
               )}
             >
               {opt.label}
@@ -845,14 +845,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Payment Methods */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">PAYMENT METHODS</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">PAYMENT METHODS</span>
         <div className="flex flex-wrap gap-2">
           {(['bank_transfer', 'credit_card', 'paypal', 'cash'] as PaymentMethod[]).map(method => (
             <button
               key={method}
               onClick={() => togglePaymentMethod(method)}
               className={cn('px-3 py-1.5 rounded-full text-[12px] font-bold uppercase border transition-all',
-                paymentMethods.includes(method) ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+                paymentMethods.includes(method) ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
               )}
             >
               {method.replace('_', ' ')}
@@ -863,14 +863,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Cancellation Policy */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">CANCELLATION POLICY</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">CANCELLATION POLICY</span>
         <div className="flex flex-wrap gap-2">
           {(['flexible', 'moderate', 'strict'] as CancellationPolicy[]).map(policy => (
             <button
               key={policy}
               onClick={() => setCancellationPolicy(policy)}
               className={cn('px-3 py-1.5 rounded-full text-[12px] font-bold uppercase border transition-all',
-                cancellationPolicy === policy ? 'bg-black text-white border-black' : 'bg-transparent text-white/40 border-white/20'
+                cancellationPolicy === policy ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/50 border-foreground/20'
               )}
             >
               {policy}
@@ -881,13 +881,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Notes */}
       <div className="flex flex-col gap-3">
-        <span className="text-[12px] font-bold uppercase text-white/50">NOTES</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/50">NOTES</span>
         <textarea
           value={clientNotes}
           onChange={e => setClientNotes(e.target.value)}
           placeholder="ANY NOTES TO INCLUDE IN THE QUOTE..."
           rows={3}
-          className="w-full bg-transparent border border-white/20 rounded-[10px] p-4 text-white text-[14px] font-bold placeholder:text-white/20 focus:outline-none focus:border-white/40 resize-none uppercase"
+          className="w-full bg-transparent border border-foreground/20 rounded-[10px] p-4 text-foreground text-[14px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground/50 resize-none uppercase"
         />
       </div>
     </div>
@@ -912,73 +912,73 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <TagPill active>QUOTE</TagPill>
             <TagPill active>{eventType.toUpperCase()}</TagPill>
           </div>
-          <h2 className="text-[32px] font-bold text-white uppercase leading-tight">
+          <h2 className="text-[32px] font-bold text-foreground uppercase leading-tight">
             {eventName || 'UNTITLED EVENT'}
           </h2>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4 text-white/60" />
-              <span className="text-[14px] font-bold text-white uppercase">{venueName || venueCity || 'TBD'}</span>
+              <MapPin className="w-4 h-4 text-foreground/60" />
+              <span className="text-[14px] font-bold text-foreground uppercase">{venueName || venueCity || 'TBD'}</span>
             </div>
-            <div className="px-3 py-1.5 rounded-[6px] bg-white/10 text-[12px] font-bold text-white/60 uppercase">
+            <div className="px-3 py-1.5 rounded-[6px] bg-foreground/10 text-[12px] font-bold text-foreground/60 uppercase">
               START - {eventTimeStart || 'TBD'}
             </div>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-foreground/10" />
 
         {/* Year & Date */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">YEAR</span>
-            <span className="text-[42px] font-bold text-white leading-none">{yearNum}</span>
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">YEAR</span>
+            <span className="text-[42px] font-bold text-foreground leading-none">{yearNum}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">DATE</span>
-            <span className="text-[42px] font-bold text-white leading-none">{monthName} {dayNum}</span>
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">DATE</span>
+            <span className="text-[42px] font-bold text-foreground leading-none">{monthName} {dayNum}</span>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-foreground/10" />
 
         {/* Client & Pricing */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">CLIENT</span>
-            <span className="text-[32px] font-bold text-white uppercase leading-tight">{clientName || 'TBD'}</span>
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">CLIENT</span>
+            <span className="text-[32px] font-bold text-foreground uppercase leading-tight">{clientName || 'TBD'}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">PRICING & FINANCE</span>
-            <span className="text-[32px] font-bold text-white leading-tight">
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">PRICING & FINANCE</span>
+            <span className="text-[32px] font-bold text-foreground leading-tight">
               ${totals.total >= 1000 ? `${(totals.total / 1000).toFixed(1)}K` : totals.total}
             </span>
-            <span className="text-[14px] font-bold text-white/50 uppercase">DP{depositPercentage}%</span>
+            <span className="text-[14px] font-bold text-foreground/50 uppercase">DP{depositPercentage}%</span>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-foreground/10" />
 
         {/* Guests */}
         {guestCount && (
           <>
             <div className="flex flex-col gap-2">
-              <span className="text-[12px] font-bold text-white/50 uppercase">GUESTS</span>
-              <span className="text-[42px] font-bold text-white leading-none">{guestCount}</span>
+              <span className="text-[12px] font-bold text-foreground/50 uppercase">GUESTS</span>
+              <span className="text-[42px] font-bold text-foreground leading-none">{guestCount}</span>
             </div>
-            <div className="h-px bg-white/10" />
+            <div className="h-px bg-foreground/10" />
           </>
         )}
 
         {/* Moments & Members */}
         <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">MUSIC MOMENTS</span>
-            <span className="text-[32px] font-bold text-white leading-none">{selectedMomentCount}</span>
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">MUSIC MOMENTS</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">{selectedMomentCount}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white/50 uppercase">MEMBERS</span>
-            <span className="text-[32px] font-bold text-white leading-none">{allMusicians.length}</span>
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">MEMBERS</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">{allMusicians.length}</span>
           </div>
         </div>
       </div>
@@ -1053,29 +1053,29 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Footer */}
       <div
-        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-background/95 backdrop-blur-md border-t border-white/10 rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.3)]"
+        className="px-4 pt-5 pb-[30px] shrink-0 relative z-20 bg-background/95 backdrop-blur-md border-t border-foreground/15 rounded-t-[26px] shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
       >
         {step === STEPS.length - 1 ? (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleCreate(false)}
-                className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
+                className="bg-foreground/10 hover:bg-foreground/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
               >
-                <span className="text-[16px] font-bold text-white uppercase">SAVE DRAFT</span>
+                <span className="text-[16px] font-bold text-foreground uppercase">SAVE DRAFT</span>
               </button>
               <button
                 onClick={() => handleCreate(true)}
                 style={{ backgroundColor: activeAccentColor }}
-                className="rounded-[10px] py-4 flex items-center justify-center gap-2 font-bold text-black"
+                className="rounded-[10px] py-4 flex items-center justify-center gap-2 font-bold text-white shadow-lg shadow-black/20 hover:opacity-95 transition-opacity"
               >
-                <span className="text-[16px] font-bold text-black uppercase">SEND QUOTE</span>
-                <ArrowRight className="w-4 h-4 text-black" />
+                <span className="text-[16px] font-bold text-white uppercase">SEND QUOTE</span>
+                <ArrowRight className="w-4 h-4 text-white" />
               </button>
             </div>
             <button
               onClick={onClose}
-              className="text-[12px] font-bold text-[var(--destructive)] uppercase text-center py-2"
+              className="text-[12px] font-bold text-[var(--destructive)] uppercase text-center py-2 hover:opacity-80 transition-opacity"
             >
               DISCARD
             </button>
@@ -1084,17 +1084,17 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           /* Billing step footer with total */
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[12px] font-bold text-white/60 uppercase">TOTAL + TAXES</span>
-              <span className="text-[12px] font-bold text-white/40">${totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
-              <span className="text-[32px] font-bold text-white">${totals.total.toFixed(0)}</span>
+              <span className="text-[12px] font-bold text-foreground/60 uppercase">TOTAL + TAXES</span>
+              <span className="text-[12px] font-bold text-foreground/40">${totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
+              <span className="text-[32px] font-bold text-foreground">${totals.total.toFixed(0)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={handleBack}
-                className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
+                className="bg-foreground/10 hover:bg-foreground/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 text-white" />
-                <span className="text-[16px] font-bold text-white uppercase">BACK</span>
+                <ArrowLeft className="w-4 h-4 text-foreground" />
+                <span className="text-[16px] font-bold text-foreground uppercase">BACK</span>
               </button>
               <button
                 onClick={handleNext}
@@ -1102,7 +1102,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
                 className={cn(
                   'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
-                  canProceed() ? 'text-black shadow-lg shadow-black/20' : 'bg-white/10 text-white/30 cursor-not-allowed'
+                  canProceed() ? 'text-white shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
                 )}
               >
                 <span className="uppercase">NEXT</span>
@@ -1114,26 +1114,26 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex flex-col gap-3">
             {step === 3 && musicalMoments.some(m => m.selected) && (
               <div className="flex items-center justify-between px-1">
-                <span className="text-[12px] font-bold uppercase text-white/60">PARTIAL</span>
-                <span className="text-[28px] font-bold text-white">${selectedMomentsTotal}</span>
+                <span className="text-[12px] font-bold uppercase text-foreground/60">PARTIAL</span>
+                <span className="text-[28px] font-bold text-foreground">${selectedMomentsTotal}</span>
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5">
               {step > 0 ? (
                 <button
                   onClick={handleBack}
-                  className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
+                  className="bg-foreground/10 hover:bg-foreground/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4 text-white" />
-                  <span className="text-[16px] font-bold text-white uppercase">BACK</span>
+                  <ArrowLeft className="w-4 h-4 text-foreground" />
+                  <span className="text-[16px] font-bold text-foreground uppercase">BACK</span>
                 </button>
               ) : (
                 <button
                   onClick={onClose}
-                  className="bg-white/10 hover:bg-white/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
+                  className="bg-foreground/10 hover:bg-foreground/15 rounded-[10px] py-4 flex items-center justify-center gap-2 transition-colors"
                 >
-                  <X className="w-4 h-4 text-white" />
-                  <span className="text-[16px] font-bold text-white uppercase">CANCEL</span>
+                  <X className="w-4 h-4 text-foreground" />
+                  <span className="text-[16px] font-bold text-foreground uppercase">CANCEL</span>
                 </button>
               )}
               <button
@@ -1147,7 +1147,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
                 className={cn(
                   'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
-                  canProceed() ? 'text-black shadow-lg shadow-black/20' : 'bg-white/10 text-white/30 cursor-not-allowed'
+                  canProceed() ? 'text-white shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
                 )}
               >
                 <span className="uppercase">NEXT</span>
@@ -1173,31 +1173,31 @@ const FeeRow: React.FC<{
   <div className="flex flex-col gap-2">
     <button onClick={onToggle} className="flex items-start justify-between gap-5 w-full text-left">
       <div className="flex flex-col gap-1 flex-1">
-        <div className="px-2.5 py-1 rounded-[6px] bg-white/10 text-[12px] font-bold text-white/40 uppercase self-start">
+        <div className="px-2.5 py-1 rounded-[6px] bg-foreground/10 text-[12px] font-bold text-foreground/50 uppercase self-start">
           {tag}
         </div>
         <span className={cn(
           'text-[20px] font-bold uppercase',
-          !included ? 'text-white' : 'text-white/30'
+          !included ? 'text-foreground' : 'text-foreground/30'
         )}>
           {label}
         </span>
       </div>
     <DotCheckbox
       checked={!included}
-      activeColor="var(--accent-quote-fg)"
-      inactiveColor="var(--dot-inactive)"
+      activeColor="var(--accent-quote)"
+      inactiveColor="var(--border)"
     />
   </button>
   {!included && onFeeChange && (
     <div className="flex items-center gap-2 pl-2">
-      <span className="text-white/50 font-bold text-sm">$</span>
+      <span className="text-foreground/50 font-bold text-sm">$</span>
       <input
         type="number"
         value={fee || ''}
         onChange={(e) => onFeeChange(parseFloat(e.target.value) || 0)}
         placeholder="0"
-        className="bg-white/10 rounded-[8px] px-3 py-2 text-[16px] font-bold text-white focus:outline-none w-32"
+        className="bg-foreground/10 rounded-[8px] px-3 py-2 text-[16px] font-bold text-foreground focus:outline-none w-32"
         onClick={(e) => e.stopPropagation()}
       />
     </div>

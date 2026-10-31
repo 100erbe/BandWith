@@ -748,7 +748,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       </div>
 
       <div>
-        <span className="text-[12px] font-bold uppercase text-white/30 tracking-wider block mb-3">RECURRENCE</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-3">RECURRENCE</span>
         <div className="flex flex-wrap gap-2">
           {(['once', 'weekly', 'biweekly', 'monthly'] as const).map(freq => (
             <button
@@ -757,8 +757,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               className={cn(
                 "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
                 data.recurrence === freq
-                  ? "bg-white text-foreground border-white"
-                  : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
               )}
             >
               {freq === 'once' ? 'ONE TIME' : freq.toUpperCase()}
@@ -766,25 +766,25 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           ))}
         </div>
         {data.recurrence !== 'once' && (
-          <div className="bg-white/10 rounded-[10px] p-4 flex items-start gap-3 mt-4">
-            <AlertCircle className="w-5 h-5 text-white shrink-0 mt-0.5" />
-            <span className="text-sm font-bold text-white/70">
-              This rehearsal will repeat <strong className="text-white">{data.recurrence}</strong>. Future instances can be edited individually.
+          <div className="bg-foreground/10 rounded-[10px] p-4 flex items-start gap-3 mt-4">
+            <AlertCircle className="w-5 h-5 text-foreground shrink-0 mt-0.5" />
+            <span className="text-sm font-bold text-foreground/70">
+              This rehearsal will repeat <strong className="text-foreground">{data.recurrence}</strong>. Future instances can be edited individually.
             </span>
           </div>
         )}
       </div>
 
       <div>
-        <span className="text-[12px] font-bold uppercase text-white/30 tracking-wider block mb-3">VENUE TYPE</span>
+        <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-3">VENUE TYPE</span>
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setData(prev => ({ ...prev, venueType: 'free' }))}
             className={cn(
               "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
               data.venueType === 'free'
-                ? "bg-white text-foreground border-white"
-                : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
             )}
           >
             <Home className="w-5 h-5" />
@@ -796,8 +796,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               className={cn(
                 "flex items-center gap-3 p-4 rounded-[10px] border transition-all",
                 data.venueType === 'paid'
-                  ? "bg-white text-foreground border-white"
-                  : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
               )}
             >
               <Euro className="w-5 h-5" />
@@ -815,14 +815,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white/10 rounded-[10px] p-6 space-y-4">
+            <div className="bg-foreground/10 rounded-[10px] p-6 space-y-4">
               <div>
-                <span className="text-[12px] font-bold uppercase text-white/30 block mb-2">TOTAL COST (€)</span>
+                <span className="text-[12px] font-bold uppercase text-foreground/40 block mb-2">TOTAL COST (€)</span>
                 <input
                   type="number"
                   value={data.totalCost}
                   onChange={e => setData(prev => ({ ...prev, totalCost: e.target.value }))}
-                  className="w-full bg-transparent border-b-2 border-white/30 text-white text-[32px] font-bold placeholder:text-white/30 focus:outline-none focus:border-white transition-colors pb-2"
+                  className="w-full bg-transparent border-b-2 border-foreground/30 text-foreground text-[32px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-2"
                   placeholder="0"
                 />
               </div>
@@ -832,7 +832,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}
                     className={cn(
                       "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
-                      data.splitMethod === 'equal' ? "bg-white text-foreground border-white" : "bg-transparent text-white/60 border-white/20"
+                      data.splitMethod === 'equal' ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground/70 border-foreground/20"
                     )}
                   >
                     Equal Split
@@ -841,16 +841,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}
                     className={cn(
                       "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
-                      data.splitMethod === 'custom' ? "bg-white text-foreground border-white" : "bg-transparent text-white/60 border-white/20"
+                      data.splitMethod === 'custom' ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground/70 border-foreground/20"
                     )}
                   >
                     Custom
                   </button>
                 </div>
                 {data.splitMethod === 'equal' && (
-                  <span className="text-lg font-bold text-white">
+                  <span className="text-lg font-bold text-foreground">
                     €{(parseInt(data.totalCost || '0') / Math.max(data.audienceIds.length || data.members.length, 1)).toFixed(2)}
-                    <span className="text-white/50 text-sm ml-1">/ person</span>
+                    <span className="text-foreground/50 text-sm ml-1">/ person</span>
                   </span>
                 )}
               </div>
@@ -877,34 +877,34 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               "rounded-[10px] p-5 cursor-pointer transition-all",
               isSetlistConfirmed
                 ? "bg-accent/15 border border-accent/40"
-                : "bg-white/10 border border-white/20 hover:bg-white/15"
+                : "bg-foreground/10 border border-foreground/15 hover:bg-foreground/15"
             )}
             onClick={() => setIsReviewSetlistOpen(true)}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-white/50" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Active Setlist</span>
+                <CheckCircle2 className="w-4 h-4 text-foreground/50" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50">Active Setlist</span>
               </div>
               {isSetlistConfirmed ? (
                 <span className="px-2.5 py-1 bg-accent text-accent-foreground text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
                   <Check className="w-3 h-3" /> Confirmed
                 </span>
               ) : (
-                <span className="text-[10px] font-bold uppercase text-white/30">Tap to edit</span>
+                <span className="text-[10px] font-bold uppercase text-foreground/40">Tap to edit</span>
               )}
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-[32px] font-bold text-white leading-none">{data.setlistSnapshotFinal.songs.length}</span>
-              <span className="text-sm font-bold text-white/40 uppercase">Songs</span>
+              <span className="text-[32px] font-bold text-foreground leading-none">{data.setlistSnapshotFinal.songs.length}</span>
+              <span className="text-sm font-bold text-foreground/40 uppercase">Songs</span>
             </div>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <span className="px-2.5 py-1 bg-white/15 text-white text-[10px] font-bold uppercase rounded-full">{totalDuration}</span>
-              <span className="px-2.5 py-1 bg-white/10 text-white/50 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
+              <span className="px-2.5 py-1 bg-foreground/15 text-foreground text-[10px] font-bold uppercase rounded-full">{totalDuration}</span>
+              <span className="px-2.5 py-1 bg-foreground/10 text-foreground/60 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
                 <Layers className="w-3 h-3" /> {data.setlistSnapshotFinal.sources.length} sources
               </span>
               {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped > 0 && (
-                <span className="px-2.5 py-1 bg-white/10 text-white/40 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
+                <span className="px-2.5 py-1 bg-foreground/10 text-foreground/50 text-[10px] font-bold uppercase rounded-full flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {data.setlistSnapshotFinal.mergeReport.totalDuplicatesSkipped} merged
                 </span>
               )}
@@ -920,7 +920,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               ) : (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDeselectSetlist(); }}
-                  className="flex-1 py-2.5 bg-white/10 border border-white/20 text-white/50 rounded-[10px] text-[11px] font-bold uppercase tracking-wider hover:bg-white/20 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 bg-foreground/10 border border-foreground/20 text-foreground/60 rounded-[10px] text-[11px] font-bold uppercase tracking-wider hover:bg-foreground/20 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
                 >
                   <X className="w-3.5 h-3.5" /> Deselect
                 </button>
@@ -931,21 +931,21 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
         {/* ── Queue (pending merge) ── */}
         {hasQueue && (
-          <div className="bg-white/10 rounded-[10px] p-4 space-y-3">
-            <span className="text-[11px] font-bold uppercase text-white/40 tracking-wider">
+          <div className="bg-foreground/10 rounded-[10px] p-4 space-y-3">
+            <span className="text-[11px] font-bold uppercase text-foreground/50 tracking-wider">
               Queue ({queueIds.length})
             </span>
             <div className="space-y-1.5">
               {queueIds.map((tid, i) => {
                 const t = templates.find(tp => tp.id === tid);
                 return (
-                  <div key={`${tid}-${i}`} className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-lg">
+                  <div key={`${tid}-${i}`} className="flex items-center justify-between bg-foreground/10 px-3 py-2 rounded-lg">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-5 h-5 rounded-full bg-white text-[var(--accent-rehearsal)] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                      <span className="font-bold text-white text-sm truncate">{t?.name || 'Unknown'}</span>
-                      <span className="text-[10px] font-bold text-white/30 shrink-0">{t?.songIds.length || 0}</span>
+                      <span className="w-5 h-5 rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      <span className="font-bold text-foreground text-sm truncate">{t?.name || 'Unknown'}</span>
+                      <span className="text-[10px] font-bold text-foreground/40 shrink-0">{t?.songIds.length || 0}</span>
                     </div>
-                    <button onClick={() => handleRemoveFromQueue(i)} className="text-white/30 hover:text-red-300 transition-colors shrink-0 ml-2">
+                    <button onClick={() => handleRemoveFromQueue(i)} className="text-foreground/40 hover:text-red-500 transition-colors shrink-0 ml-2">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -954,7 +954,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </div>
             <button
               onClick={handleBuildSnapshot}
-              className="w-full py-2.5 bg-white text-foreground rounded-[10px] text-[12px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-white/90 transition-colors"
+              className="w-full py-2.5 bg-foreground text-background rounded-[10px] text-[12px] font-bold uppercase flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
             >
               <Layers className="w-3.5 h-3.5" /> {data.setlistSnapshotFinal ? 'Merge into Setlist' : 'Build Setlist'}
             </button>
@@ -964,20 +964,20 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* ── Available Setlists ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold uppercase text-white/40 tracking-wider">Available Setlists</span>
+            <span className="text-[11px] font-bold uppercase text-foreground/50 tracking-wider">Available Setlists</span>
             <button
               onClick={() => openSetlistEditor(null)}
-              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-foreground text-background hover:opacity-90 transition-opacity flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> New
             </button>
           </div>
 
           {templates.length === 0 ? (
-            <div className="bg-white/5 rounded-[10px] p-8 text-center border border-white/10 border-dashed">
-              <ListMusic className="w-8 h-8 text-white/20 mx-auto mb-3" />
-              <p className="text-sm font-bold text-white/30">No setlists yet</p>
-              <p className="text-[11px] text-white/20 mt-1">Create one to get started</p>
+            <div className="bg-foreground/5 rounded-[10px] p-8 text-center border border-foreground/15 border-dashed">
+              <ListMusic className="w-8 h-8 text-foreground/20 mx-auto mb-3" />
+              <p className="text-sm font-bold text-foreground/40">No setlists yet</p>
+              <p className="text-[11px] text-foreground/30 mt-1">Create one to get started</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -990,10 +990,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     className={cn(
                       "rounded-[10px] p-3 flex items-center gap-3 transition-all border",
                       alreadyInSnapshot
-                        ? "bg-white/5 border-white/10 opacity-60"
+                        ? "bg-foreground/5 border-foreground/10 opacity-60"
                         : inQueue
-                          ? "bg-white/15 border-white/20"
-                          : "bg-white/10 border-white/10 hover:border-white/20"
+                          ? "bg-foreground/15 border-foreground/20"
+                          : "bg-foreground/10 border-foreground/10 hover:border-foreground/20"
                     )}
                   >
                     <div
@@ -1001,16 +1001,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                       onClick={() => openSetlistEditor(template)}
                     >
                       <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-white truncate">{template.name}</h4>
-                        <span className="text-[9px] font-bold text-white/30 uppercase shrink-0">v{template.version}</span>
+                        <h4 className="font-bold text-sm text-foreground truncate">{template.name}</h4>
+                        <span className="text-[9px] font-bold text-foreground/40 uppercase shrink-0">v{template.version}</span>
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-[11px] font-bold text-white/30">
+                      <div className="flex items-center gap-3 mt-0.5 text-[11px] font-bold text-foreground/40">
                         <span className="flex items-center gap-1"><ListMusic className="w-3 h-3" /> {template.songIds.length}</span>
                         <span>{new Date(template.updatedAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                     {alreadyInSnapshot ? (
-                      <span className="text-[10px] font-bold text-white/30 uppercase shrink-0 flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-foreground/40 uppercase shrink-0 flex items-center gap-1">
                         <Check className="w-3 h-3" /> Added
                       </span>
                     ) : (
@@ -1019,8 +1019,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                         className={cn(
                           "shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors",
                           inQueue
-                            ? "bg-white text-[var(--accent-rehearsal)]"
-                            : "bg-white/15 text-white/50 hover:bg-white/25 hover:text-white"
+                            ? "bg-foreground text-background"
+                            : "bg-foreground/15 text-foreground/60 hover:bg-foreground/25 hover:text-foreground"
                         )}
                       >
                         <Plus className="w-4 h-4" />
@@ -1037,7 +1037,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div>
           <button
             onClick={() => setSongPickerOpen(true)}
-            className="w-full py-3 rounded-[10px] border border-white/20 hover:border-white/40 text-white text-[12px] font-bold uppercase flex items-center justify-center gap-2 transition-all hover:bg-white/10"
+            className="w-full py-3 rounded-[10px] border border-foreground/20 hover:border-foreground/40 text-foreground text-[12px] font-bold uppercase flex items-center justify-center gap-2 transition-all hover:bg-foreground/10"
           >
             <Music className="w-4 h-4" /> Browse Song Library
           </button>
@@ -1045,20 +1045,20 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
         {/* ── Proposals ── */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[11px] font-bold uppercase text-white/25">Proposal Songs</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-foreground/15" />
+          <span className="text-[11px] font-bold uppercase text-foreground/40">Proposal Songs</span>
+          <div className="flex-1 h-px bg-foreground/15" />
         </div>
 
         <div className="space-y-4 pb-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="text-[28px] font-bold text-white leading-none">{data.proposals.length}</span>
-              <span className="text-[11px] font-bold uppercase text-white/40">Proposals</span>
+              <span className="text-[28px] font-bold text-foreground leading-none">{data.proposals.length}</span>
+              <span className="text-[11px] font-bold uppercase text-foreground/50">Proposals</span>
             </div>
             <button
               onClick={() => setIsProposeModalOpen(true)}
-              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 rounded-[10px] font-bold text-[12px] uppercase bg-foreground text-background hover:opacity-90 transition-opacity flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Propose
             </button>
@@ -1066,24 +1066,24 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           <div className="space-y-2">
             {data.proposals.map(prop => (
-              <div key={prop.id} className="bg-white/10 rounded-[10px] p-4 border border-white/10 space-y-3">
+              <div key={prop.id} className="bg-foreground/10 rounded-[10px] p-4 border border-foreground/15 space-y-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-3 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="font-bold text-sm text-white truncate">{prop.title}</h4>
-                      {prop.status === 'new' && <span className="px-1.5 py-0.5 bg-white text-[var(--accent-rehearsal)] text-[9px] font-bold uppercase rounded-full shrink-0">NEW</span>}
+                      <h4 className="font-bold text-sm text-foreground truncate">{prop.title}</h4>
+                      {prop.status === 'new' && <span className="px-1.5 py-0.5 bg-foreground text-background text-[9px] font-bold uppercase rounded-full shrink-0">NEW</span>}
                     </div>
-                    <span className="text-[11px] font-bold uppercase text-white/40">{prop.artist}</span>
+                    <span className="text-[11px] font-bold uppercase text-foreground/50">{prop.artist}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={cn("px-2.5 py-1 text-[10px] font-bold uppercase rounded-full",
-                      prop.status === 'approved' ? "bg-green-500/30 text-green-300" : "bg-white/10 text-white/50"
+                      prop.status === 'approved' ? "bg-green-500/20 text-green-600 dark:text-green-400" : "bg-foreground/10 text-foreground/60"
                     )}>
                       {prop.status === 'approved' ? "Approved" : "Pending"}
                     </span>
                     <button
                       onClick={() => openProposalEdit(prop)}
-                      className="px-2.5 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase text-white/50 hover:text-white hover:bg-white/20 transition-all"
+                      className="px-2.5 py-1 bg-foreground/10 rounded-full text-[10px] font-bold uppercase text-foreground/60 hover:text-foreground hover:bg-foreground/20 transition-all"
                     >
                       Edit
                     </button>
@@ -1091,30 +1091,30 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 </div>
 
                 {prop.reason && (
-                  <div className="bg-white/5 rounded-lg p-2.5">
-                    <p className="text-[12px] text-white/50 italic">"{prop.reason}"</p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold text-white/25">
-                      <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-white/70 text-[8px] font-bold">{prop.proposer}</div>
+                  <div className="bg-foreground/5 rounded-lg p-2.5">
+                    <p className="text-[12px] text-foreground/60 italic">"{prop.reason}"</p>
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold text-foreground/40">
+                      <div className="w-4 h-4 rounded-full bg-foreground/15 flex items-center justify-center text-foreground text-[8px] font-bold">{prop.proposer}</div>
                       <span>Proposed 2 days ago</span>
                     </div>
                   </div>
                 )}
 
                 <div className="flex items-center gap-4 text-[12px] font-bold">
-                  <span className="flex items-center gap-1 text-white"><ThumbsUp className="w-3 h-3" /> {prop.votes.yes}</span>
-                  <span className="flex items-center gap-1 text-white/40"><ThumbsDown className="w-3 h-3" /> {prop.votes.no}</span>
-                  <span className="flex items-center gap-1 text-white/40"><MessageCircle className="w-3 h-3" /> {prop.votes.comments}</span>
+                  <span className="flex items-center gap-1 text-foreground"><ThumbsUp className="w-3 h-3" /> {prop.votes.yes}</span>
+                  <span className="flex items-center gap-1 text-foreground/50"><ThumbsDown className="w-3 h-3" /> {prop.votes.no}</span>
+                  <span className="flex items-center gap-1 text-foreground/50"><MessageCircle className="w-3 h-3" /> {prop.votes.comments}</span>
                 </div>
 
                 {prop.status === 'approved' && (
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/10">
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-foreground/15">
                     <button
                       onClick={() => {
                         if (selectedBand?.id) {
                           createSong({ band_id: selectedBand.id, title: prop.title, artist: prop.artist, status: 'ready', priority: 'medium' });
                         }
                       }}
-                      className="py-2 rounded-lg border border-white/20 hover:border-white text-white text-[11px] font-bold uppercase transition-all"
+                      className="py-2 rounded-lg border border-foreground/20 hover:border-foreground text-foreground text-[11px] font-bold uppercase transition-all"
                     >
                       Add to Repertoire
                     </button>
@@ -1132,7 +1132,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                         };
                         setData(prev => ({ ...prev, setlist: [...prev.setlist, song] }));
                       }}
-                      className="py-2 rounded-lg bg-white text-foreground text-[11px] font-bold uppercase transition-all hover:bg-white/90"
+                      className="py-2 rounded-lg bg-foreground text-background text-[11px] font-bold uppercase transition-all hover:opacity-90"
                     >
                       Add to Rehearsal
                     </button>
@@ -1157,27 +1157,27 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div>
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
-              <span className="text-[40px] font-bold text-white">{data.tasks.length}</span>
-              <span className="text-[12px] font-bold uppercase text-white/40">Tasks</span>
+              <span className="text-[40px] font-bold text-foreground">{data.tasks.length}</span>
+              <span className="text-[12px] font-bold uppercase text-foreground/40">Tasks</span>
             </div>
             <button
               onClick={() => setIsAddTaskModalOpen(true)}
-              className="px-5 py-2.5 rounded-[10px] font-bold text-sm uppercase bg-white text-foreground hover:bg-white/90 transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 rounded-[10px] font-bold text-sm uppercase bg-foreground text-background hover:opacity-90 transition-opacity flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Add Task
             </button>
           </div>
 
           {data.tasks.length === 0 && (
-            <div className="bg-white/10 rounded-[10px] p-8 text-center border border-white/10 border-dashed mb-6">
-              <div className="w-14 h-14 rounded-full bg-white/10 mx-auto flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-7 h-7 text-white/30" />
+            <div className="bg-foreground/10 rounded-[10px] p-8 text-center border border-foreground/15 border-dashed mb-6">
+              <div className="w-14 h-14 rounded-full bg-foreground/10 mx-auto flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-7 h-7 text-foreground/30" />
               </div>
-              <h4 className="font-bold text-lg text-white mb-2">No tasks yet</h4>
-              <p className="text-sm text-white/40 mb-5">Add preparation tasks for the band</p>
+              <h4 className="font-bold text-lg text-foreground mb-2">No tasks yet</h4>
+              <p className="text-sm text-foreground/40 mb-5">Add preparation tasks for the band</p>
               <button
                 onClick={() => setIsAddTaskModalOpen(true)}
-                className="px-5 py-3 bg-white text-foreground rounded-[10px] text-sm font-bold uppercase"
+                className="px-5 py-3 bg-foreground text-background rounded-[10px] text-sm font-bold uppercase hover:opacity-90 transition-opacity"
               >
                 Add your first task
               </button>
@@ -1189,17 +1189,17 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               {/* Task templates from library */}
               {taskTemplatesDB.length > 0 && (
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-white/30 block mb-2">LOAD FROM TEMPLATE</span>
+                  <span className="text-[10px] font-bold uppercase text-foreground/40 block mb-2">LOAD FROM TEMPLATE</span>
                   <div className="flex flex-wrap gap-2">
                     {taskTemplatesDB.map(tpl => (
                       <button
                         key={tpl.id}
                         onClick={() => loadTaskTemplate(tpl)}
-                        className="px-4 py-2 bg-white/10 hover:bg-white hover:text-foreground rounded-[10px] text-[12px] font-bold uppercase transition-colors text-white/60 flex items-center gap-2"
+                        className="px-4 py-2 bg-foreground/10 hover:bg-foreground hover:text-background rounded-[10px] text-[12px] font-bold uppercase transition-colors text-foreground/60 flex items-center gap-2"
                       >
                         <Folder className="w-3.5 h-3.5" />
                         {tpl.name}
-                        <span className="text-white/30">{tpl.tasks.length}</span>
+                        <span className="text-foreground/40">{tpl.tasks.length}</span>
                       </button>
                     ))}
                   </div>
@@ -1208,13 +1208,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
               {/* Quick-add suggestions */}
               <div>
-                <span className="text-[10px] font-bold uppercase text-white/30 block mb-2">QUICK ADD</span>
+                <span className="text-[10px] font-bold uppercase text-foreground/40 block mb-2">QUICK ADD</span>
                 <div className="flex flex-wrap gap-2">
                   {SUGGESTED_TASKS.map(t => (
                     <button
                       key={t}
                       onClick={() => handleAddQuickTask(t)}
-                      className="px-4 py-2 bg-white/10 hover:bg-white hover:text-foreground rounded-full text-[12px] font-bold uppercase transition-colors text-white/60"
+                      className="px-4 py-2 bg-foreground/10 hover:bg-foreground hover:text-background rounded-full text-[12px] font-bold uppercase transition-colors text-foreground/60"
                     >
                       + {t}
                     </button>
@@ -1227,22 +1227,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="space-y-6">
             {bandTasks.length > 0 && (
               <div>
-                <h4 className="text-[12px] font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-2">
+                <h4 className="text-[12px] font-bold uppercase tracking-wider text-foreground/40 mb-3 flex items-center gap-2">
                   <Users className="w-3.5 h-3.5" /> Band Tasks ({bandTasks.length})
                 </h4>
-                <div className="bg-white/10 rounded-[10px] overflow-hidden border border-white/10 divide-y divide-white/10">
+                <div className="bg-foreground/10 rounded-[10px] overflow-hidden border border-foreground/15 divide-y divide-foreground/10">
                   {bandTasks.map(task => (
-                    <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-white/5 transition-colors cursor-pointer">
+                    <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-foreground/5 transition-colors cursor-pointer">
                       <DotCheckbox
                         checked={task.completed}
-                        activeColor="var(--accent-quote-fg)"
-                        inactiveColor="var(--dot-inactive)"
+                        activeColor="var(--accent-rehearsal)"
+                        inactiveColor="var(--border)"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white leading-tight">{task.text}</p>
+                        <p className="text-sm font-bold text-foreground leading-tight">{task.text}</p>
                         <div className="flex gap-2 mt-1.5">
-                          <span className="px-2 py-0.5 bg-white/10 rounded-full text-[11px] font-bold uppercase text-white/50">Band</span>
-                          <span className="text-[11px] font-bold uppercase text-white/30">{task.type}</span>
+                          <span className="px-2 py-0.5 bg-foreground/10 rounded-full text-[11px] font-bold uppercase text-foreground/60">Band</span>
+                          <span className="text-[11px] font-bold uppercase text-foreground/40">{task.type}</span>
                         </div>
                       </div>
                     </div>
@@ -1253,22 +1253,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
             {assignedTasks.length > 0 && (
               <div>
-                <h4 className="text-[12px] font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-2">
+                <h4 className="text-[12px] font-bold uppercase tracking-wider text-foreground/40 mb-3 flex items-center gap-2">
                   <User className="w-3.5 h-3.5" /> Assigned Tasks ({assignedTasks.length})
                 </h4>
-                <div className="bg-white/10 rounded-[10px] overflow-hidden border border-white/10 divide-y divide-white/10">
+                <div className="bg-foreground/10 rounded-[10px] overflow-hidden border border-foreground/15 divide-y divide-foreground/10">
                   {assignedTasks.map(task => {
                     const assigneeInitials = task.assignedTo.slice(0, 2).map(id => data.members.find(m => m.id === id)?.initials).join('+');
                     return (
-                      <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-white/5 transition-colors cursor-pointer">
-                        <div className="w-8 h-8 rounded-full bg-white text-[var(--accent-rehearsal)] text-[11px] font-bold flex items-center justify-center shrink-0">{assigneeInitials}</div>
+                      <div onClick={() => openTaskEdit(task)} key={task.id} className="p-4 flex items-start gap-3 hover:bg-foreground/5 transition-colors cursor-pointer">
+                        <div className="w-8 h-8 rounded-full bg-foreground text-background text-[11px] font-bold flex items-center justify-center shrink-0">{assigneeInitials}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white leading-tight">{task.text}</p>
+                          <p className="text-sm font-bold text-foreground leading-tight">{task.text}</p>
                           <div className="flex gap-2 mt-1.5">
-                            <span className="px-2 py-0.5 bg-white/10 rounded-full text-[11px] font-bold uppercase text-white/50">
+                            <span className="px-2 py-0.5 bg-foreground/10 rounded-full text-[11px] font-bold uppercase text-foreground/60">
                               {task.assignedTo.length > 1 ? `${task.assignedTo.length} members` : data.members.find(m => m.id === task.assignedTo[0])?.name}
                             </span>
-                            <span className="text-[11px] font-bold uppercase text-white/30">{task.type}</span>
+                            <span className="text-[11px] font-bold uppercase text-foreground/40">{task.type}</span>
                           </div>
                         </div>
                       </div>
@@ -1283,12 +1283,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* My Checklist */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[12px] font-bold uppercase text-white/40 tracking-wider">My Checklist</span>
-            <span className="px-3 py-1 bg-white/10 text-white/50 text-[11px] font-bold rounded-full flex items-center gap-1.5">
+            <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider">My Checklist</span>
+            <span className="px-3 py-1 bg-foreground/10 text-foreground/60 text-[11px] font-bold rounded-full flex items-center gap-1.5">
               <User className="w-3 h-3" /> Personal
             </span>
           </div>
-          <div className="bg-white/10 rounded-[10px] border border-white/10 p-5 grid grid-cols-2 gap-3">
+          <div className="bg-foreground/10 rounded-[10px] border border-foreground/15 p-5 grid grid-cols-2 gap-3">
             {data.defaultChecklist.map((item, i) => (
               <button
                 key={i}
@@ -1301,10 +1301,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               >
                 <DotCheckbox
                   checked={checklistChecked.has(i)}
-                  activeColor="var(--accent-quote-fg)"
-                  inactiveColor="var(--dot-inactive)"
+                  activeColor="var(--accent-rehearsal)"
+                  inactiveColor="var(--border)"
                 />
-                <span className={cn("text-sm font-bold", checklistChecked.has(i) ? "text-white" : "text-white/60")}>{item}</span>
+                <span className={cn("text-sm font-bold", checklistChecked.has(i) ? "text-foreground" : "text-foreground/40")}>{item}</span>
               </button>
             ))}
           </div>
@@ -1357,58 +1357,58 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* Header */}
         <div className="flex flex-col gap-[8px]">
           <div className="flex gap-[4px] flex-wrap">
-            <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
-              <span className="text-[12px] font-bold text-white uppercase">REHEARSAL</span>
+            <div className="rounded-[6px] px-[10px] py-[4px] bg-foreground/10">
+              <span className="text-[12px] font-bold text-foreground uppercase">REHEARSAL</span>
             </div>
-            <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
-              <span className="text-[12px] font-bold text-white uppercase">{data.type.replace('_', ' ')}</span>
+            <div className="rounded-[6px] px-[10px] py-[4px] bg-foreground/10">
+              <span className="text-[12px] font-bold text-foreground uppercase">{data.type.replace('_', ' ')}</span>
             </div>
             {data.recurrence !== 'once' && (
-              <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
-                <span className="text-[12px] font-bold text-white uppercase">{data.recurrence}</span>
+              <div className="rounded-[6px] px-[10px] py-[4px] bg-foreground/10">
+                <span className="text-[12px] font-bold text-foreground uppercase">{data.recurrence}</span>
               </div>
             )}
           </div>
-          <h2 className="text-[32px] font-bold text-white uppercase leading-none">{data.title}</h2>
-          <span className="text-[14px] font-medium text-white/50 uppercase">{data.location || 'TBD'}</span>
+          <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">{data.title}</h2>
+          <span className="text-[14px] font-medium text-foreground/50 uppercase">{data.location || 'TBD'}</span>
         </div>
 
         {/* Rehearsal Time */}
         <div className="flex flex-col gap-[20px]">
           <div className="flex flex-col">
             <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleReview('time')}>
-              <span className="text-[12px] font-bold uppercase text-white">REHEARSAL TIME</span>
+              <span className="text-[12px] font-bold uppercase text-foreground">REHEARSAL TIME</span>
               <motion.div animate={{ rotate: reviewExpanded === 'time' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
               </motion.div>
             </button>
-            <span className="text-[42px] font-bold leading-none text-white">{rehearsalTime}</span>
+            <span className="text-[42px] font-bold leading-none text-foreground">{rehearsalTime}</span>
           </div>
           <AnimatePresence>
             {reviewExpanded === 'time' && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
                 <div className="pt-[12px] flex flex-col gap-[8px]">
-                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
-                    <span className="text-[12px] font-medium uppercase text-white/50">Start</span>
-                    <span className="text-[14px] font-bold text-white">{data.time}</span>
+                  <div className="flex items-center justify-between py-[8px] border-b border-foreground/15">
+                    <span className="text-[12px] font-medium uppercase text-foreground/50">Start</span>
+                    <span className="text-[14px] font-bold text-foreground">{data.time}</span>
                   </div>
                   {endTime && (
-                    <div className="flex items-center justify-between py-[8px] border-b border-white/20">
-                      <span className="text-[12px] font-medium uppercase text-white/50">End</span>
-                      <span className="text-[14px] font-bold text-white">{endTime}</span>
+                    <div className="flex items-center justify-between py-[8px] border-b border-foreground/15">
+                      <span className="text-[12px] font-medium uppercase text-foreground/50">End</span>
+                      <span className="text-[14px] font-bold text-foreground">{endTime}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
-                    <span className="text-[12px] font-medium uppercase text-white/50">Duration</span>
-                    <span className="text-[14px] font-bold text-white">{data.duration}</span>
+                  <div className="flex items-center justify-between py-[8px] border-b border-foreground/15">
+                    <span className="text-[12px] font-medium uppercase text-foreground/50">Duration</span>
+                    <span className="text-[14px] font-bold text-foreground">{data.duration}</span>
                   </div>
-                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
-                    <span className="text-[12px] font-medium uppercase text-white/50">Date</span>
-                    <span className="text-[14px] font-bold text-white">{formatDate(data.date)}</span>
+                  <div className="flex items-center justify-between py-[8px] border-b border-foreground/15">
+                    <span className="text-[12px] font-medium uppercase text-foreground/50">Date</span>
+                    <span className="text-[14px] font-bold text-foreground">{formatDate(data.date)}</span>
                   </div>
-                  <div className="flex items-center justify-between py-[8px] border-b border-white/20">
-                    <span className="text-[12px] font-medium uppercase text-white/50">Location</span>
-                    <span className="text-[14px] font-bold text-white">{data.location || 'TBD'}</span>
+                  <div className="flex items-center justify-between py-[8px] border-b border-foreground/15">
+                    <span className="text-[12px] font-medium uppercase text-foreground/50">Location</span>
+                    <span className="text-[14px] font-bold text-foreground">{data.location || 'TBD'}</span>
                   </div>
                 </div>
               </motion.div>
@@ -1420,14 +1420,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div className="flex flex-col gap-[20px]">
           <div className="flex flex-col">
             <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewSetlistOpen(true)}>
-              <span className="text-[12px] font-bold uppercase text-white">SONGS TO PLAY</span>
-              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              <span className="text-[12px] font-bold uppercase text-foreground">SONGS TO PLAY</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
             </button>
-            <span className="text-[42px] font-bold leading-none text-white">{songCount}</span>
+            <span className="text-[42px] font-bold leading-none text-foreground">{songCount}</span>
           </div>
           <div className="flex items-center gap-[8px]">
-            <span className="text-[12px] font-medium text-white/50 uppercase">{totalDuration}</span>
-            <button onClick={() => setStep(2)} className="text-[12px] font-bold text-white/30 uppercase hover:text-white transition-colors ml-auto">Edit</button>
+            <span className="text-[12px] font-medium text-foreground/50 uppercase">{totalDuration}</span>
+            <button onClick={() => setStep(2)} className="text-[12px] font-bold text-foreground/40 uppercase hover:text-foreground transition-colors ml-auto">Edit</button>
           </div>
         </div>
 
@@ -1435,14 +1435,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div className="flex flex-col gap-[20px]">
           <div className="flex flex-col">
             <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewTasksOpen(true)}>
-              <span className="text-[12px] font-bold uppercase text-white">TASKS</span>
-              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              <span className="text-[12px] font-bold uppercase text-foreground">TASKS</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
             </button>
-            <span className="text-[42px] font-bold leading-none text-white">{data.tasks.length}</span>
+            <span className="text-[42px] font-bold leading-none text-foreground">{data.tasks.length}</span>
           </div>
           <div className="flex items-center gap-[8px]">
-            <span className="text-[12px] font-medium text-white/50 uppercase">{data.tasks.filter(t => t.assignedTo.includes('all') || t.assignedTo.includes('1')).length} assigned to you</span>
-            <button onClick={() => setStep(3)} className="text-[12px] font-bold text-white/30 uppercase hover:text-white transition-colors ml-auto">Edit</button>
+            <span className="text-[12px] font-medium text-foreground/50 uppercase">{data.tasks.filter(t => t.assignedTo.includes('all') || t.assignedTo.includes('1')).length} assigned to you</span>
+            <button onClick={() => setStep(3)} className="text-[12px] font-bold text-foreground/40 uppercase hover:text-foreground transition-colors ml-auto">Edit</button>
           </div>
         </div>
 
@@ -1451,12 +1451,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="flex flex-col gap-[20px]">
             <div className="flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewProposalsOpen(true)}>
-                <span className="text-[12px] font-bold uppercase text-white">PROPOSALS</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                <span className="text-[12px] font-bold uppercase text-foreground">PROPOSALS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{approvedProposals}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{approvedProposals}</span>
             </div>
-            <span className="text-[12px] font-medium text-white/50 uppercase">{approvedProposals} approved · {pendingProposals} pending</span>
+            <span className="text-[12px] font-medium text-foreground/50 uppercase">{approvedProposals} approved · {pendingProposals} pending</span>
           </div>
         )}
 
@@ -1464,10 +1464,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div className="flex flex-col gap-[20px]">
           <div className="flex flex-col">
             <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setIsReviewMembersOpen(true)}>
-              <span className="text-[12px] font-bold uppercase text-white">CONFIRMED MEMBERS</span>
-              <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+              <span className="text-[12px] font-bold uppercase text-foreground">CONFIRMED MEMBERS</span>
+              <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
             </button>
-            <span className="text-[42px] font-bold leading-none text-white">{memberCount}</span>
+            <span className="text-[42px] font-bold leading-none text-foreground">{memberCount}</span>
           </div>
           <div className="flex -space-x-2">
             {data.members.slice(0, 8).map((m, i) => (
@@ -1476,13 +1476,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 initial={{ x: 10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.1 + (i * 0.05) }}
-                className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-white flex items-center justify-center text-[10px] font-bold text-foreground"
+                className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-foreground flex items-center justify-center text-[10px] font-bold text-background"
               >
                 {m.initials}
               </motion.div>
             ))}
             {data.members.length > 8 && (
-              <div className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-white/20 flex items-center justify-center text-[10px] font-bold text-white">
+              <div className="w-8 h-8 rounded-full border-2 border-accent-rehearsal bg-foreground/15 flex items-center justify-center text-[10px] font-bold text-foreground">
                 +{data.members.length - 8}
               </div>
             )}
@@ -1491,7 +1491,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
         {/* Footer */}
         <div className="text-center pt-2">
-          <span className="text-sm font-bold text-white/30 flex items-center justify-center gap-2">
+          <span className="text-sm font-bold text-foreground/40 flex items-center justify-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             {isEditing
               ? `Ready to save. ${memberCount} members assigned.`
@@ -1560,22 +1560,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         </div>
 
         {/* Footer */}
-        <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0 border-t border-white/10 bg-background/95 backdrop-blur-md">
+        <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0 border-t border-foreground/15 bg-background/95 backdrop-blur-md">
           <div className="grid grid-cols-2 gap-3">
             {step > 0 ? (
               <button
                 onClick={handleBack}
-                className="bg-white/10 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+                className="bg-foreground/10 text-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-foreground/15 transition-colors flex items-center justify-center gap-2"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 text-foreground" />
                 BACK
               </button>
             ) : (
               <button
                 onClick={onClose}
-                className="bg-white/10 text-white rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+                className="bg-foreground/10 text-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-foreground/15 transition-colors flex items-center justify-center gap-2"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 text-foreground" />
                 CANCEL
               </button>
             )}
@@ -1586,12 +1586,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 disabled={!STEPS[step].skippable && !canProceed}
                 style={{
                   backgroundColor: (STEPS[step].skippable || canProceed) ? activeAccentColor : undefined,
+                  color: (STEPS[step].skippable || canProceed) ? 'var(--accent-rehearsal-fg)' : undefined,
                 }}
                 className={cn(
                   "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
                   (STEPS[step].skippable || canProceed)
-                    ? "text-black shadow-lg shadow-black/20 hover:opacity-95"
-                    : "bg-white/10 text-white/30 cursor-not-allowed"
+                    ? "shadow-lg shadow-black/20 hover:opacity-95"
+                    : "bg-foreground/10 text-foreground/30 cursor-not-allowed"
                 )}
               >
                 {STEPS[step].skippable ? (
@@ -1602,8 +1603,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             ) : (
               <button
                 onClick={handleSubmit}
-                style={{ backgroundColor: activeAccentColor }}
-                className="text-black rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:opacity-95 transition-opacity"
+                style={{
+                  backgroundColor: activeAccentColor,
+                  color: 'var(--accent-rehearsal-fg)',
+                }}
+                className="rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:opacity-95 transition-opacity"
               >
                 {isEditing ? 'SAVE REHEARSAL' : 'CREATE REHEARSAL'}
               </button>
