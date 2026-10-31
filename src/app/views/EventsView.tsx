@@ -643,539 +643,267 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </div>
 
           {/* ═══ EVENT CARDS ═══ */}
-          <div className="flex flex-col gap-[80px]">
+          <div className="flex flex-col gap-[14px]">
             {allEvents.length > 0 ? (
               allEvents.map((event) => {
                 const status = event.status?.toUpperCase();
                 const isRehearsal = status === 'REHEARSAL';
                 const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
                 const isQuote = status === 'QUOTED' || status === 'QUOTE';
+                const isDraft = !isRehearsal && !isGig && !isQuote;
                 const memberCount = event.members?.length || 0;
-                const dateTagStyle = getTagStyle('', event.status);
 
-                const rightLabel = isRehearsal ? 'TIME' : getFeeLabel(event);
-                const rightValue = isRehearsal
-                  ? (event.time ? formatEventTime(event.time) : 'TBD')
-                  : getDisplayFee(event);
+                let accentColor = 'var(--accent-gig)';
+                let accentFg = 'var(--accent-gig-fg)';
+                let typeLabel = 'GIG';
+
+                if (isRehearsal) {
+                  accentColor = 'var(--accent-rehearsal)';
+                  accentFg = 'var(--accent-rehearsal-fg)';
+                  typeLabel = 'REHEARSAL';
+                } else if (isQuote) {
+                  accentColor = 'var(--accent-quote)';
+                  accentFg = 'var(--accent-quote-fg)';
+                  typeLabel = 'QUOTE';
+                } else if (isDraft) {
+                  accentColor = 'var(--muted-fg)';
+                  accentFg = 'var(--bg)';
+                  typeLabel = 'DRAFT';
+                }
 
                 const warnings = getEventWarnings(event);
                 const suggestions = getEventSuggestions(event);
-
                 const tags = getEventTags(event);
                 const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
 
-                if (isRehearsal) {
-                  return (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
-                      onClick={() => onEventClick(event)}
-                    >
-                      {/* Section 1: Event Info + Date */}
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">REHEARSAL</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {/* Multi-band member: band name pill + event type pill */}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">REHEARSAL</span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            {/* ═══ EYEBROW ROW — Event type text (single-band member only) ═══ */}
-                            {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                              <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                              </div>
-                            )}
-                            {/* ═══ EVENT TITLE ═══ */}
-                            <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
-                              {event.title}
-                            </h3>
-                          </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap leading-tight">
-                              {event.location?.split(',')[0] || 'TBD'}
-                            </span>
-                            {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">
-                                {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
-                            {warnings.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {warningPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
-                                      {warnings.map((w, wi) => (
-                                        <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                            {isAdmin && suggestions.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {suggestionPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
-                                      {suggestions.map((s, si) => (
-                                        <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                          </div>
-                          <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: dateTagStyle.bg }}>
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight" style={{ color: dateTagStyle.text }}>
-                              {event.date ? formatEventDate(event.date) : 'TBD'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                const rehearsalTime = event.time
+                  ? (event.endTime
+                      ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
+                      : formatEventTime(event.time))
+                  : 'TBD';
 
-                      {/* Section 2: Rehearsal Info */}
-                      <div className="flex gap-[30px] items-end w-[80%]">
-                        <div className="flex-1 flex flex-col gap-[12px]">
-                          <div className="flex flex-col">
-                            <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">TIME</span>
-                            <span className="text-[42px] font-bold text-foreground leading-none">
-                              {event.time
-                                ? (event.endTime
-                                    ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
-                                    : formatEventTime(event.time))
-                                : 'TBD'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-[4px] items-end">
-                          <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">{rightLabel}</span>
-                          <span className="text-[42px] font-bold text-foreground leading-none">{rightValue}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                }
+                const loadInTime = event.loadInTime
+                  ? formatEventTime(event.loadInTime)
+                  : event.time
+                    ? formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 3))))
+                    : 'TBD';
 
-                if (isGig) {
-                  return (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
-                      onClick={() => onEventClick(event)}
-                    >
-                      {/* Section 1: Event Info + Date */}
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">GIG</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">GIG</span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                              <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                              </div>
-                            )}
-                            <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
-                              {event.title}
-                            </h3>
-                          </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap leading-tight">
-                              {event.location?.split(',')[0] || 'TBD'}
-                            </span>
-                            {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">
-                                {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
-                            {warnings.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {warningPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
-                                      {warnings.map((w, wi) => (
-                                        <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                            {isAdmin && suggestions.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {suggestionPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
-                                      {suggestions.map((s, si) => (
-                                        <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                          </div>
-                          <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: dateTagStyle.bg }}>
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight" style={{ color: dateTagStyle.text }}>
-                              {event.date ? formatEventDate(event.date) : 'TBD'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                const soundCheckTime = event.soundcheckTime
+                  ? formatEventTime(event.soundcheckTime)
+                  : event.time
+                    ? formatEventTime(event.time.replace(/:d{2}$/, ':30').replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2))))
+                    : 'TBD';
 
-                      {/* Section 2: Gig Info — Times + Fee */}
-                      <div className="flex gap-[30px] items-end w-[80%]">
-                        <div className="flex-1 flex flex-col gap-[12px]">
-                          <div className="flex gap-[20px]">
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">LOAD IN</span>
-                              <span className="text-[22px] font-bold text-foreground leading-none">
-                                {event.loadInTime ? formatEventTime(event.loadInTime) : event.time ? formatEventTime(event.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3)))) : 'TBD'}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">SOUND CHECK</span>
-                              <span className="text-[22px] font-bold text-foreground leading-none">
-                                {event.soundcheckTime ? formatEventTime(event.soundcheckTime) : event.time ? formatEventTime(event.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2)))) : 'TBD'}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">SHOW</span>
-                              <span className="text-[22px] font-bold text-foreground leading-none">{event.time ? formatEventTime(event.time) : 'TBD'}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-[4px] items-end">
-                          <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">{rightLabel}</span>
-                          <span className="text-[42px] font-bold text-foreground leading-none">{rightValue}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                }
+                const showTime = event.time ? formatEventTime(event.time) : 'TBD';
 
-                if (isQuote) {
-                  return (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col gap-[12px] items-end cursor-pointer"
-                      onClick={() => onEventClick(event)}
-                    >
-                      <div className="flex gap-[30px] items-start w-full">
-                        <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                          {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                            <div className="flex gap-[4px] items-start">
-                              <div
-                                className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                              >
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">QUOTE</span>
-                              </div>
-                              {secondaryTags.map((tag, i) => (
-                                <div
-                                  key={i}
-                                  className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                                  style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                                >
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {!isAdmin && bands.length > 1 && (
-                            <div className="flex gap-[4px] items-start">
-                              {event.band_name && (
-                                <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                                  <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{event.band_name}</span>
-                                </div>
-                              )}
-                              <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}>
-                                <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">QUOTE</span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            {!isAdmin && bands.length <= 1 && (isRehearsal || isGig || isQuote) && (
-                              <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider leading-normal">
-                                <span className={cn('font-medium shrink-0', isGig ? 'text-accent-gig' : isRehearsal ? 'text-accent-rehearsal' : 'text-accent-quote')}>{isGig ? 'Gig' : isRehearsal ? 'Rehearsal' : 'Quote'}</span>
-                              </div>
-                            )}
-                            <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
-                              {event.title}
-                            </h3>
-                          </div>
-                          <div className="flex flex-col gap-[2px] mt-1">
-                            <span className="text-[16px] font-bold text-foreground uppercase whitespace-nowrap leading-tight">
-                              {event.clientName || event.location?.split(',')[0] || 'TBD'}
-                            </span>
-                            {(event.venueAddress || event.location?.includes(',')) && (
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">
-                                {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                          <div className="flex gap-[6px] items-start">
-                            {warnings.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--warning)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {warningPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
-                                      {warnings.map((w, wi) => (
-                                        <div key={wi} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{w}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                            {isAdmin && suggestions.length > 0 && (
-                              <div className="relative">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                  className="bg-[var(--amber)] rounded-full p-[6px]"
-                                >
-                                  <AlertCircle className="w-[28px] h-[28px] text-white" />
-                                </button>
-                                <AnimatePresence>
-                                  {suggestionPopoverId === event.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                      className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
-                                      {suggestions.map((s, si) => (
-                                        <div key={si} className="flex items-center gap-2 py-1">
-                                          <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                          <span className="text-[11px] font-medium text-white/80">{s}</span>
-                                        </div>
-                                      ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                          </div>
-                          <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: dateTagStyle.bg }}>
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight" style={{ color: dateTagStyle.text }}>
-                              {event.date ? formatEventDate(event.date) : 'TBD'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 2: Quote Info */}
-                      <div className="flex gap-[30px] items-end w-[80%]">
-                        <div className="flex-1 flex flex-col gap-[12px]">
-                          <div className="flex gap-[20px]">
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">CLIENT</span>
-                              <span className="text-[22px] font-bold text-foreground leading-none uppercase">{event.clientName || 'TBD'}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">MEMBERS</span>
-                              <span className="text-[22px] font-bold text-foreground leading-none">{memberCount}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-[4px] items-end">
-                          <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">{rightLabel}</span>
-                          <span className="text-[42px] font-bold text-foreground leading-none">{rightValue}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                }
-
-                // Draft / Other
                 return (
                   <motion.div
                     key={event.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col gap-[12px] items-end cursor-pointer"
+                    className="relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 overflow-hidden cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
                     onClick={() => onEventClick(event)}
                   >
-                    <div className="flex gap-[30px] items-start w-full">
-                      <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                        {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                          <div className="flex gap-[4px] items-start">
-                            <div
-                              className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight"
-                              style={{ backgroundColor: dateTagStyle.bg, color: dateTagStyle.text }}
-                            >
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">DRAFT</span>
+                    {/* Left Accent Rail */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-[5px]"
+                      style={{ backgroundColor: accentColor }}
+                    />
+
+                    <div className="flex flex-col gap-[14px] p-[16px] pl-[20px] sm:p-[20px] sm:pl-[24px]">
+                      {/* Card Header: Tags + Date & Warnings */}
+                      <div className="flex items-start justify-between gap-[12px]">
+                        <div className="flex items-center gap-[6px] flex-wrap">
+                          {/* Multi-band member: band name pill */}
+                          {!isAdmin && bands.length > 1 && event.band_name && (
+                            <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
+                              {event.band_name}
                             </div>
+                          )}
+                          {/* Primary Type Badge */}
+                          <div
+                            className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight"
+                            style={{ backgroundColor: accentColor, color: accentFg }}
+                          >
+                            {typeLabel}
                           </div>
-                        )}
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">
-                            {event.title}
-                          </h3>
+                          {/* Secondary Tags */}
+                          {secondaryTags.map((tag, i) => (
+                            <div
+                              key={i}
+                              className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/70"
+                            >
+                              {tag}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Top-Right Badges: Warnings & Date */}
+                        <div className="flex items-center gap-[8px] shrink-0">
+                          {warnings.length > 0 && (
+                            <div className="relative">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
+                                className="bg-[var(--warning)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                              >
+                                <AlertCircle className="w-[16px] h-[16px] text-white" />
+                              </button>
+                              <AnimatePresence>
+                                {warningPopoverId === event.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                                    {warnings.map((w, wi) => (
+                                      <div key={wi} className="flex items-center gap-2 py-1">
+                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
+                                        <span className="text-[11px] font-medium text-white/80">{w}</span>
+                                      </div>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                          {isAdmin && suggestions.length > 0 && (
+                            <div className="relative">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
+                                className="bg-[var(--amber)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                              >
+                                <AlertCircle className="w-[16px] h-[16px] text-white" />
+                              </button>
+                              <AnimatePresence>
+                                {suggestionPopoverId === event.id && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                                    {suggestions.map((s, si) => (
+                                      <div key={si} className="flex items-center gap-2 py-1">
+                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
+                                        <span className="text-[11px] font-medium text-white/80">{s}</span>
+                                      </div>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+
+                          {/* Date Badge */}
+                          <div
+                            className="rounded-[8px] px-[10px] py-[4px] text-[12px] font-bold uppercase tracking-wider whitespace-nowrap shadow-xs"
+                            style={{ backgroundColor: accentColor, color: accentFg }}
+                          >
+                            {event.date ? formatEventDate(event.date) : 'TBD'}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                        <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: dateTagStyle.bg }}>
-                          <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight" style={{ color: dateTagStyle.text }}>
-                            {event.date ? formatEventDate(event.date) : 'TBD'}
+
+                      {/* Card Body: Title & Venue */}
+                      <div className="flex flex-col gap-[3px]">
+                        <h3 className="text-[19px] sm:text-[21px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
+                          {event.title}
+                        </h3>
+                        <div className="flex items-center gap-[6px] text-[13px] text-foreground/60 font-medium truncate">
+                          <span className="font-semibold text-foreground/80">
+                            {event.location?.split(',')[0] || event.clientName || 'TBD'}
                           </span>
+                          {(event.venueAddress || event.location?.includes(',')) && (
+                            <>
+                              <span className="text-foreground/30">•</span>
+                              <span className="truncate text-foreground/50">
+                                {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
+                              </span>
+                            </>
+                          )}
                         </div>
+                      </div>
+
+                      {/* Card Footer: Metadata Strip */}
+                      <div className="border-t border-foreground/10 pt-[10px] flex items-center justify-between gap-[12px]">
+                        {isRehearsal ? (
+                          <>
+                            <div className="flex items-center gap-[8px]">
+                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TIME</span>
+                              <span className="text-[15px] font-bold text-foreground leading-none">
+                                {rehearsalTime}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-[6px] text-foreground/70">
+                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">MEMBERS</span>
+                              <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                            </div>
+                          </>
+                        ) : isGig ? (
+                          <>
+                            <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
+                              <div className="flex items-center gap-[4px]">
+                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">LOAD</span>
+                                <span className="text-[14px] font-bold text-foreground leading-none">{loadInTime}</span>
+                              </div>
+                              <div className="flex items-center gap-[4px]">
+                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SOUND</span>
+                                <span className="text-[14px] font-bold text-foreground leading-none">{soundCheckTime}</span>
+                              </div>
+                              <div className="flex items-center gap-[4px]">
+                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SHOW</span>
+                                <span className="text-[14px] font-bold text-foreground leading-none">{showTime}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
+                                {getFeeLabel(event)}
+                              </span>
+                              <span className="text-[17px] font-bold text-foreground leading-none">
+                                {getDisplayFee(event)}
+                              </span>
+                            </div>
+                          </>
+                        ) : isQuote ? (
+                          <>
+                            <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
+                              <div className="flex items-center gap-[4px]">
+                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">CLIENT</span>
+                                <span className="text-[14px] font-bold text-foreground uppercase leading-none truncate max-w-[140px] sm:max-w-[200px]">
+                                  {event.clientName || 'TBD'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-[4px]">
+                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
+                                <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
+                                {getFeeLabel(event)}
+                              </span>
+                              <span className="text-[17px] font-bold text-foreground leading-none">
+                                {getDisplayFee(event)}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-[6px]">
+                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">STATUS</span>
+                              <span className="text-[14px] font-bold text-foreground uppercase leading-none">DRAFT</span>
+                            </div>
+                            <div className="flex items-center gap-[6px]">
+                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
+                              <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </motion.div>
