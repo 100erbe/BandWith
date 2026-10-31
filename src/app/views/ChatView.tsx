@@ -109,39 +109,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* ═══ HEADER ═══ */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-[4px]">
-          <span className="text-[12px] font-bold text-black uppercase leading-none">
+          <span className="text-[12px] font-bold text-foreground/60 uppercase leading-none">
             MESSAGES
           </span>
-          <h1 className="text-[32px] font-bold text-black uppercase leading-none">
+          <h1 className="text-[32px] font-bold text-foreground uppercase leading-none">
             INBOX
           </h1>
         </div>
         <button
           onClick={() => onStartChat?.()}
-          className="bg-black rounded-full p-[5.7px]"
+          className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs hover:opacity-95 active:scale-95 transition-all"
         >
-          <Plus className="w-[28px] h-[28px] text-accent" />
+          <Plus className="w-5 h-5 text-primary-foreground" />
         </button>
       </div>
 
       {/* ═══ FILTER PILLS ═══ */}
-      <div className="flex gap-[12px] items-center -mt-[20px]">
+      <div className="flex gap-[10px] items-center -mt-[20px]">
         {FILTERS.map(({ key, label }) => {
           const count = unreadCounts[key];
+          const isActive = chatFilter === key;
           return (
             <button
               key={key}
               onClick={() => setChatFilter(key)}
               className={cn(
-                "px-[8px] py-[6px] rounded-[6px] text-[12px] whitespace-nowrap transition-all shrink-0 flex items-center gap-[6px]",
-                chatFilter === key
-                  ? "bg-white text-black font-bold"
-                  : "bg-black/20 text-foreground/40 font-medium"
+                "px-[12px] py-[6px] rounded-[8px] text-[12px] whitespace-nowrap transition-all shrink-0 flex items-center gap-[6px]",
+                isActive
+                  ? "bg-card text-foreground font-bold shadow-xs border border-foreground/15"
+                  : "bg-foreground/5 text-foreground/50 hover:text-foreground font-medium border border-transparent"
               )}
             >
               {label}
               {count > 0 && (
-                <span className="bg-accent text-accent-foreground text-[10px] font-bold px-[5px] py-[1px] rounded-full min-w-[16px] text-center">
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-[5px] py-[1px] rounded-full min-w-[16px] text-center">
                   {count > 99 ? '99+' : count}
                 </span>
               )}
@@ -152,7 +153,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* ═══ SEARCH ═══ */}
       <div className="relative -mt-[20px]">
-        <div className="bg-black/[0.06] rounded-[10px] flex items-center px-[12px] gap-[8px]">
+        <div className="bg-foreground/5 border border-foreground/10 rounded-[12px] flex items-center px-[12px] gap-[8px]">
           {isSearching ? (
             <Loader2 className="w-[16px] h-[16px] text-foreground/30 animate-spin shrink-0" />
           ) : (
@@ -164,7 +165,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             value={chatSearch}
             onChange={(e) => setChatSearch(e.target.value)}
             onFocus={() => chatSearch.length >= 2 && setShowSearchResults(true)}
-            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-black placeholder:text-foreground/30 uppercase focus:outline-none" 
+            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-foreground placeholder:text-foreground/30 uppercase focus:outline-none" 
           />
           {chatSearch && (
             <button
@@ -172,7 +173,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 setChatSearch('');
                 setShowSearchResults(false);
               }}
-              className="p-[4px] hover:bg-black/5 rounded-full shrink-0"
+              className="p-[4px] hover:bg-foreground/10 rounded-full shrink-0"
             >
               <X className="w-[14px] h-[14px] text-foreground/30" />
             </button>
@@ -255,82 +256,82 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* ═══ LIST HEADER ═══ */}
       <div className="flex flex-col gap-[4px] -mt-[20px]">
-        <span className="text-[12px] font-bold text-black uppercase leading-none">
+        <span className="text-[12px] font-bold text-foreground/60 uppercase leading-none">
           {chatFilter === 'direct' ? 'DIRECT' : chatFilter === 'band' ? 'BANDS' : 'EVENTS'}
         </span>
-        <h2 className="text-[32px] font-bold text-black uppercase leading-none">
+        <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
           {filteredChats.length > 0 ? 'RECENT' : 'EMPTY'}
         </h2>
       </div>
 
       {/* ═══ CHAT LIST ═══ */}
-      <div className="flex flex-col gap-[16px] -mt-[20px]">
+      <div className="flex flex-col gap-[14px] -mt-[20px]">
         {filteredChats.length > 0 ? (
           filteredChats.map((chat, i) => (
             <motion.div 
               key={chat.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => onChatClick?.(chat)}
-              className="bg-card rounded-[10px] p-[20px] cursor-pointer flex flex-col gap-[16px] overflow-hidden active:scale-[0.98] transition-transform"
+              className="bg-card rounded-[16px] border border-foreground/10 p-[18px] cursor-pointer flex flex-col gap-[14px] overflow-hidden active:scale-[0.99] hover:border-foreground/20 hover:shadow-xs transition-all"
             >
               {/* ── Top: Info + Icons ── */}
-              <div className="flex gap-[30px] items-start">
+              <div className="flex gap-[20px] items-start">
                 {/* Left: Pills + Name + Preview */}
                 <div className="flex-1 flex flex-col gap-[8px] min-w-0">
                   <div className="flex flex-col gap-[4px]">
                     {/* Pills row */}
-                    <div className="flex flex-wrap gap-[4px]">
+                    <div className="flex flex-wrap gap-[6px]">
                       {chat.type === 'direct' && (
                         <>
-                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                            <span className="text-[12px] font-bold text-white uppercase">DM</span>
+                          <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20 text-[11px] font-bold uppercase tracking-wider">
+                            <span>DM</span>
                           </div>
                           {chat.bandName && (
-                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                              <span className="text-[12px] font-bold text-white uppercase">{chat.bandName}</span>
+                            <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-foreground/8 text-foreground/80 border border-foreground/10 text-[11px] font-bold uppercase tracking-wider">
+                              <span>{chat.bandName}</span>
                             </div>
                           )}
                         </>
                       )}
                       {chat.type === 'band' && (
                         <>
-                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                            <span className="text-[12px] font-bold text-white uppercase">BM</span>
+                          <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-accent-rehearsal/10 text-accent-rehearsal border border-accent-rehearsal/20 text-[11px] font-bold uppercase tracking-wider">
+                            <span>BM</span>
                           </div>
                           {chat.senderName && (
-                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                              <span className="text-[12px] font-bold text-white uppercase">{chat.senderName}</span>
+                            <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-foreground/8 text-foreground/80 border border-foreground/10 text-[11px] font-bold uppercase tracking-wider">
+                              <span>{chat.senderName}</span>
                             </div>
                           )}
                         </>
                       )}
                       {chat.type === 'event' && (
                         <>
-                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                            <span className="text-[12px] font-bold text-white uppercase">EM</span>
+                          <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-accent-gig/10 text-accent-gig border border-accent-gig/20 text-[11px] font-bold uppercase tracking-wider">
+                            <span>EM</span>
                           </div>
-                          <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                            <span className="text-[12px] font-bold text-white uppercase">
+                          <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-foreground/8 text-foreground/80 border border-foreground/10 text-[11px] font-bold uppercase tracking-wider">
+                            <span>
                               {chat.eventType === 'rehearsal' ? 'REHEARSAL' : 'GIG'}
                             </span>
                           </div>
                           {chat.senderName && (
-                            <div className="bg-black rounded-[6px] px-[10px] py-[4px]">
-                              <span className="text-[12px] font-bold text-white uppercase">{chat.senderName}</span>
+                            <div className="inline-flex items-center justify-center rounded-[8px] px-2.5 py-0.5 bg-foreground/8 text-foreground/80 border border-foreground/10 text-[11px] font-bold uppercase tracking-wider">
+                              <span>{chat.senderName}</span>
                             </div>
                           )}
                         </>
                       )}
                     </div>
                     {/* Name */}
-                    <h3 className="text-[22px] font-bold text-black uppercase leading-none truncate">
+                    <h3 className="text-[20px] font-bold text-foreground uppercase leading-tight truncate">
                       {chat.name}
                     </h3>
                   </div>
                   {/* Message preview */}
-                  <p className="text-[12px] font-medium text-foreground/50 uppercase leading-snug line-clamp-2">
+                  <p className="text-[12px] font-medium text-foreground/60 leading-snug line-clamp-2">
                     {chat.lastMessage || 'No messages yet'}
                   </p>
                 </div>
@@ -339,22 +340,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <div className="flex flex-col items-end justify-between self-stretch shrink-0">
                   <div className="flex gap-[6px]">
                     {chat.isOnline ? (
-                      <div className="bg-[var(--success)] rounded-full p-[6px]">
-                        <PlugsConnectedIcon className="w-[28px] h-[28px] text-black" />
+                      <div className="w-9 h-9 rounded-full bg-[var(--success)]/15 border border-[var(--success)]/30 flex items-center justify-center text-[var(--success)]">
+                        <PlugsConnectedIcon className="w-[18px] h-[18px]" />
                       </div>
                     ) : (
-                      <div className="bg-[rgba(0,0,0,0.3)] rounded-full p-[6px]">
-                        <PlugsDisconnectedIcon className="w-[28px] h-[28px] text-black" />
+                      <div className="w-9 h-9 rounded-full bg-foreground/8 border border-foreground/10 flex items-center justify-center text-foreground/40">
+                        <PlugsDisconnectedIcon className="w-[18px] h-[18px]" />
                       </div>
                     )}
                     {/* Open chat arrow */}
-                    <div className="bg-black rounded-full p-[6px]">
-                      <ArrowUpRight className="w-[28px] h-[28px] text-accent" />
+                    <div className="w-9 h-9 rounded-full bg-foreground/8 hover:bg-foreground/12 flex items-center justify-center text-foreground transition-colors">
+                      <ArrowUpRight className="w-5 h-5 text-foreground" />
                     </div>
                   </div>
                   {/* Timestamp */}
-                  <div className="bg-black/20 rounded-[6px] px-[10px] py-[4px]">
-                    <span className="text-[12px] font-bold text-black whitespace-nowrap">
+                  <div className="rounded-[8px] bg-foreground/6 border border-foreground/10 px-2.5 py-0.5">
+                    <span className="text-[11px] font-bold text-foreground/60 whitespace-nowrap">
                       {chat.time || 'NOW'}
                     </span>
                   </div>
@@ -362,21 +363,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               {/* ── Bottom: Unread / Read status ── */}
-              <div className="flex items-center justify-between pt-2 border-t border-black/10">
-                <span className="text-[11px] font-bold tracking-wider text-black/40 uppercase">
+              <div className="flex items-center justify-between pt-2.5 border-t border-foreground/10">
+                <span className="text-[11px] font-bold tracking-wider text-foreground/40 uppercase">
                   {chat.type === 'direct' ? 'Direct Message' : chat.type === 'band' ? 'Band Channel' : 'Event Channel'}
                 </span>
                 {chat.unread > 0 ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-black/70 uppercase">UNREAD</span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-black text-white text-[13px] font-black leading-tight">
+                    <span className="text-[11px] font-bold text-foreground/70 uppercase">UNREAD</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[12px] font-black leading-tight shadow-xs">
                       {chat.unread}
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-black/60">
+                  <div className="flex items-center gap-1.5 text-foreground/50">
                     <span className="text-[11px] font-bold uppercase">READ</span>
-                    <ChecksIcon className="w-5 h-5 text-black/70" />
+                    <ChecksIcon className="w-4 h-4 text-primary" />
                   </div>
                 )}
               </div>

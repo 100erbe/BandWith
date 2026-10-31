@@ -73,10 +73,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex items-center gap-4 w-full">
               <button
                 onClick={onClose}
-                className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-                style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+                className="w-[48px] h-[48px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 shrink-0 active:scale-90 transition-all text-foreground"
               >
-                <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+                <ArrowLeft className="w-[22px] h-[22px] text-foreground" />
               </button>
               <h2 className="text-[32px] font-bold text-foreground leading-none uppercase">
                 SETTINGS
@@ -168,30 +167,30 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
 
             {/* ═══ UPGRADE TO PRO ═══ */}
             <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide bg-black rounded-[6px] px-1.5 py-0.5 w-fit">PRO</span>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-bold text-primary uppercase tracking-wider bg-primary/15 border border-primary/25 rounded-[8px] px-2.5 py-0.5 w-fit">PRO</span>
                 <h3 className="text-[32px] font-bold text-foreground leading-none uppercase">
                   UPGRADE
                 </h3>
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold text-foreground uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
+                <span className="text-xs font-bold text-foreground/70 uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Unlimited Quotes</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Analytics</span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-[6px] bg-muted text-foreground/50">Priority Support</span>
+                  <span className="text-[11px] font-bold uppercase px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/70">Unlimited Quotes</span>
+                  <span className="text-[11px] font-bold uppercase px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/70">Analytics</span>
+                  <span className="text-[11px] font-bold uppercase px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/70">Priority Support</span>
                 </div>
               </div>
 
               <button
-                className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                className="flex items-center justify-between px-4 py-3 rounded-[12px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95"
               >
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-accent-foreground" />
-                  <span className="text-xs font-bold text-accent-foreground uppercase">UPGRADE NOW</span>
+                  <Zap className="w-4 h-4 text-primary-foreground" />
+                  <span className="text-xs font-bold uppercase tracking-wider">UPGRADE NOW</span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-accent-foreground" />
+                <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
               </button>
             </div>
 
@@ -237,7 +236,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                className="w-full border border-[var(--destructive)]/25 bg-[var(--destructive)]/10 hover:bg-[var(--destructive)]/15 rounded-[12px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <LogOut className="w-4 h-4 text-[var(--destructive)]" />
                 <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>

@@ -340,67 +340,67 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Bottom Row — Member-specific operational cards vs Admin business cards */}
           {isAdmin ? (
-            <div className="flex gap-2.5">
+            <div className="flex gap-3 sm:gap-4">
               {/* ADMIN: Upcoming Gigs */}
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING GIGS</span>
+                  <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">UPCOMING GIGS</span>
                   <span className="text-[42px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : confirmedCount}
                   </span>
-                  <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED EVENTS SCHEDULED</span>
+                  <span className="text-[11px] font-bold text-foreground/50 tracking-wide uppercase">CONFIRMED EVENTS SCHEDULED</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between px-3.5 py-3 rounded-[12px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95"
                 >
-                  <span className="text-xs font-bold text-accent-foreground">VIEW CALENDAR</span>
-                  <ArrowUpRight className="w-5 h-5 text-foreground" />
+                  <span className="text-xs font-bold uppercase tracking-wider">VIEW CALENDAR</span>
+                  <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
                 </button>
               </div>
 
               {/* ADMIN: Revenue Growing */}
               <div className="flex flex-col justify-between flex-1">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground tracking-wide">REVENUE GROWING</span>
+                  <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">REVENUE GROWING</span>
                   <span className="text-[42px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : revenueChangeText}
                   </span>
-                  <span className="text-xs font-bold text-foreground tracking-wide">VS LAST MONTH</span>
+                  <span className="text-[11px] font-bold text-foreground/50 tracking-wide uppercase">VS LAST MONTH</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Analytics')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between px-3.5 py-3 rounded-[12px] bg-foreground/10 hover:bg-foreground/15 text-foreground w-full active:scale-95 transition-all border border-foreground/10"
                 >
-                  <span className="text-xs font-bold text-accent">VIEW ANALYTICS</span>
-                  <ArrowUpRight className="w-5 h-5 text-accent" />
+                  <span className="text-xs font-bold uppercase tracking-wider">VIEW ANALYTICS</span>
+                  <ArrowUpRight className="w-4 h-4 text-foreground/70" />
                 </button>
               </div>
             </div>
           ) : (
-            <div className="flex gap-2.5">
+            <div className="flex gap-3 sm:gap-4">
               {/* MEMBER: Next Soundcheck / Load-In */}
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-foreground" />
-                  <span className="text-xs font-bold text-foreground tracking-wide">NEXT SOUNDCHECK</span>
+                  <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">NEXT SOUNDCHECK</span>
                 </div>
                 <span className="text-[28px] font-bold leading-tight text-foreground">
                   {confirmedCount > 0 ? '2h 15m' : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
+                <span className="text-[11px] font-bold text-foreground/50 tracking-wide uppercase">
                   {confirmedCount > 0 ? 'BEFORE DOORS OPEN' : 'NO UPCOMING GIGS'}
                 </span>
                 {confirmedCount > 0 && (
                   <button
                     onClick={() => onQuickAction?.('View Calendar')}
-                    className="flex items-center justify-between p-2.5 rounded-[10px] bg-accent w-full active:scale-95 transition-transform"
+                    className="flex items-center justify-between px-3.5 py-3 rounded-[12px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95"
                   >
-                    <span className="text-xs font-bold text-accent-foreground flex items-center gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5" />
                       LOAD-IN MAP
                     </span>
-                    <ChevronRight className="w-4 h-4 text-foreground" />
+                    <ChevronRight className="w-4 h-4 text-primary-foreground" />
                   </button>
                 )}
               </div>
@@ -409,20 +409,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="flex flex-col justify-between flex-1">
                 <div className="flex items-center gap-2">
                   <ListMusic className="w-4 h-4 text-foreground" />
-                  <span className="text-xs font-bold text-foreground tracking-wide">MY SETLIST</span>
+                  <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">MY SETLIST</span>
                 </div>
                 <span className="text-[28px] font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : '—'}
                 </span>
-                <span className="text-[11px] font-bold text-foreground/50 tracking-wide">
+                <span className="text-[11px] font-bold text-foreground/50 tracking-wide uppercase">
                   NEXT GIG SONGS
                 </span>
                 <button
                   onClick={() => onQuickAction?.('Setlist & Repertoire')}
-                  className="flex items-center justify-between p-2.5 rounded-[10px] bg-black w-full active:scale-95 transition-transform"
+                  className="flex items-center justify-between px-3.5 py-3 rounded-[12px] bg-foreground/10 hover:bg-foreground/15 text-foreground w-full active:scale-95 transition-all border border-foreground/10"
                 >
-                  <span className="text-xs font-bold text-accent">VIEW SETLIST</span>
-                  <ChevronRight className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-bold uppercase tracking-wider">VIEW SETLIST</span>
+                  <ChevronRight className="w-4 h-4 text-foreground/70" />
                 </button>
               </div>
             </div>
