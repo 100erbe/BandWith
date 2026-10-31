@@ -121,9 +121,9 @@ export const Header: React.FC<HeaderProps> = ({
                     </motion.h1>
                   </AnimatePresence>
                   
-                  <div className="flex items-center gap-2 mt-2 text-[var(--muted-fg)] group-hover:text-[var(--destructive)] transition-colors">
-                    <span className="text-xs font-bold uppercase tracking-wider">Switch Band</span>
-                    <ChevronDown className="w-4 h-4" />
+                  <div className="flex items-center gap-1.5 mt-2 text-foreground/50 group-hover:text-foreground transition-colors">
+                    <span className="text-xs font-bold uppercase tracking-wider">Change Band</span>
+                    <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5" />
                   </div>
                 </button>
               ) : (
