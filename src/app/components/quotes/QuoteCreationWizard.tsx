@@ -110,9 +110,9 @@ const DEPOSIT_OPTIONS = [
 
 const QuoteField: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
   <div className={cn('flex flex-col gap-1', className)}>
-    <span className="text-[12px] font-bold uppercase tracking-wide text-white">{label}</span>
+    <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/60">{label}</span>
     {children}
-    <div className="h-px bg-white/20 mt-1" />
+    <div className="h-px bg-foreground/15 mt-1" />
   </div>
 );
 
@@ -294,7 +294,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           key={i}
           className={cn(
             'h-1 rounded-[10px] transition-all',
-            i === step ? 'w-4 bg-white' : 'w-2 bg-white/20'
+            i === step ? 'w-4 bg-foreground' : 'w-2 bg-foreground/20'
           )}
         />
       ))}
@@ -307,7 +307,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const TagPill: React.FC<{ children: React.ReactNode; active?: boolean }> = ({ children, active }) => (
     <div className={cn(
       'px-2.5 py-1 rounded-[6px] text-[12px] font-bold uppercase',
-      active ? 'bg-black text-white' : 'bg-black/30 text-accent-quote'
+      active ? 'bg-foreground text-background' : 'bg-foreground/10 text-foreground/70'
     )}>
       {children}
     </div>
@@ -324,20 +324,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           value={clientName}
           onChange={e => setClientName(e.target.value)}
           placeholder="EG. PAOLO ROSSI"
-          className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
+          className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase"
           autoFocus
         />
       </QuoteField>
 
       <QuoteField label="EMAIL">
         <div className="flex items-center gap-3">
-          <Mail className="w-5 h-5 text-white/40 shrink-0" />
+          <Mail className="w-5 h-5 text-foreground/40 shrink-0" />
           <input
             type="email"
             value={clientEmail}
             onChange={e => setClientEmail(e.target.value)}
             placeholder="EMAIL@EXAMPLE.COM"
-            className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase"
           />
         </div>
       </QuoteField>
@@ -347,7 +347,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <select
             value={phoneCountry}
             onChange={e => setPhoneCountry(e.target.value)}
-            className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none appearance-none uppercase"
+            className="w-full bg-transparent text-[24px] font-bold text-foreground focus:outline-none appearance-none uppercase"
           >
             {COUNTRY_PHONE_CODES.map(c => (
               <option key={c.code} value={c.code} className="text-black">{c.code} {c.prefix}</option>
@@ -356,13 +356,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </QuoteField>
         <QuoteField label="PHONE NUMBER">
           <div className="flex items-center gap-2">
-            <Phone className="w-5 h-5 text-white/40 shrink-0" />
+            <Phone className="w-5 h-5 text-foreground/40 shrink-0" />
             <input
               type="tel"
               value={clientPhone}
               onChange={e => setClientPhone(e.target.value)}
               placeholder="123-123-1234"
-              className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none"
+              className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none"
             />
           </div>
         </QuoteField>
@@ -374,8 +374,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             type="date"
             value={eventDate}
             onChange={e => setEventDate(e.target.value)}
-            className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none uppercase"
-            style={{ colorScheme: 'dark' }}
+            className="w-full bg-transparent text-[24px] font-bold text-foreground focus:outline-none uppercase"
           />
         </QuoteField>
         <QuoteField label="START">
@@ -383,21 +382,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             type="time"
             value={eventTimeStart}
             onChange={e => setEventTimeStart(e.target.value)}
-            className="w-full bg-transparent text-[24px] font-bold text-white focus:outline-none uppercase"
-            style={{ colorScheme: 'dark' }}
+            className="w-full bg-transparent text-[24px] font-bold text-foreground focus:outline-none uppercase"
           />
         </QuoteField>
       </div>
 
       <QuoteField label="VENUE">
         <div className="flex items-center gap-3">
-          <MapPin className="w-5 h-5 text-white/40 shrink-0" />
+          <MapPin className="w-5 h-5 text-foreground/40 shrink-0" />
           <input
             type="text"
             value={venueName}
             onChange={e => setVenueName(e.target.value)}
             placeholder="VILLA REGINA"
-            className="w-full bg-transparent text-[24px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase"
           />
         </div>
       </QuoteField>
@@ -409,14 +407,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             value={venueCity}
             onChange={e => setVenueCity(e.target.value)}
             placeholder="CITY"
-            className="w-full bg-transparent text-[20px] font-bold text-white placeholder:text-white/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-[20px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase"
           />
         </QuoteField>
         <QuoteField label="COUNTRY">
           <select
             value={venueCountry}
             onChange={e => setVenueCountry(e.target.value)}
-            className="w-full bg-transparent text-[20px] font-bold text-white focus:outline-none appearance-none uppercase"
+            className="w-full bg-transparent text-[20px] font-bold text-foreground focus:outline-none appearance-none uppercase"
           >
             {Object.keys(VAT_RATES).map(code => (
               <option key={code} value={code} className="text-black">{VAT_RATES[code].name.toUpperCase()}</option>
@@ -428,7 +426,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {venueCity && (
         <div className="flex flex-wrap gap-2">
           {[venueCity, VAT_RATES[venueCountry]?.name].filter(Boolean).map((tag, i) => (
-            <div key={i} className="px-3 py-1.5 rounded-[6px] bg-white/10 text-[12px] font-bold text-white/60 uppercase">
+            <div key={i} className="px-3 py-1.5 rounded-[6px] bg-foreground/10 text-[12px] font-bold text-foreground/60 uppercase">
               {tag}
             </div>
           ))}
@@ -454,15 +452,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <TagPill>{type.value.toUpperCase()}</TagPill>
               <span className={cn(
                 'text-[32px] font-bold uppercase leading-tight transition-colors',
-                isSelected ? 'text-white' : 'text-foreground/30'
+                isSelected ? 'text-foreground' : 'text-foreground/30'
               )}>
                 {type.label}
               </span>
             </div>
             <DotRadio
               selected={isSelected}
-              activeColor="var(--accent-quote-fg)"
-              inactiveColor="var(--dot-inactive)"
+              activeColor="var(--accent-quote)"
+              inactiveColor="var(--border)"
             />
           </button>
         );
@@ -476,7 +474,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const renderPerformanceStep = () => (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-white/50">TYPE</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">TYPE</span>
         <div className="flex flex-wrap gap-2">
           {PERFORMANCE_TYPES.map(type => (
             <button
@@ -485,8 +483,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className={cn(
                 'px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all',
                 performanceType === type.value
-                  ? 'bg-black text-white border-black'
-                  : 'bg-transparent text-white/60 border-white/20'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40'
               )}
             >
               {type.label}
@@ -495,10 +493,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-foreground/10" />
 
       <div className="flex flex-col gap-4">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-white/50">BAND MEMBERS</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">BAND MEMBERS</span>
         <div className="flex flex-col gap-3">
           {BAND_MEMBERS.map(member => {
             const isSelected = !!selectedMusicians.find(m => m.id === member.id);
@@ -510,21 +508,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               >
                 <div className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0',
-                  isSelected ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-white/40 border-white/20'
+                  isSelected ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/40 border-foreground/20'
                 )}>
                   {member.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/10 text-white/60">{member.instrument}</span>
-                    {isSelected && <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-black text-white">MANDATORY</span>}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground/10 text-foreground/60">{member.instrument}</span>
+                    {isSelected && <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground text-background">MANDATORY</span>}
                   </div>
-                  <p className={cn('text-[16px] font-bold uppercase mt-1', isSelected ? 'text-white' : 'text-white/40')}>{member.name}</p>
+                  <p className={cn('text-[16px] font-bold uppercase mt-1', isSelected ? 'text-foreground' : 'text-foreground/40')}>{member.name}</p>
                 </div>
                 <DotCheckbox
                   checked={isSelected}
-                  activeColor="var(--accent-quote-fg)"
-                  inactiveColor="var(--dot-inactive)"
+                  activeColor="var(--accent-quote)"
+                  inactiveColor="var(--border)"
                 />
               </button>
             );
@@ -532,10 +530,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-foreground/10" />
 
       <div className="flex flex-col gap-4">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-white/50">GENRES</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">GENRES</span>
         <div className="flex flex-wrap gap-2">
           {MUSIC_GENRES.map(genre => (
             <button
@@ -544,8 +542,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className={cn(
                 'px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all',
                 selectedGenres.includes(genre)
-                  ? 'bg-black text-white border-black'
-                  : 'bg-transparent text-white/60 border-white/20'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40'
               )}
             >
               {genre}
@@ -1019,21 +1017,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <StepIndicators />
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-bold text-white uppercase">
+            <span className="text-[12px] font-bold text-foreground/50 uppercase">
               STEP {String(step + 1).padStart(2, '0')}
             </span>
-            <h2 className="text-[32px] font-bold text-white uppercase leading-none">
+            <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
               {STEPS[step].title}
             </h2>
-            <span className="text-[16px] font-bold text-foreground/30 uppercase">
+            <span className="text-[16px] font-bold text-foreground/40 uppercase">
               {STEPS[step].subtitle}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.3)] border-2 border-white flex items-center justify-center shrink-0"
+            className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
           >
-            <X className="w-6 h-6 text-white" />
+            <X className="w-6 h-6 text-foreground" />
           </button>
         </div>
       </div>

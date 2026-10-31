@@ -548,7 +548,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           type="text"
           value={data.title}
           onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-          className="w-full bg-transparent border-b-2 border-white/30 text-white text-[22px] font-bold placeholder:text-white/30 focus:outline-none focus:border-white transition-colors pb-3"
+          className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[22px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-3"
           placeholder="Rehearsal Title"
         />
       </div>
@@ -560,38 +560,38 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <button
               key={opt.value}
               onClick={() => handleTypeChange(opt.value)}
-              className="w-full flex items-center justify-between py-4 border-b border-white/10 last:border-b-0 transition-all"
+              className="w-full flex items-center justify-between py-4 border-b border-foreground/10 last:border-b-0 transition-all"
             >
               <div className="flex flex-col items-start justify-start gap-3 flex-1 min-w-0">
                 <span className={cn(
                   "px-2.5 py-1 rounded-[6px] text-[12px] font-bold uppercase shrink-0 transition-colors",
-                  isSelected ? "bg-white/30 text-white" : "bg-white/10 text-white/30"
+                  isSelected ? "bg-foreground text-background" : "bg-foreground/10 text-foreground/50"
                 )}>
                   {opt.tag}
                 </span>
                 <span className={cn(
                   "text-[28px] font-bold uppercase leading-none transition-colors truncate",
-                  isSelected ? "text-white" : "text-white/30"
+                  isSelected ? "text-foreground" : "text-foreground/30"
                 )}>
                   {opt.label}
                 </span>
               </div>
               <DotRadio
                 selected={isSelected}
-                activeColor="var(--accent-quote-fg)"
-                inactiveColor="var(--dot-inactive)"
+                activeColor="var(--accent-rehearsal)"
+                inactiveColor="var(--border)"
               />
             </button>
           );
         })}
       </div>
 
-      <div className="h-px bg-white/10" />
+      <div className="h-px bg-foreground/10" />
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[12px] font-bold uppercase text-white/50 tracking-wider">MEMBERS</span>
-          <span className="text-[12px] font-bold text-white/50">
+          <span className="text-[12px] font-bold uppercase text-foreground/50 tracking-wider">MEMBERS</span>
+          <span className="text-[12px] font-bold text-foreground/50">
             {data.audienceIds.length === 0 ? `All (${data.members.length})` : `${data.audienceIds.length}/${data.members.length}`}
           </span>
         </div>
@@ -602,8 +602,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             className={cn(
               "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
               data.audienceIds.length === 0
-                ? "bg-white text-foreground border-white"
-                : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
             )}
           >
             Select All
@@ -613,8 +613,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             className={cn(
               "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
               data.audienceIds.length > 0
-                ? "bg-white text-foreground border-white"
-                : "bg-transparent text-white/60 border-white/20 hover:border-white/40"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
             )}
           >
             Custom
@@ -628,16 +628,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               <button
                 key={m.id}
                 onClick={() => toggleAudienceMember(m.id)}
-                className="flex flex-col items-start justify-start gap-3 p-3 rounded-[10px] transition-all hover:bg-white/5 text-left"
+                className="flex flex-col items-start justify-start gap-3 p-3 rounded-[10px] transition-all hover:bg-foreground/5 text-left"
               >
                 <DotCheckbox
                   checked={isSelected}
-                  activeColor="var(--accent-quote-fg)"
-                  inactiveColor="var(--dot-inactive)"
+                  activeColor="var(--accent-rehearsal)"
+                  inactiveColor="var(--border)"
                 />
                 <div className="min-w-0">
-                  <span className={cn("text-sm font-bold block truncate", isSelected ? "text-white" : "text-white/30")}>{m.name}</span>
-                  <span className="text-[10px] font-bold uppercase text-white/30">{m.role}</span>
+                  <span className={cn("text-sm font-bold block truncate", isSelected ? "text-foreground" : "text-foreground/30")}>{m.name}</span>
+                  <span className="text-[10px] font-bold uppercase text-foreground/40">{m.role}</span>
                 </div>
               </button>
             );
@@ -646,9 +646,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
         {data.members.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Users className="w-8 h-8 text-white/20 mb-2" />
-            <span className="text-sm font-bold text-white/30">No members found</span>
-            <span className="text-xs text-white/20 mt-1">Add members to your band first</span>
+            <Users className="w-8 h-8 text-foreground/20 mb-2" />
+            <span className="text-sm font-bold text-foreground/30">No members found</span>
+            <span className="text-xs text-foreground/20 mt-1">Add members to your band first</span>
           </div>
         )}
       </div>
@@ -664,7 +664,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           type="text"
           value={data.location}
           onChange={e => setData(prev => ({ ...prev, location: e.target.value }))}
-          className="w-full bg-transparent border-b-2 border-white/30 text-white text-[28px] font-bold placeholder:text-white/30 focus:outline-none focus:border-white transition-colors pb-3"
+          className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[28px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-3"
           placeholder="Venue Name"
         />
       </div>
@@ -674,13 +674,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           type="text"
           value={data.address}
           onChange={e => setData(prev => ({ ...prev, address: e.target.value }))}
-          className="w-full bg-transparent border-b-2 border-white/30 text-white text-sm font-bold placeholder:text-white/30 focus:outline-none focus:border-white transition-colors pb-2"
+          className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-sm font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-2"
           placeholder="Street, City, ZIP, Country"
         />
         {data.address && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {data.address.split(',').map((tag, i) => (
-              <span key={i} className="bg-white/20 text-white/70 rounded-[6px] px-2.5 py-1 text-[12px] font-bold uppercase">
+              <span key={i} className="bg-foreground/10 text-foreground/70 rounded-[6px] px-2.5 py-1 text-[12px] font-bold uppercase">
                 {tag.trim()}
               </span>
             ))}
@@ -690,19 +690,19 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[12px] font-bold uppercase text-white tracking-wider">{calMonthName} {calYear}</span>
+          <span className="text-[12px] font-bold uppercase text-foreground tracking-wider">{calMonthName} {calYear}</span>
           <div className="flex gap-2">
-            <button onClick={prevMonth} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+            <button onClick={prevMonth} className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground hover:bg-foreground/20 transition-colors">
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <button onClick={nextMonth} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+            <button onClick={nextMonth} className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground hover:bg-foreground/20 transition-colors">
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-1">
           {['M','T','W','T','F','S','S'].map((d, i) => (
-            <div key={i} className="text-center text-[11px] font-bold text-white/30 py-2">{d}</div>
+            <div key={i} className="text-center text-[11px] font-bold text-foreground/30 py-2">{d}</div>
           ))}
           {calDays.map((day, i) => {
             const isToday = day && calMonth === selectedMonth && calYear === selectedYear && day === selectedDay;
@@ -715,8 +715,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   "h-10 rounded-full text-sm font-bold transition-all",
                   !day && "invisible",
                   isToday
-                    ? "bg-white text-[var(--accent-rehearsal)]"
-                    : day ? "text-white/50 hover:bg-white/10" : ""
+                    ? "bg-foreground text-background"
+                    : day ? "text-foreground/70 hover:bg-foreground/10" : ""
                 )}
               >
                 {day}
@@ -728,21 +728,21 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <span className="text-[12px] font-bold uppercase text-white/30 tracking-wider block mb-2">START TIME</span>
+          <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-2">START TIME</span>
           <input
             type="time"
             value={data.time}
             onChange={e => setData(prev => ({ ...prev, time: e.target.value }))}
-            className="w-full bg-transparent border-b-2 border-white/30 text-white text-[20px] font-bold focus:outline-none focus:border-white transition-colors pb-2 [color-scheme:dark]"
+            className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[20px] font-bold focus:outline-none focus:border-foreground transition-colors pb-2"
           />
         </div>
         <div>
-          <span className="text-[12px] font-bold uppercase text-white/30 tracking-wider block mb-2">END TIME</span>
+          <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-2">END TIME</span>
           <input
             type="time"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
-            className="w-full bg-transparent border-b-2 border-white/30 text-white text-[20px] font-bold focus:outline-none focus:border-white transition-colors pb-2 [color-scheme:dark]"
+            className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[20px] font-bold focus:outline-none focus:border-foreground transition-colors pb-2"
           />
         </div>
       </div>
@@ -1521,30 +1521,30 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   key={i}
                   className={cn(
                     "h-1 rounded-[10px] transition-all duration-300",
-                    i === step ? "w-4 bg-card" : i < step ? "w-3 bg-white/60" : "w-2 bg-white/20"
+                    i === step ? "w-4 bg-foreground" : i < step ? "w-3 bg-foreground/60" : "w-2 bg-foreground/20"
                   )}
                 />
               ))}
             </div>
             <button
               onClick={onClose}
-              className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.3)] border-2 border-white flex items-center justify-center shrink-0"
+              className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5 text-foreground" />
             </button>
           </div>
 
           <div className="mb-4">
-            <span className="text-[12px] font-bold uppercase text-white/50 tracking-wider block mb-1">
+            <span className="text-[12px] font-bold uppercase text-foreground/50 tracking-wider block mb-1">
               STEP {String(step + 1).padStart(2, '0')}
             </span>
-            <span className="text-[12px] font-bold text-white/60 uppercase">
+            <span className="text-[12px] font-bold text-foreground/60 uppercase">
               {isEditing ? 'EDITING REHEARSAL' : 'NEW REHEARSAL'}
             </span>
-            <h2 className="text-[32px] font-bold text-white leading-tight whitespace-pre-line">
+            <h2 className="text-[32px] font-bold text-foreground leading-tight whitespace-pre-line">
               {STEPS[step].title}
             </h2>
-            <p className="text-[16px] font-bold text-white/30 mt-1">
+            <p className="text-[16px] font-bold text-foreground/40 mt-1">
               {isEditing && step === 4 ? 'REVIEW & SAVE' : STEPS[step].subtitle}
             </p>
           </div>

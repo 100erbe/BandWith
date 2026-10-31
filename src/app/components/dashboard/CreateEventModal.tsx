@@ -143,21 +143,21 @@ const CalendarGrid: React.FC<{
     <div>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider block', isDark ? 'text-white/50' : 'text-foreground/50')}>EVENT DATE</span>
-          <span className={cn('text-[22px] font-bold uppercase', isDark ? 'text-white' : 'text-black')}>{monthLabel}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider block text-foreground/50">EVENT DATE</span>
+          <span className="text-[22px] font-bold uppercase text-foreground">{monthLabel}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className={cn('w-8 h-8 rounded-full border-2 flex items-center justify-center', isDark ? 'border-white' : 'border-black')}>
-            <ChevronLeft className={cn('w-4 h-4', isDark ? 'text-white' : 'text-black')} />
+          <button onClick={prevMonth} className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground hover:bg-foreground/10 transition-colors">
+            <ChevronLeft className="w-4 h-4 text-foreground" />
           </button>
-          <button onClick={nextMonth} className={cn('w-8 h-8 rounded-full border-2 flex items-center justify-center', isDark ? 'border-white' : 'border-black')}>
-            <ChevronRight className={cn('w-4 h-4', isDark ? 'text-white' : 'text-black')} />
+          <button onClick={nextMonth} className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground hover:bg-foreground/10 transition-colors">
+            <ChevronRight className="w-4 h-4 text-foreground" />
           </button>
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1">
         {DAYS_OF_WEEK.map((d, i) => (
-          <div key={i} className={cn('text-center text-[10px] font-bold py-1', isDark ? 'text-white/40' : 'text-foreground/40')}>{d}</div>
+          <div key={i} className="text-center text-[10px] font-bold py-1 text-foreground/40">{d}</div>
         ))}
         {cells.map((day, i) => (
           <button
@@ -173,8 +173,8 @@ const CalendarGrid: React.FC<{
               'aspect-square rounded-full flex items-center justify-center text-sm font-bold transition-all',
               !day && 'invisible',
               day && isSelected(day)
-                ? (isDark ? 'bg-white text-black' : 'bg-accent text-accent-foreground')
-                : (isDark ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10')
+                ? 'bg-foreground text-background'
+                : 'text-foreground hover:bg-foreground/10'
             )}
           >
             {day}
@@ -330,19 +330,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 
   const modalBg = 'var(--bg)';
-  const isDarkBg = true;
-  const tc = 'text-white';
-  const tcMuted = 'text-white/60';
-  const tcFaint = 'text-white/30';
-  const tcSub = 'text-white/40';
-  const bcMuted = 'border-white/20';
-  const bcSolid = 'border-white';
-  const bgPill = 'bg-white/10';
-  const pillAccent = 'text-white';
-  const bgPillSelected = 'bg-white text-black';
-  const bgPillUnselected = 'bg-white/10 text-white/50';
+  const isDarkBg = false;
+  const tc = 'text-foreground';
+  const tcMuted = 'text-foreground/60';
+  const tcFaint = 'text-foreground/30';
+  const tcSub = 'text-foreground/40';
+  const bcMuted = 'border-foreground/15';
+  const bcSolid = 'border-foreground/30';
+  const bgPill = 'bg-foreground/10';
+  const pillAccent = 'text-foreground';
+  const bgPillSelected = 'bg-foreground text-background';
+  const bgPillUnselected = 'bg-foreground/10 text-foreground/50';
   const dotActive = activeAccentColor;
-  const dotInactive = 'rgba(255,255,255,0.2)';
+  const dotInactive = 'var(--border)';
 
   const musicianCount = selectedMembers.length;
 
@@ -447,13 +447,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-1 flex-1">
               <div className={cn(
                 'inline-flex self-start px-2.5 py-1 rounded-md text-[12px] font-bold uppercase',
-                isSelected ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white') : (isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-foreground/50')
+                isSelected ? 'bg-foreground text-background' : 'bg-foreground/10 text-foreground/50'
               )}>
                 {value.toUpperCase()}
               </div>
               <span className={cn(
                 'text-[32px] font-bold uppercase leading-tight',
-                isSelected ? tc : tcFaint
+                isSelected ? 'text-foreground' : 'text-foreground/30'
               )}>
                 {label}
               </span>
@@ -496,7 +496,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             autoGenerateTitle(e.target.value, eventType);
           }}
           placeholder="EG. ROSSI"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
         />
       </div>
 
@@ -511,7 +511,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             setTitleManuallyEdited(true);
           }}
           placeholder="EG. WEDDING PARTY"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
         />
       </div>
 
@@ -526,7 +526,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           value={details.venue}
           onChange={(e) => setDetails({ ...details, venue: e.target.value })}
           placeholder="VENUE NAME"
-          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[var(--warning)]/50' : bcMuted, isDarkBg ? 'placeholder:text-white/20 focus:border-white' : 'placeholder:text-foreground/20 focus:border-black')}
+          className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[var(--warning)]/50' : bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
         />
         {/* Address Tags */}
         <div className="flex flex-wrap gap-2">
@@ -535,35 +535,35 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             value={details.address}
             onChange={(e) => setDetails({ ...details, address: e.target.value })}
             placeholder="ADDRESS"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
           />
           <input
             type="text"
             value={details.city}
             onChange={(e) => setDetails({ ...details, city: e.target.value })}
             placeholder="CITY"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
           />
           <input
             type="text"
             value={details.province}
             onChange={(e) => setDetails({ ...details, province: e.target.value })}
             placeholder="PROVINCE"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
           />
           <input
             type="text"
             value={details.zip}
             onChange={(e) => setDetails({ ...details, zip: e.target.value })}
             placeholder="ZIP"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
           />
           <input
             type="text"
             value={details.country}
             onChange={(e) => setDetails({ ...details, country: e.target.value })}
             placeholder="COUNTRY"
-            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, isDarkBg ? 'text-white/60 placeholder:text-white/30 focus:bg-white/20' : 'text-foreground/60 placeholder:text-foreground/30 focus:bg-black/20')}
+            className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
           />
         </div>
       </div>
@@ -590,7 +590,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             type="time"
             value={details.startTime}
             onChange={(e) => setDetails({ ...details, startTime: e.target.value })}
-            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
+            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted, 'focus:border-foreground')}
           />
         </div>
         <div>
@@ -599,7 +599,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             type="time"
             value={details.endTime}
             onChange={(e) => setDetails({ ...details, endTime: e.target.value })}
-            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, isDarkBg ? 'focus:border-white' : 'focus:border-black')}
+            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, 'focus:border-foreground')}
           />
         </div>
       </div>
@@ -610,16 +610,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <div className="flex items-center gap-4 mb-2">
           <button
             onClick={() => setDetails({ ...details, guests: Math.max(0, details.guests - 10) })}
-            className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', isDarkBg ? 'bg-white' : 'bg-black')}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-foreground text-background"
           >
-            <Minus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
+            <Minus className="w-5 h-5 text-background" />
           </button>
           <span className={cn('text-[40px] font-bold leading-none flex-1 text-center', tc)}>{details.guests}</span>
           <button
             onClick={() => setDetails({ ...details, guests: details.guests + 10 })}
-            className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', isDarkBg ? 'bg-white' : 'bg-black')}
+            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-foreground text-background"
           >
-            <Plus className={cn('w-5 h-5', isDarkBg ? 'text-black' : 'text-white')} />
+            <Plus className="w-5 h-5 text-background" />
           </button>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
@@ -701,7 +701,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
                   selectedCount === preset.count
                     ? bgPillSelected + ' border-current'
-                    : (isDarkBg ? 'bg-transparent text-white/50 border-white/20' : 'bg-transparent text-foreground/50 border-black/20')
+                    : 'bg-transparent text-foreground/50 border-foreground/20'
                 )}
               >
                 {preset.label}
@@ -719,7 +719,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </div>
 
           {totalAvailable === 0 ? (
-            <div className={cn('text-center py-8 px-4 rounded-[12px] border-2 border-dashed bg-black/5', bcMuted)}>
+            <div className={cn('text-center py-8 px-4 rounded-[12px] border-2 border-dashed bg-foreground/5', bcMuted)}>
               <span className={cn('text-[11px] font-bold block mb-0.5', tcMuted)}>LOADING MEMBERS...</span>
             </div>
           ) : (
@@ -733,18 +733,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 return (
                   <div
                     key={member.id}
-                    className={cn(
-                      'flex items-start justify-between py-3 border-b last:border-0',
-                      isDarkBg ? 'border-white/10' : 'border-black/10'
-                    )}
+                    className="flex items-start justify-between py-3 border-b last:border-0 border-foreground/10"
                   >
                     <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn(
                           'px-2 py-0.5 text-[10px] font-bold uppercase rounded',
                           isSelected
-                            ? (isDarkBg ? 'bg-white text-black' : 'bg-black text-white')
-                            : (isDarkBg ? 'bg-white/10 text-white/40' : 'bg-black/10 text-foreground/40')
+                            ? 'bg-foreground text-background'
+                            : 'bg-foreground/10 text-foreground/50'
                         )}>
                           {isCurrentUser ? 'YOU / ' + member.role : member.role}
                         </span>
@@ -754,7 +751,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       </div>
                       <span className={cn(
                         'text-[20px] font-bold uppercase transition-opacity',
-                        isSelected ? tc : (isDarkBg ? 'text-white/30' : 'text-foreground/30')
+                        isSelected ? tc : 'text-foreground/30'
                       )}>
                         {member.name}
                       </span>
@@ -817,7 +814,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         {/* Fee Summary */}
         {isAdmin && (
-          <div className={cn('flex flex-col gap-4 pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+          <div className="flex flex-col gap-4 pt-4 border-t border-foreground/10">
             {totalPayout > 0 && (
               <div className="flex items-center justify-between">
                 <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
@@ -834,13 +831,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   value={extraBandFee}
                   onChange={(e) => setExtraBandFee(e.target.value)}
                   placeholder="0"
-                  className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full', tc, isDarkBg ? 'placeholder:text-white/20' : 'placeholder:text-foreground/20')}
+                  className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full placeholder:text-foreground/30', tc)}
                 />
               </div>
             </div>
 
             {/* Summary bar: selected count + total */}
-            <div className={cn('flex items-center justify-between py-3 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+            <div className="flex items-center justify-between py-3 border-t border-foreground/10">
               <div className="flex flex-col">
                 <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>TEAM SUMMARY</span>
                 <span className={cn('text-[14px] font-bold', tcFaint)}>
@@ -855,7 +852,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         )}
 
         {/* Duration */}
-        <div className={cn('pt-4 border-t', isDarkBg ? 'border-white/10' : 'border-black/10')}>
+        <div className="pt-4 border-t border-foreground/10">
           <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>DURATION</span>
           <select
             value={details.duration}
@@ -881,9 +878,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const songCount = setlist.reduce((acc: number, s: any) => acc + ((s.songs || []).length), 0);
     const eventYear = selectedDate.getFullYear();
     const eventMonthDay = selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
-    const borderColor = isDarkBg ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
-    const subtitleColor = isDarkBg ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
-    const textColor = isDarkBg ? 'white' : 'black';
+    const borderColor = 'var(--border)';
+    const subtitleColor = 'var(--muted-fg)';
+    const textColor = 'var(--fg)';
 
     const isQuote = modalCategory === 'quote';
 
@@ -893,24 +890,24 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           {/* Header */}
           <div className="flex flex-col gap-[8px]">
             <div className="flex gap-[4px] flex-wrap">
-              <div className="rounded-[6px] px-[10px] py-[4px] bg-white/20">
-                <span className="text-[12px] font-bold text-white uppercase">QUOTE</span>
+              <div className="rounded-[6px] px-[10px] py-[4px] bg-foreground/10">
+                <span className="text-[12px] font-bold text-foreground uppercase">QUOTE</span>
               </div>
             </div>
-            <h2 className="text-[32px] font-bold text-white uppercase leading-none">{details.title || 'UNTITLED'}</h2>
-            <span className="text-[14px] font-medium text-white/50 uppercase">{dateStr}</span>
+            <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">{details.title || 'UNTITLED'}</h2>
+            <span className="text-[14px] font-medium text-foreground/50 uppercase">{dateStr}</span>
           </div>
 
           {/* Year + Date */}
           <div className="flex gap-[20px]">
             <div className="flex-1 flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('year')}>
-                <span className="text-[12px] font-bold uppercase text-white">YEAR</span>
+                <span className="text-[12px] font-bold uppercase text-foreground">YEAR</span>
                 <motion.div animate={{ rotate: expandedSection === 'year' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                 </motion.div>
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{eventYear}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{eventYear}</span>
               <AnimatePresence>
                 {expandedSection === 'year' && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
@@ -932,12 +929,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
             <div className="flex-1 flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('date')}>
-                <span className="text-[12px] font-bold uppercase text-white">DATE</span>
+                <span className="text-[12px] font-bold uppercase text-foreground">DATE</span>
                 <motion.div animate={{ rotate: expandedSection === 'date' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                 </motion.div>
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{eventMonthDay}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{eventMonthDay}</span>
               <AnimatePresence>
                 {expandedSection === 'date' && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
@@ -962,16 +959,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('client')}>
-                  <span className="text-[12px] font-bold uppercase text-white">CLIENT</span>
+                  <span className="text-[12px] font-bold uppercase text-foreground">CLIENT</span>
                   <motion.div animate={{ rotate: expandedSection === 'client' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                    <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                   </motion.div>
                 </button>
-                <span className="text-[42px] font-bold leading-none text-white">
+                <span className="text-[42px] font-bold leading-none text-foreground">
                   {(details.clientName || details.title || '—').split(' ')[0]?.toUpperCase()}
                 </span>
                 {(details.clientName || details.title || '').split(' ').length > 1 && (
-                  <span className="text-[22px] font-bold leading-none text-white">
+                  <span className="text-[22px] font-bold leading-none text-foreground">
                     {(details.clientName || details.title || '').split(' ').slice(1).join(' ')?.toUpperCase()}
                   </span>
                 )}
@@ -1001,12 +998,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-[8px]">
               <div className="flex flex-col">
                 <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('pricing')}>
-                  <span className="text-[12px] font-bold uppercase text-white">PRICING</span>
+                  <span className="text-[12px] font-bold uppercase text-foreground">PRICING</span>
                   <motion.div animate={{ rotate: expandedSection === 'pricing' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                    <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                   </motion.div>
                 </button>
-                <span className="text-[42px] font-bold leading-none text-white">
+                <span className="text-[42px] font-bold leading-none text-foreground">
                   €{grandTotalFee || details.pay || '0'}
                 </span>
               </div>
@@ -1033,10 +1030,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="flex flex-col gap-[20px]">
             <div className="flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => setSongsView(true)}>
-                <span className="text-[12px] font-bold uppercase text-white">SONGS</span>
-                <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                <span className="text-[12px] font-bold uppercase text-foreground">SONGS</span>
+                <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{songCount}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{songCount}</span>
             </div>
           </div>
 
@@ -1044,12 +1041,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="flex flex-col gap-[20px]">
             <div className="flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('tasks')}>
-                <span className="text-[12px] font-bold uppercase text-white">TASKS</span>
+                <span className="text-[12px] font-bold uppercase text-foreground">TASKS</span>
                 <motion.div animate={{ rotate: expandedSection === 'tasks' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                 </motion.div>
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{tasks.length}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{tasks.length}</span>
             </div>
             <AnimatePresence>
               {expandedSection === 'tasks' && (
@@ -1057,7 +1054,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   <div className="pt-[12px] flex flex-col gap-[8px]">
                     {taskTemplates.length > 0 && tasks.length === 0 && (
                       <div className="mb-3">
-                        <span className="text-[10px] font-bold uppercase block mb-1.5 text-white/40">LOAD FROM TEMPLATE</span>
+                        <span className="text-[10px] font-bold uppercase block mb-1.5 text-foreground/40">LOAD FROM TEMPLATE</span>
                         <div className="flex flex-wrap gap-1.5">
                           {taskTemplates.map(tpl => (
                             <button
@@ -1071,11 +1068,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 }));
                                 setTasks(loaded);
                               }}
-                              className="px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all bg-white/15 text-white hover:bg-white/25"
+                              className="px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all bg-foreground/10 text-foreground hover:bg-foreground/15"
                             >
-                              <Folder className="w-3 h-3 text-white/40" />
+                              <Folder className="w-3 h-3 text-foreground/40" />
                               {tpl.name}
-                              <span className="text-white/30">{tpl.tasks.length}</span>
+                              <span className="text-foreground/30">{tpl.tasks.length}</span>
                             </button>
                           ))}
                         </div>
@@ -1092,16 +1089,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             setTasks(newTasks);
                           }}
                           placeholder="Task description..."
-                          className="flex-1 bg-transparent border-b-2 border-white/10 py-1 text-sm font-bold text-white focus:outline-none focus:border-white placeholder:text-white/20 transition-all"
+                          className="flex-1 bg-transparent border-b-2 border-foreground/15 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-foreground placeholder:text-foreground/30 transition-all"
                         />
-                        <button onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))} className="text-white/20 hover:text-red-500 transition-colors">
+                        <button onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))} className="text-foreground/30 hover:text-red-500 transition-colors">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
                     <button
                       onClick={() => setTasks([...tasks, { uid: `t-${Date.now()}`, title: '', completed: false }])}
-                      className="text-[12px] font-bold uppercase flex items-center gap-1 text-white/50 hover:text-white transition-colors mt-1"
+                      className="text-[12px] font-bold uppercase flex items-center gap-1 text-foreground/50 hover:text-foreground transition-colors mt-1"
                     >
                       <Plus className="w-3 h-3" /> Add task
                     </button>
@@ -1115,12 +1112,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="flex flex-col gap-[20px]">
             <div className="flex flex-col">
               <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('members')}>
-                <span className="text-[12px] font-bold uppercase text-white">MEMBERS</span>
+                <span className="text-[12px] font-bold uppercase text-foreground">MEMBERS</span>
                 <motion.div animate={{ rotate: expandedSection === 'members' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                  <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                  <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                 </motion.div>
               </button>
-              <span className="text-[42px] font-bold leading-none text-white">{selectedMembers.length}</span>
+              <span className="text-[42px] font-bold leading-none text-foreground">{selectedMembers.length}</span>
             </div>
             <AnimatePresence>
               {expandedSection === 'members' && (
@@ -1151,9 +1148,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <div className="flex flex-col gap-[20px]">
               <div className="flex flex-col">
                 <button className="flex items-center gap-[6px] bg-transparent border-none p-0 m-0 cursor-pointer" onClick={() => toggleSection('notes')}>
-                  <span className="text-[12px] font-bold uppercase text-white">NOTES</span>
+                  <span className="text-[12px] font-bold uppercase text-foreground">NOTES</span>
                   <motion.div animate={{ rotate: expandedSection === 'notes' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-                    <ArrowUpRight className="w-[14px] h-[14px] text-white" />
+                    <ArrowUpRight className="w-[14px] h-[14px] text-foreground" />
                   </motion.div>
                 </button>
               </div>
@@ -1166,7 +1163,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Any notes for the band..."
                         rows={3}
-                        className="w-full bg-transparent border-b-2 border-white/10 py-2 text-sm font-medium text-white focus:outline-none focus:border-white placeholder:text-white/20 transition-all resize-none"
+                        className="w-full bg-transparent border-b-2 border-foreground/15 py-2 text-sm font-medium text-foreground focus:outline-none focus:border-foreground placeholder:text-foreground/30 transition-all resize-none"
                       />
                     </div>
                   </motion.div>
@@ -1192,7 +1189,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             {currentUserMember && (
-              <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground text-background">
                 {currentUserMember.role}
               </span>
             )}
@@ -1213,7 +1210,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 className="w-full flex items-start justify-between text-left group"
               >
                 <div className="flex flex-col gap-1">
-                  <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white text-black' : 'bg-black text-white')}>
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start bg-foreground text-background">
                     {tag}
                   </span>
                   <span className={cn('text-[40px] font-bold leading-none', tc)}>{value}</span>
@@ -1237,7 +1234,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           type="number"
                           value={details.duration}
                           onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 focus:border-white' : 'border-black/10 focus:border-black')}
+                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none transition-all border-foreground/15 focus:border-foreground', tc)}
                         />
                         <span className={cn('text-[10px] font-bold', tcFaint)}>minutes</span>
                       </div>
@@ -1247,7 +1244,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                           type="number"
                           value={1}
                           readOnly
-                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none', tc, isDarkBg ? 'border-white/10' : 'border-black/10')}
+                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none border-foreground/15', tc)}
                         />
                       </div>
                     </div>
@@ -1279,7 +1276,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                   }));
                                   setTasks(loaded);
                                 }}
-                                className={cn('px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all', isDarkBg ? 'bg-white/15 text-white hover:bg-white/25' : 'bg-white text-black hover:bg-white/80')}
+                                className="px-3 py-1.5 rounded-[10px] text-[11px] font-bold flex items-center gap-1.5 transition-all bg-foreground/10 text-foreground hover:bg-foreground/15"
                               >
                                 <Folder className={cn('w-3 h-3', tcSub)} />
                                 {tpl.name}
@@ -1301,11 +1298,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                               setTasks(newTasks);
                             }}
                             placeholder="Task description..."
-                            className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-foreground/20 focus:border-black')}
+                            className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all border-foreground/15 placeholder:text-foreground/30 focus:border-foreground', tc)}
                           />
                           <button
                             onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))}
-                            className={cn(isDarkBg ? 'text-white/20' : 'text-foreground/20', 'hover:text-red-500 transition-colors')}
+                            className="text-foreground/30 hover:text-red-500 transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -1313,7 +1310,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       ))}
                       <button
                         onClick={() => setTasks([...tasks, { uid: `t-${Date.now()}`, title: '', completed: false }])}
-                        className={cn('text-[12px] font-bold uppercase flex items-center gap-1 transition-colors mt-1', tcMuted, isDarkBg ? 'hover:text-white' : 'hover:text-black')}
+                        className={cn('text-[12px] font-bold uppercase flex items-center gap-1 transition-colors mt-1', tcMuted, 'hover:text-foreground')}
                       >
                         <Plus className="w-3 h-3" /> Add task
                       </button>
@@ -1335,7 +1332,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Any notes for the band..."
                         rows={3}
-                        className={cn('w-full bg-transparent border-b-2 py-2 text-sm font-medium focus:outline-none transition-all resize-none', tc, isDarkBg ? 'border-white/10 placeholder:text-white/20 focus:border-white' : 'border-black/10 placeholder:text-foreground/20 focus:border-black')}
+                        className={cn('w-full bg-transparent border-b-2 py-2 text-sm font-medium focus:outline-none transition-all resize-none border-foreground/15 placeholder:text-foreground/30 focus:border-foreground', tc)}
                       />
                     </div>
                   </motion.div>
@@ -1497,11 +1494,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <WizardAccentRail color={activeAccentColor} />
       {/* Songs Header */}
       <div className="px-4 pt-4 pb-4 flex items-center justify-between shrink-0">
-        <button onClick={() => setSongsView(false)} className={cn('w-10 h-10 rounded-full border-2 flex items-center justify-center', bcSolid)}>
+        <button onClick={() => setSongsView(false)} className={cn('w-10 h-10 rounded-full border flex items-center justify-center', bcSolid)}>
           <ArrowLeft className={cn('w-5 h-5', tc)} />
         </button>
         <span className={cn('text-[20px] font-bold uppercase', tc)}>SONGS</span>
-        <button onClick={onClose} className={cn('w-[50px] h-[50px] rounded-full border-2 bg-[rgba(216,216,216,0.3)] flex items-center justify-center', bcSolid)}>
+        <button onClick={onClose} className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors">
           <X className={cn('w-6 h-6', tc)} />
         </button>
       </div>
@@ -1516,12 +1513,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <button
                   key={sl.id}
                   onClick={() => loadSavedSetlist(sl)}
-                  className="px-3 py-2 rounded-[10px] bg-white flex items-center gap-2 hover:bg-white/80 transition-all"
+                  className="px-3 py-2 rounded-[10px] bg-foreground/10 hover:bg-foreground/15 text-foreground flex items-center gap-2 transition-all"
                 >
                   <Folder className="w-3.5 h-3.5 text-foreground/50" />
-                  <span className="text-[12px] font-bold text-black">{sl.name}</span>
+                  <span className="text-[12px] font-bold text-foreground">{sl.name}</span>
                   {sl.song_count != null && (
-                    <span className="text-[10px] font-bold text-foreground/30">{sl.song_count} songs</span>
+                    <span className="text-[10px] font-bold text-foreground/40">{sl.song_count} songs</span>
                   )}
                 </button>
               ))}
@@ -1531,14 +1528,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         <div className="flex items-start justify-between mb-6">
           <div className="flex flex-col gap-1">
-            <span className={cn('px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start', isDarkBg ? 'bg-white/20 text-white/50' : 'bg-black/30 text-foreground/50')}>
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded inline-flex self-start bg-foreground text-background">
               {setlist.length} {setlist.length === 1 ? 'SET' : 'SETS'}
             </span>
             <span className={cn('text-[28px] font-bold uppercase', tc)}>SETLIST BUILDER</span>
           </div>
           <button
             onClick={addSet}
-            className={cn('w-10 h-10 rounded-full border-2 flex items-center justify-center mt-2 transition-colors', bcSolid, tc, isDarkBg ? 'hover:bg-white hover:text-black' : `hover:bg-black hover:${pillAccent}`)}
+            className="w-10 h-10 rounded-full border border-foreground/30 flex items-center justify-center mt-2 transition-colors text-foreground hover:bg-foreground/10"
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -1656,19 +1653,19 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-5 shrink-0">
+      <div className="px-4 py-5 shrink-0 border-t border-foreground/10 bg-background/95">
         <div className="grid grid-cols-2 gap-2.5">
           <button
             onClick={() => setSongsView(false)}
-            className="py-4 bg-white rounded-[10px] flex items-center justify-center gap-2"
+            className="py-4 bg-foreground/10 hover:bg-foreground/15 text-foreground rounded-[10px] flex items-center justify-center gap-2 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-black" />
-            <span className="text-[16px] font-bold text-black">BACK</span>
+            <ArrowLeft className="w-4 h-4 text-foreground" />
+            <span className="text-[16px] font-bold text-foreground">BACK</span>
           </button>
           <button
             onClick={handleSongsViewDone}
             style={{ backgroundColor: activeAccentColor }}
-            className="py-4 text-black rounded-[10px] flex items-center justify-center gap-2 font-bold"
+            className="py-4 text-black rounded-[10px] flex items-center justify-center gap-2 font-bold hover:opacity-95 transition-opacity"
           >
             <span className="text-[16px] font-bold text-black">DONE</span>
             <ArrowRight className="w-4 h-4 text-black" />
@@ -1770,7 +1767,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className={cn('w-[50px] h-[50px] rounded-full border-2 bg-[rgba(216,216,216,0.3)] flex items-center justify-center shrink-0', bcSolid)}
+              className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
             >
               <X className={cn('w-6 h-6', tc)} />
             </button>
@@ -1791,23 +1788,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-5 shrink-0 border-t border-white/10 bg-background/95 backdrop-blur-md">
+        <div className="px-4 py-5 shrink-0 border-t border-foreground/10 bg-background/95 backdrop-blur-md">
           <div className="grid grid-cols-2 gap-2.5">
             {isFirstStep ? (
               <button
                 onClick={onClose}
-                className="py-4 bg-white/10 hover:bg-white/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
+                className="py-4 bg-foreground/10 hover:bg-foreground/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
-                <X className="w-4 h-4 text-white" />
-                <span className="text-[16px] font-bold text-white">CANCEL</span>
+                <X className="w-4 h-4 text-foreground" />
+                <span className="text-[16px] font-bold text-foreground">CANCEL</span>
               </button>
             ) : (
               <button
                 onClick={handleBack}
-                className="py-4 bg-white/10 hover:bg-white/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
+                className="py-4 bg-foreground/10 hover:bg-foreground/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4 text-white" />
-                <span className="text-[16px] font-bold text-white">BACK</span>
+                <ArrowLeft className="w-4 h-4 text-foreground" />
+                <span className="text-[16px] font-bold text-foreground">BACK</span>
               </button>
             )}
             <button
@@ -1819,8 +1816,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               className={cn(
                 'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
                 canProceed
-                  ? 'text-black shadow-lg shadow-black/30 hover:opacity-95'
-                  : 'bg-white/10 text-white/30 cursor-not-allowed'
+                  ? 'text-black shadow-lg shadow-black/20 hover:opacity-95'
+                  : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
               )}
             >
               <span>{rightButtonLabel}</span>
