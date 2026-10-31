@@ -29,7 +29,7 @@ import {
   getSetlists, getSetlist, createSetlist, updateSetlist, deleteSetlist,
   replaceSetlistSongs, seedRepertoireSongs
 } from '@/lib/services/songs';
-import type { Song, Setlist, SetlistWithSongs } from '@/lib/services/songs';
+import type { Song, Setlist } from '@/lib/services/songs';
 import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
 
 interface SetlistManagerViewProps {
@@ -58,7 +58,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     duration: ''
   });
   
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [, setEditingSong] = useState<Song | null>(null);
   const [newSetlistName, setNewSetlistName] = useState('');
 
   // Setlist editor state
@@ -93,33 +93,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setLoading(false);
   };
 
-  const handleAddSong = async () => {
-    if (!selectedBand?.id || !newSong.title) return;
-    
-    const { data } = await createSong({
-      band_id: selectedBand.id,
-      title: newSong.title,
-      artist: newSong.artist || undefined,
-      bpm: newSong.bpm ? parseInt(newSong.bpm) : undefined,
-      key: newSong.key || undefined,
-      duration_seconds: newSong.duration ? parseInt(newSong.duration) * 60 : undefined,
-      status: 'ready',
-      priority: 'medium'
-    });
-
-    if (data) {
-      setSongs(prev => [data, ...prev]);
-      setNewSong({ title: '', artist: '', bpm: '', key: '', duration: '' });
-      setShowAddSong(false);
-    }
-  };
-
   const handleAddSetlist = async () => {
-    if (!selectedBand?.id || !newSetlistName) return;
+    if (!selectedBand?.id || !newSetlistName.trim()) return;
     
     const { data } = await createSetlist({
       band_id: selectedBand.id,
-      name: newSetlistName,
+      name: newSetlistName.trim(),
       is_template: false
     });
 
@@ -327,46 +306,65 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
 
   return (
     <motion.div
-      initial={{ x: "100%" }}
+      initial={{ x: '100%' }}
       animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-      className="fixed inset-0 z-[70] bg-background overflow-y-auto"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
+      style={{
+        overscrollBehaviorX: 'none',
+        touchAction: 'pan-y',
+      }}
     >
-      {/* Header */}
-      <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1">Music</p>
-            <h1 className="text-4xl font-black text-black tracking-tight uppercase">REPERTOIRE</h1>
-            <p className="text-sm text-foreground/50 font-bold tracking-tight mt-1">{selectedBand?.name}</p>
-          </div>
+      {/* ═══ STICKY HEADER ═══ */}
+      <div
+        className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          paddingBottom: '14px',
+        }}
+      >
+        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true)}
-              className="w-12 h-12 rounded-full bg-accent flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <Plus className="w-5 h-5 text-black" />
-            </button>
             <button
               onClick={onClose}
-              className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center transition-all"
+              aria-label="Go back"
+              className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
             >
-              <X className="w-6 h-6 text-foreground/50" />
+              <ArrowLeft className="w-5 h-5 text-foreground" />
             </button>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                MUSIC & REPERTOIRE
+              </span>
+              <h1 className="text-[22px] font-black uppercase text-foreground leading-none">
+                SETLISTS & SONGS
+              </h1>
+            </div>
           </div>
-        </div>
 
+          <button
+            type="button"
+            onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
+            className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs active:scale-95 transition-all shrink-0"
+            aria-label="Add item"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ MAIN CONTENT ═══ */}
+      <div className="p-4 flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full pb-32">
         {/* View Toggle */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2">
           <button
             onClick={() => setViewMode('songs')}
             className={cn(
-              "flex-1 py-3 rounded-full font-bold text-sm transition-all flex items-center justify-center gap-2",
+              'flex-1 py-2.5 rounded-[10px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border',
               viewMode === 'songs'
-                ? "bg-black text-white"
-                : "bg-white/60 text-foreground/50 hover:bg-white"
+                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
             )}
           >
             <Music2 className="w-4 h-4" />
@@ -375,10 +373,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           <button
             onClick={() => setViewMode('setlists')}
             className={cn(
-              "flex-1 py-3 rounded-full font-bold text-sm transition-all flex items-center justify-center gap-2",
+              'flex-1 py-2.5 rounded-[10px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border',
               viewMode === 'setlists'
-                ? "bg-black text-white"
-                : "bg-white/60 text-foreground/50 hover:bg-white"
+                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
             )}
           >
             <ListMusic className="w-4 h-4" />
@@ -387,183 +385,200 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
         </div>
 
         {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30" />
+        <div className="relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={viewMode === 'songs' ? "Search songs..." : "Search setlists..."}
-            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white text-sm font-medium text-black placeholder:text-foreground/30 border border-black/5 focus:outline-none focus:border-black/20 transition-colors"
+            placeholder={viewMode === 'songs' ? 'Search songs by title or artist...' : 'Search setlists...'}
+            className="w-full px-4 py-2.5 pl-10 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
           />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-4 pb-32">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
+            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
           </div>
         ) : (
           <>
-            {/* Hero Card */}
+            {/* Stats Card */}
             {(songs.length > 0 || setlists.length > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mb-6 p-6 bg-gradient-to-br from-[var(--surface-inverse)] to-[var(--surface-inverse)] rounded-[2rem] relative overflow-hidden shadow-xl"
+                className="bg-card rounded-[16px] p-5 border border-foreground/10 shadow-xs flex flex-col gap-4"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-2xl" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl" />
-                
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <span className="text-accent text-[10px] font-bold uppercase tracking-widest block mb-1">Repertoire</span>
-                      <div className="flex items-baseline gap-3">
-                        <h3 className="text-4xl font-black text-white tracking-tighter">{stats.totalSongs}</h3>
-                        <span className="text-stone-500 text-lg font-medium">songs</span>
-                      </div>
-                    </div>
-                    <div className="w-14 h-14 bg-gradient-to-br from-accent to-accent rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(106,13,173,0.3)]">
-                      <Disc3 className="w-7 h-7 text-foreground" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
+                      BAND REPERTOIRE
+                    </span>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <span className="text-3xl font-black text-foreground">{stats.totalSongs}</span>
+                      <span className="text-xs font-semibold text-foreground/50">total songs</span>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3 mb-5">
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Timer className="w-4 h-4 text-accent" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Duration</span>
-                      </div>
-                      <span className="text-xl font-black text-white">{stats.totalDuration || '0m'}</span>
-                    </motion.div>
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.25 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <ListMusic className="w-4 h-4 text-purple-400" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase">Setlists</span>
-                      </div>
-                      <span className="text-xl font-black text-white">{stats.totalSetlists}</span>
-                    </motion.div>
-                    {stats.avgBpm && (
-                      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.3 }} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Zap className="w-4 h-4 text-amber-400" />
-                          <span className="text-[10px] font-bold text-stone-500 uppercase">Avg BPM</span>
-                        </div>
-                        <span className="text-xl font-black text-white">{stats.avgBpm}</span>
-                      </motion.div>
-                    )}
+                  <div className="w-10 h-10 rounded-[10px] bg-foreground/5 flex items-center justify-center text-foreground/70">
+                    <Disc3 className="w-5 h-5 text-primary" />
                   </div>
-
-                  {stats.totalSongs > 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                      <div className="flex items-center justify-between text-[10px] font-bold text-stone-500 mb-2">
-                        <span>SONG STATUS</span>
-                        <span>{stats.ready} of {stats.totalSongs} ready</span>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden flex">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.ready / stats.totalSongs) * 100}%` }} transition={{ delay: 0.4, duration: 0.5 }} className="bg-green-500 h-full" />
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.learning / stats.totalSongs) * 100}%` }} transition={{ delay: 0.5, duration: 0.5 }} className="bg-yellow-500 h-full" />
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${(stats.suggested / stats.totalSongs) * 100}%` }} transition={{ delay: 0.6, duration: 0.5 }} className="bg-stone-500 h-full" />
-                      </div>
-                      <div className="flex items-center gap-4 mt-2 text-[10px] font-bold">
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> Ready</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500" /> Learning</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-stone-500" /> Suggested</span>
-                      </div>
-                    </motion.div>
-                  )}
                 </div>
+
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Timer className="w-3.5 h-3.5 text-foreground/50" />
+                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Duration</span>
+                    </div>
+                    <span className="text-base font-bold text-foreground">{stats.totalDuration || '0m'}</span>
+                  </div>
+
+                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <ListMusic className="w-3.5 h-3.5 text-foreground/50" />
+                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Setlists</span>
+                    </div>
+                    <span className="text-base font-bold text-foreground">{stats.totalSetlists}</span>
+                  </div>
+
+                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Zap className="w-3.5 h-3.5 text-foreground/50" />
+                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Avg BPM</span>
+                    </div>
+                    <span className="text-base font-bold text-foreground">{stats.avgBpm || '-'}</span>
+                  </div>
+                </div>
+
+                {stats.totalSongs > 0 && (
+                  <div className="pt-2 border-t border-foreground/10">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-foreground/50 mb-2">
+                      <span>STATUS READINESS</span>
+                      <span>{stats.ready} of {stats.totalSongs} ready</span>
+                    </div>
+                    <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden flex">
+                      <div style={{ width: `${(stats.ready / stats.totalSongs) * 100}%` }} className="bg-green-500 h-full" />
+                      <div style={{ width: `${(stats.learning / stats.totalSongs) * 100}%` }} className="bg-amber-500 h-full" />
+                      <div style={{ width: `${(stats.suggested / stats.totalSongs) * 100}%` }} className="bg-foreground/30 h-full" />
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-[10px] font-semibold text-foreground/60">
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /> Ready ({stats.ready})</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Learning ({stats.learning})</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground/30" /> Suggested ({stats.suggested})</span>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
+            {/* List Section */}
             {viewMode === 'songs' ? (
               filteredSongs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-foreground/40">
-                  <Music2 className="w-16 h-16 mb-4" />
-                  <p className="font-bold text-lg mb-2">No songs yet</p>
-                  <p className="text-sm text-center">Add songs to build your repertoire</p>
-                  <div className="flex flex-col items-center gap-3 mt-6">
+                <div className="flex flex-col items-center justify-center py-16 text-foreground/40 text-center">
+                  <Music2 className="w-12 h-12 mb-3 text-foreground/20" />
+                  <p className="font-bold text-base text-foreground mb-1">No songs in library</p>
+                  <p className="text-xs text-foreground/50 max-w-xs">Add your first song or load the curated repertoire to build your catalog.</p>
+                  <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
                     <button 
                       onClick={() => setShowAddSong(true)}
-                      className="px-6 py-3 bg-black text-white rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                      className="px-4 py-2.5 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider shadow-xs hover:opacity-95 transition-opacity"
                     >
                       Add First Song
                     </button>
                     <button
                       onClick={handleSeedRepertoire}
                       disabled={seeding}
-                      className="px-6 py-3 bg-accent text-accent-foreground rounded-full font-bold text-sm hover:scale-105 transition-transform disabled:opacity-50"
+                      className="px-4 py-2.5 bg-foreground/10 hover:bg-foreground/15 text-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50"
                     >
                       {seeding ? (
-                        <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading songs...</span>
+                        <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
                       ) : (
-                        'Load 700+ Repertoire Songs'
+                        'Load 700+ Songs'
                       )}
                     </button>
                   </div>
                 </div>
               ) : (
-                <>
-                  <h4 className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest mb-3 px-1">All Songs</h4>
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                      ALL SONGS ({filteredSongs.length})
+                    </span>
+                  </div>
                   <div className="space-y-2">
                     {filteredSongs.map((song, i) => (
                       <motion.div
                         key={song.id}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.03 }}
-                        className="bg-white rounded-xl p-4 border border-black/5 shadow-sm flex items-center gap-4 relative"
+                        transition={{ delay: Math.min(i * 0.02, 0.3) }}
+                        className="bg-card rounded-[14px] p-3.5 border border-foreground/10 shadow-xs flex items-center gap-3 relative hover:border-foreground/20 transition-all"
                       >
-                        <div className="text-foreground/20 cursor-grab">
-                          <GripVertical className="w-5 h-5" />
+                        <div className="text-foreground/30 cursor-grab shrink-0">
+                          <GripVertical className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-black truncate">{song.title}</h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            {song.artist && <span className="text-xs text-foreground/50 truncate">{song.artist}</span>}
-                            {song.bpm && <span className="text-xs text-foreground/40">{song.bpm} BPM</span>}
-                            {song.key && <span className="text-xs bg-black/5 px-1.5 py-0.5 rounded font-medium">{song.key}</span>}
+                          <h3 className="font-bold text-sm text-foreground truncate">{song.title}</h3>
+                          <div className="flex items-center gap-2.5 mt-0.5">
+                            {song.artist && <span className="text-xs text-foreground/60 truncate">{song.artist}</span>}
+                            {song.bpm && <span className="text-[11px] text-foreground/40 font-medium">{song.bpm} BPM</span>}
+                            {song.key && (
+                              <span className="text-[10px] bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-[4px] font-semibold">
+                                {song.key}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-foreground/40">
-                          <Clock className="w-4 h-4" />
+
+                        <div className="flex items-center gap-1 text-foreground/40 shrink-0">
+                          <Clock className="w-3.5 h-3.5" />
                           <span className="text-xs font-medium">{formatDuration(song.duration_seconds)}</span>
                         </div>
+
                         <span className={cn(
-                          "text-[10px] font-bold uppercase px-2 py-1 rounded-full",
-                          song.status === 'ready' ? "bg-green-100 text-green-600" :
-                          song.status === 'learning' ? "bg-yellow-100 text-yellow-600" :
-                          "bg-black/5 text-foreground/50"
+                          'text-[9px] font-bold uppercase px-2 py-0.5 rounded-[6px] shrink-0 border',
+                          song.status === 'ready'
+                            ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
+                            : song.status === 'learning'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            : 'bg-foreground/5 text-foreground/50 border-foreground/10'
                         )}>
                           {song.status}
                         </span>
-                        <div className="relative">
+
+                        <div className="relative shrink-0">
                           <button 
                             onClick={() => setActionMenuId(actionMenuId === song.id ? null : song.id)}
-                            className="w-8 h-8 rounded-full hover:bg-black/5 flex items-center justify-center transition-colors"
+                            aria-label="Actions"
+                            className="w-8 h-8 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors"
                           >
-                            <MoreHorizontal className="w-5 h-5 text-foreground/40" />
+                            <MoreHorizontal className="w-4 h-4 text-foreground/50" />
                           </button>
                           <AnimatePresence>
                             {actionMenuId === song.id && (
                               <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="absolute right-0 top-10 bg-white rounded-xl shadow-xl border border-black/10 overflow-hidden z-20 min-w-[140px]"
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="absolute right-0 top-9 bg-card rounded-[12px] shadow-lg border border-foreground/15 p-1 z-20 min-w-[140px]"
                               >
-                                <button onClick={() => handlePlaySong(song)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-black/5 text-left text-sm font-medium">
-                                  <Play className="w-4 h-4 text-foreground/40" /> Play
+                                <button
+                                  onClick={() => handlePlaySong(song)}
+                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
+                                >
+                                  <Play className="w-3.5 h-3.5 text-foreground/60" /> Play
                                 </button>
-                                <button onClick={() => handleEditSong(song)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-black/5 text-left text-sm font-medium">
-                                  <Edit3 className="w-4 h-4 text-foreground/40" /> Edit
+                                <button
+                                  onClick={() => handleEditSong(song)}
+                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-foreground/60" /> Edit
                                 </button>
-                                <button onClick={() => handleDeleteSong(song.id)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 text-left text-sm font-medium text-red-500">
-                                  <Trash2 className="w-4 h-4" /> Delete
+                                <button
+                                  onClick={() => handleDeleteSong(song.id)}
+                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-destructive/10 rounded-[8px] text-left text-xs font-semibold text-destructive transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
                                 </button>
                               </motion.div>
                             )}
@@ -572,50 +587,57 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       </motion.div>
                     ))}
                   </div>
-                </>
+                </div>
               )
             ) : (
               filteredSetlists.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-foreground/40">
-                  <ListMusic className="w-16 h-16 mb-4" />
-                  <p className="font-bold text-lg mb-2">No setlists yet</p>
-                  <p className="text-sm text-center">Create setlists to organize your performances</p>
+                <div className="flex flex-col items-center justify-center py-16 text-foreground/40 text-center">
+                  <ListMusic className="w-12 h-12 mb-3 text-foreground/20" />
+                  <p className="font-bold text-base text-foreground mb-1">No setlists created</p>
+                  <p className="text-xs text-foreground/50 max-w-xs">Organize your repertoire into performance sets, weddings, or gig playlists.</p>
                   <button 
                     onClick={() => setShowAddSetlist(true)}
-                    className="mt-6 px-6 py-3 bg-black text-white rounded-full font-bold text-sm hover:scale-105 transition-transform"
+                    className="mt-5 px-4 py-2.5 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider shadow-xs hover:opacity-95 transition-opacity"
                   >
                     Create First Setlist
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                      ALL SETLISTS ({filteredSetlists.length})
+                    </span>
+                  </div>
                   {filteredSetlists.map((setlist, i) => (
                     <motion.div
                       key={setlist.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={{ delay: Math.min(i * 0.04, 0.3) }}
                       onClick={() => openSetlistEditor(setlist.id)}
-                      className="bg-white rounded-[1.5rem] p-5 border border-black/5 shadow-sm cursor-pointer hover:border-black/15 hover:shadow-md transition-all active:scale-[0.99] group"
+                      className="bg-card rounded-[16px] p-4 border border-foreground/10 shadow-xs cursor-pointer hover:border-foreground/20 hover:shadow-md transition-all active:scale-[0.99] group"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-black text-lg text-black">{setlist.name}</h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
+                          {setlist.name}
+                        </h3>
                         <div className="flex items-center gap-2">
                           {setlist.is_template && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 bg-accent text-accent-foreground rounded-full">
+                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 bg-primary/10 text-primary rounded-[6px] border border-primary/20">
                               Template
                             </span>
                           )}
-                          <ChevronRight className="w-5 h-5 text-foreground/20 group-hover:text-foreground/40 transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground/70 transition-colors" />
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-foreground/50">
-                        <span className="flex items-center gap-1">
-                          <Music2 className="w-4 h-4" />
+                      <div className="flex items-center gap-4 text-xs text-foreground/50">
+                        <span className="flex items-center gap-1.5">
+                          <Music2 className="w-3.5 h-3.5 text-foreground/40" />
                           {setlist.song_count || 0} songs
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-foreground/40" />
                           {formatDuration(setlist.total_duration_seconds)}
                         </span>
                       </div>
@@ -653,36 +675,53 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             onClick={() => setShowAddSetlist(false)}
           >
             <motion.div
-              initial={{ y: "100%" }}
+              initial={{ y: '100%' }}
               animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "tween", duration: 0.3 }}
-              className="w-full max-w-md bg-white rounded-t-[2rem] p-6"
+              exit={{ y: '100%' }}
+              transition={{ type: 'tween', duration: 0.3 }}
+              className="w-full max-w-md bg-card border-t border-foreground/10 rounded-t-[24px] p-6 shadow-2xl"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-1 bg-black/10 rounded-full mx-auto mb-6" />
-              <h2 className="text-2xl font-black text-black mb-6">Create Setlist</h2>
+              <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-5" />
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                    NEW SETLIST
+                  </span>
+                  <h2 className="text-xl font-black text-foreground">Create Setlist</h2>
+                </div>
+                <button
+                  onClick={() => setShowAddSetlist(false)}
+                  className="w-8 h-8 rounded-full border border-foreground/20 bg-foreground/5 flex items-center justify-center text-foreground hover:bg-foreground/10 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-foreground/40 uppercase tracking-widest mb-2">Name *</label>
+                  <label className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-2">
+                    Setlist Name *
+                  </label>
                   <input
                     type="text"
                     value={newSetlistName}
                     onChange={(e) => setNewSetlistName(e.target.value)}
-                    placeholder="e.g., Jazz Night Set"
-                    className="w-full h-14 px-4 rounded-2xl bg-black/[0.03] text-black font-medium placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-accent"
+                    placeholder="e.g., Jazz Night 1st Set, Wedding Main Set"
+                    className="w-full h-12 px-4 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
+                    autoFocus
                   />
                 </div>
                 <button
                   onClick={handleAddSetlist}
-                  disabled={!newSetlistName}
+                  disabled={!newSetlistName.trim()}
                   className={cn(
-                    "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-black text-white hover:scale-[1.02] active:scale-[0.98]",
-                    !newSetlistName && "opacity-50 cursor-not-allowed"
+                    'w-full h-12 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground shadow-xs active:scale-[0.98]',
+                    !newSetlistName.trim() && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                   Create Setlist
                 </button>
               </div>
@@ -695,117 +734,124 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       <AnimatePresence>
         {editingSetlistId && (
           <motion.div
-            initial={{ x: "100%" }}
+            initial={{ x: '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
-            className="fixed inset-0 z-[80] bg-background overflow-y-auto flex flex-col"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+            className="fixed inset-0 z-[80] bg-background text-foreground flex flex-col overflow-y-auto"
+            style={{
+              overscrollBehaviorX: 'none',
+              touchAction: 'pan-y',
+            }}
           >
             {setlistEditorLoading ? (
               <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
+                <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
               </div>
             ) : (
               <>
-                {/* Editor Header */}
-                <div className="px-6 shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
-                  <div className="flex items-center justify-between mb-4">
+                {/* Editor Sticky Header */}
+                <div
+                  className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+                  style={{
+                    paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+                    paddingBottom: '14px',
+                  }}
+                >
+                  <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
                     <button
                       onClick={closeSetlistEditor}
-                      className="flex items-center gap-2 text-foreground/60 hover:text-black transition-colors font-bold text-sm"
+                      className="flex items-center gap-2 text-foreground/70 hover:text-foreground transition-colors font-bold text-xs uppercase tracking-wider"
                     >
-                      <ArrowLeft className="w-5 h-5" /> Back
+                      <ArrowLeft className="w-4 h-4" /> Back to Repertoire
                     </button>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleDeleteSetlist}
-                        className="w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+                        aria-label="Delete setlist"
+                        className="w-9 h-9 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center transition-colors"
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={handleSaveSetlist}
                         disabled={setlistEditorSaving || !editingSetlistName.trim()}
-                        className="px-5 py-2.5 bg-black text-white rounded-full font-bold text-sm flex items-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs hover:opacity-95 transition-all disabled:opacity-50"
                       >
-                        {setlistEditorSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Save
+                        {setlistEditorSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        Save Setlist
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  <div className="mb-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Setlist Name</label>
+                <div className="p-4 flex-1 flex flex-col gap-4 max-w-2xl mx-auto w-full pb-20 relative">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1 block">
+                      SETLIST NAME
+                    </label>
                     <input
                       type="text"
                       value={editingSetlistName}
                       onChange={(e) => setEditingSetlistName(e.target.value)}
-                      className="w-full text-2xl font-black bg-transparent border-b-2 border-black/10 focus:border-black outline-none placeholder:text-foreground/20 pb-2 transition-colors"
+                      className="w-full text-2xl font-black bg-transparent border-b border-foreground/15 focus:border-primary outline-none placeholder:text-foreground/20 pb-2 text-foreground transition-colors"
                       placeholder="Setlist Name"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">
-                      {editorSongs.length} songs
-                    </span>
-                  </div>
-                </div>
-
-                {/* Add Songs Trigger */}
-                <div className="px-6 mb-3 shrink-0">
-                  {!setlistEditorSearch ? (
+                  {/* Add Songs Trigger */}
+                  {!setlistEditorSearch && (
                     <button
                       onClick={() => setSetlistEditorSearch(true)}
-                      className="w-full bg-black/5 p-3 rounded-xl flex items-center gap-3 hover:bg-black/10 transition-colors group"
+                      className="w-full bg-foreground/5 border border-foreground/10 p-3 rounded-[12px] flex items-center gap-3 hover:bg-foreground/10 transition-colors group"
                     >
                       <Search className="w-4 h-4 text-foreground/40" />
-                      <span className="text-sm font-bold text-foreground/40 group-hover:text-foreground/60">Add songs from library...</span>
-                      <div className="ml-auto bg-white px-2 py-1 rounded text-[10px] font-bold text-foreground/40 shadow-sm border border-black/5">
+                      <span className="text-xs font-bold text-foreground/50 group-hover:text-foreground/80">
+                        Add songs from library...
+                      </span>
+                      <div className="ml-auto bg-card px-2 py-0.5 rounded-[6px] text-[10px] font-bold text-foreground/60 border border-foreground/10 shadow-xs">
                         {songs.length} available
                       </div>
                     </button>
-                  ) : null}
-                </div>
+                  )}
 
-                {/* Main Content */}
-                <div className="flex-1 overflow-y-auto px-6 pb-8 relative">
                   {/* Search Overlay */}
                   <AnimatePresence>
                     {setlistEditorSearch && (
                       <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="absolute inset-0 bg-white z-20 flex flex-col rounded-xl overflow-hidden shadow-2xl border border-black/10 mx-0"
+                        exit={{ opacity: 0, y: 10 }}
+                        className="bg-card border border-foreground/15 rounded-[16px] overflow-hidden shadow-2xl flex flex-col"
                       >
-                        {/* Search Header */}
-                        <div className="p-3 border-b border-black/5 flex items-center gap-3 bg-white shrink-0">
-                          <Search className="w-4 h-4 text-black" />
+                        <div className="p-3 border-b border-foreground/10 flex items-center gap-3 bg-card shrink-0">
+                          <Search className="w-4 h-4 text-foreground/50" />
                           <input
                             autoFocus
                             placeholder="Search library..."
                             value={setlistSearchQuery}
                             onChange={e => setSetlistSearchQuery(e.target.value)}
-                            className="flex-1 text-sm font-bold outline-none placeholder:text-foreground/30"
+                            className="flex-1 text-xs font-bold outline-none bg-transparent text-foreground placeholder:text-foreground/30"
                           />
-                          <button onClick={() => { setSetlistEditorSearch(false); setSetlistSearchQuery(''); setSetlistSelectedToAdd([]); }} className="p-2 bg-[var(--surface-alt)] rounded-full hover:bg-black/10 transition-colors">
-                            <X className="w-4 h-4 text-foreground/60" />
+                          <button 
+                            onClick={() => { setSetlistEditorSearch(false); setSetlistSearchQuery(''); setSetlistSelectedToAdd([]); }} 
+                            className="p-1.5 rounded-full hover:bg-foreground/10 text-foreground/60 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
 
-                        <div className="px-3 py-2 bg-[var(--surface-alt)] border-b border-black/5 flex items-center justify-between shrink-0">
-                          <span className="text-[10px] font-bold text-foreground/30">{editorFilteredLibrary.length} results</span>
+                        <div className="px-3 py-1.5 bg-foreground/5 border-b border-foreground/10 flex items-center justify-between shrink-0">
+                          <span className="text-[10px] font-bold text-foreground/40">{editorFilteredLibrary.length} results</span>
                           {setlistSelectedToAdd.length > 0 && (
-                            <span className="text-[10px] font-bold text-foreground/60">{setlistSelectedToAdd.length} selected</span>
+                            <span className="text-[10px] font-bold text-primary">{setlistSelectedToAdd.length} selected</span>
                           )}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2 bg-white">
+                        <div className="max-h-64 overflow-y-auto p-2 space-y-1.5">
                           {editorFilteredLibrary.length === 0 && (
-                            <div className="p-8 text-center opacity-40">
-                              <p className="text-xs font-bold">No matching songs found</p>
+                            <div className="p-6 text-center text-foreground/40">
+                              <p className="text-xs font-bold">No matching songs</p>
                             </div>
                           )}
                           {editorFilteredLibrary.map(song => {
@@ -815,24 +861,26 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 key={song.id}
                                 onClick={() => handleEditorToggleSelect(song.id)}
                                 className={cn(
-                                  "w-full p-3 rounded-xl flex items-center justify-between transition-all text-left border",
-                                  isSelected ? "border-black bg-black text-white" : "border-black/5 bg-white hover:border-black/20"
+                                  'w-full p-2.5 rounded-[10px] flex items-center justify-between transition-all text-left border',
+                                  isSelected 
+                                    ? 'border-primary bg-primary/10 text-foreground' 
+                                    : 'border-foreground/5 bg-card hover:border-foreground/20 text-foreground'
                                 )}
                               >
                                 <div className="min-w-0">
-                                  <div className="font-bold text-sm truncate">{song.title}</div>
-                                  <div className={cn("text-[10px] uppercase", isSelected ? "text-white/60" : "text-foreground/50")}>
+                                  <div className="font-bold text-xs truncate">{song.title}</div>
+                                  <div className="text-[10px] text-foreground/50 uppercase">
                                     {song.artist || 'Unknown'}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                                  <span className={cn("text-[10px] font-medium", isSelected ? "text-white/40" : "text-foreground/30")}>
+                                  <span className="text-[10px] font-medium text-foreground/40">
                                     {formatDuration(song.duration_seconds)}
                                   </span>
                                   {isSelected ? (
-                                    <CheckCircle2 className="w-5 h-5 text-accent" />
+                                    <CheckCircle2 className="w-4 h-4 text-primary" />
                                   ) : (
-                                    <Plus className="w-4 h-4 text-foreground/20" />
+                                    <Plus className="w-4 h-4 text-foreground/30" />
                                   )}
                                 </div>
                               </button>
@@ -840,11 +888,11 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           })}
                         </div>
 
-                        <div className="p-3 border-t border-black/5 bg-white shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                        <div className="p-3 border-t border-foreground/10 bg-card shrink-0">
                           <button
                             onClick={handleEditorAddSelected}
                             disabled={setlistSelectedToAdd.length === 0}
-                            className="w-full py-3 bg-accent text-accent-foreground rounded-xl text-sm font-black uppercase tracking-wider hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg"
+                            className="w-full py-2.5 bg-primary text-primary-foreground rounded-[10px] text-xs font-bold uppercase tracking-wider shadow-xs hover:opacity-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
                           >
                             Add {setlistSelectedToAdd.length} Songs <ChevronRight className="w-4 h-4" />
                           </button>
@@ -853,12 +901,20 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                     )}
                   </AnimatePresence>
 
-                  {/* Song List (Draggable) */}
+                  {/* Songs in this Setlist */}
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
+                      SETLIST ORDER ({editorSongs.length} SONGS)
+                    </span>
+                  </div>
+
                   {editorSongs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center py-16 opacity-40">
-                      <ListMusic className="w-12 h-12 mb-4 text-foreground/20" />
-                      <h4 className="text-lg font-bold text-foreground/40">Setlist is empty</h4>
-                      <p className="text-xs text-foreground/30 mt-1 max-w-[200px]">Tap the search bar above to add songs from your library.</p>
+                    <div className="flex flex-col items-center justify-center text-center py-16 text-foreground/40 border border-dashed border-foreground/15 rounded-[16px] p-6">
+                      <ListMusic className="w-10 h-10 mb-3 text-foreground/20" />
+                      <h4 className="text-sm font-bold text-foreground">Setlist is empty</h4>
+                      <p className="text-xs text-foreground/40 mt-1 max-w-[240px]">
+                        Tap "Add songs from library" above to populate your set.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -870,28 +926,29 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           onDragOver={(e) => handleEditorDragOver(e, i)}
                           onDragEnd={handleEditorDragEnd}
                           className={cn(
-                            "bg-white border p-3 rounded-xl flex items-center gap-3 shadow-sm transition-all cursor-grab active:cursor-grabbing select-none",
-                            draggedIndex === i && "opacity-40 scale-95",
-                            dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && "border-accent border-2",
-                            draggedIndex === null && "border-black/5 hover:border-black/15"
+                            'bg-card border p-3 rounded-[12px] flex items-center gap-3 shadow-xs transition-all cursor-grab active:cursor-grabbing select-none',
+                            draggedIndex === i && 'opacity-40 scale-95',
+                            dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && 'border-primary ring-2 ring-primary/20',
+                            draggedIndex === null && 'border-foreground/10 hover:border-foreground/20'
                           )}
                         >
-                          <GripVertical className="w-4 h-4 text-foreground/20 shrink-0" />
-                          <div className="w-7 h-7 rounded-full bg-black text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                          <GripVertical className="w-4 h-4 text-foreground/30 shrink-0" />
+                          <div className="w-6 h-6 rounded-full bg-foreground/10 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
                             {i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm truncate">{song.title}</div>
+                            <div className="font-bold text-xs truncate text-foreground">{song.title}</div>
                             <div className="text-[10px] text-foreground/50 uppercase truncate">{song.artist || 'Unknown'}</div>
                           </div>
-                          <span className="text-[10px] font-medium text-foreground/30 shrink-0">
+                          <span className="text-[10px] font-medium text-foreground/40 shrink-0">
                             {formatDuration(song.duration_seconds)}
                           </span>
                           <button
                             onClick={() => handleEditorRemoveSong(song.id)}
-                            className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                            className="p-1.5 text-foreground/30 hover:text-destructive hover:bg-destructive/10 rounded-[6px] transition-colors shrink-0"
+                            aria-label="Remove song"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
@@ -906,3 +963,5 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     </motion.div>
   );
 };
+
+export default SetlistManagerView;

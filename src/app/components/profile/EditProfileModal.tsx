@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -10,7 +9,8 @@ import {
   Camera,
   Loader2,
   Check,
-  Save
+  Save,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { useAuth } from '@/lib/AuthContext';
@@ -96,7 +96,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || saving) return;
     
     setSaving(true);
     setError(null);
@@ -117,7 +117,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       setSuccess(true);
       
-      // Refresh profile data
       if (refreshProfile) {
         await refreshProfile();
       }
@@ -126,7 +125,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         onProfileUpdated?.();
         onClose();
         setSuccess(false);
-      }, 1000);
+      }, 800);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
@@ -142,221 +141,216 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Header */}
-      <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
-        <div>
-          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
-            Profile
-          </span>
-          <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-none">
-            EDIT
-          </h2>
-          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">Update your information</p>
-        </div>
-        
-        <button 
-          onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-black transition-all hover:rotate-90"
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
+      >
+        {/* ═══ STICKY HEADER ═══ */}
+        <div
+          className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+          style={{
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+            paddingBottom: '14px',
+          }}
         >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-32">
-        {/* Avatar Section */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="flex justify-center mb-8"
-        >
-          <div className="relative">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white font-black text-2xl">
-                {fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U'}
+          <div className="max-w-xl mx-auto w-full flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                aria-label="Go back"
+                className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                  USER PROFILE
+                </span>
+                <h2 className="text-[20px] font-black uppercase text-foreground leading-none">
+                  EDIT PROFILE
+                </h2>
               </div>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="absolute -bottom-1 -right-1 w-10 h-10 bg-accent rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+            </div>
+
+            <button 
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground/60 transition-all active:scale-90"
             >
-              {uploadingAvatar ? (
-                <Loader2 className="w-5 h-5 text-accent-foreground animate-spin" />
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ═══ CONTENT ═══ */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 max-w-xl mx-auto w-full pb-32 space-y-6">
+          {/* Avatar Section */}
+          <div className="flex justify-center">
+            <div className="relative">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-foreground/15 shadow-sm"
+                />
               ) : (
-                <Camera className="w-5 h-5 text-accent-foreground" />
+                <div className="w-24 h-24 rounded-full bg-primary/10 text-primary border-2 border-primary/20 flex items-center justify-center font-black text-2xl shadow-inner">
+                  {fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U'}
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 w-9 h-9 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all"
+                aria-label="Upload photo"
+              >
+                {uploadingAvatar ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3.5 bg-destructive/10 border border-destructive/20 rounded-[12px] text-destructive text-xs font-semibold">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Full Name */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-foreground/50" />
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {/* Email (read-only) */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-foreground/50" />
+                Email
+              </label>
+              <input
+                type="email"
+                value={user?.email || ''}
+                disabled
+                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground/50 cursor-not-allowed"
+              />
+              <p className="text-[10px] text-foreground/40 mt-1 font-medium">Email address is linked to your account authentication</p>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-foreground/50" />
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 234 567 8900"
+                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {/* Primary Instrument */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-2 flex items-center gap-1.5">
+                <Music2 className="w-3.5 h-3.5 text-foreground/50" />
+                Primary Instrument / Role
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {instruments.map((inst) => (
+                  <button
+                    key={inst}
+                    type="button"
+                    onClick={() => setInstrument(inst)}
+                    className={cn(
+                      'px-3.5 py-1.5 rounded-[8px] text-[11px] font-bold uppercase tracking-wider transition-all border',
+                      instrument === inst
+                        ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                        : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
+                    )}
+                  >
+                    {inst}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5">
+                Bio & Background
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Share your musical background, credits, experience..."
+                rows={3}
+                className="w-full p-4 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ FOOTER ═══ */}
+        <div
+          className="sticky bottom-0 left-0 right-0 px-4 py-4 border-t border-foreground/10 bg-background/95 backdrop-blur-md"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+        >
+          <div className="max-w-xl mx-auto w-full">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={cn(
+                'w-full h-12 rounded-[12px] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98]',
+                success
+                  ? 'bg-green-600 text-white'
+                  : 'bg-primary text-primary-foreground hover:opacity-95'
+              )}
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : success ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </>
               )}
             </button>
           </div>
-        </motion.div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Full Name */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-            />
-          </motion.div>
-
-          {/* Email (read-only) */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Email
-            </label>
-            <input
-              type="email"
-              value={user?.email || ''}
-              disabled
-              className="w-full bg-transparent border-b-2 border-black/5 py-3 text-xl font-bold text-foreground/40 cursor-not-allowed"
-            />
-            <p className="text-[10px] text-foreground/30 mt-1">Email cannot be changed</p>
-          </motion.div>
-
-          {/* Phone */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.25 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 234 567 8900"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-            />
-          </motion.div>
-
-          {/* Primary Instrument */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3 flex items-center gap-2">
-              <Music2 className="w-4 h-4" />
-              Primary Instrument
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {instruments.map((inst) => (
-                <button
-                  key={inst}
-                  onClick={() => setInstrument(inst)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
-                    instrument === inst
-                      ? "bg-black text-white"
-                      : "bg-white/50 text-foreground/60 hover:bg-white"
-                  )}
-                >
-                  {inst}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Bio */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.35 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">
-              Bio
-            </label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself..."
-              rows={4}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
-            />
-          </motion.div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
-      >
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={cn(
-            "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
-            success
-              ? "bg-green-500 text-white"
-              : "bg-black text-white hover:scale-[1.02]"
-          )}
-        >
-          {saving ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : success ? (
-            <>
-              <Check className="w-5 h-5" />
-              Saved!
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              Save Changes
-            </>
-          )}
-        </button>
-      </div>
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
