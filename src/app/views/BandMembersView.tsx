@@ -248,21 +248,20 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         <div className="flex items-center gap-4 mb-10">
           <button
             onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 shrink-0 active:scale-90 transition-all"
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
           <div className="flex flex-col leading-none flex-1">
-            <span className="text-[32px] font-bold text-black leading-none">BAND</span>
-            <span className="text-[32px] font-bold text-black leading-none">MEMBERS</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">BAND</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">MEMBERS</span>
           </div>
           {isAdmin && (
             <button
               onClick={() => setShowInvite(true)}
-              className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent shrink-0 active:scale-90 transition-transform"
+              className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-primary text-primary-foreground shrink-0 active:scale-90 transition-transform shadow-xs hover:opacity-95"
             >
-              <Plus className="w-[20px] h-[20px] text-accent-foreground" />
+              <Plus className="w-[20px] h-[20px]" />
             </button>
           )}
         </div>
@@ -277,7 +276,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         ) : members.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <UserPlus className="w-12 h-12 text-foreground/20 mb-4" />
-            <span className="text-xs font-bold text-black uppercase tracking-wide mb-1">
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">
               No members yet
             </span>
             <span className="text-[10px] font-medium text-foreground/40 uppercase mb-6">
@@ -286,9 +285,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             {isAdmin && (
               <button
                 onClick={() => setShowInvite(true)}
-                className="flex items-center justify-between px-5 py-3 rounded-[10px] bg-accent active:scale-95 transition-transform"
+                className="flex items-center justify-between px-5 py-3 rounded-[12px] bg-primary text-primary-foreground active:scale-95 transition-all shadow-xs"
               >
-                <span className="text-xs font-bold text-accent-foreground">INVITE FIRST MEMBER</span>
+                <span className="text-xs font-bold uppercase tracking-wider">INVITE FIRST MEMBER</span>
               </button>
             )}
           </div>
@@ -302,9 +301,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 transition={{ delay: 0.05 }}
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
-                <span className="text-xs font-bold text-black tracking-wide">TOTAL</span>
+                <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">TOTAL</span>
                 <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-black block">
+                  <span className="text-[52px] font-bold leading-none text-foreground block">
                     {stats.total}
                   </span>
                 </div>
@@ -316,9 +315,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 transition={{ delay: 0.1 }}
                 className="flex-1 flex flex-col gap-2 items-start text-left"
               >
-                <span className="text-xs font-bold text-black tracking-wide">ADMINS</span>
+                <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">ADMINS</span>
                 <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-black block">
+                  <span className="text-[52px] font-bold leading-none text-foreground block">
                     {stats.admins}
                   </span>
                 </div>
@@ -328,8 +327,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             {/* Members List */}
             <div className="flex flex-col gap-5">
               <div className="flex flex-col">
-                <span className="text-[32px] font-bold leading-none text-black">ALL</span>
-                <span className="text-[32px] font-bold leading-none text-black">MEMBERS</span>
+                <span className="text-[32px] font-bold leading-none text-foreground">ALL</span>
+                <span className="text-[32px] font-bold leading-none text-foreground">MEMBERS</span>
               </div>
 
               <div className="flex flex-col gap-0">
@@ -341,29 +340,29 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     transition={{ delay: i * 0.04 }}
                     className="relative"
                   >
-                    <div className="flex items-center justify-between py-4 border-b border-black/10">
+                    <div className="flex items-center justify-between py-4 border-b border-foreground/10">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold">
+                          <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold">
                             {getInitials(member)}
                           </div>
                           {/* Neon Pro indicator dot — bottom-right overlap */}
                           {isProMember(member) && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[1.5px] border-white bg-[var(--brand-accent,#BDD856)]" />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[1.5px] border-background bg-primary" />
                           )}
                           {member.role === 'admin' && (
-                            <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-                              <Crown className="w-2.5 h-2.5 text-accent-foreground" />
+                            <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                              <Crown className="w-2.5 h-2.5 text-primary-foreground" />
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col items-start">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-black uppercase tracking-wide">
+                            <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                               {member.stage_name || member.profile?.full_name || 'Unknown'}
                             </span>
                             {isProMember(member) && (
-                              <span className="text-[9px] font-bold uppercase leading-none px-1.5 py-0.5 rounded-sm bg-[var(--brand-accent,#BDD856)] text-black tracking-wider">
+                              <span className="text-[9px] font-bold uppercase leading-none px-1.5 py-0.5 rounded-[4px] bg-primary/15 text-primary border border-primary/25 tracking-wider">
                                 PRO
                               </span>
                             )}
@@ -378,9 +377,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         onClick={() =>
                           setActionMenuId(actionMenuId === member.id ? null : member.id)
                         }
-                        className="w-8 h-8 flex items-center justify-center active:opacity-70 transition-opacity"
+                        className="w-8 h-8 rounded-full border border-foreground/10 hover:bg-foreground/5 flex items-center justify-center transition-colors"
                       >
-                        <MoreHorizontal className="w-4 h-4 text-black" />
+                        <MoreHorizontal className="w-4 h-4 text-foreground/70" />
                       </button>
                     </div>
 
@@ -391,7 +390,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden border-b border-black/10"
+                          className="overflow-hidden border-b border-foreground/10"
                         >
                           <div className="py-2 flex flex-col gap-0">
                             {member.profile?.email && (
@@ -400,7 +399,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                 className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                               >
                                 <Mail className="w-4 h-4 text-foreground/40" />
-                                <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                   EMAIL
                                 </span>
                               </button>
@@ -413,7 +412,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                     className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                   >
                                     <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                       MAKE MEMBER
                                     </span>
                                   </button>
@@ -423,7 +422,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                     className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
                                   >
                                     <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                       MAKE ADMIN
                                     </span>
                                   </button>
@@ -431,7 +430,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                   <div className="flex items-center gap-3 py-3 px-2 opacity-50 cursor-not-allowed">
                                     <UserCog className="w-4 h-4 text-foreground/40" />
                                     <div className="flex flex-col items-start">
-                                      <span className="text-xs font-bold text-black uppercase tracking-wide">
+                                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                         MAKE ADMIN
                                       </span>
                                       <span className="text-[9px] font-medium text-foreground/40 uppercase">
@@ -486,14 +485,13 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     setSearchResults([]);
                     setError(null);
                   }}
-                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-                  style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 shrink-0 active:scale-90 transition-all"
                 >
-                  <ArrowLeft className="w-[24px] h-[24px] text-black" />
+                  <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
                 </button>
                 <div className="flex flex-col leading-none">
-                  <span className="text-[32px] font-bold text-black leading-none">INVITE</span>
-                  <span className="text-[32px] font-bold text-black leading-none">MEMBER</span>
+                  <span className="text-[32px] font-bold text-foreground leading-none">INVITE</span>
+                  <span className="text-[32px] font-bold text-foreground leading-none">MEMBER</span>
                 </div>
               </div>
             </div>
@@ -501,14 +499,14 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 pb-32">
               {error && (
-                <div className="mb-6 py-3 px-4 border border-[var(--destructive)]/20 rounded-[10px] flex items-center gap-3">
+                <div className="mb-6 py-3 px-4 border border-[var(--destructive)]/20 rounded-[12px] flex items-center gap-3">
                   <X className="w-4 h-4 text-[var(--destructive)] shrink-0" />
                   <span className="text-xs font-bold text-[var(--destructive)] uppercase">{error}</span>
                 </div>
               )}
 
               {inviteSuccess && (
-                <div className="mb-6 py-3 px-4 border border-[var(--success)]/20 rounded-[10px] flex items-center gap-3">
+                <div className="mb-6 py-3 px-4 border border-[var(--success)]/20 rounded-[12px] flex items-center gap-3">
                   <Check className="w-4 h-4 text-[var(--success)] shrink-0" />
                   <span className="text-xs font-bold text-[var(--success)] uppercase">
                     {inviteSuccess}
@@ -528,7 +526,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Name or email address..."
-                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
+                      className="w-full bg-transparent border-b-2 border-foreground/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-colors"
                     />
                     {isSearching && (
                       <Loader2 className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/40 animate-spin" />
@@ -550,10 +548,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                           animate={{ opacity: 1, x: 0 }}
                           onClick={() => handleAddUser(user)}
                           disabled={inviting}
-                          className="flex items-center justify-between py-4 border-b border-black/10 last:border-0 active:opacity-70 transition-opacity disabled:opacity-50"
+                          className="flex items-center justify-between py-4 border-b border-foreground/10 last:border-0 active:opacity-70 transition-opacity disabled:opacity-50"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold shrink-0">
                               {user.full_name
                                 ?.split(' ')
                                 .map((n) => n[0])
@@ -562,7 +560,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                                 .toUpperCase() || user.email.slice(0, 2).toUpperCase()}
                             </div>
                             <div className="flex flex-col items-start">
-                              <span className="text-xs font-bold text-black uppercase tracking-wide">
+                              <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                                 {user.full_name || 'No name'}
                               </span>
                               <span className="text-[10px] font-medium text-foreground/40 uppercase">
@@ -570,9 +568,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 px-3 py-1.5 bg-black rounded-full">
-                            <UserCheck className="w-3 h-3 text-white" />
-                            <span className="text-[10px] font-bold text-white uppercase">ADD</span>
+                          <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground rounded-[8px] font-bold text-[11px] uppercase shadow-xs">
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>ADD</span>
                           </div>
                         </motion.button>
                       ))}
@@ -595,14 +593,14 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         <button
                           onClick={handleInviteByEmail}
                           disabled={inviting}
-                          className="flex items-center gap-2 px-5 py-3 bg-black rounded-[10px] active:scale-95 transition-transform disabled:opacity-50"
+                          className="flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-[12px] active:scale-95 transition-all shadow-xs disabled:opacity-50"
                         >
                           {inviting ? (
-                            <Loader2 className="w-4 h-4 text-white animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            <Send className="w-4 h-4 text-white" />
+                            <Send className="w-4 h-4" />
                           )}
-                          <span className="text-xs font-bold text-white uppercase">
+                          <span className="text-xs font-bold uppercase tracking-wider">
                             INVITE {searchQuery}
                           </span>
                         </button>
@@ -618,12 +616,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   <div className="flex flex-col gap-0">
                     <button
                       onClick={() => setInviteRole('member')}
-                      className="flex items-center justify-between w-full py-4 border-b border-black/10 active:opacity-70 transition-opacity"
+                      className="flex items-center justify-between w-full py-4 border-b border-foreground/10 active:opacity-70 transition-opacity"
                     >
                       <div className="flex items-center gap-3">
                         <Music2 className="w-4 h-4 text-foreground/40" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide">
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                             MEMBER
                           </span>
                           <span className="text-[10px] font-medium text-foreground/40 uppercase">
@@ -639,12 +637,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     </button>
                     <button
                       onClick={() => setInviteRole('admin')}
-                      className="flex items-center justify-between w-full py-4 border-b border-black/10 active:opacity-70 transition-opacity"
+                      className="flex items-center justify-between w-full py-4 border-b border-foreground/10 active:opacity-70 transition-opacity"
                     >
                       <div className="flex items-center gap-3">
                         <Crown className="w-4 h-4 text-foreground/40" />
                         <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-black uppercase tracking-wide">
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
                             ADMIN
                           </span>
                           <span className="text-[10px] font-medium text-foreground/40 uppercase">

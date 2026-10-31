@@ -221,7 +221,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-black rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[91] bg-background text-foreground border-t border-foreground/10 rounded-t-[26px] px-4 pt-4 shadow-[0px_-4px_24px_rgba(0,0,0,0.15)] flex flex-col"
         style={{ 
           maxHeight: '85vh',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
@@ -230,24 +230,29 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
       >
         {/* Pill handle */}
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-white/30" />
+          <div className="w-10 h-1 rounded-full bg-foreground/20" />
         </div>
 
         {/* Header */}
-        <div className="flex items-end justify-between mb-8">
-          <p className="text-xs font-bold text-white/50 uppercase tracking-wider">
-            NEW CONVERSATION
-          </p>
+        <div className="flex items-end justify-between mb-6">
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-bold text-foreground/50 uppercase tracking-wider">
+              START CHAT
+            </span>
+            <h2 className="text-[24px] font-bold text-foreground uppercase leading-none">
+              NEW CONVERSATION
+            </h2>
+          </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
+            className="w-9 h-9 rounded-full border border-foreground/20 flex items-center justify-center text-foreground hover:bg-foreground/10 active:scale-90 transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-[12px] mb-6">
+        <div className="flex gap-[8px] mb-6">
           {[
             { type: 'direct' as const, label: 'DIRECT' },
             { type: 'band' as const, label: 'BAND' },
@@ -263,10 +268,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                 setSearchQuery('');
               }}
               className={cn(
-                "px-[10px] py-[6px] rounded-[6px] text-[12px] font-bold uppercase transition-all",
+                "px-[12px] py-[6px] rounded-[8px] text-[11px] font-bold uppercase tracking-wider transition-all",
                 chatType === type
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-white/10 text-white/40"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10 hover:text-foreground"
               )}
             >
               {label}
@@ -275,8 +280,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </div>
 
         {/* Search */}
-        <div className="bg-white/10 rounded-[10px] flex items-center px-[12px] gap-[8px] mb-6">
-          <Search className="w-[16px] h-[16px] text-white/30 shrink-0" />
+        <div className="bg-foreground/5 border border-foreground/10 rounded-[12px] flex items-center px-[12px] gap-[8px] mb-6">
+          <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
           <input
             type="text"
             value={searchQuery}
@@ -286,7 +291,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               chatType === 'band' ? 'SEARCH BANDS...' :
               'SEARCH EVENTS...'
             }
-            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-white placeholder:text-white/30 uppercase focus:outline-none"
+            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-foreground placeholder:text-foreground/30 uppercase focus:outline-none"
           />
         </div>
 
@@ -299,7 +304,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               exit={{ opacity: 0, height: 0 }}
               className="mb-4"
             >
-              <div className="p-3 bg-red-500/20 border-l-2 border-red-500 text-red-300 text-sm">
+              <div className="p-3 bg-red-500/10 border-l-2 border-red-500 text-red-500 text-sm rounded-r-[8px]">
                 {error}
               </div>
             </motion.div>
@@ -310,7 +315,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         <div className="flex-1 overflow-y-auto min-h-0 pb-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
+              <Loader2 className="w-6 h-6 text-foreground/20 animate-spin" />
             </div>
           ) : (
             <>
@@ -324,12 +329,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                     return (
                       <div key={band.id}>
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-bold tracking-[0.15em] text-accent uppercase">
+                          <span className="text-[10px] font-bold tracking-[0.15em] text-primary uppercase">
                             {band.name}
                           </span>
                         </div>
                         
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           {bandMembers.map(member => {
                             const isSelected = selectedMember?.id === member.id && selectedMember?.bandId === member.bandId;
                             return (
@@ -338,36 +343,33 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 onClick={() => handleSelect('direct', member)}
                                 whileTap={{ scale: 0.98 }}
                                 className={cn(
-                                  "w-full p-3 rounded-[10px] flex items-center gap-3 transition-all",
-                                  isSelected ? "bg-white/10" : "hover:bg-white/5"
+                                  "w-full p-3 rounded-[12px] border flex items-center gap-3 transition-all",
+                                  isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent hover:bg-foreground/5"
                                 )}
                               >
                                 <div className={cn(
                                   "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
                                   isSelected 
-                                    ? "bg-accent text-accent-foreground" 
-                                    : "bg-white/10 text-white/60"
+                                    ? "bg-primary text-primary-foreground" 
+                                    : "bg-foreground/10 text-foreground/70"
                                 )}>
                                   {getInitials(member.full_name, member.email)}
                                 </div>
                                 <div className="flex-1 text-left">
                                   <p className={cn(
                                     "font-bold text-sm uppercase",
-                                    isSelected ? "text-white" : "text-white/50"
+                                    isSelected ? "text-foreground" : "text-foreground/70"
                                   )}>
                                     {member.full_name || member.email}
                                   </p>
-                                  <p className={cn(
-                                    "text-xs uppercase",
-                                    isSelected ? "text-white/60" : "text-white/30"
-                                  )}>
+                                  <p className="text-xs uppercase text-foreground/40">
                                     {member.instrument || member.role || 'Member'}
                                   </p>
                                 </div>
                                 <DotRadio
                                   selected={isSelected}
-                                  activeColor="var(--accent)"
-                                  inactiveColor="rgba(255,255,255,0.20)"
+                                  activeColor="var(--primary)"
+                                  inactiveColor="var(--border)"
                                 />
                               </motion.button>
                             );
@@ -379,7 +381,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                   
                   {filteredMembers.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-white/40 text-[12px] font-bold uppercase">NO MEMBERS FOUND</p>
+                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO MEMBERS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -398,36 +400,33 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('band', band)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all",
-                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
+                          "w-full p-4 rounded-[12px] border flex items-center gap-4 transition-all",
+                          isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm",
+                          "w-12 h-12 rounded-[12px] flex items-center justify-center font-black text-sm",
                           isSelected 
-                            ? "bg-accent text-accent-foreground"
-                            : "bg-white/10 text-white/60"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-foreground/10 text-foreground/70"
                         )}>
                           {getInitials(band.name)}
                         </div>
                         <div className="flex-1 text-left">
                           <p className={cn(
                             "font-bold uppercase",
-                            isSelected ? "text-white" : "text-white/50"
+                            isSelected ? "text-foreground" : "text-foreground/70"
                           )}>
                             {band.name}
                           </p>
-                          <p className={cn(
-                            "text-xs uppercase",
-                            isSelected ? "text-white/60" : "text-white/30"
-                          )}>
+                          <p className="text-xs uppercase text-foreground/40">
                             {memberCount} {memberCount === 1 ? 'MEMBER' : 'MEMBERS'}
                           </p>
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="var(--accent)"
-                          inactiveColor="rgba(255,255,255,0.20)"
+                          activeColor="var(--primary)"
+                          inactiveColor="var(--border)"
                         />
                       </motion.button>
                     );
@@ -435,7 +434,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredBands.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-white/40 text-[12px] font-bold uppercase">NO BANDS FOUND</p>
+                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO BANDS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -453,47 +452,41 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('event', event)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[10px] flex items-center gap-4 transition-all text-left",
-                          isSelected ? "bg-white/10" : "bg-white/5 hover:bg-white/[0.07]"
+                          "w-full p-4 rounded-[12px] border flex items-center gap-4 transition-all text-left",
+                          isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
+                          "w-12 h-12 rounded-[12px] flex flex-col items-center justify-center",
                           isSelected 
-                            ? "bg-accent" 
-                            : "bg-white/10"
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-foreground/10 text-foreground/70"
                         )}>
-                          <span className={cn(
-                            "text-[10px] font-bold uppercase",
-                            isSelected ? "text-black" : "text-white/50"
-                          )}>
+                          <span className="text-[10px] font-bold uppercase">
                             {event.event_type === 'rehearsal' ? 'REH' : 'GIG'}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn(
                             "font-bold truncate uppercase",
-                            isSelected ? "text-white" : "text-white/50"
+                            isSelected ? "text-foreground" : "text-foreground/70"
                           )}>
                             {event.title}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className={cn(
-                              "text-xs uppercase",
-                              isSelected ? "text-white/60" : "text-white/30"
-                            )}>
+                            <span className="text-xs uppercase text-foreground/40">
                               {formatEventDate(event.event_date)}
                             </span>
-                            <span className="text-xs text-white/20">•</span>
-                            <span className="text-xs font-bold text-accent uppercase">
+                            <span className="text-xs text-foreground/20">•</span>
+                            <span className="text-xs font-bold text-primary uppercase">
                               {event.bandName}
                             </span>
                           </div>
                         </div>
                         <DotRadio
                           selected={isSelected}
-                          activeColor="var(--accent)"
-                          inactiveColor="rgba(255,255,255,0.20)"
+                          activeColor="var(--primary)"
+                          inactiveColor="var(--border)"
                         />
                       </motion.button>
                     );
@@ -501,7 +494,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredEvents.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-white/40 text-[12px] font-bold uppercase">NO EVENTS FOUND</p>
+                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO EVENTS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -511,15 +504,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </div>
 
         {/* Action Button */}
-        <div className="pt-4 border-t border-white/10">
+        <div className="pt-4 border-t border-foreground/10">
           <button
             onClick={handleCreateChat}
             disabled={!canCreate || creating}
             className={cn(
-              "w-full h-14 rounded-md font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
+              "w-full h-12 rounded-[12px] font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
               canCreate
-                ? "bg-accent text-accent-foreground active:scale-[0.98]"
-                : "bg-white/5 text-white/30 cursor-not-allowed"
+                ? "bg-primary text-primary-foreground active:scale-[0.98] shadow-xs hover:opacity-95"
+                : "bg-foreground/5 text-foreground/30 cursor-not-allowed"
             )}
           >
             {creating ? (

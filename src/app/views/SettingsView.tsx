@@ -189,13 +189,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             await signOut();
             onClose();
           }}
-          className="w-full border border-black bg-black rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          className="w-full border border-[var(--destructive)]/30 hover:border-[var(--destructive)] bg-[var(--destructive)]/5 hover:bg-[var(--destructive)]/10 rounded-[12px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-all"
         >
-          <span className="text-[12px] font-bold text-white uppercase">SIGN OUT</span>
+          <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          className="w-full border border-[var(--destructive)]/20 hover:border-[var(--destructive)]/40 bg-[var(--destructive)]/5 rounded-[12px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-all"
         >
           <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
           <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">DELETE ACCOUNT</span>
@@ -342,11 +342,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-background rounded-[10px] p-6 max-w-sm w-full"
+              className="bg-background rounded-[16px] border border-border p-6 max-w-sm w-full shadow-lg"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex flex-col gap-5">
-                <div className="w-12 h-12 mx-auto bg-[var(--warning-subtle)] rounded-[10px] flex items-center justify-center">
+                <div className="w-12 h-12 mx-auto bg-[var(--destructive)]/10 rounded-[12px] flex items-center justify-center">
                   <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
                 </div>
                 <div className="flex flex-col gap-2 text-center">
@@ -358,12 +358,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 h-12 rounded-[10px] bg-foreground/5 text-foreground font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-[12px] bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all"
                   >
                     Cancel
                   </button>
                   <button
-                    className="flex-1 h-12 rounded-[10px] bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-transform"
+                    className="flex-1 h-12 rounded-[12px] bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-transform"
                   >
                     Delete
                   </button>
