@@ -12,3 +12,4 @@ export { default as OnboardingFlow } from './OnboardingFlow';
 export { default as JoinerInviteLanding } from './JoinerInviteLanding';
 export { default as JoinerWelcomeBand } from './JoinerWelcomeBand';
 export { default as DashboardChecklist } from './DashboardChecklist';
+export { AdminGuidedTourModal } from './AdminGuidedTourModal';
