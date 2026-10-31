@@ -11,6 +11,7 @@ import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
+import { WizardAccentRail, getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { RehearsalState, RehearsalType, RehearsalSong, SongProposal, RehearsalTask, RehearsalMember, SetlistTemplate, RehearsalSetlistSnapshotFinal, ProposalAttachment, RecurrenceType } from './types';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, createSong, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -218,6 +219,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     reminderTime: '1_day',
     status: isEditing ? 'scheduled' : 'draft'
   });
+
+  const activeAccentColor = useMemo(() => getRehearsalAccentColor(data.type), [data.type]);
 
   useEffect(() => {
     if (realMembers.length > 0) {
@@ -1508,6 +1511,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         animate={{ opacity: 1, y: 0 }}
         className="fixed inset-0 z-[100] bg-[var(--accent-rehearsal)] flex flex-col overflow-hidden"
       >
+        <WizardAccentRail color={activeAccentColor} />
         {/* Header */}
         <div className="px-4 pt-[env(safe-area-inset-top,12px)] shrink-0">
           <div className="pt-3 flex items-start justify-between mb-5">

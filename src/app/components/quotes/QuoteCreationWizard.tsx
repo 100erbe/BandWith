@@ -10,6 +10,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
+import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import {
   Quote,
   QuoteEventType,
@@ -148,6 +149,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [clientCompany, setClientCompany] = useState(initialData?.clientCompany || '');
   const [eventName, setEventName] = useState(initialData?.eventName || initialData?.eventTitle || '');
   const [eventType, setEventType] = useState<QuoteEventType>(initialData?.eventType || 'wedding');
+
+  const activeAccentColor = useMemo(() => getEventAccentColor(eventType, 'quote'), [eventType]);
   const [eventDate, setEventDate] = useState(initialData?.eventDate || '');
   const [eventTimeStart, setEventTimeStart] = useState(initialData?.eventTimeStart || '');
   const [eventTimeEnd, setEventTimeEnd] = useState(initialData?.eventTimeEnd || '');
@@ -1010,6 +1013,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
+      <WizardAccentRail color={activeAccentColor} />
       {/* Header */}
       <div className="px-4 pt-[62px] pb-4 flex flex-col gap-2 shrink-0 relative z-20">
         <StepIndicators />

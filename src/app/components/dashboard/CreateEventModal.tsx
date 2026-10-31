@@ -5,6 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
+import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCreationWizard';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -322,6 +323,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     initialType === 'rehearsal' || eventType === 'rehearsal' ? 'rehearsal'
     : initialType === ('quote' as any) || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
     : 'gig';
+
+  const activeAccentColor = useMemo(
+    () => getEventAccentColor(eventType, modalCategory),
+    [eventType, modalCategory]
+  );
 
   const modalBg = modalCategory === 'rehearsal' ? 'var(--accent-rehearsal)' : modalCategory === 'quote' ? 'var(--accent-quote)' : 'var(--accent-gig)';
   const isDarkBg = modalCategory === 'rehearsal' || modalCategory === 'quote';
@@ -1488,6 +1494,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
+      <WizardAccentRail color={activeAccentColor} />
       {/* Songs Header */}
       <div className="px-4 pt-4 pb-4 flex items-center justify-between shrink-0">
         <button onClick={() => setSongsView(false)} className={cn('w-10 h-10 rounded-full border-2 flex items-center justify-center', bcSolid)}>
@@ -1739,6 +1746,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
+        <WizardAccentRail color={activeAccentColor} />
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-4 pt-16 pb-4">
           {/* Step Indicator */}
