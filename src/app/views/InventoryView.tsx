@@ -1862,13 +1862,27 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
   }, {});
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col"
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-black/5">
-        <button onClick={onBack} className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors">
-          <ArrowLeft className="w-5 h-5" />
+      <div
+        className="flex items-center gap-3 px-4 py-3 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+      >
+        <button
+          onClick={onBack}
+          className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90"
+        >
+          <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
-        <h1 className="text-lg font-bold">Inventory</h1>
+        <h1 className="text-[20px] font-black uppercase text-foreground leading-none">
+          Inventory
+        </h1>
       </div>
 
       {/* Search */}
@@ -1879,9 +1893,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
             placeholder="Search inventory..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2.5 pl-10 rounded-xl bg-black/5 text-sm font-medium placeholder:text-foreground/30 focus:outline-none focus:ring-2 focus:ring-black/10"
+            className="w-full px-4 py-2.5 pl-10 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary"
           />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
@@ -1895,10 +1909,10 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={cn(
-                'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all',
+                'px-3 py-1.5 rounded-[8px] text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all border',
                 selectedCategory === cat
-                  ? 'bg-black text-white'
-                  : 'bg-black/5 text-foreground/60 hover:bg-black/10'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                  : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
               )}
             >
               {cat} {cat !== 'All' && categoryCounts[cat] ? `(${categoryCounts[cat]})` : ''}
@@ -1916,28 +1930,28 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
         ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Package className="w-12 h-12 text-foreground/20 mb-3" />
-            <p className="text-sm font-bold text-foreground/40">No items found</p>
-            <p className="text-xs text-foreground/30 mt-1">Add equipment to get started</p>
+            <p className="text-sm font-bold text-foreground/40 uppercase tracking-wide">No items found</p>
+            <p className="text-xs text-foreground/30 mt-1 uppercase">Add equipment to get started</p>
           </div>
         ) : (
           filteredItems.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-black/3 hover:bg-black/5 transition-colors"
+              className="flex items-center gap-3 p-3.5 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 transition-all shadow-2xs"
             >
-              <div className="w-10 h-10 rounded-lg bg-black/5 flex items-center justify-center shrink-0">
-                <Package className="w-5 h-5 text-foreground/40" />
+              <div className="w-10 h-10 rounded-[10px] bg-foreground/5 flex items-center justify-center shrink-0">
+                <Package className="w-5 h-5 text-foreground/50" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-black truncate">{item.name}</p>
-                <p className="text-xs font-medium text-foreground/40">{item.category} · Qty: {item.quantity}</p>
+                <p className="text-sm font-bold text-foreground uppercase truncate">{item.name}</p>
+                <p className="text-xs font-medium text-foreground/50">{item.category} · Qty: {item.quantity}</p>
               </div>
               <div className={cn(
-                'px-2 py-0.5 rounded-full text-[10px] font-bold',
-                item.status === 'available' ? 'bg-green-100 text-green-700' :
-                item.status === 'in_use' ? 'bg-blue-100 text-blue-700' :
-                item.status === 'maintenance' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700'
+                'px-2.5 py-0.5 rounded-[6px] text-[10px] font-bold uppercase tracking-wider',
+                item.status === 'available' ? 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20' :
+                item.status === 'in_use' ? 'bg-primary/10 text-primary border border-primary/20' :
+                item.status === 'maintenance' ? 'bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/20' :
+                'bg-[var(--destructive)]/10 text-[var(--destructive)] border border-[var(--destructive)]/20'
               )}>
                 {STATUS_CONFIG[item.status]?.label || item.status}
               </div>
@@ -1945,7 +1959,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
           ))
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

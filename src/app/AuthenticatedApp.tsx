@@ -822,7 +822,7 @@ export default function AuthenticatedApp() {
 
   const handleGridNav = (item: string) => {
     setIsControlDeckOpen(false);
-    setActiveTab("Home");
+    if (item === "Home") setActiveTab("Home");
     if (item === "Messages") setActiveTab("Chat");
     if (item === "Finance") setExpandedCard("finance");
     if (item === "Events") setActiveTab("Events");
@@ -1393,7 +1393,7 @@ export default function AuthenticatedApp() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
-      <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
+      <div className="fixed inset-0 z-0 dark:hidden" style={{ backgroundColor: roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{

@@ -230,7 +230,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   type="button"
                   onClick={() => {
                     onEditProfile?.();
-                    onClose();
                   }}
                   className="px-3 py-1.5 rounded-[10px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
                 >
@@ -256,7 +255,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   type="button"
                   onClick={() => {
                     onEditBand?.();
-                    onClose();
                   }}
                   className="px-3 py-1.5 rounded-[10px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
                 >
@@ -289,7 +287,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       type="button"
                       onClick={() => {
                         onAddEntity?.();
-                        onClose();
                       }}
                       className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1"
                     >
@@ -338,7 +335,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       type="button"
                       onClick={() => {
                         onEntityDetailClick?.(item.id);
-                        onClose();
                       }}
                       className="p-4 rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 flex flex-col justify-between gap-3 text-left transition-all active:scale-[0.98] shadow-2xs group"
                     >
