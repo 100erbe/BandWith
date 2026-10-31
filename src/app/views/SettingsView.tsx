@@ -28,9 +28,16 @@ type SettingsSection = 'main' | 'notifications' | 'appearance' | 'privacy' | 'he
 interface SettingsViewProps {
   onClose: () => void;
   initialSection?: SettingsSection;
+  isAdmin?: boolean;
+  onOpenPricing?: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSection = 'main' }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  onClose,
+  initialSection = 'main',
+  isAdmin = false,
+  onOpenPricing,
+}) => {
   const { user, signOut, isAuthenticated } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
@@ -54,6 +61,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, initialSect
 
   const renderMainSection = () => (
     <div className="flex flex-col gap-0">
+      {isAdmin && onOpenPricing && (
+        <motion.button
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={onOpenPricing}
+          className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70 transition-opacity"
+        >
+          <div className="flex flex-col items-start">
+            <span className="text-xs font-bold text-foreground uppercase tracking-wide">PRICING, FEES & SERVICES</span>
+            <span className="text-[10px] font-medium text-foreground/40 uppercase">Musician fees, services & travel expenses</span>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
+        </motion.button>
+      )}
       {[
         { id: 'notifications' as const, label: 'NOTIFICATIONS', desc: 'Push, email & sounds' },
         { id: 'appearance' as const, label: 'APPEARANCE', desc: 'Theme & display' },

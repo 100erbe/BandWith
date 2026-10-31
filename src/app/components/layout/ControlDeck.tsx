@@ -26,6 +26,7 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
 
   const quickActions = [
     { label: 'New Quote', lines: ['NEW', 'QUOTE'], onClick: () => onNavigate('Quote'), adminOnly: true },
+    { label: 'Pricing & Rates', lines: ['PRICING', '& RATES'], onClick: () => onNavigate('PricingSettings'), adminOnly: true },
     { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], onClick: () => onNavigate('InviteMember'), adminOnly: true },
     { label: 'Finance', lines: ['MONEY', 'FLOW'], onClick: () => onNavigate('Finance'), adminOnly: true },
     { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], onClick: () => onNavigate('Analytics'), adminOnly: true },
@@ -112,6 +113,31 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* ═══ BAND SETTINGS (Admin Only) ═══ */}
+            {isAdmin && (
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col">
+                  <span className="text-[32px] font-bold text-foreground leading-none">BAND</span>
+                  <span className="text-[32px] font-bold text-foreground leading-none">SETTINGS</span>
+                </div>
+
+                <div className="flex flex-col gap-0">
+                  <motion.button
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    onClick={() => onNavigate('PricingSettings')}
+                    className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70 transition-opacity"
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">PRICING, FEES & SERVICES</span>
+                      <span className="text-[10px] font-medium text-foreground/40 uppercase">Musician fees, services & travel expenses</span>
+                    </div>
+                    <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
+                  </motion.button>
+                </div>
+              </div>
+            )}
 
             {/* ═══ APP SETTINGS ═══ */}
             <div className="flex flex-col gap-5">

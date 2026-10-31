@@ -1575,7 +1575,18 @@ export default function AuthenticatedApp() {
 
           {showBandMembers && <BandMembersView key="band-members" onClose={() => setShowBandMembers(false)} />}
           {showSetlistManager && <SetlistManagerView key="setlist-manager" onClose={() => setShowSetlistManager(false)} />}
-          {showSettings && <SettingsView key="settings" onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }} initialSection={settingsInitialSection} />}
+          {showSettings && (
+            <SettingsView
+              key="settings"
+              onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }}
+              initialSection={settingsInitialSection}
+              isAdmin={isAdmin}
+              onOpenPricing={() => {
+                setShowSettings(false);
+                setShowPricingModal(true);
+              }}
+            />
+          )}
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
