@@ -69,13 +69,13 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#0047FF"
+      backgroundColor="var(--accent-rehearsal)"
       onClose={onClose}
       origin={{ top: '30%', left: '3%', right: '3%', bottom: '52%' }}
     >
       {/* Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#0047FF]/95 backdrop-blur-md"
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--accent-rehearsal)]/95 backdrop-blur-md"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -185,8 +185,8 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      {i === 0 && <span className="w-2 h-2 rounded-full bg-[#0047FF] animate-pulse" />}
-                      <span className="text-[10px] font-bold uppercase text-[#0047FF] tracking-widest">
+                      {i === 0 && <span className="w-2 h-2 rounded-full bg-[var(--accent-rehearsal)] animate-pulse" />}
+                      <span className="text-[10px] font-bold uppercase text-[var(--accent-rehearsal)] tracking-widest">
                         {i === 0 ? 'Next Up' : 'Scheduled'}
                       </span>
                     </div>
@@ -239,7 +239,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
 
                 <div className="flex justify-between items-start mb-6 relative z-10">
                   <div className="flex flex-col gap-1">
-                    <span className="inline-flex items-center gap-1.5 bg-[#0047FF]/10 text-[#0047FF] px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide w-fit">
+                    <span className="inline-flex items-center gap-1.5 bg-[var(--accent-rehearsal)]/10 text-[var(--accent-rehearsal)] px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide w-fit">
                       <Activity className="w-3 h-3" /> {currentRehearsal.status}
                     </span>
                     <span className="text-[10px] font-bold uppercase text-stone-400 tracking-widest pl-1">{currentRehearsal.date}</span>
@@ -289,7 +289,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                           "w-2.5 h-2.5 rounded-full border-2 transition-all duration-300", 
                           step.active 
                             ? "bg-accent-rehearsal border-accent-rehearsal scale-125 shadow-[0_0_10px_var(--accent-rehearsal)]" 
-                            : "bg-[#0047FF] border-white/40 group-hover:border-white"
+                            : "bg-[var(--accent-rehearsal)] border-white/40 group-hover:border-white"
                         )} />
                         <span className={cn(
                           "text-[9px] font-bold tabular-nums", 
@@ -454,7 +454,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 p-6 bg-[#0047FF]/95 backdrop-blur-md border-t border-white/10 z-50 flex gap-4 max-w-md mx-auto"
+          className="fixed bottom-0 left-0 right-0 p-6 bg-[var(--accent-rehearsal)]/95 backdrop-blur-md border-t border-white/10 z-50 flex gap-4 max-w-md mx-auto"
         >
           <button 
             onClick={() => setRehearsalViewMode('live')}

@@ -238,7 +238,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                     }`}
                   >
                     {isAdded ? (
-                      <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.15)" />
+                      <DotCheckbox checked={true} activeColor="var(--fg)" inactiveColor="var(--dot-inactive)" />
                     ) : (
                       <Music className="w-5 h-5" />
                     )}
@@ -280,7 +280,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   className="flex items-center gap-3 p-3 rounded-xl bg-accent/10 border border-accent/20"
                 >
                   <div className="w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center">
-                    <DotCheckbox checked={true} activeColor="#000000" inactiveColor="rgba(0,0,0,0.15)" />
+                    <DotCheckbox checked={true} activeColor="var(--fg)" inactiveColor="var(--dot-inactive)" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-[14px] text-accent truncate">
@@ -556,7 +556,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
                   </button>
 
                   <button className="w-full flex items-center gap-4 p-4 rounded-xl bg-[#FA243C]/10 border border-[#FA243C]/30 hover:border-[#FA243C]/50 transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-b from-[#FA243C] to-[#D11C3C] flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-b from-[#FA243C] to-[var(--destructive)] flex items-center justify-center">
                       <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.364-1.29.44-2.244 1.23-2.874 2.493-.337.674-.497 1.407-.548 2.166-.04.617-.05 1.235-.05 1.853v6.188c.002.7.013 1.4.064 2.098.05.697.18 1.375.423 2.02.463 1.223 1.27 2.12 2.458 2.65.633.284 1.306.416 2.003.466.66.047 1.323.058 1.986.058h12.08c.62 0 1.242-.014 1.86-.058.61-.044 1.203-.14 1.778-.33 1.426-.47 2.434-1.354 3.017-2.74.253-.6.385-1.233.434-1.886.067-.898.07-1.8.068-2.7V8.15c0-.686-.022-1.372-.076-2.025zM11.23 15.21a3.01 3.01 0 01-.75 2.02c-.44.51-1 .8-1.66.85-.08.01-.15.01-.23.01-.68 0-1.28-.23-1.78-.68a2.99 2.99 0 01-.95-1.84c-.05-.37-.04-.75.02-1.12.13-.76.49-1.39 1.07-1.88.51-.43 1.11-.66 1.77-.68.1 0 .19 0 .29.01.54.04 1.02.22 1.45.53.52.38.89.88 1.08 1.5.12.4.15.8.11 1.21h.01zm6.27.68c-.02.25-.08.5-.16.74-.3.86-.83 1.53-1.61 1.97-.52.29-1.08.41-1.68.37-.93-.07-1.72-.43-2.3-1.17a3.19 3.19 0 01-.66-1.63c-.05-.42-.03-.85.07-1.26.19-.81.6-1.5 1.24-2.02.49-.4 1.05-.64 1.67-.72.19-.02.38-.03.57-.01.85.06 1.57.38 2.15.97.52.53.85 1.17.97 1.91.05.28.06.57.03.85h-.01zm.71-7.31H5.77c-.15 0-.3-.02-.46-.05-.28-.06-.52-.2-.71-.43-.19-.22-.29-.49-.3-.79 0-.29.1-.54.28-.76.19-.22.43-.36.72-.42.1-.02.2-.03.3-.03h12.64c.24 0 .47.04.68.15.34.17.56.44.66.8.07.25.05.5-.03.76-.11.34-.33.58-.65.72-.18.08-.38.11-.59.11l.01-.06z"/>
                       </svg>

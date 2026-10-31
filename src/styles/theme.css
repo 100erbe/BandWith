@@ -20,26 +20,26 @@
   --popover: #F2F0ED;
   --popover-fg: #0A0A0A;
   --muted: #D1D1D1;
-  --muted-fg: #666666;
+  --muted-fg: #4F4F4F;
 
   /* ── Primary brand (all modes) ── */
   --primary: #6A0DAD;
   --primary-fg: #FFFFFF;
 
   /* ── Secondary ── */
-  --secondary: #998878;
+  --secondary: #E5E7EB;
   --secondary-fg: #1A1A1A;
 
-  /* ── Action (gig) ── */
-  --accent-gig: #00C9B1;
+  /* ── Action (gig) — high contrast teal ── */
+  --accent-gig: #00A896;
   --accent-gig-fg: #000000;
 
-  /* ── Utility (rehearsal) ── */
-  --accent-rehearsal: #0055E1;
+  /* ── Utility (rehearsal) — accessible blue ── */
+  --accent-rehearsal: #0052CC;
   --accent-rehearsal-fg: #FFFFFF;
 
-  /* ── Context (quote) ── */
-  --accent-quote: #009AF3;
+  /* ── Context (quote) — accessible electric blue ── */
+  --accent-quote: #0070BA;
   --accent-quote-fg: #FFFFFF;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
@@ -47,10 +47,10 @@
   --accent-fg: #FFFFFF;
 
   /* ── Semantic ── */
-  --destructive: #A73131;
+  --destructive: #B91C1C;
   --destructive-fg: #FFFFFF;
-  --border: rgba(0, 0, 0, 0.05);
-  --input: rgba(0, 0, 0, 0.05);
+  --border: rgba(0, 0, 0, 0.12);
+  --input: rgba(0, 0, 0, 0.12);
   --ring: #6A0DAD;
   --radius: 2.5rem;
 }
@@ -68,36 +68,36 @@
   --muted: #2C2C2C;
   --muted-fg: #9CA3AF;
 
-  /* ── Primary brand (all modes) ── */
-  --primary: #6A0DAD;
+  /* ── Primary brand (accessible in dark) ── */
+  --primary: #9333EA;
   --primary-fg: #FFFFFF;
 
   /* ── Secondary ── */
-  --secondary: #78716C;
+  --secondary: #27272A;
   --secondary-fg: #E5E7EB;
 
-  /* ── Action (gig) — teal, good contrast on #121212 ── */
+  /* ── Action (gig) — teal, 11.28:1 contrast on #121212 ── */
   --accent-gig: #2DD4BF;
   --accent-gig-fg: #000000;
 
-  /* ── Utility (rehearsal) — bright blue, good contrast ── */
+  /* ── Utility (rehearsal) — bright blue, 8.26:1 contrast ── */
   --accent-rehearsal: #60A5FA;
   --accent-rehearsal-fg: #000000;
 
-  /* ── Context (quote) — cyan, good contrast ── */
-  --accent-quote: #22D3EE;
+  /* ── Context (quote) — electric blue, 6.92:1 contrast with dark text ── */
+  --accent-quote: #009AF3;
   --accent-quote-fg: #000000;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
-  --accent: #6A0DAD;
+  --accent: #9333EA;
   --accent-fg: #FFFFFF;
 
   /* ── Semantic ── */
-  --destructive: #FB7185;
+  --destructive: #F87171;
   --destructive-fg: #000000;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #6A0DAD;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #9333EA;
 }
 
 /* ═══ Map CSS vars to Tailwind v4 theme tokens ═══

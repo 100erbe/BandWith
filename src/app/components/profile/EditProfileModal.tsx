@@ -189,7 +189,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 className="w-24 h-24 rounded-full object-cover"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-[#1A1A1A] flex items-center justify-center text-white font-black text-2xl">
+              <div className="w-24 h-24 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white font-black text-2xl">
                 {fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U'}
               </div>
             )}
@@ -328,7 +328,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       {/* Footer */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[#E6E5E1] via-[#E6E5E1] to-transparent"
+        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
       >
         <button

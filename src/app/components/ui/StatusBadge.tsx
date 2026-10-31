@@ -1,20 +1,43 @@
 import React from "react";
 import { cn } from "@/app/components/ui/utils";
 
+type PillVariant = "gig" | "rehearsal" | "quote" | "draft";
+
+function mapStatusToVariant(status: string): PillVariant {
+  const s = status?.toUpperCase();
+  if (s === "CONFIRMED" || s === "COMPLETED" || s === "GIG") return "gig";
+  if (s === "REHEARSAL") return "rehearsal";
+  if (s === "QUOTED" || s === "QUOTE" || s === "SENT" || s === "NEGOTIATING") return "quote";
+  return "draft";
+}
+
+function variantLabel(variant: PillVariant): string {
+  if (variant === "gig") return "GIG";
+  if (variant === "rehearsal") return "REHEARSAL";
+  if (variant === "quote") return "QUOTE";
+  return "DRAFT";
+}
+
+const variantClasses: Record<PillVariant, string> = {
+  gig: "bg-accent-gig/15 text-accent-gig border border-accent-gig/30",
+  rehearsal: "bg-secondary/20 text-secondary-foreground border border-border/50",
+  quote: "bg-muted text-muted-foreground border border-border",
+  draft: "bg-muted text-muted-foreground border border-border",
+};
+
 export function StatusBadge({ status }: { status: string }) {
-  let bg = "bg-stone-100";
-  let text = "text-stone-600";
-  let dotColor = "bg-stone-400";
-  
-  if (status === "TENTATIVE" || status === "Negotiating") { bg = "bg-yellow-100"; text = "text-yellow-700"; dotColor = "bg-yellow-500"; }
-  if (status === "QUOTE" || status === "Sent") { bg = "bg-blue-100"; text = "text-blue-700"; dotColor = "bg-blue-500"; }
-  if (status === "CONFIRMED" || status === "Finalizing") { bg = "bg-green-100"; text = "text-green-700"; dotColor = "bg-green-500"; }
-  if (status === "PENDING" || status === "Draft") { bg = "bg-stone-200"; text = "text-stone-600"; dotColor = "bg-stone-500"; }
+  const variant = mapStatusToVariant(status);
+  const label = variantLabel(variant);
 
   return (
-    <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wide flex items-center gap-1.5", bg, text)}>
-      <div className={cn("w-1.5 h-1.5 rounded-full", dotColor)} />
-      {status}
+    <span
+      className={cn(
+        "rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase inline-flex items-center gap-1",
+        variantClasses[variant],
+      )}
+    >
+      <span aria-hidden="true">•</span>
+      {label}
     </span>
   );
 }

@@ -16,111 +16,6 @@ interface ControlDeckProps {
   isAdmin?: boolean;
 }
 
-type GridCell = { c: number; r: number; cs?: number; rs?: number; d: boolean };
-
-const ACTION_GRID_PATTERNS: Record<string, GridCell[]> = {
-  'New Quote': [
-    // N (cols 1-3)
-    { c:1, r:1, rs:5, d:true }, { c:2, r:1, d:true }, { c:3, r:1, rs:5, d:true },
-    { c:2, r:2, d:false }, { c:2, r:3, d:false }, { c:2, r:4, d:false }, { c:2, r:5, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // Q (cols 5-7)
-    { c:5, r:1, cs:3, d:true }, { c:5, r:2, rs:3, d:true }, { c:7, r:2, rs:3, d:true },
-    { c:6, r:5, d:true }, { c:7, r:5, d:true },
-    { c:6, r:2, d:false }, { c:6, r:3, d:false }, { c:6, r:4, d:false }, { c:5, r:5, d:false },
-  ],
-  'Invite Member': [
-    // I (cols 1-3)
-    { c:1, r:1, cs:3, d:true }, { c:2, r:2, rs:3, d:true }, { c:1, r:5, cs:3, d:true },
-    { c:1, r:2, d:false }, { c:3, r:2, d:false }, { c:1, r:3, d:false }, { c:3, r:3, d:false },
-    { c:1, r:4, d:false }, { c:3, r:4, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // M (cols 5-7)
-    { c:5, r:1, rs:5, d:true }, { c:6, r:1, rs:2, d:true }, { c:7, r:1, rs:5, d:true },
-    { c:6, r:3, d:false }, { c:6, r:4, d:false }, { c:6, r:5, d:false },
-  ],
-  Finance: [
-    // M (cols 1-3)
-    { c:1, r:1, rs:5, d:true }, { c:2, r:1, rs:2, d:true }, { c:3, r:1, rs:5, d:true },
-    { c:2, r:3, d:false }, { c:2, r:4, d:false }, { c:2, r:5, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // F (cols 5-7)
-    { c:5, r:1, cs:3, d:true }, { c:5, r:2, rs:4, d:true }, { c:6, r:3, d:true },
-    { c:6, r:2, d:false }, { c:7, r:2, d:false }, { c:7, r:3, d:true },
-    { c:6, r:4, d:false }, { c:7, r:4, d:false }, { c:6, r:5, d:false }, { c:7, r:5, d:false },
-  ],
-  Analytics: [
-    // D (cols 1-3)
-    { c:1, r:1, rs:5, d:true }, { c:2, r:1, d:true }, { c:3, r:2, rs:3, d:true }, { c:2, r:5, d:true },
-    { c:3, r:1, d:false }, { c:2, r:2, d:false }, { c:2, r:3, d:false }, { c:2, r:4, d:false }, { c:3, r:5, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // I (cols 5-7)
-    { c:5, r:1, cs:3, d:true }, { c:6, r:2, rs:3, d:true }, { c:5, r:5, cs:3, d:true },
-    { c:5, r:2, d:false }, { c:7, r:2, d:false }, { c:5, r:3, d:false }, { c:7, r:3, d:false },
-    { c:5, r:4, d:false }, { c:7, r:4, d:false },
-  ],
-  'My Schedule': [
-    // M (cols 1-3)
-    { c:1, r:1, rs:5, d:true }, { c:2, r:1, rs:2, d:true }, { c:3, r:1, rs:5, d:true },
-    { c:2, r:3, d:false }, { c:2, r:4, d:false }, { c:2, r:5, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // S (cols 5-7)
-    { c:5, r:1, cs:3, d:true }, { c:5, r:2, d:true }, { c:5, r:3, cs:3, d:true }, { c:7, r:4, d:true }, { c:5, r:5, cs:3, d:true },
-    { c:6, r:2, d:false }, { c:7, r:2, d:false }, { c:5, r:4, d:false }, { c:6, r:4, d:false },
-  ],
-  'Band Info': [
-    // B (cols 1-3)
-    { c:1, r:1, rs:5, d:true }, { c:2, r:1, cs:2, d:true }, { c:3, r:2, d:true },
-    { c:2, r:3, cs:2, d:true }, { c:3, r:4, d:true }, { c:2, r:5, cs:2, d:true },
-    { c:2, r:2, d:false }, { c:2, r:4, d:false },
-    // gap
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    // I (cols 5-7)
-    { c:5, r:1, cs:3, d:true }, { c:6, r:2, rs:3, d:true }, { c:5, r:5, cs:3, d:true },
-    { c:5, r:2, d:false }, { c:7, r:2, d:false }, { c:5, r:3, d:false }, { c:7, r:3, d:false },
-    { c:5, r:4, d:false }, { c:7, r:4, d:false },
-  ],
-};
-
-const PixelArtGrid: React.FC<{ pattern: GridCell[]; color: string }> = ({ pattern, color }) => (
-  <div
-    className="grid gap-1 w-[100px] h-[91px]"
-    style={{ gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(5, 1fr)' }}
-  >
-    {pattern.map((cell, i) => (
-      <div
-        key={i}
-        className="rounded-[10px]"
-        style={{
-          gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
-          gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-          backgroundColor: cell.d ? color : '#CDCACA',
-        }}
-      />
-    ))}
-  </div>
-);
-
-const ProDotGrid: React.FC = () => (
-  <div
-    className="grid gap-1 w-full h-[48px]"
-    style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(2, 1fr)' }}
-  >
-    {Array.from({ length: 16 }).map((_, i) => (
-      <div
-        key={i}
-        className="rounded-[10px]"
-        style={{ backgroundColor: i < 0 ? 'var(--accent)' : 'var(--muted)' }}
-      />
-    ))}
-  </div>
-);
-
 export const ControlDeck: React.FC<ControlDeckProps> = ({
   isOpen,
   onClose,
@@ -130,15 +25,15 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
   const { signOut, user } = useAuth();
 
   const quickActions = [
-    { label: 'New Quote', lines: ['NEW', 'QUOTE'], color: 'var(--accent)', onClick: () => onNavigate('Quote'), adminOnly: true },
-    { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], color: 'var(--accent-rehearsal)', onClick: () => onNavigate('InviteMember'), adminOnly: true },
-    { label: 'Finance', lines: ['MONEY', 'FLOW'], color: '#22C55E', onClick: () => onNavigate('Finance'), adminOnly: true },
-    { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], color: '#F59E0B', onClick: () => onNavigate('Analytics'), adminOnly: true },
+    { label: 'New Quote', lines: ['NEW', 'QUOTE'], onClick: () => onNavigate('Quote'), adminOnly: true },
+    { label: 'Invite Member', lines: ['INVITE', 'MEMBER'], onClick: () => onNavigate('InviteMember'), adminOnly: true },
+    { label: 'Finance', lines: ['MONEY', 'FLOW'], onClick: () => onNavigate('Finance'), adminOnly: true },
+    { label: 'Analytics', lines: ['DATA', 'INSIGHTS'], onClick: () => onNavigate('Analytics'), adminOnly: true },
   ].filter(action => isAdmin || !action.adminOnly);
 
   const memberActions = isAdmin ? [] : [
-    { label: 'My Schedule', lines: ['MY', 'SCHEDULE'], color: '#3B82F6', onClick: () => onNavigate('Events') },
-    { label: 'Band Info', lines: ['BAND', 'INFO'], color: '#8B5CF6', onClick: () => onNavigate('BandMembers') },
+    { label: 'My Schedule', lines: ['MY', 'SCHEDULE'], onClick: () => onNavigate('Events') },
+    { label: 'Band Info', lines: ['BAND', 'INFO'], onClick: () => onNavigate('BandMembers') },
   ];
 
   const allActions = [...quickActions, ...memberActions];
@@ -196,28 +91,24 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
 
               <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
                 <div className="flex gap-10 w-max">
-                  {allActions.map((item, i) => {
-                    const pattern = ACTION_GRID_PATTERNS[item.label];
-                    return (
-                      <motion.button
-                        key={i}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        onClick={item.onClick}
-                        className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity"
-                      >
-                        <div className="flex items-start justify-between w-full">
-                          <div className="flex flex-col leading-none text-left">
-                            <span className="text-xs font-bold text-foreground text-left">{item.lines[0]}</span>
-                            {item.lines[1] && <span className="text-xs font-bold text-foreground text-left">{item.lines[1]}</span>}
-                          </div>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
+                  {allActions.map((item, i) => (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={item.onClick}
+                      className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity"
+                    >
+                      <div className="flex items-start justify-between w-full">
+                        <div className="flex flex-col leading-none text-left">
+                          <span className="text-xs font-bold text-foreground text-left">{item.lines[0]}</span>
+                          {item.lines[1] && <span className="text-xs font-bold text-foreground text-left">{item.lines[1]}</span>}
                         </div>
-                        {pattern && <PixelArtGrid pattern={pattern} color={item.color} />}
-                      </motion.button>
-                    );
-                  })}
+                        <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
+                      </div>
+                    </motion.button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -257,8 +148,6 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                   UPGRADE
                 </h3>
               </div>
-
-              <ProDotGrid />
 
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-foreground uppercase tracking-wide">UNLOCK ADVANCED FEATURES</span>
@@ -322,10 +211,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.15)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                className="w-full border border-[var(--destructive)] bg-[var(--warning-subtle)] rounded-[10px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-transform"
               >
-                <LogOut className="w-4 h-4 text-[#A73131]" />
-                <span className="text-[12px] font-bold text-[#A73131] uppercase">SIGN OUT</span>
+                <LogOut className="w-4 h-4 text-[var(--destructive)]" />
+                <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>
               </button>
               {user?.email && (
                 <p className="text-[10px] font-normal text-foreground/30 text-center uppercase w-full">

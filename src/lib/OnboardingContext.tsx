@@ -313,6 +313,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
           instrument: state.profileData.instruments?.join(', '),
           phone: state.profileData.phone,
           user_mode: isGoingSolo ? 'solo' : 'band_admin',
+          ...(isGoingSolo ? {} : { role: 'admin', sub_tier: 'single_band' }),
         })
         .eq('id', user.id);
     }
@@ -340,18 +341,24 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     // ═══════════════════════════════════════════════════════════════
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('user_mode, sub_tier, trial_ends_at')
+      .select('user_mode, sub_tier')
       .eq('id', user.id)
       .single();
 
-    const subTier = profileData?.sub_tier;
-    const trialEndsAt = profileData?.trial_ends_at;
-    
-    // Determine if user has an active 7-Day trial
-    const hasActiveTrial = trialEndsAt ? new Date(trialEndsAt) > new Date() : false;
+    let subTier = profileData?.sub_tier;
+
+    // Ensure first-time band creators get at least the free 'single_band' Indie Act tier
+    if (!subTier || subTier === 'free_member') {
+      const { error: tierErr } = await supabase
+        .from('profiles')
+        .update({ sub_tier: 'single_band', user_mode: 'band_admin', role: 'admin' })
+        .eq('id', user.id);
+      if (!tierErr) {
+        subTier = 'single_band';
+      }
+    }
 
     const canCreateBands =
-      hasActiveTrial ||
       subTier === 'single_band' ||
       subTier === 'multi_band' ||
       subTier === 'unlimited';

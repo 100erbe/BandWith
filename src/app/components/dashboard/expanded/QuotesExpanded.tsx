@@ -247,13 +247,13 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#998878"
+      backgroundColor="var(--secondary)"
       onClose={onClose}
       origin={{ top: '40%', left: '3%', right: '58%', bottom: '42%' }}
     >
       {/* Header */}
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#998878]/95 backdrop-blur-md" 
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--secondary)]/95 backdrop-blur-md" 
         initial={{ opacity: 0, y: -20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -269,7 +269,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </div>
         <button 
           onClick={() => setIsCreating(true)}
-          className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform"
+          className="w-10 h-10 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform"
         >
           <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
@@ -284,16 +284,16 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
           initial={{ opacity: 0, scale: 0.95 }} 
           animate={{ opacity: 1, scale: 1 }} 
           transition={{ delay: 0.3 }} 
-          className="mb-8 p-6 bg-[#1A1A1A] rounded-[2.5rem] relative overflow-hidden shadow-2xl" 
+          className="mb-8 p-6 bg-[var(--surface-inverse)] rounded-[2.5rem] relative overflow-hidden shadow-2xl" 
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative z-10 flex flex-col gap-6">
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[#998878] text-[10px] font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
-                <h3 className="text-4xl font-black text-[#E6E5E1] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
+                <span className="text-[var(--secondary)] text-[10px] font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
+                <h3 className="text-4xl font-black text-[var(--bg)] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
               </div>
-              <div className="bg-[#333336] p-2 rounded-full">
+              <div className="bg-[var(--surface-inverse)] p-2 rounded-full">
                 <BarChart3 className="w-5 h-5 text-accent-quote" />
               </div>
             </div>
@@ -308,8 +308,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               ) : activeQuotes.slice(0, 7).map((quote, i) => { 
                 const heightPct = Math.min(100, Math.max(20, (quote.total / 12000) * 100)); 
                 const probability = getProbabilityFromStatus(quote.status);
-                let barColor = "bg-[#333336]"; 
-                if (probability > 40) barColor = "bg-[#998878]"; 
+                let barColor = "bg-[var(--surface-inverse)]"; 
+                if (probability > 40) barColor = "bg-[var(--secondary)]"; 
                 if (probability > 70) barColor = "bg-accent-quote"; 
                 const isActive = activeChartId === quote.id; 
                 
@@ -340,7 +340,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               })}
             </div>
             
-            <div className="flex items-center justify-between text-[10px] font-bold text-[#555555] border-t border-white/10 pt-3">
+            <div className="flex items-center justify-between text-[10px] font-bold text-[var(--muted-fg)] border-t border-white/10 pt-3">
               <span>Total Deals: {activeQuotes.length}</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-accent-quote" />
@@ -380,7 +380,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 <div>
                   <span className={cn(
                     "text-[10px] font-bold uppercase tracking-widest block mb-0.5", 
-                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[#998878]"
+                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[var(--secondary)]"
                   )}>
                     {quote.clientName}
                   </span>

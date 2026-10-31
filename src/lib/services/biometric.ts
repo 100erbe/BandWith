@@ -11,6 +11,30 @@ import {
 } from '@aparajita/capacitor-biometric-auth';
 
 const CREDENTIALS_KEY = 'bandwith_auth_credentials';
+const WEB_TEST_KEY = 'bandwith_auth_biometric_web_test';
+
+/**
+ * Simple key-based obfuscation for credentials in localStorage.
+ * Not cryptographically secure — use platform secure storage in production.
+ */
+function obfuscate(data: string): string {
+  const key = 'BandWith2026';
+  let result = '';
+  for (let i = 0; i < data.length; i++) {
+    result += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return btoa(result);
+}
+
+function deobfuscate(encoded: string): string {
+  const key = 'BandWith2026';
+  const raw = atob(encoded);
+  let result = '';
+  for (let i = 0; i < raw.length; i++) {
+    result += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return result;
+}
 
 export interface BiometricCredentials {
   email: string;
@@ -21,13 +45,36 @@ export interface BiometricStatus {
   isAvailable: boolean;
   biometryType: 'faceId' | 'touchId' | 'fingerprint' | 'iris' | 'none';
   hasCredentials: boolean;
+  isWebTest?: boolean;
+}
+
+export interface BiometricOptions {
+  /** Allow testing the biometric flow in web/browser (no actual hardware). Default false. */
+  allowWebTest?: boolean;
 }
 
 /**
- * Check if biometric authentication is available on the device
+ * Check if biometric authentication is available on the device.
+ * On native: queries the actual biometric hardware.
+ * On web with allowWebTest: simulates availability if credentials exist.
  */
-export const checkBiometricAvailability = async (): Promise<BiometricStatus> => {
-  if (!Capacitor.isNativePlatform()) {
+export const checkBiometricAvailability = async (
+  options?: BiometricOptions
+): Promise<BiometricStatus> => {
+  const isNative = Capacitor.isNativePlatform();
+  const allowWebTest = options?.allowWebTest ?? false;
+
+  // Web/browser: optionally allow testing the biometric flow
+  if (!isNative) {
+    if (allowWebTest) {
+      const hasCredentials = !!localStorage.getItem(CREDENTIALS_KEY);
+      return {
+        isAvailable: true,
+        biometryType: 'fingerprint',
+        hasCredentials,
+        isWebTest: true,
+      };
+    }
     return { isAvailable: false, biometryType: 'none', hasCredentials: false };
   }
 
@@ -54,20 +101,27 @@ export const checkBiometricAvailability = async (): Promise<BiometricStatus> => 
           break;
       }
     } catch (innerError) {
-      // Plugin checkBiometry might fail on some Android devices.
-      // Fallback: assume biometric is available if the device has hardware.
-      // We'll detect this by attempting to check the plugin directly.
-      console.warn('[Biometric] checkBiometry threw, falling back:', innerError);
-      // Fallback: try a simple authenticate to see if it works
-      try {
-        await BiometricAuth.checkBiometry();
-      } catch {
-        // If even a simple check fails, we're on a device with no biometric hardware
-      }
+      // BUG FIX: On some Android devices checkBiometry() throws even though
+      // hardware is present and working. Instead of calling checkBiometry()
+      // again (which will also throw), assume biometric is available.
+      console.warn(
+        '[Biometric] checkBiometry threw, assuming device has biometric hardware:',
+        innerError
+      );
+      isAvailable = true;
+      biometryType = 'fingerprint'; // safe default for Android
     }
 
-    // Check if we have stored credentials in localStorage
+    // Check if we have stored credentials
     const hasCredentials = !!localStorage.getItem(CREDENTIALS_KEY);
+
+    // BUG FIX: If credentials exist but biometric says unavailable, log warning
+    if (hasCredentials && !isAvailable) {
+      console.warn(
+        '[Biometric] Stored credentials found but biometric hardware not detected — ' +
+        'user may have enrolled after credential save, or hardware state changed.'
+      );
+    }
 
     return {
       isAvailable,
@@ -99,28 +153,36 @@ export const getBiometryDisplayName = (type: BiometricStatus['biometryType']): s
 };
 
 /**
- * Save credentials securely for biometric access
- * Note: We store encrypted credentials in localStorage after biometric verification
+ * Save credentials securely for biometric access.
+ * On native: verifies biometric first, then stores obfuscated credentials.
+ * On web with allowWebTest: stores directly (for testing).
  */
 export const saveCredentialsForBiometric = async (
   email: string,
-  password: string
+  password: string,
+  options?: BiometricOptions
 ): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform()) {
+  const isNative = Capacitor.isNativePlatform();
+  const allowWebTest = options?.allowWebTest ?? false;
+
+  if (!isNative && !allowWebTest) {
+    console.log('[Biometric] Not on native platform, skipping credential save');
     return false;
   }
 
   try {
-    // Verify biometric first before saving
-    await BiometricAuth.authenticate({
-      reason: 'Conferma la tua identità per abilitare l\'accesso biometrico',
-      allowDeviceCredential: true,
-    });
-    
-    // Store credentials (in production, use secure storage)
-    const credentials = btoa(JSON.stringify({ email, password }));
+    // Verify biometric first before saving (native only)
+    if (isNative) {
+      await BiometricAuth.authenticate({
+        reason: "Conferma la tua identità per abilitare l'accesso biometrico",
+        allowDeviceCredential: true,
+      });
+    }
+
+    // Store obfuscated credentials
+    const credentials = obfuscate(JSON.stringify({ email, password }));
     localStorage.setItem(CREDENTIALS_KEY, credentials);
-    
+
     console.log('[Biometric] Credentials saved successfully');
     return true;
   } catch (error) {
@@ -130,33 +192,49 @@ export const saveCredentialsForBiometric = async (
 };
 
 /**
- * Get stored credentials after biometric verification
+ * Get stored credentials after biometric verification.
+ * On native: requires biometric authentication first.
+ * On web with allowWebTest: returns stored credentials without hardware check.
  */
 export const getCredentialsWithBiometric = async (
-  reason?: string
+  reason?: string,
+  options?: BiometricOptions
 ): Promise<BiometricCredentials | null> => {
-  if (!Capacitor.isNativePlatform()) {
+  const isNative = Capacitor.isNativePlatform();
+  const allowWebTest = options?.allowWebTest ?? false;
+
+  if (!isNative && !allowWebTest) {
     return null;
   }
 
   try {
-    // Verify with biometric
-    await BiometricAuth.authenticate({
-      reason: reason || 'Accedi con biometria',
-      allowDeviceCredential: true,
-    });
+    // Verify with biometric (native only)
+    if (isNative) {
+      await BiometricAuth.authenticate({
+        reason: reason || 'Accedi con biometria',
+        allowDeviceCredential: true,
+      });
+    }
 
     // Get stored credentials
     const stored = localStorage.getItem(CREDENTIALS_KEY);
     if (!stored) {
+      console.log('[Biometric] No stored credentials found');
       return null;
     }
 
-    const credentials = JSON.parse(atob(stored));
-    return {
-      email: credentials.email,
-      password: credentials.password,
-    };
+    try {
+      const credentials = JSON.parse(deobfuscate(stored));
+      return {
+        email: credentials.email,
+        password: credentials.password,
+      };
+    } catch (parseError) {
+      console.error('[Biometric] Failed to decode stored credentials:', parseError);
+      // Corrupt storage — clean up
+      localStorage.removeItem(CREDENTIALS_KEY);
+      return null;
+    }
   } catch (error: any) {
     console.log('[Biometric] Authentication cancelled or failed:', error);
     return null;
@@ -180,7 +258,9 @@ export const deleteBiometricCredentials = async (): Promise<boolean> => {
 /**
  * Check if biometric login is enabled (has stored credentials)
  */
-export const isBiometricLoginEnabled = async (): Promise<boolean> => {
-  const status = await checkBiometricAvailability();
+export const isBiometricLoginEnabled = async (
+  options?: BiometricOptions
+): Promise<boolean> => {
+  const status = await checkBiometricAvailability(options);
   return status.isAvailable && status.hasCredentials;
 };

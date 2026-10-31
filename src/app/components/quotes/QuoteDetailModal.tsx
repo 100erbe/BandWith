@@ -13,33 +13,6 @@ interface QuoteDetailModalProps {
   onDelete?: (quote: Quote) => void;
 }
 
-const QDotGrid: React.FC<{
-  filled: number;
-  total: number;
-  cols?: number;
-  rows?: number;
-}> = ({ filled, total, cols = 6, rows = 2 }) => {
-  const capped = Math.min(filled, total);
-  return (
-    <div
-      className="grid w-full gap-[4px]"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        height: rows * 15 + (rows - 1) * 4,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{ backgroundColor: i < capped ? 'white' : 'rgba(255,255,255,0.2)' }}
-        />
-      ))}
-    </div>
-  );
-};
-
 const formatBandTotal = (total: number): string => {
   if (total >= 1000) return `€${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}K`;
   return `€${total}`;
@@ -206,7 +179,6 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   {(quote.clientName || 'MIA CALIFA').split(' ').slice(1).join(' ')?.toUpperCase() || 'CALIFA'}
                 </span>
               </div>
-              <QDotGrid filled={6} total={40} cols={8} rows={5} />
             </div>
 
             <div className="flex flex-col gap-[8px]">
@@ -222,7 +194,6 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   DP{dp}%
                 </span>
               </div>
-              <QDotGrid filled={8} total={40} cols={8} rows={5} />
             </div>
           </div>
 
@@ -235,7 +206,6 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               </div>
               <span className="text-[42px] font-bold text-white leading-none">150</span>
             </div>
-            <QDotGrid filled={150} total={200} cols={20} rows={10} />
           </div>
 
           {/* Music Moments + Members */}
@@ -250,7 +220,6 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   {quote.lineItems?.length || 3}
                 </span>
               </div>
-              <QDotGrid filled={quote.lineItems?.length || 3} total={12} cols={6} rows={2} />
             </div>
 
             <div className="flex flex-col gap-[8px]">
@@ -261,7 +230,6 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </div>
                 <span className="text-[42px] font-bold text-white leading-none">8</span>
               </div>
-              <QDotGrid filled={8} total={12} cols={6} rows={2} />
             </div>
           </div>
         </div>
@@ -287,7 +255,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </div>
             <button
               onClick={() => onDelete?.(quote)}
-              className="text-[12px] font-medium text-[#FF7C7C] uppercase"
+              className="text-[12px] font-medium text-[var(--destructive)] uppercase"
             >
               DELETE THIS QUOTE
             </button>

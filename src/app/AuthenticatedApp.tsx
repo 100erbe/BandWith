@@ -56,15 +56,20 @@ import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
 import { HomeView } from "@/app/views/HomeView";
 import { ChatView } from "@/app/views/ChatView";
 import { EventsView } from "@/app/views/EventsView";
-import { BandMembersView } from "@/app/views/BandMembersView";
-import { SetlistManagerView } from "@/app/views/SetlistManagerView";
-import { SettingsView } from "@/app/views/SettingsView";
-import { AnalyticsView } from "@/app/views/AnalyticsView";
-import { InventoryView } from "@/app/views/InventoryView";
-import { ContractsView } from "@/app/views/ContractsView";
-import { TaskTemplatesView } from "@/app/views/TaskTemplatesView";
 
-import { CreateEventModal } from "@/app/components/dashboard/CreateEventModal";
+const BandMembersView = React.lazy(() => import("@/app/views/BandMembersView").then(m => ({ default: m.BandMembersView })));
+const SetlistManagerView = React.lazy(() => import("@/app/views/SetlistManagerView").then(m => ({ default: m.SetlistManagerView })));
+const SettingsView = React.lazy(() => import("@/app/views/SettingsView").then(m => ({ default: m.SettingsView })));
+const AnalyticsView = React.lazy(() => import("@/app/views/AnalyticsView").then(m => ({ default: m.AnalyticsView })));
+const InventoryView = React.lazy(() => import("@/app/views/InventoryView").then(m => ({ default: m.InventoryView })));
+const ContractsView = React.lazy(() => import("@/app/views/ContractsView").then(m => ({ default: m.ContractsView })));
+const TaskTemplatesView = React.lazy(() => import("@/app/views/TaskTemplatesView").then(m => ({ default: m.TaskTemplatesView })));
+const CreateEventModal = React.lazy(() => import("@/app/components/dashboard/CreateEventModal").then(m => ({ default: m.CreateEventModal })));
+const RehearsalLiveView = React.lazy(() => import("@/app/components/rehearsal/RehearsalLiveView").then(m => ({ default: m.RehearsalLiveView })));
+const RehearsalPostView = React.lazy(() => import("@/app/components/rehearsal/RehearsalPostView").then(m => ({ default: m.RehearsalPostView })));
+const QuoteCreationWizard = React.lazy(() => import("@/app/components/quotes/QuoteCreationWizard").then(m => ({ default: m.QuoteCreationWizard })));
+const BandPricingModal = React.lazy(() => import("@/app/components/quotes/BandPricingModal").then(m => ({ default: m.BandPricingModal })));
+
 import { EventData } from "@/app/components/dashboard/EventCard";
 import { EventDetail } from "@/app/components/dashboard/EventDetail";
 
@@ -78,10 +83,7 @@ import {
   ExpandedCardWrapper,
 } from "@/app/components/dashboard/expanded";
 
-import { RehearsalLiveView } from "@/app/components/rehearsal/RehearsalLiveView";
-import { RehearsalPostView } from "@/app/components/rehearsal/RehearsalPostView";
-
-import { QuoteCreationWizard } from "@/app/components/quotes";
+import { AdminGuidedTourModal } from "@/app/components/onboarding/AdminGuidedTourModal";
 import { Quote } from "@/app/data/quotes";
 import { createQuote as createQuoteDB } from "@/lib/services/quotes";
 
@@ -553,6 +555,18 @@ export default function AuthenticatedApp() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showCreateBand, setShowCreateBand] = useState(false);
   const [showUpgradePricing, setShowUpgradePricing] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showAdminTour, setShowAdminTour] = useState(false);
+
+  // Auto-launch Admin Guided Tour for first-time admins
+  useEffect(() => {
+    if (isAdmin) {
+      const hasSeenTour = localStorage.getItem('bandwith_admin_tour_seen');
+      if (!hasSeenTour) {
+        setShowAdminTour(true);
+      }
+    }
+  }, [isAdmin]);
 
   // Tier-limit check before showing the create band modal
   const handleRequestCreateBand = useCallback(() => {
@@ -818,6 +832,8 @@ export default function AuthenticatedApp() {
       setShowSettings(true);
     }
     if (item === "Analytics") setShowAnalytics(true);
+    if (item === "PricingSettings") setShowPricingModal(true);
+    if (item === "AdminTour") setShowAdminTour(true);
     if (item === "Quote") { setCreateEventType("quote"); setIsCreateEventOpen(true); }
     if (item === "InviteMember") setShowBandMembers(true);
   };
@@ -1348,28 +1364,21 @@ export default function AuthenticatedApp() {
 
       const members = eventMembersMap[event.id || ''] || [];
       const myMembership = members.find((m: any) => m.userId === user.id);
-      if (!myMembership) continue;
 
-      if (myMembership.status === 'confirmed') {
-        confirmedFee += myMembership.fee || 0;
+      if (myMembership) {
+        if (myMembership.status === 'confirmed') {
+          confirmedFee += myMembership.fee || 0;
+          confirmedCount++;
+        } else if (myMembership.status === 'pending') {
+          pendingFee += myMembership.fee || 0;
+        }
+      } else if (members.length === 0) {
+        // Fallback when event_members rows were not explicitly populated
+        const fallbackShare = Math.round((event.fee || 0) / Math.max(1, realBand?.member_count || 1));
+        confirmedFee += fallbackShare;
         confirmedCount++;
-      } else if (myMembership.status === 'pending') {
-        pendingFee += myMembership.fee || 0;
       }
     }
-
-    console.log('[Dashboard] computedMemberStats:', 
-      'confirmedFee:', confirmedFee, 
-      'confirmedCount:', confirmedCount,
-      'pendingFee:', pendingFee,
-      'totalEvents:', events.length,
-      'matchingEvents:', events.filter(e => {
-        const m = eventMembersMap[e.id] || [];
-        return m.some((mem: any) => mem.userId === user.id && mem.status === 'confirmed');
-      }).length,
-      'sampleEventId:', events[0]?.id,
-      'sampleMapKey:', Object.keys(eventMembersMap)[0]
-    );
 
     return {
       totalEarned: confirmedFee,
@@ -1378,7 +1387,7 @@ export default function AuthenticatedApp() {
       revenueChange: 0,
       confirmedCount,
     };
-  }, [user?.id, masterEventsList, eventMembersMap]);
+  }, [user?.id, masterEventsList, eventMembersMap, realBand?.member_count]);
 
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
@@ -1387,7 +1396,7 @@ export default function AuthenticatedApp() {
       <div className={cn("fixed inset-0 transition-colors duration-500 z-0 dark:hidden", isMenuOpen && "bg-black")} style={{ backgroundColor: isMenuOpen ? undefined : roleBgColor }} />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
-      <div ref={scrollContainerRef} className="w-full relative flex flex-col z-10 overflow-y-auto" style={{
+      <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
         paddingTop: isAndroid && isNative ? "56px" : "max(env(safe-area-inset-top, 0px), 12px)",
         paddingBottom: isAndroid && isNative ? "calc(100px + 24px)" : "calc(100px + env(safe-area-inset-bottom, 0px))",
         paddingLeft: "16px", paddingRight: "16px",
@@ -1454,37 +1463,39 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>{showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} onChatCreated={(id) => { setShowNewChat(false); setSelectedChat({ id: Date.now(), uuid: id, type: "direct", name: "New Chat", initials: "NC", lastMessage: "Start chatting...", time: "now", unread: 0, status: "read" }); refetchChats?.(); }} />}</AnimatePresence>
 
-        <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
-        <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
-          if (realBand?.id) {
-            const quoteData = {
-              band_id: realBand.id,
-              quote_number: q.quoteNumber || `Q-${Date.now()}`,
-              status: (q.status || 'draft').toLowerCase(),
-              client_name: q.clientName || 'Unknown',
-              client_email: q.clientEmail || null,
-              client_phone: q.clientPhone || null,
-              client_company: q.clientCompany || null,
-              event_name: q.eventName || null,
-              event_type: q.eventType || null,
-              event_date: q.eventDate || null,
-              venue_name: q.venueName || null,
-              venue_city: q.venueCity || null,
-              subtotal: q.subtotal || 0,
-              vat_amount: q.vatAmount || 0,
-              total: q.total || 0,
-              deposit_amount: q.depositAmount || 0,
-              event_id: q.eventId || (await (async () => {
-                const evD: Record<string, any> = { band_id: realBand.id, title: q.eventName || q.clientName || 'Quote Event', event_type: q.eventType || 'other', status: 'tentative' as const, event_date: q.eventDate || new Date().toISOString().split('T')[0], start_time: q.eventTimeStart || '20:00', venue_name: q.venueName || 'TBD', venue: q.venueName || 'TBD', fee: q.total || 0, client_name: q.clientName || null };
-                const { data: ev } = await createEvent(evD);
-                refetchEvents();
-                return ev?.id || null;
-              })()),
-            };
-            await createQuoteDB(quoteData as any);
-          }
-          setIsCreateEventOpen(false);
-        }} />}</AnimatePresence>
+        <React.Suspense fallback={null}>
+          <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
+          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
+            if (realBand?.id) {
+              const quoteData = {
+                band_id: realBand.id,
+                quote_number: q.quoteNumber || `Q-${Date.now()}`,
+                status: (q.status || 'draft').toLowerCase(),
+                client_name: q.clientName || 'Unknown',
+                client_email: q.clientEmail || null,
+                client_phone: q.clientPhone || null,
+                client_company: q.clientCompany || null,
+                event_name: q.eventName || null,
+                event_type: q.eventType || null,
+                event_date: q.eventDate || null,
+                venue_name: q.venueName || null,
+                venue_city: q.venueCity || null,
+                subtotal: q.subtotal || 0,
+                vat_amount: q.vatAmount || 0,
+                total: q.total || 0,
+                deposit_amount: q.depositAmount || 0,
+                event_id: q.eventId || (await (async () => {
+                  const evD: Record<string, any> = { band_id: realBand.id, title: q.eventName || q.clientName || 'Quote Event', event_type: q.eventType || 'other', status: 'tentative' as const, event_date: q.eventDate || new Date().toISOString().split('T')[0], start_time: q.eventTimeStart || '20:00', venue_name: q.venueName || 'TBD', venue: q.venueName || 'TBD', fee: q.total || 0, client_name: q.clientName || null };
+                  const { data: ev } = await createEvent(evD);
+                  refetchEvents();
+                  return ev?.id || null;
+                })()),
+              };
+              await createQuoteDB(quoteData as any);
+            }
+            setIsCreateEventOpen(false);
+          }} />}</AnimatePresence>
+        </React.Suspense>
 
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
@@ -1529,7 +1540,7 @@ export default function AuthenticatedApp() {
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={myConfirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
 
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
+        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
 
         <AnimatePresence>
           {saveToast && (
@@ -1549,76 +1560,101 @@ export default function AuthenticatedApp() {
         </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {rehearsalViewMode === "live" && expandedCard === "rehearsal" && (
-          <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
-            <RehearsalLiveView onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
-          </motion.div>
-        )}
-        {rehearsalViewMode === "post" && expandedCard === "rehearsal" && (
-          <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
-            <RehearsalPostView onClose={() => setRehearsalViewMode("overview")} />
-          </motion.div>
-        )}
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {rehearsalViewMode === "live" && expandedCard === "rehearsal" && (
+            <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+              <RehearsalLiveView onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
+            </motion.div>
+          )}
+          {rehearsalViewMode === "post" && expandedCard === "rehearsal" && (
+            <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+              <RehearsalPostView onClose={() => setRehearsalViewMode("overview")} />
+            </motion.div>
+          )}
 
-        {showBandMembers && <BandMembersView key="band-members" onClose={() => setShowBandMembers(false)} />}
-        {showSetlistManager && <SetlistManagerView key="setlist-manager" onClose={() => setShowSetlistManager(false)} />}
-        {showSettings && <SettingsView key="settings" onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }} initialSection={settingsInitialSection} />}
-        {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
-        {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
-        {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-        {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
+          {showBandMembers && <BandMembersView key="band-members" onClose={() => setShowBandMembers(false)} />}
+          {showSetlistManager && <SetlistManagerView key="setlist-manager" onClose={() => setShowSetlistManager(false)} />}
+          {showSettings && <SettingsView key="settings" onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }} initialSection={settingsInitialSection} />}
+          {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
+          {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
+          {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
+          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
 
-        {showEditProfile && <EditProfileModal key="edit-profile" isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
-        {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
-        <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
+          {showEditProfile && <EditProfileModal key="edit-profile" isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
+          {showPricingModal && (
+            <BandPricingModal
+              key="band-pricing"
+              isOpen={showPricingModal}
+              onClose={() => setShowPricingModal(false)}
+              bandId={realBand?.id ? String(realBand.id) : 'default'}
+            />
+          )}
+          {showAdminTour && (
+            <AdminGuidedTourModal
+              key="admin-tour"
+              isOpen={showAdminTour}
+              onClose={() => {
+                localStorage.setItem('bandwith_admin_tour_seen', 'true');
+                setShowAdminTour(false);
+              }}
+              onOpenPricing={() => {
+                localStorage.setItem('bandwith_admin_tour_seen', 'true');
+                setShowAdminTour(false);
+                setShowPricingModal(true);
+              }}
+            />
+          )}
+          {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
+          <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
 
-        <NotificationDetailModal key="notification-detail"
-          isOpen={!!selectedNotification || selectedNotifications.length > 0}
-          onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
-          notification={selectedNotification}
-          notifications={selectedNotifications}
-          onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
-          onMarkAllAsRead={() => { Promise.all(selectedNotifications.map((n) => markNotificationAsRead(n.id))).then(() => refetchNotifications?.()); setSelectedNotification(null); setSelectedNotifications([]); }}
-          onDelete={(id) => { if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id)); else { setSelectedNotification(null); setSelectedNotifications([]); } }}
-          onAction={async (action, notificationId) => {
-            const notif = selectedNotification || selectedNotifications.find((n) => n.id === notificationId);
-            try {
-              if (action === "accept_event" || action === "decline_event") {
-                const eventId = notif?.data?.event_id as string;
-                const eventTitle = notif?.data?.event_title as string || "Event";
-                const eventType = notif?.data?.event_type as string || "gig";
-                if (eventId && user?.id) {
-                  const status = action === "accept_event" ? "confirmed" : "declined";
-                  const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+          <NotificationDetailModal key="notification-detail"
+            isOpen={!!selectedNotification || selectedNotifications.length > 0}
+            onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
+            notification={selectedNotification}
+            notifications={selectedNotifications}
+            onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
+            onMarkAllAsRead={() => { Promise.all(selectedNotifications.map((n) => markNotificationAsRead(n.id))).then(() => refetchNotifications?.()); setSelectedNotification(null); setSelectedNotifications([]); }}
+            onDelete={(id) => { if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id)); else { setSelectedNotification(null); setSelectedNotifications([]); } }}
+            onAction={async (action, notificationId) => {
+              const notif = selectedNotification || selectedNotifications.find((n) => n.id === notificationId);
+              try {
+                if (action === "accept_event" || action === "decline_event") {
+                  const eventId = notif?.data?.event_id as string;
+                  const eventTitle = notif?.data?.event_title as string || "Event";
+                  const eventType = notif?.data?.event_type as string || "gig";
+                  if (eventId && user?.id) {
+                    const status = action === "accept_event" ? "confirmed" : "declined";
+                    const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
 
-                  const { data: membership } = await supabase
-                    .from('event_members')
-                    .select('id')
-                    .eq('event_id', eventId)
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                  if (membership) {
-                    await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
+                    const { data: membership } = await supabase
+                      .from('event_members')
+                      .select('id')
+                      .eq('event_id', eventId)
+                      .eq('user_id', user.id)
+                      .maybeSingle();
+                    if (membership) {
+                      await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
+                    }
+
+                    const creatorId = notif?.data?.creator_id as string;
+                    if (creatorId && creatorId !== user.id) {
+                      await notifyEventResponse([creatorId], notif?.band_id || "", eventId, eventTitle, eventType, memberName, status);
+                    }
+                    if (notificationId) await markNotificationAsRead(notificationId);
+                    refetchNotifications?.();
+                    refetchEvents();
                   }
-
-                  const creatorId = notif?.data?.creator_id as string;
-                  if (creatorId && creatorId !== user.id) {
-                    await notifyEventResponse([creatorId], notif?.band_id || "", eventId, eventTitle, eventType, memberName, status);
-                  }
-                  if (notificationId) await markNotificationAsRead(notificationId);
-                  refetchNotifications?.();
-                  refetchEvents();
                 }
-              }
-            } catch (err) { console.error("Action error:", err); }
-            const navId = notif?.data?.event_id as string;
-            setSelectedNotification(null);
-            setSelectedNotifications([]);
-            if (navId) setTimeout(() => navigateToEvent(navId), 300);
-          }}
-        />
-      </AnimatePresence>
+              } catch (err) { console.error("Action error:", err); }
+              const navId = notif?.data?.event_id as string;
+              setSelectedNotification(null);
+              setSelectedNotifications([]);
+              if (navId) setTimeout(() => navigateToEvent(navId), 300);
+            }}
+          />
+        </AnimatePresence>
+      </React.Suspense>
 
       <AnimatePresence>
         {rsvpNotification && (

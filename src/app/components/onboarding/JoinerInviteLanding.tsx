@@ -115,7 +115,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             You're
             <br />
-            <span className="text-[#0047FF]">invited</span>
+            <span className="text-[var(--accent-rehearsal)]">invited</span>
           </h1>
           <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
             {inviterName} invited you to join as <span className="text-accent font-bold">{memberRole}</span>
@@ -131,7 +131,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
         >
           <div className="flex items-center gap-4">
             {/* Band Avatar */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0047FF] to-[#0033CC] flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--accent-rehearsal)] to-[var(--accent-rehearsal)] flex items-center justify-center overflow-hidden flex-shrink-0">
               {bandLogo ? (
                 <img
                   src={bandLogo}

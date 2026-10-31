@@ -366,7 +366,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       </AnimatePresence>
 
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-[#0A0A0A]">
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-[var(--bg)]">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-white/20" />
@@ -525,7 +525,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
-                  className="absolute bottom-full left-0 right-0 mb-2 bg-[#1A1A1A] rounded-[12px] border border-white/[0.06] max-h-40 overflow-y-auto z-10"
+                  className="absolute bottom-full left-0 right-0 mb-2 bg-[var(--surface-inverse)] rounded-[12px] border border-white/[0.06] max-h-40 overflow-y-auto z-10"
                 >
                   {filteredParticipants.map((participant) => (
                     <button

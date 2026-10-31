@@ -51,7 +51,7 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                     ) : (
                         <div className="space-y-2">
                             {bandTasks.map(task => (
-                                <div key={task.id} className="p-3 bg-[#F2F2F0] rounded-xl flex items-start gap-3">
+                                <div key={task.id} className="p-3 bg-[var(--surface-alt)] rounded-xl flex items-start gap-3">
                                     <div className={cn("mt-0.5 w-4 h-4 rounded border flex items-center justify-center", task.completed ? "bg-black border-black text-white" : "border-black/20")}>
                                         {task.completed && <CheckCircle2 className="w-3 h-3" />}
                                     </div>
@@ -79,7 +79,7 @@ export const RehearsalReviewTasksModal: React.FC<Props> = ({ isOpen, onClose, ta
                             {assignedTasks.map(task => {
                                 const assignee = members.find(m => Array.isArray(task.assignedTo) ? task.assignedTo.includes(m.id) : m.id === task.assignedTo);
                                 return (
-                                    <div key={task.id} className="p-3 bg-[#F2F2F0] rounded-xl flex items-start gap-3">
+                                    <div key={task.id} className="p-3 bg-[var(--surface-alt)] rounded-xl flex items-start gap-3">
                                          <div className="mt-0.5 w-5 h-5 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-sm shrink-0">
                                             {assignee?.initials || '?'}
                                          </div>

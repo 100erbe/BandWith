@@ -49,7 +49,7 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
                                             <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {p.votes.yes}</span>
                                         </div>
                                     </div>
-                                    <div className="text-[10px] text-foreground/60 italic bg-[#F2F2F0] p-1.5 rounded mt-2">"{p.reason}"</div>
+                                    <div className="text-[10px] text-foreground/60 italic bg-[var(--surface-alt)] p-1.5 rounded mt-2">"{p.reason}"</div>
                                 </div>
                             ))}
                         </div>
@@ -62,7 +62,7 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
                     {pending.length === 0 ? <div className="text-xs text-foreground/30 italic">None</div> : (
                         <div className="space-y-2">
                             {pending.map(p => (
-                                <div key={p.id} className="p-3 bg-[#F2F2F0] rounded-xl border border-transparent opacity-75">
+                                <div key={p.id} className="p-3 bg-[var(--surface-alt)] rounded-xl border border-transparent opacity-75">
                                     <div className="flex justify-between items-start mb-1">
                                         <div>
                                             <div className="text-sm font-bold text-foreground/70">{p.title}</div>

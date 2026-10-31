@@ -337,13 +337,13 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                                 ) : (
                                     <span className="flex-1 text-sm font-bold">Add New Song</span>
                                 )}
-                                <button onClick={() => setIsSearchExpanded(false)} className="p-2 bg-[#F2F2F0] rounded-full hover:bg-black/10 transition-colors">
+                                <button onClick={() => setIsSearchExpanded(false)} className="p-2 bg-[var(--surface-alt)] rounded-full hover:bg-black/10 transition-colors">
                                     <X className="w-4 h-4 text-foreground/60" />
                                 </button>
                             </div>
 
                             {/* Tabs */}
-                            <div className="px-3 py-2 bg-[#F9F9F8] border-b border-black/5 flex items-center gap-2 shrink-0">
+                            <div className="px-3 py-2 bg-[var(--surface-alt)] border-b border-black/5 flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => setOverlayTab('library')}
                                     className={cn(
@@ -367,7 +367,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                             {overlayTab === 'library' ? (
                                 <>
                                     {/* Filters Row */}
-                                    <div className="px-3 py-2 bg-[#F9F9F8] border-b border-black/5 flex items-center justify-between shrink-0">
+                                    <div className="px-3 py-2 bg-[var(--surface-alt)] border-b border-black/5 flex items-center justify-between shrink-0">
                                         <button
                                             type="button"
                                             onClick={() => setHideAlreadyInList(!hideAlreadyInList)}

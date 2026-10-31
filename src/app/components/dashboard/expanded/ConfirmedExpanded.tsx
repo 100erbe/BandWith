@@ -98,7 +98,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
           initial={{ opacity: 0, scale: 0.95 }} 
           animate={{ opacity: 1, scale: 1 }} 
           transition={{ delay: 0.3 }} 
-          className="mb-8 p-6 bg-[#050505] rounded-[2.5rem] relative overflow-hidden shadow-2xl text-white" 
+          className="mb-8 p-6 bg-[var(--bg)] rounded-[2.5rem] relative overflow-hidden shadow-2xl text-white" 
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative z-10">
@@ -118,7 +118,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                       <span className="text-xs font-bold uppercase">{nextGig.venue}</span>
                     </div>
                   </div>
-                  <div className="bg-[#1C1C1E] px-3 py-1.5 rounded-full border border-white/10 text-center">
+                  <div className="bg-[var(--surface-inverse)] px-3 py-1.5 rounded-full border border-white/10 text-center">
                     <span className="text-white font-black text-lg block leading-none">{nextGig.date?.split(' ')[1] || '--'}</span>
                     <span className="text-[9px] font-bold text-stone-500 uppercase">{nextGig.date?.split(' ')[0] || 'TBD'}</span>
                   </div>
@@ -138,7 +138,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                           "w-8 h-8 rounded-full flex items-center justify-center border-2", 
                           step.active 
                             ? "bg-accent-gig border-accent-gig text-accent-gig-foreground" 
-                            : "bg-[#1C1C1E] border-white/20 text-stone-500"
+                            : "bg-[var(--surface-inverse)] border-white/20 text-stone-500"
                         )}>
                           <step.icon className="w-3.5 h-3.5 fill-current" />
                         </div>
@@ -162,7 +162,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                       </div>
                     ))}
                   </div>
-                  <button className="h-8 px-3 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center gap-2 text-[10px] font-bold text-white hover:bg-[#333336]">
+                  <button className="h-8 px-3 rounded-full bg-[var(--surface-inverse)] border border-white/10 flex items-center gap-2 text-[10px] font-bold text-white hover:bg-[var(--surface-inverse)]">
                     <FileText className="w-3 h-3 text-accent-gig" /> View Call Sheet
                   </button>
                 </div>

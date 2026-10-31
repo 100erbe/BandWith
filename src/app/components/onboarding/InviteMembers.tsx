@@ -186,8 +186,8 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   transition={{ delay: index * 0.05 }}
                   className="flex items-center gap-3 bg-card rounded-xl p-3 border border-border"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#998878]/20 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-[#998878]" />
+                  <div className="w-10 h-10 rounded-full bg-[var(--secondary)]/20 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-5 h-5 text-[var(--secondary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground font-medium text-[14px] truncate">

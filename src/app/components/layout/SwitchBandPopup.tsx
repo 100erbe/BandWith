@@ -86,7 +86,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
               {bands.map((band) => {
                 const isActive = selectedBand.id === band.id;
                 const isAdmin = band.role === 'ADMIN';
-                const accentColor = isAdmin ? 'var(--accent)' : '#FF0066';
+                const accentColor = isAdmin ? 'var(--accent)' : 'var(--warning)';
 
                 return (
                   <motion.button
@@ -114,11 +114,11 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                       </div>
                       {isActive && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase text-[#00FF59]"
+                          <span className="text-[10px] font-bold uppercase text-[var(--success)]"
                                 style={{ fontFamily: "'neue-haas-grotesk-display', sans-serif" }}>
                             ACTIVE
                           </span>
-                          <div className="w-2.5 h-2.5 rounded-full bg-[#00FF59]" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
                         </div>
                       )}
                     </div>

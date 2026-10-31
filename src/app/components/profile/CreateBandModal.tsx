@@ -261,7 +261,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.35 }}
-            className="p-6 bg-[#1A1A1A] rounded-[2rem] text-white"
+            className="p-6 bg-[var(--surface-inverse)] rounded-[2rem] text-white"
           >
             <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-3">Preview</p>
             <div className="flex items-center gap-4">
@@ -287,7 +287,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
       {/* Footer */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[#E6E5E1] via-[#E6E5E1] to-transparent"
+        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
       >
         <button

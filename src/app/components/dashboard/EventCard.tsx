@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Clock, MapPin, MoreHorizontal } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 
@@ -78,24 +77,19 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
                 </motion.h4>
             </div>
         </div>
-        
-        {/* Menu Button */}
-        <motion.button 
-          layoutId={`menu-btn-${event.id}`}
-          className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:text-black hover:bg-stone-100 transition-colors"
-        >
-            <MoreHorizontal className="w-4 h-4" />
-        </motion.button>
+
+        {/* Pill badge replaces the top-right menu icon */}
+        <StatusBadge status={event.status} />
       </div>
       
-      {/* Metadata */}
+      {/* Metadata — typographic only, no icons */}
       <motion.div 
         layoutId={`meta-${event.id}`}
         className="flex items-center gap-3 text-xs font-bold text-stone-400 uppercase tracking-wide mb-6 pl-1"
       >
-          <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {event.time}</span>
+          <span>{event.time}</span>
           <span className="w-1 h-1 rounded-full bg-stone-300" />
-          <span className="flex items-center gap-1.5 truncate max-w-[150px]"><MapPin className="w-3.5 h-3.5" /> {event.location}</span>
+          <span className="truncate max-w-[150px]">{event.location}</span>
       </motion.div>
 
       {/* Footer */}
@@ -105,7 +99,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       >
           <div className="flex -space-x-2">
               {event.members.length > 0 ? event.members.map((m, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-[#1A1A1A] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
+                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
                       {m}
                   </div>
               )) : <span className="text-[10px] font-bold text-stone-400 uppercase">No team</span>}

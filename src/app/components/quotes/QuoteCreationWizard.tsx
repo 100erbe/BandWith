@@ -458,8 +458,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </div>
             <DotRadio
               selected={isSelected}
-              activeColor="#ffffff"
-              inactiveColor="rgba(255,255,255,0.2)"
+              activeColor="var(--accent-quote-fg)"
+              inactiveColor="var(--dot-inactive)"
             />
           </button>
         );
@@ -520,8 +520,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 </div>
                 <DotCheckbox
                   checked={isSelected}
-                  activeColor="#ffffff"
-                  inactiveColor="rgba(255,255,255,0.2)"
+                  activeColor="var(--accent-quote-fg)"
+                  inactiveColor="var(--dot-inactive)"
                 />
               </button>
             );
@@ -588,8 +588,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
               <DotCheckbox
                 checked={isSelected}
-                activeColor="#ffffff"
-                inactiveColor="rgba(255,255,255,0.2)"
+                activeColor="var(--accent-quote-fg)"
+                inactiveColor="var(--dot-inactive)"
               />
             </button>
 
@@ -727,7 +727,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </button>
           )}
         </div>
-        <DotCheckbox checked={baseFee > 0} activeColor="#ffffff" inactiveColor="rgba(255,255,255,0.2)" />
+        <DotCheckbox checked={baseFee > 0} activeColor="var(--accent-quote-fg)" inactiveColor="var(--dot-inactive)" />
       </div>
 
       <div className="h-px bg-white/10" />
@@ -1072,7 +1072,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="text-[12px] font-bold text-[#A73131] uppercase text-center py-2"
+              className="text-[12px] font-bold text-[var(--destructive)] uppercase text-center py-2"
             >
               DISCARD
             </button>
@@ -1182,8 +1182,8 @@ const FeeRow: React.FC<{
       </div>
     <DotCheckbox
       checked={!included}
-      activeColor="#ffffff"
-      inactiveColor="rgba(255,255,255,0.2)"
+      activeColor="var(--accent-quote-fg)"
+      inactiveColor="var(--dot-inactive)"
     />
   </button>
   {!included && onFeeChange && (

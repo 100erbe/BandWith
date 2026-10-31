@@ -84,12 +84,12 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
   }
   return (
     <ExpandedCardWrapper
-      backgroundColor="#F7F7F5"
+      backgroundColor="var(--surface-alt)"
       onClose={onClose}
       origin={{ top: '12%', left: '61%', right: '3%', bottom: '62%' }}
     >
       <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[#F7F7F5]/95 backdrop-blur-md" 
+        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--surface-alt)]/95 backdrop-blur-md" 
         initial={{ opacity: 0, y: -20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.15, duration: 0.3 }}
@@ -214,10 +214,10 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         <span>{event.travelTime} drive</span>
                       </div>
                     </div>
-                    <div className="bg-[#F7F7F5] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
+                    <div className="bg-[var(--surface-alt)] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
                       <div className="flex -space-x-2 pl-2">
                         {event.members.length > 0 ? event.members.map((initial: any, i: number) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-[#1C1C1E] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white relative z-10">
+                          <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white relative z-10">
                             {initial}
                           </div>
                         )) : (
@@ -228,7 +228,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-foreground hover:bg-stone-50 transition-colors">
                           <Phone className="w-3.5 h-3.5" /> Call
                         </button>
-                        <button className="h-9 px-4 rounded-xl bg-[#1A1A1A] flex items-center gap-2 text-xs font-bold text-white shadow-lg hover:bg-black transition-colors">
+                        <button className="h-9 px-4 rounded-xl bg-[var(--surface-inverse)] flex items-center gap-2 text-xs font-bold text-white shadow-lg hover:bg-black transition-colors">
                           <Navigation className="w-3.5 h-3.5" /> Go
                         </button>
                       </div>

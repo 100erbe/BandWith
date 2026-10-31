@@ -79,14 +79,14 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Messages</h1>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">All caught up</span>
+                <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider">All caught up</span>
                 <Sparkles className="w-3 h-3 text-accent fill-accent" />
               </div>
             </motion.div>
           ) : activeTab === 'Events' ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Events</h1>
-              <span className="text-xs font-bold text-stone-400 uppercase tracking-wider mt-2">
+              <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider mt-2">
                 {filteredEventsCount} of {totalEventsCount} events
               </span>
             </motion.div>
@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full", 
-                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[#FF0066]"
+                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[var(--warning)]"
                 )} />
                 <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-foreground transition-colors">
                   {selectedBand.role}
@@ -121,7 +121,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </motion.h1>
                   </AnimatePresence>
                   
-                  <div className="flex items-center gap-2 mt-2 text-stone-400 group-hover:text-[#FF4F28] transition-colors">
+                  <div className="flex items-center gap-2 mt-2 text-[var(--muted-fg)] group-hover:text-[var(--destructive)] transition-colors">
                     <span className="text-xs font-bold uppercase tracking-wider">Switch Band</span>
                     <ChevronDown className="w-4 h-4" />
                   </div>
@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[#E6E5E1] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>
@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[#E6E5E1] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
                 >
                   {unreadCount}
                 </motion.div>

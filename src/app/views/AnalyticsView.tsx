@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useBand } from '@/lib/BandContext';
@@ -7,39 +7,6 @@ import { useDashboardData } from '@/app/hooks/useData';
 interface AnalyticsViewProps {
   onClose: () => void;
 }
-
-const AnalyticsDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, color }) => {
-  const total = 24;
-  const count = Math.min(filled, total);
-  const [visible, setVisible] = useState(0);
-
-  useEffect(() => {
-    setVisible(0);
-    if (count === 0) return;
-    let c = 0;
-    const iv = setInterval(() => {
-      c++;
-      setVisible(c);
-      if (c >= count) clearInterval(iv);
-    }, 40);
-    return () => clearInterval(iv);
-  }, [count]);
-
-  return (
-    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{
-            backgroundColor: i < count && i < visible ? color : '#CDCACA',
-            transition: 'background-color 0.15s',
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 const MONTHLY_DATA = [
   { month: 'JAN', pct: 45 },
@@ -82,11 +49,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
             style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
           >
-            <ArrowLeft className="w-[24px] h-[24px] text-black" />
+            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
           </button>
           <div className="flex flex-col leading-none">
-            <span className="text-[32px] font-bold text-black leading-none">DATA</span>
-            <span className="text-[32px] font-bold text-black leading-none">INSIGHTS</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">DATA</span>
+            <span className="text-[32px] font-bold text-foreground leading-none">INSIGHTS</span>
           </div>
         </div>
       </div>
@@ -108,16 +75,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.05 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">TOTAL REVENUE</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL REVENUE</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {fmt(totalRevenue)}
                     </span>
                   </div>
-                  <AnalyticsDotGrid
-                    filled={Math.min(Math.ceil(totalRevenue / 500), 24)}
-                    color="var(--accent)"
-                  />
                 </motion.div>
 
                 <motion.div
@@ -126,13 +89,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.1 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">TOTAL EVENTS</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL EVENTS</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {totalEvents}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={totalEvents} color="var(--accent-rehearsal)" />
                 </motion.div>
               </div>
 
@@ -143,13 +105,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                   transition={{ delay: 0.15 }}
                   className="flex-1 flex flex-col gap-2 items-start text-left"
                 >
-                  <span className="text-xs font-bold text-black tracking-wide">CONFIRMED</span>
+                  <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {confirmed}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={confirmed} color="var(--accent-quote)" />
                 </motion.div>
 
                 <motion.div
@@ -160,11 +121,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                 >
                   <span className="text-xs font-bold text-black tracking-wide">UPCOMING</span>
                   <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-black block">
+                    <span className="text-[52px] font-bold leading-none text-foreground block">
                       {upcoming}
                     </span>
                   </div>
-                  <AnalyticsDotGrid filled={upcoming} color="#050505" />
                 </motion.div>
               </div>
             </div>
@@ -208,7 +168,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
                     <span className="text-xs font-bold text-black w-10 tracking-wide">
                       {month}
                     </span>
-                    <div className="flex-1 h-3 bg-[#CDCACA] rounded-full overflow-hidden">
+                    <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-accent rounded-full"
                         initial={{ width: 0 }}

@@ -54,7 +54,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[200] bg-[#050505] text-white flex flex-col font-sans"
+      className="fixed inset-0 z-[200] bg-[var(--bg)] text-white flex flex-col font-sans"
       style={{ 
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -81,7 +81,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
             </div>
 
             {/* Now Playing Card */}
-            <div className="bg-[#1C1C1E] rounded-[2.5rem] p-8 relative overflow-hidden shadow-2xl border border-white/5">
+            <div className="bg-[var(--surface-inverse)] rounded-[2.5rem] p-8 relative overflow-hidden shadow-2xl border border-white/5">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                     <Music className="w-48 h-48" />
                 </div>
@@ -115,13 +115,13 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                         >
                             {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current" />}
                         </button>
-                        <button className="h-20 rounded-2xl bg-[#333336] text-white flex items-center justify-center hover:bg-[#444448]">
+                        <button className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-white flex items-center justify-center hover:bg-[var(--surface-inverse)]">
                             <Square className="w-6 h-6 fill-current" />
                         </button>
-                         <button onClick={() => setActiveSongIndex(i => Math.min(i+1, LIVE_SETLIST.length-1))} className="h-20 rounded-2xl bg-[#333336] text-white flex items-center justify-center hover:bg-[#444448]">
+                         <button onClick={() => setActiveSongIndex(i => Math.min(i+1, LIVE_SETLIST.length-1))} className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-white flex items-center justify-center hover:bg-[var(--surface-inverse)]">
                             <SkipForward className="w-8 h-8 fill-current" />
                         </button>
-                        <button className="h-20 rounded-2xl bg-[#333336] text-red-500 flex items-center justify-center hover:bg-[#444448]">
+                        <button className="h-20 rounded-2xl bg-[var(--surface-inverse)] text-red-500 flex items-center justify-center hover:bg-[var(--surface-inverse)]">
                             <Mic2 className="w-6 h-6" />
                         </button>
                     </div>
@@ -136,7 +136,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     { label: 'Problems', icon: XCircle, color: 'text-red-500' },
                     { label: 'Redo', icon: RotateCcw, color: 'text-blue-500' },
                 ].map((fb, i) => (
-                    <button key={i} className="bg-[#1C1C1E] p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-[#2C2C2E] transition-colors border border-white/5">
+                    <button key={i} className="bg-[var(--surface-inverse)] p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-[var(--surface-inverse)] transition-colors border border-white/5">
                         <fb.icon className={cn("w-6 h-6", fb.color)} />
                         <span className="text-[10px] font-bold uppercase text-stone-400">{fb.label}</span>
                     </button>
@@ -145,7 +145,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
 
             {/* Attendance & Tools */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="bg-[#1C1C1E] p-4 rounded-3xl border border-white/5">
+                 <div className="bg-[var(--surface-inverse)] p-4 rounded-3xl border border-white/5">
                      <h3 className="text-xs font-bold uppercase text-stone-500 mb-3">Check-In</h3>
                      <div className="space-y-2">
                          {ATTENDANCE.map(m => (
@@ -160,18 +160,18 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                      </div>
                  </div>
 
-                 <div className="bg-[#1C1C1E] p-4 rounded-3xl border border-white/5">
+                 <div className="bg-[var(--surface-inverse)] p-4 rounded-3xl border border-white/5">
                      <h3 className="text-xs font-bold uppercase text-stone-500 mb-3">Tools</h3>
                      <div className="grid grid-cols-3 gap-2">
-                         <button onClick={() => setShowMetronome(true)} className="aspect-square bg-[#2C2C2E] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#3C3C3E]">
+                         <button onClick={() => setShowMetronome(true)} className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
                              <Clock className="w-5 h-5 text-accent" />
                              <span className="text-[9px] font-bold uppercase">Metronome</span>
                          </button>
-                          <button className="aspect-square bg-[#2C2C2E] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#3C3C3E]">
+                          <button className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
                              <FileText className="w-5 h-5 text-white" />
                              <span className="text-[9px] font-bold uppercase">Scores</span>
                          </button>
-                          <button className="aspect-square bg-[#2C2C2E] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[#3C3C3E]">
+                          <button className="aspect-square bg-[var(--surface-inverse)] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-[var(--surface-inverse)]">
                              <MessageSquare className="w-5 h-5 text-white" />
                              <span className="text-[9px] font-bold uppercase">Chat</span>
                          </button>
@@ -194,7 +194,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className="absolute bottom-6 left-6 right-6 bg-[#333336] rounded-[2rem] p-6 shadow-2xl border border-white/10 z-50"
+                    className="absolute bottom-6 left-6 right-6 bg-[var(--surface-inverse)] rounded-[2rem] p-6 shadow-2xl border border-white/10 z-50"
                 >
                     <div className="flex justify-between items-start mb-6">
                         <h3 className="text-xl font-black uppercase">Metronome</h3>

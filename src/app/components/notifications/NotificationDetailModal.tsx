@@ -356,7 +356,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     onClick={() => onDelete?.(detailNotif?.id)}
                     className="rounded-[10px] py-4 flex items-center justify-center bg-foreground/10"
                   >
-                    <span className="text-[14px] font-bold uppercase text-[#FF7C7C]">DELETE</span>
+                    <span className="text-[14px] font-bold uppercase text-[var(--destructive)]">DELETE</span>
                   </button>
                 </div>
               </div>

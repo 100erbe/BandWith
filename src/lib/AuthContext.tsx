@@ -11,8 +11,8 @@ import { Capacitor } from '@capacitor/core';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
 
-// PLG: User mode — 'band' = collaborative workspace, 'solo' = personal calendar
-export type UserMode = 'band' | 'solo';
+// PLG: User mode — 'band'/'band_admin'/'member' = collaborative workspace, 'solo' = personal calendar
+export type UserMode = 'band' | 'band_admin' | 'member' | 'solo';
 
 export interface Profile {
   id: string;
@@ -40,28 +40,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userMode: UserMode | null;         // PLG: current user mode
   setUserMode: (mode: UserMode) => Promise<void>;  // PLG: switch mode
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (
-    email: string,
-    password: string,
-    metadata?: { full_name?: string }
-  ) => Promise<{ error: AuthError | null }>;
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
-  signInWithApple: () => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<{ error: AuthError | null }>;
-  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
-  refreshProfile: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
-}
-
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  session: Session | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  userMode: UserMode | null;
-  setUserMode: (mode: UserMode) => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,

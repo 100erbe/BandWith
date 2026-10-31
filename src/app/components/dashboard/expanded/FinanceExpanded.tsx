@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -27,39 +27,6 @@ interface FinanceExpandedProps {
   loading?: boolean;
   onTransactionAdded?: () => void;
 }
-
-const FinanceDotGrid: React.FC<{ filled: number; color: string }> = ({ filled, color }) => {
-  const total = 24;
-  const count = Math.min(filled, total);
-  const [visible, setVisible] = useState(0);
-
-  useEffect(() => {
-    setVisible(0);
-    if (count === 0) return;
-    let c = 0;
-    const iv = setInterval(() => {
-      c++;
-      setVisible(c);
-      if (c >= count) clearInterval(iv);
-    }, 40);
-    return () => clearInterval(iv);
-  }, [count]);
-
-  return (
-    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{
-            backgroundColor: i < count && i < visible ? color : 'var(--muted)',
-            transition: 'background-color 0.15s',
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   bandId,
@@ -131,7 +98,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="#E6E5E1"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '12%', left: '3%', right: '42%', bottom: '62%' }}
     >
@@ -186,10 +153,6 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     </span>
                   )}
                 </div>
-                <FinanceDotGrid
-                  filled={Math.min(Math.ceil(stats.netProfit / 500), 24)}
-                  color="var(--accent-gig)"
-                />
               </motion.div>
 
               <motion.div
@@ -208,10 +171,6 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     </span>
                   )}
                 </div>
-                <FinanceDotGrid
-                  filled={Math.min(Math.ceil(stats.totalIncome / 500), 24)}
-                  color="var(--accent-rehearsal)"
-                />
               </motion.div>
             </div>
 
@@ -232,10 +191,6 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                     </span>
                   )}
                 </div>
-                <FinanceDotGrid
-                  filled={Math.min(Math.ceil(stats.totalExpenses / 500), 24)}
-                  color="var(--accent-quote)"
-                />
               </motion.div>
               <div className="flex-1" />
             </div>

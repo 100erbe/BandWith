@@ -141,8 +141,8 @@ const NavTab: React.FC<{
   isScrollingDown: boolean;
   isMenuOpen: boolean;
 }> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen }) => {
-  const activeColor = isMenuOpen ? '#FFFFFF' : 'var(--fg)';
-  const inactiveColor = isMenuOpen ? 'rgba(255,255,255,0.30)' : 'var(--muted-fg)';
+  const activeColor = isMenuOpen ? 'var(--surface-inverse-fg)' : 'var(--fg)';
+  const inactiveColor = isMenuOpen ? 'var(--muted-fg)' : 'var(--muted-fg)';
   const strokeColor = isActive ? activeColor : inactiveColor;
 
   return (
@@ -259,7 +259,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const isHomeActive = activeTab === 'Home' && !isMenuOpen;
   const isEventsActive = activeTab === 'Events' && !isMenuOpen;
   const isChatActive = activeTab === 'Chat' && !isMenuOpen;
-  const inactiveHamburger = isMenuOpen ? 'rgba(255,255,255,0.30)' : '#737373';
+  const inactiveHamburger = isMenuOpen ? 'var(--muted-fg)' : 'var(--muted-fg)';
 
   const isSettingsActive = isControlDeckOpen;
   const pillActiveKey = isMenuOpen
@@ -301,7 +301,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+              className="fixed inset-0 z-[90] bg-[var(--surface-inverse)]/30 backdrop-blur-[10px]"
               onClick={() => setIsPlusMenuOpen(false)}
             />
             <motion.div
@@ -383,7 +383,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           ref={navRef}
           className={cn(
             'pointer-events-auto relative flex items-center justify-center rounded-[999px] origin-bottom',
-            isMenuOpen ? 'bg-[rgba(28,28,30,0.95)]' : 'bg-background/85',
+            isMenuOpen ? 'bg-[var(--surface-inverse)]/95' : 'bg-background/85',
             'h-[56px] gap-x-2 px-2'
           )}
           animate={{ scale: isShrunk ? 0.78 : 1 }}

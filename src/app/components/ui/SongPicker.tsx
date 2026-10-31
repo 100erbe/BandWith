@@ -65,16 +65,16 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   const themeColors = useMemo(() => {
     switch (theme) {
       case 'blue': return {
-        bg: 'bg-[#0147ff]', text: 'text-white', subtext: 'text-white/50',
+        bg: 'bg-[var(--accent-rehearsal)]', text: 'text-white', subtext: 'text-white/50',
         input: 'border-white/20 text-white placeholder:text-white/30 focus:border-white',
-        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[#0147ff]',
+        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[var(--accent-rehearsal)]',
         card: 'bg-white/10', accent: 'bg-accent text-accent-foreground',
         btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
       };
       case 'beige': return {
-        bg: 'bg-[#9a8878]', text: 'text-white', subtext: 'text-white/50',
+        bg: 'bg-[var(--secondary)]', text: 'text-white', subtext: 'text-white/50',
         input: 'border-white/20 text-white placeholder:text-white/30 focus:border-white',
-        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[#9a8878]',
+        pill: 'bg-white/20 text-white', pillActive: 'bg-white text-[var(--secondary-foreground)]',
         card: 'bg-white/10', accent: 'bg-white text-black',
         btnPrimary: 'bg-black text-white', btnSecondary: 'bg-white/20 text-white',
       };
@@ -368,7 +368,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                         </div>
                         <DotCheckbox
                           checked={isChecked}
-                          activeColor={theme === 'lime' ? '#000000' : '#ffffff'}
+                          activeColor={theme === 'lime' ? 'var(--fg)' : 'var(--surface-inverse-fg)'}
                           inactiveColor={theme === 'lime' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'}
                         />
                       </button>

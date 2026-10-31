@@ -51,7 +51,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
       // Use direct fetch to Edge Function (bypasses RLS for anonymous users)
       // supabase.functions.invoke has issues with aborted signals during auth initialization
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       const response = await fetch(`${supabaseUrl}/functions/v1/setup-invite-rls`, {
         method: 'POST',
@@ -146,7 +146,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           <h1 className="text-[48px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
             Find your
             <br />
-            <span className="text-[#0047FF]">invite</span>
+            <span className="text-[var(--accent-rehearsal)]">invite</span>
           </h1>
           <p className="text-muted-foreground/60 text-[17px] font-medium leading-relaxed max-w-[280px]">
             Enter the email where your band invitation was sent.

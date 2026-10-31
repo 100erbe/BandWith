@@ -37,63 +37,6 @@ interface IdentityHubProps {
   onAddEntity?: () => void;
 }
 
-const DotGrid: React.FC<{
-  filled: number;
-  cols: number;
-  rows: number;
-  height: number;
-  activeColor?: string;
-  inactiveColor?: string;
-}> = ({ filled, cols, rows, height, activeColor = 'var(--accent)', inactiveColor = 'rgba(0,0,0,0.2)' }) => {
-  const total = cols * rows;
-  const capped = Math.min(filled, total);
-  return (
-    <div
-      className="grid w-full shrink-0"
-      style={{
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        gap: 4,
-        height,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px]"
-          style={{ backgroundColor: i < capped ? activeColor : inactiveColor }}
-        />
-      ))}
-    </div>
-  );
-};
-
-const MemberBars: React.FC<{
-  count: number;
-  total?: number;
-}> = ({ count, total = 6 }) => {
-  const capped = Math.min(count, total);
-  return (
-    <div
-      className="grid w-full shrink-0"
-      style={{
-        gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`,
-        gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
-        gap: 4,
-        height: 53,
-      }}
-    >
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-[10px] row-span-3"
-          style={{ backgroundColor: i < capped ? 'var(--accent)' : 'rgba(0,0,0,0.2)' }}
-        />
-      ))}
-    </div>
-  );
-};
-
 export const IdentityHub: React.FC<IdentityHubProps> = ({
   isOpen,
   onClose,
@@ -165,7 +108,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           animate={{ y: 0 }}
           exit={{ y: '-100%' }}
           transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 z-[60] bg-[#737373] overflow-y-auto overflow-x-hidden"
+          className="fixed inset-0 z-[60] bg-[var(--muted-fg)] overflow-y-auto overflow-x-hidden"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
@@ -350,7 +293,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   <div className="flex gap-5 w-full">
                     {/* Members */}
                     <div className="flex-1 flex flex-col gap-2.5">
-                      <MemberBars count={selectedBand.members} />
                       <div className="flex flex-col gap-1">
                         <span className="text-[12px] font-bold text-accent uppercase">
                           MEMBERS
@@ -362,7 +304,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     </div>
                     {/* Genre */}
                     <div className="flex-1 flex flex-col gap-2.5">
-                      <DotGrid filled={10} cols={6} rows={3} height={53} />
                       <div className="flex flex-col gap-1">
                         <span className="text-[12px] font-bold text-accent uppercase">
                           GENRE
@@ -426,12 +367,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         {item.count}
                       </span>
                     </div>
-                    <DotGrid
-                      filled={item.count}
-                      cols={item.cols}
-                      rows={item.rows}
-                      height={item.height}
-                    />
                   </div>
                 ))}
               </div>
@@ -441,7 +376,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <div className="flex flex-col gap-4">
               <button
                 onClick={handleLogout}
-                className="w-full border border-[#A73131] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                className="w-full border border-[var(--destructive)] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
               >
                 <LogOut className="w-4 h-4 text-white" />
                 <span className="text-[12px] font-medium text-white text-center uppercase">

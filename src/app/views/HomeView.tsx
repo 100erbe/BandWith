@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { 
   ArrowUpRight,
@@ -57,209 +57,6 @@ interface HomeViewProps {
   isAdmin?: boolean;
   isSolo?: boolean;  // PLG: Solo mode hides collaborative features
 }
-
-// --- Equalizer Dot Grid for Stats (6×4) ---
-
-type DotGridTheme = 'lime' | 'blue' | 'beige' | 'dark';
-
-const DOT_THEME_COLORS: Record<DotGridTheme, string> = {
-  lime: 'var(--accent-gig)',
-  blue: 'var(--accent-rehearsal)',
-  beige: 'var(--accent-quote)',
-  dark: '#050505',
-};
-
-const REVENUE_CHART_PATTERN = [
-  [false, false, false, true],
-  [false, false, true, true],
-  [false, true, true, true],
-  [false, false, true, true],
-  [false, true, true, true],
-  [true, true, true, true],
-];
-
-const StatsDotGrid: React.FC<{ theme: DotGridTheme; filled?: number; isRevenue?: boolean }> = ({ 
-  theme, filled = 0, isRevenue = false 
-}) => {
-  const themeColor = DOT_THEME_COLORS[theme];
-  const totalDots = 24;
-  const filledCount = Math.min(filled, totalDots);
-  const [visibleCount, setVisibleCount] = useState(0);
-
-  useEffect(() => {
-    setVisibleCount(0);
-    const target = isRevenue ? totalDots : filledCount;
-    if (target === 0) return;
-
-    let current = 0;
-    const interval = setInterval(() => {
-      current++;
-      setVisibleCount(current);
-      if (current >= target) clearInterval(interval);
-    }, 40);
-
-    return () => clearInterval(interval);
-  }, [filledCount, isRevenue]);
-
-  if (isRevenue) {
-    return (
-      <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
-        {Array.from({ length: totalDots }).map((_, i) => {
-          const col = i % 6;
-          const row = Math.floor(i / 6);
-          const isFilled = REVENUE_CHART_PATTERN[col][row];
-          const dotIndex = col * 4 + row;
-          const isVisible = dotIndex < visibleCount;
-          return (
-            <div
-              key={i}
-              className="rounded-[10px] transition-colors duration-200"
-              style={{ 
-                backgroundColor: isFilled && isVisible ? themeColor : 'var(--muted)',
-                opacity: isVisible ? 1 : 0.4,
-                transition: 'background-color 0.2s, opacity 0.3s',
-              }}
-            />
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-6 grid-rows-4 gap-1 w-full h-[72px]">
-      {Array.from({ length: totalDots }).map((_, i) => {
-        const isActive = i < filledCount;
-        const isVisible = i < visibleCount;
-        return (
-          <div
-            key={i}
-            className="rounded-[10px]"
-            style={{ 
-              backgroundColor: isActive && isVisible ? themeColor : 'var(--muted)',
-              opacity: isVisible || !isActive ? 1 : 0.4,
-              transition: 'background-color 0.15s, opacity 0.2s',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-};
-
-// --- Pixel Art Grid for Action Center (7×5 pattern grid) ---
-
-type GridCell = {
-  c: number;
-  r: number;
-  cs?: number;
-  rs?: number;
-  d: boolean;
-};
-
-const ACTION_PATTERNS: Record<string, GridCell[]> = {
-  'Setlist & Repertoire': [
-    { c:1, r:1, cs:3, d:true }, { c:1, r:2, d:true }, { c:1, r:3, cs:3, d:true },
-    { c:3, r:4, d:true }, { c:1, r:5, cs:3, d:true }, { c:5, r:1, cs:3, d:true },
-    { c:5, r:2, d:true }, { c:7, r:2, d:true }, { c:5, r:3, cs:3, d:true },
-    { c:5, r:4, rs:2, d:true }, { c:6, r:4, d:true }, { c:7, r:5, d:true },
-    { c:2, r:2, d:false }, { c:3, r:2, d:false }, { c:1, r:4, d:false },
-    { c:2, r:4, d:false }, { c:4, r:1, d:false }, { c:4, r:2, d:false },
-    { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    { c:6, r:2, d:false }, { c:7, r:4, d:false }, { c:6, r:5, d:false },
-  ],
-  'Band Members': [
-    { c:1, r:1, cs:3, d:true }, { c:1, r:3, cs:3, d:true }, { c:1, r:5, cs:3, d:true },
-    { c:1, r:2, d:true }, { c:3, r:2, d:true }, { c:3, r:4, d:true },
-    { c:1, r:4, d:true }, { c:5, r:1, rs:5, d:true }, { c:6, r:1, rs:2, d:true },
-    { c:7, r:1, rs:5, d:true },
-    { c:2, r:2, d:false }, { c:2, r:4, d:false }, { c:6, r:4, d:false },
-    { c:6, r:5, d:false }, { c:4, r:1, d:false }, { c:4, r:2, d:false },
-    { c:4, r:3, d:false }, { c:4, r:4, d:false }, { c:4, r:5, d:false },
-    { c:6, r:3, d:false },
-  ],
-  'Inventory': [
-    { c:1, r:1, cs:3, d:true }, { c:1, r:2, rs:3, d:true }, { c:1, r:5, cs:3, d:true },
-    { c:5, r:1, rs:4, d:true }, { c:5, r:5, cs:3, d:true }, { c:3, r:4, d:true },
-    { c:2, r:2, d:false }, { c:3, r:2, d:false }, { c:6, r:1, d:false },
-    { c:7, r:1, d:false }, { c:6, r:4, d:false }, { c:4, r:1, d:false },
-    { c:4, r:2, d:false }, { c:4, r:3, d:false }, { c:4, r:4, d:false },
-    { c:4, r:5, d:false }, { c:3, r:3, d:false }, { c:2, r:3, d:false },
-    { c:2, r:4, d:false }, { c:6, r:3, d:false }, { c:6, r:2, d:false },
-    { c:7, r:2, d:false }, { c:7, r:3, d:false }, { c:7, r:4, d:false },
-  ],
-  'Task Templates': [
-    { c:1, r:1, cs:3, d:true }, { c:2, r:2, rs:4, d:true }, { c:5, r:1, cs:3, d:true },
-    { c:6, r:2, rs:4, d:true },
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false },
-    { c:4, r:4, d:false }, { c:4, r:5, d:false }, { c:1, r:5, d:false },
-    { c:1, r:2, d:false }, { c:3, r:2, d:false }, { c:5, r:5, d:false },
-    { c:7, r:2, d:false }, { c:7, r:3, d:false }, { c:7, r:4, d:false },
-    { c:3, r:3, d:false }, { c:1, r:4, d:false }, { c:1, r:3, d:false },
-    { c:3, r:4, d:false }, { c:3, r:5, d:false }, { c:5, r:2, d:false },
-    { c:5, r:3, d:false }, { c:5, r:4, d:false }, { c:7, r:5, d:false },
-  ],
-  'Contracts & Riders': [
-    { c:1, r:1, cs:3, d:true }, { c:1, r:2, rs:3, d:true }, { c:5, r:1, cs:3, d:true },
-    { c:5, r:2, d:true }, { c:7, r:2, d:true }, { c:5, r:3, cs:3, d:true },
-    { c:5, r:4, rs:2, d:true }, { c:7, r:5, d:true }, { c:1, r:5, cs:3, d:true },
-    { c:6, r:4, d:true },
-    { c:4, r:1, d:false }, { c:4, r:2, d:false }, { c:4, r:3, d:false },
-    { c:4, r:4, d:false }, { c:4, r:5, d:false }, { c:2, r:2, d:false },
-    { c:3, r:2, d:false }, { c:7, r:4, d:false }, { c:3, r:3, d:false },
-    { c:2, r:4, d:false }, { c:2, r:3, d:false }, { c:3, r:4, d:false },
-    { c:6, r:2, d:false }, { c:6, r:5, d:false },
-  ],
-};
-
-const PixelArtGrid: React.FC<{ pattern: GridCell[] }> = ({ pattern }) => (
-  <div
-    className="grid gap-1 w-[100px] h-[91px]"
-    style={{ gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(5, 1fr)' }}
-  >
-    {pattern.map((cell, i) => (
-      <div
-        key={i}
-        className="rounded-[10px]"
-        style={{
-          gridColumn: cell.cs ? `${cell.c} / span ${cell.cs}` : cell.c,
-          gridRow: cell.rs ? `${cell.r} / span ${cell.rs}` : cell.r,
-          backgroundColor: cell.d ? 'var(--muted-fg)' : 'var(--muted)',
-        }}
-      />
-    ))}
-  </div>
-);
-
-// --- Action Center Item ---
-
-const ACTION_LABELS: Record<string, [string, string]> = {
-  'Setlist & Repertoire': ['SETLIST &', 'REPERTOIRE'],
-  'Band Members': ['BAND', 'MEMBERS'],
-  'Inventory': ['GEAR', 'LIST'],
-  'Task Templates': ['TASK', 'TEMPLATES'],
-  'Contracts & Riders': ['CONTRACTS', '& RIDERS'],
-};
-
-const ActionCenterItem: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => {
-  const pattern = ACTION_PATTERNS[label];
-  const lines = ACTION_LABELS[label] || [label.toUpperCase(), ''];
-
-  if (!pattern) return null;
-
-  return (
-    <button onClick={onClick} className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity">
-      <div className="flex items-start justify-between w-full">
-        <div className="flex flex-col leading-none text-left">
-          <span className="text-xs font-bold text-foreground text-left">{lines[0]}</span>
-          {lines[1] && <span className="text-xs font-bold text-foreground text-left">{lines[1]}</span>}
-        </div>
-        <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
-      </div>
-      <PixelArtGrid pattern={pattern} />
-    </button>
-  );
-};
 
 // --- Main Dashboard ---
 
@@ -337,11 +134,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       )}
     >
       {/* ═══ STATS GRID (2×2) ═══ */}
-      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-10">
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-5">
         {/* Row 1: Gigs Confirmed | Upcoming Rehearsal — visible to all */}
         <div className="flex gap-5">
-          <div className="flex-1 flex flex-col gap-2 items-start text-left">
-            <div className="flex flex-col w-full">
+          {/* CARD: GIGS CONFIRMED — cyan accent */}
+          <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+            <div className="w-3 shrink-0 bg-[rgba(0,255,255,0.5)]" />
+            <div className="flex-1 flex flex-col py-3 items-start text-left">
               <span className="text-xs font-bold text-foreground tracking-wide">GIGS CONFIRMED</span>
               <div className="h-[62px] overflow-hidden">
                 <span className="text-[52px] font-bold leading-none text-foreground block">
@@ -349,11 +148,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </span>
               </div>
             </div>
-            <StatsDotGrid theme="lime" filled={confirmedCount} />
           </div>
 
-          <div className="flex-1 flex flex-col gap-2 items-start text-left">
-            <div className="flex flex-col w-full">
+          {/* CARD: UPCOMING REHEARSAL — blue accent */}
+          <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+            <div className="w-3 shrink-0 bg-[#0055E1]" />
+            <div className="flex-1 flex flex-col py-3 items-start text-left">
               <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING REHEARSAL</span>
               <div className="h-[62px] overflow-hidden">
                 <span className="text-[52px] font-bold leading-none text-foreground block">
@@ -361,7 +161,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </span>
               </div>
             </div>
-            <StatsDotGrid theme="blue" filled={rehearsalCount} />
           </div>
         </div>
 
@@ -369,50 +168,50 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex gap-5">
           {isAdmin ? (
             <>
-              {/* ADMIN: Quotes count */}
-              <div className="flex-1 flex flex-col gap-2 items-start text-left">
-                <div className="flex flex-col w-full">
+              {/* CARD: QUOTES — sky accent */}
+              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+                <div className="w-3 shrink-0 bg-[rgba(0,154,243,0.5)]" />
+                <div className="flex-1 flex flex-col py-3 items-start text-left">
                   <span className="text-xs font-bold text-foreground tracking-wide">QUOTES</span>
                   <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
                   </span>
                 </div>
-                <StatsDotGrid theme="beige" filled={quotesCount} />
               </div>
 
-              {/* ADMIN: Total Revenue */}
-              <div className="flex-1 flex flex-col gap-2 items-start text-left">
-                <div className="flex flex-col w-full">
+              {/* CARD: REVENUE — pink accent */}
+              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+                <div className="w-3 shrink-0 bg-[#FF00C8]" />
+                <div className="flex-1 flex flex-col py-3 items-start text-left">
                   <span className="text-xs font-bold text-foreground tracking-wide">REVENUE</span>
                   <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
                   </span>
                 </div>
-                <StatsDotGrid theme="dark" filled={0} isRevenue={revenue > 0} />
               </div>
             </>
           ) : (
             <>
-              {/* MEMBER: My Fee — confirmed fee per event */}
-              <div className="flex-1 flex flex-col gap-2 items-start text-left">
-                <div className="flex flex-col w-full">
+              {/* CARD: MY FEE — sky accent (member view) */}
+              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+                <div className="w-3 shrink-0 bg-[rgba(0,154,243,0.5)]" />
+                <div className="flex-1 flex flex-col py-3 items-start text-left">
                   <span className="text-xs font-bold text-foreground tracking-wide">MY FEE</span>
                   <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
                   </span>
                 </div>
-                <StatsDotGrid theme="beige" filled={(memberStats?.confirmedFee || 0) > 0 ? 6 : 0} />
               </div>
 
-              {/* MEMBER: Total Personal Earnings YTD */}
-              <div className="flex-1 flex flex-col gap-2 items-start text-left">
-                <div className="flex flex-col w-full">
+              {/* CARD: MY EARNINGS — pink accent (member view) */}
+              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
+                <div className="w-3 shrink-0 bg-[#FF00C8]" />
+                <div className="flex-1 flex flex-col py-3 items-start text-left">
                   <span className="text-xs font-bold text-foreground tracking-wide">MY EARNINGS</span>
                   <span className="text-[52px] font-bold leading-none text-foreground">
                     {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.totalEarned || 0)}
                   </span>
                 </div>
-                <StatsDotGrid theme="dark" filled={0} isRevenue={(memberStats?.totalEarned || 0) > 0} />
               </div>
             </>
           )}
@@ -515,11 +314,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             <div className="flex gap-10 w-max">
               {filteredQuickActions.map((action) => (
-                <ActionCenterItem
+                <button
                   key={action.id}
-                  label={action.label}
                   onClick={() => onQuickAction?.(action.label)}
-                />
+                  className="flex flex-col gap-3 items-start shrink-0 active:opacity-70 transition-opacity"
+                >
+                  <div className="flex items-start justify-between w-full">
+                    <div className="flex flex-col leading-none text-left">
+                      <span className="text-xs font-bold text-foreground text-left">{action.label.toUpperCase()}</span>
+                    </div>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground" />
+                  </div>
+                </button>
               ))}
             </div>
           </div>
