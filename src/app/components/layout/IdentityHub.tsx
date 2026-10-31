@@ -1,18 +1,27 @@
-
-import React, { useMemo } from 'react';
+import React from 'react';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  X, 
-  Plus, 
+import {
+  X,
+  Plus,
   ArrowUpRight,
   LogOut,
-  Fingerprint,
+  Shield,
+  Music2,
+  Package,
+  FileText,
+  CheckSquare,
+  Sun,
+  Moon,
+  Monitor,
+  Users,
+  Bell,
+  Sparkles,
 } from 'lucide-react';
-import { USER } from '@/app/data/user';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
+import { useTheme } from '@/lib/ThemeContext';
 
 interface NotificationGroup {
   type: string;
@@ -42,10 +51,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onClose,
   bands,
   selectedBand,
+  setSelectedBand,
   notificationGroups,
   unreadCount,
   onNotificationClick,
-  onMarkGroupAsRead,
   entityCounts,
   onEntityDetailClick,
   onEditProfile,
@@ -53,52 +62,64 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onAddEntity,
 }) => {
   const { signOut, user, profile } = useAuth();
-  
+  const { mode, setMode, resolvedTheme } = useTheme();
+
   const handleLogout = async () => {
     try {
       await signOut();
       onClose();
-      // Force a reload to ensure all states are wiped clean
       window.location.href = '/';
     } catch (e) {
-      console.error("Logout failed:", e);
-      // Fallback: clear local storage manually if API fails
+      console.error('Logout failed:', e);
       localStorage.clear();
       window.location.href = '/';
     }
   };
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
-  const displayInitials = profile?.full_name 
-    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : (user?.email?.substring(0, 2).toUpperCase() || '??');
-    
-  const displayRole = profile?.role || 'Member';
+  const displayEmail = user?.email || 'No email attached';
+  const displayInitials = profile?.full_name
+    ? profile.full_name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.substring(0, 2).toUpperCase() || 'BW';
 
-  const entityDetails = [
-    { label: 'TEMPLATES', count: entityCounts?.templates ?? 0, cols: 6, rows: 4, height: 72 },
-    { label: 'DOCUMENTS', count: entityCounts?.documents ?? 0, cols: 6, rows: 4, height: 72 },
-    { label: 'INVENTORY', count: entityCounts?.inventory ?? 0, cols: 6, rows: 4, height: 72 },
-    { label: 'REPERTOIRE', count: entityCounts?.repertoire ?? 0, cols: 12, rows: 8, height: 148 },
+  const roleLabel = selectedBand.role || (profile?.role ? profile.role.toUpperCase() : 'MEMBER');
+  const isAdmin = roleLabel === 'ADMIN';
+
+  const assetShortcuts = [
+    {
+      id: 'REPERTOIRE',
+      label: 'Setlist & Repertoire',
+      count: entityCounts?.repertoire ?? 0,
+      unit: 'songs',
+      icon: Music2,
+    },
+    {
+      id: 'INVENTORY',
+      label: 'Gear & Inventory',
+      count: entityCounts?.inventory ?? 0,
+      unit: 'items',
+      icon: Package,
+    },
+    {
+      id: 'DOCUMENTS',
+      label: 'Contracts & Docs',
+      count: entityCounts?.documents ?? 0,
+      unit: 'files',
+      icon: FileText,
+    },
+    {
+      id: 'TEMPLATES',
+      label: 'Task Templates',
+      count: entityCounts?.templates ?? 0,
+      unit: 'workflows',
+      icon: CheckSquare,
+    },
   ];
-
-  const bandTags = bands.map(b => b.name);
-
-  const handleClearAll = () => {
-    notificationGroups.forEach(g => {
-      onMarkGroupAsRead?.(g.items.map(i => i.id));
-    });
-  };
-
-  const getNotifLabel = (type: string) => {
-    if (type.includes('quote')) return 'QUOTE';
-    if (type.includes('chat') || type === 'chat') return 'CHAT';
-    if (type.includes('event') || type === 'event') return 'EVENT';
-    if (type.includes('rehearsal')) return 'REHEARSAL';
-    if (type.includes('invite')) return 'INVITE';
-    if (type.includes('payment') || type === 'finance') return 'PAYMENT';
-    return type.toUpperCase();
-  };
 
   return (
     <AnimatePresence>
@@ -107,287 +128,298 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           initial={{ y: '-100%' }}
           animate={{ y: 0 }}
           exit={{ y: '-100%' }}
-          transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-          className="fixed inset-0 z-[60] bg-[var(--muted-fg)] overflow-y-auto overflow-x-hidden"
+          transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
+          className="fixed inset-0 z-[60] bg-background text-foreground overflow-y-auto overflow-x-hidden flex flex-col"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
           }}
         >
+          {/* ═══ STICKY HEADER ═══ */}
           <div
-            className="flex flex-col gap-10 px-4 min-h-full"
+            className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
             style={{
-              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 62px)',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 62px)',
+              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+              paddingBottom: '14px',
             }}
           >
-            {/* ═══ HEADER ═══ */}
-            <div className="flex items-start justify-between w-full">
-              <div className="flex flex-col gap-1">
-                <span className="text-[12px] font-bold text-accent uppercase">
-                  IDENTITY HUB
+            <div className="max-w-xl mx-auto w-full flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                  IDENTITY & ACCOUNT
                 </span>
-                <h2 className="text-[32px] font-bold text-white leading-none uppercase">
+                <h1 className="text-[22px] sm:text-[24px] font-black text-foreground uppercase tracking-tight leading-none">
                   WHO YOU ARE
-                </h2>
+                </h1>
               </div>
               <button
                 onClick={onClose}
-                className="w-[50px] h-[50px] rounded-full bg-[rgba(216,216,216,0.2)] border-2 border-white flex items-center justify-center shrink-0"
+                aria-label="Close Identity Hub"
+                className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
               >
-                <X className="w-6 h-6 text-white" />
+                <X className="w-5 h-5" />
               </button>
             </div>
+          </div>
 
-            {/* ═══ NOTIFICATIONS ═══ */}
-            <div className="flex flex-col gap-2">
-              {notificationGroups.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[12px] font-bold text-accent uppercase">
-                      NOTIFICATIONS {unreadCount > 0 ? `(${unreadCount})` : ''}
-                    </span>
-                    {unreadCount > 0 && (
-                      <button onClick={handleClearAll} className="text-[12px] font-bold text-accent uppercase">
-                        CLEAR ALL
-                      </button>
-                    )}
-                  </div>
-                  {notificationGroups.map((group) => {
-                    const label = getNotifLabel(group.type);
-                    return (
-                      <div
-                        key={group.type}
-                        onClick={() => {
-                          const item = group.items[0];
-                          onNotificationClick(group.items.map(i => i.id), item.actionType);
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            const item = group.items[0];
-                            onNotificationClick(group.items.map(i => i.id), item.actionType);
-                          }
-                        }}
-                        className="flex items-center justify-between w-full bg-card rounded-[10px] px-3 py-2.5 text-left gap-5 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <span className="text-[12px] font-bold text-foreground uppercase">
-                            {label}
-                          </span>
-                          <span className="bg-accent text-accent-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                            {group.items.length}
-                          </span>
-                          {group.items[0] && (
-                            <span className="text-[14px] text-foreground/50 font-medium truncate w-full">
-                              {group.items[0].message}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMarkGroupAsRead?.(group.items.map(i => i.id));
-                            }}
-                            className="w-6 h-6 rounded-full border border-black/20 flex items-center justify-center"
-                          >
-                            <X className="w-3 h-3 text-foreground/60" />
-                          </button>
-                        </div>
-                      </div>
+          {/* ═══ SCROLLABLE CONTENT ═══ */}
+          <div className="px-4 py-6 max-w-xl mx-auto w-full flex flex-col gap-6 pb-36">
+            {/* Unread Alerts Banner (if any) */}
+            {unreadCount > 0 && (
+              <div
+                onClick={() => {
+                  if (notificationGroups.length > 0) {
+                    const first = notificationGroups[0];
+                    onNotificationClick(
+                      first.items.map((i) => i.id),
+                      first.items[0]?.actionType || 'navigate'
                     );
-                  })}
-                </>
-              )}
-
-            </div>
-
-            {/* ═══ PROFILE SECTION ═══ */}
-            <div className="flex flex-col gap-10">
-              {/* Avatar + Name */}
-              <div className="flex items-start gap-5">
-                <div className="w-[74px] h-[74px] rounded-full bg-accent border-2 border-white flex items-center justify-center text-accent-foreground font-bold text-xl shrink-0 overflow-hidden">
-                  {displayInitials}
+                  }
+                  onClose();
+                }}
+                className="p-3.5 rounded-[14px] bg-primary/10 border border-primary/25 flex items-center justify-between gap-3 cursor-pointer hover:bg-primary/15 transition-colors shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                    <Bell className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                      {unreadCount} UNREAD {unreadCount === 1 ? 'NOTIFICATION' : 'NOTIFICATIONS'}
+                    </span>
+                    <span className="text-[11px] text-foreground/60">
+                      Tap to review activity & gig alerts
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-[22px] font-bold text-foreground uppercase leading-tight">
+                <ArrowUpRight className="w-4 h-4 text-primary shrink-0" />
+              </div>
+            )}
+
+            {/* ═══ 1. PROFILE CARD ═══ */}
+            <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-primary text-primary-foreground font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-xs">
+                    {displayInitials}
+                  </div>
+                  <div className="flex flex-col min-w-0 gap-1">
+                    <h2 className="text-lg sm:text-xl font-bold uppercase text-foreground leading-tight truncate">
                       {displayName}
-                    </p>
-                    <div className="flex items-center gap-1 bg-black/20 rounded-[6px] px-1.5 py-0.5 w-fit">
-                      <Fingerprint className="w-4 h-4 text-accent" />
-                      <span className="text-[12px] font-bold text-accent uppercase">
-                        {displayRole}
+                    </h2>
+                    <span className="text-xs text-foreground/50 truncate font-medium">
+                      {displayEmail}
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold uppercase tracking-wider',
+                          isAdmin
+                            ? 'bg-primary/15 text-primary border border-primary/25'
+                            : 'bg-foreground/10 text-foreground/70 border border-foreground/15'
+                        )}
+                      >
+                        <Shield className="w-3 h-3" />
+                        {roleLabel}
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (onEditProfile) {
-                        onEditProfile();
-                        onClose();
-                      }
-                    }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <span className="text-[10px] font-medium text-foreground uppercase">
-                      EDIT PROFILE
-                    </span>
-                    <ArrowUpRight className="w-3 h-3 text-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              {/* ═══ BAND SECTION ═══ */}
-              <div className="flex flex-col gap-[30px]">
-                <div className="flex flex-col gap-[30px]">
-                  {/* Band Header */}
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[12px] font-bold text-accent uppercase">
-                          YOUR BAND
-                        </span>
-                        <h3 className="text-[32px] font-bold text-white leading-none uppercase">
-                          {selectedBand.name}
-                        </h3>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (onEditBand) {
-                            onEditBand();
-                            onClose();
-                          }
-                        }}
-                        className="bg-accent rounded-[6px] px-2.5 py-1 shrink-0"
-                      >
-                        <span className="text-[12px] font-bold text-accent-foreground uppercase">EDIT</span>
-                      </button>
-                    </div>
-                    {/* Band Tags */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {bandTags.map((tag, i) => (
-                        <div
-                          key={i}
-                          className={`rounded-[6px] px-1.5 py-1 ${
-                            i === 0
-                              ? 'bg-black'
-                              : 'bg-white/20'
-                          }`}
-                        >
-                          <span
-                            className={`text-[12px] font-medium uppercase ${
-                              i === 0 ? 'text-accent' : 'text-foreground'
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Members + Genre Row */}
-                  <div className="flex gap-5 w-full">
-                    {/* Members */}
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[12px] font-bold text-accent uppercase">
-                          MEMBERS
-                        </span>
-                        <span className="text-[32px] font-bold text-foreground leading-none">
-                          {selectedBand.members}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Genre */}
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[12px] font-bold text-accent uppercase">
-                          GENRE
-                        </span>
-                        <span className="text-[32px] font-bold text-foreground leading-none uppercase">
-                          {selectedBand.genre}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                {/* + ADD NEW */}
                 <button
+                  type="button"
                   onClick={() => {
-                    if (onAddEntity) {
-                      onAddEntity();
-                      onClose();
-                    }
+                    onEditProfile?.();
+                    onClose();
                   }}
-                  className="w-full border-2 border-dashed border-black/20 rounded-[10px] py-3.5 flex items-center justify-center gap-2"
+                  className="px-3 py-1.5 rounded-[10px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
                 >
-                  <Plus className="w-3.5 h-3.5 text-foreground" />
-                  <span className="text-[12px] font-medium text-foreground text-center uppercase">
-                    ADD NEW
-                  </span>
+                  <span>Edit</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* ═══ ENTITY DETAILS ═══ */}
-            <div className="flex flex-col gap-10">
-              <div className="flex flex-col gap-1">
-                <span className="text-[12px] font-bold text-accent uppercase">
-                  SUPPORT TEXT
-                </span>
-                <h3 className="text-[32px] font-bold text-white leading-none uppercase">
-                  ENTITY DETAILS
-                </h3>
+            {/* ═══ 2. ACTIVE PROJECT & BAND ROSTER ═══ */}
+            <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                    ACTIVE PROJECT
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground leading-none mt-1">
+                    {selectedBand.name}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onEditBand?.();
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 rounded-[10px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Members</span>
+                </button>
               </div>
 
-              <div className="flex flex-col gap-10">
-                {entityDetails.map((item) => (
-                  <div key={item.label} className="flex flex-col gap-2">
-                    <div className="flex flex-col">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-bold text-accent uppercase">
+              {/* Band Metadata Pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/80">
+                  {selectedBand.members} {selectedBand.members === 1 ? 'Member' : 'Members'}
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/80">
+                  Genre: {selectedBand.genre || 'Live Music'}
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/80">
+                  Plan: {selectedBand.plan || 'Standard'}
+                </span>
+              </div>
+
+              {/* Band Switcher Quick Row (Interactive) */}
+              {bands.length > 0 && (
+                <div className="flex flex-col gap-2 pt-2 border-t border-foreground/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                      SWITCH BAND
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onAddEntity?.();
+                        onClose();
+                      }}
+                      className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> New Band
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {bands.map((b) => {
+                      const isActive = b.id === selectedBand.id;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setSelectedBand(b)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-[10px] text-xs font-bold uppercase tracking-wider transition-all border',
+                            isActive
+                              ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                              : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
+                          )}
+                        >
+                          {b.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ═══ 3. BAND ASSETS & WORKFLOWS ═══ */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                  BAND ASSETS & WORKFLOWS
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {assetShortcuts.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        onEntityDetailClick?.(item.id);
+                        onClose();
+                      }}
+                      className="p-4 rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 flex flex-col justify-between gap-3 text-left transition-all active:scale-[0.98] shadow-2xs group"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="w-8 h-8 rounded-[10px] bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40 group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xl font-black text-foreground tabular-nums leading-none">
+                          {item.count}
+                        </span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/60 mt-1 truncate">
                           {item.label}
                         </span>
-                        <button
-                          onClick={() => {
-                            onEntityDetailClick?.(item.label);
-                            onClose();
-                          }}
-                          className="bg-accent rounded-[6px] px-2.5 py-1"
-                        >
-                          <span className="text-[12px] font-bold text-accent-foreground uppercase">EDIT</span>
-                        </button>
                       </div>
-                      <span className="text-[32px] font-bold text-foreground leading-none">
-                        {item.count}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* ═══ SIGN OUT ═══ */}
-            <div className="flex flex-col gap-4">
-              <button
-                onClick={handleLogout}
-                className="w-full border border-[var(--destructive)] bg-[rgba(167,49,49,0.2)] rounded-[10px] py-3.5 flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4 text-white" />
-                <span className="text-[12px] font-medium text-white text-center uppercase">
-                  SIGN OUT
+            {/* ═══ 4. THEME & APPEARANCE ═══ */}
+            <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                  APP THEME
                 </span>
+                <span className="text-[10px] font-medium text-foreground/40 uppercase">
+                  ACTIVE: {resolvedTheme}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'light' as const, label: 'Light', icon: Sun },
+                  { id: 'dark' as const, label: 'Dark', icon: Moon },
+                  { id: 'system' as const, label: 'System', icon: Monitor },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const isSelected = mode === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setMode(t.id)}
+                      className={cn(
+                        'py-2 px-3 rounded-[10px] flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-all border',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                          : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ═══ 5. ACCOUNT ACTIONS & SIGN OUT ═══ */}
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full border border-[var(--destructive)]/30 hover:border-[var(--destructive)] bg-[var(--destructive)]/5 hover:bg-[var(--destructive)]/10 text-[var(--destructive)] rounded-[12px] py-3.5 flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all shadow-2xs"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
               </button>
-              {user?.email && (
-                <p className="text-[10px] font-normal text-foreground/50 text-center uppercase w-full">
-                  SIGNED IN AS {user.email}
-                </p>
-              )}
+
+              <div className="flex flex-col items-center justify-center gap-1 pt-1 text-center">
+                <span className="text-[11px] font-bold text-foreground/40 uppercase tracking-wider">
+                  SIGNED IN AS {displayEmail}
+                </span>
+                <span className="text-[10px] text-foreground/30 uppercase tracking-wider">
+                  BANDWITH V1.0.0 · ALL DATA ENCRYPTED
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>
