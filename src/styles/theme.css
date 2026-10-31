@@ -30,16 +30,16 @@
   --secondary: #E5E7EB;
   --secondary-fg: #1A1A1A;
 
-  /* ── Action (gig) — high contrast teal ── */
-  --accent-gig: #00A896;
-  --accent-gig-fg: #000000;
+  /* ── Action (gig) — Signal Vermilion ── */
+  --accent-gig: #E11D48;
+  --accent-gig-fg: #FFFFFF;
 
-  /* ── Utility (rehearsal) — accessible blue ── */
-  --accent-rehearsal: #0052CC;
+  /* ── Utility (rehearsal) — Indigo Violet ── */
+  --accent-rehearsal: #4F46E5;
   --accent-rehearsal-fg: #FFFFFF;
 
-  /* ── Context (quote) — accessible electric blue ── */
-  --accent-quote: #0070BA;
+  /* ── Context (quote) — Forest Emerald ── */
+  --accent-quote: #059669;
   --accent-quote-fg: #FFFFFF;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
@@ -76,16 +76,16 @@
   --secondary: #27272A;
   --secondary-fg: #E5E7EB;
 
-  /* ── Action (gig) — teal, 11.28:1 contrast on #121212 ── */
-  --accent-gig: #2DD4BF;
+  /* ── Action (gig) — Coral Red ── */
+  --accent-gig: #FB7185;
   --accent-gig-fg: #000000;
 
-  /* ── Utility (rehearsal) — bright blue, 8.26:1 contrast ── */
-  --accent-rehearsal: #60A5FA;
+  /* ── Utility (rehearsal) — Soft Indigo ── */
+  --accent-rehearsal: #818CF8;
   --accent-rehearsal-fg: #000000;
 
-  /* ── Context (quote) — electric blue, 6.92:1 contrast with dark text ── */
-  --accent-quote: #009AF3;
+  /* ── Context (quote) — Bright Emerald ── */
+  --accent-quote: #34D399;
   --accent-quote-fg: #000000;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */

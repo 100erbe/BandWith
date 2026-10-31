@@ -1066,11 +1066,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </button>
               <button
                 onClick={() => handleCreate(true)}
-                style={{ backgroundColor: activeAccentColor }}
-                className="rounded-[10px] py-4 flex items-center justify-center gap-2 font-bold text-white shadow-lg shadow-black/20 hover:opacity-95 transition-opacity"
+                style={{ backgroundColor: activeAccentColor, color: 'var(--accent-quote-fg)' }}
+                className="rounded-[10px] py-4 flex items-center justify-center gap-2 font-bold shadow-lg shadow-black/20 hover:opacity-95 transition-opacity"
               >
-                <span className="text-[16px] font-bold text-white uppercase">SEND QUOTE</span>
-                <ArrowRight className="w-4 h-4 text-white" />
+                <span className="text-[16px] font-bold uppercase">SEND QUOTE</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
             <button
@@ -1099,10 +1099,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
-                style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
+                style={{
+                  backgroundColor: canProceed() ? activeAccentColor : undefined,
+                  color: canProceed() ? 'var(--accent-quote-fg)' : undefined,
+                }}
                 className={cn(
                   'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
-                  canProceed() ? 'text-white shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
+                  canProceed() ? 'shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
                 )}
               >
                 <span className="uppercase">NEXT</span>
@@ -1144,10 +1147,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   handleNext();
                 }}
                 disabled={!canProceed()}
-                style={{ backgroundColor: canProceed() ? activeAccentColor : undefined }}
+                style={{
+                  backgroundColor: canProceed() ? activeAccentColor : undefined,
+                  color: canProceed() ? 'var(--accent-quote-fg)' : undefined,
+                }}
                 className={cn(
                   'rounded-[10px] py-4 flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
-                  canProceed() ? 'text-white shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
+                  canProceed() ? 'shadow-lg shadow-black/20 hover:opacity-95' : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
                 )}
               >
                 <span className="uppercase">NEXT</span>

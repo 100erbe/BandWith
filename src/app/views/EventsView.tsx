@@ -38,11 +38,11 @@ const TAG_COLORS: Record<string, string> = {
   gig: 'bg-accent-gig text-accent-gig-foreground',
   outdoor: 'bg-accent-gig text-accent-gig-foreground',
   confirmed: 'bg-accent-gig text-accent-gig-foreground',
-  rehearsal: 'bg-accent-rehearsal text-white',
-  series: 'bg-accent-rehearsal text-white',
-  quote: 'bg-accent-quote text-white',
+  rehearsal: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
+  series: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
+  quote: 'bg-accent-quote text-accent-quote-foreground',
   draft: 'bg-black/20 text-foreground/60',
-  pending: 'bg-accent-quote text-white',
+  pending: 'bg-accent-quote text-accent-quote-foreground',
 };
 
 const getRehearsalCadence = (event: EventData): string => {
@@ -360,8 +360,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
               let activeBg = 'bg-white';
               let activeText = 'text-foreground';
               if (f === 'GIGS') { activeBg = 'bg-accent-gig'; activeText = 'text-accent-gig-foreground'; }
-              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-white'; }
-              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-white'; }
+              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-accent-rehearsal-foreground'; }
+              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-accent-quote-foreground'; }
               else if (f === 'DRAFT') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
               return (
               <button

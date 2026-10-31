@@ -329,6 +329,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     [eventType, modalCategory]
   );
 
+  const activeAccentFg = useMemo(() => {
+    if (modalCategory === 'rehearsal') return 'var(--accent-rehearsal-fg)';
+    if (modalCategory === 'quote') return 'var(--accent-quote-fg)';
+    return 'var(--accent-gig-fg)';
+  }, [modalCategory]);
+
   const modalBg = 'var(--bg)';
   const isDarkBg = false;
   const tc = 'text-foreground';
@@ -1664,11 +1670,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </button>
           <button
             onClick={handleSongsViewDone}
-            style={{ backgroundColor: activeAccentColor }}
-            className="py-4 text-black rounded-[10px] flex items-center justify-center gap-2 font-bold hover:opacity-95 transition-opacity"
+            style={{ backgroundColor: activeAccentColor, color: activeAccentFg }}
+            className="py-4 rounded-[10px] flex items-center justify-center gap-2 font-bold hover:opacity-95 transition-opacity"
           >
-            <span className="text-[16px] font-bold text-black">DONE</span>
-            <ArrowRight className="w-4 h-4 text-black" />
+            <span className="text-[16px] font-bold">DONE</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1812,11 +1818,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               disabled={!canProceed}
               style={{
                 backgroundColor: canProceed ? activeAccentColor : undefined,
+                color: canProceed ? activeAccentFg : undefined,
               }}
               className={cn(
                 'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
                 canProceed
-                  ? 'text-black shadow-lg shadow-black/20 hover:opacity-95'
+                  ? 'shadow-lg shadow-black/20 hover:opacity-95'
                   : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
               )}
             >
