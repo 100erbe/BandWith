@@ -46,61 +46,50 @@ export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   production_extra_location_fee: 150,
   travel_rate_per_km: 0.15,
   band_origin_address: '',
-  low_season_multiplier: 1,
+  low_season_multiplier: 0.9,
   mid_season_multiplier: 1,
   peak_season_multiplier: 1.15,
-  margin_divisor: 1,
+  margin_divisor: 0.94,
   rounding_step: 10,
   default_vat_rate: 21,
   default_deposit_rate: 20,
   custom_services: [
     {
-      id: 'srv-cocktail',
-      name: 'Cocktail Set',
+      id: 'srv-song-request',
+      name: 'Custom Song Arrangement',
       category: 'performance',
-      description: 'Acoustic background music set for reception',
-      price: 150,
-      unit: 'per_person',
-      is_active: true,
-    },
-    {
-      id: 'srv-ceremony',
-      name: 'Ceremony Performance',
-      category: 'performance',
-      description: 'Live entrance, vows & exit customized music',
-      price: 150,
-      unit: 'per_person',
-      is_active: true,
-    },
-    {
-      id: 'srv-dj',
-      name: 'DJ Service',
-      category: 'performance',
-      description: 'DJ after-party set with sound & lighting',
-      price: 100,
-      unit: 'per_hour',
-      is_active: true,
-    },
-    {
-      id: 'srv-extra-sound',
-      name: 'Secondary PA System',
-      category: 'production',
-      description: 'Independent sound system for garden or second room',
-      price: 150,
+      description: 'Learn & arrange a special request outside the repertoire',
+      price: 120,
       unit: 'flat',
+      is_active: true,
+    },
+    {
+      id: 'srv-early-loadin',
+      name: 'Early Load-In / Waiting Hour',
+      category: 'logistics',
+      description: 'Early setup & standby time before the event starts',
+      price: 35,
+      unit: 'per_person',
       is_active: true,
     },
     {
       id: 'srv-recording',
       name: 'Live Multitrack Recording',
-      category: 'custom',
-      description: 'Audio multitrack capture of the performance',
+      category: 'production',
+      description: 'Multi-channel audio capture of the live performance',
       price: 250,
       unit: 'flat',
       is_active: false,
     },
   ],
 };
+
+const LEGACY_DUPLICATE_SERVICE_IDS = new Set([
+  'srv-cocktail',
+  'srv-ceremony',
+  'srv-dj',
+  'srv-extra-sound',
+]);
 
 const STORAGE_PREFIX = 'bandwith_pricing_settings_';
 
@@ -109,10 +98,15 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${bandId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const storedServices: CustomService[] | undefined = parsed.custom_services;
+      const cleanedServices = Array.isArray(storedServices)
+        ? storedServices.filter((s) => !LEGACY_DUPLICATE_SERVICE_IDS.has(s.id))
+        : [];
       return {
         ...DEFAULT_BAND_PRICING,
         ...parsed,
-        custom_services: parsed.custom_services || DEFAULT_BAND_PRICING.custom_services,
+        custom_services:
+          cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
       };
     }
   } catch (e) {
