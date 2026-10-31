@@ -154,34 +154,41 @@ const NavTab: React.FC<{
         'flex flex-col items-center justify-center'
       )}
     >
-      {/* Icon wrapper with smooth color transition — centered regardless of label */}
       <div
-        className="w-[24px] h-[24px] flex items-center justify-center z-10 relative"
-        style={{ transition: 'color 0.25s ease', color: strokeColor }}
-      >
-        <Icon color="currentColor" />
-      </div>
-      
-      <AnimatePresence>
-        {!isScrollingDown && (
-          <motion.div
-            key="label"
-            initial={{ scaleY: 0, opacity: 0 }}
-            animate={{ scaleY: 1, opacity: 1 }}
-            exit={{ scaleY: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-            style={{ transformOrigin: 'top' }}
-            className="absolute bottom-[6px] left-0 right-0 flex items-start justify-center overflow-hidden"
-          >
-            <span className={cn(
-              'text-[10px] font-black tracking-wide select-none leading-[14px]',
-              isActive ? 'text-foreground' : 'text-muted-foreground'
-            )}>
-              {label}
-            </span>
-          </motion.div>
+        className={cn(
+          "flex flex-col items-center justify-center transition-transform duration-200",
+          !isScrollingDown ? "translate-y-[-1px]" : ""
         )}
-      </AnimatePresence>
+      >
+        {/* Icon wrapper with smooth color transition */}
+        <div
+          className="w-[22px] h-[22px] flex items-center justify-center z-10 relative"
+          style={{ transition: 'color 0.25s ease', color: strokeColor }}
+        >
+          <Icon color="currentColor" />
+        </div>
+        
+        <AnimatePresence>
+          {!isScrollingDown && (
+            <motion.div
+              key="label"
+              initial={{ scaleY: 0, opacity: 0 }}
+              animate={{ scaleY: 1, opacity: 1 }}
+              exit={{ scaleY: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+              style={{ transformOrigin: 'top' }}
+              className="mt-[4px] flex items-center justify-center overflow-hidden"
+            >
+              <span className={cn(
+                'text-[10px] font-bold tracking-tight select-none leading-none',
+                isActive ? 'text-foreground' : 'text-muted-foreground'
+              )}>
+                {label}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </button>
   );
 };

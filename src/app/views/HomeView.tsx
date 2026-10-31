@@ -134,29 +134,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
       )}
     >
       {/* ═══ STATS GRID (2×2) ═══ */}
-      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-5">
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-4 sm:gap-5">
         {/* Row 1: Gigs Confirmed | Upcoming Rehearsal — visible to all */}
-        <div className="flex gap-5">
-          {/* CARD: GIGS CONFIRMED — cyan accent */}
-          <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-            <div className="w-3 shrink-0 bg-[rgba(0,255,255,0.5)]" />
-            <div className="flex-1 flex flex-col py-3 items-start text-left">
-              <span className="text-xs font-bold text-foreground tracking-wide">GIGS CONFIRMED</span>
-              <div className="h-[62px] overflow-hidden">
-                <span className="text-[52px] font-bold leading-none text-foreground block">
+        <div className="flex gap-4 sm:gap-5">
+          {/* CARD: GIGS CONFIRMED — Red/Vermilion accent */}
+          <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+            <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
+            <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">GIGS CONFIRMED</span>
+              <div className="h-[62px] flex items-center">
+                <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : confirmedCount}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* CARD: UPCOMING REHEARSAL — blue accent */}
-          <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-            <div className="w-3 shrink-0 bg-[#0055E1]" />
-            <div className="flex-1 flex flex-col py-3 items-start text-left">
-              <span className="text-xs font-bold text-foreground tracking-wide">UPCOMING REHEARSAL</span>
-              <div className="h-[62px] overflow-hidden">
-                <span className="text-[52px] font-bold leading-none text-foreground block">
+          {/* CARD: UPCOMING REHEARSAL — Indigo/Violet accent */}
+          <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+            <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
+            <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">UPCOMING REHEARSAL</span>
+              <div className="h-[62px] flex items-center">
+                <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block">
                   {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : rehearsalCount}
                 </span>
               </div>
@@ -165,52 +165,60 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Row 2: Admin sees full business metrics / Member sees personal earnings */}
-        <div className="flex gap-5">
+        <div className="flex gap-4 sm:gap-5">
           {isAdmin ? (
             <>
-              {/* CARD: QUOTES — sky accent */}
-              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-                <div className="w-3 shrink-0 bg-[rgba(0,154,243,0.5)]" />
-                <div className="flex-1 flex flex-col py-3 items-start text-left">
-                  <span className="text-xs font-bold text-foreground tracking-wide">QUOTES</span>
-                  <span className="text-[52px] font-bold leading-none text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
-                  </span>
+              {/* CARD: QUOTES — Emerald Green accent */}
+              <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
+                <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">QUOTES</span>
+                  <div className="h-[62px] flex items-center">
+                    <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block">
+                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* CARD: REVENUE — pink accent */}
-              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-                <div className="w-3 shrink-0 bg-[#FF00C8]" />
-                <div className="flex-1 flex flex-col py-3 items-start text-left">
-                  <span className="text-xs font-bold text-foreground tracking-wide">REVENUE</span>
-                  <span className="text-[52px] font-bold leading-none text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
-                  </span>
+              {/* CARD: REVENUE — Royal Purple Brand accent */}
+              <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
+                <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">REVENUE</span>
+                  <div className="h-[62px] flex items-center">
+                    <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block truncate">
+                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(revenue)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </>
           ) : (
             <>
-              {/* CARD: MY FEE — sky accent (member view) */}
-              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-                <div className="w-3 shrink-0 bg-[rgba(0,154,243,0.5)]" />
-                <div className="flex-1 flex flex-col py-3 items-start text-left">
-                  <span className="text-xs font-bold text-foreground tracking-wide">MY FEE</span>
-                  <span className="text-[52px] font-bold leading-none text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
-                  </span>
+              {/* CARD: MY FEE — Emerald Green accent (member view) */}
+              <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
+                <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">MY FEE</span>
+                  <div className="h-[62px] flex items-center">
+                    <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block truncate">
+                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.confirmedFee || 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* CARD: MY EARNINGS — pink accent (member view) */}
-              <div className="flex-1 flex rounded-xl border border-foreground/8 bg-transparent backdrop-blur-[10px] shadow-[2px_2px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden">
-                <div className="w-3 shrink-0 bg-[#FF00C8]" />
-                <div className="flex-1 flex flex-col py-3 items-start text-left">
-                  <span className="text-xs font-bold text-foreground tracking-wide">MY EARNINGS</span>
-                  <span className="text-[52px] font-bold leading-none text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.totalEarned || 0)}
-                  </span>
+              {/* CARD: MY EARNINGS — Royal Purple Brand accent (member view) */}
+              <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
+                <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">MY EARNINGS</span>
+                  <div className="h-[62px] flex items-center">
+                    <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block truncate">
+                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : formatRevenue(memberStats?.totalEarned || 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </>
