@@ -495,26 +495,33 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 <div className="relative">
                   <button
                     onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                    className="bg-[var(--warning)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                    aria-label="Missing event details"
+                    title="Missing event details"
+                    className="w-6 h-6 rounded-full bg-warning/15 text-warning border border-warning/30 flex items-center justify-center hover:bg-warning/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
                   >
-                    <AlertCircle className="w-[16px] h-[16px] text-white" />
+                    <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                   <AnimatePresence>
                     {warningPopoverId === event.id && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                        className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        className="absolute top-full right-0 mt-2 bg-popover text-popover-foreground border border-foreground/15 rounded-[12px] p-3 z-50 min-w-[190px] shadow-xl backdrop-blur-md"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
-                        {warnings.map((w, wi) => (
-                          <div key={wi} className="flex items-center gap-2 py-1">
-                            <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                            <span className="text-[11px] font-medium text-white/80">{w}</span>
-                          </div>
-                        ))}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 stroke-[2.5]" />
+                          <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-wider">Missing Info</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {warnings.map((w, wi) => (
+                            <div key={wi} className="flex items-center gap-2 py-0.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                              <span className="text-[11px] font-medium text-foreground/80">{w}</span>
+                            </div>
+                          ))}
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -524,26 +531,33 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 <div className="relative">
                   <button
                     onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                    className="bg-[var(--amber)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                    aria-label="Event suggestions"
+                    title="Event suggestions"
+                    className="w-6 h-6 rounded-full bg-primary/15 text-primary border border-primary/30 flex items-center justify-center hover:bg-primary/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
                   >
-                    <AlertCircle className="w-[16px] h-[16px] text-white" />
+                    <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
                   <AnimatePresence>
                     {suggestionPopoverId === event.id && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                        className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        className="absolute top-full right-0 mt-2 bg-popover text-popover-foreground border border-foreground/15 rounded-[12px] p-3 z-50 min-w-[190px] shadow-xl backdrop-blur-md"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
-                        {suggestions.map((s, si) => (
-                          <div key={si} className="flex items-center gap-2 py-1">
-                            <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                            <span className="text-[11px] font-medium text-white/80">{s}</span>
-                          </div>
-                        ))}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <AlertCircle className="w-3.5 h-3.5 text-primary shrink-0 stroke-[2.5]" />
+                          <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-wider">Suggestions</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {suggestions.map((s, si) => (
+                            <div key={si} className="flex items-center gap-2 py-0.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                              <span className="text-[11px] font-medium text-foreground/80">{s}</span>
+                            </div>
+                          ))}
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>

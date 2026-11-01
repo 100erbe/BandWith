@@ -53,6 +53,11 @@
   /* ── Semantic ── */
   --destructive: #B91C1C;
   --destructive-fg: #FFFFFF;
+  --warning: #B45309;
+  --warning-fg: #FFFFFF;
+  --amber: #B45309;
+  --surface-inverse: #171717;
+  --surface-inverse-fg: #FFFFFF;
   --border: rgba(0, 0, 0, 0.12);
   --input: rgba(0, 0, 0, 0.12);
   --ring: #6A0DAD;
@@ -103,6 +108,11 @@
   /* ── Semantic ── */
   --destructive: #F87171;
   --destructive-fg: #000000;
+  --warning: #FBBF24;
+  --warning-fg: #000000;
+  --amber: #FBBF24;
+  --surface-inverse: #FAFAFA;
+  --surface-inverse-fg: #0A0A0A;
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.12);
   --ring: #9333EA;
@@ -138,6 +148,11 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-fg);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-fg);
+  --color-amber: var(--amber);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-surface-inverse-foreground: var(--surface-inverse-fg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
