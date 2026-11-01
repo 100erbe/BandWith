@@ -999,6 +999,56 @@ export default function AuthenticatedApp() {
     setActiveTab('Chat');
   };
 
+  const handleConfirmQuote = async (targetEvent?: EventData) => {
+    const ev = targetEvent || selectedEvent;
+    if (!ev?.eventId) return;
+
+    try {
+      const nextEventType = (ev.eventType && ev.eventType !== 'quote' && ev.eventType !== 'rehearsal') ? ev.eventType : 'gig';
+      const { error: eventErr } = await supabase
+        .from('events')
+        .update({
+          status: 'confirmed',
+          event_type: nextEventType,
+        })
+        .eq('id', ev.eventId);
+
+      if (eventErr) throw eventErr;
+
+      // Update linked quote if present
+      await supabase
+        .from('quotes')
+        .update({
+          status: 'accepted',
+          responded_at: new Date().toISOString(),
+          response_type: 'accepted',
+        })
+        .or(`converted_to_event_id.eq.${ev.eventId},id.eq.${ev.eventId}`);
+
+      // Optimistically update the open detail modal so it transforms into a gig
+      setSelectedEvent(prev => {
+        if (!prev || prev.eventId !== ev.eventId) return prev;
+        return {
+          ...prev,
+          status: 'CONFIRMED',
+          eventType: nextEventType,
+          color: 'bg-accent-gig text-accent-gig-foreground',
+          indoorOutdoor: prev.indoorOutdoor || 'indoor',
+        };
+      });
+
+      setSaveToast({ message: 'Quote confirmed as Gig! 🎸', type: 'success' });
+
+      // Realign in background
+      if (refetchEvents) await refetchEvents();
+      setMembersRefreshKey(prev => prev + 1);
+      if (refetchDashboard) await refetchDashboard();
+    } catch (err: any) {
+      console.error('Failed to confirm quote:', err);
+      setSaveToast({ message: `Failed to confirm quote: ${err.message || 'Unknown error'}`, type: 'error' });
+    }
+  };
+
   const handleEventCardClick = async (event: EventData) => {
     setSelectedEvent(event);
     setSelectedEventMembership(null);
@@ -1803,6 +1853,7 @@ export default function AuthenticatedApp() {
             onEdit={handleEventEdit}
             onDelete={handleEventDelete}
             onChat={handleEventChat}
+            onConfirmQuote={handleConfirmQuote}
             memberFee={selectedEventMembership?.fee}
             isAdmin={isAdmin}
           />

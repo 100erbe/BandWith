@@ -18,6 +18,7 @@ interface EventDetailProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onChat?: () => void;
+  onConfirmQuote?: (event: EventData) => Promise<void> | void;
   memberFee?: number;
   isAdmin?: boolean;
 }
@@ -128,13 +129,27 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onEdit,
   onDelete,
   onChat,
+  onConfirmQuote,
   memberFee,
   isAdmin = true,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
+
+  const handleConfirmQuote = async () => {
+    if (isConfirming || !onConfirmQuote) return;
+    setIsConfirming(true);
+    try {
+      await onConfirmQuote(event);
+    } catch (err) {
+      console.error('Error confirming quote:', err);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   const isPast = useMemo(() => {
     if (!event.date) return false;
@@ -424,50 +439,106 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               </div>
             </div>
           ) : isAdmin ? (
-            // ADMIN view — edit / delete / chat
-            <div className="flex flex-col gap-[20px] items-center">
-              <div className="grid grid-cols-2 gap-[10px] w-full">
-                <button
-                  onClick={onEdit}
-                  style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] font-bold shadow-lg shadow-black/10 hover:opacity-95 transition-opacity"
-                >
-                  <Plus className="w-[18px] h-[18px]" />
-                  <span className="text-[16px] font-bold uppercase">EDIT</span>
-                </button>
-                <button
-                  onClick={onChat}
-                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold transition-colors"
-                >
-                  <MessageCircle className="w-[18px] h-[18px] text-foreground" />
-                  <span className="text-[16px] font-bold uppercase">
-                    {eventType === 'quote' ? (THEME.quote.secondBtnLabel || 'CONVERT') : 'CHAT'}
-                  </span>
-                </button>
-              </div>
-              {showDeleteConfirm ? (
-                <div className="flex items-center gap-[12px]">
+            // ADMIN view — edit / delete / chat (or quote conversion)
+            eventType === 'quote' ? (
+              <div className="flex flex-col gap-[16px] items-center w-full">
+                <div className="grid grid-cols-2 gap-[10px] w-full">
                   <button
-                    onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
-                    className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    onClick={handleConfirmQuote}
+                    disabled={isConfirming}
+                    style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] font-bold shadow-lg shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50"
                   >
-                    CONFIRM DELETE
+                    <Check className="w-[18px] h-[18px]" />
+                    <span className="text-[15px] font-bold uppercase">
+                      {isConfirming ? 'CONFIRMING...' : 'CONFIRM GIG'}
+                    </span>
                   </button>
                   <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="text-[12px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors"
+                    onClick={onEdit}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold active:scale-[0.99] transition-all"
                   >
-                    CANCEL
+                    <Pencil className="w-[18px] h-[18px] text-foreground" />
+                    <span className="text-[15px] font-bold uppercase">EDIT</span>
                   </button>
                 </div>
-              ) : (
-                <button onClick={() => setShowDeleteConfirm(true)}>
-                  <span className="text-[12px] font-medium text-[var(--destructive)] uppercase hover:opacity-80 transition-opacity">
-                    {theme.deleteLabel}
-                  </span>
-                </button>
-              )}
-            </div>
+                {showDeleteConfirm ? (
+                  <div className="flex items-center gap-[12px]">
+                    <button
+                      onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
+                      className="text-[12px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    >
+                      CONFIRM DELETE
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[12px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/45">
+                    <button
+                      onClick={onChat}
+                      className="hover:text-foreground transition-colors flex items-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      CHAT
+                    </button>
+                    <span>•</span>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-[var(--destructive)] hover:opacity-80 transition-opacity"
+                    >
+                      {theme.deleteLabel}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[20px] items-center">
+                <div className="grid grid-cols-2 gap-[10px] w-full">
+                  <button
+                    onClick={onEdit}
+                    style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] font-bold shadow-lg shadow-black/10 hover:opacity-95 transition-opacity"
+                  >
+                    <Plus className="w-[18px] h-[18px]" />
+                    <span className="text-[16px] font-bold uppercase">EDIT</span>
+                  </button>
+                  <button
+                    onClick={onChat}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold transition-colors"
+                  >
+                    <MessageCircle className="w-[18px] h-[18px] text-foreground" />
+                    <span className="text-[16px] font-bold uppercase">CHAT</span>
+                  </button>
+                </div>
+                {showDeleteConfirm ? (
+                  <div className="flex items-center gap-[12px]">
+                    <button
+                      onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
+                      className="text-[12px] font-bold text-white bg-[var(--warning)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    >
+                      CONFIRM DELETE
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[12px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowDeleteConfirm(true)}>
+                    <span className="text-[12px] font-medium text-[var(--destructive)] uppercase hover:opacity-80 transition-opacity">
+                      {theme.deleteLabel}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )
           ) : (
             // MEMBER view (already accepted) — chat + drop out (with confirmation)
             <div className="flex flex-col gap-[20px] items-center">
