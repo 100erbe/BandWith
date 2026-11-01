@@ -1625,10 +1625,19 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {activeTab === "Home" && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onFilterEvents={(filter) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
             }} onQuickAction={(action) => {
+              if (action === "View Calendar") {
+                setEventFilter("ALL");
+                setActiveTab("Events");
+                return;
+              }
+              if (action === "View Analytics") {
+                setShowAnalytics(true);
+                return;
+              }
               if (isSolo) return; // PLG: Solo mode has no band actions
               if (action === "Band Members") setShowBandMembers(true);
               if (action === "Setlist & Repertoire") setShowSetlistManager(true);
