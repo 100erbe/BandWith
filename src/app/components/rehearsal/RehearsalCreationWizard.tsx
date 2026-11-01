@@ -12,6 +12,7 @@ import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { WizardAccentRail, getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { RehearsalState, RehearsalType, RehearsalSong, SongProposal, RehearsalTask, RehearsalMember, SetlistTemplate, RehearsalSetlistSnapshotFinal, ProposalAttachment, RecurrenceType } from './types';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, createSong, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -670,12 +671,19 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const renderDateLocationStep = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-500">
       <div>
-        <input
-          type="text"
+        <VenueAutocomplete
           value={data.location}
-          onChange={e => setData(prev => ({ ...prev, location: e.target.value }))}
-          className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[28px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-3"
+          onChange={val => setData(prev => ({ ...prev, location: val }))}
+          onSelect={place => {
+            const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
+            setData(prev => ({
+              ...prev,
+              location: place.name,
+              ...(formatted ? { address: formatted } : {}),
+            }));
+          }}
           placeholder="Venue Name"
+          className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[28px] font-bold placeholder:text-foreground/30 focus:outline-none focus:border-foreground transition-colors pb-3"
         />
       </div>
 

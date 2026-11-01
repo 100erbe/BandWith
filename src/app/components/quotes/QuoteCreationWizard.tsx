@@ -11,6 +11,7 @@ import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import {
   Quote,
   QuoteEventType,
@@ -234,6 +235,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [eventTimeEnd, setEventTimeEnd] = useState(initialData?.eventTimeEnd || '');
   const [guestCount, setGuestCount] = useState<number | undefined>(initialData?.guestCount);
   const [venueName, setVenueName] = useState(initialData?.venueName || '');
+  const [venueAddress, setVenueAddress] = useState(initialData?.venueAddress || '');
   const [venueCity, setVenueCity] = useState(initialData?.venueCity || '');
   const [venueCountry, setVenueCountry] = useState(initialData?.venueCountry || 'IT');
   const [indoorOutdoor, setIndoorOutdoor] = useState<'indoor' | 'outdoor'>('indoor');
@@ -365,7 +367,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       status: sendImmediately ? 'SENT' : 'DRAFT',
       clientName, clientEmail, clientPhone: clientPhone || undefined, clientCompany: clientCompany || undefined,
       eventName, eventType, eventDate, eventTimeStart, eventTimeEnd: eventTimeEnd || undefined, guestCount,
-      venueName: venueName || undefined, venueCity, venueCountry, indoorOutdoor,
+      venueName: venueName || undefined, venueAddress: venueAddress || undefined, venueCity, venueCountry, indoorOutdoor,
       performanceType, setDuration, numberOfSets, breakDuration,
       musicians: allMusicians, genres: selectedGenres, specialRequests: specialRequests || undefined,
       billingCountry, vatNumber: vatNumber || undefined, fiscalCode: fiscalCode || undefined, vatRate, vatExempt, reverseCharge,
@@ -560,12 +562,23 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <QuoteField label="VENUE">
         <div className="flex items-center gap-3">
           <MapPin className="w-5 h-5 text-foreground/40 shrink-0" />
-          <input
-            type="text"
+          <VenueAutocomplete
             value={venueName}
-            onChange={e => setVenueName(e.target.value)}
+            onChange={setVenueName}
+            onSelect={place => {
+              setVenueName(place.name);
+              if (place.address) setVenueAddress(place.address);
+              if (place.city) setVenueCity(place.city);
+              if (place.country) {
+                const foundCode = Object.keys(VAT_RATES).find(code => 
+                  code.toUpperCase() === place.country?.toUpperCase() || 
+                  VAT_RATES[code].name.toLowerCase() === place.country?.toLowerCase()
+                );
+                if (foundCode) setVenueCountry(foundCode);
+              }
+            }}
             placeholder="VILLA REGINA"
-            className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase"
+            className="w-full bg-transparent text-[24px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none uppercase border-0 pb-0"
           />
         </div>
       </QuoteField>
@@ -593,9 +606,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </QuoteField>
       </div>
 
-      {venueCity && (
+      {(venueCity || venueAddress) && (
         <div className="flex flex-wrap gap-2">
-          {[venueCity, VAT_RATES[venueCountry]?.name].filter(Boolean).map((tag, i) => (
+          {[venueAddress, venueCity, VAT_RATES[venueCountry]?.name].filter(Boolean).map((tag, i) => (
             <div key={i} className="px-3 py-1.5 rounded-[6px] bg-foreground/10 text-[12px] font-bold text-foreground/60 uppercase">
               {tag}
             </div>

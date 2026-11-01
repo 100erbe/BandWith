@@ -6,6 +6,7 @@ import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCreationWizard';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -603,10 +604,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('venue') ? 'text-[var(--warning)]' : tcMuted)}>VENUE</span>
           {warnField('venue') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
         </div>
-        <input
-          type="text"
+        <VenueAutocomplete
           value={details.venue}
-          onChange={(e) => setDetails({ ...details, venue: e.target.value })}
+          onChange={(val) => setDetails({ ...details, venue: val })}
+          onSelect={(place) => {
+            setDetails(prev => ({
+              ...prev,
+              venue: place.name,
+              ...(place.address ? { address: place.address } : {}),
+              ...(place.city ? { city: place.city } : {}),
+              ...(place.state ? { province: place.state } : {}),
+              ...(place.postcode ? { zip: place.postcode } : {}),
+              ...(place.country ? { country: place.country } : {}),
+            }));
+          }}
           placeholder="VENUE NAME"
           className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[var(--warning)]/50' : bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
         />
