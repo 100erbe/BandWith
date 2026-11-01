@@ -8,6 +8,7 @@ import {
   Plus,
   Search,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { EmptyState } from '@/app/components/ui/EmptyState';
@@ -95,6 +96,20 @@ const getCalendarColor = (event: EventData): string => {
   if (status === 'QUOTED' || status === 'QUOTE') return 'var(--accent-quote)';
   if (status === 'DRAFT' || status === 'PENDING') return 'var(--muted-fg)';
   return 'var(--accent-gig)';
+};
+
+const normalizeDateStr = (rawDate: string | undefined): string | null => {
+  if (!rawDate) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return rawDate;
+  if (rawDate.includes('T')) return rawDate.split('T')[0];
+  const parsed = new Date(rawDate);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return rawDate;
 };
 
 const formatEventDate = (dateStr: string): string => {
@@ -203,6 +218,57 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const [suggestionPopoverId, setSuggestionPopoverId] = useState<number | null>(null);
   const bandIds = React.useMemo(() => (bands || []).map(b => b.id), [bands]);
   const [dayPickerEvents, setDayPickerEvents] = useState<EventData[] | null>(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const upcoming: EventData[] = [];
+    const past: EventData[] = [];
+
+    allEvents.forEach((event) => {
+      const normDate = normalizeDateStr(event.date);
+      if (!normDate) {
+        // Undated drafts or unscheduled events stay in upcoming
+        upcoming.push(event);
+      } else if (normDate >= todayStr) {
+        upcoming.push(event);
+      } else {
+        past.push(event);
+      }
+    });
+
+    // Upcoming sorted ascending (soonest first)
+    upcoming.sort((a, b) => {
+      const dateA = normalizeDateStr(a.date) || '9999-99-99';
+      const dateB = normalizeDateStr(b.date) || '9999-99-99';
+      return dateA.localeCompare(dateB);
+    });
+
+    // Past sorted descending (most recent past first)
+    past.sort((a, b) => {
+      const dateA = normalizeDateStr(a.date) || '';
+      const dateB = normalizeDateStr(b.date) || '';
+      return dateB.localeCompare(dateA);
+    });
+
+    return { upcomingEvents: upcoming, pastEvents: past };
+  }, [allEvents, todayStr]);
+
+  const eyebrowLabel = useMemo(() => {
+    if (eventFilter === 'All') return 'SCHEDULE';
+    if (eventFilter === 'GIGS') return 'GIGS';
+    if (eventFilter === 'REHEARSAL') return 'REHEARSALS';
+    if (eventFilter === 'QUOTE') return 'QUOTES';
+    if (eventFilter === 'DRAFT') return 'DRAFTS';
+    return 'SCHEDULE';
+  }, [eventFilter]);
 
   const openDayPicker = (events: EventData[]) => {
     setDayPickerEvents(events);
@@ -271,6 +337,279 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
   const today = new Date();
   const isCurrentMonth = calendarMonth === today.getMonth() && calendarYear === today.getFullYear();
+
+  const renderEventCard = (event: EventData, isPast: boolean = false) => {
+    const status = event.status?.toUpperCase();
+    const isRehearsal = status === 'REHEARSAL';
+    const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
+    const isQuote = status === 'QUOTED' || status === 'QUOTE';
+    const isDraft = !isRehearsal && !isGig && !isQuote;
+    const memberCount = event.members?.length || 0;
+
+    let accentColor = 'var(--accent-gig)';
+    let accentFg = 'var(--accent-gig-fg)';
+    let typeLabel = 'GIG';
+
+    if (isRehearsal) {
+      accentColor = 'var(--accent-rehearsal)';
+      accentFg = 'var(--accent-rehearsal-fg)';
+      typeLabel = 'REHEARSAL';
+    } else if (isQuote) {
+      accentColor = 'var(--accent-quote)';
+      accentFg = 'var(--accent-quote-fg)';
+      typeLabel = 'QUOTE';
+    } else if (isDraft) {
+      accentColor = 'var(--muted-fg)';
+      accentFg = 'var(--bg)';
+      typeLabel = 'DRAFT';
+    }
+
+    const warnings = getEventWarnings(event);
+    const suggestions = getEventSuggestions(event);
+    const tags = getEventTags(event);
+    const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
+
+    const rehearsalTime = event.time
+      ? (event.endTime
+          ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
+          : formatEventTime(event.time))
+      : 'TBD';
+
+    const loadInTime = event.loadInTime
+      ? formatEventTime(event.loadInTime)
+      : event.time
+        ? formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 3))))
+        : 'TBD';
+
+    const soundCheckTime = event.soundcheckTime
+      ? formatEventTime(event.soundcheckTime)
+      : event.time
+        ? formatEventTime(event.time.replace(/:d{2}$/, ':30').replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2))))
+        : 'TBD';
+
+    const showTime = event.time ? formatEventTime(event.time) : 'TBD';
+
+    return (
+      <motion.div
+        key={event.id}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 overflow-hidden cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-[0.99]",
+          isPast && "opacity-80 hover:opacity-100"
+        )}
+        onClick={() => onEventClick(event)}
+      >
+        {/* Left Accent Rail */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-[5px]"
+          style={{ backgroundColor: accentColor }}
+        />
+
+        <div className="flex flex-col gap-[14px] p-[16px] pl-[20px] sm:p-[20px] sm:pl-[24px]">
+          {/* Card Header: Tags + Date & Warnings */}
+          <div className="flex items-start justify-between gap-[12px]">
+            <div className="flex items-center gap-[6px] flex-wrap">
+              {/* Multi-band member: band name pill */}
+              {!isAdmin && bands.length > 1 && event.band_name && (
+                <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
+                  {event.band_name}
+                </div>
+              )}
+              {/* Primary Type Badge */}
+              <div
+                className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight"
+                style={{ backgroundColor: accentColor, color: accentFg }}
+              >
+                {typeLabel}
+              </div>
+              {/* Secondary Tags */}
+              {secondaryTags.map((tag, i) => (
+                <div
+                  key={i}
+                  className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/70"
+                >
+                  {tag}
+                </div>
+              ))}
+              {isPast && (
+                <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/50">
+                  PAST
+                </div>
+              )}
+            </div>
+
+            {/* Top-Right Badges: Warnings & Date */}
+            <div className="flex items-center gap-[8px] shrink-0">
+              {!isPast && warnings.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
+                    className="bg-[var(--warning)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                  >
+                    <AlertCircle className="w-[16px] h-[16px] text-white" />
+                  </button>
+                  <AnimatePresence>
+                    {warningPopoverId === event.id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                        className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
+                        {warnings.map((w, wi) => (
+                          <div key={wi} className="flex items-center gap-2 py-1">
+                            <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
+                            <span className="text-[11px] font-medium text-white/80">{w}</span>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              {!isPast && isAdmin && suggestions.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
+                    className="bg-[var(--amber)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
+                  >
+                    <AlertCircle className="w-[16px] h-[16px] text-white" />
+                  </button>
+                  <AnimatePresence>
+                    {suggestionPopoverId === event.id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                        className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
+                        {suggestions.map((s, si) => (
+                          <div key={si} className="flex items-center gap-2 py-1">
+                            <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
+                            <span className="text-[11px] font-medium text-white/80">{s}</span>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* Date Badge */}
+              <div
+                className="rounded-[8px] px-[10px] py-[4px] text-[12px] font-bold uppercase tracking-wider whitespace-nowrap shadow-xs"
+                style={{ backgroundColor: accentColor, color: accentFg }}
+              >
+                {event.date ? formatEventDate(event.date) : 'TBD'}
+              </div>
+            </div>
+          </div>
+
+          {/* Card Body: Title & Venue */}
+          <div className="flex flex-col gap-[3px]">
+            <h3 className="text-[19px] sm:text-[21px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
+              {event.title}
+            </h3>
+            <div className="flex items-center gap-[6px] text-[13px] text-foreground/60 font-medium truncate">
+              <span className="font-semibold text-foreground/80">
+                {event.location?.split(',')[0] || event.clientName || 'TBD'}
+              </span>
+              {(event.venueAddress || event.location?.includes(',')) && (
+                <>
+                  <span className="text-foreground/30">•</span>
+                  <span className="truncate text-foreground/50">
+                    {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Card Footer: Metadata Strip */}
+          <div className="border-t border-foreground/10 pt-[10px] flex items-center justify-between gap-[12px]">
+            {isRehearsal ? (
+              <>
+                <div className="flex items-center gap-[8px]">
+                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TIME</span>
+                  <span className="text-[15px] font-bold text-foreground leading-none">
+                    {rehearsalTime}
+                  </span>
+                </div>
+                <div className="flex items-center gap-[6px] text-foreground/70">
+                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">MEMBERS</span>
+                  <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                </div>
+              </>
+            ) : isGig ? (
+              <>
+                <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
+                  <div className="flex items-center gap-[4px]">
+                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">LOAD</span>
+                    <span className="text-[14px] font-bold text-foreground leading-none">{loadInTime}</span>
+                  </div>
+                  <div className="flex items-center gap-[4px]">
+                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SOUND</span>
+                    <span className="text-[14px] font-bold text-foreground leading-none">{soundCheckTime}</span>
+                  </div>
+                  <div className="flex items-center gap-[4px]">
+                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SHOW</span>
+                    <span className="text-[14px] font-bold text-foreground leading-none">{showTime}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
+                    {getFeeLabel(event)}
+                  </span>
+                  <span className="text-[17px] font-bold text-foreground leading-none">
+                    {getDisplayFee(event)}
+                  </span>
+                </div>
+              </>
+            ) : isQuote ? (
+              <>
+                <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
+                  <div className="flex items-center gap-[4px]">
+                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">CLIENT</span>
+                    <span className="text-[14px] font-bold text-foreground uppercase leading-none truncate max-w-[140px] sm:max-w-[200px]">
+                      {event.clientName || 'TBD'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-[4px]">
+                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
+                    <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
+                    {getFeeLabel(event)}
+                  </span>
+                  <span className="text-[17px] font-bold text-foreground leading-none">
+                    {getDisplayFee(event)}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">STATUS</span>
+                  <span className="text-[14px] font-bold text-foreground uppercase leading-none">DRAFT</span>
+                </div>
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
+                  <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
   const EmptyStateHero = () => <EmptyState />;
 
@@ -390,16 +729,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ FEATURED EVENT CARD (when filter ≠ All) ═══ */}
           {eventFilter !== 'All' && (() => {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            const futureEvents = allEvents.filter(e => {
-              if (!e.date) return false;
-              const d = new Date(e.date);
-              d.setHours(0, 0, 0, 0);
-              return d >= now;
-            });
-            if (futureEvents.length === 0) return null;
-            const feat = futureEvents[0];
+            const nextEvent = upcomingEvents.find(e => Boolean(e.date));
+            if (!nextEvent) return null;
+            const feat = nextEvent;
             const tags = getEventTags(feat);
             const status = feat.status?.toUpperCase();
             const isRehearsal = status === 'REHEARSAL';
@@ -632,285 +964,89 @@ export const EventsView: React.FC<EventsViewProps> = ({
             </div>
           </div>
 
-          {/* ═══ LIST HEADER ═══ */}
+          {/* ═══ SECTION HEADER ═══ */}
           <div className="flex flex-col gap-[4px]">
-            <span className="text-[12px] font-bold text-foreground uppercase leading-none">
-              LIST
+            <span className="text-[12px] font-bold text-foreground/60 uppercase leading-none tracking-wider">
+              {eyebrowLabel}
             </span>
-            <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
-              UPCOMING
-            </h2>
+            <div className="flex items-center gap-[10px]">
+              <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
+                UPCOMING
+              </h2>
+              {upcomingEvents.length > 0 && (
+                <span className="px-[8px] py-[2px] rounded-full text-[12px] font-bold bg-foreground/10 text-foreground/80 leading-none">
+                  {upcomingEvents.length}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* ═══ EVENT CARDS ═══ */}
+          {/* ═══ UPCOMING EVENT CARDS ═══ */}
           <div className="flex flex-col gap-[14px]">
-            {allEvents.length > 0 ? (
-              allEvents.map((event) => {
-                const status = event.status?.toUpperCase();
-                const isRehearsal = status === 'REHEARSAL';
-                const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
-                const isQuote = status === 'QUOTED' || status === 'QUOTE';
-                const isDraft = !isRehearsal && !isGig && !isQuote;
-                const memberCount = event.members?.length || 0;
-
-                let accentColor = 'var(--accent-gig)';
-                let accentFg = 'var(--accent-gig-fg)';
-                let typeLabel = 'GIG';
-
-                if (isRehearsal) {
-                  accentColor = 'var(--accent-rehearsal)';
-                  accentFg = 'var(--accent-rehearsal-fg)';
-                  typeLabel = 'REHEARSAL';
-                } else if (isQuote) {
-                  accentColor = 'var(--accent-quote)';
-                  accentFg = 'var(--accent-quote-fg)';
-                  typeLabel = 'QUOTE';
-                } else if (isDraft) {
-                  accentColor = 'var(--muted-fg)';
-                  accentFg = 'var(--bg)';
-                  typeLabel = 'DRAFT';
-                }
-
-                const warnings = getEventWarnings(event);
-                const suggestions = getEventSuggestions(event);
-                const tags = getEventTags(event);
-                const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
-
-                const rehearsalTime = event.time
-                  ? (event.endTime
-                      ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
-                      : formatEventTime(event.time))
-                  : 'TBD';
-
-                const loadInTime = event.loadInTime
-                  ? formatEventTime(event.loadInTime)
-                  : event.time
-                    ? formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 3))))
-                    : 'TBD';
-
-                const soundCheckTime = event.soundcheckTime
-                  ? formatEventTime(event.soundcheckTime)
-                  : event.time
-                    ? formatEventTime(event.time.replace(/:d{2}$/, ':30').replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2))))
-                    : 'TBD';
-
-                const showTime = event.time ? formatEventTime(event.time) : 'TBD';
-
-                return (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 overflow-hidden cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
-                    onClick={() => onEventClick(event)}
+            {upcomingEvents.length > 0 ? (
+              upcomingEvents.map((event) => renderEventCard(event, false))
+            ) : (
+              <div className="rounded-[16px] border border-dashed border-foreground/15 bg-card/40 p-[28px] text-center flex flex-col items-center justify-center gap-[8px]">
+                <p className="text-[13px] font-bold uppercase tracking-wider text-foreground/70">
+                  NO UPCOMING {eyebrowLabel === 'SCHEDULE' ? 'EVENTS' : eyebrowLabel}
+                </p>
+                <p className="text-[12px] text-foreground/50 max-w-[280px]">
+                  {pastEvents.length > 0
+                    ? `All ${pastEvents.length} scheduled event${pastEvents.length > 1 ? 's are' : ' is'} in the past. Check the past events section below.`
+                    : 'No events have been scheduled yet.'}
+                </p>
+                {isAdmin && onCreateEvent && (
+                  <button
+                    onClick={onCreateEvent}
+                    className="mt-[6px] inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
                   >
-                    {/* Left Accent Rail */}
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-[5px]"
-                      style={{ backgroundColor: accentColor }}
-                    />
-
-                    <div className="flex flex-col gap-[14px] p-[16px] pl-[20px] sm:p-[20px] sm:pl-[24px]">
-                      {/* Card Header: Tags + Date & Warnings */}
-                      <div className="flex items-start justify-between gap-[12px]">
-                        <div className="flex items-center gap-[6px] flex-wrap">
-                          {/* Multi-band member: band name pill */}
-                          {!isAdmin && bands.length > 1 && event.band_name && (
-                            <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
-                              {event.band_name}
-                            </div>
-                          )}
-                          {/* Primary Type Badge */}
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight"
-                            style={{ backgroundColor: accentColor, color: accentFg }}
-                          >
-                            {typeLabel}
-                          </div>
-                          {/* Secondary Tags */}
-                          {secondaryTags.map((tag, i) => (
-                            <div
-                              key={i}
-                              className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/70"
-                            >
-                              {tag}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Top-Right Badges: Warnings & Date */}
-                        <div className="flex items-center gap-[8px] shrink-0">
-                          {warnings.length > 0 && (
-                            <div className="relative">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                                className="bg-[var(--warning)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
-                              >
-                                <AlertCircle className="w-[16px] h-[16px] text-white" />
-                              </button>
-                              <AnimatePresence>
-                                {warningPopoverId === event.id && (
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Missing Info</span>
-                                    {warnings.map((w, wi) => (
-                                      <div key={wi} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--warning)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-white/80">{w}</span>
-                                      </div>
-                                    ))}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )}
-                          {isAdmin && suggestions.length > 0 && (
-                            <div className="relative">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                                className="bg-[var(--amber)] rounded-full p-[4px] hover:opacity-90 transition-opacity"
-                              >
-                                <AlertCircle className="w-[16px] h-[16px] text-white" />
-                              </button>
-                              <AnimatePresence>
-                                {suggestionPopoverId === event.id && (
-                                  <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                    className="absolute top-full right-0 mt-2 bg-[var(--surface-inverse)] rounded-[10px] p-3 z-50 min-w-[180px] shadow-lg"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <span className="text-[10px] font-bold text-white/50 uppercase block mb-2">Suggestions</span>
-                                    {suggestions.map((s, si) => (
-                                      <div key={si} className="flex items-center gap-2 py-1">
-                                        <div className="w-[5px] h-[5px] rounded-full bg-[var(--amber)] shrink-0" />
-                                        <span className="text-[11px] font-medium text-white/80">{s}</span>
-                                      </div>
-                                    ))}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )}
-
-                          {/* Date Badge */}
-                          <div
-                            className="rounded-[8px] px-[10px] py-[4px] text-[12px] font-bold uppercase tracking-wider whitespace-nowrap shadow-xs"
-                            style={{ backgroundColor: accentColor, color: accentFg }}
-                          >
-                            {event.date ? formatEventDate(event.date) : 'TBD'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Card Body: Title & Venue */}
-                      <div className="flex flex-col gap-[3px]">
-                        <h3 className="text-[19px] sm:text-[21px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
-                          {event.title}
-                        </h3>
-                        <div className="flex items-center gap-[6px] text-[13px] text-foreground/60 font-medium truncate">
-                          <span className="font-semibold text-foreground/80">
-                            {event.location?.split(',')[0] || event.clientName || 'TBD'}
-                          </span>
-                          {(event.venueAddress || event.location?.includes(',')) && (
-                            <>
-                              <span className="text-foreground/30">•</span>
-                              <span className="truncate text-foreground/50">
-                                {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Card Footer: Metadata Strip */}
-                      <div className="border-t border-foreground/10 pt-[10px] flex items-center justify-between gap-[12px]">
-                        {isRehearsal ? (
-                          <>
-                            <div className="flex items-center gap-[8px]">
-                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TIME</span>
-                              <span className="text-[15px] font-bold text-foreground leading-none">
-                                {rehearsalTime}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-[6px] text-foreground/70">
-                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">MEMBERS</span>
-                              <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                            </div>
-                          </>
-                        ) : isGig ? (
-                          <>
-                            <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
-                              <div className="flex items-center gap-[4px]">
-                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">LOAD</span>
-                                <span className="text-[14px] font-bold text-foreground leading-none">{loadInTime}</span>
-                              </div>
-                              <div className="flex items-center gap-[4px]">
-                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SOUND</span>
-                                <span className="text-[14px] font-bold text-foreground leading-none">{soundCheckTime}</span>
-                              </div>
-                              <div className="flex items-center gap-[4px]">
-                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SHOW</span>
-                                <span className="text-[14px] font-bold text-foreground leading-none">{showTime}</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end shrink-0">
-                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
-                                {getFeeLabel(event)}
-                              </span>
-                              <span className="text-[17px] font-bold text-foreground leading-none">
-                                {getDisplayFee(event)}
-                              </span>
-                            </div>
-                          </>
-                        ) : isQuote ? (
-                          <>
-                            <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
-                              <div className="flex items-center gap-[4px]">
-                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">CLIENT</span>
-                                <span className="text-[14px] font-bold text-foreground uppercase leading-none truncate max-w-[140px] sm:max-w-[200px]">
-                                  {event.clientName || 'TBD'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-[4px]">
-                                <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
-                                <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end shrink-0">
-                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
-                                {getFeeLabel(event)}
-                              </span>
-                              <span className="text-[17px] font-bold text-foreground leading-none">
-                                {getDisplayFee(event)}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-[6px]">
-                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">STATUS</span>
-                              <span className="text-[14px] font-bold text-foreground uppercase leading-none">DRAFT</span>
-                            </div>
-                            <div className="flex items-center gap-[6px]">
-                              <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
-                              <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })
-            ) : null}
+                    <Plus className="w-[14px] h-[14px]" />
+                    CREATE EVENT
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* ═══ PAST EVENTS COLLAPSIBLE ═══ */}
+          {pastEvents.length > 0 && (
+            <div className="flex flex-col gap-[12px] pt-[8px]">
+              <button
+                type="button"
+                onClick={() => setShowPastEvents((prev) => !prev)}
+                className="flex items-center justify-between px-[16px] py-[12px] rounded-[12px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all text-left group"
+              >
+                <div className="flex items-center gap-[8px]">
+                  <span className="text-[12px] font-bold uppercase text-foreground/60 tracking-wider">
+                    PAST EVENTS
+                  </span>
+                  <span className="px-[8px] py-[2px] text-[11px] font-bold rounded-full bg-foreground/10 text-foreground/70">
+                    {pastEvents.length}
+                  </span>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    "w-[16px] h-[16px] text-foreground/50 transition-transform duration-200",
+                    showPastEvents && "rotate-180 text-foreground"
+                  )}
+                />
+              </button>
+
+              <AnimatePresence>
+                {showPastEvents && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col gap-[14px] overflow-hidden"
+                  >
+                    {pastEvents.map((event) => renderEventCard(event, true))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </>
       )}
     </motion.div>
