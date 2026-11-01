@@ -22,6 +22,35 @@ interface EditProfileModalProps {
   onProfileUpdated?: () => void;
 }
 
+async function resizeImageToDataUrl(file: File, maxSize: number = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas unavailable'));
+
+        // Center crop to square
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, maxSize, maxSize);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Failed to load image file'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   isOpen,
   onClose,
@@ -55,8 +84,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Image must be smaller than 2MB');
+    if (file.size > 8 * 1024 * 1024) {
+      setError('Image must be smaller than 8MB');
       return;
     }
 
@@ -64,34 +93,50 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setError(null);
 
     try {
-      const ext = file.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${ext}`;
+      // 1. Generate optimized compact thumbnail (256x256 square)
+      const optimizedDataUrl = await resizeImageToDataUrl(file, 256);
+      let finalAvatarUrl = optimizedDataUrl;
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+      // 2. Try Supabase Storage ('avatars') if configured
+      try {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const filePath = `${user.id}/avatar.${ext}`;
 
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file, { upsert: true });
 
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
 
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          if (urlData?.publicUrl) {
+            finalAvatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          }
+        } else {
+          console.warn('[EditProfileModal] Supabase Storage upload note (using optimized thumbnail fallback):', uploadError.message);
+        }
+      } catch (storageErr) {
+        console.warn('[EditProfileModal] Storage bucket unavailable, using optimized thumbnail fallback:', storageErr);
+      }
 
+      // 3. Persist the avatar URL in profiles table
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .update({ avatar_url: finalAvatarUrl, updated_at: new Date().toISOString() })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl);
+      setAvatarUrl(finalAvatarUrl);
       if (refreshProfile) await refreshProfile();
+      if (onProfileUpdated) onProfileUpdated();
     } catch (err: any) {
       setError(err.message || 'Failed to upload photo');
     } finally {
       setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 

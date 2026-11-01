@@ -179,9 +179,13 @@ export const Header: React.FC<HeaderProps> = ({
             whileTap={{ scale: 0.94 }}
             onClick={onOpenIdentity}
             aria-label="Open Identity and Account Hub"
-            className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center font-bold text-sm tracking-wide transition-colors shadow-2xs focus:outline-none"
+            className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center font-bold text-sm tracking-wide transition-colors shadow-2xs focus:outline-none overflow-hidden"
           >
-            {initials}
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
           </motion.button>
         </div>
       </div>

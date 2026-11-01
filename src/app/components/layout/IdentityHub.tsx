@@ -168,9 +168,17 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-primary text-primary-foreground font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-xs">
-                    {displayInitials}
-                  </div>
+                  {profile?.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={displayName}
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] object-cover border border-foreground/15 shrink-0 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-primary text-primary-foreground font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-xs">
+                      {displayInitials}
+                    </div>
+                  )}
                   <div className="flex flex-col min-w-0 gap-1">
                     <h2 className="text-lg sm:text-xl font-bold uppercase text-foreground leading-tight truncate">
                       {displayName}
