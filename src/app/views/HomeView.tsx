@@ -75,6 +75,13 @@ const formatEventTime = (timeStr?: string): string => {
   return timeStr;
 };
 
+const toTitleCase = (str?: string | null): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/(?:^|\s|\/|-|\.)\S/g, (match) => match.toUpperCase());
+};
+
 const formatEventRowDate = (rawDate?: string | null): string => {
   if (!rawDate) return APP_COPY.home.nextEvents.tbd;
   const d = new Date(rawDate);
@@ -89,9 +96,10 @@ const formatEventLocation = (event: any): string | null => {
   const city = event.venue_city || (event.location && event.location.includes(',') ? event.location.split(',')[1].trim() : null);
 
   if (venue && city && !venue.toLowerCase().includes(city.toLowerCase())) {
-    return `${venue}, ${city}`;
+    return `${toTitleCase(venue)}, ${toTitleCase(city)}`;
   }
-  return venue || city || (event.location && event.location !== 'TBD' ? event.location : null);
+  const single = venue || city || (event.location && event.location !== 'TBD' ? event.location : null);
+  return single ? toTitleCase(single) : null;
 };
 
 // --- Main Dashboard ---
@@ -404,13 +412,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         {dateFormatted}
                       </span>
 
-                      {/* Event Title + Location (city / venue) */}
+                      {/* Event Title + Location (city / venue in Title Case) */}
                       <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px]">
-                          {event.title || APP_COPY.home.nextEvents.untitledEvent}
+                        <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px] capitalize">
+                          {toTitleCase(event.title) || APP_COPY.home.nextEvents.untitledEvent}
                         </span>
                         {locationText && (
-                          <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0">
+                          <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0 capitalize">
                             • {locationText}
                           </span>
                         )}
