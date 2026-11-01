@@ -12,7 +12,6 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
-import { EmptyState } from '@/app/components/ui/EmptyState';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { EventData } from '@/app/components/dashboard/EventCard';
 
@@ -619,8 +618,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
     );
   };
 
-  const EmptyStateHero = () => <EmptyState />;
-
   return (
     <motion.div
       key="events"
@@ -630,11 +627,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       transition={{ duration: 0.25, ease: "easeInOut" }}
       className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
     >
-      {allEvents.length === 0 ? (
-        <EmptyStateHero />
-      ) : (
-        <>
-          {/* ═══ SEARCH BAR ═══ */}
+      {/* ═══ SEARCH BAR ═══ */}
           <AnimatePresence>
             {isSearchOpen && (
               <motion.div
@@ -734,131 +727,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
               <Search className="w-[14px] h-[14px]" />
             </button>
           </div>
-
-          {/* ═══ FEATURED EVENT CARD (when filter ≠ All) ═══ */}
-          {eventFilter !== 'All' && (() => {
-            const nextEvent = upcomingEvents.find(e => Boolean(e.date));
-            if (!nextEvent) return null;
-            const feat = nextEvent;
-            const tags = getEventTags(feat);
-            const status = feat.status?.toUpperCase();
-            const isRehearsal = status === 'REHEARSAL';
-            const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
-            const isQuote = status === 'QUOTED' || status === 'QUOTE';
-            const memberCount = feat.members?.length || 0;
-
-            const nextLabel = isGig ? 'NEXT GIG' : isRehearsal ? 'NEXT REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT';
-            const featTags = [nextLabel, ...tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT')];
-
-            const tagBg = isRehearsal ? 'var(--accent-rehearsal)' : isQuote ? 'var(--accent-quote)' : (status === 'DRAFT' || status === 'PENDING') ? 'var(--muted-fg)' : 'var(--accent-gig)';
-            const tagTextColor = isGig ? 'var(--accent-gig-fg)' : 'var(--surface-inverse-fg)';
-
-            return (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-[10px] p-[20px] cursor-pointer overflow-hidden"
-                onClick={() => onEventClick(feat)}
-              >
-                <div className="flex flex-col gap-[20px]">
-                  <div className="flex gap-[20px] items-start">
-                    <div className="flex-1 flex flex-col gap-[4px] min-w-0">
-                      {/* Tag badges — admin/member single-band: event type / member multi-band: band name + event type */}
-                      {(isAdmin || (!isAdmin && bands.length <= 1)) && (
-                        <div className="flex gap-[4px] items-center flex-wrap">
-                          {featTags.map((tag, i) => (
-                            <div key={i} className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{tag}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/* Multi-band member: band name pill + event type pill */}
-                      {!isAdmin && bands.length > 1 && (
-                        <div className="flex gap-[4px] items-center flex-wrap">
-                          {feat.band_name && (
-                            <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>
-                              <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{feat.band_name}</span>
-                            </div>
-                          )}
-                          <div className="inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] leading-tight" style={{ backgroundColor: tagBg, color: tagTextColor }}>
-                            <span className="text-[12px] font-bold uppercase whitespace-nowrap leading-tight">{isGig ? 'GIG' : isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'DRAFT'}</span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3">
-                        <StatusBadge status={feat.status} />
-                      </div>
-                      <h3 className="text-[32px] font-bold text-foreground uppercase leading-tight truncate">{feat.title}</h3>
-                      <div className="flex flex-col gap-[2px]">
-                        <span className="text-[16px] font-bold text-foreground uppercase leading-tight">{feat.location?.split(',')[0] || 'TBD'}</span>
-                        {feat.venueAddress && (
-                          <span className="text-[12px] font-medium text-foreground/50 uppercase leading-tight">{feat.venueAddress}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-between self-stretch shrink-0">
-                      <div className="bg-muted rounded-[10px] px-[10px] py-[10px]">
-                        <span className="text-[12px] font-bold text-foreground uppercase whitespace-nowrap leading-tight">
-                          {feat.date ? formatEventDate(feat.date) : 'TBD'}{feat.time ? ` - ${formatEventTime(feat.time)}` : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {isGig ? (
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col items-start">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">LOAD IN</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">
-                          {feat.loadInTime ? formatEventTime(feat.loadInTime) : feat.time ? formatEventTime(feat.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3)))) : 'TBD'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">SOUNDCHECK</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">
-                          {feat.soundcheckTime ? formatEventTime(feat.soundcheckTime) : feat.time ? formatEventTime(feat.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2)))) : 'TBD'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">SHOW</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">{feat.time ? formatEventTime(feat.time) : 'TBD'}</span>
-                      </div>
-                    </div>
-                  ) : isRehearsal ? (
-                    <div className="flex gap-[20px] items-end">
-                      <div className="flex-1 flex flex-col">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">CONFIRMED MEMBERS</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">{memberCount}</span>
-                      </div>
-                    </div>
-                  ) : isQuote ? (
-                    <div className="grid grid-cols-2 gap-x-[20px]">
-                      <div className="flex flex-col gap-[8px]">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">CLIENT</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none uppercase">{feat.clientName || 'TBD'}</span>
-                      </div>
-                      <div className="flex flex-col gap-[8px]">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">{isAdmin ? 'PRICING & FINANCE' : 'YOUR FEE'}</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">{getDisplayFee(feat)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-[20px] items-end">
-                      <div className="flex-1 flex flex-col">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">TEAM MEMBERS</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">{memberCount}</span>
-                      </div>
-                      <div className="flex-1 flex flex-col">
-                        <span className="text-[12px] font-bold text-foreground/70 leading-tight">{getFeeLabel(feat)}</span>
-                        <span className="text-[22px] font-bold text-foreground leading-none">{getDisplayFee(feat)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })()}
 
           {/* ═══ CALENDAR ═══ */}
           <div className="flex flex-col gap-[20px]">
@@ -999,19 +867,31 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   NO UPCOMING {eyebrowLabel === 'SCHEDULE' ? 'EVENTS' : eyebrowLabel}
                 </p>
                 <p className="text-[12px] text-foreground/50 max-w-[280px]">
-                  {pastEvents.length > 0
+                  {eventFilter !== 'All'
+                    ? `No upcoming ${eventFilter.toLowerCase()} scheduled.`
+                    : pastEvents.length > 0
                     ? `All ${pastEvents.length} scheduled event${pastEvents.length > 1 ? 's are' : ' is'} in the past. Check the past events section below.`
                     : 'No events have been scheduled yet.'}
                 </p>
-                {isAdmin && onCreateEvent && (
-                  <button
-                    onClick={onCreateEvent}
-                    className="mt-[6px] inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
-                  >
-                    <Plus className="w-[14px] h-[14px]" />
-                    CREATE EVENT
-                  </button>
-                )}
+                <div className="flex items-center gap-[8px] mt-[4px]">
+                  {eventFilter !== 'All' && (
+                    <button
+                      onClick={() => setEventFilter('All')}
+                      className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-foreground/10 hover:bg-foreground/15 text-foreground text-[12px] font-bold uppercase tracking-wider transition-colors"
+                    >
+                      SHOW ALL EVENTS
+                    </button>
+                  )}
+                  {isAdmin && onCreateEvent && (
+                    <button
+                      onClick={onCreateEvent}
+                      className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+                    >
+                      <Plus className="w-[14px] h-[14px]" />
+                      CREATE EVENT
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1084,8 +964,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
               </AnimatePresence>
             </div>
           )}
-        </>
-      )}
     </motion.div>
   );
 };

@@ -1058,6 +1058,11 @@ export default function AuthenticatedApp() {
         },
       });
 
+      // If user was on the Quotes filter, switch to Gigs so the new gig is immediately visible
+      if (eventFilter === 'QUOTE') {
+        setEventFilter('GIGS');
+      }
+
       // Realign in background
       if (refetchEvents) await refetchEvents();
       setMembersRefreshKey(prev => prev + 1);
@@ -1105,6 +1110,11 @@ export default function AuthenticatedApp() {
       });
 
       setSaveToast({ message: 'Reverted back to Quote ↩️', type: 'info' });
+
+      // If user was on Gigs filter, switch back to Quotes
+      if (eventFilter === 'GIGS') {
+        setEventFilter('QUOTE');
+      }
 
       // Realign in background
       if (refetchEvents) await refetchEvents();
