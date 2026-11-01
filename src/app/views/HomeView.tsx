@@ -75,6 +75,25 @@ const formatEventTime = (timeStr?: string): string => {
   return timeStr;
 };
 
+const formatEventRowDate = (rawDate?: string | null): string => {
+  if (!rawDate) return APP_COPY.home.nextEvents.tbd;
+  const d = new Date(rawDate);
+  if (isNaN(d.getTime())) return APP_COPY.home.nextEvents.tbd;
+  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = d.getDate();
+  return `${month} ${day}`;
+};
+
+const formatEventLocation = (event: any): string | null => {
+  const venue = event.venue_name || (event.location && event.location !== 'TBD' ? event.location.split(',')[0].trim() : null);
+  const city = event.venue_city || (event.location && event.location.includes(',') ? event.location.split(',')[1].trim() : null);
+
+  if (venue && city && !venue.toLowerCase().includes(city.toLowerCase())) {
+    return `${venue}, ${city}`;
+  }
+  return venue || city || (event.location && event.location !== 'TBD' ? event.location : null);
+};
+
 // --- Main Dashboard ---
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -348,11 +367,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 const accentFg = isRehearsal ? 'var(--accent-rehearsal-fg)' : 'var(--accent-gig-fg)';
                 const typeLabel = isRehearsal ? APP_COPY.home.nextEvents.typeRehearsal : APP_COPY.home.nextEvents.typeGig;
                 const rawDate = event.event_date || event.date;
-                const dateFormatted = rawDate
-                  ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                  : APP_COPY.home.nextEvents.tbd;
+                const dateFormatted = formatEventRowDate(rawDate);
                 const eventTime = event.start_time ? formatEventTime(event.start_time) : (event.time ? formatEventTime(event.time) : null);
-                const locationName = event.venue_name || event.location?.split(',')[0] || null;
+                const locationText = formatEventLocation(event);
 
                 return (
                   <div
@@ -364,49 +381,49 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         onViewChange?.('Events');
                       }
                     }}
-                    className="group flex items-center justify-between gap-2.5 py-3 first:pt-1 last:pb-1 -mx-2 px-2 rounded-[10px] hover:bg-foreground/[0.04] active:scale-[0.99] cursor-pointer transition-all"
+                    className="group flex items-center justify-between gap-3 py-3 first:pt-1.5 last:pb-1.5 -mx-2 px-2.5 rounded-[12px] hover:bg-foreground/[0.04] active:scale-[0.99] cursor-pointer transition-all"
                   >
-                    {/* Left side: Semantic indicator + Type Pill + Date + Title in single line */}
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      {/* Vertical semantic accent bar */}
+                    {/* Left Column: Semantic Accent Rail + Fixed-Width Type Badge */}
+                    <div className="flex items-center gap-2 shrink-0">
                       <div
-                        className="w-[3.5px] h-[22px] rounded-full shrink-0"
+                        className="w-[3.5px] h-[20px] rounded-full shrink-0"
                         style={{ backgroundColor: accentColor }}
                       />
-
-                      {/* Type Badge with semantic color */}
                       <span
-                        className="inline-flex items-center justify-center rounded-[5px] px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase shrink-0 leading-tight"
+                        className="w-[42px] inline-flex items-center justify-center rounded-[5px] py-0.5 text-[10px] font-bold tracking-wider uppercase shrink-0 leading-tight"
                         style={{ backgroundColor: accentColor, color: accentFg }}
                       >
                         {typeLabel}
                       </span>
+                    </div>
 
-                      {/* Date */}
-                      <span className="text-[11px] font-bold text-foreground/70 uppercase tracking-wide shrink-0">
+                    {/* Middle Column 1: Fixed-Width Date (aligns all dates vertically) */}
+                    <div className="w-[58px] shrink-0 text-left">
+                      <span className="text-[11px] font-bold text-foreground/75 uppercase tracking-wider tabular-nums block">
                         {dateFormatted}
-                      </span>
-
-                      {/* Title */}
-                      <span className="text-xs font-bold text-foreground truncate min-w-0 flex-1 group-hover:text-primary transition-colors">
-                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
                       </span>
                     </div>
 
-                    {/* Right side: Venue / Time / Fee + Arrow in single line */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {locationName && locationName !== 'TBD' && (
-                        <span className="text-[11px] text-foreground/45 truncate max-w-[100px] hidden sm:inline">
-                          {locationName}
+                    {/* Middle Column 2: Event Title + Location (city / venue) */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                      <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px]">
+                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
+                      </span>
+                      {locationText && (
+                        <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0">
+                          • {locationText}
                         </span>
                       )}
+                    </div>
 
+                    {/* Right Column: Time or Fee + Chevron Arrow */}
+                    <div className="flex items-center gap-2 shrink-0">
                       {eventTime ? (
-                        <span className="text-[11px] font-semibold text-foreground/60">
+                        <span className="text-[11px] font-semibold text-foreground/65 tabular-nums">
                           {eventTime}
                         </span>
                       ) : event.fee != null && event.fee > 0 ? (
-                        <span className="text-[11px] font-bold text-foreground">
+                        <span className="text-[11px] font-bold text-foreground tabular-nums">
                           {formatRevenue(event.fee)}
                         </span>
                       ) : null}
