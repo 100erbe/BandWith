@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -115,6 +115,13 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     : allNotifications.length === 1
       ? allNotifications[0]
       : notification;
+
+  // Auto-mark notification as read when viewed in detail
+  useEffect(() => {
+    if (isOpen && detailNotif && !detailNotif.read && onMarkAsRead) {
+      onMarkAsRead(detailNotif.id);
+    }
+  }, [isOpen, detailNotif?.id, detailNotif?.read, onMarkAsRead]);
 
   if (!allNotifications.length && !notification) return null;
 

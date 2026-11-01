@@ -23,6 +23,7 @@ import {
 } from "@/app/hooks/useData";
 import {
   markAsRead as markNotificationAsRead,
+  markAllAsRead as markAllNotificationsAsRead,
   notifyEventMembersCreated,
   notifyEventPendingConfirmations,
   notifyEventResponse,
@@ -653,6 +654,18 @@ export default function AuthenticatedApp() {
     id: string; type: string; title: string; body?: string;
     data?: Record<string, unknown>; band_id?: string; created_at: string; read: boolean;
   }>>([]);
+
+  const isNotificationsOpen = !!selectedNotification || selectedNotifications.length > 0;
+
+  const handleOpenNotifications = useCallback(() => {
+    setSelectedNotifications(realNotifications || []);
+    setSelectedNotification(null);
+    if (unreadCount > 0) {
+      markAllNotificationsAsRead().then(() => {
+        refetchNotifications?.();
+      });
+    }
+  }, [realNotifications, unreadCount, refetchNotifications]);
 
   const [rehearsalDetails, setRehearsalDetails] = useState<{ [key: number]: any }>({
     105: {
@@ -1793,7 +1806,7 @@ export default function AuthenticatedApp() {
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
           onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }}
-          onOpenIdentity={openIdentity} onOpenNotifications={() => { setSelectedNotifications(realNotifications || []); setSelectedNotification(null); }} unreadCount={unreadCount} isHidden={isHeaderHidden}
+          onOpenIdentity={openIdentity} onOpenNotifications={handleOpenNotifications} unreadCount={isNotificationsOpen ? 0 : unreadCount} isHidden={isHeaderHidden}
         />
 
         <AnimatePresence mode="wait">
@@ -2036,12 +2049,12 @@ export default function AuthenticatedApp() {
           }} />}</AnimatePresence>
 
           <NotificationDetailModal key="notification-detail"
-            isOpen={!!selectedNotification || selectedNotifications.length > 0}
+            isOpen={isNotificationsOpen}
             onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
             notification={selectedNotification}
             notifications={selectedNotifications}
             onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
-            onMarkAllAsRead={() => { Promise.all(selectedNotifications.map((n) => markNotificationAsRead(n.id))).then(() => refetchNotifications?.()); setSelectedNotification(null); setSelectedNotifications([]); }}
+            onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}
             onDelete={(id) => { if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id)); else { setSelectedNotification(null); setSelectedNotifications([]); } }}
             onAction={async (action, notificationId) => {
               const notif = selectedNotification || selectedNotifications.find((n) => n.id === notificationId);
