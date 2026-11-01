@@ -138,6 +138,8 @@ const eventToEventItem = (event: Event): EventItem => {
     soundcheckTime: event.soundcheck_time || undefined,
     endTime: event.end_time || undefined,
     quoteId: (event as any).quote_id || undefined,
+    is_recurring: (event as any).is_recurring || false,
+    recurrence_rule: (event as any).recurrence_rule || undefined,
   };
 };
 
@@ -747,22 +749,58 @@ export default function AuthenticatedApp() {
   const upcomingRehearsals = useMemo(() => {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const rehearsals = events.filter((e) => {
-      if (e.status !== "REHEARSAL") return false;
-      if (realBand?.id && e.band_id && e.band_id !== realBand.id) return false;
+    const rehearsals: EventItem[] = [];
+
+    events.forEach((e) => {
+      if (e.status !== "REHEARSAL") return;
+      if (realBand?.id && e.band_id && e.band_id !== realBand.id) return;
       const normDate = (e.date || '').includes('T') ? e.date.split('T')[0] : (e.date || '');
-      return !normDate || normDate >= todayStr;
+
+      if (!normDate || normDate >= todayStr) {
+        rehearsals.push(e);
+      }
+
+      if (e.is_recurring && e.recurrence_rule && normDate) {
+        const rule = e.recurrence_rule;
+        const freq = (rule.freq || rule.frequency || '').toLowerCase();
+        if (freq) {
+          const baseDate = new Date(normDate);
+          const until = rule.until ? new Date(rule.until) : new Date(now.getFullYear(), now.getMonth() + 4, 0);
+          const maxCount = rule.count || 24;
+          let cursor = new Date(baseDate);
+          let generated = 0;
+          while (cursor <= until && generated < maxCount) {
+            if (freq === 'weekly') cursor.setDate(cursor.getDate() + 7 * (rule.interval || 1));
+            else if (freq === 'biweekly') cursor.setDate(cursor.getDate() + 14);
+            else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
+            else break;
+            if (cursor > until) break;
+            const occDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+            if (occDate >= todayStr && occDate !== normDate) {
+              rehearsals.push({
+                ...e,
+                id: (e.id * 31 + generated) % 2147483647,
+                eventId: e.eventId,
+                date: occDate,
+              });
+            }
+            generated++;
+          }
+        }
+      }
     });
+
     // Exclude rehearsals where current user has declined
+    let result = rehearsals;
     if (user?.id) {
-      return rehearsals.filter(e => {
+      result = result.filter(e => {
         if (!e.eventId) return true;
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
         return !myMembership || myMembership.status !== 'declined';
-      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      });
     }
-    return rehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [events, eventMembersMap, user?.id, realBand?.id]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
@@ -1290,7 +1328,7 @@ export default function AuthenticatedApp() {
         band_id: realBand.id,
         title: title || "Untitled Event",
         event_type: eventType,
-        status: data.status || "confirmed",
+        status: isRehearsalWizard ? (data.status === 'draft' ? 'confirmed' : (data.status || 'confirmed')) : (data.status || 'confirmed'),
         event_date: date,
         start_time: timeFinal,
         end_time: endTime || null,
@@ -1568,32 +1606,77 @@ export default function AuthenticatedApp() {
     const quotesPipeline = upcomingQuoteEvents.reduce((sum, e) => sum + (Number(e.fee) || 0), 0);
 
     // Upcoming confirmed gigs or rehearsals (strictly excluding quotes/drafts/tentative/cancelled)
-    const liveUpcomingEvents = bandEvents
-      .filter(e => {
-        const s = (e.status || '').toLowerCase();
-        const type = (e.event_type || '').toLowerCase();
-        const d = getNormDate(e.event_date);
-        if (!d || d < todayStr) return false;
-        if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
-          return false;
+    const liveUpcomingEvents: any[] = [];
+    bandEvents.forEach(e => {
+      const s = (e.status || '').toLowerCase();
+      const type = (e.event_type || '').toLowerCase();
+      const d = getNormDate(e.event_date);
+      if (s === 'cancelled') return;
+
+      const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+      const isConfirmedGig = (s === 'confirmed' || s === 'completed');
+      const isQuoteOrDraft = s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending';
+
+      if (!isRehearsal && (!isConfirmedGig || isQuoteOrDraft)) {
+        return;
+      }
+
+      if (d && d >= todayStr) {
+        liveUpcomingEvents.push(e);
+      }
+
+      // Expand recurring rehearsals if any
+      if (isRehearsal && (e as any).is_recurring && (e as any).recurrence_rule && d) {
+        const rule = (e as any).recurrence_rule;
+        const freq = (rule.freq || rule.frequency || '').toLowerCase();
+        if (freq) {
+          const baseDate = new Date(d);
+          const until = rule.until ? new Date(rule.until) : new Date(now.getFullYear(), now.getMonth() + 4, 0);
+          const maxCount = rule.count || 24;
+          let cursor = new Date(baseDate);
+          let generated = 0;
+          while (cursor <= until && generated < maxCount) {
+            if (freq === 'weekly') cursor.setDate(cursor.getDate() + 7 * (rule.interval || 1));
+            else if (freq === 'biweekly') cursor.setDate(cursor.getDate() + 14);
+            else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
+            else break;
+            if (cursor > until) break;
+            const occDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+            if (occDate >= todayStr && occDate !== d) {
+              liveUpcomingEvents.push({
+                ...e,
+                id: `${e.id}-occ-${occDate}`,
+                eventId: e.id,
+                event_date: occDate,
+                date: occDate,
+              });
+            }
+            generated++;
+          }
         }
-        const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
-        const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
-        return isRehearsal || isConfirmedGig;
-      })
-      .sort((a, b) => getNormDate(a.event_date).localeCompare(getNormDate(b.event_date)));
+      }
+    });
+
+    liveUpcomingEvents.sort((a, b) => {
+      const dateA = getNormDate(a.event_date);
+      const dateB = getNormDate(b.event_date);
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    });
 
     const fallbackUpcomingEvents = (dashboardData?.upcomingEvents || []).filter((e: any) => {
       const s = (e.status || '').toLowerCase();
       const type = (e.event_type || '').toLowerCase();
       const d = getNormDate(e.event_date);
       if (d && d < todayStr) return false;
-      if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
-        return false;
-      }
+      if (s === 'cancelled') return false;
+
       const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
-      const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
-      return isRehearsal || isConfirmedGig;
+      if (isRehearsal) return true;
+
+      const isConfirmedGig = (s === 'confirmed' || s === 'completed');
+      const isQuoteOrDraft = s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending';
+      return isConfirmedGig && !isQuoteOrDraft;
     });
 
     return {

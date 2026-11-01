@@ -170,21 +170,46 @@ export const HomeView: React.FC<HomeViewProps> = ({
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    return raw.filter((e: any) => {
+    // Combine raw upcoming events and upcoming rehearsals
+    const combined: any[] = [...raw];
+    if (Array.isArray(upcomingRehearsals)) {
+      upcomingRehearsals.forEach((reh: any) => {
+        const rehId = reh.eventId || reh.id;
+        const exists = combined.some((e: any) => (e.id && e.id === rehId) || (e.eventId && e.eventId === rehId));
+        if (!exists) {
+          combined.push(reh);
+        }
+      });
+    }
+
+    const filtered = combined.filter((e: any) => {
       const s = (e.status || '').toLowerCase();
       const type = (e.event_type || e.eventType || '').toLowerCase();
       const dateRaw = e.event_date || e.date;
       const d = dateRaw ? (dateRaw.includes('T') ? dateRaw.split('T')[0] : dateRaw) : '';
 
       if (d && d < todayStr) return false;
-      if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
-        return false;
-      }
+      if (s === 'cancelled') return false;
+
       const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
-      const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
-      return isRehearsal || isConfirmedGig;
-    }).slice(0, 3);
-  }, [dashboardData?.upcomingEvents]);
+      if (isRehearsal) return true;
+
+      const isConfirmedGig = (s === 'confirmed' || s === 'completed');
+      const isQuoteOrDraft = s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending';
+      return isConfirmedGig && !isQuoteOrDraft;
+    });
+
+    filtered.sort((a: any, b: any) => {
+      const dateA = (a.event_date || a.date || '').replace(/T.*$/, '') || '9999-99-99';
+      const dateB = (b.event_date || b.date || '').replace(/T.*$/, '') || '9999-99-99';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const timeA = a.start_time || a.time || '';
+      const timeB = b.start_time || b.time || '';
+      return timeA.localeCompare(timeB);
+    });
+
+    return filtered.slice(0, 3);
+  }, [dashboardData?.upcomingEvents, upcomingRehearsals]);
 
   const nextMemberGig = upcomingGigsAndRehearsals.find((e: any) => {
     const type = (e.event_type || e.eventType || '').toLowerCase();

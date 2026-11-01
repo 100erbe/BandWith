@@ -29,6 +29,8 @@ export interface EventItem {
   soundcheckTime?: string;
   endTime?: string;
   quoteId?: string;
+  is_recurring?: boolean;
+  recurrence_rule?: any;
 }
 
 export interface PendingEvent {

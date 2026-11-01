@@ -217,7 +217,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     personalChecklist: [],
     bandChecklist: ['PA System Check', 'Extension Cords', 'Backup Cables', 'First Aid Kit'],
     reminderTime: '1_day',
-    status: isEditing ? 'scheduled' : 'draft'
+    status: 'scheduled'
   });
 
   const activeAccentColor = useMemo(() => getRehearsalAccentColor(data.type), [data.type]);
