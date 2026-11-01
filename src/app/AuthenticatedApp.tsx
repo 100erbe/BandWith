@@ -276,13 +276,13 @@ export default function AuthenticatedApp() {
   
   const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
   
-  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events & ensure weekly rehearsals repeat ═══
+  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events & reset accidental recurring flags ═══
   useEffect(() => {
     if (!masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
 
     const seenMap = new Map<string, string>();
     const duplicateIdsToDelete: string[] = [];
-    const rehearsalsToMakeRecurring: string[] = [];
+    const rehearsalsToReset: string[] = [];
 
     masterEventsList.forEach(e => {
       if (e.band_id && e.band_id !== realBand.id) return;
@@ -295,24 +295,23 @@ export default function AuthenticatedApp() {
         duplicateIdsToDelete.push(e.id);
       } else {
         seenMap.set(key, e.id);
-        // If this is a rehearsal that was intended to be recurring weekly (e.g. standard)
-        if (e.event_type === 'rehearsal' && !e.is_recurring && title === 'standard') {
-          rehearsalsToMakeRecurring.push(e.id);
+        // Reset "standard" rehearsal back to one-time if it was flagged recurring
+        if (e.event_type === 'rehearsal' && title === 'standard' && (e.is_recurring || e.recurrence_rule)) {
+          rehearsalsToReset.push(e.id);
         }
       }
     });
 
-    if (duplicateIdsToDelete.length > 0 || rehearsalsToMakeRecurring.length > 0) {
+    if (duplicateIdsToDelete.length > 0 || rehearsalsToReset.length > 0) {
       (async () => {
         try {
           for (const id of duplicateIdsToDelete) {
             await supabase.from('events').delete().eq('id', id);
           }
-          for (const id of rehearsalsToMakeRecurring) {
+          for (const id of rehearsalsToReset) {
             await supabase.from('events').update({
-              is_recurring: true,
-              recurrence_rule: { frequency: 'weekly', interval: 1 },
-              status: 'confirmed'
+              is_recurring: false,
+              recurrence_rule: null,
             }).eq('id', id);
           }
           if (refetchEvents) refetchEvents();
