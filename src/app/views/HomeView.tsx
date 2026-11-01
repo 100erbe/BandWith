@@ -421,53 +421,62 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </motion.div>
 
-      {/* ═══ SECONDARY OPERATIONAL CARDS ═══ */}
+      {/* ═══ 3. QUICK ACTIONS CARD (VERTICAL STACK) ═══ */}
+      <motion.div variants={dashboardItemVariants}>
+        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
+          {/* Card Title inside the card in Title Case */}
+          <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+            {APP_COPY.home.quickActions.title}
+          </span>
+
+          {/* Vertical Stack of Options */}
+          <div className="flex flex-col divide-y divide-foreground/8">
+            {filteredQuickActions.map((action) => (
+              <button
+                key={action.id}
+                onClick={() => onQuickAction?.(action.label)}
+                className="flex items-center justify-between py-3 first:pt-1 last:pb-1 group hover:opacity-80 active:scale-[0.99] transition-all cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-[10px] bg-foreground/6 border border-foreground/8 flex items-center justify-center text-foreground/70 group-hover:bg-foreground/10 group-hover:text-foreground transition-colors shrink-0">
+                    <action.icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-foreground">
+                    {action.label}
+                  </span>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ═══ 4. SECONDARY OPERATIONAL & ANALYTICS CARDS ═══ */}
       <motion.div variants={dashboardItemVariants}>
         {isAdmin ? (
-          <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-            {/* ADMIN: Schedule Overview */}
-            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                  {APP_COPY.home.operations.scheduleOverview}
-                </span>
-                <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
-                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : confirmedCount}
-                </span>
-                <span className="text-[11px] text-foreground/50">
-                  {APP_COPY.home.operations.confirmedUpcomingShows}
-                </span>
-              </div>
-              <button
-                onClick={() => onQuickAction?.('View Calendar')}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer font-bold text-xs"
-              >
-                <span>{APP_COPY.home.operations.openCalendar}</span>
-                <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
-              </button>
-            </div>
-
-            {/* ADMIN: Monthly Growth */}
-            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                  {APP_COPY.home.operations.monthlyGrowth}
-                </span>
-                <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
+          /* ADMIN: Performance & Analytics Banner */
+          <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                {APP_COPY.home.operations.monthlyGrowth}
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[32px] sm:text-[36px] font-bold leading-none text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
                 </span>
                 <span className="text-[11px] text-foreground/50">
                   {APP_COPY.home.operations.vsPreviousMonth}
                 </span>
               </div>
-              <button
-                onClick={() => onQuickAction?.('View Analytics')}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
-              >
-                <span>{APP_COPY.home.operations.viewAnalytics}</span>
-                <ArrowUpRight className="w-4 h-4 text-foreground/70" />
-              </button>
             </div>
+            <button
+              onClick={() => onQuickAction?.('View Analytics')}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs shrink-0"
+            >
+              <span>{APP_COPY.home.operations.viewAnalytics}</span>
+              <ArrowUpRight className="w-4 h-4 text-foreground/70" />
+            </button>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
@@ -542,37 +551,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
         )}
-      </motion.div>
-
-      {/* ═══ QUICK ACTIONS CARD (VERTICAL STACK) ═══ */}
-      <motion.div variants={dashboardItemVariants}>
-        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
-          {/* Card Title inside the card in Title Case */}
-          <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-            {APP_COPY.home.quickActions.title}
-          </span>
-
-          {/* Vertical Stack of Options */}
-          <div className="flex flex-col divide-y divide-foreground/8">
-            {filteredQuickActions.map((action) => (
-              <button
-                key={action.id}
-                onClick={() => onQuickAction?.(action.label)}
-                className="flex items-center justify-between py-3 first:pt-1 last:pb-1 group hover:opacity-80 active:scale-[0.99] transition-all cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-[10px] bg-foreground/6 border border-foreground/8 flex items-center justify-center text-foreground/70 group-hover:bg-foreground/10 group-hover:text-foreground transition-colors shrink-0">
-                    <action.icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-foreground">
-                    {action.label}
-                  </span>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
       </motion.div>
 
       {/* Bottom clearance spacer ensuring last card clears floating navbar */}
