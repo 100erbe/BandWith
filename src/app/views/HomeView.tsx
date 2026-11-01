@@ -156,15 +156,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3.5 sm:gap-4">
         {/* Row 1: Confirmed Gigs | Upcoming Rehearsals — visible to all */}
         <div className="flex gap-3.5 sm:gap-4">
-          {/* CARD: CONFIRMED GIGS — Red/Vermilion accent */}
+          {/* CARD: Confirmed Gigs — Red/Vermilion accent */}
           <div
             onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
             className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
           >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                CONFIRMED GIGS
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
+                Confirmed Gigs
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -174,15 +174,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          {/* CARD: UPCOMING REHEARSALS — Indigo/Violet accent */}
+          {/* CARD: Upcoming Rehearsals — Indigo/Violet accent */}
           <div
             onClick={() => onFilterEvents ? onFilterEvents('REHEARSALS') : onViewChange?.('Events')}
             className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
           >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                UPCOMING REHEARSALS
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
+                Upcoming Rehearsals
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -197,7 +197,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex gap-3.5 sm:gap-4">
           {isAdmin ? (
             <>
-              {/* CARD: ACTIVE QUOTES — Emerald Green accent */}
+              {/* CARD: Active Quotes — Emerald Green accent */}
               <div
                 onClick={() => onFilterEvents ? onFilterEvents('QUOTES') : onViewChange?.('Events')}
                 className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
@@ -205,8 +205,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
-                      ACTIVE QUOTES
+                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate">
+                      Active Quotes
                     </span>
                     {!dashboardLoading && quotesPipeline > 0 && (
                       <span
@@ -225,13 +225,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
               </div>
 
-              {/* CARD: REVENUE — Royal Purple Brand accent */}
+              {/* CARD: Revenue — Royal Purple Brand accent */}
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
-                      REVENUE
+                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate">
+                      Revenue
                     </span>
                     {!dashboardLoading && revenueChangeText !== '--' && (
                       <span className="px-1.5 py-0.5 rounded-[5px] text-[10px] font-bold tracking-wider uppercase bg-foreground/8 text-foreground/70 shrink-0">
@@ -249,12 +249,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </>
           ) : (
             <>
-              {/* CARD: UPCOMING PAY — Emerald Green accent (member view) */}
+              {/* CARD: Upcoming Pay — Emerald Green accent (member view) */}
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    UPCOMING PAY
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
+                    Upcoming Pay
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -264,12 +264,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
               </div>
 
-              {/* CARD: TOTAL EARNED — Royal Purple Brand accent (member view) */}
+              {/* CARD: Total Earned — Royal Purple Brand accent (member view) */}
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    TOTAL EARNED
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
+                    Total Earned
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -283,299 +283,319 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </motion.div>
 
-      {/* ═══ NEXT GIG / NEXT EVENTS SECTION ═══ */}
-      {(() => {
-        const displayEvents = dashboardData?.upcomingEvents?.slice(0, 2) || [];
-        let secondLabel = "GIG";
-        if (displayEvents.length > 1) {
-          const allRehearsals = displayEvents.every((e: any) => e.event_type === 'rehearsal');
-          const allGigs = displayEvents.every((e: any) => e.event_type !== 'rehearsal' && e.event_type !== 'quote');
-          secondLabel = allRehearsals ? "REHEARSALS" : allGigs ? "GIGS" : "EVENTS";
-        } else if (displayEvents.length === 1) {
-          secondLabel = displayEvents[0].event_type === 'rehearsal' ? "REHEARSAL" : displayEvents[0].event_type === 'quote' ? "QUOTE" : "GIG";
-        }
-
-        return (
-          <div className="flex flex-col gap-4">
-            {/* Header Row */}
-            <div className="flex justify-between items-end">
-              <div className="flex flex-col select-none">
-                <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">NEXT</span>
-                <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">{secondLabel}</span>
+      {/* ═══ NEXT GIG / UPCOMING EVENT CARD ═══ */}
+      <motion.div variants={dashboardItemVariants}>
+        {(() => {
+          const displayEvents = dashboardData?.upcomingEvents?.slice(0, 2) || [];
+          if (displayEvents.length === 0) {
+            return (
+              <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                    Next Gig
+                  </span>
+                </div>
+                <div className="rounded-[12px] bg-background/50 border border-dashed border-foreground/15 p-5 text-center flex flex-col items-center justify-center gap-1">
+                  <span className="text-xs font-semibold text-foreground/70">
+                    No upcoming events scheduled
+                  </span>
+                  <span className="text-[11px] text-foreground/45">
+                    {isAdmin ? 'Tap + to schedule a gig, rehearsal, or quote' : 'Upcoming gigs and rehearsals will appear here once confirmed'}
+                  </span>
+                </div>
               </div>
-              <button
-                onClick={() => onViewChange?.('Events')}
-                className="text-xs font-bold tracking-wider uppercase text-primary hover:underline flex items-center gap-1 pb-1 transition-all cursor-pointer"
-              >
-                <span>See all</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            );
+          }
 
-            {/* Event Cards List */}
-            {displayEvents.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {displayEvents.map((event: any, index: number) => {
-                  const isRehearsal = event.event_type === 'rehearsal';
-                  const isQuote = event.event_type === 'quote';
-                  const accentColor = isQuote
-                    ? 'var(--accent-quote)'
-                    : isRehearsal
-                    ? 'var(--accent-rehearsal)'
-                    : 'var(--accent-gig)';
-                  const accentFg = isQuote
-                    ? 'var(--accent-quote-fg)'
-                    : isRehearsal
-                    ? 'var(--accent-rehearsal-fg)'
-                    : 'var(--accent-gig-fg)';
-                  const typeLabel = (event.event_type || 'GIG').toUpperCase();
-                  const dateFormatted = event.event_date
-                    ? new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()
-                    : 'TBD';
-                  const eventTime = event.start_time ? formatEventTime(event.start_time) : null;
-                  const loadTime = event.load_in_time ? formatEventTime(event.load_in_time) : null;
-                  const locationName = event.venue_name || event.location || 'TBD';
-                  const locationAddress = event.venue_address || (event.venue_city ? `${event.venue_city}` : null);
+          return (
+            <div className="flex flex-col gap-3.5">
+              {displayEvents.map((event: any, index: number) => {
+                const isRehearsal = event.event_type === 'rehearsal';
+                const isQuote = event.event_type === 'quote';
+                const accentColor = isQuote
+                  ? 'var(--accent-quote)'
+                  : isRehearsal
+                  ? 'var(--accent-rehearsal)'
+                  : 'var(--accent-gig)';
+                const accentFg = isQuote
+                  ? 'var(--accent-quote-fg)'
+                  : isRehearsal
+                  ? 'var(--accent-rehearsal-fg)'
+                  : 'var(--accent-gig-fg)';
+                const cardTitle = isQuote ? "Active Quote" : isRehearsal ? "Next Rehearsal" : "Next Gig";
+                const typeLabel = isQuote ? "Quote" : isRehearsal ? "Rehearsal" : "Gig";
+                const dateFormatted = event.event_date
+                  ? new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  : 'TBD';
+                const eventTime = event.start_time ? formatEventTime(event.start_time) : null;
+                const loadTime = event.load_in_time ? formatEventTime(event.load_in_time) : null;
+                const locationName = event.venue_name || event.location || 'TBD';
+                const locationAddress = event.venue_address || (event.venue_city ? `${event.venue_city}` : null);
 
-                  return (
+                return (
+                  <div
+                    key={event.id || event.eventId || index}
+                    onClick={() => {
+                      if (onSelectEvent && (event.id || event.eventId)) {
+                        onSelectEvent(event.id || event.eventId);
+                      } else {
+                        onViewChange?.('Events');
+                      }
+                    }}
+                    className="group relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 overflow-hidden p-4 sm:p-5 gap-3.5 cursor-pointer shadow-2xs hover:shadow-sm active:scale-[0.99] transition-all"
+                  >
+                    {/* Left Accent Rail */}
                     <div
-                      key={event.id || event.eventId || index}
-                      onClick={() => {
-                        if (onSelectEvent && (event.id || event.eventId)) {
-                          onSelectEvent(event.id || event.eventId);
-                        } else {
-                          onViewChange?.('Events');
-                        }
-                      }}
-                      className="group relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 overflow-hidden p-4 sm:p-5 gap-3.5 cursor-pointer shadow-xs hover:shadow-sm active:scale-[0.99] transition-all"
-                    >
-                      {/* Left Accent Rail */}
-                      <div
-                        className="absolute left-0 top-0 bottom-0 w-[5px]"
-                        style={{ backgroundColor: accentColor }}
-                      />
+                      className="absolute left-0 top-0 bottom-0 w-[5px]"
+                      style={{ backgroundColor: accentColor }}
+                    />
 
-                      {/* Card Header: Type Badge + Date Badge */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div
-                            className="inline-flex items-center justify-center rounded-[6px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider leading-tight"
-                            style={{ backgroundColor: accentColor, color: accentFg }}
-                          >
-                            {typeLabel}
-                          </div>
-                          {event.indoor_outdoor && (
-                            <div className="inline-flex items-center justify-center rounded-[6px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-tight bg-foreground/8 text-foreground/70">
-                              {event.indoor_outdoor}
-                            </div>
-                          )}
-                        </div>
+                    {/* Inside Card Header Row: Smaller Card Title in Title Case + See All link */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                        {index === 0 ? cardTitle : "Upcoming Event"}
+                      </span>
+                      {index === 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewChange?.('Events');
+                          }}
+                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 transition-all cursor-pointer"
+                        >
+                          <span>See All</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
 
-                        {/* Date Badge */}
+                    {/* Badges Row: Type Badge + Date Badge */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div
-                          className="rounded-[8px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider shadow-2xs whitespace-nowrap"
+                          className="inline-flex items-center justify-center rounded-[6px] px-2.5 py-0.5 text-[11px] font-bold tracking-wide"
                           style={{ backgroundColor: accentColor, color: accentFg }}
                         >
-                          {dateFormatted}
+                          {typeLabel}
                         </div>
-                      </div>
-
-                      {/* Card Body: Title & Location */}
-                      <div className="flex flex-col gap-1">
-                        <h3 className="text-lg sm:text-xl font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1 group-hover:text-foreground/90 transition-colors">
-                          {event.title || 'UNTITLED EVENT'}
-                        </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-foreground/60 font-medium truncate">
-                          <MapPin className="w-3.5 h-3.5 text-foreground/45 shrink-0" />
-                          <span className="font-semibold text-foreground/80 truncate">
-                            {locationName}
-                          </span>
-                          {locationAddress && (
-                            <>
-                              <span className="text-foreground/30">•</span>
-                              <span className="truncate text-foreground/50">{locationAddress}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Card Footer: Schedule / Fee Strip */}
-                      <div className="border-t border-foreground/8 pt-2.5 flex items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-3 text-foreground/60">
-                          {loadTime && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">LOAD IN</span>
-                              <span className="font-bold text-foreground/80">{loadTime}</span>
-                            </div>
-                          )}
-                          {eventTime && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">START</span>
-                              <span className="font-bold text-foreground/80">{eventTime}</span>
-                            </div>
-                          )}
-                          {!loadTime && !eventTime && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-foreground/40" />
-                              <span className="text-[11px] font-medium text-foreground/50">TIME TBD</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {event.fee != null && event.fee > 0 && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] font-bold text-foreground/45 uppercase">
-                                {isAdmin ? 'FEE' : 'YOUR FEE'}
-                              </span>
-                              <span className="text-xs font-bold text-foreground">
-                                {formatRevenue(event.fee)}
-                              </span>
-                            </div>
-                          )}
-                          <div className="w-6 h-6 rounded-full bg-foreground/5 group-hover:bg-foreground/10 flex items-center justify-center transition-colors">
-                            <ArrowUpRight className="w-3.5 h-3.5 text-foreground/60 group-hover:text-foreground transition-colors" />
+                        {event.indoor_outdoor && (
+                          <div className="inline-flex items-center justify-center rounded-[6px] px-2 py-0.5 text-[11px] font-medium bg-foreground/6 text-foreground/70 capitalize">
+                            {event.indoor_outdoor}
                           </div>
+                        )}
+                      </div>
+
+                      {/* Date Badge */}
+                      <div
+                        className="rounded-[8px] px-2.5 py-1 text-[11px] font-bold tracking-wide shadow-2xs whitespace-nowrap"
+                        style={{ backgroundColor: accentColor, color: accentFg }}
+                      >
+                        {dateFormatted}
+                      </div>
+                    </div>
+
+                    {/* Card Body: Title & Location */}
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-snug line-clamp-1 group-hover:text-foreground/90 transition-colors">
+                        {event.title || 'Untitled Event'}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-xs text-foreground/60 font-medium truncate">
+                        <MapPin className="w-3.5 h-3.5 text-foreground/45 shrink-0" />
+                        <span className="font-semibold text-foreground/80 truncate">
+                          {locationName}
+                        </span>
+                        {locationAddress && (
+                          <>
+                            <span className="text-foreground/30">•</span>
+                            <span className="truncate text-foreground/50">{locationAddress}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Schedule / Fee Strip */}
+                    <div className="border-t border-foreground/8 pt-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-3 text-foreground/60">
+                        {loadTime && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">Load-in</span>
+                            <span className="font-bold text-foreground/80">{loadTime}</span>
+                          </div>
+                        )}
+                        {eventTime && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">Start</span>
+                            <span className="font-bold text-foreground/80">{eventTime}</span>
+                          </div>
+                        )}
+                        {!loadTime && !eventTime && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-foreground/40" />
+                            <span className="text-[11px] font-medium text-foreground/50">Time TBD</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {event.fee != null && event.fee > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-foreground/45">
+                              {isAdmin ? 'Fee' : 'Your Fee'}
+                            </span>
+                            <span className="text-xs font-bold text-foreground">
+                              {formatRevenue(event.fee)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="w-6 h-6 rounded-full bg-foreground/5 group-hover:bg-foreground/10 flex items-center justify-center transition-colors">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-foreground/60 group-hover:text-foreground transition-colors" />
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-[16px] bg-card/60 border border-dashed border-foreground/15 p-6 text-center flex flex-col items-center justify-center gap-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-foreground/50">
-                  NO UPCOMING EVENTS SCHEDULED
-                </span>
-                <span className="text-[11px] text-foreground/40 font-medium">
-                  {isAdmin ? 'Tap + to schedule a gig, rehearsal, or quote' : 'Upcoming gigs and rehearsals will appear here once confirmed'}
-                </span>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </motion.div>
 
-      {/* ═══ QUICK ACTIONS ═══ */}
-      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-5">
-        <div className="flex flex-col select-none">
-          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">QUICK</span>
-          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">ACTIONS</span>
-        </div>
+      {/* ═══ SECONDARY OPERATIONAL CARDS ═══ */}
+      <motion.div variants={dashboardItemVariants}>
+        {isAdmin ? (
+          <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
+            {/* ADMIN: Schedule Overview */}
+            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                  Schedule Overview
+                </span>
+                <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : confirmedCount}
+                </span>
+                <span className="text-[11px] text-foreground/50">
+                  Confirmed upcoming shows
+                </span>
+              </div>
+              <button
+                onClick={() => onQuickAction?.('View Calendar')}
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer font-bold text-xs"
+              >
+                <span>Open Calendar</span>
+                <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
+              </button>
+            </div>
 
-        <div className="flex flex-col gap-6">
-          {/* Scrollable Quick Action Tiles */}
-          <div className="overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-            <div className="flex gap-2.5 w-max">
-              {filteredQuickActions.map((action) => (
-                <button
-                  key={action.id}
-                  onClick={() => onQuickAction?.(action.label)}
-                  className="rounded-[12px] bg-card border border-foreground/10 hover:border-foreground/20 px-3.5 py-2.5 flex items-center gap-2.5 shrink-0 active:scale-95 transition-all shadow-2xs group cursor-pointer"
-                >
-                  <action.icon className="w-4 h-4 text-foreground/60 group-hover:text-foreground transition-colors" />
-                  <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                    {action.label}
-                  </span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40 group-hover:text-foreground transition-colors" />
-                </button>
-              ))}
+            {/* ADMIN: Monthly Growth */}
+            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                  Monthly Growth
+                </span>
+                <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
+                </span>
+                <span className="text-[11px] text-foreground/50">
+                  vs. previous month
+                </span>
+              </div>
+              <button
+                onClick={() => onQuickAction?.('View Analytics')}
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
+              >
+                <span>View Analytics</span>
+                <ArrowUpRight className="w-4 h-4 text-foreground/70" />
+              </button>
             </div>
           </div>
-
-          {/* Secondary Operational Cards */}
-          {isAdmin ? (
-            <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-              {/* ADMIN: Schedule Overview */}
-              <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">SCHEDULE OVERVIEW</span>
-                  <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : confirmedCount}
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
+            {/* MEMBER: Next Soundcheck / Load-In */}
+            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-foreground/60" />
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                    Next Soundcheck
                   </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">CONFIRMED UPCOMING SHOWS</span>
                 </div>
+                <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
+                  {confirmedCount > 0 ? '2h 15m' : '—'}
+                </span>
+                <span className="text-[11px] text-foreground/50">
+                  {confirmedCount > 0 ? 'before doors open' : 'No upcoming gigs'}
+                </span>
+              </div>
+              {confirmedCount > 0 && (
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer font-bold text-xs"
                 >
-                  <span className="text-xs font-bold uppercase tracking-wider">OPEN CALENDAR</span>
-                  <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
-                </button>
-              </div>
-
-              {/* ADMIN: Monthly Growth */}
-              <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">MONTHLY GROWTH</span>
-                  <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Load-in Map
                   </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">VS PREVIOUS MONTH</span>
-                </div>
-                <button
-                  onClick={() => onQuickAction?.('View Analytics')}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer"
-                >
-                  <span className="text-xs font-bold uppercase tracking-wider">VIEW ANALYTICS</span>
-                  <ArrowUpRight className="w-4 h-4 text-foreground/70" />
+                  <ChevronRight className="w-4 h-4 text-primary-foreground" />
                 </button>
-              </div>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-              {/* MEMBER: Next Soundcheck / Load-In */}
-              <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-foreground/60" />
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">NEXT SOUNDCHECK</span>
-                  </div>
-                  <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                    {confirmedCount > 0 ? '2h 15m' : '—'}
-                  </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">
-                    {confirmedCount > 0 ? 'BEFORE DOORS OPEN' : 'NO UPCOMING GIGS'}
-                  </span>
-                </div>
-                {confirmedCount > 0 && (
-                  <button
-                    onClick={() => onQuickAction?.('View Calendar')}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer"
-                  >
-                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      LOAD-IN MAP
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-primary-foreground" />
-                  </button>
-                )}
-              </div>
 
-              {/* MEMBER: My Setlist Snapshot */}
-              <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <ListMusic className="w-3.5 h-3.5 text-foreground/60" />
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">MY SETLIST</span>
-                  </div>
-                  <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                    {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : '—'}
-                  </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">
-                    NEXT GIG SONGS
+            {/* MEMBER: My Setlist Snapshot */}
+            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <ListMusic className="w-3.5 h-3.5 text-foreground/60" />
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+                    My Setlist
                   </span>
                 </div>
-                <button
-                  onClick={() => onQuickAction?.('Setlist & Repertoire')}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer"
-                >
-                  <span className="text-xs font-bold uppercase tracking-wider">VIEW SETLIST</span>
-                  <ChevronRight className="w-4 h-4 text-foreground/70" />
-                </button>
+                <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
+                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : '—'}
+                </span>
+                <span className="text-[11px] text-foreground/50">
+                  Next gig songs
+                </span>
               </div>
+              <button
+                onClick={() => onQuickAction?.('Setlist & Repertoire')}
+                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
+              >
+                <span>View Setlist</span>
+                <ChevronRight className="w-4 h-4 text-foreground/70" />
+              </button>
             </div>
-          )}
+          </div>
+        )}
+      </motion.div>
+
+      {/* ═══ QUICK ACTIONS CARD (VERTICAL STACK) ═══ */}
+      <motion.div variants={dashboardItemVariants}>
+        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
+          {/* Card Title inside the card */}
+          <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+            Quick Actions
+          </span>
+
+          {/* Vertical Stack of Options */}
+          <div className="flex flex-col divide-y divide-foreground/8">
+            {filteredQuickActions.map((action) => (
+              <button
+                key={action.id}
+                onClick={() => onQuickAction?.(action.label)}
+                className="flex items-center justify-between py-3 first:pt-1 last:pb-1 group hover:opacity-80 active:scale-[0.99] transition-all cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-[10px] bg-foreground/6 border border-foreground/8 flex items-center justify-center text-foreground/70 group-hover:bg-foreground/10 group-hover:text-foreground transition-colors shrink-0">
+                    <action.icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-foreground">
+                    {action.label}
+                  </span>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+              </button>
+            ))}
+          </div>
         </div>
       </motion.div>
 
