@@ -1438,16 +1438,6 @@ export default function AuthenticatedApp() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {selectedEvent && (
-            <EventDetail key="event-detail" event={selectedEvent} onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
-              userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
-              onAccept={handleEventAccept} onDecline={handleEventDecline}
-              onEdit={handleEventEdit} onDelete={handleEventDelete} onChat={handleEventChat}
-              memberFee={selectedEventMembership?.fee} isAdmin={isAdmin} />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
           {selectedChat && selectedChat.uuid && (
             <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
           )}
@@ -1679,6 +1669,24 @@ export default function AuthenticatedApp() {
           />
         </AnimatePresence>
       </React.Suspense>
+
+      <AnimatePresence>
+        {selectedEvent && (
+          <EventDetail
+            key="event-detail"
+            event={selectedEvent}
+            onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
+            userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
+            onAccept={handleEventAccept}
+            onDecline={handleEventDecline}
+            onEdit={handleEventEdit}
+            onDelete={handleEventDelete}
+            onChat={handleEventChat}
+            memberFee={selectedEventMembership?.fee}
+            isAdmin={isAdmin}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {rsvpNotification && (

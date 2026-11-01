@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil, Music } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
@@ -208,7 +208,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[85] bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -217,7 +217,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={springs.smooth}
-        className="fixed inset-0 z-[70] flex flex-col overflow-y-auto bg-background text-foreground"
+        className="fixed inset-0 z-[90] flex flex-col overflow-y-auto bg-background text-foreground"
       >
         <WizardAccentRail color={theme.accentColor} />
 
@@ -338,7 +338,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
         {/* Footer */}
         <div
-          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[80] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
+          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[95] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
         >
           {isPast ? (
             <div className="flex flex-col gap-[14px] items-center w-full">
@@ -350,22 +350,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   <MessageCircle className="w-[18px] h-[18px]" />
                   <span className="text-[15px] font-bold uppercase">EVENT CHAT</span>
                 </button>
-                {isAdmin ? (
-                  <button
-                    onClick={onEdit}
-                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all"
-                  >
-                    <Pencil className="w-[16px] h-[16px] text-foreground/70" />
-                    <span className="text-[15px] font-bold uppercase">EDIT DETAILS</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={onClose}
-                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all"
-                  >
-                    <span className="text-[15px] font-bold uppercase">CLOSE</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('event-detail-setlist');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (onChat) {
+                      onChat();
+                    }
+                  }}
+                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all"
+                >
+                  <Music className="w-[18px] h-[18px] text-foreground/75" />
+                  <span className="text-[15px] font-bold uppercase">VIEW SETLIST</span>
+                </button>
               </div>
               {isAdmin && (
                 showDeleteConfirm ? (
@@ -384,12 +382,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-[11px] font-bold text-foreground/40 hover:text-[var(--destructive)] transition-colors uppercase tracking-wider"
-                  >
-                    REMOVE FROM ARCHIVE
-                  </button>
+                  <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/45">
+                    <button
+                      onClick={onEdit}
+                      className="hover:text-foreground transition-colors flex items-center gap-1.5"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      EDIT DETAILS
+                    </button>
+                    <span>•</span>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="hover:text-[var(--destructive)] transition-colors"
+                    >
+                      REMOVE FROM ARCHIVE
+                    </button>
+                  </div>
                 )
               )}
             </div>
@@ -648,7 +656,7 @@ const RehearsalSections: React.FC<{
       </div>
 
       {/* Songs to Play */}
-      <div className="flex flex-col gap-[20px]">
+      <div id="event-detail-setlist" className="flex flex-col gap-[20px]">
         <div className="flex flex-col">
           <SectionHeader label="SONGS TO PLAY" onTap={() => toggle('songs')} expanded={expandedSection === 'songs'} />
           <SectionValue value={numSongs || 0} />
@@ -787,7 +795,7 @@ const GigSections: React.FC<{
       </div>
 
       {/* Setlist */}
-      <div className="flex flex-col gap-[8px]">
+      <div id="event-detail-setlist" className="flex flex-col gap-[8px]">
         <div className="flex flex-col">
           <SectionHeader label="SETLIST" alertColor={numSongs > 0 ? undefined : 'var(--warning)'} onTap={() => toggle('setlist')} expanded={expandedSection === 'setlist'} />
           <div className="flex items-center gap-[10px]">
