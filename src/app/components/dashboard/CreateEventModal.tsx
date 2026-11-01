@@ -340,7 +340,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // Load Band Pricing Settings and auto-populate fees if not editing
   useEffect(() => {
     if (!selectedBand?.id) return;
+    let isCancelled = false;
     getBandPricing(selectedBand.id).then((settings) => {
+      if (isCancelled) return;
       setPricingSettings(settings);
       if (!isEditing) {
         if (selectedMembers.length === 0 && currentUserMemberId) {
@@ -348,27 +350,30 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           const m = MEMBERS.find((mem) => mem.id === currentUserMemberId || mem.user_id === currentUserMemberId);
           const autoFee = (m?.fee && parseFloat(m.fee) > 0) ? m.fee : String(settings.core_member_rate);
           setMemberFees({ [currentUserMemberId]: autoFee });
-          return;
-        }
-        setMemberFees((prev) => {
-          let changed = false;
-          const updated = { ...prev };
-          selectedMembers.forEach((id, index) => {
-            if (!updated[id] || updated[id] === '0') {
-              const m = MEMBERS.find((mem) => mem.id === id || mem.user_id === id);
-              const isCore = index < (settings.core_members_count ?? 1);
-              const rate = (m?.fee && parseFloat(m.fee) > 0)
-                ? m.fee
-                : String(isCore ? settings.core_member_rate : settings.session_musician_rate);
-              updated[id] = rate;
-              changed = true;
-            }
+        } else {
+          setMemberFees((prev) => {
+            let changed = false;
+            const updated = { ...prev };
+            selectedMembers.forEach((id, index) => {
+              if (!updated[id] || updated[id] === '0') {
+                const m = MEMBERS.find((mem) => mem.id === id || mem.user_id === id);
+                const isCore = index < (settings.core_members_count ?? 1);
+                const rate = (m?.fee && parseFloat(m.fee) > 0)
+                  ? m.fee
+                  : String(isCore ? settings.core_member_rate : settings.session_musician_rate);
+                updated[id] = rate;
+                changed = true;
+              }
+            });
+            return changed ? updated : prev;
           });
-          return changed ? updated : prev;
-        });
+        }
       }
     });
-  }, [selectedBand?.id, isEditing, selectedMembers, MEMBERS, currentUserMemberId]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedBand?.id, isEditing]);
   const [memberMandatory, setMemberMandatory] = useState<Record<string, boolean>>(() => {
     if (editingEvent?.memberUserIds?.length) {
       const mandatory: Record<string, boolean> = {};

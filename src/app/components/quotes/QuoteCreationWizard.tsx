@@ -118,6 +118,24 @@ const QuoteField: React.FC<{ label: string; children: React.ReactNode; className
   </div>
 );
 
+const calcMusicianAutoFee = (
+  musicianId: string,
+  currentSelectedIds: string[],
+  settings: BandPricingSettings,
+  musiciansList: QuoteMusician[]
+): number => {
+  const member = musiciansList.find((m) => m.id === musicianId || m.userId === musicianId);
+  if (member?.fee && member.fee > 0) {
+    return member.fee;
+  }
+  const idx = currentSelectedIds.includes(musicianId)
+    ? currentSelectedIds.indexOf(musicianId)
+    : currentSelectedIds.length;
+  const isCore = idx < (settings.core_members_count ?? 1);
+  const rate = isCore ? settings.core_member_rate : settings.session_musician_rate;
+  return rate || (isCore ? 300 : 250);
+};
+
 export interface QuoteBandMember {
   id: string;
   name: string;
@@ -189,16 +207,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       settings: BandPricingSettings = pricingSettings,
       musicianObj?: QuoteMusician
     ): number => {
-      const member = musicianObj || availableMusicians.find((m) => m.id === musicianId || m.userId === musicianId);
-      if (member?.fee && member.fee > 0) {
-        return member.fee;
-      }
-      const idx = currentSelectedIds.includes(musicianId)
-        ? currentSelectedIds.indexOf(musicianId)
-        : currentSelectedIds.length;
-      const isCore = idx < (settings.core_members_count ?? 1);
-      const rate = isCore ? settings.core_member_rate : settings.session_musician_rate;
-      return rate || (isCore ? 300 : 250);
+      const list = musicianObj ? [...availableMusicians, musicianObj] : availableMusicians;
+      return calcMusicianAutoFee(musicianId, currentSelectedIds, settings, list);
     },
     [availableMusicians, pricingSettings]
   );
@@ -271,9 +281,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [internalNotes, setInternalNotes] = useState('');
 
   // Load Band Pricing Settings and initialize base fee / deposit percentage
+  const hasInitializedPricingRef = useRef(false);
+
   useEffect(() => {
     if (!selectedBand?.id) return;
+    let isCancelled = false;
+
     getBandPricing(selectedBand.id).then((settings) => {
+      if (isCancelled) return;
       setPricingSettings(settings);
 
       // Adjust moment default base prices according to band rates if not manually customized
@@ -290,39 +305,30 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         })
       );
 
-      // Auto-populate selected musicians and base fee if not editing
-      if (!initialData?.baseFee) {
-        setSelectedMusicians((prev) => {
-          if (prev.length === 0 && availableMusicians.length > 0) {
-            const firstMusician = availableMusicians[0];
-            const autoFee = getAutoFeeForMusician(firstMusician.id, [], settings, firstMusician);
-            const initialList = [{ ...firstMusician, fee: autoFee }];
-            setBaseFee(autoFee);
-            return initialList;
-          } else if (prev.length > 0) {
-            const selectedIds = prev.map((m) => m.id);
-            const updated = prev.map((m, idx) => {
-              if (!m.fee || m.fee === 0) {
-                const fee = getAutoFeeForMusician(m.id, selectedIds.slice(0, idx), settings, m);
-                return { ...m, fee };
-              }
-              return m;
-            });
-            const total = updated.reduce((sum, m) => sum + (m.fee || 0), 0);
-            setBaseFee((cur) => (cur === 0 ? total : cur));
-            return updated;
-          }
+      // Auto-populate selected musicians and base fee on first load if not provided in initialData
+      if (!hasInitializedPricingRef.current && !initialData?.baseFee && (!initialData?.musicians || initialData.musicians.length === 0)) {
+        hasInitializedPricingRef.current = true;
+        if (availableMusicians.length > 0) {
+          const firstMusician = availableMusicians[0];
+          const autoFee = calcMusicianAutoFee(firstMusician.id, [], settings, availableMusicians);
+          const initialList = [{ ...firstMusician, fee: autoFee }];
+          setSelectedMusicians(initialList);
+          setBaseFee(autoFee);
+        } else {
           const calculatedBase = (settings.core_members_count ?? 1) * (settings.core_member_rate || 300);
-          setBaseFee((cur) => (cur === 0 ? calculatedBase : cur));
-          return prev;
-        });
+          setBaseFee(calculatedBase);
+        }
       }
 
       if (settings.default_deposit_rate) {
         setDepositPercentage(settings.default_deposit_rate);
       }
     });
-  }, [selectedBand?.id, initialData?.baseFee, availableMusicians, getAutoFeeForMusician]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedBand?.id]);
 
   // === Calculated Values ===
   const vatRate = useMemo(() => {
