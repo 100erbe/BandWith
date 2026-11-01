@@ -14,6 +14,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { EventData } from '@/app/components/dashboard/EventCard';
+import { APP_COPY } from '@/app/constants/copy';
 
 interface EventsViewProps {
   eventFilter: string;
@@ -879,7 +880,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       onClick={() => setEventFilter('ALL')}
                       className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-foreground/10 hover:bg-foreground/15 text-foreground text-[12px] font-bold uppercase tracking-wider transition-colors"
                     >
-                      SHOW ALL EVENTS
+                      {APP_COPY.events.emptyState.showAllEvents}
                     </button>
                   )}
                   {isAdmin && onCreateEvent && (
@@ -888,7 +889,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
                     >
                       <Plus className="w-[14px] h-[14px]" />
-                      CREATE EVENT
+                      {APP_COPY.events.emptyState.createEvent}
                     </button>
                   )}
                 </div>
@@ -912,19 +913,19 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     <div className="flex flex-col">
                       <div className="flex items-center gap-[6px]">
                         <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                          ARCHIVE
+                          {APP_COPY.events.archive.eyebrow}
                         </span>
                         <span className="px-[6px] py-[1px] rounded-full text-[10px] font-bold bg-foreground/10 text-foreground/75">
                           {pastEvents.length}
                         </span>
                       </div>
                       <span className="text-[15px] font-bold text-foreground uppercase tracking-tight">
-                        VIEW FULL ARCHIVE
+                        {APP_COPY.events.archive.viewFullArchive}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-[4px] text-foreground/50 group-hover:text-foreground transition-colors">
-                    <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">EXPLORE</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">{APP_COPY.events.archive.explore}</span>
                     <ArrowUpRight className="w-[16px] h-[16px]" />
                   </div>
                 </div>
@@ -938,7 +939,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               >
                 <div className="flex items-center gap-[8px]">
                   <span className="text-[12px] font-bold uppercase text-foreground/60 tracking-wider">
-                    QUICK PEEK ({pastEvents.length})
+                    {APP_COPY.events.archive.quickPeek} ({pastEvents.length})
                   </span>
                 </div>
                 <ChevronDown

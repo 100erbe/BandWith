@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, X, Calendar, DollarSign, Music, Check, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
+import { APP_COPY } from '@/app/constants/copy';
 
 interface PastEventsViewProps {
   onClose: () => void;
@@ -192,11 +193,11 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
             </button>
             <div className="flex flex-col">
               <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 leading-none">
-                EVENT ARCHIVE
+                {APP_COPY.events.archive.eyebrow}
               </span>
               <div className="flex items-center gap-[8px] mt-[3px]">
                 <h1 className="text-[24px] font-bold uppercase text-foreground leading-none">
-                  PAST EVENTS
+                  {APP_COPY.events.archive.title}
                 </h1>
                 <span className="px-[8px] py-[2px] rounded-full text-[11px] font-bold bg-foreground/10 text-foreground/75 leading-none">
                   {filteredEvents.length}
@@ -212,7 +213,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         <div className="grid grid-cols-3 gap-[10px]">
           <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
             <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              GIGS PLAYED
+              {APP_COPY.events.archive.gigsPlayed}
             </span>
             <span className="text-[22px] font-black text-foreground leading-none">
               {metrics.gigsCount}
@@ -220,7 +221,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
           </div>
           <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
             <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              REHEARSALS
+              {APP_COPY.events.archive.rehearsals}
             </span>
             <span className="text-[22px] font-black text-foreground leading-none">
               {metrics.rehearsalsCount}
@@ -228,7 +229,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
           </div>
           <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
             <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              {isAdmin ? 'TOTAL EARNINGS' : 'YOUR EARNINGS'}
+              {isAdmin ? APP_COPY.events.archive.totalEarnings : APP_COPY.events.archive.yourEarnings}
             </span>
             <span className="text-[22px] font-black text-foreground leading-none truncate">
               {metrics.formattedRevenue}

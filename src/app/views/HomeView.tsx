@@ -15,6 +15,7 @@ import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
 import { useBand } from '@/lib/BandContext';
+import { APP_COPY } from '@/app/constants/copy';
 
 interface DashboardData {
   eventStats: {
@@ -135,6 +136,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const quotesPipeline = dashboardData?.quoteStats?.totalPipeline || 0;
   const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;
+  const upcomingEvents = dashboardData?.upcomingEvents || [];
+  const displayEvents = upcomingEvents.slice(0, 2);
+  const nextMemberGig = upcomingEvents.find((e: any) => e.event_type !== 'rehearsal');
 
   const revenueChangeText = revenueChange !== undefined && revenueChange !== 0
     ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
@@ -163,8 +167,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
-                Confirmed Gigs
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
+                {APP_COPY.home.stats.confirmedGigs}
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -181,8 +185,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
-                Upcoming Rehearsals
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
+                {APP_COPY.home.stats.upcomingRehearsals}
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -205,8 +209,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate">
-                      Active Quotes
+                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
+                      {APP_COPY.home.stats.activeQuotes}
                     </span>
                     {!dashboardLoading && quotesPipeline > 0 && (
                       <span
@@ -230,8 +234,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate">
-                      Revenue
+                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
+                      {APP_COPY.home.stats.revenue}
                     </span>
                     {!dashboardLoading && revenueChangeText !== '--' && (
                       <span className="px-1.5 py-0.5 rounded-[5px] text-[10px] font-bold tracking-wider uppercase bg-foreground/8 text-foreground/70 shrink-0">
@@ -253,8 +257,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
-                    Upcoming Pay
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
+                    {APP_COPY.home.stats.upcomingPay}
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -268,8 +272,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider truncate w-full">
-                    Total Earned
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
+                    {APP_COPY.home.stats.totalEarned}
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -286,21 +290,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ NEXT GIG / UPCOMING EVENT CARD ═══ */}
       <motion.div variants={dashboardItemVariants}>
         {(() => {
-          const displayEvents = dashboardData?.upcomingEvents?.slice(0, 2) || [];
           if (displayEvents.length === 0) {
             return (
               <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    Next Gig
+                    {APP_COPY.home.nextEvents.nextGig}
                   </span>
                 </div>
                 <div className="rounded-[12px] bg-background/50 border border-dashed border-foreground/15 p-5 text-center flex flex-col items-center justify-center gap-1">
                   <span className="text-xs font-semibold text-foreground/70">
-                    No upcoming events scheduled
+                    {APP_COPY.home.nextEvents.noUpcomingEvents}
                   </span>
                   <span className="text-[11px] text-foreground/45">
-                    {isAdmin ? 'Tap + to schedule a gig, rehearsal, or quote' : 'Upcoming gigs and rehearsals will appear here once confirmed'}
+                    {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
                   </span>
                 </div>
               </div>
@@ -322,14 +325,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   : isRehearsal
                   ? 'var(--accent-rehearsal-fg)'
                   : 'var(--accent-gig-fg)';
-                const cardTitle = isQuote ? "Active Quote" : isRehearsal ? "Next Rehearsal" : "Next Gig";
-                const typeLabel = isQuote ? "Quote" : isRehearsal ? "Rehearsal" : "Gig";
+                const cardTitle = isQuote
+                  ? APP_COPY.home.nextEvents.activeQuote
+                  : isRehearsal
+                  ? APP_COPY.home.nextEvents.nextRehearsal
+                  : APP_COPY.home.nextEvents.nextGig;
+                const typeLabel = isQuote
+                  ? APP_COPY.home.nextEvents.typeQuote
+                  : isRehearsal
+                  ? APP_COPY.home.nextEvents.typeRehearsal
+                  : APP_COPY.home.nextEvents.typeGig;
                 const dateFormatted = event.event_date
                   ? new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                  : 'TBD';
+                  : APP_COPY.home.nextEvents.tbd;
                 const eventTime = event.start_time ? formatEventTime(event.start_time) : null;
                 const loadTime = event.load_in_time ? formatEventTime(event.load_in_time) : null;
-                const locationName = event.venue_name || event.location || 'TBD';
+                const locationName = event.venue_name || event.location || APP_COPY.home.nextEvents.tbd;
                 const locationAddress = event.venue_address || (event.venue_city ? `${event.venue_city}` : null);
 
                 return (
@@ -353,7 +364,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {/* Inside Card Header Row: Smaller Card Title in Title Case + See All link */}
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                        {index === 0 ? cardTitle : "Upcoming Event"}
+                        {index === 0 ? cardTitle : APP_COPY.home.nextEvents.upcomingEvent}
                       </span>
                       {index === 0 && (
                         <button
@@ -363,7 +374,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                           }}
                           className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 transition-all cursor-pointer"
                         >
-                          <span>See All</span>
+                          <span>{APP_COPY.home.nextEvents.seeAll}</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -397,7 +408,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {/* Card Body: Title & Location */}
                     <div className="flex flex-col gap-1">
                       <h3 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-snug line-clamp-1 group-hover:text-foreground/90 transition-colors">
-                        {event.title || 'Untitled Event'}
+                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
                       </h3>
                       <div className="flex items-center gap-1.5 text-xs text-foreground/60 font-medium truncate">
                         <MapPin className="w-3.5 h-3.5 text-foreground/45 shrink-0" />
@@ -418,20 +429,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       <div className="flex items-center gap-3 text-foreground/60">
                         {loadTime && (
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">Load-in</span>
+                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">{APP_COPY.home.nextEvents.loadIn}</span>
                             <span className="font-bold text-foreground/80">{loadTime}</span>
                           </div>
                         )}
                         {eventTime && (
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">Start</span>
+                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">{APP_COPY.home.nextEvents.start}</span>
                             <span className="font-bold text-foreground/80">{eventTime}</span>
                           </div>
                         )}
                         {!loadTime && !eventTime && (
                           <div className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-foreground/40" />
-                            <span className="text-[11px] font-medium text-foreground/50">Time TBD</span>
+                            <span className="text-[11px] font-medium text-foreground/50">{APP_COPY.home.nextEvents.timeTbd}</span>
                           </div>
                         )}
                       </div>
@@ -440,7 +451,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         {event.fee != null && event.fee > 0 && (
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-foreground/45">
-                              {isAdmin ? 'Fee' : 'Your Fee'}
+                              {isAdmin ? APP_COPY.home.nextEvents.fee : APP_COPY.home.nextEvents.yourFee}
                             </span>
                             <span className="text-xs font-bold text-foreground">
                               {formatRevenue(event.fee)}
@@ -468,20 +479,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                  Schedule Overview
+                  {APP_COPY.home.operations.scheduleOverview}
                 </span>
                 <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : confirmedCount}
                 </span>
                 <span className="text-[11px] text-foreground/50">
-                  Confirmed upcoming shows
+                  {APP_COPY.home.operations.confirmedUpcomingShows}
                 </span>
               </div>
               <button
                 onClick={() => onQuickAction?.('View Calendar')}
                 className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer font-bold text-xs"
               >
-                <span>Open Calendar</span>
+                <span>{APP_COPY.home.operations.openCalendar}</span>
                 <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
               </button>
             </div>
@@ -490,41 +501,56 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                  Monthly Growth
+                  {APP_COPY.home.operations.monthlyGrowth}
                 </span>
                 <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
                 </span>
                 <span className="text-[11px] text-foreground/50">
-                  vs. previous month
+                  {APP_COPY.home.operations.vsPreviousMonth}
                 </span>
               </div>
               <button
                 onClick={() => onQuickAction?.('View Analytics')}
                 className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
               >
-                <span>View Analytics</span>
+                <span>{APP_COPY.home.operations.viewAnalytics}</span>
                 <ArrowUpRight className="w-4 h-4 text-foreground/70" />
               </button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-            {/* MEMBER: Next Soundcheck / Load-In */}
+            {/* MEMBER: Next Soundcheck / Load-In (Dynamic from actual upcoming gig) */}
             <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-foreground/60" />
                   <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    Next Soundcheck
+                    {APP_COPY.home.operations.nextSoundcheck}
                   </span>
                 </div>
-                <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                  {confirmedCount > 0 ? '2h 15m' : '—'}
-                </span>
-                <span className="text-[11px] text-foreground/50">
-                  {confirmedCount > 0 ? 'before doors open' : 'No upcoming gigs'}
-                </span>
+                {(() => {
+                  const soundcheckDisplay = nextMemberGig?.soundcheck_time
+                    ? formatEventTime(nextMemberGig.soundcheck_time)
+                    : nextMemberGig?.load_in_time
+                    ? formatEventTime(nextMemberGig.load_in_time)
+                    : (confirmedCount > 0 ? APP_COPY.home.nextEvents.timeTbd : '—');
+                  const soundcheckSubtitle = nextMemberGig?.start_time
+                    ? `${APP_COPY.home.operations.doorsAt} ${formatEventTime(nextMemberGig.start_time)}`
+                    : (confirmedCount > 0 ? APP_COPY.home.operations.checkEventDetails : APP_COPY.home.operations.noUpcomingGigs);
+
+                  return (
+                    <>
+                      <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
+                        {soundcheckDisplay}
+                      </span>
+                      <span className="text-[11px] text-foreground/50">
+                        {soundcheckSubtitle}
+                      </span>
+                    </>
+                  );
+                })()}
               </div>
               {confirmedCount > 0 && (
                 <button
@@ -533,7 +559,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 >
                   <span className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" />
-                    Load-in Map
+                    {APP_COPY.home.operations.loadInMap}
                   </span>
                   <ChevronRight className="w-4 h-4 text-primary-foreground" />
                 </button>
@@ -546,21 +572,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div className="flex items-center gap-1.5">
                   <ListMusic className="w-3.5 h-3.5 text-foreground/60" />
                   <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    My Setlist
+                    {APP_COPY.home.operations.mySetlist}
                   </span>
                 </div>
                 <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
                   {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : '—'}
                 </span>
                 <span className="text-[11px] text-foreground/50">
-                  Next gig songs
+                  {APP_COPY.home.operations.nextGigSongs}
                 </span>
               </div>
               <button
                 onClick={() => onQuickAction?.('Setlist & Repertoire')}
                 className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
               >
-                <span>View Setlist</span>
+                <span>{APP_COPY.home.operations.viewSetlist}</span>
                 <ChevronRight className="w-4 h-4 text-foreground/70" />
               </button>
             </div>
@@ -571,9 +597,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ QUICK ACTIONS CARD (VERTICAL STACK) ═══ */}
       <motion.div variants={dashboardItemVariants}>
         <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
-          {/* Card Title inside the card */}
+          {/* Card Title inside the card in Title Case */}
           <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-            Quick Actions
+            {APP_COPY.home.quickActions.title}
           </span>
 
           {/* Vertical Stack of Options */}

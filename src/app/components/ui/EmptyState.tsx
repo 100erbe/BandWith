@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
+import { APP_COPY } from '@/app/constants/copy';
 
 interface EmptyStateProps {
   title?: string;
@@ -9,8 +10,8 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = 'No items scheduled',
-  description = 'When new items are created or confirmed, they will show up here.',
+  title = APP_COPY.events.emptyState.title,
+  description = APP_COPY.events.emptyState.description,
   icon,
 }) => (
   <motion.div
