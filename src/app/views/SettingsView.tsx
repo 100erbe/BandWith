@@ -288,6 +288,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
+        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}
     >
       {/* Header */}
@@ -308,7 +310,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-32">
+      <div className="px-4 pb-44">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSection}
@@ -326,6 +328,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {activeSection === 'language' && renderLanguageSection()}
           </motion.div>
         </AnimatePresence>
+
+        {/* Bottom clearance spacer */}
+        <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
       </div>
 
       {/* Delete Confirm */}

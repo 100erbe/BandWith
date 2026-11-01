@@ -275,17 +275,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 See all
               </button>
             </div>
-            {/* Mask-Faded Content List Element Wrapper */}
+            {/* Content List Element Wrapper */}
             {displayEvents.length > 0 ? (
-              <div
-                className="flex flex-col bg-transparent"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 100%)',
-                  maxHeight: '210px',
-                  overflow: 'hidden'
-                }}
-              >
+              <div className="flex flex-col bg-transparent">
                 {displayEvents.map((event: any, index: number) => {
                   return (
                     <div
@@ -451,6 +443,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
           )}
         </div>
       </motion.div>
+
+      {/* Bottom clearance spacer ensuring last card clears floating navbar */}
+      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
     </motion.div>
   );
 };

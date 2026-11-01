@@ -175,6 +175,10 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       exit={{ opacity: 0, y: 30 }}
       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
       className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
+      style={{
+        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+      }}
     >
       {/* ═══ STICKY HEADER ═══ */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-foreground/10 px-[16px] py-[14px]">
@@ -203,7 +207,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col gap-[28px] p-[16px] pb-[120px] max-w-[700px] w-full mx-auto">
+      <div className="flex-1 flex flex-col gap-[28px] p-[16px] pb-[160px] max-w-[700px] w-full mx-auto">
         {/* ═══ METRICS SUMMARY BANNER ═══ */}
         <div className="grid grid-cols-3 gap-[10px]">
           <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
@@ -432,6 +436,9 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Bottom clearance spacer */}
+        <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
       </div>
     </motion.div>
   );

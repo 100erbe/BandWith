@@ -387,6 +387,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <EmptyState />
         )}
       </div>
+
+      {/* Bottom clearance spacer ensuring last chat clears floating navbar */}
+      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
     </motion.div>
   );
 };

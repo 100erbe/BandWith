@@ -1610,6 +1610,8 @@ export default function AuthenticatedApp() {
         paddingBottom: isAndroid && isNative ? "calc(140px + 24px)" : "calc(140px + env(safe-area-inset-bottom, 20px))",
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
+        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
@@ -1779,9 +1781,9 @@ export default function AuthenticatedApp() {
           ) : null}
           {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={myConfirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
-
-        <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
       </div>
+
+      <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
 
       <React.Suspense fallback={null}>
         <AnimatePresence>

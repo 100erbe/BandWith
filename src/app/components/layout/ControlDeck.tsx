@@ -66,9 +66,11 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
             paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)',
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
+            maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
           }}
         >
-          <div className="flex flex-col gap-10 px-4 pb-32">
+          <div className="flex flex-col gap-10 px-4 pb-44">
             {/* ═══ HEADER ═══ */}
             <div className="flex items-center gap-4 w-full">
               <button
@@ -250,6 +252,9 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                 BandWith v1.0.0
               </p>
             </div>
+
+            {/* Bottom clearance spacer */}
+            <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
           </div>
         </motion.div>
       )}
