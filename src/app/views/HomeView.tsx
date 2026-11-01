@@ -136,9 +136,34 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const quotesPipeline = dashboardData?.quoteStats?.totalPipeline || 0;
   const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;
-  const upcomingEvents = dashboardData?.upcomingEvents || [];
-  const displayEvents = upcomingEvents.slice(0, 2);
-  const nextMemberGig = upcomingEvents.find((e: any) => e.event_type !== 'rehearsal');
+
+  // Filter strictly to upcoming confirmed gigs and rehearsals (max 3)
+  const upcomingGigsAndRehearsals = React.useMemo(() => {
+    const raw = dashboardData?.upcomingEvents || [];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    return raw.filter((e: any) => {
+      const s = (e.status || '').toLowerCase();
+      const type = (e.event_type || e.eventType || '').toLowerCase();
+      const dateRaw = e.event_date || e.date;
+      const d = dateRaw ? (dateRaw.includes('T') ? dateRaw.split('T')[0] : dateRaw) : '';
+
+      if (d && d < todayStr) return false;
+      if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
+        return false;
+      }
+      const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+      const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
+      return isRehearsal || isConfirmedGig;
+    }).slice(0, 3);
+  }, [dashboardData?.upcomingEvents]);
+
+  const nextMemberGig = upcomingGigsAndRehearsals.find((e: any) => {
+    const type = (e.event_type || e.eventType || '').toLowerCase();
+    const s = (e.status || '').toLowerCase();
+    return type !== 'rehearsal' && s !== 'rehearsal';
+  });
 
   const revenueChangeText = revenueChange !== undefined && revenueChange !== 0
     ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
@@ -287,61 +312,47 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </motion.div>
 
-      {/* ═══ NEXT GIG / UPCOMING EVENT CARD ═══ */}
+      {/* ═══ UPCOMING GIGS & REHEARSALS CARD ═══ */}
       <motion.div variants={dashboardItemVariants}>
-        {(() => {
-          if (displayEvents.length === 0) {
-            return (
-              <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    {APP_COPY.home.nextEvents.nextGig}
-                  </span>
-                </div>
-                <div className="rounded-[12px] bg-background/50 border border-dashed border-foreground/15 p-5 text-center flex flex-col items-center justify-center gap-1">
-                  <span className="text-xs font-semibold text-foreground/70">
-                    {APP_COPY.home.nextEvents.noUpcomingEvents}
-                  </span>
-                  <span className="text-[11px] text-foreground/45">
-                    {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
-                  </span>
-                </div>
-              </div>
-            );
-          }
+        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3.5 shadow-2xs">
+          {/* Card Title inside the card in Title Case + See All link */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
+              {APP_COPY.home.nextEvents.upcomingSchedule}
+            </span>
+            <button
+              onClick={() => onViewChange?.('Events')}
+              className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 transition-all cursor-pointer"
+            >
+              <span>{APP_COPY.home.nextEvents.seeAll}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-          return (
-            <div className="flex flex-col gap-3.5">
-              {displayEvents.map((event: any, index: number) => {
-                const isRehearsal = event.event_type === 'rehearsal';
-                const isQuote = event.event_type === 'quote';
-                const accentColor = isQuote
-                  ? 'var(--accent-quote)'
-                  : isRehearsal
-                  ? 'var(--accent-rehearsal)'
-                  : 'var(--accent-gig)';
-                const accentFg = isQuote
-                  ? 'var(--accent-quote-fg)'
-                  : isRehearsal
-                  ? 'var(--accent-rehearsal-fg)'
-                  : 'var(--accent-gig-fg)';
-                const cardTitle = isQuote
-                  ? APP_COPY.home.nextEvents.activeQuote
-                  : isRehearsal
-                  ? APP_COPY.home.nextEvents.nextRehearsal
-                  : APP_COPY.home.nextEvents.nextGig;
-                const typeLabel = isQuote
-                  ? APP_COPY.home.nextEvents.typeQuote
-                  : isRehearsal
-                  ? APP_COPY.home.nextEvents.typeRehearsal
-                  : APP_COPY.home.nextEvents.typeGig;
-                const dateFormatted = event.event_date
-                  ? new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          {upcomingGigsAndRehearsals.length === 0 ? (
+            <div className="rounded-[12px] bg-background/50 border border-dashed border-foreground/15 p-5 text-center flex flex-col items-center justify-center gap-1">
+              <span className="text-xs font-semibold text-foreground/70">
+                {APP_COPY.home.nextEvents.noUpcomingEvents}
+              </span>
+              <span className="text-[11px] text-foreground/45">
+                {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col divide-y divide-foreground/8">
+              {upcomingGigsAndRehearsals.map((event: any, index: number) => {
+                const s = (event.status || '').toLowerCase();
+                const type = (event.event_type || event.eventType || '').toLowerCase();
+                const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+                const accentColor = isRehearsal ? 'var(--accent-rehearsal)' : 'var(--accent-gig)';
+                const accentFg = isRehearsal ? 'var(--accent-rehearsal-fg)' : 'var(--accent-gig-fg)';
+                const typeLabel = isRehearsal ? APP_COPY.home.nextEvents.typeRehearsal : APP_COPY.home.nextEvents.typeGig;
+                const rawDate = event.event_date || event.date;
+                const dateFormatted = rawDate
+                  ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : APP_COPY.home.nextEvents.tbd;
-                const eventTime = event.start_time ? formatEventTime(event.start_time) : null;
-                const loadTime = event.load_in_time ? formatEventTime(event.load_in_time) : null;
-                const locationName = event.venue_name || event.location || APP_COPY.home.nextEvents.tbd;
-                const locationAddress = event.venue_address || (event.venue_city ? `${event.venue_city}` : null);
+                const eventTime = event.start_time ? formatEventTime(event.start_time) : (event.time ? formatEventTime(event.time) : null);
+                const locationName = event.venue_name || event.location?.split(',')[0] || null;
 
                 return (
                   <div
@@ -353,122 +364,61 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         onViewChange?.('Events');
                       }
                     }}
-                    className="group relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 overflow-hidden p-4 sm:p-5 gap-3.5 cursor-pointer shadow-2xs hover:shadow-sm active:scale-[0.99] transition-all"
+                    className="group flex items-center justify-between gap-2.5 py-3 first:pt-1 last:pb-1 -mx-2 px-2 rounded-[10px] hover:bg-foreground/[0.04] active:scale-[0.99] cursor-pointer transition-all"
                   >
-                    {/* Left Accent Rail */}
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-[5px]"
-                      style={{ backgroundColor: accentColor }}
-                    />
-
-                    {/* Inside Card Header Row: Smaller Card Title in Title Case + See All link */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                        {index === 0 ? cardTitle : APP_COPY.home.nextEvents.upcomingEvent}
-                      </span>
-                      {index === 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onViewChange?.('Events');
-                          }}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 transition-all cursor-pointer"
-                        >
-                          <span>{APP_COPY.home.nextEvents.seeAll}</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Badges Row: Type Badge + Date Badge */}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div
-                          className="inline-flex items-center justify-center rounded-[6px] px-2.5 py-0.5 text-[11px] font-bold tracking-wide"
-                          style={{ backgroundColor: accentColor, color: accentFg }}
-                        >
-                          {typeLabel}
-                        </div>
-                        {event.indoor_outdoor && (
-                          <div className="inline-flex items-center justify-center rounded-[6px] px-2 py-0.5 text-[11px] font-medium bg-foreground/6 text-foreground/70 capitalize">
-                            {event.indoor_outdoor}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Date Badge */}
+                    {/* Left side: Semantic indicator + Type Pill + Date + Title in single line */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Vertical semantic accent bar */}
                       <div
-                        className="rounded-[8px] px-2.5 py-1 text-[11px] font-bold tracking-wide shadow-2xs whitespace-nowrap"
+                        className="w-[3.5px] h-[22px] rounded-full shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                      />
+
+                      {/* Type Badge with semantic color */}
+                      <span
+                        className="inline-flex items-center justify-center rounded-[5px] px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase shrink-0 leading-tight"
                         style={{ backgroundColor: accentColor, color: accentFg }}
                       >
+                        {typeLabel}
+                      </span>
+
+                      {/* Date */}
+                      <span className="text-[11px] font-bold text-foreground/70 uppercase tracking-wide shrink-0">
                         {dateFormatted}
-                      </div>
+                      </span>
+
+                      {/* Title */}
+                      <span className="text-xs font-bold text-foreground truncate min-w-0 flex-1 group-hover:text-primary transition-colors">
+                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
+                      </span>
                     </div>
 
-                    {/* Card Body: Title & Location */}
-                    <div className="flex flex-col gap-1">
-                      <h3 className="text-lg sm:text-xl font-bold text-foreground tracking-tight leading-snug line-clamp-1 group-hover:text-foreground/90 transition-colors">
-                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
-                      </h3>
-                      <div className="flex items-center gap-1.5 text-xs text-foreground/60 font-medium truncate">
-                        <MapPin className="w-3.5 h-3.5 text-foreground/45 shrink-0" />
-                        <span className="font-semibold text-foreground/80 truncate">
+                    {/* Right side: Venue / Time / Fee + Arrow in single line */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {locationName && locationName !== 'TBD' && (
+                        <span className="text-[11px] text-foreground/45 truncate max-w-[100px] hidden sm:inline">
                           {locationName}
                         </span>
-                        {locationAddress && (
-                          <>
-                            <span className="text-foreground/30">•</span>
-                            <span className="truncate text-foreground/50">{locationAddress}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                      )}
 
-                    {/* Card Footer: Schedule / Fee Strip */}
-                    <div className="border-t border-foreground/8 pt-2.5 flex items-center justify-between gap-3 text-xs">
-                      <div className="flex items-center gap-3 text-foreground/60">
-                        {loadTime && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">{APP_COPY.home.nextEvents.loadIn}</span>
-                            <span className="font-bold text-foreground/80">{loadTime}</span>
-                          </div>
-                        )}
-                        {eventTime && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-foreground/45 tracking-wider">{APP_COPY.home.nextEvents.start}</span>
-                            <span className="font-bold text-foreground/80">{eventTime}</span>
-                          </div>
-                        )}
-                        {!loadTime && !eventTime && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-foreground/40" />
-                            <span className="text-[11px] font-medium text-foreground/50">{APP_COPY.home.nextEvents.timeTbd}</span>
-                          </div>
-                        )}
-                      </div>
+                      {eventTime ? (
+                        <span className="text-[11px] font-semibold text-foreground/60">
+                          {eventTime}
+                        </span>
+                      ) : event.fee != null && event.fee > 0 ? (
+                        <span className="text-[11px] font-bold text-foreground">
+                          {formatRevenue(event.fee)}
+                        </span>
+                      ) : null}
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {event.fee != null && event.fee > 0 && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-foreground/45">
-                              {isAdmin ? APP_COPY.home.nextEvents.fee : APP_COPY.home.nextEvents.yourFee}
-                            </span>
-                            <span className="text-xs font-bold text-foreground">
-                              {formatRevenue(event.fee)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="w-6 h-6 rounded-full bg-foreground/5 group-hover:bg-foreground/10 flex items-center justify-center transition-colors">
-                          <ArrowUpRight className="w-3.5 h-3.5 text-foreground/60 group-hover:text-foreground transition-colors" />
-                        </div>
-                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
                     </div>
                   </div>
                 );
               })}
             </div>
-          );
-        })()}
+          )}
+        </div>
       </motion.div>
 
       {/* ═══ SECONDARY OPERATIONAL CARDS ═══ */}

@@ -1567,14 +1567,34 @@ export default function AuthenticatedApp() {
     });
     const quotesPipeline = upcomingQuoteEvents.reduce((sum, e) => sum + (Number(e.fee) || 0), 0);
 
-    // Upcoming non-cancelled events sorted ascending for the "NEXT GIG / EVENT" block
+    // Upcoming confirmed gigs or rehearsals (strictly excluding quotes/drafts/tentative/cancelled)
     const liveUpcomingEvents = bandEvents
       .filter(e => {
         const s = (e.status || '').toLowerCase();
+        const type = (e.event_type || '').toLowerCase();
         const d = getNormDate(e.event_date);
-        return s !== 'cancelled' && d >= todayStr;
+        if (!d || d < todayStr) return false;
+        if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
+          return false;
+        }
+        const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+        const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
+        return isRehearsal || isConfirmedGig;
       })
       .sort((a, b) => getNormDate(a.event_date).localeCompare(getNormDate(b.event_date)));
+
+    const fallbackUpcomingEvents = (dashboardData?.upcomingEvents || []).filter((e: any) => {
+      const s = (e.status || '').toLowerCase();
+      const type = (e.event_type || '').toLowerCase();
+      const d = getNormDate(e.event_date);
+      if (d && d < todayStr) return false;
+      if (s === 'cancelled' || s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending') {
+        return false;
+      }
+      const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+      const isConfirmedGig = (s === 'confirmed' || s === 'completed') && type !== 'rehearsal';
+      return isRehearsal || isConfirmedGig;
+    });
 
     return {
       ...dashboardData,
@@ -1593,7 +1613,7 @@ export default function AuthenticatedApp() {
         acceptedRevenue: dashboardData?.quoteStats?.acceptedRevenue || 0,
       },
       memberStats: computedMemberStats || (dashboardData?.memberStats || null),
-      upcomingEvents: liveUpcomingEvents.length > 0 ? liveUpcomingEvents : (dashboardData?.upcomingEvents || []),
+      upcomingEvents: (masterEventsList && masterEventsList.length > 0) ? liveUpcomingEvents : fallbackUpcomingEvents,
       recentQuotes: dashboardData?.recentQuotes || [],
     };
   }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats]);
