@@ -512,7 +512,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       >
                         <div className="flex items-center gap-1.5 mb-2">
                           <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 stroke-[2.5]" />
-                          <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-wider">Missing Info</span>
+                          <span className="text-[10px] font-bold text-warning uppercase tracking-wider">Missing Info</span>
                         </div>
                         <div className="space-y-1.5">
                           {warnings.map((w, wi) => (
@@ -533,7 +533,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
                     aria-label="Event suggestions"
                     title="Event suggestions"
-                    className="w-6 h-6 rounded-full bg-primary/15 text-primary border border-primary/30 flex items-center justify-center hover:bg-primary/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
+                    className="w-6 h-6 rounded-full bg-warning/15 text-warning border border-warning/30 flex items-center justify-center hover:bg-warning/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
                   >
                     <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
@@ -547,13 +547,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center gap-1.5 mb-2">
-                          <AlertCircle className="w-3.5 h-3.5 text-primary shrink-0 stroke-[2.5]" />
-                          <span className="text-[10px] font-bold text-foreground/60 uppercase tracking-wider">Suggestions</span>
+                          <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 stroke-[2.5]" />
+                          <span className="text-[10px] font-bold text-warning uppercase tracking-wider">Suggestions</span>
                         </div>
                         <div className="space-y-1.5">
                           {suggestions.map((s, si) => (
                             <div key={si} className="flex items-center gap-2 py-0.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
                               <span className="text-[11px] font-medium text-foreground/80">{s}</span>
                             </div>
                           ))}
