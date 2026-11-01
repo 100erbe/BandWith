@@ -147,53 +147,42 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
         
         {/* Right: Actions / Identity */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Bell / Notifications */}
-          <motion.div 
+          <motion.button 
+            type="button"
             whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.94 }}
             onClick={onOpenNotifications}
-            className="relative shrink-0 cursor-pointer"
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+            className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center transition-colors shadow-2xs focus:outline-none"
           >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center border-2 border-white shadow-lg">
-              <Bell className="w-6 h-6 text-foreground" />
-            </div>
+            <Bell className="w-5 h-5 text-foreground" />
             <AnimatePresence>
               {unreadCount > 0 && (
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
+                  className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
                 >
-                  {unreadCount}
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </motion.button>
 
           {/* Identity Trigger */}
-          <motion.div 
+          <motion.button 
+            type="button"
             whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.94 }}
             onClick={onOpenIdentity}
-            className="relative shrink-0 cursor-pointer"
+            aria-label="Open Identity and Account Hub"
+            className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center font-bold text-sm tracking-wide transition-colors shadow-2xs focus:outline-none"
           >
-            <div className="w-14 h-14 rounded-[1.2rem] bg-background flex items-center justify-center text-foreground font-bold text-lg border-2 border-white shadow-lg relative z-20">
-              {initials}
-            </div>
-            {/* Notification Badge */}
-            <AnimatePresence>
-              {unreadCount > 0 && (
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-[var(--bg)] z-30 shadow-md"
-                >
-                  {unreadCount}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+            {initials}
+          </motion.button>
         </div>
       </div>
     </motion.header>

@@ -34,9 +34,9 @@ interface IdentityHubProps {
   bands: Band[];
   selectedBand: Band;
   setSelectedBand: (band: Band) => void;
-  notificationGroups: NotificationGroup[];
-  unreadCount: number;
-  onNotificationClick: (ids: number[], actionType: string) => void;
+  notificationGroups?: NotificationGroup[];
+  unreadCount?: number;
+  onNotificationClick?: (ids: number[], actionType: string) => void;
   onMarkAsRead?: (id: number) => void;
   onMarkGroupAsRead?: (ids: number[]) => void;
   entityCounts?: { templates: number; documents: number; inventory: number; repertoire: number };
@@ -164,38 +164,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
           {/* ═══ SCROLLABLE CONTENT ═══ */}
           <div className="px-4 py-6 max-w-xl mx-auto w-full flex flex-col gap-6 pb-36">
-            {/* Unread Alerts Banner (if any) */}
-            {unreadCount > 0 && (
-              <div
-                onClick={() => {
-                  if (notificationGroups.length > 0) {
-                    const first = notificationGroups[0];
-                    onNotificationClick(
-                      first.items.map((i) => i.id),
-                      first.items[0]?.actionType || 'navigate'
-                    );
-                  }
-                  onClose();
-                }}
-                className="p-3.5 rounded-[14px] bg-primary/10 border border-primary/25 flex items-center justify-between gap-3 cursor-pointer hover:bg-primary/15 transition-colors shadow-2xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                      {unreadCount} UNREAD {unreadCount === 1 ? 'NOTIFICATION' : 'NOTIFICATIONS'}
-                    </span>
-                    <span className="text-[11px] text-foreground/60">
-                      Tap to review activity & gig alerts
-                    </span>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-primary shrink-0" />
-              </div>
-            )}
-
             {/* ═══ 1. PROFILE CARD ═══ */}
             <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
               <div className="flex items-start justify-between gap-4">
