@@ -1607,7 +1607,7 @@ export default function AuthenticatedApp() {
 
       <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
         paddingTop: isAndroid && isNative ? "56px" : "max(env(safe-area-inset-top, 0px), 12px)",
-        paddingBottom: isAndroid && isNative ? "calc(100px + 24px)" : "calc(100px + env(safe-area-inset-bottom, 0px))",
+        paddingBottom: isAndroid && isNative ? "calc(140px + 24px)" : "calc(140px + env(safe-area-inset-bottom, 20px))",
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
       }}>

@@ -104,7 +104,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
+      className="flex flex-col gap-[40px] relative z-10 pb-44 min-h-[50vh]"
     >
       {/* ═══ HEADER ═══ */}
       <div className="flex items-start justify-between">

@@ -625,7 +625,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col gap-[40px] relative z-10 pb-32 min-h-[50vh]"
+      className="flex flex-col gap-[40px] relative z-10 pb-44 min-h-[50vh]"
     >
       {/* ═══ SEARCH BAR ═══ */}
           <AnimatePresence>
@@ -964,6 +964,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
               </AnimatePresence>
             </div>
           )}
+
+      {/* Bottom clearance spacer ensuring last card clears floating navbar */}
+      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
     </motion.div>
   );
 };

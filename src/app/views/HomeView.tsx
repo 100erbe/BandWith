@@ -132,7 +132,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       animate="show"
       exit="exit"
       className={cn(
-        "flex flex-col gap-20 relative z-10 pb-32",
+        "flex flex-col gap-20 relative z-10 pb-44",
         isHidden && "opacity-0 pointer-events-none"
       )}
     >
