@@ -1792,8 +1792,8 @@ export default function AuthenticatedApp() {
         paddingBottom: isAndroid && isNative ? "calc(140px + 24px)" : "calc(140px + env(safe-area-inset-bottom, 20px))",
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
-        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        maskImage: isCreateEventOpen ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        WebkitMaskImage: isCreateEventOpen ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
@@ -1858,78 +1858,6 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence>{showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} onChatCreated={(id) => { setShowNewChat(false); setSelectedChat({ id: Date.now(), uuid: id, type: "direct", name: "New Chat", initials: "NC", lastMessage: "Start chatting...", time: "now", unread: 0, status: "read" }); refetchChats?.(); }} />}</AnimatePresence>
 
-        <React.Suspense fallback={null}>
-          <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
-          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
-            if (realBand?.id) {
-              const createdEventId = q.eventId || (await (async () => {
-                const evD: Record<string, any> = {
-                  band_id: realBand.id,
-                  title: q.eventName || q.clientName || 'Quote Event',
-                  event_type: q.eventType || 'other',
-                  status: 'tentative' as const,
-                  event_date: q.eventDate || new Date().toISOString().split('T')[0],
-                  start_time: q.eventTimeStart || '20:00',
-                  end_time: q.eventTimeEnd || null,
-                  venue_name: q.venueName || 'TBD',
-                  venue: q.venueName || 'TBD',
-                  venue_city: q.venueCity || null,
-                  venue_address: q.venueAddress || null,
-                  indoor_outdoor: q.indoorOutdoor || null,
-                  fee: q.total || 0,
-                  client_name: q.clientName || null,
-                };
-                const { data: ev } = await createEvent(evD);
-                if (ev?.id && Array.isArray(q.musicians) && q.musicians.length > 0) {
-                  const memberRows = q.musicians
-                    .map((m: any) => {
-                      const bandMember = realBand.members?.find((bm: any) => bm.id === m.id || bm.user_id === m.id);
-                      const resolvedUserId = bandMember?.user_id || m.user_id || null;
-                      if (!resolvedUserId) return null;
-                      return {
-                        event_id: ev.id,
-                        user_id: resolvedUserId,
-                        status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
-                        fee: Number(m.rate || m.customFee || 0),
-                        role: m.instrument || bandMember?.role || 'Musician',
-                      };
-                    })
-                    .filter(Boolean);
-                  if (memberRows.length > 0) {
-                    await supabase.from('event_members').upsert(memberRows as any[], { onConflict: 'event_id,user_id' });
-                  }
-                }
-                return ev?.id || null;
-              })());
-
-              const quoteData = {
-                band_id: realBand.id,
-                quote_number: q.quoteNumber || `Q-${Date.now()}`,
-                status: (q.status || 'draft').toLowerCase(),
-                client_name: q.clientName || 'Unknown',
-                client_email: q.clientEmail || null,
-                client_phone: q.clientPhone || null,
-                client_company: q.clientCompany || null,
-                event_name: q.eventName || null,
-                event_type: q.eventType || null,
-                event_date: q.eventDate || null,
-                venue_name: q.venueName || null,
-                venue_city: q.venueCity || null,
-                subtotal: q.subtotal || 0,
-                vat_amount: q.vatAmount || 0,
-                total: q.total || 0,
-                deposit_percentage: q.depositPercentage ?? 30,
-                converted_to_event_id: createdEventId,
-              };
-              await createQuoteDB(quoteData as any);
-              await refetchEvents();
-              setMembersRefreshKey(prev => prev + 1);
-              if (refetchDashboard) await refetchDashboard();
-            }
-            setIsCreateEventOpen(false);
-          }} />}</AnimatePresence>
-        </React.Suspense>
-
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand} setSelectedBand={setSelectedBand} notificationGroups={notificationGroups} unreadCount={unreadCount} onNotificationClick={handleNotificationClick} onMarkAsRead={handleMarkSingleAsRead} onMarkGroupAsRead={handleMarkGroupAsRead}
@@ -1974,7 +1902,7 @@ export default function AuthenticatedApp() {
         </AnimatePresence>
       </div>
 
-      <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
+      <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
 
       <React.Suspense fallback={null}>
         <AnimatePresence>
@@ -2045,6 +1973,76 @@ export default function AuthenticatedApp() {
           )}
           {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
           <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
+
+          <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
+          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
+            if (realBand?.id) {
+              const createdEventId = q.eventId || (await (async () => {
+                const evD: Record<string, any> = {
+                  band_id: realBand.id,
+                  title: q.eventName || q.clientName || 'Quote Event',
+                  event_type: q.eventType || 'other',
+                  status: 'tentative' as const,
+                  event_date: q.eventDate || new Date().toISOString().split('T')[0],
+                  start_time: q.eventTimeStart || '20:00',
+                  end_time: q.eventTimeEnd || null,
+                  venue_name: q.venueName || 'TBD',
+                  venue: q.venueName || 'TBD',
+                  venue_city: q.venueCity || null,
+                  venue_address: q.venueAddress || null,
+                  indoor_outdoor: q.indoorOutdoor || null,
+                  fee: q.total || 0,
+                  client_name: q.clientName || null,
+                };
+                const { data: ev } = await createEvent(evD);
+                if (ev?.id && Array.isArray(q.musicians) && q.musicians.length > 0) {
+                  const memberRows = q.musicians
+                    .map((m: any) => {
+                      const bandMember = realBand.members?.find((bm: any) => bm.id === m.id || bm.user_id === m.id);
+                      const resolvedUserId = bandMember?.user_id || m.user_id || null;
+                      if (!resolvedUserId) return null;
+                      return {
+                        event_id: ev.id,
+                        user_id: resolvedUserId,
+                        status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
+                        fee: Number(m.rate || m.customFee || 0),
+                        role: m.instrument || bandMember?.role || 'Musician',
+                      };
+                    })
+                    .filter(Boolean);
+                  if (memberRows.length > 0) {
+                    await supabase.from('event_members').upsert(memberRows as any[], { onConflict: 'event_id,user_id' });
+                  }
+                }
+                return ev?.id || null;
+              })());
+
+              const quoteData = {
+                band_id: realBand.id,
+                quote_number: q.quoteNumber || `Q-${Date.now()}`,
+                status: (q.status || 'draft').toLowerCase(),
+                client_name: q.clientName || 'Unknown',
+                client_email: q.clientEmail || null,
+                client_phone: q.clientPhone || null,
+                client_company: q.clientCompany || null,
+                event_name: q.eventName || null,
+                event_type: q.eventType || null,
+                event_date: q.eventDate || null,
+                venue_name: q.venueName || null,
+                venue_city: q.venueCity || null,
+                subtotal: q.subtotal || 0,
+                vat_amount: q.vatAmount || 0,
+                total: q.total || 0,
+                deposit_percentage: q.depositPercentage ?? 30,
+                converted_to_event_id: createdEventId,
+              };
+              await createQuoteDB(quoteData as any);
+              await refetchEvents();
+              setMembersRefreshKey(prev => prev + 1);
+              if (refetchDashboard) await refetchDashboard();
+            }
+            setIsCreateEventOpen(false);
+          }} />}</AnimatePresence>
 
           <NotificationDetailModal key="notification-detail"
             isOpen={!!selectedNotification || selectedNotifications.length > 0}
