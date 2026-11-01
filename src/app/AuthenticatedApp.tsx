@@ -137,6 +137,7 @@ const eventToEventItem = (event: Event): EventItem => {
     loadInTime: event.load_in_time || undefined,
     soundcheckTime: event.soundcheck_time || undefined,
     endTime: event.end_time || undefined,
+    quoteId: (event as any).quote_id || undefined,
   };
 };
 
@@ -239,10 +240,19 @@ export default function AuthenticatedApp() {
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [createEventType, setCreateEventType] = useState<CreateEventType>(null);
   const [editingEventData, setEditingEventData] = useState<EventData | null>(null);
-  const [saveToast, setSaveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [saveToast, setSaveToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+    action?: {
+      label: string;
+      onClick: () => void | Promise<void>;
+    };
+    duration?: number;
+  } | null>(null);
   useEffect(() => {
     if (!saveToast) return;
-    const t = setTimeout(() => setSaveToast(null), 5000);
+    const duration = saveToast.duration || (saveToast.action ? 8000 : 5000);
+    const t = setTimeout(() => setSaveToast(null), duration);
     return () => clearTimeout(t);
   }, [saveToast]);
 
@@ -1037,7 +1047,16 @@ export default function AuthenticatedApp() {
         };
       });
 
-      setSaveToast({ message: 'Quote confirmed as Gig! 🎸', type: 'success' });
+      // Show confirmation toast with instant 1-tap UNDO action
+      setSaveToast({
+        message: 'Quote confirmed as Gig! 🎸',
+        type: 'success',
+        duration: 8000,
+        action: {
+          label: 'UNDO',
+          onClick: () => handleRevertQuote(ev),
+        },
+      });
 
       // Realign in background
       if (refetchEvents) await refetchEvents();
@@ -1046,6 +1065,54 @@ export default function AuthenticatedApp() {
     } catch (err: any) {
       console.error('Failed to confirm quote:', err);
       setSaveToast({ message: `Failed to confirm quote: ${err.message || 'Unknown error'}`, type: 'error' });
+    }
+  };
+
+  const handleRevertQuote = async (targetEvent?: EventData) => {
+    const ev = targetEvent || selectedEvent;
+    if (!ev?.eventId) return;
+
+    try {
+      const { error: eventErr } = await supabase
+        .from('events')
+        .update({
+          status: 'tentative',
+          event_type: 'other',
+        })
+        .eq('id', ev.eventId);
+
+      if (eventErr) throw eventErr;
+
+      // Revert linked quote in quotes table
+      await supabase
+        .from('quotes')
+        .update({
+          status: 'draft',
+          responded_at: null,
+          response_type: null,
+        })
+        .or(`converted_to_event_id.eq.${ev.eventId},id.eq.${ev.eventId}`);
+
+      // Optimistically update the open detail modal so it transforms back into a quote
+      setSelectedEvent(prev => {
+        if (!prev || prev.eventId !== ev.eventId) return prev;
+        return {
+          ...prev,
+          status: 'QUOTE',
+          eventType: 'quote',
+          color: 'bg-accent-quote text-white',
+        };
+      });
+
+      setSaveToast({ message: 'Reverted back to Quote ↩️', type: 'info' });
+
+      // Realign in background
+      if (refetchEvents) await refetchEvents();
+      setMembersRefreshKey(prev => prev + 1);
+      if (refetchDashboard) await refetchDashboard();
+    } catch (err: any) {
+      console.error('Failed to revert quote:', err);
+      setSaveToast({ message: `Failed to revert quote: ${err.message || 'Unknown error'}`, type: 'error' });
     }
   };
 
@@ -1704,23 +1771,6 @@ export default function AuthenticatedApp() {
         </AnimatePresence>
 
         <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
-
-        <AnimatePresence>
-          {saveToast && (
-            <motion.div
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 60 }}
-              className={cn(
-                "fixed bottom-24 left-4 right-4 z-[200] p-4 rounded-2xl text-sm font-bold text-center shadow-xl",
-                saveToast.type === 'error' ? "bg-red-600 text-white" : "bg-green-600 text-white"
-              )}
-              onClick={() => setSaveToast(null)}
-            >
-              {saveToast.message}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <React.Suspense fallback={null}>
@@ -1854,6 +1904,7 @@ export default function AuthenticatedApp() {
             onDelete={handleEventDelete}
             onChat={handleEventChat}
             onConfirmQuote={handleConfirmQuote}
+            onRevertQuote={handleRevertQuote}
             memberFee={selectedEventMembership?.fee}
             isAdmin={isAdmin}
           />
@@ -1915,6 +1966,49 @@ export default function AuthenticatedApp() {
             }}
             onClose={() => setRsvpNotification(null)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {saveToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "fixed bottom-24 left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl text-sm font-bold shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
+              saveToast.type === 'error'
+                ? "bg-red-600/95 text-white border-red-500/40"
+                : saveToast.type === 'info'
+                ? "bg-zinc-900/95 text-white border-white/20"
+                : "bg-emerald-600/95 text-white border-emerald-500/40"
+            )}
+            onClick={() => !saveToast.action && setSaveToast(null)}
+          >
+            <span className="flex-1 text-left truncate">{saveToast.message}</span>
+            {saveToast.action && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const act = saveToast.action?.onClick;
+                  setSaveToast(null);
+                  act?.();
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shrink-0 shadow-xs"
+              >
+                {saveToast.action.label}
+              </button>
+            )}
+            {!saveToast.action && (
+              <button
+                onClick={() => setSaveToast(null)}
+                className="text-white/70 hover:text-white text-xs font-bold shrink-0 ml-1"
+              >
+                ✕
+              </button>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

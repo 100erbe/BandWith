@@ -28,6 +28,7 @@ export interface EventItem {
   loadInTime?: string;
   soundcheckTime?: string;
   endTime?: string;
+  quoteId?: string;
 }
 
 export interface PendingEvent {

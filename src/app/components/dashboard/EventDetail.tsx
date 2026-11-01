@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil, Music } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil, Music, RotateCcw } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
@@ -19,6 +19,7 @@ interface EventDetailProps {
   onDelete?: () => void;
   onChat?: () => void;
   onConfirmQuote?: (event: EventData) => Promise<void> | void;
+  onRevertQuote?: (event: EventData) => Promise<void> | void;
   memberFee?: number;
   isAdmin?: boolean;
 }
@@ -130,12 +131,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onDelete,
   onChat,
   onConfirmQuote,
+  onRevertQuote,
   memberFee,
   isAdmin = true,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
 
@@ -148,6 +151,18 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       console.error('Error confirming quote:', err);
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handleRevertQuote = async () => {
+    if (isReverting || !onRevertQuote) return;
+    setIsReverting(true);
+    try {
+      await onRevertQuote(event);
+    } catch (err) {
+      console.error('Error reverting to quote:', err);
+    } finally {
+      setIsReverting(false);
     }
   };
 
@@ -531,11 +546,27 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowDeleteConfirm(true)}>
-                    <span className="text-[12px] font-medium text-[var(--destructive)] uppercase hover:opacity-80 transition-opacity">
-                      {theme.deleteLabel}
-                    </span>
-                  </button>
+                  <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/45">
+                    {onRevertQuote && (
+                      <>
+                        <button
+                          onClick={handleRevertQuote}
+                          disabled={isReverting}
+                          className="hover:text-foreground transition-colors flex items-center gap-1.5"
+                          style={{ color: 'var(--accent-quote)' }}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>{isReverting ? 'REVERTING...' : 'REVERT TO QUOTE'}</span>
+                        </button>
+                        <span>•</span>
+                      </>
+                    )}
+                    <button onClick={() => setShowDeleteConfirm(true)}>
+                      <span className="text-[11px] font-bold text-[var(--destructive)] uppercase hover:opacity-80 transition-opacity tracking-wider">
+                        {theme.deleteLabel}
+                      </span>
+                    </button>
+                  </div>
                 )}
               </div>
             )

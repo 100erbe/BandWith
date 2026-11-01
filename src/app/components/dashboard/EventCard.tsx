@@ -28,6 +28,7 @@ export interface EventData {
   soundcheckTime?: string;
   endTime?: string;
   indoorOutdoor?: 'indoor' | 'outdoor' | 'hybrid';
+  quoteId?: string;
   quoteStatus?: string;
   is_recurring?: boolean;
   recurrence_rule?: { freq?: string; frequency?: string; interval?: number; until?: string; count?: number };
