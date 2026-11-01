@@ -276,6 +276,53 @@ export default function AuthenticatedApp() {
   
   const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
   
+  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events & ensure weekly rehearsals repeat ═══
+  useEffect(() => {
+    if (!masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
+
+    const seenMap = new Map<string, string>();
+    const duplicateIdsToDelete: string[] = [];
+    const rehearsalsToMakeRecurring: string[] = [];
+
+    masterEventsList.forEach(e => {
+      if (e.band_id && e.band_id !== realBand.id) return;
+      const title = (e.title || '').trim().toLowerCase();
+      const date = (e.event_date || '').replace(/T.*$/, '');
+      const time = (e.start_time || '').slice(0, 5);
+      const key = `${title}::${date}::${time}`;
+
+      if (seenMap.has(key)) {
+        duplicateIdsToDelete.push(e.id);
+      } else {
+        seenMap.set(key, e.id);
+        // If this is a rehearsal that was intended to be recurring weekly (e.g. standard)
+        if (e.event_type === 'rehearsal' && !e.is_recurring && title === 'standard') {
+          rehearsalsToMakeRecurring.push(e.id);
+        }
+      }
+    });
+
+    if (duplicateIdsToDelete.length > 0 || rehearsalsToMakeRecurring.length > 0) {
+      (async () => {
+        try {
+          for (const id of duplicateIdsToDelete) {
+            await supabase.from('events').delete().eq('id', id);
+          }
+          for (const id of rehearsalsToMakeRecurring) {
+            await supabase.from('events').update({
+              is_recurring: true,
+              recurrence_rule: { frequency: 'weekly', interval: 1 },
+              status: 'confirmed'
+            }).eq('id', id);
+          }
+          if (refetchEvents) refetchEvents();
+        } catch (err) {
+          console.error('[Duplicate/Recurrence Auto-Sync]', err);
+        }
+      })();
+    }
+  }, [masterEventsList, realBand?.id, refetchEvents]);
+  
   // ═══ LOCAL CLIENT-SIDE BAND PILL FILTER (instant, <1ms) ═══
   const [selectedBandPill, setSelectedBandPill] = useState<string>('all');
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
@@ -800,7 +847,22 @@ export default function AuthenticatedApp() {
         return !myMembership || myMembership.status !== 'declined';
       });
     }
-    return result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Deduplicate identical rehearsal instances
+    const seenReh = new Set<string>();
+    const uniqueRehearsals: EventItem[] = [];
+    result.forEach((r) => {
+      const normTitle = (r.title || '').trim().toLowerCase();
+      const normDate = (r.date || '').replace(/T.*$/, '');
+      const normTime = (r.time || '').trim().slice(0, 5);
+      const key = `${normTitle}::${normDate}::${normTime}`;
+      if (!seenReh.has(key)) {
+        seenReh.add(key);
+        uniqueRehearsals.push(r);
+      }
+    });
+
+    return uniqueRehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [events, eventMembersMap, user?.id, realBand?.id]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
@@ -1657,10 +1719,28 @@ export default function AuthenticatedApp() {
       }
     });
 
-    liveUpcomingEvents.sort((a, b) => {
+    // Deduplicate identical event instances
+    const seenLive = new Set<string>();
+    const uniqueLiveUpcomingEvents: any[] = [];
+    liveUpcomingEvents.forEach(e => {
+      const normDate = getNormDate(e.event_date);
+      const normTitle = (e.title || '').trim().toLowerCase();
+      const normTime = (e.start_time || '').trim().slice(0, 5);
+      const key = `${normTitle}::${normDate}::${normTime}`;
+      if (!seenLive.has(key)) {
+        seenLive.add(key);
+        uniqueLiveUpcomingEvents.push(e);
+      }
+    });
+
+    uniqueLiveUpcomingEvents.sort((a, b) => {
       const dateA = getNormDate(a.event_date);
       const dateB = getNormDate(b.event_date);
       if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const isGigA = a.event_type !== 'rehearsal';
+      const isGigB = b.event_type !== 'rehearsal';
+      if (isGigA && !isGigB) return -1;
+      if (!isGigA && isGigB) return 1;
       return (a.start_time || '').localeCompare(b.start_time || '');
     });
 
@@ -1685,7 +1765,7 @@ export default function AuthenticatedApp() {
         totalEvents: bandEvents.length,
         confirmedEvents: upcomingConfirmedGigs.length,
         totalRevenue: bandEvents.length > 0 ? totalRevenue : (dashboardData?.eventStats?.totalRevenue || 0),
-        upcomingEvents: liveUpcomingEvents.length,
+        upcomingEvents: uniqueLiveUpcomingEvents.length,
         revenueChange: dashboardData?.eventStats?.revenueChange || 0,
       },
       quoteStats: {
@@ -1696,7 +1776,7 @@ export default function AuthenticatedApp() {
         acceptedRevenue: dashboardData?.quoteStats?.acceptedRevenue || 0,
       },
       memberStats: computedMemberStats || (dashboardData?.memberStats || null),
-      upcomingEvents: (masterEventsList && masterEventsList.length > 0) ? liveUpcomingEvents : fallbackUpcomingEvents,
+      upcomingEvents: (masterEventsList && masterEventsList.length > 0) ? uniqueLiveUpcomingEvents : fallbackUpcomingEvents,
       recentQuotes: dashboardData?.recentQuotes || [],
     };
   }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats]);

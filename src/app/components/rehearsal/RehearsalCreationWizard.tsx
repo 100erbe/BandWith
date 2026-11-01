@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowLeft, ArrowUpRight, Plus, Trash2, FileText, Link, ThumbsUp, 
   ThumbsDown, MessageCircle, CheckCircle2, AlertCircle, Briefcase,
   Wrench, BookOpen, ChevronDown, Play, Search, X, Folder, ListMusic, History, Edit, Layers, ChevronUp, Copy, Paperclip, User, LayoutGrid,
-  Euro, Home, Lock, Unlock, Guitar, Check
+  Euro, Home, Lock, Unlock, Guitar, Check, Loader2
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
@@ -192,6 +192,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   const [endTime, setEndTime] = useState(editingEvent?.endTime || '22:00');
   const [checklistChecked, setChecklistChecked] = useState<Set<number>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const initialRecurrence: RecurrenceType = (
+    (editingEvent as any)?.recurrence_rule?.freq ||
+    (editingEvent as any)?.recurrence_rule?.frequency ||
+    (editingEvent as any)?.recurrence ||
+    ((editingEvent as any)?.is_recurring ? 'weekly' : 'once')
+  ) as RecurrenceType;
 
   const [data, setData] = useState<RehearsalState>({
     type: 'full_band',
@@ -201,7 +209,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     date: editingEvent?.date || new Date(Date.now() + 86400000).toISOString().split('T')[0],
     time: editingEvent?.time || '20:00',
     duration: '2h',
-    recurrence: 'once',
+    recurrence: initialRecurrence,
     venueType: 'free',
     showCost: false,
     totalCost: editingEvent?.price || '0',
@@ -251,6 +259,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   // Navigation
   const handleSubmit = () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const submitData = {
       ...data,
       endTime,
@@ -753,6 +763,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           {(['once', 'weekly', 'biweekly', 'monthly'] as const).map(freq => (
             <button
               key={freq}
+              type="button"
               onClick={() => setData(prev => ({ ...prev, recurrence: freq }))}
               className={cn(
                 "px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all",
@@ -1602,13 +1613,19 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleSubmit}
+                disabled={isSubmitting}
                 style={{
                   backgroundColor: activeAccentColor,
                   color: 'var(--accent-rehearsal-fg)',
                 }}
-                className="rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:opacity-95 transition-opacity"
+                className={cn(
+                  "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                  isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-95"
+                )}
               >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isEditing ? 'SAVE REHEARSAL' : 'CREATE REHEARSAL'}
               </button>
             )}

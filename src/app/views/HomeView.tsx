@@ -164,7 +164,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;
 
-  // Filter strictly to upcoming confirmed gigs and rehearsals (max 3)
+  // Filter strictly to upcoming confirmed gigs and rehearsals (max 3 in schedule)
   const upcomingGigsAndRehearsals = React.useMemo(() => {
     const raw = dashboardData?.upcomingEvents || [];
     const now = new Date();
@@ -188,7 +188,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
       const dateRaw = e.event_date || e.date;
       const d = dateRaw ? (dateRaw.includes('T') ? dateRaw.split('T')[0] : dateRaw) : '';
 
-      if (d && d < todayStr) return false;
       if (s === 'cancelled') return false;
 
       const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
@@ -196,19 +195,100 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       const isConfirmedGig = (s === 'confirmed' || s === 'completed');
       const isQuoteOrDraft = s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending';
-      return isConfirmedGig && !isQuoteOrDraft;
+      return isConfirmedGig && !isQuoteOrDraft && (!d || d >= todayStr);
     });
 
-    filtered.sort((a: any, b: any) => {
+    // 1. Initial deduplication of identical database entries (e.g. duplicate title + date + time)
+    const seenBase = new Set<string>();
+    const uniqueBase: any[] = [];
+    filtered.forEach((e: any) => {
+      const rawDate = e.event_date || e.date || '';
+      const normDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+      const normTitle = (e.title || '').trim().toLowerCase();
+      const normTime = (e.start_time || e.time || '').trim().slice(0, 5);
+      const dedupeKey = `${normTitle}::${normDate}::${normTime}`;
+      if (!seenBase.has(dedupeKey)) {
+        seenBase.add(dedupeKey);
+        uniqueBase.push(e);
+      }
+    });
+
+    // 2. Expand recurring rehearsals into individual upcoming events (e.g. weekly rehearsals)
+    const expandedList: any[] = [];
+    uniqueBase.forEach((e: any) => {
+      const rawDate = e.event_date || e.date || '';
+      const d = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+      const type = (e.event_type || e.eventType || '').toLowerCase();
+      const s = (e.status || '').toLowerCase();
+      const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+      const isRecurring = Boolean(e.is_recurring || e.recurrence_rule || (e.recurrence && e.recurrence !== 'once'));
+
+      // If base event date is today or future, add it
+      if (d && d >= todayStr) {
+        expandedList.push(e);
+      }
+
+      // If recurring rehearsal, generate its future weekly occurrences
+      if (isRehearsal && isRecurring && d) {
+        const rule = e.recurrence_rule || {};
+        const freq = (rule.freq || rule.frequency || e.recurrence || 'weekly').toLowerCase();
+        const [y, m, day] = d.split('-').map(Number);
+        const until = rule.until ? new Date(rule.until) : new Date(now.getFullYear(), now.getMonth() + 4, 0);
+        const maxCount = rule.count || 24;
+        let cursor = new Date(y, m - 1, day, 12, 0, 0);
+        let generated = 0;
+        while (cursor <= until && generated < maxCount) {
+          if (freq === 'weekly') cursor.setDate(cursor.getDate() + 7 * (rule.interval || 1));
+          else if (freq === 'biweekly') cursor.setDate(cursor.getDate() + 14);
+          else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
+          else break;
+          if (cursor > until) break;
+          const occDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+          if (occDate >= todayStr && occDate !== d) {
+            expandedList.push({
+              ...e,
+              id: `${e.id || e.eventId}-occ-${occDate}`,
+              eventId: e.eventId || e.id,
+              event_date: occDate,
+              date: occDate,
+            });
+          }
+          generated++;
+        }
+      }
+    });
+
+    // 3. Final deduplication (ensures generated occurrences don't duplicate existing events)
+    const seenFinal = new Set<string>();
+    const finalEvents: any[] = [];
+    expandedList.forEach((e: any) => {
+      const rawDate = e.event_date || e.date || '';
+      const normDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+      const normTitle = (e.title || '').trim().toLowerCase();
+      const normTime = (e.start_time || e.time || '').trim().slice(0, 5);
+      const dedupeKey = `${normTitle}::${normDate}::${normTime}`;
+      if (!seenFinal.has(dedupeKey)) {
+        seenFinal.add(dedupeKey);
+        finalEvents.push(e);
+      }
+    });
+
+    // 4. Sort chronologically: soonest date first; if same day, confirmed gig before rehearsal
+    finalEvents.sort((a: any, b: any) => {
       const dateA = (a.event_date || a.date || '').replace(/T.*$/, '') || '9999-99-99';
       const dateB = (b.event_date || b.date || '').replace(/T.*$/, '') || '9999-99-99';
       if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const isGigA = a.event_type !== 'rehearsal' && a.eventType !== 'rehearsal';
+      const isGigB = b.event_type !== 'rehearsal' && b.eventType !== 'rehearsal';
+      if (isGigA && !isGigB) return -1;
+      if (!isGigA && isGigB) return 1;
       const timeA = a.start_time || a.time || '';
       const timeB = b.start_time || b.time || '';
       return timeA.localeCompare(timeB);
     });
 
-    return filtered.slice(0, 3);
+    // Strictly upcoming 3 events
+    return finalEvents.slice(0, 3);
   }, [dashboardData?.upcomingEvents, upcomingRehearsals]);
 
   const nextMemberGig = upcomingGigsAndRehearsals.find((e: any) => {
