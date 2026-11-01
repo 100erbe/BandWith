@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronDown, 
@@ -62,6 +62,28 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const initials = getInitials();
+
+  // 3D Welcome Flip: Initials -> Photo once when HomeView opens; flips back and forth on hover
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'Home' && profile?.avatar_url) {
+      setIsFlipped(false);
+      const timer = setTimeout(() => {
+        setIsFlipped(true);
+      }, 1100);
+      return () => clearTimeout(timer);
+    } else if (profile?.avatar_url) {
+      setIsFlipped(true);
+    }
+  }, [activeTab, profile?.avatar_url]);
+
+  const targetRotation = (() => {
+    if (!profile?.avatar_url) return 0;
+    const showPicture = isFlipped ? !isHovered : isHovered;
+    return showPicture ? 180 : 0;
+  })();
 
   return (
     <motion.header 
@@ -172,17 +194,53 @@ export const Header: React.FC<HeaderProps> = ({
             </AnimatePresence>
           </motion.button>
 
-          {/* Identity Trigger */}
+          {/* Identity Trigger with 3D Welcome Flip */}
           <motion.button 
             type="button"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.94 }}
             onClick={onOpenIdentity}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             aria-label="Open Identity and Account Hub"
             className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center font-bold text-sm tracking-wide transition-colors shadow-2xs focus:outline-none overflow-hidden"
           >
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              <div 
+                className="w-full h-full relative" 
+                style={{ perspective: 600 }}
+              >
+                <motion.div
+                  className="w-full h-full relative"
+                  style={{ transformStyle: 'preserve-3d' }}
+                  animate={{ rotateY: targetRotation }}
+                  transition={{ duration: 0.65, ease: [0.34, 1.25, 0.64, 1] }}
+                >
+                  {/* Front Face: Initials */}
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center font-bold text-sm tracking-wide text-foreground select-none"
+                    style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+                  >
+                    {initials}
+                  </div>
+
+                  {/* Back Face: Profile Photo */}
+                  <div 
+                    className="absolute inset-0 rounded-[13px] overflow-hidden"
+                    style={{ 
+                      backfaceVisibility: 'hidden', 
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)' 
+                    }}
+                  >
+                    <img 
+                      src={profile.avatar_url} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover select-none pointer-events-none" 
+                    />
+                  </div>
+                </motion.div>
+              </div>
             ) : (
               initials
             )}
