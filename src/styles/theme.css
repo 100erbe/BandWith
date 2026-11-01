@@ -42,6 +42,10 @@
   --accent-quote: #059669;
   --accent-quote-fg: #FFFFFF;
 
+  /* ── Inactive / Historical (past events) — Cool Slate ── */
+  --accent-past: #475569;
+  --accent-past-fg: #FFFFFF;
+
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
   --accent: #6A0DAD;
   --accent-fg: #FFFFFF;
@@ -88,6 +92,10 @@
   --accent-quote: #34D399;
   --accent-quote-fg: #000000;
 
+  /* ── Inactive / Historical (past events) — Cool Slate ── */
+  --accent-past: #64748B;
+  --accent-past-fg: #FFFFFF;
+
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
   --accent: #9333EA;
   --accent-fg: #FFFFFF;
@@ -125,6 +133,8 @@
   --color-accent-rehearsal-foreground: var(--accent-rehearsal-fg);
   --color-accent-quote: var(--accent-quote);
   --color-accent-quote-foreground: var(--accent-quote-fg);
+  --color-accent-past: var(--accent-past);
+  --color-accent-past-foreground: var(--accent-past-fg);
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-fg);

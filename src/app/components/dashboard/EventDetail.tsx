@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil } from 'lucide-react';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
@@ -135,7 +135,25 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
-  const theme = THEME[eventType];
+
+  const isPast = useMemo(() => {
+    if (!event.date) return false;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const normDate = event.date.includes('T') ? event.date.split('T')[0] : event.date;
+    return normDate < todayStr;
+  }, [event.date]);
+
+  const baseTheme = THEME[eventType];
+  const theme = isPast
+    ? {
+        ...baseTheme,
+        accentColor: 'var(--accent-past)',
+        accentFg: 'var(--accent-past-fg)',
+        deleteLabel: `DELETE THIS ${eventType.toUpperCase()}`,
+      }
+    : baseTheme;
+
   const tags = getEventTags(event, eventType);
   const memberCount = event.members?.length || 0;
 
@@ -206,37 +224,62 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-[20px]">
+            <div className="flex items-center gap-[14px]">
               <button
                 onClick={onClose}
                 className="w-[50px] h-[50px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 transition-colors"
               >
                 <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
               </button>
-              <StatusBadge status={event.status} />
+              {isPast ? (
+                <span className="rounded-full px-3 py-1 text-[11px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-foreground/10 text-foreground/75 border border-foreground/15">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground/50" />
+                  COMPLETED
+                </span>
+              ) : (
+                <StatusBadge status={event.status} />
+              )}
             </div>
           </div>
 
           {/* Event Info */}
           <div className="flex gap-[20px] items-start">
-            <div className="flex-1 flex flex-col gap-[4px] min-w-0">
+            <div className="flex-1 flex flex-col gap-[6px] min-w-0">
               <div className="flex gap-[4px] items-center flex-wrap">
-                {tags.map((tag, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "rounded-[6px] px-[10px] py-[4px] leading-tight",
-                      i === 0 ? "font-bold shadow-sm" : "bg-foreground/10 text-foreground/70 font-bold"
-                    )}
-                    style={i === 0 ? { backgroundColor: theme.accentColor, color: theme.accentFg } : undefined}
-                  >
-                    <span className="text-[12px] uppercase whitespace-nowrap leading-tight">{tag}</span>
-                  </div>
-                ))}
+                {/* Primary Tag */}
+                <div
+                  className="rounded-[6px] px-[10px] py-[4px] leading-tight font-bold shadow-sm"
+                  style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
+                >
+                  <span className="text-[12px] uppercase whitespace-nowrap leading-tight">
+                    {isPast ? `PAST ${eventType.toUpperCase()}` : eventType.toUpperCase()}
+                  </span>
+                </div>
+                {/* Secondary Tags */}
+                {tags
+                  .filter((t) => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT')
+                  .map((tag, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[6px] px-[10px] py-[4px] leading-tight bg-foreground/10 text-foreground/70 font-bold"
+                    >
+                      <span className="text-[12px] uppercase whitespace-nowrap leading-tight">{tag}</span>
+                    </div>
+                  ))}
               </div>
-              <h2 className="text-[32px] font-bold text-foreground uppercase leading-tight">
-                {event.title}
-              </h2>
+
+              {/* Eyebrow & Title */}
+              <div className="flex flex-col mt-1">
+                {isPast && (
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 leading-tight mb-[3px]">
+                    ARCHIVED {eventType === 'rehearsal' ? 'REHEARSAL' : eventType === 'gig' ? 'GIG' : 'EVENT'}
+                  </span>
+                )}
+                <h2 className="text-[32px] font-bold text-foreground uppercase leading-tight">
+                  {event.title}
+                </h2>
+              </div>
+
               <div className="flex flex-col gap-[2px]">
                 <div className="flex items-center gap-[8px]">
                   <span className="text-[16px] font-bold text-foreground uppercase leading-tight">
@@ -253,11 +296,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             </div>
 
             <div className="flex flex-col items-end justify-between self-stretch shrink-0 gap-[4px]">
-              <WeatherWidget
-                eventDate={event.date}
-                location={event.location}
-                textColor="var(--fg)"
-              />
+              {isPast ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-foreground/5 border border-foreground/10 text-foreground/70">
+                  <Check className="w-3.5 h-3.5 text-foreground/60" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                    {memberCount > 0 ? `${memberCount} ATTENDED` : 'COMPLETED'}
+                  </span>
+                </div>
+              ) : (
+                <WeatherWidget
+                  eventDate={event.date}
+                  location={event.location}
+                  textColor="var(--fg)"
+                />
+              )}
               <div
                 className="rounded-[10px] px-[10px] py-[10px] font-bold shadow-sm"
                 style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
@@ -288,7 +340,60 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         <div
           className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[80] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
         >
-          {isPending && onAccept && onDecline ? (
+          {isPast ? (
+            <div className="flex flex-col gap-[14px] items-center w-full">
+              <div className="grid grid-cols-2 gap-[10px] w-full">
+                <button
+                  onClick={onChat}
+                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground text-background font-bold shadow-md hover:opacity-90 active:scale-[0.99] transition-all"
+                >
+                  <MessageCircle className="w-[18px] h-[18px]" />
+                  <span className="text-[15px] font-bold uppercase">EVENT CHAT</span>
+                </button>
+                {isAdmin ? (
+                  <button
+                    onClick={onEdit}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all"
+                  >
+                    <Pencil className="w-[16px] h-[16px] text-foreground/70" />
+                    <span className="text-[15px] font-bold uppercase">EDIT DETAILS</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={onClose}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all"
+                  >
+                    <span className="text-[15px] font-bold uppercase">CLOSE</span>
+                  </button>
+                )}
+              </div>
+              {isAdmin && (
+                showDeleteConfirm ? (
+                  <div className="flex items-center gap-[12px]">
+                    <button
+                      onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
+                      className="text-[12px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    >
+                      CONFIRM DELETE
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[12px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-[11px] font-bold text-foreground/40 hover:text-[var(--destructive)] transition-colors uppercase tracking-wider"
+                  >
+                    REMOVE FROM ARCHIVE
+                  </button>
+                )
+              )}
+            </div>
+          ) : isPending && onAccept && onDecline ? (
             <div className="flex flex-col gap-[20px]">
               <div className="grid grid-cols-2 gap-[10px]">
                 <button

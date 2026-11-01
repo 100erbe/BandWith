@@ -9,6 +9,7 @@ import {
   Search,
   X,
   ChevronDown,
+  History,
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { EmptyState } from '@/app/components/ui/EmptyState';
@@ -25,6 +26,7 @@ interface EventsViewProps {
   allEvents: EventData[];
   onEventClick: (event: EventData) => void;
   onCreateEvent?: () => void;
+  onOpenPastEvents?: () => void;
   isAdmin?: boolean;
   onDayPickerOpen?: (open: boolean) => void;
   userFeeMap?: Record<string, number>;
@@ -195,6 +197,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   allEvents,
   onEventClick,
   onCreateEvent,
+  onOpenPastEvents,
   isAdmin = true,
   onDayPickerOpen,
   userFeeMap = {},
@@ -362,6 +365,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
       accentColor = 'var(--muted-fg)';
       accentFg = 'var(--bg)';
       typeLabel = 'DRAFT';
+    }
+
+    if (isPast) {
+      accentColor = 'var(--accent-past)';
+      accentFg = 'var(--accent-past-fg)';
     }
 
     const warnings = getEventWarnings(event);
@@ -1008,9 +1016,41 @@ export const EventsView: React.FC<EventsViewProps> = ({
             )}
           </div>
 
-          {/* ═══ PAST EVENTS COLLAPSIBLE ═══ */}
+          {/* ═══ PAST EVENTS ARCHIVE QUICK ACCESS & COLLAPSIBLE ═══ */}
           {pastEvents.length > 0 && (
             <div className="flex flex-col gap-[12px] pt-[8px]">
+              {/* Quick access hero card to full dedicated archive */}
+              {onOpenPastEvents && (
+                <div
+                  onClick={onOpenPastEvents}
+                  className="flex items-center justify-between p-[16px] rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 cursor-pointer shadow-2xs hover:shadow-xs transition-all active:scale-[0.99] group"
+                >
+                  <div className="flex items-center gap-[12px]">
+                    <div className="w-[42px] h-[42px] rounded-[12px] bg-foreground/5 flex items-center justify-center text-foreground/70 group-hover:scale-105 transition-transform">
+                      <History className="w-[20px] h-[20px]" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-[6px]">
+                        <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+                          ARCHIVE
+                        </span>
+                        <span className="px-[6px] py-[1px] rounded-full text-[10px] font-bold bg-foreground/10 text-foreground/75">
+                          {pastEvents.length}
+                        </span>
+                      </div>
+                      <span className="text-[15px] font-bold text-foreground uppercase tracking-tight">
+                        VIEW FULL ARCHIVE
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-[4px] text-foreground/50 group-hover:text-foreground transition-colors">
+                    <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">EXPLORE</span>
+                    <ArrowUpRight className="w-[16px] h-[16px]" />
+                  </div>
+                </div>
+              )}
+
+              {/* Inline collapsible preview */}
               <button
                 type="button"
                 onClick={() => setShowPastEvents((prev) => !prev)}
@@ -1018,10 +1058,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               >
                 <div className="flex items-center gap-[8px]">
                   <span className="text-[12px] font-bold uppercase text-foreground/60 tracking-wider">
-                    PAST EVENTS
-                  </span>
-                  <span className="px-[8px] py-[2px] text-[11px] font-bold rounded-full bg-foreground/10 text-foreground/70">
-                    {pastEvents.length}
+                    QUICK PEEK ({pastEvents.length})
                   </span>
                 </div>
                 <ChevronDown
