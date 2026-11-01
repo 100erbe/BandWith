@@ -27,6 +27,8 @@ import {
   calculateQuoteTotals,
   getDefaultQuote,
 } from '@/app/data/quotes';
+import { useBand } from '@/lib/BandContext';
+import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 
 const STEPS = [
   { id: 'client-date', title: 'CLIENT & DATE', subtitle: 'BUILD YOUR QUOTE' },
@@ -131,6 +133,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   initialClientName,
   initialData,
 }) => {
+  const { selectedBand } = useBand();
+  const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [step, setStep] = useState(0);
   const defaults = getDefaultQuote();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -201,6 +205,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [cancellationTerms, setCancellationTerms] = useState('');
   const [clientNotes, setClientNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
+
+  // Load Band Pricing Settings and initialize base fee / deposit percentage
+  useEffect(() => {
+    if (!selectedBand?.id) return;
+    getBandPricing(selectedBand.id).then((settings) => {
+      setPricingSettings(settings);
+      if (!initialData?.baseFee) {
+        const calculatedBase = (settings.core_members_count || 4) * (settings.core_member_rate || 300);
+        setBaseFee((prev) => (prev === 0 ? calculatedBase : prev));
+      }
+      if (settings.default_deposit_rate) {
+        setDepositPercentage(settings.default_deposit_rate);
+      }
+    });
+  }, [selectedBand?.id, initialData?.baseFee]);
 
   // === Calculated Values ===
   const vatRate = useMemo(() => {

@@ -10,6 +10,7 @@ import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCre
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
+import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 
 interface TaskTemplate {
   id: string;
@@ -244,6 +245,36 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const currentUserMember = useMemo(() => MEMBERS.find(m => m.user_id === currentUserId), [MEMBERS, currentUserId]);
   const currentUserMemberId = currentUserMember?.id || currentUserId || '';
 
+  // --- Pricing Settings ---
+  const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
+
+  const currencySymbol = useMemo(() => {
+    if (pricingSettings.currency === 'USD') return '$';
+    if (pricingSettings.currency === 'GBP') return '£';
+    return '€';
+  }, [pricingSettings.currency]);
+
+  const getAutoFeeForMember = useCallback(
+    (
+      memberId: string,
+      currentSelected: string[],
+      settings: BandPricingSettings = pricingSettings,
+      memberObj?: BandMember
+    ): string => {
+      const member = memberObj || MEMBERS.find((m) => m.id === memberId || m.user_id === memberId);
+      if (member?.fee && parseFloat(member.fee) > 0) {
+        return member.fee;
+      }
+      const idx = currentSelected.includes(memberId)
+        ? currentSelected.indexOf(memberId)
+        : currentSelected.length;
+      const isCore = idx < (settings.core_members_count || 4);
+      const rate = isCore ? settings.core_member_rate : settings.session_musician_rate;
+      return String(rate || (isCore ? 300 : 250));
+    },
+    [MEMBERS, pricingSettings]
+  );
+
   // --- Form State ---
   const editingType = useMemo<EventType | null>(() => {
     if (!editingEvent) return null;
@@ -298,8 +329,39 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       return fees;
     }
     if (isEditing) return {};
-    return currentUserMemberId ? { [currentUserMemberId]: '0' } : {};
+    if (currentUserMemberId) {
+      const m = MEMBERS.find(mem => mem.id === currentUserMemberId || mem.user_id === currentUserMemberId);
+      const defaultRate = (m?.fee && parseFloat(m.fee) > 0) ? m.fee : String(DEFAULT_BAND_PRICING.core_member_rate);
+      return { [currentUserMemberId]: defaultRate };
+    }
+    return {};
   });
+
+  // Load Band Pricing Settings and auto-populate fees if not editing
+  useEffect(() => {
+    if (!selectedBand?.id) return;
+    getBandPricing(selectedBand.id).then((settings) => {
+      setPricingSettings(settings);
+      if (!isEditing) {
+        setMemberFees((prev) => {
+          let changed = false;
+          const updated = { ...prev };
+          selectedMembers.forEach((id, index) => {
+            if (!updated[id] || updated[id] === '0') {
+              const m = MEMBERS.find((mem) => mem.id === id || mem.user_id === id);
+              const isCore = index < (settings.core_members_count || 4);
+              const rate = (m?.fee && parseFloat(m.fee) > 0)
+                ? m.fee
+                : String(isCore ? settings.core_member_rate : settings.session_musician_rate);
+              updated[id] = rate;
+              changed = true;
+            }
+          });
+          return changed ? updated : prev;
+        });
+      }
+    });
+  }, [selectedBand?.id, isEditing, selectedMembers, MEMBERS]);
   const [memberMandatory, setMemberMandatory] = useState<Record<string, boolean>>(() => {
     if (editingEvent?.memberUserIds?.length) {
       const mandatory: Record<string, boolean> = {};
@@ -382,8 +444,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       delete newFees[memberId];
       setMemberFees(newFees);
     } else {
-      setSelectedMembers(prev => [...prev, memberId]);
-      setMemberFees(prev => ({ ...prev, [memberId]: '0' }));
+      const nextSelected = [...selectedMembers, memberId];
+      setSelectedMembers(nextSelected);
+      const autoFee = getAutoFeeForMember(memberId, selectedMembers, pricingSettings);
+      setMemberFees(prev => ({ ...prev, [memberId]: autoFee }));
     }
   };
 
@@ -700,7 +764,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   }
                   setSelectedMembers(newSelected);
                   const newFees: Record<string, string> = {};
-                  newSelected.forEach(id => { newFees[id] = memberFees[id] || '0'; });
+                  newSelected.forEach((id, idx) => {
+                    if (memberFees[id] && memberFees[id] !== '0') {
+                      newFees[id] = memberFees[id];
+                    } else {
+                      newFees[id] = getAutoFeeForMember(id, newSelected.slice(0, idx), pricingSettings);
+                    }
+                  });
                   setMemberFees(newFees);
                 }}
                 className={cn(
@@ -773,7 +843,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                             className="overflow-hidden"
                           >
                             <div className="flex items-center gap-1 mt-1">
-                              <span className={cn('font-bold text-sm', tcSub)}>$</span>
+                              <span className={cn('font-bold text-sm', tcSub)}>{currencySymbol}</span>
                               <input
                                 type="number"
                                 value={memberFees[member.id] || ''}
@@ -824,14 +894,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             {totalPayout > 0 && (
               <div className="flex items-center justify-between">
                 <span className={cn('text-[10px] font-bold uppercase tracking-wider', tcMuted)}>MEMBERS TOTAL</span>
-                <span className={cn('text-[22px] font-bold', tc)}>${totalPayout}</span>
+                <span className={cn('text-[22px] font-bold', tc)}>{currencySymbol}{totalPayout}</span>
               </div>
             )}
 
             <div>
               <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
               <div className="flex items-center">
-                <span className={cn('text-[22px] font-bold', tcSub)}>$</span>
+                <span className={cn('text-[22px] font-bold', tcSub)}>{currencySymbol}</span>
                 <input
                   type="number"
                   value={extraBandFee}
@@ -840,6 +910,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   className={cn('bg-transparent text-[22px] font-bold focus:outline-none w-full placeholder:text-foreground/30', tc)}
                 />
               </div>
+              {pricingSettings.custom_services?.filter(s => s.is_active).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {pricingSettings.custom_services.filter(s => s.is_active).map(service => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(extraBandFee) || 0;
+                        setExtraBandFee(String(current + service.price));
+                      }}
+                      className="px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase border border-foreground/15 bg-foreground/5 hover:bg-foreground/10 text-foreground/70 transition-colors"
+                    >
+                      + {service.name} ({currencySymbol}{service.price})
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Summary bar: selected count + total */}
@@ -851,7 +938,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </span>
               </div>
               {grandTotalFee > 0 && (
-                <span className={cn('text-[28px] font-bold', tc)}>${grandTotalFee}</span>
+                <span className={cn('text-[28px] font-bold', tc)}>{currencySymbol}{grandTotalFee}</span>
               )}
             </div>
           </div>
@@ -1010,7 +1097,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   </motion.div>
                 </button>
                 <span className="text-[42px] font-bold leading-none text-foreground">
-                  €{grandTotalFee || details.pay || '0'}
+                  {currencySymbol}{grandTotalFee || details.pay || '0'}
                 </span>
               </div>
               <AnimatePresence>
@@ -1019,7 +1106,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     <div className="pt-[12px] flex flex-col gap-[8px]">
                       <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
                         <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Band Total</span>
-                        <span className="text-[14px] font-bold" style={{ color: textColor }}>€{grandTotalFee || details.pay || '0'}</span>
+                        <span className="text-[14px] font-bold" style={{ color: textColor }}>{currencySymbol}{grandTotalFee || details.pay || '0'}</span>
                       </div>
                       <div className="flex items-center justify-between py-[8px] border-b" style={{ borderColor }}>
                         <span className="text-[12px] font-medium uppercase" style={{ color: subtitleColor }}>Venue</span>
