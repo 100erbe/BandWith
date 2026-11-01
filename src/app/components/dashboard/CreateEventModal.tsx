@@ -268,7 +268,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       const idx = currentSelected.includes(memberId)
         ? currentSelected.indexOf(memberId)
         : currentSelected.length;
-      const isCore = idx < (settings.core_members_count || 4);
+      const isCore = idx < (settings.core_members_count ?? 1);
       const rate = isCore ? settings.core_member_rate : settings.session_musician_rate;
       return String(rate || (isCore ? 300 : 250));
     },
@@ -343,13 +343,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     getBandPricing(selectedBand.id).then((settings) => {
       setPricingSettings(settings);
       if (!isEditing) {
+        if (selectedMembers.length === 0 && currentUserMemberId) {
+          setSelectedMembers([currentUserMemberId]);
+          const m = MEMBERS.find((mem) => mem.id === currentUserMemberId || mem.user_id === currentUserMemberId);
+          const autoFee = (m?.fee && parseFloat(m.fee) > 0) ? m.fee : String(settings.core_member_rate);
+          setMemberFees({ [currentUserMemberId]: autoFee });
+          return;
+        }
         setMemberFees((prev) => {
           let changed = false;
           const updated = { ...prev };
           selectedMembers.forEach((id, index) => {
             if (!updated[id] || updated[id] === '0') {
               const m = MEMBERS.find((mem) => mem.id === id || mem.user_id === id);
-              const isCore = index < (settings.core_members_count || 4);
+              const isCore = index < (settings.core_members_count ?? 1);
               const rate = (m?.fee && parseFloat(m.fee) > 0)
                 ? m.fee
                 : String(isCore ? settings.core_member_rate : settings.session_musician_rate);
@@ -361,7 +368,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         });
       }
     });
-  }, [selectedBand?.id, isEditing, selectedMembers, MEMBERS]);
+  }, [selectedBand?.id, isEditing, selectedMembers, MEMBERS, currentUserMemberId]);
   const [memberMandatory, setMemberMandatory] = useState<Record<string, boolean>>(() => {
     if (editingEvent?.memberUserIds?.length) {
       const mandatory: Record<string, boolean> = {};
@@ -848,7 +855,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                                 type="number"
                                 value={memberFees[member.id] || ''}
                                 onChange={(e) => updateFee(member.id, e.target.value)}
-                                placeholder="0"
+                                placeholder={getAutoFeeForMember(member.id, selectedMembers, pricingSettings)}
                                 className={cn(
                                   'bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5',
                                   isDarkBg

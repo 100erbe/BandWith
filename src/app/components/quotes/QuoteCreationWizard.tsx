@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Minus, Trash2,
@@ -118,6 +118,15 @@ const QuoteField: React.FC<{ label: string; children: React.ReactNode; className
   </div>
 );
 
+export interface QuoteBandMember {
+  id: string;
+  name: string;
+  role: string;
+  initials?: string;
+  fee?: string;
+  user_id?: string;
+}
+
 interface QuoteCreationWizardProps {
   onClose: () => void;
   onCreate: (quote: Partial<Quote>) => void;
@@ -125,6 +134,7 @@ interface QuoteCreationWizardProps {
   initialEventTitle?: string;
   initialClientName?: string;
   initialData?: Partial<Quote>;
+  bandMembers?: QuoteBandMember[];
 }
 
 export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
@@ -132,12 +142,66 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   onCreate,
   initialClientName,
   initialData,
+  bandMembers,
 }) => {
   const { selectedBand } = useBand();
   const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [step, setStep] = useState(0);
   const defaults = getDefaultQuote();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const currencySymbol = useMemo(() => {
+    if (pricingSettings.currency === 'USD') return '$';
+    if (pricingSettings.currency === 'GBP') return '£';
+    return '€';
+  }, [pricingSettings.currency]);
+
+  const availableMusicians = useMemo<QuoteMusician[]>(() => {
+    if (bandMembers && bandMembers.length > 0) {
+      return bandMembers.map((m) => ({
+        id: m.id,
+        userId: m.user_id,
+        name: m.name,
+        instrument: m.role || 'Member',
+        fee: m.fee && parseFloat(m.fee) > 0 ? parseFloat(m.fee) : undefined,
+        isExternal: false,
+        isAvailable: true,
+      }));
+    }
+    if (selectedBand?.members && selectedBand.members.length > 0) {
+      return selectedBand.members.map((m) => ({
+        id: m.id,
+        userId: m.user_id,
+        name: m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member',
+        instrument: m.role || m.instrument || 'Member',
+        fee: m.default_fee && Number(m.default_fee) > 0 ? Number(m.default_fee) : undefined,
+        isExternal: false,
+        isAvailable: true,
+      }));
+    }
+    return BAND_MEMBERS;
+  }, [bandMembers, selectedBand?.members]);
+
+  const getAutoFeeForMusician = useCallback(
+    (
+      musicianId: string,
+      currentSelectedIds: string[],
+      settings: BandPricingSettings = pricingSettings,
+      musicianObj?: QuoteMusician
+    ): number => {
+      const member = musicianObj || availableMusicians.find((m) => m.id === musicianId || m.userId === musicianId);
+      if (member?.fee && member.fee > 0) {
+        return member.fee;
+      }
+      const idx = currentSelectedIds.includes(musicianId)
+        ? currentSelectedIds.indexOf(musicianId)
+        : currentSelectedIds.length;
+      const isCore = idx < (settings.core_members_count ?? 1);
+      const rate = isCore ? settings.core_member_rate : settings.session_musician_rate;
+      return rate || (isCore ? 300 : 250);
+    },
+    [availableMusicians, pricingSettings]
+  );
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -211,15 +275,54 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     if (!selectedBand?.id) return;
     getBandPricing(selectedBand.id).then((settings) => {
       setPricingSettings(settings);
+
+      // Adjust moment default base prices according to band rates if not manually customized
+      setMusicalMoments((prev) =>
+        prev.map((m) => {
+          if (m.customized) return m;
+          if (m.id === 'ceremony') {
+            return { ...m, basePrice: (settings.ceremony_musician_fee || 150) * m.defaultMusicians };
+          }
+          if (m.id === 'cocktail') {
+            return { ...m, basePrice: (settings.cocktail_musician_fee || 150) * m.defaultMusicians };
+          }
+          return m;
+        })
+      );
+
+      // Auto-populate selected musicians and base fee if not editing
       if (!initialData?.baseFee) {
-        const calculatedBase = (settings.core_members_count || 4) * (settings.core_member_rate || 300);
-        setBaseFee((prev) => (prev === 0 ? calculatedBase : prev));
+        setSelectedMusicians((prev) => {
+          if (prev.length === 0 && availableMusicians.length > 0) {
+            const firstMusician = availableMusicians[0];
+            const autoFee = getAutoFeeForMusician(firstMusician.id, [], settings, firstMusician);
+            const initialList = [{ ...firstMusician, fee: autoFee }];
+            setBaseFee(autoFee);
+            return initialList;
+          } else if (prev.length > 0) {
+            const selectedIds = prev.map((m) => m.id);
+            const updated = prev.map((m, idx) => {
+              if (!m.fee || m.fee === 0) {
+                const fee = getAutoFeeForMusician(m.id, selectedIds.slice(0, idx), settings, m);
+                return { ...m, fee };
+              }
+              return m;
+            });
+            const total = updated.reduce((sum, m) => sum + (m.fee || 0), 0);
+            setBaseFee((cur) => (cur === 0 ? total : cur));
+            return updated;
+          }
+          const calculatedBase = (settings.core_members_count ?? 1) * (settings.core_member_rate || 300);
+          setBaseFee((cur) => (cur === 0 ? calculatedBase : cur));
+          return prev;
+        });
       }
+
       if (settings.default_deposit_rate) {
         setDepositPercentage(settings.default_deposit_rate);
       }
     });
-  }, [selectedBand?.id, initialData?.baseFee]);
+  }, [selectedBand?.id, initialData?.baseFee, availableMusicians, getAutoFeeForMusician]);
 
   // === Calculated Values ===
   const vatRate = useMemo(() => {
@@ -237,6 +340,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   }, [validityDays]);
 
   const allMusicians = useMemo(() => [...selectedMusicians, ...externalMusicians], [selectedMusicians, externalMusicians]);
+
+  const musiciansTotal = useMemo(() => {
+    return selectedMusicians.reduce((sum, m) => sum + (m.fee || 0), 0);
+  }, [selectedMusicians]);
 
   const selectedMomentsTotal = useMemo(() =>
     musicalMoments.filter(m => m.selected).reduce((sum, m) => sum + (m.customPrice ?? m.basePrice), 0)
@@ -256,7 +363,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       performanceType, setDuration, numberOfSets, breakDuration,
       musicians: allMusicians, genres: selectedGenres, specialRequests: specialRequests || undefined,
       billingCountry, vatNumber: vatNumber || undefined, fiscalCode: fiscalCode || undefined, vatRate, vatExempt, reverseCharge,
-      currency: 'EUR', baseFee, travelIncluded, travelFee: travelIncluded ? 0 : travelFee,
+      currency: pricingSettings.currency || 'EUR', baseFee, travelIncluded, travelFee: travelIncluded ? 0 : travelFee,
       accommodationNeeded, accommodationFee: accommodationNeeded ? accommodationFee : 0,
       mealsIncluded, mealsFee: mealsIncluded ? 0 : mealsFee, soundIncluded, soundFee: soundIncluded ? 0 : soundFee,
       lightsIncluded, lightsFee: lightsIncluded ? 0 : lightsFee, backlineIncluded, backlineFee: backlineIncluded ? 0 : backlineFee,
@@ -270,12 +377,50 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     onCreate(quoteData);
   };
 
+  const selectPresetLineup = (type: PerformanceType) => {
+    setPerformanceType(type);
+    const countMap: Record<PerformanceType, number> = {
+      solo: 1,
+      duo: 2,
+      trio: 3,
+      full_band: availableMusicians.length || 4,
+      dj_set: 1,
+      acoustic: 2,
+    };
+    const count = Math.min(countMap[type] || 1, availableMusicians.length);
+    const target = availableMusicians.slice(0, count);
+    const targetIds = target.map((m) => m.id);
+    const updated = target.map((m, idx) => {
+      const fee = getAutoFeeForMusician(m.id, targetIds.slice(0, idx), pricingSettings, m);
+      return { ...m, fee };
+    });
+    setSelectedMusicians(updated);
+    const total = updated.reduce((sum, m) => sum + (m.fee || 0), 0);
+    setBaseFee(total);
+  };
+
   const toggleMusician = (musician: QuoteMusician) => {
-    if (selectedMusicians.find(m => m.id === musician.id)) {
-      setSelectedMusicians(selectedMusicians.filter(m => m.id !== musician.id));
+    const isSelected = selectedMusicians.some((m) => m.id === musician.id);
+    let updated: QuoteMusician[];
+    if (isSelected) {
+      updated = selectedMusicians.filter((m) => m.id !== musician.id);
     } else {
-      setSelectedMusicians([...selectedMusicians, musician]);
+      const currentIds = selectedMusicians.map((m) => m.id);
+      const autoFee = getAutoFeeForMusician(musician.id, currentIds, pricingSettings, musician);
+      updated = [...selectedMusicians, { ...musician, fee: autoFee }];
     }
+    setSelectedMusicians(updated);
+    const total = updated.reduce((sum, m) => sum + (m.fee || 0), 0);
+    setBaseFee(total);
+  };
+
+  const updateMusicianFee = (musicianId: string, fee: number) => {
+    setSelectedMusicians((prev) => {
+      const updated = prev.map((m) => (m.id === musicianId ? { ...m, fee } : m));
+      const total = updated.reduce((sum, m) => sum + (m.fee || 0), 0);
+      setBaseFee(total);
+      return updated;
+    });
   };
 
   const toggleGenre = (genre: string) => {
@@ -493,12 +638,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const renderPerformanceStep = () => (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">TYPE</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">LINEUP PRESETS</span>
         <div className="flex flex-wrap gap-2">
           {PERFORMANCE_TYPES.map(type => (
             <button
               key={type.value}
-              onClick={() => setPerformanceType(type.value)}
+              type="button"
+              onClick={() => selectPresetLineup(type.value)}
               className={cn(
                 'px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all',
                 performanceType === type.value
@@ -515,35 +661,95 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <div className="h-px bg-foreground/10" />
 
       <div className="flex flex-col gap-4">
-        <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">BAND MEMBERS</span>
-        <div className="flex flex-col gap-3">
-          {BAND_MEMBERS.map(member => {
-            const isSelected = !!selectedMusicians.find(m => m.id === member.id);
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-bold uppercase tracking-wide text-foreground/50">
+            BAND MEMBERS ({selectedMusicians.length}/{availableMusicians.length})
+          </span>
+          {musiciansTotal > 0 && (
+            <span className="text-[13px] font-bold text-foreground">
+              {currencySymbol}{musiciansTotal}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col">
+          {availableMusicians.map((member) => {
+            const selectedMusician = selectedMusicians.find(m => m.id === member.id || (m.userId && m.userId === member.userId));
+            const isSelected = !!selectedMusician;
+            const selectedIdx = isSelected
+              ? selectedMusicians.findIndex(m => m.id === member.id || (m.userId && m.userId === member.userId))
+              : -1;
+            const isCore = selectedIdx >= 0 ? selectedIdx < (pricingSettings.core_members_count ?? 1) : false;
+            const autoFee = getAutoFeeForMusician(member.id, selectedMusicians.map(m => m.id), pricingSettings, member);
+
             return (
-              <button
+              <div
                 key={member.id}
-                onClick={() => toggleMusician(member)}
-                className="flex items-center gap-4 w-full text-left"
+                className="flex flex-col py-3 border-b last:border-0 border-foreground/10"
               >
-                <div className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0',
-                  isSelected ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/40 border-foreground/20'
-                )}>
-                  {member.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground/10 text-foreground/60">{member.instrument}</span>
-                    {isSelected && <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground text-background">MANDATORY</span>}
+                <div className="flex items-center gap-4 w-full">
+                  <div className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0',
+                    isSelected ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/40 border-foreground/20'
+                  )}>
+                    {member.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <p className={cn('text-[16px] font-bold uppercase mt-1', isSelected ? 'text-foreground' : 'text-foreground/40')}>{member.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-foreground/10 text-foreground/60">
+                        {member.instrument}
+                      </span>
+                      {isSelected && (
+                        <span className={cn(
+                          'px-2 py-0.5 rounded text-[10px] font-bold uppercase',
+                          isCore ? 'bg-purple-600 text-white' : 'bg-foreground/15 text-foreground'
+                        )}>
+                          {isCore ? 'CORE' : 'SESSION'}
+                        </span>
+                      )}
+                    </div>
+                    <p className={cn('text-[16px] font-bold uppercase mt-1', isSelected ? 'text-foreground' : 'text-foreground/40')}>
+                      {member.name}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleMusician(member)}
+                    className="shrink-0"
+                  >
+                    <DotCheckbox
+                      checked={isSelected}
+                      activeColor="var(--accent-quote)"
+                      inactiveColor="var(--border)"
+                    />
+                  </button>
                 </div>
-                <DotCheckbox
-                  checked={isSelected}
-                  activeColor="var(--accent-quote)"
-                  inactiveColor="var(--border)"
-                />
-              </button>
+
+                {/* Inline Musician Fee input */}
+                <AnimatePresence>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden pl-14 pt-2"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-foreground/50 font-bold text-xs uppercase">Musician Fee:</span>
+                        <span className="text-foreground/60 font-bold text-sm">{currencySymbol}</span>
+                        <input
+                          type="number"
+                          value={selectedMusician?.fee ?? ''}
+                          onChange={(e) => updateMusicianFee(member.id, parseFloat(e.target.value) || 0)}
+                          placeholder={String(autoFee)}
+                          className="bg-transparent font-bold text-sm border-b border-foreground/20 focus:border-foreground text-foreground focus:outline-none w-24 pb-0.5"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>
@@ -557,6 +763,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           {MUSIC_GENRES.map(genre => (
             <button
               key={genre}
+              type="button"
               onClick={() => toggleGenre(genre)}
               className={cn(
                 'px-4 py-2 rounded-full text-[12px] font-bold uppercase border transition-all',
@@ -592,7 +799,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className="flex items-start justify-between gap-5 w-full text-left"
             >
               <div className="flex flex-col gap-1 flex-1">
-                <TagPill active={isSelected}>${price}</TagPill>
+                <TagPill active={isSelected}>{currencySymbol}{price}</TagPill>
                 <span className={cn(
                   'text-[24px] font-bold uppercase leading-tight',
                   isSelected ? 'text-foreground' : 'text-foreground/30'
@@ -683,7 +890,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                           <QuoteField label="PRICE">
                             <div className="flex items-center gap-1">
-                              <span className="text-foreground/40 font-bold">$</span>
+                              <span className="text-foreground/40 font-bold">{currencySymbol}</span>
                               <input
                                 type="number"
                                 value={price}
@@ -729,7 +936,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div className="flex flex-col gap-1 flex-1">
           <TagPill active>PERFORMANCE FEE</TagPill>
           <div className="flex items-center gap-1">
-            <span className="text-foreground/40 text-[32px] font-bold">$</span>
+            <span className="text-foreground/40 text-[32px] font-bold">{currencySymbol}</span>
             <input
               type="number"
               value={baseFee || ''}
@@ -738,14 +945,26 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className="w-full bg-transparent text-[42px] font-bold text-foreground placeholder:text-foreground/20 focus:outline-none"
             />
           </div>
-          {selectedMomentsTotal > 0 && baseFee !== selectedMomentsTotal && (
-            <button
-              onClick={() => setBaseFee(selectedMomentsTotal)}
-              className="text-[11px] font-bold text-foreground/40 underline decoration-foreground/20 hover:text-foreground/70 transition-colors"
-            >
-              Use moments total (${selectedMomentsTotal})
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2 mt-1">
+            {musiciansTotal > 0 && baseFee !== musiciansTotal && (
+              <button
+                type="button"
+                onClick={() => setBaseFee(musiciansTotal)}
+                className="text-[11px] font-bold text-foreground/50 underline decoration-foreground/20 hover:text-foreground transition-colors"
+              >
+                Use lineup total ({currencySymbol}{musiciansTotal})
+              </button>
+            )}
+            {selectedMomentsTotal > 0 && baseFee !== selectedMomentsTotal && (
+              <button
+                type="button"
+                onClick={() => setBaseFee(selectedMomentsTotal)}
+                className="text-[11px] font-bold text-foreground/50 underline decoration-foreground/20 hover:text-foreground transition-colors"
+              >
+                Use moments total ({currencySymbol}{selectedMomentsTotal})
+              </button>
+            )}
+          </div>
         </div>
         <DotCheckbox checked={baseFee > 0} activeColor="var(--accent-quote)" inactiveColor="var(--border)" />
       </div>
@@ -758,10 +977,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <span className="text-[24px] font-bold uppercase text-foreground">EXTRA</span>
       </div>
 
-      <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} fee={travelFee} onFeeChange={setTravelFee} />
-      <FeeRow label="ACCOMMODATION" tag="TRAVEL & LOGISTICS" included={!accommodationNeeded} onToggle={() => setAccommodationNeeded(!accommodationNeeded)} fee={accommodationFee} onFeeChange={setAccommodationFee} />
-      <FeeRow label="MEALS" tag="TRAVEL & LOGISTICS" included={mealsIncluded} onToggle={() => setMealsIncluded(!mealsIncluded)} fee={mealsFee} onFeeChange={setMealsFee} />
-      <FeeRow label="EQUIPMENT" tag="TECHNICAL" included={soundIncluded && lightsIncluded && backlineIncluded} onToggle={() => { setSoundIncluded(!soundIncluded); setLightsIncluded(!lightsIncluded); setBacklineIncluded(!backlineIncluded); }} fee={soundFee + lightsFee + backlineFee} onFeeChange={(v) => { setSoundFee(v); setLightsFee(0); setBacklineFee(0); }} />
+      <FeeRow label="TRAVEL" tag="TRAVEL & LOGISTICS" included={travelIncluded} onToggle={() => setTravelIncluded(!travelIncluded)} fee={travelFee} onFeeChange={setTravelFee} currencySymbol={currencySymbol} />
+      <FeeRow label="ACCOMMODATION" tag="TRAVEL & LOGISTICS" included={!accommodationNeeded} onToggle={() => setAccommodationNeeded(!accommodationNeeded)} fee={accommodationFee} onFeeChange={setAccommodationFee} currencySymbol={currencySymbol} />
+      <FeeRow label="MEALS" tag="TRAVEL & LOGISTICS" included={mealsIncluded} onToggle={() => setMealsIncluded(!mealsIncluded)} fee={mealsFee} onFeeChange={setMealsFee} currencySymbol={currencySymbol} />
+      <FeeRow label="EQUIPMENT" tag="TECHNICAL" included={soundIncluded && lightsIncluded && backlineIncluded} onToggle={() => { setSoundIncluded(!soundIncluded); setLightsIncluded(!lightsIncluded); setBacklineIncluded(!backlineIncluded); }} fee={soundFee + lightsFee + backlineFee} onFeeChange={(v) => { setSoundFee(v); setLightsFee(0); setBacklineFee(0); }} currencySymbol={currencySymbol} />
 
       {/* Custom Fee Items */}
       <div className="flex flex-col gap-3">
@@ -776,7 +995,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               className="flex-1 bg-foreground/10 rounded-[8px] px-3 py-2 text-[14px] font-bold text-foreground placeholder:text-foreground/30 focus:outline-none"
             />
             <div className="flex items-center gap-1">
-              <span className="text-foreground/50 font-bold text-sm">$</span>
+              <span className="text-foreground/50 font-bold text-sm">{currencySymbol}</span>
               <input
                 type="number"
                 value={item.amount || ''}
@@ -793,6 +1012,34 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </button>
           </div>
         ))}
+        {pricingSettings.custom_services?.filter(s => s.is_active).length > 0 && (
+          <div className="flex flex-col gap-2 mt-1">
+            <span className="text-[11px] font-bold uppercase text-foreground/50">POPULAR EXTRAS</span>
+            <div className="flex flex-wrap gap-1.5">
+              {pricingSettings.custom_services.filter(s => s.is_active).map(service => (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() => {
+                    setCustomItems(prev => [
+                      ...prev,
+                      {
+                        id: `srv-${Date.now()}-${service.id}`,
+                        name: service.name,
+                        description: service.name,
+                        amount: service.price,
+                        quantity: 1,
+                      }
+                    ]);
+                  }}
+                  className="px-2.5 py-1 rounded-[6px] text-[11px] font-bold uppercase border border-foreground/15 bg-foreground/5 hover:bg-foreground/10 text-foreground/70 transition-colors"
+                >
+                  + {service.name} ({currencySymbol}{service.price})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <button
           onClick={() => setCustomItems(prev => [...prev, { id: `custom-${Date.now()}`, description: '', amount: 0, quantity: 1 }])}
           className="flex items-center gap-2 text-[12px] font-bold text-foreground/40 uppercase hover:text-foreground transition-colors"
@@ -970,7 +1217,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex flex-col gap-1">
             <span className="text-[12px] font-bold text-foreground/50 uppercase">PRICING & FINANCE</span>
             <span className="text-[32px] font-bold text-foreground leading-tight">
-              ${totals.total >= 1000 ? `${(totals.total / 1000).toFixed(1)}K` : totals.total}
+              {currencySymbol}{totals.total >= 1000 ? `${(totals.total / 1000).toFixed(1)}K` : totals.total}
             </span>
             <span className="text-[14px] font-bold text-foreground/50 uppercase">DP{depositPercentage}%</span>
           </div>
@@ -1104,8 +1351,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">
               <span className="text-[12px] font-bold text-foreground/60 uppercase">TOTAL + TAXES</span>
-              <span className="text-[12px] font-bold text-foreground/40">${totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
-              <span className="text-[32px] font-bold text-foreground">${totals.total.toFixed(0)}</span>
+              <span className="text-[12px] font-bold text-foreground/40">{currencySymbol}{totals.subtotal}+{totals.vatAmount.toFixed(0)}</span>
+              <span className="text-[32px] font-bold text-foreground">{currencySymbol}{totals.total.toFixed(0)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <button
@@ -1134,10 +1381,16 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {step === 2 && selectedMusicians.length > 0 && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[12px] font-bold uppercase text-foreground/60">LINEUP TOTAL</span>
+                <span className="text-[28px] font-bold text-foreground">{currencySymbol}{musiciansTotal}</span>
+              </div>
+            )}
             {step === 3 && musicalMoments.some(m => m.selected) && (
               <div className="flex items-center justify-between px-1">
                 <span className="text-[12px] font-bold uppercase text-foreground/60">PARTIAL</span>
-                <span className="text-[28px] font-bold text-foreground">${selectedMomentsTotal}</span>
+                <span className="text-[28px] font-bold text-foreground">{currencySymbol}{selectedMomentsTotal}</span>
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5">
@@ -1194,7 +1447,8 @@ const FeeRow: React.FC<{
   onToggle: () => void;
   fee?: number;
   onFeeChange?: (value: number) => void;
-}> = ({ label, tag, included, onToggle, fee, onFeeChange }) => (
+  currencySymbol?: string;
+}> = ({ label, tag, included, onToggle, fee, onFeeChange, currencySymbol = '€' }) => (
   <div className="flex flex-col gap-2">
     <button onClick={onToggle} className="flex items-start justify-between gap-5 w-full text-left">
       <div className="flex flex-col gap-1 flex-1">
@@ -1216,7 +1470,7 @@ const FeeRow: React.FC<{
   </button>
   {!included && onFeeChange && (
     <div className="flex items-center gap-2 pl-2">
-      <span className="text-foreground/50 font-bold text-sm">$</span>
+      <span className="text-foreground/50 font-bold text-sm">{currencySymbol}</span>
       <input
         type="number"
         value={fee || ''}

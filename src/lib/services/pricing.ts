@@ -37,7 +37,7 @@ export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   currency: 'EUR',
   core_member_rate: 300,
   session_musician_rate: 250,
-  core_members_count: 4,
+  core_members_count: 1,
   cocktail_musician_fee: 150,
   ceremony_musician_fee: 150,
   dj_hourly_rate: 100,
@@ -105,6 +105,10 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
       return {
         ...DEFAULT_BAND_PRICING,
         ...parsed,
+        core_members_count:
+          typeof parsed.core_members_count === 'number' && parsed.core_members_count > 0
+            ? parsed.core_members_count
+            : 1,
         custom_services:
           cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
       };

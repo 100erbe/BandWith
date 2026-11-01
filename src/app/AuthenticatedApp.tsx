@@ -1465,7 +1465,7 @@ export default function AuthenticatedApp() {
 
         <React.Suspense fallback={null}>
           <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
-          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
+          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
             if (realBand?.id) {
               const quoteData = {
                 band_id: realBand.id,
