@@ -383,12 +383,12 @@ export default function AuthenticatedApp() {
     // Status filter
     result = result.filter((e) => {
       const s = e.status?.toUpperCase();
-      let mf = eventFilter === "All";
+      let mf = eventFilter === "All" || eventFilter === "ALL";
       if (!mf) {
         if (eventFilter === "GIGS" || eventFilter === "Confirmed") mf = s === "CONFIRMED" || s === "COMPLETED";
-        else if (eventFilter === "REHEARSAL" || eventFilter === "Rehearsal") mf = s === "REHEARSAL";
-        else if (eventFilter === "QUOTE") mf = s === "QUOTE" || s === "QUOTED";
-        else if (eventFilter === "DRAFT") mf = s === "DRAFT" || s === "PENDING";
+        else if (eventFilter === "REHEARSALS" || eventFilter === "REHEARSAL" || eventFilter === "Rehearsal") mf = s === "REHEARSAL";
+        else if (eventFilter === "QUOTES" || eventFilter === "QUOTE") mf = s === "QUOTE" || s === "QUOTED";
+        else if (eventFilter === "DRAFTS" || eventFilter === "DRAFT") mf = s === "DRAFT" || s === "PENDING";
       }
       return mf;
     });

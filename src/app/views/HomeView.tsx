@@ -154,9 +154,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
     >
       {/* ═══ STATS GRID (2×2) — PRIMARY DASHBOARD HERO ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3.5 sm:gap-4">
-        {/* Row 1: Gigs Confirmed | Upcoming Rehearsal — visible to all */}
+        {/* Row 1: Confirmed Gigs | Upcoming Rehearsals — visible to all */}
         <div className="flex gap-3.5 sm:gap-4">
-          {/* CARD: GIGS CONFIRMED — Red/Vermilion accent */}
+          {/* CARD: CONFIRMED GIGS — Red/Vermilion accent */}
           <div
             onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
             className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
@@ -164,7 +164,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
               <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                GIGS CONFIRMED
+                CONFIRMED GIGS
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -174,15 +174,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          {/* CARD: UPCOMING REHEARSAL — Indigo/Violet accent */}
+          {/* CARD: UPCOMING REHEARSALS — Indigo/Violet accent */}
           <div
-            onClick={() => onFilterEvents ? onFilterEvents('REHEARSAL') : onViewChange?.('Events')}
+            onClick={() => onFilterEvents ? onFilterEvents('REHEARSALS') : onViewChange?.('Events')}
             className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
           >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
             <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
               <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                UPCOMING REHEARSAL
+                UPCOMING REHEARSALS
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
@@ -197,16 +197,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex gap-3.5 sm:gap-4">
           {isAdmin ? (
             <>
-              {/* CARD: QUOTES — Emerald Green accent */}
+              {/* CARD: ACTIVE QUOTES — Emerald Green accent */}
               <div
-                onClick={() => onFilterEvents ? onFilterEvents('QUOTE') : onViewChange?.('Events')}
+                onClick={() => onFilterEvents ? onFilterEvents('QUOTES') : onViewChange?.('Events')}
                 className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
               >
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <div className="flex items-center justify-between w-full gap-1">
                     <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
-                      QUOTES
+                      ACTIVE QUOTES
                     </span>
                     {!dashboardLoading && quotesPipeline > 0 && (
                       <span
@@ -249,12 +249,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </>
           ) : (
             <>
-              {/* CARD: MY FEE — Emerald Green accent (member view) */}
+              {/* CARD: UPCOMING PAY — Emerald Green accent (member view) */}
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    MY FEE
+                    UPCOMING PAY
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -264,12 +264,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
               </div>
 
-              {/* CARD: MY EARNINGS — Royal Purple Brand accent (member view) */}
+              {/* CARD: TOTAL EARNED — Royal Purple Brand accent (member view) */}
               <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
                 <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
                   <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    MY EARNINGS
+                    TOTAL EARNED
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
@@ -289,9 +289,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
         let secondLabel = "GIG";
         if (displayEvents.length > 1) {
           const allRehearsals = displayEvents.every((e: any) => e.event_type === 'rehearsal');
-          secondLabel = allRehearsals ? "REHEARSALS" : "EVENTS";
+          const allGigs = displayEvents.every((e: any) => e.event_type !== 'rehearsal' && e.event_type !== 'quote');
+          secondLabel = allRehearsals ? "REHEARSALS" : allGigs ? "GIGS" : "EVENTS";
         } else if (displayEvents.length === 1) {
-          secondLabel = displayEvents[0].event_type === 'rehearsal' ? "REHEARSAL" : "GIG";
+          secondLabel = displayEvents[0].event_type === 'rehearsal' ? "REHEARSAL" : displayEvents[0].event_type === 'quote' ? "QUOTE" : "GIG";
         }
 
         return (
@@ -447,7 +448,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   NO UPCOMING EVENTS SCHEDULED
                 </span>
                 <span className="text-[11px] text-foreground/40 font-medium">
-                  {isAdmin ? 'Tap + in the bottom bar to schedule a gig or rehearsal' : 'Upcoming events will appear here once confirmed'}
+                  {isAdmin ? 'Tap + to schedule a gig, rehearsal, or quote' : 'Upcoming gigs and rehearsals will appear here once confirmed'}
                 </span>
               </div>
             )}
@@ -455,11 +456,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
         );
       })()}
 
-      {/* ═══ ACTION CENTER ═══ */}
+      {/* ═══ QUICK ACTIONS ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-5">
         <div className="flex flex-col select-none">
-          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">ACTION</span>
-          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">CENTER</span>
+          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">QUICK</span>
+          <span className="text-[28px] sm:text-[32px] font-bold leading-none text-foreground">ACTIONS</span>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -485,32 +486,32 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Secondary Operational Cards */}
           {isAdmin ? (
             <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-              {/* ADMIN: Upcoming Gigs */}
+              {/* ADMIN: Schedule Overview */}
               <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">UPCOMING GIGS</span>
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">SCHEDULE OVERVIEW</span>
                   <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : confirmedCount}
                   </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">CONFIRMED EVENTS SCHEDULED</span>
+                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">CONFIRMED UPCOMING SHOWS</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Calendar')}
                   className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer"
                 >
-                  <span className="text-xs font-bold uppercase tracking-wider">VIEW CALENDAR</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">OPEN CALENDAR</span>
                   <ArrowUpRight className="w-4 h-4 text-primary-foreground" />
                 </button>
               </div>
 
-              {/* ADMIN: Revenue Growing */}
+              {/* ADMIN: Monthly Growth */}
               <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">REVENUE GROWING</span>
+                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">MONTHLY GROWTH</span>
                   <span className="text-[36px] sm:text-[40px] font-bold leading-tight text-foreground">
                     {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
                   </span>
-                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">VS LAST MONTH</span>
+                  <span className="text-[10px] font-bold text-foreground/45 tracking-wide uppercase">VS PREVIOUS MONTH</span>
                 </div>
                 <button
                   onClick={() => onQuickAction?.('View Analytics')}

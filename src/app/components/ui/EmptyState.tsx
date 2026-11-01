@@ -9,8 +9,8 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = 'Nothing here yet',
-  description = 'When new items are created, they will show up here.',
+  title = 'No items scheduled',
+  description = 'When new items are created or confirmed, they will show up here.',
   icon,
 }) => (
   <motion.div

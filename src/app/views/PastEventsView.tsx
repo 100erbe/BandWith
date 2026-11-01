@@ -49,7 +49,7 @@ const formatEventTime = (timeStr: string): string => {
   return timeStr;
 };
 
-const CATEGORIES = ['ALL', 'GIGS', 'REHEARSAL', 'QUOTES'] as const;
+const CATEGORIES = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES'] as const;
 type CategoryFilter = (typeof CATEGORIES)[number];
 
 export const PastEventsView: React.FC<PastEventsViewProps> = ({
@@ -109,7 +109,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       result = result.filter((e) => {
         const s = e.status?.toUpperCase();
         if (selectedCategory === 'GIGS') return s === 'CONFIRMED' || s === 'COMPLETED';
-        if (selectedCategory === 'REHEARSAL') return s === 'REHEARSAL';
+        if (selectedCategory === 'REHEARSALS') return s === 'REHEARSAL';
         if (selectedCategory === 'QUOTES') return s === 'QUOTE' || s === 'QUOTED';
         return true;
       });
@@ -192,7 +192,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
             </button>
             <div className="flex flex-col">
               <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 leading-none">
-                HISTORY & ARCHIVE
+                EVENT ARCHIVE
               </span>
               <div className="flex items-center gap-[8px] mt-[3px]">
                 <h1 className="text-[24px] font-bold uppercase text-foreground leading-none">
@@ -353,7 +353,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                           className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[10px] font-bold uppercase tracking-wider leading-tight"
                           style={{ backgroundColor: 'var(--accent-past)', color: 'var(--accent-past-fg)' }}
                         >
-                          PAST {typeLabel}
+                          {typeLabel}
                         </div>
                         {/* Completed status chip */}
                         <div className="inline-flex items-center gap-1 rounded-[6px] px-[7px] py-[3px] text-[10px] font-bold uppercase tracking-wider leading-tight bg-foreground/5 text-foreground/60 border border-foreground/10">

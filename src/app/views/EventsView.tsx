@@ -34,7 +34,7 @@ interface EventsViewProps {
   onBandPillClick?: (bandId: string) => void;
 }
 
-const FILTERS = ['All', 'GIGS', 'REHEARSAL', 'QUOTE', 'DRAFT'] as const;
+const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
 
 const TAG_COLORS: Record<string, string> = {
   gig: 'bg-accent-gig text-accent-gig-foreground',
@@ -264,11 +264,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
   }, [allEvents, todayStr]);
 
   const eyebrowLabel = useMemo(() => {
-    if (eventFilter === 'All') return 'SCHEDULE';
+    if (eventFilter === 'All' || eventFilter === 'ALL') return 'SCHEDULE';
     if (eventFilter === 'GIGS') return 'GIGS';
-    if (eventFilter === 'REHEARSAL') return 'REHEARSALS';
-    if (eventFilter === 'QUOTE') return 'QUOTES';
-    if (eventFilter === 'DRAFT') return 'DRAFTS';
+    if (eventFilter === 'REHEARSALS' || eventFilter === 'REHEARSAL') return 'REHEARSALS';
+    if (eventFilter === 'QUOTES' || eventFilter === 'QUOTE') return 'QUOTES';
+    if (eventFilter === 'DRAFTS' || eventFilter === 'DRAFT') return 'DRAFTS';
     return 'SCHEDULE';
   }, [eventFilter]);
 
@@ -696,13 +696,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {/* ═══ FILTER PILLS ═══ */}
           <div className="flex gap-[12px] items-center overflow-x-auto scrollbar-hide">
             {FILTERS.map((f) => {
-              const isActive = eventFilter === f;
+              const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
               let activeBg = 'bg-white';
               let activeText = 'text-foreground';
               if (f === 'GIGS') { activeBg = 'bg-accent-gig'; activeText = 'text-accent-gig-foreground'; }
-              else if (f === 'REHEARSAL') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-accent-rehearsal-foreground'; }
-              else if (f === 'QUOTE') { activeBg = 'bg-accent-quote'; activeText = 'text-accent-quote-foreground'; }
-              else if (f === 'DRAFT') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
+              else if (f === 'REHEARSALS') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-accent-rehearsal-foreground'; }
+              else if (f === 'QUOTES') { activeBg = 'bg-accent-quote'; activeText = 'text-accent-quote-foreground'; }
+              else if (f === 'DRAFTS') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
               return (
               <button
                 key={f}
@@ -867,16 +867,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   NO UPCOMING {eyebrowLabel === 'SCHEDULE' ? 'EVENTS' : eyebrowLabel}
                 </p>
                 <p className="text-[12px] text-foreground/50 max-w-[280px]">
-                  {eventFilter !== 'All'
+                  {eventFilter !== 'All' && eventFilter !== 'ALL'
                     ? `No upcoming ${eventFilter.toLowerCase()} scheduled.`
                     : pastEvents.length > 0
                     ? `All ${pastEvents.length} scheduled event${pastEvents.length > 1 ? 's are' : ' is'} in the past. Check the past events section below.`
                     : 'No events have been scheduled yet.'}
                 </p>
                 <div className="flex items-center gap-[8px] mt-[4px]">
-                  {eventFilter !== 'All' && (
+                  {eventFilter !== 'All' && eventFilter !== 'ALL' && (
                     <button
-                      onClick={() => setEventFilter('All')}
+                      onClick={() => setEventFilter('ALL')}
                       className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-foreground/10 hover:bg-foreground/15 text-foreground text-[12px] font-bold uppercase tracking-wider transition-colors"
                     >
                       SHOW ALL EVENTS
