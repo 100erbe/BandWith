@@ -54,6 +54,7 @@ interface HomeViewProps {
   dashboardLoading?: boolean;
   onQuickAction?: (action: string) => void;
   onViewChange?: (tab: string) => void;
+  onFilterEvents?: (filter: string) => void;
   isAdmin?: boolean;
   isSolo?: boolean;  // PLG: Solo mode hides collaborative features
 }
@@ -72,6 +73,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   dashboardLoading,
   onQuickAction,
   onViewChange,
+  onFilterEvents,
   isAdmin: _isAdminProp = true,
   isSolo = false,
 }) => {
@@ -114,6 +116,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     ? (dashboardData?.eventStats?.confirmedEvents || 0)
     : (memberStats?.confirmedCount || 0);
   const quotesCount = dashboardData?.quoteStats?.totalQuotes || 0;
+  const quotesPipeline = dashboardData?.quoteStats?.totalPipeline || 0;
   const revenueChange = isAdmin ? dashboardData?.eventStats?.revenueChange : memberStats?.revenueChange;
   const rehearsalCount = upcomingRehearsals.length;
 
@@ -138,7 +141,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Row 1: Gigs Confirmed | Upcoming Rehearsal — visible to all */}
         <div className="flex gap-4 sm:gap-5">
           {/* CARD: GIGS CONFIRMED — Red/Vermilion accent */}
-          <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+          <div
+            onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
+            className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden cursor-pointer hover:border-foreground/25 active:scale-[0.99] transition-all"
+          >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
             <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
               <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">GIGS CONFIRMED</span>
@@ -151,7 +157,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           {/* CARD: UPCOMING REHEARSAL — Indigo/Violet accent */}
-          <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+          <div
+            onClick={() => onFilterEvents ? onFilterEvents('REHEARSAL') : onViewChange?.('Events')}
+            className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden cursor-pointer hover:border-foreground/25 active:scale-[0.99] transition-all"
+          >
             <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
             <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
               <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">UPCOMING REHEARSAL</span>
@@ -169,10 +178,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {isAdmin ? (
             <>
               {/* CARD: QUOTES — Emerald Green accent */}
-              <div className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden">
+              <div
+                onClick={() => onFilterEvents ? onFilterEvents('QUOTE') : onViewChange?.('Events')}
+                className="flex-1 flex rounded-xl border border-foreground/10 bg-card shadow-xs overflow-hidden cursor-pointer hover:border-foreground/25 active:scale-[0.99] transition-all"
+              >
                 <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
                 <div className="flex-1 flex flex-col py-3.5 px-4 pl-3.5 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">QUOTES</span>
+                  <div className="flex items-center justify-between w-full gap-1">
+                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">QUOTES</span>
+                    {!dashboardLoading && quotesPipeline > 0 && (
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase shrink-0"
+                        style={{ backgroundColor: 'var(--accent-quote)', color: 'var(--accent-quote-fg)' }}
+                      >
+                        {formatRevenue(quotesPipeline)}
+                      </span>
+                    )}
+                  </div>
                   <div className="h-[62px] flex items-center">
                     <span className="text-[46px] sm:text-[52px] font-bold leading-none text-foreground block">
                       {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4" /> : quotesCount}

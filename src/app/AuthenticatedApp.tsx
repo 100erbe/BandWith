@@ -735,7 +735,14 @@ export default function AuthenticatedApp() {
   }, [visuallyFilteredEvents]);
 
   const upcomingRehearsals = useMemo(() => {
-    const rehearsals = events.filter((e) => e.status === "REHEARSAL");
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const rehearsals = events.filter((e) => {
+      if (e.status !== "REHEARSAL") return false;
+      if (realBand?.id && e.band_id && e.band_id !== realBand.id) return false;
+      const normDate = (e.date || '').includes('T') ? e.date.split('T')[0] : (e.date || '');
+      return !normDate || normDate >= todayStr;
+    });
     // Exclude rehearsals where current user has declined
     if (user?.id) {
       return rehearsals.filter(e => {
@@ -746,7 +753,7 @@ export default function AuthenticatedApp() {
       }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
     return rehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, eventMembersMap, user?.id]);
+  }, [events, eventMembersMap, user?.id, realBand?.id]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
   const currentDetails = currentRehearsal ? rehearsalDetails[currentRehearsal.id] || rehearsalDetails[105] : null;
@@ -1156,7 +1163,7 @@ export default function AuthenticatedApp() {
         band_id: realBand.id,
         title: title || "Untitled Event",
         event_type: eventType,
-        status: "confirmed",
+        status: data.status || "confirmed",
         event_date: date,
         start_time: timeFinal,
         end_time: endTime || null,
@@ -1339,23 +1346,25 @@ export default function AuthenticatedApp() {
   const userRole: UserRole = isAdmin ? "admin" : "member";
   const permissions = getPermissions(userRole);
 
-  // Compute member dashboard stats from local eventMembersMap to ensure
-  // they always match the event card data (same source of truth)
+  // Compute member & band dashboard stats from local masterEventsList + eventMembersMap to ensure
+  // they always match the event card data (same source of truth) and strictly count UPCOMING items
   const computedMemberStats = useMemo(() => {
     if (!user?.id) return null;
 
-    // Get the current year boundaries
+    // Get the current year boundaries & today's local date
     const now = new Date();
     const startOfYear = `${now.getFullYear()}-01-01`;
     const endOfYear = `${now.getFullYear()}-12-31`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     let confirmedFee = 0;
     let pendingFee = 0;
     let confirmedCount = 0;
 
     // Use masterEventsList (same source as event cards) to ensure consistency
-    const events = masterEventsList || [];
-    for (const event of events) {
+    const eventsList = masterEventsList || [];
+    for (const event of eventsList) {
+      if (realBand?.id && event.band_id && event.band_id !== realBand.id) continue;
       // Only include confirmed or completed events
       const evStatus = (event.status || '').toLowerCase();
       if (evStatus !== 'confirmed' && evStatus !== 'completed') continue;
@@ -1364,13 +1373,16 @@ export default function AuthenticatedApp() {
       // Skip rehearsals
       if (event.event_type === 'rehearsal') continue;
 
+      const normDate = event.event_date.includes('T') ? event.event_date.split('T')[0] : event.event_date;
+      const isUpcoming = normDate >= todayStr;
+
       const members = eventMembersMap[event.id || ''] || [];
       const myMembership = members.find((m: any) => m.userId === user.id);
 
       if (myMembership) {
         if (myMembership.status === 'confirmed') {
           confirmedFee += myMembership.fee || 0;
-          confirmedCount++;
+          if (isUpcoming) confirmedCount++;
         } else if (myMembership.status === 'pending') {
           pendingFee += myMembership.fee || 0;
         }
@@ -1378,7 +1390,7 @@ export default function AuthenticatedApp() {
         // Fallback when event_members rows were not explicitly populated
         const fallbackShare = Math.round((event.fee || 0) / Math.max(1, realBand?.member_count || 1));
         confirmedFee += fallbackShare;
-        confirmedCount++;
+        if (isUpcoming) confirmedCount++;
       }
     }
 
@@ -1389,7 +1401,75 @@ export default function AuthenticatedApp() {
       revenueChange: 0,
       confirmedCount,
     };
-  }, [user?.id, masterEventsList, eventMembersMap, realBand?.member_count]);
+  }, [user?.id, masterEventsList, eventMembersMap, realBand?.id, realBand?.member_count]);
+
+  const computedDashboardData = useMemo(() => {
+    const now = new Date();
+    const startOfYear = `${now.getFullYear()}-01-01`;
+    const endOfYear = `${now.getFullYear()}-12-31`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const bandEvents = (masterEventsList || []).filter(e => {
+      if (optimisticallyHiddenEventIds.includes(e.id)) return false;
+      if (realBand?.id && e.band_id && e.band_id !== realBand.id) return false;
+      return true;
+    });
+
+    const getNormDate = (d?: string | null) => (!d ? '' : d.includes('T') ? d.split('T')[0] : d);
+
+    // Upcoming confirmed gigs (strictly future or today, excluding rehearsals)
+    const upcomingConfirmedGigs = bandEvents.filter(e => {
+      const s = (e.status || '').toLowerCase();
+      const d = getNormDate(e.event_date);
+      return (s === 'confirmed' || s === 'completed') && e.event_type !== 'rehearsal' && d >= todayStr;
+    });
+
+    // Year-to-date / full-year confirmed gig revenue
+    const yearConfirmedGigs = bandEvents.filter(e => {
+      const s = (e.status || '').toLowerCase();
+      const d = getNormDate(e.event_date);
+      return (s === 'confirmed' || s === 'completed') && e.event_type !== 'rehearsal' && d >= startOfYear && d <= endOfYear;
+    });
+    const totalRevenue = yearConfirmedGigs.reduce((sum, e) => sum + (Number(e.fee) || 0), 0);
+
+    // Upcoming quotes (tentative/quoted events with date >= todayStr)
+    const upcomingQuoteEvents = bandEvents.filter(e => {
+      const s = (e.status || '').toLowerCase();
+      const d = getNormDate(e.event_date);
+      return (s === 'tentative' || s === 'quoted' || s === 'quote') && (!d || d >= todayStr);
+    });
+    const quotesPipeline = upcomingQuoteEvents.reduce((sum, e) => sum + (Number(e.fee) || 0), 0);
+
+    // Upcoming non-cancelled events sorted ascending for the "NEXT GIG / EVENT" block
+    const liveUpcomingEvents = bandEvents
+      .filter(e => {
+        const s = (e.status || '').toLowerCase();
+        const d = getNormDate(e.event_date);
+        return s !== 'cancelled' && d >= todayStr;
+      })
+      .sort((a, b) => getNormDate(a.event_date).localeCompare(getNormDate(b.event_date)));
+
+    return {
+      ...dashboardData,
+      eventStats: {
+        totalEvents: bandEvents.length,
+        confirmedEvents: upcomingConfirmedGigs.length,
+        totalRevenue: bandEvents.length > 0 ? totalRevenue : (dashboardData?.eventStats?.totalRevenue || 0),
+        upcomingEvents: liveUpcomingEvents.length,
+        revenueChange: dashboardData?.eventStats?.revenueChange || 0,
+      },
+      quoteStats: {
+        totalQuotes: upcomingQuoteEvents.length,
+        pendingQuotes: upcomingQuoteEvents.length,
+        acceptedQuotes: dashboardData?.quoteStats?.acceptedQuotes || 0,
+        totalPipeline: quotesPipeline || (dashboardData?.quoteStats?.totalPipeline || 0),
+        acceptedRevenue: dashboardData?.quoteStats?.acceptedRevenue || 0,
+      },
+      memberStats: computedMemberStats || (dashboardData?.memberStats || null),
+      upcomingEvents: liveUpcomingEvents.length > 0 ? liveUpcomingEvents : (dashboardData?.upcomingEvents || []),
+      recentQuotes: dashboardData?.recentQuotes || [],
+    };
+  }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats]);
 
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
@@ -1416,7 +1496,10 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {activeTab === "Home" && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={{ ...dashboardData, memberStats: computedMemberStats || (dashboardData?.memberStats || null) }} dashboardLoading={dashboardLoading} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onQuickAction={(action) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onFilterEvents={(filter) => {
+              setEventFilter(filter);
+              setActiveTab("Events");
+            }} onQuickAction={(action) => {
               if (isSolo) return; // PLG: Solo mode has no band actions
               if (action === "Band Members") setShowBandMembers(true);
               if (action === "Setlist & Repertoire") setShowSetlistManager(true);
@@ -1459,6 +1542,46 @@ export default function AuthenticatedApp() {
           <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
           <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
             if (realBand?.id) {
+              const createdEventId = q.eventId || (await (async () => {
+                const evD: Record<string, any> = {
+                  band_id: realBand.id,
+                  title: q.eventName || q.clientName || 'Quote Event',
+                  event_type: q.eventType || 'other',
+                  status: 'tentative' as const,
+                  event_date: q.eventDate || new Date().toISOString().split('T')[0],
+                  start_time: q.eventTimeStart || '20:00',
+                  end_time: q.eventTimeEnd || null,
+                  venue_name: q.venueName || 'TBD',
+                  venue: q.venueName || 'TBD',
+                  venue_city: q.venueCity || null,
+                  venue_address: q.venueAddress || null,
+                  indoor_outdoor: q.indoorOutdoor || null,
+                  fee: q.total || 0,
+                  client_name: q.clientName || null,
+                };
+                const { data: ev } = await createEvent(evD);
+                if (ev?.id && Array.isArray(q.musicians) && q.musicians.length > 0) {
+                  const memberRows = q.musicians
+                    .map((m: any) => {
+                      const bandMember = realBand.members?.find((bm: any) => bm.id === m.id || bm.user_id === m.id);
+                      const resolvedUserId = bandMember?.user_id || m.user_id || null;
+                      if (!resolvedUserId) return null;
+                      return {
+                        event_id: ev.id,
+                        user_id: resolvedUserId,
+                        status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
+                        fee: Number(m.rate || m.customFee || 0),
+                        role: m.instrument || bandMember?.role || 'Musician',
+                      };
+                    })
+                    .filter(Boolean);
+                  if (memberRows.length > 0) {
+                    await supabase.from('event_members').upsert(memberRows as any[], { onConflict: 'event_id,user_id' });
+                  }
+                }
+                return ev?.id || null;
+              })());
+
               const quoteData = {
                 band_id: realBand.id,
                 quote_number: q.quoteNumber || `Q-${Date.now()}`,
@@ -1475,15 +1598,13 @@ export default function AuthenticatedApp() {
                 subtotal: q.subtotal || 0,
                 vat_amount: q.vatAmount || 0,
                 total: q.total || 0,
-                deposit_amount: q.depositAmount || 0,
-                event_id: q.eventId || (await (async () => {
-                  const evD: Record<string, any> = { band_id: realBand.id, title: q.eventName || q.clientName || 'Quote Event', event_type: q.eventType || 'other', status: 'tentative' as const, event_date: q.eventDate || new Date().toISOString().split('T')[0], start_time: q.eventTimeStart || '20:00', venue_name: q.venueName || 'TBD', venue: q.venueName || 'TBD', fee: q.total || 0, client_name: q.clientName || null };
-                  const { data: ev } = await createEvent(evD);
-                  refetchEvents();
-                  return ev?.id || null;
-                })()),
+                deposit_percentage: q.depositPercentage ?? 30,
+                converted_to_event_id: createdEventId,
               };
               await createQuoteDB(quoteData as any);
+              await refetchEvents();
+              setMembersRefreshKey(prev => prev + 1);
+              if (refetchDashboard) await refetchDashboard();
             }
             setIsCreateEventOpen(false);
           }} />}</AnimatePresence>

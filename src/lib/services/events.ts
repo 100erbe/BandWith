@@ -542,9 +542,12 @@ export const getEventStats = async (
       revenueChange = 100;
     }
 
+    // Upcoming confirmed gigs only (exclude past gigs & rehearsals)
+    const upcomingConfirmedGigs = confirmedGigs.filter(e => e.event_date >= today);
+
     const stats = {
       totalEvents: events?.length || 0,
-      confirmedEvents: confirmedGigs.length,
+      confirmedEvents: upcomingConfirmedGigs.length,
       totalRevenue: confirmedGigs
         .reduce((sum, e) => sum + (e.fee || 0), 0) || 0,
       upcomingEvents: events?.filter(e => e.event_date >= today && e.status !== 'cancelled').length || 0,
@@ -570,6 +573,7 @@ export const getMemberPersonalStats = async (
     const startOfYear = `${currentYear}-01-01`;
     const endOfYear = `${currentYear}-12-31`;
     const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const curStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
     const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
@@ -591,6 +595,7 @@ export const getMemberPersonalStats = async (
       (r.events?.status === 'confirmed' || r.events?.status === 'completed') &&
       r.events?.event_type !== 'rehearsal'
     );
+    const upcomingConfirmed = confirmed.filter(r => (r.events?.event_date || '') >= today);
     const totalEarned = confirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
     const pending = rows.filter(r => r.status === 'pending');
     const pendingFee = pending.reduce((s: number, r: any) => s + (r.fee || 0), 0);
@@ -600,7 +605,7 @@ export const getMemberPersonalStats = async (
     if (prevMonth > 0) revenueChange = Math.round(((curMonth - prevMonth) / prevMonth) * 100);
     else if (curMonth > 0) revenueChange = 100;
 
-    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange, confirmedCount: confirmed.length }, error: null };
+    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange, confirmedCount: upcomingConfirmed.length }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

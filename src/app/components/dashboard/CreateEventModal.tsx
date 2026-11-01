@@ -504,7 +504,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       setlist,
       tasks,
       notes,
-      status: 'confirmed',
+      status: modalCategory === 'quote' ? 'tentative' : 'confirmed',
       ...(isEditing && editingEvent ? { _editing: true, _editingEventId: editingEvent.eventId, _editingLocalId: editingEvent.id } : {}),
     };
     onCreate(eventData);

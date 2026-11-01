@@ -563,6 +563,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       confirmedEvents: number;
       totalRevenue: number;
       upcomingEvents: number;
+      revenueChange?: number;
     } | null;
     quoteStats: {
       totalQuotes: number;
