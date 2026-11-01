@@ -276,13 +276,12 @@ export default function AuthenticatedApp() {
   
   const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
   
-  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events & reset accidental recurring flags ═══
+  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events ═══
   useEffect(() => {
     if (!masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
 
     const seenMap = new Map<string, string>();
     const duplicateIdsToDelete: string[] = [];
-    const rehearsalsToReset: string[] = [];
 
     masterEventsList.forEach(e => {
       if (e.band_id && e.band_id !== realBand.id) return;
@@ -295,28 +294,18 @@ export default function AuthenticatedApp() {
         duplicateIdsToDelete.push(e.id);
       } else {
         seenMap.set(key, e.id);
-        // Reset "standard" rehearsal back to one-time if it was flagged recurring
-        if (e.event_type === 'rehearsal' && title === 'standard' && (e.is_recurring || e.recurrence_rule)) {
-          rehearsalsToReset.push(e.id);
-        }
       }
     });
 
-    if (duplicateIdsToDelete.length > 0 || rehearsalsToReset.length > 0) {
+    if (duplicateIdsToDelete.length > 0) {
       (async () => {
         try {
           for (const id of duplicateIdsToDelete) {
             await supabase.from('events').delete().eq('id', id);
           }
-          for (const id of rehearsalsToReset) {
-            await supabase.from('events').update({
-              is_recurring: false,
-              recurrence_rule: null,
-            }).eq('id', id);
-          }
           if (refetchEvents) refetchEvents();
         } catch (err) {
-          console.error('[Duplicate/Recurrence Auto-Sync]', err);
+          console.error('[Duplicate Auto-Sync]', err);
         }
       })();
     }
@@ -1401,10 +1390,12 @@ export default function AuthenticatedApp() {
         fee: parseFloat(price) || 0,
         notes: data.notes || null,
         indoor_outdoor: data.setting || null,
-        is_recurring: isRehearsalWizard ? (data.recurrence && data.recurrence !== 'once') : false,
-        recurrence_rule: isRehearsalWizard && data.recurrence && data.recurrence !== 'once'
+        is_recurring: isRehearsalWizard
+          ? Boolean(data.recurrence && data.recurrence !== 'once')
+          : Boolean(data.is_recurring || (data.recurrence && data.recurrence !== 'once')),
+        recurrence_rule: (data.recurrence && data.recurrence !== 'once')
           ? { frequency: data.recurrence === 'biweekly' ? 'weekly' : data.recurrence, interval: data.recurrence === 'biweekly' ? 2 : 1 }
-          : null,
+          : (data.recurrence_rule || null),
       };
 
       const persistMembers = async (eventId: string, isEdit?: boolean): Promise<string> => {

@@ -245,6 +245,37 @@ export const EventsView: React.FC<EventsViewProps> = ({
       } else {
         past.push(event);
       }
+
+      // Expand recurring rehearsals into upcoming event cards
+      const rec = event as any;
+      if (rec.is_recurring && rec.recurrence_rule && normDate) {
+        const rule = rec.recurrence_rule;
+        const freq = (rule.freq || rule.frequency || '').toLowerCase();
+        if (freq) {
+          const [y, m, day] = normDate.split('-').map(Number);
+          const until = rule.until ? new Date(rule.until) : new Date(calendarYear, calendarMonth + 6, 0);
+          const maxCount = rule.count || 24;
+          let cursor = new Date(y, m - 1, day, 12, 0, 0);
+          let generated = 0;
+          while (cursor <= until && generated < maxCount) {
+            if (freq === 'weekly') cursor.setDate(cursor.getDate() + 7 * (rule.interval || 1));
+            else if (freq === 'biweekly') cursor.setDate(cursor.getDate() + 14);
+            else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
+            else break;
+            if (cursor > until) break;
+            const occDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+            if (occDate >= todayStr && occDate !== normDate) {
+              upcoming.push({
+                ...event,
+                id: `${event.id}-occ-${occDate}` as any,
+                eventId: event.eventId,
+                date: occDate,
+              });
+            }
+            generated++;
+          }
+        }
+      }
     });
 
     // Upcoming sorted ascending (soonest first)
@@ -262,7 +293,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     });
 
     return { upcomingEvents: upcoming, pastEvents: past };
-  }, [allEvents, todayStr]);
+  }, [allEvents, todayStr, calendarYear, calendarMonth]);
 
   const eyebrowLabel = useMemo(() => {
     if (eventFilter === 'All' || eventFilter === 'ALL') return 'SCHEDULE';
@@ -292,7 +323,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const addToMap = (ev: EventData, dateObj: Date) => {
       const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
       if (!map[key]) map[key] = [];
-      if (!map[key].some(e => e.id === ev.id)) map[key].push(ev);
+      const occDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      const evForDay: EventData = {
+        ...ev,
+        date: occDate,
+        id: (ev.date === occDate ? ev.id : `${ev.id}-occ-${occDate}`) as any,
+      };
+      if (!map[key].some(e => e.eventId === ev.eventId || e.id === evForDay.id)) {
+        map[key].push(evForDay);
+      }
     };
 
     source.forEach(ev => {
@@ -301,13 +340,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
       addToMap(ev, d);
 
       const rec = ev as any;
-      if (rec.is_recurring && rec.recurrence_rule) {
+      if (rec.is_recurring && rec.recurrence_rule && ev.date) {
         const rule = rec.recurrence_rule;
-        const freq = rule.freq || rule.frequency;
+        const freq = (rule.freq || rule.frequency || '').toLowerCase();
         if (!freq) return;
+        const normD = normalizeDateStr(ev.date);
+        if (!normD) return;
+        const [y, m, day] = normD.split('-').map(Number);
         const until = rule.until ? new Date(rule.until) : new Date(calendarYear, calendarMonth + 3, 0);
         const maxCount = rule.count || 52;
-        let cursor = new Date(d);
+        let cursor = new Date(y, m - 1, day, 12, 0, 0);
         let generated = 0;
         while (cursor <= until && generated < maxCount) {
           if (freq === 'weekly') cursor.setDate(cursor.getDate() + 7 * (rule.interval || 1));
