@@ -386,7 +386,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {/* Left Column: Semantic Accent Rail + Fixed-Width Type Badge */}
                     <div className="flex items-center gap-2 shrink-0">
                       <div
-                        className="w-[3.5px] h-[20px] rounded-full shrink-0"
+                        className="w-[3.5px] h-[18px] rounded-full shrink-0"
                         style={{ backgroundColor: accentColor }}
                       />
                       <span
@@ -397,39 +397,41 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </span>
                     </div>
 
-                    {/* Middle Column 1: Fixed-Width Date (aligns all dates vertically) */}
-                    <div className="w-[58px] shrink-0 text-left">
-                      <span className="text-[11px] font-bold text-foreground/75 uppercase tracking-wider tabular-nums block">
+                    {/* Middle Column: Date + Title + Location + Time (Locked on Baseline) */}
+                    <div className="flex items-baseline gap-3 min-w-0 flex-1">
+                      {/* Fixed-width Date */}
+                      <span className="w-[58px] shrink-0 text-xs font-bold text-foreground/75 uppercase tracking-wide tabular-nums">
                         {dateFormatted}
                       </span>
+
+                      {/* Event Title + Location (city / venue) */}
+                      <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px]">
+                          {event.title || APP_COPY.home.nextEvents.untitledEvent}
+                        </span>
+                        {locationText && (
+                          <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0">
+                            • {locationText}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Time / Fee */}
+                      <div className="shrink-0 text-right">
+                        {eventTime ? (
+                          <span className="text-xs font-semibold text-foreground/65 tabular-nums">
+                            {eventTime}
+                          </span>
+                        ) : event.fee != null && event.fee > 0 ? (
+                          <span className="text-xs font-bold text-foreground tabular-nums">
+                            {formatRevenue(event.fee)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
-                    {/* Middle Column 2: Event Title + Location (city / venue) */}
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                      <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px]">
-                        {event.title || APP_COPY.home.nextEvents.untitledEvent}
-                      </span>
-                      {locationText && (
-                        <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0">
-                          • {locationText}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Right Column: Time or Fee + Chevron Arrow */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {eventTime ? (
-                        <span className="text-[11px] font-semibold text-foreground/65 tabular-nums">
-                          {eventTime}
-                        </span>
-                      ) : event.fee != null && event.fee > 0 ? (
-                        <span className="text-[11px] font-bold text-foreground tabular-nums">
-                          {formatRevenue(event.fee)}
-                        </span>
-                      ) : null}
-
-                      <ChevronRight className="w-3.5 h-3.5 text-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
-                    </div>
+                    {/* Chevron Arrow (Vertically Centered in row) */}
+                    <ChevronRight className="w-3.5 h-3.5 text-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
                   </div>
                 );
               })}
