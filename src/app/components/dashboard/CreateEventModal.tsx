@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, ArrowUpRight, AlertCircle, Music, Folder } from 'lucide-react';
+import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, ArrowUpRight, AlertCircle, Music, Folder, Check } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { TimePicker } from '@/app/components/ui/TimePicker';
 import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCreationWizard';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -61,6 +62,17 @@ const STEPS = [
 
 const DAYS_OF_WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+export const DURATION_15M_OPTIONS = [
+  15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 270, 300, 360
+];
+
+export const formatDurationOption = (m: number): string => {
+  if (m < 60) return `${m}m`;
+  const hrs = Math.floor(m / 60);
+  const mins = m % 60;
+  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+};
+
 interface CreateEventModalProps {
   onClose: () => void;
   onCreate: (eventData: any) => void;
@@ -92,20 +104,59 @@ interface CreateEventModalProps {
   } | null;
 }
 
-// --- Step Indicator ---
-const StepIndicator: React.FC<{ current: number; total: number; activeColor?: string; inactiveColor?: string }> = ({ current, total, activeColor, inactiveColor }) => (
-  <div className="flex items-center justify-center gap-1">
-    {Array.from({ length: total }).map((_, i) => (
-      <div
-        key={i}
-        className={cn(
-          'h-1 rounded-[10px]',
-          i === current ? 'w-4' : 'w-2',
-          !activeColor && (i === current ? 'bg-black' : 'bg-black/30'),
-        )}
-        style={activeColor ? { backgroundColor: i === current ? activeColor : inactiveColor } : undefined}
-      />
-    ))}
+// --- Interactive Step Indicator ---
+const InteractiveStepIndicator: React.FC<{
+  current: number;
+  total: number;
+  steps: { id: string; label: string; title: string }[];
+  maxAccessibleStep: number;
+  onSelectStep: (step: number) => void;
+  activeColor?: string;
+  inactiveColor?: string;
+}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => (
+  <div className="flex items-center gap-1.5 w-full">
+    {Array.from({ length: total }).map((_, i) => {
+      const isCurrent = i === current;
+      const isAccessible = i <= maxAccessibleStep;
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => isAccessible && onSelectStep(i)}
+          disabled={!isAccessible}
+          aria-label={`Step ${i + 1}: ${steps[i]?.title?.replace('\n', ' ') || ''}`}
+          className={cn(
+            'group flex-1 py-1 flex flex-col items-center justify-center transition-all',
+            isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-35'
+          )}
+        >
+          <div
+            className={cn(
+              'h-1.5 w-full rounded-full transition-all duration-300',
+              isCurrent ? 'h-2' : 'group-hover:opacity-80'
+            )}
+            style={{
+              backgroundColor: isCurrent
+                ? (activeColor || 'var(--foreground)')
+                : isAccessible
+                  ? (activeColor || 'var(--foreground)')
+                  : (inactiveColor || 'var(--border)'),
+              opacity: isCurrent ? 1 : isAccessible ? 0.4 : 0.15,
+            }}
+          />
+          <div className="flex items-center gap-1 mt-1">
+            <span
+              className={cn(
+                'text-[9px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
+                isCurrent ? 'text-foreground' : 'text-foreground/40 group-hover:text-foreground/70'
+              )}
+            >
+              {steps[i]?.label}
+            </span>
+          </div>
+        </button>
+      );
+    })}
   </div>
 );
 
@@ -187,6 +238,74 @@ const CalendarGrid: React.FC<{
   );
 };
 
+// --- Accordion Card for Editing ---
+const AccordionCard: React.FC<{
+  isOpen: boolean;
+  onToggle: () => void;
+  stepNumber: string;
+  title: string;
+  summary: string;
+  hasWarning?: boolean;
+  warningLabel?: string;
+  children: React.ReactNode;
+}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'NEEDS ATTENTION', children }) => {
+  return (
+    <div className={cn(
+      'rounded-[16px] border transition-all overflow-hidden',
+      hasWarning
+        ? 'border-[var(--warning)]/50 bg-[var(--warning)]/5'
+        : isOpen
+          ? 'border-foreground/20 bg-foreground/[0.02]'
+          : 'border-foreground/10 bg-transparent hover:border-foreground/15'
+    )}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-5 py-4 flex items-center justify-between text-left transition-colors"
+      >
+        <div className="flex flex-col gap-1 min-w-0 pr-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">{stepNumber}</span>
+            <span className="text-[15px] font-bold uppercase text-foreground">{title}</span>
+            {hasWarning && (
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[var(--warning)]/15 text-[var(--warning)] flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {warningLabel}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold uppercase text-foreground/45 truncate">
+            {summary}
+          </span>
+        </div>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 w-8 h-8 rounded-full border border-foreground/10 flex items-center justify-center text-foreground/60"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-2 border-t border-foreground/10 flex flex-col gap-6">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose, onCreate, initialType, bandMembers = [], currentUserId, editingEvent,
 }) => {
@@ -214,11 +333,33 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     return 1;
   }, [editingWarnings]);
 
-  const [step, setStep] = useState(isEditing ? firstWarningStep : 0);
+  const [step, setStep] = useState(0);
   const [songsView, setSongsView] = useState(false);
   const [songPickerOpen, setSongPickerOpen] = useState(false);
   const [songPickerTargetSet, setSongPickerTargetSet] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  // Accordion state for Edit mode
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {
+      basics: false,
+      date_venue: false,
+      team_pay: false,
+      setlist_tasks: false,
+    };
+    if (editingWarnings.some(w => ['fee', 'members'].includes(w))) {
+      initial.team_pay = true;
+    } else if (editingWarnings.some(w => ['venue', 'date', 'time'].includes(w))) {
+      initial.date_venue = true;
+    } else {
+      initial.date_venue = true;
+    }
+    return initial;
+  });
+
+  const toggleEditSection = (key: string) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const [librarySongs, setLibrarySongs] = useState<Song[]>([]);
   const [savedSetlists, setSavedSetlists] = useState<Setlist[]>([]);
@@ -399,6 +540,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     : initialType === ('quote' as any) || editingEvent?.status?.toUpperCase() === 'QUOTE' || editingEvent?.status?.toUpperCase() === 'QUOTED' ? 'quote'
     : 'gig';
 
+  useEffect(() => {
+    if (!isAdmin && modalCategory === 'quote') {
+      onClose();
+    }
+  }, [isAdmin, modalCategory, onClose]);
+
+  if (!isAdmin && modalCategory === 'quote') {
+    return null;
+  }
+
   const activeAccentColor = useMemo(
     () => getEventAccentColor(eventType, modalCategory),
     [eventType, modalCategory]
@@ -438,6 +589,26 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const grandTotalFee = useMemo(() =>
     totalPayout + (parseFloat(extraBandFee) || 0),
   [totalPayout, extraBandFee]);
+
+  const selectedDateObj = useMemo(() => {
+    return details.date ? new Date(details.date + 'T00:00:00') : new Date();
+  }, [details.date]);
+
+  const formattedDateStr = useMemo(() => {
+    if (!details.date) return 'NO DATE';
+    return selectedDateObj.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  }, [details.date, selectedDateObj]);
+
+  const maxAccessibleStep = useMemo(() => {
+    if (isEditing) return STEPS.length - 1;
+    if (!eventType) return 0;
+    if (!details.date) return 1;
+    return STEPS.length - 1;
+  }, [isEditing, eventType, details.date]);
+
+  const canQuickSave = useMemo(() => {
+    return !isEditing && eventType !== null && !!details.date;
+  }, [isEditing, eventType, details.date]);
 
   // --- Handlers ---
   const handleNext = () => {
@@ -479,6 +650,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const handleCreate = () => {
+    const fallbackTitle = details.title?.trim() || (details.clientName ? `${(eventType || 'Event').toUpperCase()} - ${details.clientName}` : `${(eventType || 'Event').toUpperCase()} @ ${details.venue || 'TBD'}`);
+
     const membersWithUserIds = selectedMembers.map(id => {
       const member = MEMBERS.find(m => m.id === id || m.user_id === id);
       return {
@@ -493,6 +666,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const eventData = {
       details: {
         ...details,
+        title: fallbackTitle,
         time: details.startTime,
         pay: String(grandTotalFee || details.pay || '0'),
       },
@@ -679,20 +853,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('time') ? 'text-[var(--warning)]' : tcMuted)}>START</span>
             {warnField('time') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
           </div>
-          <input
-            type="time"
+          <TimePicker
             value={details.startTime}
-            onChange={(e) => setDetails({ ...details, startTime: e.target.value })}
-            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted, 'focus:border-foreground')}
+            onChange={(val) => setDetails({ ...details, startTime: val })}
+            textSize="text-[22px]"
+            showIcon
+            className={cn('border-b pb-2 uppercase focus-within:border-foreground', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted)}
           />
         </div>
         <div>
           <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>END</span>
-          <input
-            type="time"
+          <TimePicker
             value={details.endTime}
-            onChange={(e) => setDetails({ ...details, endTime: e.target.value })}
-            className={cn('w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none', tc, bcMuted, 'focus:border-foreground')}
+            onChange={(val) => setDetails({ ...details, endTime: val })}
+            textSize="text-[22px]"
+            showIcon
+            className={cn('border-b pb-2 uppercase focus-within:border-foreground', tc, bcMuted)}
           />
         </div>
       </div>
@@ -975,9 +1151,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
             className={cn('bg-transparent text-[28px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
           >
-            {[30, 60, 90, 120, 150, 180, 210, 240].map(m => (
+            {DURATION_15M_OPTIONS.map(m => (
               <option key={m} value={m} className="text-black bg-white text-base">
-                {m >= 60 ? `${Math.floor(m / 60)}h${m % 60 > 0 ? `${m % 60}m` : ''}` : `${m}m`}
+                {formatDurationOption(m)}
               </option>
             ))}
           </select>
@@ -1346,13 +1522,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                     <div className="pt-4 pb-2 grid grid-cols-2 gap-4">
                       <div>
                         <span className={cn('text-[10px] font-bold uppercase block mb-1', tcSub)}>DURATION</span>
-                        <input
-                          type="number"
+                        <select
                           value={details.duration}
                           onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
-                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none transition-all border-foreground/15 focus:border-foreground', tc)}
-                        />
-                        <span className={cn('text-[10px] font-bold', tcFaint)}>minutes</span>
+                          className={cn('w-full bg-transparent border-b-2 py-1 text-lg font-bold focus:outline-none transition-all border-foreground/15 focus:border-foreground appearance-none cursor-pointer', tc)}
+                        >
+                          {DURATION_15M_OPTIONS.map(m => (
+                            <option key={m} value={m} className="text-black bg-white text-base">
+                              {formatDurationOption(m)} ({m} min)
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <span className={cn('text-[10px] font-bold uppercase block mb-1', tcSub)}>SETS</span>
@@ -1806,6 +1986,599 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </motion.div>
     );
 
+  // --- ACCORDION EDIT VIEW (FOR isEditing === true) ---
+  const renderEditAccordionView = () => {
+    return (
+      <div className="flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1 min-w-0 pr-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground text-background">
+                EDITING
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground/10 text-foreground/60">
+                {modalCategory.toUpperCase()}
+              </span>
+            </div>
+            <h1 className="text-[28px] font-bold uppercase leading-tight text-foreground truncate mt-1">
+              {details.title || 'UNTITLED EVENT'}
+            </h1>
+            <span className="text-[13px] font-bold uppercase text-foreground/50">
+              {formattedDateStr} @ {details.startTime?.replace(':', '') || '2000'} • {details.venue || 'VENUE TBD'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
+          >
+            <X className="w-6 h-6 text-foreground" />
+          </button>
+        </div>
+
+        {/* Warnings Banner if any */}
+        {editingWarnings.length > 0 && (
+          <div className="p-4 rounded-[14px] bg-[var(--warning)]/10 border border-[var(--warning)]/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-[var(--warning)] shrink-0 mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[12px] font-bold text-[var(--warning)] uppercase tracking-wider">
+                {editingWarnings.length} {editingWarnings.length === 1 ? 'FIELD NEEDS' : 'FIELDS NEED'} ATTENTION
+              </span>
+              <span className="text-[11px] font-medium text-foreground/70">
+                Please complete missing information: {editingWarnings.join(', ')}.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Section 1: Event Type & Client */}
+        <AccordionCard
+          isOpen={!!expandedSections.basics}
+          onToggle={() => toggleEditSection('basics')}
+          stepNumber="01"
+          title="EVENT BASICS & CLIENT"
+          summary={`${eventType?.toUpperCase() || 'EVENT'} • ${details.clientName ? `CLIENT: ${details.clientName}` : 'NO CLIENT'} • ${details.guests || 0} GUESTS • ${setting.toUpperCase()}`}
+        >
+          {/* Event Type selector */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>EVENT TYPE</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {EVENT_TYPES.map(({ value, label }) => {
+                const isSelected = eventType === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setEventType(value);
+                      if (!titleManuallyEdited) autoGenerateTitle(details.clientName, value);
+                    }}
+                    className={cn(
+                      'p-3 rounded-[10px] border text-left transition-all flex items-center justify-between',
+                      isSelected
+                        ? 'bg-foreground text-background border-foreground shadow-sm'
+                        : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
+                    )}
+                  >
+                    <span className="text-[12px] font-bold uppercase">{label}</span>
+                    <DotRadio selected={isSelected} activeColor={isSelected ? 'var(--background)' : dotActive} inactiveColor={dotInactive} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Client Name */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>CLIENT NAME</span>
+            <input
+              type="text"
+              value={details.clientName}
+              onChange={(e) => {
+                setDetails(prev => ({ ...prev, clientName: e.target.value }));
+                autoGenerateTitle(e.target.value, eventType);
+              }}
+              placeholder="EG. ROSSI"
+              className={cn('w-full bg-transparent border-b pb-2 text-[20px] font-bold uppercase focus:outline-none', tc, bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
+            />
+          </div>
+
+          {/* Event Title */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EVENT TITLE</span>
+            <input
+              type="text"
+              value={details.title}
+              onChange={(e) => {
+                setDetails({ ...details, title: e.target.value });
+                setTitleManuallyEdited(true);
+              }}
+              placeholder="EG. WEDDING PARTY"
+              className={cn('w-full bg-transparent border-b pb-2 text-[20px] font-bold uppercase focus:outline-none', tc, bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
+            />
+          </div>
+
+          {/* Guests & Setting */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+            <div>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>GUESTS</span>
+              <div className="flex items-center gap-3 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setDetails(prev => ({ ...prev, guests: Math.max(0, prev.guests - 10) }))}
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-foreground text-background"
+                >
+                  <Minus className="w-4 h-4 text-background" />
+                </button>
+                <span className={cn('text-[28px] font-bold leading-none flex-1 text-center', tc)}>{details.guests}</span>
+                <button
+                  type="button"
+                  onClick={() => setDetails(prev => ({ ...prev, guests: prev.guests + 10 }))}
+                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-foreground text-background"
+                >
+                  <Plus className="w-4 h-4 text-background" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[50, 100, 150, 200, 300, 500].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setDetails(prev => ({ ...prev, guests: n }))}
+                    className={cn(
+                      'px-2.5 py-1 rounded-[6px] text-[10px] font-bold transition-all',
+                      details.guests === n ? bgPillSelected : bgPillUnselected
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>SETTING</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSetting('indoor')}
+                  className={cn(
+                    'flex-1 py-2 rounded-lg text-[12px] font-bold uppercase border transition-all text-center',
+                    setting === 'indoor' ? bgPillSelected + ' border-current' : 'bg-transparent text-foreground/50 border-foreground/20'
+                  )}
+                >
+                  INDOOR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSetting('outdoor')}
+                  className={cn(
+                    'flex-1 py-2 rounded-lg text-[12px] font-bold uppercase border transition-all text-center',
+                    setting === 'outdoor' ? bgPillSelected + ' border-current' : 'bg-transparent text-foreground/50 border-foreground/20'
+                  )}
+                >
+                  OUTDOOR
+                </button>
+              </div>
+            </div>
+          </div>
+        </AccordionCard>
+
+        {/* Section 2: Date, Time & Venue */}
+        <AccordionCard
+          isOpen={!!expandedSections.date_venue}
+          onToggle={() => toggleEditSection('date_venue')}
+          stepNumber="02"
+          title="DATE, TIME & VENUE"
+          summary={`${formattedDateStr} @ ${details.startTime} - ${details.endTime} • ${details.venue || 'VENUE TBD'}`}
+          hasWarning={warnField('date') || warnField('venue') || warnField('time')}
+        >
+          {/* Venue */}
+          <div className={cn(warnField('venue') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('venue') ? 'text-[var(--warning)]' : tcMuted)}>VENUE</span>
+              {warnField('venue') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
+            </div>
+            <VenueAutocomplete
+              value={details.venue}
+              onChange={(val) => setDetails({ ...details, venue: val })}
+              onSelect={(place) => {
+                setDetails(prev => ({
+                  ...prev,
+                  venue: place.name,
+                  ...(place.address ? { address: place.address } : {}),
+                  ...(place.city ? { city: place.city } : {}),
+                  ...(place.state ? { province: place.state } : {}),
+                  ...(place.postcode ? { zip: place.postcode } : {}),
+                  ...(place.country ? { country: place.country } : {}),
+                }));
+              }}
+              placeholder="VENUE NAME"
+              className={cn('w-full bg-transparent border-b pb-2 text-[20px] font-bold uppercase focus:outline-none mb-3', tc, warnField('venue') ? 'border-[var(--warning)]/50' : bcMuted, 'placeholder:text-foreground/30 focus:border-foreground')}
+            />
+            {/* Address Tags */}
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                value={details.address}
+                onChange={(e) => setDetails({ ...details, address: e.target.value })}
+                placeholder="ADDRESS"
+                className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[140px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
+              />
+              <input
+                type="text"
+                value={details.city}
+                onChange={(e) => setDetails({ ...details, city: e.target.value })}
+                placeholder="CITY"
+                className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
+              />
+              <input
+                type="text"
+                value={details.province}
+                onChange={(e) => setDetails({ ...details, province: e.target.value })}
+                placeholder="PROVINCE"
+                className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[80px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
+              />
+              <input
+                type="text"
+                value={details.zip}
+                onChange={(e) => setDetails({ ...details, zip: e.target.value })}
+                placeholder="ZIP"
+                className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[50px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
+              />
+              <input
+                type="text"
+                value={details.country}
+                onChange={(e) => setDetails({ ...details, country: e.target.value })}
+                placeholder="COUNTRY"
+                className={cn('px-3 py-1.5 rounded-full text-[11px] font-bold uppercase focus:outline-none w-auto min-w-[60px]', bgPill, 'text-foreground/80 placeholder:text-foreground/30 focus:bg-foreground/15')}
+              />
+            </div>
+          </div>
+
+          {/* Calendar */}
+          <div className={cn(warnField('date') && 'rounded-lg p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
+            {warnField('date') && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold text-[var(--warning)] uppercase tracking-wider">DATE</span>
+                <AlertCircle className="w-3 h-3 text-[var(--warning)]" />
+              </div>
+            )}
+            <CalendarGrid selectedDate={details.date} onSelectDate={(d) => setDetails({ ...details, date: d })} isDark={isDarkBg} />
+          </div>
+
+          {/* Start / End Times */}
+          <div className={cn('grid grid-cols-2 gap-6', warnField('time') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('time') ? 'text-[var(--warning)]' : tcMuted)}>START</span>
+                {warnField('time') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
+              </div>
+              <TimePicker
+                value={details.startTime}
+                onChange={(val) => setDetails({ ...details, startTime: val })}
+                textSize="text-[20px]"
+                showIcon
+                className={cn('border-b pb-2 uppercase focus-within:border-foreground', tc, warnField('time') ? 'border-[var(--warning)]/50' : bcMuted)}
+              />
+            </div>
+            <div>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>END</span>
+              <TimePicker
+                value={details.endTime}
+                onChange={(val) => setDetails({ ...details, endTime: val })}
+                textSize="text-[20px]"
+                showIcon
+                className={cn('border-b pb-2 uppercase focus-within:border-foreground', tc, bcMuted)}
+              />
+            </div>
+          </div>
+        </AccordionCard>
+
+        {/* Section 3: Band Roster & Compensation */}
+        <AccordionCard
+          isOpen={!!expandedSections.team_pay}
+          onToggle={() => toggleEditSection('team_pay')}
+          stepNumber="03"
+          title="BAND & COMPENSATION"
+          summary={`${selectedMembers.length} OF ${MEMBERS.length} MUSICIANS • TOTAL: ${currencySymbol}${grandTotalFee}`}
+          hasWarning={warnField('members') || warnField('fee')}
+        >
+          {/* Performance Type Presets */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>PERFORMANCE TYPE</span>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'SOLO', count: 1, type: 'solo' as PerformanceType },
+                { label: 'DUO', count: 2, type: 'duo' as PerformanceType },
+                { label: 'TRIO', count: 3, type: 'trio' as PerformanceType },
+                { label: 'QUARTET', count: 4, type: 'full_band' as PerformanceType },
+                { label: 'FULL BAND', count: MEMBERS.length || 1, type: 'full_band' as PerformanceType },
+              ].map(preset => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setPerformanceType(preset.type);
+                    const newSelected = MEMBERS.slice(0, preset.count).map(m => m.id);
+                    if (currentUserMemberId && !newSelected.includes(currentUserMemberId)) {
+                      newSelected[0] = currentUserMemberId;
+                    }
+                    setSelectedMembers(newSelected);
+                    const newFees: Record<string, string> = {};
+                    newSelected.forEach((id, idx) => {
+                      if (memberFees[id] && memberFees[id] !== '0') {
+                        newFees[id] = memberFees[id];
+                      } else {
+                        newFees[id] = getAutoFeeForMember(id, newSelected.slice(0, idx), pricingSettings);
+                      }
+                    });
+                    setMemberFees(newFees);
+                  }}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-[11px] font-bold uppercase border transition-all',
+                    selectedMembers.length === preset.count
+                      ? bgPillSelected + ' border-current'
+                      : 'bg-transparent text-foreground/50 border-foreground/20'
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Musicians Roster */}
+          <div className={cn(warnField('members') && 'rounded-[10px] p-3 -m-3 bg-[var(--warning)]/10 ring-2 ring-[var(--warning)]/30')}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider', warnField('members') ? 'text-[var(--warning)]' : tcMuted)}>ROSTER</span>
+              {warnField('members') && <AlertCircle className="w-3 h-3 text-[var(--warning)]" />}
+            </div>
+
+            <div className="flex flex-col">
+              {MEMBERS.map((member) => {
+                const isSelected = selectedMembers.includes(member.id);
+                const isCurrentUser = member.id === currentUserMemberId;
+                const isLocked = isSelected && isCurrentUser;
+                const showFee = isSelected && isAdmin;
+
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-start justify-between py-3 border-b last:border-0 border-foreground/10"
+                  >
+                    <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          'px-2 py-0.5 text-[10px] font-bold uppercase rounded',
+                          isSelected
+                            ? 'bg-foreground text-background'
+                            : 'bg-foreground/10 text-foreground/50'
+                        )}>
+                          {isCurrentUser ? 'YOU / ' + member.role : member.role}
+                        </span>
+                        {isLocked && (
+                          <span className={cn('text-[9px] font-bold uppercase', tcSub)}>REQUIRED</span>
+                        )}
+                      </div>
+                      <span className={cn(
+                        'text-[18px] font-bold uppercase transition-opacity',
+                        isSelected ? tc : 'text-foreground/30'
+                      )}>
+                        {member.name}
+                      </span>
+                      
+                      {/* Fee input */}
+                      <AnimatePresence>
+                        {showFee && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className={cn('font-bold text-sm', tcSub)}>{currencySymbol}</span>
+                              <input
+                                type="number"
+                                value={memberFees[member.id] || ''}
+                                onChange={(e) => updateFee(member.id, e.target.value)}
+                                placeholder={getAutoFeeForMember(member.id, selectedMembers, pricingSettings)}
+                                className={cn(
+                                  'bg-transparent font-bold text-sm border-b focus:outline-none w-20 pb-0.5',
+                                  'text-foreground/60 border-foreground/10 focus:border-foreground placeholder:text-foreground/20'
+                                )}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => toggleMember(member.id)}
+                      className="shrink-0 mt-1"
+                    >
+                      <DotCheckbox
+                        checked={isSelected}
+                        disabled={isLocked}
+                        activeColor={dotActive}
+                        inactiveColor={dotInactive}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Extra fee & duration */}
+          <div className="flex flex-col gap-4 pt-2 border-t border-foreground/10">
+            {isAdmin && (
+              <div>
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>EXTRA BAND FEE / GIG RENTAL</span>
+                <div className="flex items-center">
+                  <span className={cn('text-[20px] font-bold', tcSub)}>{currencySymbol}</span>
+                  <input
+                    type="number"
+                    value={extraBandFee}
+                    onChange={(e) => setExtraBandFee(e.target.value)}
+                    placeholder="0"
+                    className={cn('bg-transparent text-[20px] font-bold focus:outline-none w-full placeholder:text-foreground/30', tc)}
+                  />
+                </div>
+                {pricingSettings.custom_services?.filter(s => s.is_active).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {pricingSettings.custom_services.filter(s => s.is_active).map(service => (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => {
+                          const current = parseFloat(extraBandFee) || 0;
+                          setExtraBandFee(String(current + service.price));
+                        }}
+                        className="px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase border border-foreground/15 bg-foreground/5 hover:bg-foreground/10 text-foreground/70 transition-colors"
+                      >
+                        + {service.name} ({currencySymbol}{service.price})
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>DURATION</span>
+              <select
+                value={details.duration}
+                onChange={(e) => setDetails({ ...details, duration: parseInt(e.target.value) || 0 })}
+                className={cn('bg-transparent text-[20px] font-bold focus:outline-none w-full appearance-none cursor-pointer', tc)}
+              >
+                {DURATION_15M_OPTIONS.map(m => (
+                  <option key={m} value={m} className="text-black bg-white text-base">
+                    {formatDurationOption(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Total calculation row */}
+            <div className="flex items-center justify-between py-2 border-t border-foreground/10">
+              <span className={cn('text-[11px] font-bold uppercase tracking-wider', tcMuted)}>TOTAL ESTIMATE</span>
+              <span className={cn('text-[24px] font-bold', tc)}>{currencySymbol}{grandTotalFee}</span>
+            </div>
+          </div>
+        </AccordionCard>
+
+        {/* Section 4: Setlist, Tasks & Notes */}
+        <AccordionCard
+          isOpen={!!expandedSections.setlist_tasks}
+          onToggle={() => toggleEditSection('setlist_tasks')}
+          stepNumber="04"
+          title="SETLIST, TASKS & NOTES"
+          summary={`${setlist.reduce((acc, s) => acc + (s.songs?.length || 0), 0)} SONGS • ${tasks.length} TASKS • ${notes ? 'NOTES ATTACHED' : 'NO NOTES'}`}
+        >
+          {/* Setlist Card */}
+          <div className="p-4 rounded-xl border border-foreground/10 bg-foreground/[0.03] flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase text-foreground/50">SETLIST</span>
+              <span className="text-[16px] font-bold text-foreground">
+                {setlist.length} {setlist.length === 1 ? 'Set' : 'Sets'} • {setlist.reduce((acc: number, s: any) => acc + ((s.songs || []).length), 0)} Songs
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSongsView(true)}
+              className="px-4 py-2 rounded-lg text-[12px] font-bold uppercase bg-foreground text-background hover:opacity-90 transition-opacity flex items-center gap-1.5"
+            >
+              <Music className="w-4 h-4" />
+              <span>MANAGE SETLIST</span>
+            </button>
+          </div>
+
+          {/* Tasks List */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-2', tcMuted)}>TASKS</span>
+            {taskTemplates.length > 0 && tasks.length === 0 && (
+              <div className="mb-3">
+                <span className={cn('text-[9px] font-bold uppercase block mb-1', tcSub)}>LOAD TEMPLATE</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {taskTemplates.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        const loaded = tpl.tasks.map((t: any) => ({
+                          uid: `t-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                          title: t.title,
+                          completed: false,
+                          templateId: tpl.id,
+                        }));
+                        setTasks(loaded);
+                      }}
+                      className="px-2.5 py-1 rounded-[8px] text-[10px] font-bold flex items-center gap-1.5 transition-all bg-foreground/10 text-foreground hover:bg-foreground/15"
+                    >
+                      <Folder className={cn('w-3 h-3', tcSub)} />
+                      {tpl.name}
+                      <span className={tcFaint}>{tpl.tasks.length}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {tasks.map((task, i) => (
+                <div key={task.uid || i} className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={task.title}
+                    onChange={(e) => {
+                      const newTasks = [...tasks];
+                      newTasks[i] = { ...newTasks[i], title: e.target.value };
+                      setTasks(newTasks);
+                    }}
+                    placeholder="Task description..."
+                    className={cn('flex-1 bg-transparent border-b-2 py-1 text-sm font-bold focus:outline-none transition-all border-foreground/15 placeholder:text-foreground/30 focus:border-foreground', tc)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTasks(tasks.filter((_, idx) => idx !== i))}
+                    className="text-foreground/30 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setTasks([...tasks, { uid: `t-${Date.now()}`, title: '', completed: false }])}
+                className={cn('text-[12px] font-bold uppercase flex items-center gap-1 transition-colors mt-1', tcMuted, 'hover:text-foreground')}
+              >
+                <Plus className="w-3 h-3" /> Add task
+              </button>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <span className={cn('text-[10px] font-bold uppercase tracking-wider block mb-1', tcMuted)}>NOTES FOR THE BAND</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any details or notes for the band..."
+              rows={3}
+              className={cn('w-full bg-transparent border p-3 rounded-lg text-sm font-medium focus:outline-none transition-all border-foreground/15 placeholder:text-foreground/30 focus:border-foreground', tc)}
+            />
+          </div>
+        </AccordionCard>
+      </div>
+    );
+  };
+
   // --- Render current step ---
   const renderStep = () => {
     switch (step) {
@@ -1817,9 +2590,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     }
   };
 
-  // --- Footer button config ---
+  // --- Footer button config for Wizard ---
   const isLastStep = step === STEPS.length - 1;
-  const isFirstStep = isEditing ? step <= 1 : step === 0;
+  const isFirstStep = step === 0;
   const currentStepConfig = STEPS[step];
   const isSkippable = currentStepConfig.skippable;
 
@@ -1839,11 +2612,74 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   })();
 
   const rightButtonLabel = isLastStep
-    ? (isEditing ? 'SAVE CHANGES' : 'CREATE EVENT')
+    ? 'CREATE EVENT'
     : isSkippable
       ? (hasStepData ? 'NEXT' : 'SKIP')
       : 'NEXT';
   const rightButtonAction = isLastStep ? handleCreate : handleNext;
+
+  if (isEditing) {
+    return (
+      <>
+        <motion.div
+          data-modal-open="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
+          style={{
+            backgroundColor: modalBg,
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
+          <WizardAccentRail color={activeAccentColor} />
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto px-4 pt-16 pb-6">
+            {renderEditAccordionView()}
+          </div>
+
+          {/* Sticky Footer for Edit */}
+          <div className="px-4 py-5 shrink-0 border-t border-foreground/10 bg-background/95 backdrop-blur-md">
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="py-4 bg-foreground/10 hover:bg-foreground/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors font-bold text-[16px] text-foreground"
+              >
+                <X className="w-4 h-4 text-foreground" />
+                <span>CANCEL</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={!details.date}
+                style={{
+                  backgroundColor: details.date ? activeAccentColor : undefined,
+                  color: details.date ? activeAccentFg : undefined,
+                }}
+                className={cn(
+                  'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
+                  details.date
+                    ? 'shadow-lg shadow-black/20 hover:opacity-95 cursor-pointer'
+                    : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
+                )}
+              >
+                <Check className="w-4 h-4" />
+                <span>SAVE CHANGES</span>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Songs Sub-view */}
+        <AnimatePresence>
+          {songsView && renderSongsView()}
+        </AnimatePresence>
+      </>
+    );
+  }
 
   return (
     <>
@@ -1863,30 +2699,56 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <WizardAccentRail color={activeAccentColor} />
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto px-4 pt-16 pb-4">
-          {/* Step Indicator */}
+          {/* Interactive Step Indicator */}
           <div className="mb-2">
-            <StepIndicator current={step} total={STEPS.length} activeColor={dotActive} inactiveColor={dotInactive} />
+            <InteractiveStepIndicator
+              current={step}
+              total={STEPS.length}
+              steps={STEPS}
+              maxAccessibleStep={maxAccessibleStep}
+              onSelectStep={(s) => setStep(s)}
+              activeColor={dotActive}
+              inactiveColor={dotInactive}
+            />
           </div>
 
-          {/* Header + Close */}
-          <div className="flex items-start justify-between mb-10">
-            <div className="flex flex-col gap-1">
+          {/* Header + Quick Save + Close */}
+          <div className="flex items-start justify-between mb-8">
+            <div className="flex flex-col gap-1 min-w-0 pr-2">
               <span className={cn('text-[12px] font-bold uppercase', tc)}>
-                {isEditing ? 'EDITING' : STEPS[step].label}
+                {STEPS[step].label}
               </span>
               <h1 className={cn('text-[32px] font-bold uppercase leading-[1] whitespace-pre-line', tc)}>
                 {STEPS[step].title}
               </h1>
               <span className={cn('text-[16px] font-bold uppercase', tcMuted)}>
-                {isEditing ? (editingWarnings.length > 0 ? `${editingWarnings.length} FIELD${editingWarnings.length > 1 ? 'S' : ''} TO COMPLETE` : 'REVIEW & SAVE') : STEPS[step].subtitle}
+                {STEPS[step].subtitle}
               </span>
             </div>
-            <button
-              onClick={onClose}
-              className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
-            >
-              <X className={cn('w-6 h-6', tc)} />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {canQuickSave && !isLastStep && (
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  style={{
+                    backgroundColor: activeAccentColor,
+                    color: activeAccentFg,
+                  }}
+                  className="px-3.5 py-2 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-sm hover:opacity-95 cursor-pointer"
+                  title="Create event now with current details"
+                >
+                  <span>QUICK SAVE</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <X className={cn('w-6 h-6', tc)} />
+              </button>
+            </div>
           </div>
 
           {/* Step Content */}
@@ -1908,6 +2770,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="grid grid-cols-2 gap-2.5">
             {isFirstStep ? (
               <button
+                type="button"
                 onClick={onClose}
                 className="py-4 bg-foreground/10 hover:bg-foreground/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
@@ -1916,6 +2779,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleBack}
                 className="py-4 bg-foreground/10 hover:bg-foreground/15 rounded-[10px] flex items-center justify-center gap-2 transition-colors"
               >
@@ -1924,6 +2788,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               </button>
             )}
             <button
+              type="button"
               onClick={rightButtonAction}
               disabled={!canProceed}
               style={{
@@ -1933,7 +2798,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               className={cn(
                 'py-4 rounded-[10px] flex items-center justify-center gap-2 transition-all font-bold text-[16px]',
                 canProceed
-                  ? 'shadow-lg shadow-black/20 hover:opacity-95'
+                  ? 'shadow-lg shadow-black/20 hover:opacity-95 cursor-pointer'
                   : 'bg-foreground/10 text-foreground/30 cursor-not-allowed'
               )}
             >
@@ -1941,6 +2806,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Secondary Quick Save option in footer on Steps 1 and 2 */}
+          {canQuickSave && !isLastStep && (
+            <div className="pt-2.5 text-center">
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground/50 hover:text-foreground transition-colors py-1 cursor-pointer"
+              >
+                <span>⚡ Quick Save (Skip remaining steps)</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
 

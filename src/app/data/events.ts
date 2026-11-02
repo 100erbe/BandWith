@@ -23,6 +23,9 @@ export interface EventItem {
   clientName?: string;
   venueAddress?: string;
   venueCity?: string;
+  venueName?: string;
+  distance?: string;
+  travelTime?: string;
   guests?: number;
   eventType?: string;
   loadInTime?: string;

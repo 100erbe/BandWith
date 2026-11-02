@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Search, X, Calendar, DollarSign, Music, Check, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -65,6 +65,16 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
 
+  const visibleCategories = useMemo(() => {
+    return isAdmin ? CATEGORIES : CATEGORIES.filter(c => c !== 'QUOTES');
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && selectedCategory === 'QUOTES') {
+      setSelectedCategory('ALL');
+    }
+  }, [isAdmin, selectedCategory]);
+
   const todayStr = useMemo(() => {
     const d = new Date();
     const year = d.getFullYear();
@@ -96,6 +106,11 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   // Filtered past events
   const filteredEvents = useMemo(() => {
     let result = [...rawPastEvents];
+
+    // Regular members must not see unconverted quotes
+    if (!isAdmin) {
+      result = result.filter(e => (e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote');
+    }
 
     // Year filter
     if (selectedYear !== 'ALL') {
@@ -260,7 +275,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
           <div className="flex items-center justify-between gap-[10px] flex-wrap">
             {/* Category pills */}
             <div className="flex items-center gap-[6px] overflow-x-auto pb-1">
-              {CATEGORIES.map((cat) => {
+              {visibleCategories.map((cat) => {
                 const isActive = selectedCategory === cat;
                 return (
                   <button

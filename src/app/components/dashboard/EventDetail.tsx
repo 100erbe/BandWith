@@ -142,6 +142,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
 
+  useEffect(() => {
+    if (!isAdmin && (eventType === 'quote' || userResponse === 'declined')) {
+      onClose();
+    }
+  }, [isAdmin, eventType, userResponse, onClose]);
+
+  if (!isAdmin && (eventType === 'quote' || userResponse === 'declined')) {
+    return null;
+  }
+
   const handleConfirmQuote = async () => {
     if (isConfirming || !onConfirmQuote) return;
     setIsConfirming(true);

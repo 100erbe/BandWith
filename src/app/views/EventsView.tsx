@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowUpRight,
@@ -231,11 +231,28 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return `${year}-${month}-${day}`;
   }, []);
 
+  const visibleFilters = useMemo(() => {
+    return isAdmin ? FILTERS : FILTERS.filter(f => f !== 'QUOTES' && f !== 'DRAFTS');
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && (eventFilter === 'QUOTES' || eventFilter === 'QUOTE' || eventFilter === 'DRAFTS' || eventFilter === 'DRAFT')) {
+      setEventFilter('ALL');
+    }
+  }, [isAdmin, eventFilter, setEventFilter]);
+
+  const filteredAllEvents = useMemo(() => {
+    if (!isAdmin) {
+      return allEvents.filter(e => e.status !== 'QUOTE' && e.status !== 'QUOTED' && e.eventType !== 'quote');
+    }
+    return allEvents;
+  }, [allEvents, isAdmin]);
+
   const { upcomingEvents, pastEvents } = useMemo(() => {
     const upcoming: EventData[] = [];
     const past: EventData[] = [];
 
-    allEvents.forEach((event) => {
+    filteredAllEvents.forEach((event) => {
       const normDate = normalizeDateStr(event.date);
       if (!normDate) {
         // Undated drafts or unscheduled events stay in upcoming
@@ -293,7 +310,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     });
 
     return { upcomingEvents: upcoming, pastEvents: past };
-  }, [allEvents, todayStr, calendarYear, calendarMonth]);
+  }, [filteredAllEvents, todayStr, calendarYear, calendarMonth]);
 
   const eyebrowLabel = useMemo(() => {
     if (eventFilter === 'All' || eventFilter === 'ALL') return 'SCHEDULE';
@@ -318,7 +335,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const map: Record<string, EventData[]> = {};
     const monthStart = new Date(calendarYear, calendarMonth, 1);
     const monthEnd = new Date(calendarYear, calendarMonth + 1, 0);
-    const source = allEvents;
+    const source = filteredAllEvents;
 
     const addToMap = (ev: EventData, dateObj: Date) => {
       const key = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
@@ -365,7 +382,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       }
     });
     return map;
-  }, [allEvents, calendarMonth, calendarYear]);
+  }, [filteredAllEvents, calendarMonth, calendarYear]);
 
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
@@ -752,7 +769,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ FILTER PILLS ═══ */}
           <div className="flex gap-[12px] items-center overflow-x-auto scrollbar-hide">
-            {FILTERS.map((f) => {
+            {visibleFilters.map((f) => {
               const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
               let activeBg = 'bg-white';
               let activeText = 'text-foreground';

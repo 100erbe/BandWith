@@ -123,11 +123,27 @@ export const getChats = async (
       throw participantsError;
     }
 
-    // Group participants by chat_id
+    // Fetch participant profiles for all participants
+    const allUserIds = Array.from(new Set((allParticipants || []).map((p: any) => p.user_id)));
+    let profileMap = new Map<string, any>();
+    if (allUserIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', allUserIds);
+      if (profilesData) {
+        profileMap = new Map(profilesData.map((pr: any) => [pr.id, pr]));
+      }
+    }
+
+    // Group participants by chat_id with profiles attached
     const participantsByChat = new Map<string, any[]>();
     (allParticipants || []).forEach((p: any) => {
       const existing = participantsByChat.get(p.chat_id) || [];
-      existing.push(p);
+      existing.push({
+        ...p,
+        profile: profileMap.get(p.user_id) || null,
+      });
       participantsByChat.set(p.chat_id, existing);
     });
 
@@ -542,7 +558,23 @@ export const getChatParticipants = async (
 
     if (error) throw error;
 
-    const mapped = (data || []) as ChatParticipant[];
+    const userIds = Array.from(new Set((data || []).map((p: any) => p.user_id)));
+    let profileMap = new Map<string, any>();
+    if (userIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+      if (profilesData) {
+        profileMap = new Map(profilesData.map((pr: any) => [pr.id, pr]));
+      }
+    }
+
+    const mapped = (data || []).map((p: any) => ({
+      ...p,
+      profile: profileMap.get(p.user_id) || null,
+    })) as ChatParticipant[];
+
     return { data: mapped, error: null };
   } catch (error: any) {
     return { data: null, error };

@@ -13,6 +13,7 @@ import { DotRadio } from '@/app/components/ui/DotRadio';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { WizardAccentRail, getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { TimePicker } from '@/app/components/ui/TimePicker';
 import { RehearsalState, RehearsalType, RehearsalSong, SongProposal, RehearsalTask, RehearsalMember, SetlistTemplate, RehearsalSetlistSnapshotFinal, ProposalAttachment, RecurrenceType } from './types';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, createSong, type Song, type Setlist, type SetlistWithSongs } from '@/lib/services/songs';
@@ -40,6 +41,7 @@ const MOCK_PROPOSALS: SongProposal[] = [
   { id: 'p1', title: 'Superstition', artist: 'Stevie Wonder', proposer: 'CE', reason: 'Great for funk set', votes: { yes: 3, no: 0, comments: 2 }, status: 'approved' },
   { id: 'p2', title: 'Cissy Strut', artist: 'The Meters', proposer: 'GB', reason: 'Classic instrumental', votes: { yes: 2, no: 1, comments: 4 }, status: 'pending' },
 ];
+
 
 function dbSongToRehearsalSong(song: Song): RehearsalSong {
   const secs = song.duration_seconds || 0;
@@ -109,6 +111,130 @@ interface Props {
   onCreate: (data: any) => void;
   editingEvent?: EditingEvent | null;
 }
+
+// --- Interactive Step Indicator for Rehearsal ---
+const InteractiveRehearsalStepIndicator: React.FC<{
+  current: number;
+  total: number;
+  steps: { title: string; subtitle: string; skippable: boolean }[];
+  maxAccessibleStep: number;
+  onSelectStep: (step: number) => void;
+  activeColor?: string;
+  inactiveColor?: string;
+}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => (
+  <div className="flex items-center gap-1.5 w-full">
+    {Array.from({ length: total }).map((_, i) => {
+      const isCurrent = i === current;
+      const isAccessible = i <= maxAccessibleStep;
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => isAccessible && onSelectStep(i)}
+          disabled={!isAccessible}
+          aria-label={`Step ${i + 1}: ${steps[i]?.title?.replace('\n', ' ') || ''}`}
+          className={cn(
+            'group flex-1 py-1 flex flex-col items-center justify-center transition-all',
+            isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-35'
+          )}
+        >
+          <div
+            className={cn(
+              'h-1.5 w-full rounded-full transition-all duration-300',
+              isCurrent ? 'h-2' : 'group-hover:opacity-80'
+            )}
+            style={{
+              backgroundColor: isCurrent
+                ? (activeColor || 'var(--foreground)')
+                : isAccessible
+                  ? (activeColor || 'var(--foreground)')
+                  : (inactiveColor || 'var(--border)'),
+              opacity: isCurrent ? 1 : isAccessible ? 0.4 : 0.15,
+            }}
+          />
+          <div className="flex items-center gap-1 mt-1">
+            <span
+              className={cn(
+                'text-[9px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
+                isCurrent ? 'text-foreground' : 'text-foreground/40 group-hover:text-foreground/70'
+              )}
+            >
+              STEP 0{i + 1}
+            </span>
+          </div>
+        </button>
+      );
+    })}
+  </div>
+);
+
+// --- Accordion Card for Editing Rehearsal ---
+const RehearsalAccordionCard: React.FC<{
+  isOpen: boolean;
+  onToggle: () => void;
+  stepNumber: string;
+  title: string;
+  summary: string;
+  hasWarning?: boolean;
+  warningLabel?: string;
+  children: React.ReactNode;
+}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'NEEDS ATTENTION', children }) => {
+  return (
+    <div className={cn(
+      'rounded-[16px] border transition-all overflow-hidden',
+      hasWarning
+        ? 'border-[var(--warning)]/50 bg-[var(--warning)]/5'
+        : isOpen
+          ? 'border-foreground/20 bg-foreground/[0.02]'
+          : 'border-foreground/10 bg-transparent hover:border-foreground/15'
+    )}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-5 py-4 flex items-center justify-between text-left transition-colors"
+      >
+        <div className="flex flex-col gap-1 min-w-0 pr-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">{stepNumber}</span>
+            <span className="text-[15px] font-bold uppercase text-foreground">{title}</span>
+            {hasWarning && (
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[var(--warning)]/15 text-[var(--warning)] flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {warningLabel}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold uppercase text-foreground/45 truncate">
+            {summary}
+          </span>
+        </div>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 w-8 h-8 rounded-full border border-foreground/10 flex items-center justify-center text-foreground/60"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-2 border-t border-foreground/10 flex flex-col gap-6">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent }) => {
   const { selectedBand, isAdmin } = useBand();
@@ -282,6 +408,39 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const handleBack = () => {
     if (step > 0) setStep(step - 1);
     else onClose();
+  };
+
+  const editingWarnings = useMemo(() => {
+    if (!editingEvent) return [];
+    const w: string[] = [];
+    if (!data.location || data.location === 'TBD') w.push('location');
+    if (!data.date) w.push('date');
+    if (!data.title) w.push('title');
+    return w;
+  }, [editingEvent, data.location, data.date, data.title]);
+
+  const maxAccessibleStep = useMemo(() => {
+    if (isEditing) return STEPS.length - 1;
+    if (!data.title.trim()) return 0;
+    if (!data.location.trim() || !data.date) return 1;
+    return STEPS.length - 1;
+  }, [isEditing, data.title, data.location, data.date]);
+
+  const canQuickSave = useMemo(() => {
+    return !isEditing && data.title.trim() !== '' && data.location.trim() !== '' && !!data.date;
+  }, [isEditing, data.title, data.location, data.date]);
+
+  const [expandedEditSections, setExpandedEditSections] = useState<Record<string, boolean>>(() => {
+    return {
+      basics: false,
+      when_where: true,
+      setlist_proposals: false,
+      prep_tasks: false,
+    };
+  });
+
+  const toggleEditSection = (key: string) => {
+    setExpandedEditSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const canProceed = (() => {
@@ -747,20 +906,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       <div className="grid grid-cols-2 gap-4">
         <div>
           <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-2">START TIME</span>
-          <input
-            type="time"
+          <TimePicker
             value={data.time}
-            onChange={e => setData(prev => ({ ...prev, time: e.target.value }))}
-            className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[20px] font-bold focus:outline-none focus:border-foreground transition-colors pb-2"
+            onChange={val => setData(prev => ({ ...prev, time: val }))}
+            textSize="text-[20px]"
+            showIcon
+            className="border-b-2 border-foreground/20 text-foreground focus-within:border-foreground transition-colors pb-2"
           />
         </div>
         <div>
           <span className="text-[12px] font-bold uppercase text-foreground/40 tracking-wider block mb-2">END TIME</span>
-          <input
-            type="time"
+          <TimePicker
             value={endTime}
-            onChange={e => setEndTime(e.target.value)}
-            className="w-full bg-transparent border-b-2 border-foreground/20 text-foreground text-[20px] font-bold focus:outline-none focus:border-foreground transition-colors pb-2"
+            onChange={val => setEndTime(val)}
+            textSize="text-[20px]"
+            showIcon
+            className="border-b-2 border-foreground/20 text-foreground focus-within:border-foreground transition-colors pb-2"
           />
         </div>
       </div>
@@ -1521,7 +1682,752 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     );
   };
 
+  // ── ACCORDION EDIT VIEW (FOR isEditing === true) ───────────
+
+  const renderEditAccordionView = () => {
+    const queueIds = data.selectedTemplateIdsInOrder || [];
+    const hasQueue = queueIds.length > 0;
+    const bandTasks = data.tasks.filter(t => t.assignedTo.includes('all') || t.assignedTo.length === 0);
+    const assignedTasks = data.tasks.filter(t => !t.assignedTo.includes('all') && t.assignedTo.length > 0);
+
+    return (
+      <div className="flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1 min-w-0 pr-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground text-background">
+                EDITING
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground/10 text-foreground/60">
+                {data.type.replace('_', ' ').toUpperCase()}
+              </span>
+              {data.recurrence !== 'once' && (
+                <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-foreground/10 text-foreground/60">
+                  {data.recurrence.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <h1 className="text-[28px] font-bold uppercase leading-tight text-foreground truncate mt-1">
+              {data.title || 'UNTITLED REHEARSAL'}
+            </h1>
+            <span className="text-[13px] font-bold uppercase text-foreground/50">
+              {formatDate(data.date)} @ {data.time} – {endTime} • {data.location || 'LOCATION TBD'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
+          >
+            <X className="w-5 h-5 text-foreground" />
+          </button>
+        </div>
+
+        {/* Warnings Banner */}
+        {editingWarnings.length > 0 && (
+          <div className="p-4 rounded-[14px] bg-[var(--warning)]/10 border border-[var(--warning)]/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-[var(--warning)] shrink-0 mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[12px] font-bold text-[var(--warning)] uppercase tracking-wider">
+                {editingWarnings.length} {editingWarnings.length === 1 ? 'FIELD NEEDS' : 'FIELDS NEED'} ATTENTION
+              </span>
+              <span className="text-[11px] font-medium text-foreground/70">
+                Please complete missing details: {editingWarnings.join(', ')}.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Section 1: Session Type & Recurrence */}
+        <RehearsalAccordionCard
+          isOpen={!!expandedEditSections.basics}
+          onToggle={() => toggleEditSection('basics')}
+          stepNumber="01"
+          title="SESSION TYPE & RECURRENCE"
+          summary={`${data.type.replace('_', ' ').toUpperCase()} • ${data.audienceIds.length === 0 ? 'ALL MEMBERS' : `${data.audienceIds.length} MEMBERS`} • ${data.recurrence === 'once' ? 'ONE TIME' : data.recurrence.toUpperCase()}`}
+          hasWarning={!data.title.trim()}
+          warningLabel="MISSING TITLE"
+        >
+          {/* Title */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-foreground/50">SESSION TITLE</span>
+            <input
+              type="text"
+              value={data.title}
+              onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
+              className="w-full bg-transparent border-b pb-2 text-[20px] font-bold uppercase focus:outline-none border-foreground/15 focus:border-foreground"
+              placeholder="Rehearsal Title"
+            />
+          </div>
+
+          {/* Type Selection */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-foreground/50">SESSION TYPE</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {TYPE_OPTIONS.map(opt => {
+                const isSelected = data.type === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleTypeChange(opt.value)}
+                    className={cn(
+                      "p-3 rounded-[10px] border text-left transition-all flex items-center justify-between",
+                      isSelected
+                        ? "bg-foreground text-background border-foreground shadow-sm"
+                        : "bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10"
+                    )}
+                  >
+                    <div className="flex flex-col min-w-0 pr-1">
+                      <span className="text-[12px] font-bold uppercase truncate">{opt.label}</span>
+                      <span className={cn("text-[9px] font-bold uppercase", isSelected ? "text-background/70" : "text-foreground/40")}>{opt.tag}</span>
+                    </div>
+                    <DotRadio
+                      selected={isSelected}
+                      activeColor={isSelected ? "var(--background)" : "var(--accent-rehearsal)"}
+                      inactiveColor="var(--border)"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recurrence */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-foreground/50">RECURRENCE</span>
+            <div className="flex flex-wrap gap-2">
+              {(['once', 'weekly', 'biweekly', 'monthly'] as const).map(freq => (
+                <button
+                  key={freq}
+                  type="button"
+                  onClick={() => setData(prev => ({ ...prev, recurrence: freq }))}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase border transition-all",
+                    data.recurrence === freq
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-transparent text-foreground/70 border-foreground/20 hover:border-foreground/40"
+                  )}
+                >
+                  {freq === 'once' ? 'ONE TIME' : freq.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Members / Audience */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider">ATTENDING MEMBERS</span>
+              <span className="text-[11px] font-bold text-foreground/50">
+                {data.audienceIds.length === 0 ? `All (${data.members.length})` : `${data.audienceIds.length}/${data.members.length}`}
+              </span>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11px] font-bold uppercase border transition-all",
+                  data.audienceIds.length === 0
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-transparent text-foreground/70 border-foreground/20"
+                )}
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={() => setData(prev => ({ ...prev, audienceIds: prev.members.map(m => m.id) }))}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11px] font-bold uppercase border transition-all",
+                  data.audienceIds.length > 0
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-transparent text-foreground/70 border-foreground/20"
+                )}
+              >
+                Custom
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {data.members.map(m => {
+                const isSelected = data.audienceIds.length === 0 || data.audienceIds.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleAudienceMember(m.id)}
+                    className="flex items-center gap-2 p-2.5 rounded-lg border border-foreground/10 hover:bg-foreground/5 text-left transition-colors"
+                  >
+                    <DotCheckbox
+                      checked={isSelected}
+                      activeColor="var(--accent-rehearsal)"
+                      inactiveColor="var(--border)"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <span className={cn("text-xs font-bold block truncate", isSelected ? "text-foreground" : "text-foreground/40")}>{m.name}</span>
+                      <span className="text-[9px] font-bold uppercase text-foreground/40">{m.role}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </RehearsalAccordionCard>
+
+        {/* Section 2: Date, Time & Studio */}
+        <RehearsalAccordionCard
+          isOpen={!!expandedEditSections.when_where}
+          onToggle={() => toggleEditSection('when_where')}
+          stepNumber="02"
+          title="DATE, TIME & STUDIO"
+          summary={`${formatDate(data.date)} @ ${data.time} – ${endTime} • ${data.location || 'LOCATION TBD'}`}
+          hasWarning={!data.location.trim() || data.location === 'TBD' || !data.date}
+          warningLabel="NEEDS ATTENTION"
+        >
+          {/* Venue Location */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-foreground/50">LOCATION / STUDIO</span>
+            <VenueAutocomplete
+              value={data.location}
+              onChange={val => setData(prev => ({ ...prev, location: val }))}
+              onSelect={place => {
+                const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
+                setData(prev => ({
+                  ...prev,
+                  location: place.name,
+                  ...(formatted ? { address: formatted } : {}),
+                }));
+              }}
+              placeholder="Venue or Studio Name"
+              className="w-full bg-transparent border-b pb-2 text-[20px] font-bold uppercase focus:outline-none border-foreground/15 focus:border-foreground"
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block mb-1 text-foreground/50">ADDRESS</span>
+            <input
+              type="text"
+              value={data.address}
+              onChange={e => setData(prev => ({ ...prev, address: e.target.value }))}
+              className="w-full bg-transparent border-b pb-1.5 text-sm font-bold uppercase focus:outline-none border-foreground/15 focus:border-foreground"
+              placeholder="Street, City, ZIP, Country"
+            />
+            {data.address && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {data.address.split(',').map((tag, i) => (
+                  <span key={i} className="bg-foreground/10 text-foreground/70 rounded-[6px] px-2 py-0.5 text-[11px] font-bold uppercase">
+                    {tag.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Calendar Picker */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] font-bold uppercase text-foreground tracking-wider">{calMonthName} {calYear}</span>
+              <div className="flex gap-2">
+                <button type="button" onClick={prevMonth} className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground hover:bg-foreground/20 transition-colors">
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={nextMonth} className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground hover:bg-foreground/20 transition-colors">
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {['M','T','W','T','F','S','S'].map((d, i) => (
+                <div key={i} className="text-center text-[11px] font-bold text-foreground/30 py-1">{d}</div>
+              ))}
+              {calDays.map((day, i) => {
+                const isSelected = day && calMonth === selectedMonth && calYear === selectedYear && day === selectedDay;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => day && selectCalendarDay(day)}
+                    disabled={!day}
+                    className={cn(
+                      "h-9 rounded-full text-sm font-bold transition-all",
+                      !day && "invisible",
+                      isSelected
+                        ? "bg-foreground text-background"
+                        : day ? "text-foreground/70 hover:bg-foreground/10" : ""
+                    )}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Start & End Times */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider block mb-1">START TIME</span>
+              <TimePicker
+                value={data.time}
+                onChange={val => setData(prev => ({ ...prev, time: val }))}
+                textSize="text-[20px]"
+                showIcon
+                className="border-b pb-1.5 border-foreground/15 focus-within:border-foreground"
+              />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider block mb-1">END TIME</span>
+              <TimePicker
+                value={endTime}
+                onChange={val => setEndTime(val)}
+                textSize="text-[20px]"
+                showIcon
+                className="border-b pb-1.5 border-foreground/15 focus-within:border-foreground"
+              />
+            </div>
+          </div>
+
+          {/* Studio Cost & Split */}
+          <div className="pt-2 border-t border-foreground/10">
+            <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider block mb-2">STUDIO COST</span>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setData(prev => ({ ...prev, venueType: 'free' }))}
+                className={cn(
+                  "flex items-center justify-center gap-2 py-2.5 rounded-lg border font-bold text-xs uppercase transition-all",
+                  data.venueType === 'free'
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-transparent text-foreground/70 border-foreground/20"
+                )}
+              >
+                <Home className="w-4 h-4" />
+                Free
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setData(prev => ({ ...prev, venueType: 'paid' }))}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2.5 rounded-lg border font-bold text-xs uppercase transition-all",
+                    data.venueType === 'paid'
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-transparent text-foreground/70 border-foreground/20"
+                  )}
+                >
+                  <Euro className="w-4 h-4" />
+                  Paid
+                </button>
+              )}
+            </div>
+
+            {data.venueType === 'paid' && isAdmin && (
+              <div className="p-4 rounded-xl bg-foreground/5 border border-foreground/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-foreground/40 block">TOTAL COST (€)</span>
+                    <input
+                      type="number"
+                      value={data.totalCost}
+                      onChange={e => setData(prev => ({ ...prev, totalCost: e.target.value }))}
+                      className="bg-transparent text-[24px] font-bold focus:outline-none w-32 border-b border-foreground/20"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase text-foreground/40 block">PER PERSON</span>
+                    <span className="text-[18px] font-bold text-foreground">
+                      €{(parseInt(data.totalCost || '0') / Math.max(data.audienceIds.length || data.members.length, 1)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase border transition-all",
+                      data.splitMethod === 'equal' ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground/70 border-foreground/20"
+                    )}
+                  >
+                    Equal Split
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase border transition-all",
+                      data.splitMethod === 'custom' ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground/70 border-foreground/20"
+                    )}
+                  >
+                    Custom
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </RehearsalAccordionCard>
+
+        {/* Section 3: Setlist & Proposals */}
+        <RehearsalAccordionCard
+          isOpen={!!expandedEditSections.setlist_proposals}
+          onToggle={() => toggleEditSection('setlist_proposals')}
+          stepNumber="03"
+          title="SETLIST & PROPOSALS"
+          summary={`${data.setlistSnapshotFinal?.songs.length || data.setlist.length} SONGS • ${data.proposals.length} PROPOSALS`}
+        >
+          {/* Active Setlist Card */}
+          {data.setlistSnapshotFinal ? (
+            <div
+              className={cn(
+                "rounded-[10px] p-4 cursor-pointer transition-all border",
+                isSetlistConfirmed
+                  ? "bg-accent/15 border-accent/40"
+                  : "bg-foreground/5 border-foreground/15 hover:bg-foreground/10"
+              )}
+              onClick={() => setIsReviewSetlistOpen(true)}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase text-foreground/50 tracking-wider">Active Setlist</span>
+                <span className="text-[10px] font-bold uppercase text-foreground/40">Tap to edit</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[28px] font-bold text-foreground leading-none">{data.setlistSnapshotFinal.songs.length}</span>
+                <span className="text-xs font-bold text-foreground/40 uppercase">Songs</span>
+              </div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="px-2 py-0.5 bg-foreground/10 text-foreground text-[10px] font-bold uppercase rounded-full">{totalDuration}</span>
+                <span className="px-2 py-0.5 bg-foreground/10 text-foreground/60 text-[10px] font-bold uppercase rounded-full">
+                  {data.setlistSnapshotFinal.sources.length} sources
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 rounded-xl border border-foreground/10 bg-foreground/5">
+              <span className="text-xs font-bold uppercase text-foreground/50">No setlist attached</span>
+              <button
+                type="button"
+                onClick={() => setSongPickerOpen(true)}
+                className="px-3 py-1.5 bg-foreground text-background rounded-lg text-xs font-bold uppercase hover:opacity-90 transition-opacity"
+              >
+                + Add Songs
+              </button>
+            </div>
+          )}
+
+          {/* Pending queue if any */}
+          {hasQueue && (
+            <div className="bg-foreground/5 rounded-xl p-3 border border-foreground/10 space-y-2">
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider block">
+                Queue ({queueIds.length})
+              </span>
+              <div className="space-y-1">
+                {queueIds.map((tid, i) => {
+                  const t = templates.find(tp => tp.id === tid);
+                  return (
+                    <div key={`${tid}-${i}`} className="flex items-center justify-between bg-foreground/5 px-2.5 py-1.5 rounded-lg text-xs">
+                      <span className="font-bold text-foreground truncate">{t?.name || 'Unknown'}</span>
+                      <button type="button" onClick={() => handleRemoveFromQueue(i)} className="text-foreground/40 hover:text-red-500">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={handleBuildSnapshot}
+                className="w-full py-2 bg-foreground text-background rounded-lg text-xs font-bold uppercase"
+              >
+                Merge into Setlist
+              </button>
+            </div>
+          )}
+
+          {/* Available setlists */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider">Available Setlists</span>
+              <button
+                type="button"
+                onClick={() => openSetlistEditor(null)}
+                className="text-[11px] font-bold uppercase text-foreground/60 hover:text-foreground flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> New Setlist
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {templates.slice(0, 4).map(template => {
+                const inQueue = queueIds.includes(template.id);
+                return (
+                  <div key={template.id} className="p-2.5 rounded-lg border border-foreground/10 bg-foreground/[0.02] flex items-center justify-between text-xs">
+                    <span className="font-bold text-foreground truncate">{template.name} ({template.songIds.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddToQueue(template.id)}
+                      className="px-2 py-1 rounded bg-foreground/10 hover:bg-foreground/15 text-[10px] font-bold uppercase text-foreground"
+                    >
+                      {inQueue ? 'Queued' : '+ Add'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Proposals */}
+          <div className="pt-2 border-t border-foreground/10 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase text-foreground/60">
+              {data.proposals.length} Song Proposals
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsProposeModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg border border-foreground/20 text-xs font-bold uppercase text-foreground hover:bg-foreground/5"
+            >
+              + Propose Song
+            </button>
+          </div>
+        </RehearsalAccordionCard>
+
+        {/* Section 4: Gear, Checklists & Tasks */}
+        <RehearsalAccordionCard
+          isOpen={!!expandedEditSections.prep_tasks}
+          onToggle={() => toggleEditSection('prep_tasks')}
+          stepNumber="04"
+          title="GEAR, CHECKLISTS & TASKS"
+          summary={`${data.tasks.length} TASKS • ${checklistChecked.size} OF ${data.defaultChecklist.length} GEAR CHECKED`}
+        >
+          {/* Personal Checklist */}
+          <div>
+            <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider block mb-2">MY GEAR CHECKLIST</span>
+            <div className="grid grid-cols-2 gap-2">
+              {data.defaultChecklist.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="flex items-center gap-2 p-2 rounded-lg border border-foreground/10 text-left hover:bg-foreground/5 transition-colors"
+                  onClick={() => setChecklistChecked(prev => {
+                    const next = new Set(prev);
+                    if (next.has(i)) next.delete(i); else next.add(i);
+                    return next;
+                  })}
+                >
+                  <DotCheckbox
+                    checked={checklistChecked.has(i)}
+                    activeColor="var(--accent-rehearsal)"
+                    inactiveColor="var(--border)"
+                  />
+                  <span className={cn("text-xs font-bold truncate", checklistChecked.has(i) ? "text-foreground" : "text-foreground/40")}>{item}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tasks List */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase text-foreground/50 tracking-wider">TASKS ({data.tasks.length})</span>
+              <button
+                type="button"
+                onClick={() => setIsAddTaskModalOpen(true)}
+                className="text-[11px] font-bold uppercase text-foreground/60 hover:text-foreground flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Task
+              </button>
+            </div>
+
+            {taskTemplatesDB.length > 0 && data.tasks.length === 0 && (
+              <div className="mb-2">
+                <span className="text-[9px] font-bold uppercase text-foreground/40 block mb-1">LOAD TEMPLATE</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {taskTemplatesDB.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => loadTaskTemplate(tpl)}
+                      className="px-2.5 py-1 rounded text-[10px] font-bold uppercase bg-foreground/10 text-foreground hover:bg-foreground/15"
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              {data.tasks.map(task => (
+                <div
+                  key={task.id}
+                  onClick={() => openTaskEdit(task)}
+                  className="p-2.5 rounded-lg border border-foreground/10 bg-foreground/[0.02] flex items-center justify-between cursor-pointer hover:bg-foreground/5"
+                >
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-bold text-foreground truncate">{task.text}</p>
+                    <span className="text-[9px] font-bold uppercase text-foreground/40">{task.type}</span>
+                  </div>
+                  <DotCheckbox
+                    checked={task.completed}
+                    activeColor="var(--accent-rehearsal)"
+                    inactiveColor="var(--border)"
+                  />
+                </div>
+              ))}
+              {data.tasks.length === 0 && (
+                <span className="text-xs text-foreground/40 italic block py-1">No tasks assigned yet.</span>
+              )}
+            </div>
+          </div>
+        </RehearsalAccordionCard>
+      </div>
+    );
+  };
+
   // ── MAIN RENDER ───────────────────────────────────────────
+
+  if (isEditing) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden"
+        >
+          <WizardAccentRail color={activeAccentColor} />
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto px-4 pt-16 pb-6 min-h-0">
+            {renderEditAccordionView()}
+          </div>
+
+          {/* Sticky Footer for Edit */}
+          <div className="px-4 pb-[max(env(safe-area-inset-bottom,12px),12px)] pt-4 shrink-0 border-t border-foreground/15 bg-background/95 backdrop-blur-md">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-foreground/10 text-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-foreground/15 transition-colors flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4 text-foreground" />
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !data.title.trim() || !data.location.trim()}
+                style={{
+                  backgroundColor: (!data.title.trim() || !data.location.trim()) ? undefined : activeAccentColor,
+                  color: (!data.title.trim() || !data.location.trim()) ? undefined : 'var(--accent-rehearsal-fg)',
+                }}
+                className={cn(
+                  "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                  (!data.title.trim() || !data.location.trim())
+                    ? "bg-foreground/10 text-foreground/30 cursor-not-allowed"
+                    : isSubmitting
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer"
+                )}
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Check className="w-4 h-4" />
+                SAVE REHEARSAL
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Modals */}
+        <RehearsalCostModal
+          isOpen={isCostModalOpen}
+          onClose={() => setIsCostModalOpen(false)}
+          data={data}
+          onUpdate={(updates) => setData(prev => ({ ...prev, ...updates }))}
+        />
+        <RehearsalProposeSongModal
+          isOpen={isProposeModalOpen}
+          onClose={() => setIsProposeModalOpen(false)}
+          currentUser={{ initials: 'GB' }}
+          onPropose={(proposal) => setData(prev => ({ ...prev, proposals: [...prev.proposals, proposal] }))}
+        />
+        <RehearsalAddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => setIsAddTaskModalOpen(false)}
+          members={data.members}
+          songs={data.setlist}
+          onAdd={(task) => setData(prev => ({ ...prev, tasks: [...prev.tasks, task] }))}
+        />
+        <RehearsalSetlistEditorModal
+          isOpen={isSetlistEditorOpen}
+          onClose={() => setIsSetlistEditorOpen(false)}
+          initialTemplate={editingTemplate}
+          library={library}
+          onSave={handleSaveTemplate}
+          onCreate={handleCreateTemplate}
+          currentUserInitials="GB"
+          bandId={selectedBand?.id}
+          onSongCreated={(song) => {
+            if (!library.find(s => s.id === song.id)) {
+              setLibrary(prev => [song, ...prev]);
+            }
+          }}
+        />
+        <RehearsalEditProposalModal
+          isOpen={isEditProposalOpen}
+          onClose={() => setIsEditProposalOpen(false)}
+          proposal={editingProposal}
+          onSave={handleSaveProposalDetails}
+        />
+        <RehearsalTaskDetailModal
+          isOpen={isTaskDetailOpen}
+          onClose={() => setIsTaskDetailOpen(false)}
+          task={editingTask}
+          members={data.members}
+          onSave={handleSaveTask}
+          onDelete={handleDeleteTask}
+        />
+        <RehearsalReviewSetlistModal
+          isOpen={isReviewSetlistOpen}
+          onClose={() => setIsReviewSetlistOpen(false)}
+          snapshot={data.setlistSnapshotFinal}
+          totalDuration={totalDuration}
+          onUpdateSnapshot={handleUpdateSnapshot}
+          onConfirmSetlist={handleConfirmSetlist}
+          onDeselectSetlist={handleDeselectSetlist}
+          isConfirmed={isSetlistConfirmed}
+        />
+        <RehearsalReviewTasksModal
+          isOpen={isReviewTasksOpen}
+          onClose={() => setIsReviewTasksOpen(false)}
+          tasks={data.tasks}
+          members={data.members}
+        />
+        <RehearsalReviewProposalsModal
+          isOpen={isReviewProposalsOpen}
+          onClose={() => setIsReviewProposalsOpen(false)}
+          proposals={data.proposals}
+        />
+        <RehearsalReviewMembersModal
+          isOpen={isReviewMembersOpen}
+          onClose={() => setIsReviewMembersOpen(false)}
+          members={data.members}
+        />
+        <AnimatePresence>
+          {songPickerOpen && (
+            <SongPicker
+              isOpen={songPickerOpen}
+              onClose={() => setSongPickerOpen(false)}
+              onSelect={handleSongPicked}
+              selectedIds={data.setlist.map(s => s.id)}
+              theme="blue"
+            />
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
 
   return (
     <>
@@ -1533,39 +2439,55 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <WizardAccentRail color={activeAccentColor} />
         {/* Header */}
         <div className="px-4 pt-[env(safe-area-inset-top,12px)] shrink-0">
-          <div className="pt-3 flex items-start justify-between mb-5">
-            <div className="flex items-center gap-1.5 pt-4">
-              {STEPS.map((_, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "h-1 rounded-[10px] transition-all duration-300",
-                    i === step ? "w-4 bg-foreground" : i < step ? "w-3 bg-foreground/60" : "w-2 bg-foreground/20"
-                  )}
-                />
-              ))}
-            </div>
-            <button
-              onClick={onClose}
-              className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
-            >
-              <X className="w-5 h-5 text-foreground" />
-            </button>
+          {/* Interactive Step Indicator */}
+          <div className="pt-2 mb-4">
+            <InteractiveRehearsalStepIndicator
+              current={step}
+              total={STEPS.length}
+              steps={STEPS}
+              maxAccessibleStep={maxAccessibleStep}
+              onSelectStep={(s) => setStep(s)}
+              activeColor={activeAccentColor}
+              inactiveColor="var(--border)"
+            />
           </div>
 
-          <div className="mb-4">
-            <span className="text-[12px] font-bold uppercase text-foreground/50 tracking-wider block mb-1">
-              STEP {String(step + 1).padStart(2, '0')}
-            </span>
-            <span className="text-[12px] font-bold text-foreground/60 uppercase">
-              {isEditing ? 'EDITING REHEARSAL' : 'NEW REHEARSAL'}
-            </span>
-            <h2 className="text-[32px] font-bold text-foreground leading-tight whitespace-pre-line">
-              {STEPS[step].title}
-            </h2>
-            <p className="text-[16px] font-bold text-foreground/40 mt-1">
-              {isEditing && step === 4 ? 'REVIEW & SAVE' : STEPS[step].subtitle}
-            </p>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col min-w-0 pr-2">
+              <span className="text-[12px] font-bold text-foreground/60 uppercase">
+                NEW REHEARSAL
+              </span>
+              <h2 className="text-[32px] font-bold text-foreground leading-tight whitespace-pre-line">
+                {STEPS[step].title}
+              </h2>
+              <p className="text-[16px] font-bold text-foreground/40 mt-0.5">
+                {STEPS[step].subtitle}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {canQuickSave && step < STEPS.length - 1 && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  style={{
+                    backgroundColor: activeAccentColor,
+                    color: 'var(--accent-rehearsal-fg)',
+                  }}
+                  className="px-3.5 py-2 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-sm hover:opacity-95 cursor-pointer"
+                  title="Create rehearsal now with current details"
+                >
+                  <span>QUICK SAVE</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-[50px] h-[50px] rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors"
+              >
+                <X className="w-5 h-5 text-foreground" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1583,6 +2505,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="grid grid-cols-2 gap-3">
             {step > 0 ? (
               <button
+                type="button"
                 onClick={handleBack}
                 className="bg-foreground/10 text-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-foreground/15 transition-colors flex items-center justify-center gap-2"
               >
@@ -1591,6 +2514,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               </button>
             ) : (
               <button
+                type="button"
                 onClick={onClose}
                 className="bg-foreground/10 text-foreground rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider hover:bg-foreground/15 transition-colors flex items-center justify-center gap-2"
               >
@@ -1601,6 +2525,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
             {step < STEPS.length - 1 ? (
               <button
+                type="button"
                 onClick={handleNext}
                 disabled={!STEPS[step].skippable && !canProceed}
                 style={{
@@ -1610,7 +2535,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 className={cn(
                   "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
                   (STEPS[step].skippable || canProceed)
-                    ? "shadow-lg shadow-black/20 hover:opacity-95"
+                    ? "shadow-lg shadow-black/20 hover:opacity-95 cursor-pointer"
                     : "bg-foreground/10 text-foreground/30 cursor-not-allowed"
                 )}
               >
@@ -1630,14 +2555,28 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 }}
                 className={cn(
                   "rounded-[10px] py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2",
-                  isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-95"
+                  isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-95 cursor-pointer"
                 )}
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isEditing ? 'SAVE REHEARSAL' : 'CREATE REHEARSAL'}
+                CREATE REHEARSAL
               </button>
             )}
           </div>
+
+          {/* Secondary Quick Save option in footer on Steps 1, 2, 3 */}
+          {canQuickSave && step < STEPS.length - 1 && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground/50 hover:text-foreground transition-colors py-1 cursor-pointer"
+              >
+                <span>⚡ Quick Save (Skip remaining steps)</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
 

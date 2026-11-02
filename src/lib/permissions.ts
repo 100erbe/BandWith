@@ -30,6 +30,8 @@ export interface Permissions {
   canManageInventory: boolean;
   canCreateTaskTemplates: boolean;
   canManageContracts: boolean;
+  canViewQuotes: boolean;
+  canManageQuotes: boolean;
   
   // Navigation
   canAccessSettings: boolean;
@@ -61,6 +63,8 @@ const adminPermissions: Permissions = {
   canManageInventory: true,
   canCreateTaskTemplates: true,
   canManageContracts: true,
+  canViewQuotes: true,
+  canManageQuotes: true,
   
   // Navigation
   canAccessSettings: true,
@@ -92,6 +96,8 @@ const memberPermissions: Permissions = {
   canManageInventory: false,
   canCreateTaskTemplates: false,
   canManageContracts: false,
+  canViewQuotes: false,
+  canManageQuotes: false,
   
   // Navigation
   canAccessSettings: true, // Personal settings only

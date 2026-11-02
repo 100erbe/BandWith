@@ -155,9 +155,19 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
 
+  // When modal closes or when hub is opened (notification is null), always reset viewingIndex and filter
+  useEffect(() => {
+    if (!isOpen || !notification) {
+      setViewingIndex(null);
+    }
+    if (!isOpen) {
+      setFilter('all');
+    }
+  }, [isOpen, notification]);
+
   const allNotifications =
     notifications.length > 0 ? notifications : notification ? [notification] : [];
-  const isListView = allNotifications.length > 1 && viewingIndex === null;
+  const isListView = viewingIndex === null && !notification;
 
   // Filtered notifications
   const displayedNotifications = filter === 'unread'
@@ -169,9 +179,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   // Determine which notification to show in detail view
   const detailNotif = viewingIndex !== null
     ? allNotifications[viewingIndex]
-    : allNotifications.length === 1
-      ? allNotifications[0]
-      : notification;
+    : notification;
 
   // Auto-mark notification as read when viewed in detail
   useEffect(() => {
@@ -180,12 +188,22 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     }
   }, [isOpen, detailNotif?.id, detailNotif?.read, onMarkAsRead]);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setViewingIndex(null);
+    setFilter('all');
+    onClose();
+  };
 
   const backToList = () => setViewingIndex(null);
 
   const handleAction = (action: string, notificationId?: string) => {
+    setViewingIndex(null);
     onAction?.(action, notificationId || detailNotif?.id);
+  };
+
+  const handleDelete = (id?: string) => {
+    setViewingIndex(null);
+    onDelete?.(id || detailNotif?.id);
   };
 
   const handleAddToCalendar = async () => {
@@ -259,7 +277,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   </button>
                 )}
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   aria-label="Close notifications"
                   className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all"
                 >
@@ -558,7 +576,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             <div className="max-w-xl mx-auto w-full">
               {isListView ? (
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="w-full py-3.5 rounded-[12px] flex items-center justify-center gap-2 bg-foreground text-background font-bold uppercase text-xs tracking-wider active:scale-98 transition-all shadow-xs"
                 >
                   <span>CLOSE NOTIFICATIONS</span>
@@ -580,7 +598,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     </button>
                   </div>
                   <button
-                    onClick={() => onDelete?.(detailNotif.id)}
+                    onClick={() => handleDelete(detailNotif?.id)}
                     className="text-[11px] font-semibold uppercase text-foreground/40 hover:text-foreground/70 py-1"
                   >
                     DISMISS NOTIFICATION
@@ -595,7 +613,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     <span>BACK TO LIST</span>
                   </button>
                   <button
-                    onClick={() => onDelete?.(detailNotif?.id)}
+                    onClick={() => handleDelete(detailNotif?.id)}
                     aria-label="Delete notification"
                     className="w-12 h-12 rounded-[12px] flex items-center justify-center bg-foreground/5 hover:bg-red-500/10 hover:text-red-500 text-foreground/50 border border-foreground/10 active:scale-95 transition-all shrink-0"
                   >

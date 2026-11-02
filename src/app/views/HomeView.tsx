@@ -91,15 +91,67 @@ const formatEventRowDate = (rawDate?: string | null): string => {
   return `${month} ${day}`;
 };
 
+/**
+ * Logical rule for event location display in Upcoming Shows & Rehearsals:
+ * The most important information shown to a performer is how far the gig is.
+ *
+ * Rule Hierarchy:
+ * 1. Distance / Travel metric: If distance or travel time is available (calculated later or manually set),
+ *    show distance first (with city context if present).
+ * 2. City (Geographic Distance Context): If all venue info is being added (both venue and city are known),
+ *    prioritize and show the CITY so members immediately know the destination city.
+ * 3. Venue Name: If ONLY the venue is added (no city specified), show the VENUE.
+ * 4. General fallback: Raw location string if neither city nor venue are explicitly parsed.
+ */
 const formatEventLocation = (event: any): string | null => {
-  const venue = event.venue_name || (event.location && event.location !== 'TBD' ? event.location.split(',')[0].trim() : null);
-  const city = event.venue_city || (event.location && event.location.includes(',') ? event.location.split(',')[1].trim() : null);
+  if (!event) return null;
 
-  if (venue && city && !venue.toLowerCase().includes(city.toLowerCase())) {
-    return `${toTitleCase(venue)}, ${toTitleCase(city)}`;
+  // 1. Distance / Travel time placeholder rule (for future distance calculation)
+  const distance = (event.distance || event.travel_time || event.travelTime || '')?.toString().trim();
+
+  // 2. Resolve city
+  const city = (
+    event.venue_city ||
+    event.venueCity ||
+    event.city ||
+    (typeof event.location === 'string' && event.location.includes(',') ? event.location.split(',')[1].trim() : null)
+  )?.toString().trim();
+
+  // 3. Resolve venue
+  const venue = (
+    event.venue_name ||
+    event.venueName ||
+    (typeof event.location === 'string' && event.location !== 'TBD' ? event.location.split(',')[0].trim() : null)
+  )?.toString().trim();
+
+  const isCityValid = Boolean(city && city.toLowerCase() !== 'tbd');
+  const isVenueValid = Boolean(venue && venue.toLowerCase() !== 'tbd');
+
+  // Rule 1: How far the gig is (Distance / Travel time when available)
+  if (distance) {
+    if (isCityValid && city) {
+      return `${distance} • ${toTitleCase(city)}`;
+    }
+    return distance;
   }
-  const single = venue || city || (event.location && event.location !== 'TBD' ? event.location : null);
-  return single ? toTitleCase(single) : null;
+
+  // Rule 2: If all venue info is being added (both venue & city), or city is present -> shows city
+  if (isCityValid && city) {
+    return toTitleCase(city);
+  }
+
+  // Rule 3: If only venue is being added (no city) -> shows venue
+  if (isVenueValid && venue) {
+    return toTitleCase(venue);
+  }
+
+  // Fallback to raw location if not TBD
+  const rawLocation = typeof event.location === 'string' ? event.location.trim() : null;
+  if (rawLocation && rawLocation.toLowerCase() !== 'tbd') {
+    return toTitleCase(rawLocation);
+  }
+
+  return null;
 };
 
 // --- Main Dashboard ---

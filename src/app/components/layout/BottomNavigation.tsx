@@ -63,6 +63,7 @@ interface BottomNavigationProps {
   isAdmin: boolean;
   isSolo?: boolean;
   isScrollingDown?: boolean;
+  unreadChatCount?: number;
 }
 
 type TabDescriptor = {
@@ -71,6 +72,7 @@ type TabDescriptor = {
   icon: React.FC<{ color: string }>;
   isActive: boolean;
   onClick: () => void;
+  badgeCount?: number;
 };
 
 /* ═══ Shared spring config — snappy, controlled, no visible bounce ═══ */
@@ -140,7 +142,8 @@ const NavTab: React.FC<{
   onClick: () => void;
   isScrollingDown: boolean;
   isMenuOpen: boolean;
-}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen }) => {
+  badgeCount?: number;
+}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen, badgeCount }) => {
   // Always bold and black (design system foreground color) regardless of selection
   const strokeColor = isMenuOpen ? 'var(--surface-inverse-fg)' : 'var(--fg)';
 
@@ -155,7 +158,7 @@ const NavTab: React.FC<{
     >
       {/* Icon: smoothly glides between elevated (with label) and dead-center (when shrunk) */}
       <motion.div
-        className="w-[22px] h-[22px] flex items-center justify-center z-10"
+        className="w-[22px] h-[22px] flex items-center justify-center z-10 relative"
         style={{ color: strokeColor }}
         animate={{
           y: isScrollingDown ? 0 : -6,
@@ -163,6 +166,14 @@ const NavTab: React.FC<{
         transition={SPRING}
       >
         <Icon color="currentColor" />
+        {badgeCount !== undefined && badgeCount > 0 ? (
+          <span className={cn(
+            "absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2",
+            isMenuOpen ? "ring-[var(--surface-inverse)]" : "ring-background"
+          )}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        ) : null}
       </motion.div>
 
       {/* Label: smoothly fades and glides in/out in absolute position to avoid layout jumps */}
@@ -206,6 +217,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isAdmin,
   isSolo = false,
   isScrollingDown = false,
+  unreadChatCount = 0,
 }) => {
   const navRef = useRef<HTMLDivElement>(null);
   
@@ -280,7 +292,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const tabs: TabDescriptor[] = [
     { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
     { key: 'Events', label: 'Calendar', icon: IconMusic, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
-    { key: 'Chat', label: 'Chat', icon: IconChat, isActive: isChatActive, onClick: () => handleTabClick('Chat') },
+    { key: 'Chat', label: 'Chat', icon: IconChat, isActive: isChatActive, badgeCount: unreadChatCount, onClick: () => handleTabClick('Chat') },
     {
       key: 'Settings',
       label: 'Settings',
@@ -389,7 +401,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           <SlidingPill activeKey={pillActiveKey} />
 
           {tabs.slice(0, 2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
           ))}
 
           <div className="relative z-10 flex items-center justify-center mx-1">
@@ -409,7 +421,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           </div>
 
           {tabs.slice(2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
           ))}
         </motion.div>
       </motion.div>

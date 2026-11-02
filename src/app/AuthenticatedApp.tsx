@@ -41,10 +41,11 @@ import { createSetlist } from "@/lib/services/songs";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
-import { ChatType, ChatItem } from "@/app/data/chats";
+import { ChatType, ChatFilterType, ChatItem } from "@/app/data/chats";
 import { NotificationItem } from "@/app/data/notifications";
 import type { Band } from "@/app/data/bands";
 import type { BandWithMembers } from "@/lib/services/bands";
+import { useOnlinePresence } from "@/lib/services/presence";
 
 import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@/app/types";
 
@@ -101,12 +102,11 @@ import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
   if (event.event_type === "rehearsal") return "REHEARSAL";
-  if (event.quote_id) return "QUOTE";
-  // Fall back to event status for legacy events
   const s = event.status?.toLowerCase();
-  if (s === "draft") return "DRAFT";
-  if (s === "tentative") return "QUOTE";
   if (s === "confirmed" || s === "completed") return "CONFIRMED";
+  if (event.quote_id || (event.event_type as string) === "quote" || s === "tentative" || s === "quoted" || s === "quote") return "QUOTE";
+  // Fall back to event status for legacy events
+  if (s === "draft") return "DRAFT";
   if (s === "cancelled") return "DRAFT";
   return "CONFIRMED";
 };
@@ -134,6 +134,9 @@ const eventToEventItem = (event: Event): EventItem => {
     clientName: event.client_name || undefined,
     venueAddress: event.venue_address || undefined,
     venueCity: event.venue_city || undefined,
+    venueName: event.venue_name || undefined,
+    distance: (event as any).distance || undefined,
+    travelTime: (event as any).travel_time || (event as any).travelTime || undefined,
     eventType: event.event_type || undefined,
     loadInTime: event.load_in_time || undefined,
     soundcheckTime: event.soundcheck_time || undefined,
@@ -259,7 +262,7 @@ export default function AuthenticatedApp() {
     return () => clearTimeout(t);
   }, [saveToast]);
 
-  const [chatFilter, setChatFilter] = useState<ChatType>("direct");
+  const [chatFilter, setChatFilter] = useState<ChatFilterType>("all");
   const [chatSearch, setChatSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -324,19 +327,23 @@ export default function AuthenticatedApp() {
     },
   });
   const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
+  const onlineUserIds = useOnlinePresence(user?.id);
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
 
-  // Filter confirmed events to exclude those where current user has declined
+  // Filter confirmed events: admins see all, members only see events where they've been added
   const myConfirmedEvents = useMemo(() => {
     if (!user?.id) return confirmedEvents;
     return confirmedEvents.filter(e => {
       const members = eventMembersMap[e.id] || [];
       const myMembership = members.find(m => m.userId === user.id);
+      if (!isAdmin) {
+        return !!myMembership && myMembership.status !== 'declined';
+      }
       return !myMembership || myMembership.status !== 'declined';
     });
-  }, [confirmedEvents, eventMembersMap, user?.id]);
+  }, [confirmedEvents, eventMembersMap, user?.id, isAdmin]);
 
   useEffect(() => {
     if (!masterEventsList?.length) return;
@@ -380,7 +387,23 @@ export default function AuthenticatedApp() {
 
   const events = useMemo(() => {
     if (masterEventsList && masterEventsList.length > 0) {
-      return masterEventsList.map(e => {
+      let list = masterEventsList;
+      // Regular members must not have access to quotes until converted to gigs
+      // AND members only see gigs or rehearsals where they've been added by an admin
+      if (!isAdmin) {
+        list = list.filter(e => {
+          const s = e.status?.toLowerCase();
+          const isQuote = (e.quote_id || (e.event_type as string) === 'quote' || s === 'tentative' || s === 'quoted' || s === 'quote') && s !== 'confirmed' && s !== 'completed';
+          if (isQuote) return false;
+          if (user?.id) {
+            const members = eventMembersMap[e.id] || [];
+            const myMembership = members.find(m => m.userId === user.id);
+            if (!myMembership || myMembership.status === 'declined') return false;
+          }
+          return true;
+        });
+      }
+      return list.map(e => {
         const item = eventToEventItem(e);
         const members = eventMembersMap[e.id] || [];
         if (members.length > 0) {
@@ -390,13 +413,13 @@ export default function AuthenticatedApp() {
           });
           item.memberUserIds = members.map(m => m.userId);
         }
-                  item.band_id = e.band_id || undefined;
-          item.band_name = e.band_id && bandLookup[e.band_id] ? bandLookup[e.band_id] : realBand?.name || undefined;
+        item.band_id = e.band_id || undefined;
+        item.band_name = e.band_id && bandLookup[e.band_id] ? bandLookup[e.band_id] : realBand?.name || undefined;
         return item;
       });
     }
     return [];
-  }, [masterEventsList, eventMembersMap]);
+  }, [masterEventsList, eventMembersMap, isAdmin, user?.id, bandLookup, realBand?.name]);
 
   // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search + optimistic) ═══
   const visuallyFilteredEvents = useMemo(() => {
@@ -409,14 +432,21 @@ export default function AuthenticatedApp() {
     if (optimisticallyHiddenEventIds.length > 0) {
       result = result.filter(e => !optimisticallyHiddenEventIds.includes(e.eventId || ''));
     }
-    // Exclude events where current user's membership status is "declined"
+    // For members: strictly only include events where current user is added by admin and hasn't declined
     if (user?.id) {
       result = result.filter(e => {
         if (!e.eventId) return true; // no UUID key, can't filter
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
+        if (!isAdmin) {
+          return !!myMembership && myMembership.status !== 'declined';
+        }
         return !myMembership || myMembership.status !== 'declined';
       });
+    }
+    // Double safety: regular members must never see unconverted quotes
+    if (!isAdmin) {
+      result = result.filter(e => (e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote');
     }
     // Status filter
     result = result.filter((e) => {
@@ -507,15 +537,15 @@ export default function AuthenticatedApp() {
 
   const notifications = useMemo(() => {
     if (!realNotifications?.length) return [];
-    return realNotifications.map((n) => {
-      let uiType: "chat" | "event" | "finance" = "event";
-      if (n.type.includes("quote") || n.type.includes("payment")) uiType = "finance";
-      if (n.type.includes("chat") || n.type.includes("member") || n.type === "custom") uiType = "chat";
+    return realNotifications
+      .filter((n) => !n.type.includes("chat")) // Exclude chat messages from the Notification Hub
+      .map((n) => {
+        let uiType: "chat" | "event" | "finance" = "event";
+        if (n.type.includes("quote") || n.type.includes("payment")) uiType = "finance";
 
-      let actionType: "NAV_CHAT" | "NAV_EVENTS" | "NAV_EVENTS_CONFIRMED" | "NAV_FINANCE" = "NAV_EVENTS";
-      if (uiType === "finance") actionType = "NAV_FINANCE";
-      if (uiType === "chat") actionType = "NAV_CHAT";
-      if (n.type === "event_confirmed") actionType = "NAV_EVENTS_CONFIRMED";
+        let actionType: "NAV_CHAT" | "NAV_EVENTS" | "NAV_EVENTS_CONFIRMED" | "NAV_FINANCE" = "NAV_EVENTS";
+        if (uiType === "finance") actionType = "NAV_FINANCE";
+        if (n.type === "event_confirmed") actionType = "NAV_EVENTS_CONFIRMED";
 
       const created = new Date(n.created_at);
       const diffMs = Date.now() - created.getTime();
@@ -658,7 +688,8 @@ export default function AuthenticatedApp() {
   const isNotificationsOpen = !!selectedNotification || selectedNotifications.length > 0;
 
   const handleOpenNotifications = useCallback(() => {
-    setSelectedNotifications(realNotifications || []);
+    const nonChatNotifs = (realNotifications || []).filter((n) => !n.type.includes("chat"));
+    setSelectedNotifications(nonChatNotifs);
     setSelectedNotification(null);
     if (unreadCount > 0) {
       markAllNotificationsAsRead().then(() => {
@@ -705,9 +736,30 @@ export default function AuthenticatedApp() {
       if (chat.type === "event") type = "event";
       if (chat.type === "group") type = "band";
 
-      const others = chat.participants.filter((p) => p.profile && p.user_id !== user?.id);
-      const displayName = chat.name || others.map((p) => p.profile?.full_name || "Unknown").join(", ") || "Chat";
-      const initials = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+      const others = chat.participants.filter((p) => p.user_id !== user?.id);
+      let displayName = "";
+      let avatarUrl: string | undefined = undefined;
+      if (type === "direct") {
+        const otherWithProfile = others.find((p) => (p as any).profile?.full_name);
+        displayName = otherWithProfile?.profile?.full_name || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" ? chat.name : (others[0] ? `User ${others[0].user_id.slice(0, 6)}` : "Direct Chat"));
+        const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
+        avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
+      } else if (type === "band") {
+        displayName = (chat.name && chat.name !== "New Chat") ? chat.name : (realBand?.name || "Band Chat");
+        avatarUrl = (chat as any).logo_url || (chat as any).avatar_url || realBand?.logo_url || undefined;
+      } else if (type === "event") {
+        displayName = (chat.name && chat.name !== "New Chat") ? chat.name : "Event Chat";
+      }
+      if (!displayName || displayName === "New Chat") {
+        displayName = "Chat";
+      }
+      const initials = displayName
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "C";
 
       const lastTime = chat.last_message?.created_at ? new Date(chat.last_message.created_at) : new Date(chat.created_at);
       const diffMs = Date.now() - lastTime.getTime();
@@ -746,12 +798,28 @@ export default function AuthenticatedApp() {
         eventMonthStr = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
       }
 
+      const isOnline = others.some((p) => {
+        if (onlineUserIds.has(p.user_id)) return true;
+        if (p.last_read_at) {
+          const diff = Date.now() - new Date(p.last_read_at).getTime();
+          return diff < 4 * 60 * 1000;
+        }
+        return false;
+      });
+
+      const isLastMessageMine = chat.last_message ? chat.last_message.sender_id === user?.id : false;
+      const otherLastRead = others[0]?.last_read_at ? new Date(others[0].last_read_at) : null;
+      const isLastMessageRead = isLastMessageMine && otherLastRead && chat.last_message?.created_at
+        ? new Date(chat.last_message.created_at) <= otherLastRead
+        : false;
+
       return {
         id: parseInt(chat.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
         uuid: chat.id,
         type,
         name: displayName,
         initials,
+        avatarUrl,
         lastMessage: lastMessageDisplay,
         time: timeStr,
         unread: chat.unread_count,
@@ -763,15 +831,18 @@ export default function AuthenticatedApp() {
         date: eventDateStr,
         month: eventMonthStr,
         lastMessageAt: lastTime,
+        isOnline,
+        isLastMessageMine,
+        isLastMessageRead,
       };
     }) as ChatItem[];
-  }, [realChats, realBand?.name, user?.id]);
+  }, [realChats, realBand?.name, user?.id, onlineUserIds]);
 
   const filteredChats = useMemo(() => {
     return convertedChats
       .filter((c) => {
-        const mt = c.type === chatFilter;
-        const ms = c.name.toLowerCase().includes(chatSearch.toLowerCase()) || c.lastMessage.toLowerCase().includes(chatSearch.toLowerCase()) || (c.subtitle?.toLowerCase().includes(chatSearch.toLowerCase()) ?? false);
+        const mt = chatFilter === "all" || c.type === chatFilter;
+        const ms = !chatSearch.trim() || c.name.toLowerCase().includes(chatSearch.toLowerCase()) || c.lastMessage.toLowerCase().includes(chatSearch.toLowerCase()) || (c.subtitle?.toLowerCase().includes(chatSearch.toLowerCase()) ?? false);
         return mt && ms;
       })
       .sort((a, b) => {
@@ -782,8 +853,15 @@ export default function AuthenticatedApp() {
   }, [convertedChats, chatFilter, chatSearch]);
 
   const chatUnreadCounts = useMemo(() => {
-    const counts = { direct: 0, band: 0, event: 0 };
-    convertedChats.forEach((c) => { if (c.unread > 0) counts[c.type] += c.unread; });
+    const counts = { all: 0, direct: 0, band: 0, event: 0 };
+    convertedChats.forEach((c) => {
+      if (c.unread > 0) {
+        counts.all += c.unread;
+        if (c.type === "direct" || c.type === "band" || c.type === "event") {
+          counts[c.type] += c.unread;
+        }
+      }
+    });
     return counts;
   }, [convertedChats]);
 
@@ -838,13 +916,16 @@ export default function AuthenticatedApp() {
       }
     });
 
-    // Exclude rehearsals where current user has declined
+    // For members: only include rehearsals where current user is added by admin and hasn't declined
     let result = rehearsals;
     if (user?.id) {
       result = result.filter(e => {
         if (!e.eventId) return true;
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
+        if (!isAdmin) {
+          return !!myMembership && myMembership.status !== 'declined';
+        }
         return !myMembership || myMembership.status !== 'declined';
       });
     }
@@ -864,7 +945,7 @@ export default function AuthenticatedApp() {
     });
 
     return uniqueRehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, eventMembersMap, user?.id, realBand?.id]);
+  }, [events, eventMembersMap, user?.id, realBand?.id, isAdmin]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
   const currentDetails = currentRehearsal ? rehearsalDetails[currentRehearsal.id] || rehearsalDetails[105] : null;
@@ -954,7 +1035,7 @@ export default function AuthenticatedApp() {
     if (item === "Analytics") setShowAnalytics(true);
     if (item === "PricingSettings") setShowPricingModal(true);
     if (item === "AdminTour") setShowAdminTour(true);
-    if (item === "Quote") { setCreateEventType("quote"); setIsCreateEventOpen(true); }
+    if (item === "Quote" && isAdmin) { setCreateEventType("quote"); setIsCreateEventOpen(true); }
     if (item === "InviteMember") setShowBandMembers(true);
   };
 
@@ -1228,6 +1309,14 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventCardClick = async (event: EventData) => {
+    // If not admin, verify user is added to this event before opening
+    if (!isAdmin && user?.id && event.eventId) {
+      const cached = eventMembersMap[event.eventId] || [];
+      const isMember = cached.some(m => m.userId === user.id && m.status !== 'declined');
+      if (cached.length > 0 && !isMember) {
+        return; // Member is not added to this event
+      }
+    }
     setSelectedEvent(event);
     setSelectedEventMembership(null);
     if (user?.id && event.eventId) {
@@ -1241,31 +1330,29 @@ export default function AuthenticatedApp() {
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP A — Visual Shortcut: Hide the event card instantly (<1ms)
-    // ═══════════════════════════════════════════════════════════════
-    const eventIdToHide = selectedEvent.eventId || selectedEvent.id?.toString();
-    if (eventIdToHide) {
-      setOptimisticallyHiddenEventIds(prev => [...prev, eventIdToHide]);
-    }
+    const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP B — UI Dismissal: Snap modal closed, fire optimistic toast
-    // ═══════════════════════════════════════════════════════════════
+    // UI Dismissal: Snap modal closed
     setSelectedEvent(null);
     setSelectedEventMembership(null);
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP C — DB Payload Processing (runs in background)
-    // ═══════════════════════════════════════════════════════════════
+    // Optimistically mark membership confirmed in eventMembersMap so the event stays visible
+    if (eventId && user?.id) {
+      setEventMembersMap(prev => {
+        const list = prev[eventId] || [];
+        return {
+          ...prev,
+          [eventId]: list.map(m => m.userId === user.id ? { ...m, status: 'confirmed' } : m)
+        };
+      });
+      setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventId));
+    }
+
+    // DB Payload Processing (runs in background)
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
     if (error || !updated) {
       console.error('[handleEventAccept] Failed to update membership:', error);
       setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
-      // Rollback optimistic hide so the card re-appears on next render
-      if (eventIdToHide) {
-        setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventIdToHide));
-      }
       return;
     }
 
@@ -1295,6 +1382,7 @@ export default function AuthenticatedApp() {
     // STEP E — Quiet Background Sync (realign DB cache behind scenes)
     // ═══════════════════════════════════════════════════════════════
     setSelectedEventMembership(updated);
+    setMembersRefreshKey(prev => prev + 1);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
     if (refetchDashboard) await refetchDashboard();
@@ -1357,6 +1445,7 @@ export default function AuthenticatedApp() {
     // STEP E — Quiet Background Sync (realign DB cache behind scenes)
     // ═══════════════════════════════════════════════════════════════
     setSelectedEventMembership(updated);
+    setMembersRefreshKey(prev => prev + 1);
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
     if (refetchDashboard) await refetchDashboard();
@@ -1616,11 +1705,6 @@ export default function AuthenticatedApp() {
         } else if (myMembership.status === 'pending') {
           pendingFee += myMembership.fee || 0;
         }
-      } else if (members.length === 0) {
-        // Fallback when event_members rows were not explicitly populated
-        const fallbackShare = Math.round((event.fee || 0) / Math.max(1, realBand?.member_count || 1));
-        confirmedFee += fallbackShare;
-        if (isUpcoming) confirmedCount++;
       }
     }
 
@@ -1642,6 +1726,11 @@ export default function AuthenticatedApp() {
     const bandEvents = (masterEventsList || []).filter(e => {
       if (optimisticallyHiddenEventIds.includes(e.id)) return false;
       if (realBand?.id && e.band_id && e.band_id !== realBand.id) return false;
+      if (!isAdmin && user?.id) {
+        const members = eventMembersMap[e.id] || [];
+        const myMembership = members.find(m => m.userId === user.id);
+        if (!myMembership || myMembership.status === 'declined') return false;
+      }
       return true;
     });
 
@@ -1759,7 +1848,15 @@ export default function AuthenticatedApp() {
 
       const isConfirmedGig = (s === 'confirmed' || s === 'completed');
       const isQuoteOrDraft = s === 'quoted' || s === 'quote' || s === 'tentative' || s === 'draft' || s === 'pending';
-      return isConfirmedGig && !isQuoteOrDraft;
+      if (!isRehearsal && (!isConfirmedGig || isQuoteOrDraft)) return false;
+
+      if (!isAdmin && user?.id && e.id) {
+        const members = eventMembersMap[e.id] || [];
+        const myMembership = members.find((m: any) => m.userId === user.id);
+        if (!myMembership || myMembership.status === 'declined') return false;
+      }
+
+      return true;
     });
 
     return {
@@ -1771,18 +1868,24 @@ export default function AuthenticatedApp() {
         upcomingEvents: uniqueLiveUpcomingEvents.length,
         revenueChange: dashboardData?.eventStats?.revenueChange || 0,
       },
-      quoteStats: {
+      quoteStats: isAdmin ? {
         totalQuotes: upcomingQuoteEvents.length,
         pendingQuotes: upcomingQuoteEvents.length,
         acceptedQuotes: dashboardData?.quoteStats?.acceptedQuotes || 0,
         totalPipeline: quotesPipeline || (dashboardData?.quoteStats?.totalPipeline || 0),
         acceptedRevenue: dashboardData?.quoteStats?.acceptedRevenue || 0,
+      } : {
+        totalQuotes: 0,
+        pendingQuotes: 0,
+        acceptedQuotes: 0,
+        totalPipeline: 0,
+        acceptedRevenue: 0,
       },
       memberStats: computedMemberStats || (dashboardData?.memberStats || null),
       upcomingEvents: (masterEventsList && masterEventsList.length > 0) ? uniqueLiveUpcomingEvents : fallbackUpcomingEvents,
-      recentQuotes: dashboardData?.recentQuotes || [],
+      recentQuotes: isAdmin ? (dashboardData?.recentQuotes || []) : [],
     };
-  }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats]);
+  }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats, isAdmin, user?.id, eventMembersMap]);
 
   const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
 
@@ -1796,8 +1899,8 @@ export default function AuthenticatedApp() {
         paddingBottom: isAndroid && isNative ? "calc(140px + 24px)" : "calc(140px + env(safe-area-inset-bottom, 20px))",
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
-        maskImage: isCreateEventOpen ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
-        WebkitMaskImage: isCreateEventOpen ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        maskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        WebkitMaskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
@@ -1833,7 +1936,7 @@ export default function AuthenticatedApp() {
             }} isSolo={isSolo} />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => setSelectedChat(c)} onStartChat={() => setShowNewChat(true)} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
@@ -1843,24 +1946,6 @@ export default function AuthenticatedApp() {
             <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
-
-        <AnimatePresence>
-          {selectedChat && selectedChat.uuid && (
-            <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, unread: selectedChat.unread, members: selectedChat.members }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
-          )}
-          {selectedChat && !selectedChat.uuid && (
-            <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
-                <div className="w-16 h-16 <bg-accent rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8 text-accent-foreground" /></div>
-                <h3 className="text-xl font-black mb-2">Demo Chat</h3>
-                <p className="text-stone-500 text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
-                <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-black text-accent py-3 rounded-full font-bold text-sm">Start Real Chat</button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>{showNewChat && <NewChatModal onClose={() => setShowNewChat(false)} onChatCreated={(id) => { setShowNewChat(false); setSelectedChat({ id: Date.now(), uuid: id, type: "direct", name: "New Chat", initials: "NC", lastMessage: "Start chatting...", time: "now", unread: 0, status: "read" }); refetchChats?.(); }} />}</AnimatePresence>
 
         <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
@@ -1883,7 +1968,7 @@ export default function AuthenticatedApp() {
         <AnimatePresence>
           {expandedCard === "finance" && <FinanceExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
           {expandedCard === "pending" && <PendingExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
-          {expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} />}
+          {isAdmin && expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
             <RehearsalExpanded upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
@@ -1906,7 +1991,22 @@ export default function AuthenticatedApp() {
         </AnimatePresence>
       </div>
 
-      <BottomNavigation activeTab={activeTab} setActiveTab={setActiveTab} isPlusMenuOpen={isPlusMenuOpen} setIsPlusMenuOpen={setIsPlusMenuOpen} isControlDeckOpen={isControlDeckOpen} isIdentityOpen={isIdentityOpen} toggleControlDeck={toggleControlDeck} closeMenus={closeMenus} onCreateEvent={handleCreateEvent} isScrollingDown={isScrollingDown} isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat} isAdmin={isAdmin} isSolo={userMode === 'solo'} />
+      <BottomNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isPlusMenuOpen={isPlusMenuOpen}
+        setIsPlusMenuOpen={setIsPlusMenuOpen}
+        isControlDeckOpen={isControlDeckOpen}
+        isIdentityOpen={isIdentityOpen}
+        toggleControlDeck={toggleControlDeck}
+        closeMenus={closeMenus}
+        onCreateEvent={handleCreateEvent}
+        isScrollingDown={isScrollingDown}
+        unreadChatCount={chatUnreadCounts.all}
+        isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat}
+        isAdmin={isAdmin}
+        isSolo={userMode === 'solo'}
+      />
 
       <React.Suspense fallback={null}>
         <AnimatePresence>
@@ -2097,6 +2197,50 @@ export default function AuthenticatedApp() {
       </React.Suspense>
 
       <AnimatePresence>
+        {selectedChat && selectedChat.uuid && (
+          <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
+        )}
+        {selectedChat && !selectedChat.uuid && (
+          <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-xs flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-card text-card-foreground border border-border rounded-3xl p-8 text-center max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
+              <h3 className="text-xl font-black text-foreground mb-2">Demo Chat</h3>
+              <p className="text-muted-foreground text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
+              <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm shadow-xs hover:opacity-95 active:scale-95 transition-all">Start Real Chat</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNewChat && (
+          <NewChatModal
+            onClose={() => setShowNewChat(false)}
+            onChatCreated={(id, details) => {
+              setShowNewChat(false);
+              const chatType = details?.type || "direct";
+              const chatName = details?.name || "Chat";
+              const chatInitials = details?.initials || chatName.slice(0, 2).toUpperCase();
+              const chatAvatarUrl = details?.avatarUrl;
+              setSelectedChat({
+                id: Date.now(),
+                uuid: id,
+                type: chatType,
+                name: chatName,
+                initials: chatInitials,
+                avatarUrl: chatAvatarUrl,
+                lastMessage: "Start chatting...",
+                time: "now",
+                unread: 0,
+                status: "read",
+              });
+              refetchChats?.();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {selectedEvent && (
           <EventDetail
             key="event-detail"
@@ -2124,6 +2268,16 @@ export default function AuthenticatedApp() {
             onAccept={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
+                // Optimistically update eventMembersMap so the event card is immediately confirmed
+                setEventMembersMap(prev => {
+                  const list = prev[eventId] || [];
+                  return {
+                    ...prev,
+                    [eventId]: list.map(m => m.userId === user.id ? { ...m, status: 'confirmed' } : m)
+                  };
+                });
+                setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventId));
+
                 const { data: membership } = await supabase
                   .from('event_members')
                   .select('id')
@@ -2138,6 +2292,7 @@ export default function AuthenticatedApp() {
                   await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "confirmed");
                 }
                 await markNotificationAsRead(rsvpNotification.id);
+                setMembersRefreshKey(prev => prev + 1);
                 refetchNotifications?.();
                 refetchEvents();
               }
@@ -2148,6 +2303,16 @@ export default function AuthenticatedApp() {
             onDecline={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
+                // Optimistically hide declined event
+                setOptimisticallyHiddenEventIds(prev => [...prev, eventId]);
+                setEventMembersMap(prev => {
+                  const list = prev[eventId] || [];
+                  return {
+                    ...prev,
+                    [eventId]: list.map(m => m.userId === user.id ? { ...m, status: 'declined' } : m)
+                  };
+                });
+
                 const { data: membership } = await supabase
                   .from('event_members')
                   .select('id')
@@ -2162,6 +2327,7 @@ export default function AuthenticatedApp() {
                   await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "declined");
                 }
                 await markNotificationAsRead(rsvpNotification.id);
+                setMembersRefreshKey(prev => prev + 1);
                 refetchNotifications?.();
                 refetchEvents();
               }

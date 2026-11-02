@@ -18,7 +18,7 @@ import type { Event } from '@/lib/services/events';
 
 interface NewChatModalProps {
   onClose: () => void;
-  onChatCreated: (chatId: string) => void;
+  onChatCreated: (chatId: string, details?: { type: 'direct' | 'band' | 'event'; name: string; initials: string; avatarUrl?: string }) => void;
 }
 
 interface MemberWithBand {
@@ -167,7 +167,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           participant_ids: [selectedMember.id],
         });
         if (createError) throw createError;
-        if (data) onChatCreated(data.id);
+        const memberName = selectedMember.full_name || selectedMember.email.split('@')[0] || 'User';
+        const memberInitials = memberName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+        if (data) onChatCreated(data.id, {
+          type: 'direct',
+          name: memberName,
+          initials: memberInitials,
+          avatarUrl: selectedMember.avatar_url,
+        });
         
       } else if (chatType === 'band' && selectedBandChat) {
         const memberIds = selectedBandChat.members?.map(m => m.user_id) || [];
@@ -178,7 +185,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           participant_ids: memberIds,
         });
         if (createError) throw createError;
-        if (data) onChatCreated(data.id);
+        const bandName = selectedBandChat.name || 'Band';
+        const bandInitials = bandName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'B';
+        if (data) onChatCreated(data.id, {
+          type: 'band',
+          name: bandName,
+          initials: bandInitials,
+        });
         
       } else if (chatType === 'event' && selectedEvent) {
         const { data, error: createError } = await createChat({
@@ -189,7 +202,13 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           participant_ids: [],
         });
         if (createError) throw createError;
-        if (data) onChatCreated(data.id);
+        const eventTitle = selectedEvent.title || 'Event';
+        const eventInitials = eventTitle.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'E';
+        if (data) onChatCreated(data.id, {
+          type: 'event',
+          name: eventTitle,
+          initials: eventInitials,
+        });
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create chat');
@@ -221,7 +240,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-background text-foreground border-t border-foreground/10 rounded-t-[26px] px-4 pt-4 shadow-[0px_-4px_24px_rgba(0,0,0,0.15)] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[91] bg-card text-card-foreground border-t border-border rounded-t-3xl px-4 pt-4 shadow-2xl flex flex-col"
         style={{ 
           maxHeight: '85vh',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
@@ -236,23 +255,24 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         {/* Header */}
         <div className="flex items-end justify-between mb-6">
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-foreground/50 uppercase tracking-wider">
+            <span className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
               START CHAT
             </span>
-            <h2 className="text-[24px] font-bold text-foreground uppercase leading-none">
+            <h2 className="text-2xl font-black text-foreground uppercase leading-none">
               NEW CONVERSATION
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-foreground/20 flex items-center justify-center text-foreground hover:bg-foreground/10 active:scale-90 transition-all"
+            aria-label="Close"
+            className="w-9 h-9 rounded-full border border-foreground/15 flex items-center justify-center text-foreground hover:bg-foreground/10 active:scale-90 transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-[8px] mb-6">
+        <div className="flex gap-2 mb-6">
           {[
             { type: 'direct' as const, label: 'DIRECT' },
             { type: 'band' as const, label: 'BAND' },
@@ -268,7 +288,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                 setSearchQuery('');
               }}
               className={cn(
-                "px-[12px] py-[6px] rounded-[8px] text-[11px] font-bold uppercase tracking-wider transition-all",
+                "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
                 chatType === type
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10 hover:text-foreground"
@@ -280,8 +300,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         </div>
 
         {/* Search */}
-        <div className="bg-foreground/5 border border-foreground/10 rounded-[12px] flex items-center px-[12px] gap-[8px] mb-6">
-          <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
+        <div className="bg-foreground/5 border border-foreground/10 rounded-xl flex items-center px-3 gap-2 mb-6">
+          <Search className="w-4 h-4 text-foreground/40 shrink-0" />
           <input
             type="text"
             value={searchQuery}
@@ -291,7 +311,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               chatType === 'band' ? 'SEARCH BANDS...' :
               'SEARCH EVENTS...'
             }
-            className="w-full h-[40px] bg-transparent text-[12px] font-bold text-foreground placeholder:text-foreground/30 uppercase focus:outline-none"
+            className="w-full h-10 bg-transparent text-xs font-bold text-foreground placeholder:text-foreground/35 uppercase focus:outline-none"
           />
         </div>
 
@@ -304,7 +324,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               exit={{ opacity: 0, height: 0 }}
               className="mb-4"
             >
-              <div className="p-3 bg-red-500/10 border-l-2 border-red-500 text-red-500 text-sm rounded-r-[8px]">
+              <div className="p-3 bg-destructive/10 border-l-2 border-destructive text-destructive text-sm rounded-r-lg">
                 {error}
               </div>
             </motion.div>
@@ -315,7 +335,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         <div className="flex-1 overflow-y-auto min-h-0 pb-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-foreground/20 animate-spin" />
+              <Loader2 className="w-6 h-6 text-foreground/30 animate-spin" />
             </div>
           ) : (
             <>
@@ -343,26 +363,37 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                 onClick={() => handleSelect('direct', member)}
                                 whileTap={{ scale: 0.98 }}
                                 className={cn(
-                                  "w-full p-3 rounded-[12px] border flex items-center gap-3 transition-all",
-                                  isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent hover:bg-foreground/5"
+                                  "w-full p-3 rounded-xl border flex items-center gap-3 transition-all",
+                                  isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent hover:bg-foreground/5"
                                 )}
                               >
                                 <div className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold",
+                                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden",
                                   isSelected 
                                     ? "bg-primary text-primary-foreground" 
                                     : "bg-foreground/10 text-foreground/70"
                                 )}>
-                                  {getInitials(member.full_name, member.email)}
+                                  {member.avatar_url ? (
+                                    <img
+                                      src={member.avatar_url}
+                                      alt={member.full_name || member.email}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    getInitials(member.full_name, member.email)
+                                  )}
                                 </div>
                                 <div className="flex-1 text-left">
                                   <p className={cn(
                                     "font-bold text-sm uppercase",
-                                    isSelected ? "text-foreground" : "text-foreground/70"
+                                    isSelected ? "text-foreground" : "text-foreground/75"
                                   )}>
                                     {member.full_name || member.email}
                                   </p>
-                                  <p className="text-xs uppercase text-foreground/40">
+                                  <p className="text-xs uppercase text-foreground/45">
                                     {member.instrument || member.role || 'Member'}
                                   </p>
                                 </div>
@@ -381,7 +412,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                   
                   {filteredMembers.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO MEMBERS FOUND</p>
+                      <p className="text-foreground/40 text-xs font-bold uppercase">NO MEMBERS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -400,12 +431,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('band', band)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[12px] border flex items-center gap-4 transition-all",
-                          isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
+                          "w-full p-3.5 rounded-xl border flex items-center gap-3.5 transition-all",
+                          isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-[12px] flex items-center justify-center font-black text-sm",
+                          "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm",
                           isSelected 
                             ? "bg-primary text-primary-foreground"
                             : "bg-foreground/10 text-foreground/70"
@@ -415,11 +446,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <div className="flex-1 text-left">
                           <p className={cn(
                             "font-bold uppercase",
-                            isSelected ? "text-foreground" : "text-foreground/70"
+                            isSelected ? "text-foreground" : "text-foreground/75"
                           )}>
                             {band.name}
                           </p>
-                          <p className="text-xs uppercase text-foreground/40">
+                          <p className="text-xs uppercase text-foreground/45">
                             {memberCount} {memberCount === 1 ? 'MEMBER' : 'MEMBERS'}
                           </p>
                         </div>
@@ -434,7 +465,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredBands.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO BANDS FOUND</p>
+                      <p className="text-foreground/40 text-xs font-bold uppercase">NO BANDS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -452,12 +483,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         onClick={() => handleSelect('event', event)}
                         whileTap={{ scale: 0.98 }}
                         className={cn(
-                          "w-full p-4 rounded-[12px] border flex items-center gap-4 transition-all text-left",
-                          isSelected ? "bg-card border-foreground/20 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
+                          "w-full p-3.5 rounded-xl border flex items-center gap-3.5 transition-all text-left",
+                          isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-[12px] flex flex-col items-center justify-center",
+                          "w-11 h-11 rounded-xl flex flex-col items-center justify-center",
                           isSelected 
                             ? "bg-primary text-primary-foreground" 
                             : "bg-foreground/10 text-foreground/70"
@@ -469,12 +500,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                         <div className="flex-1 min-w-0">
                           <p className={cn(
                             "font-bold truncate uppercase",
-                            isSelected ? "text-foreground" : "text-foreground/70"
+                            isSelected ? "text-foreground" : "text-foreground/75"
                           )}>
                             {event.title}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs uppercase text-foreground/40">
+                            <span className="text-xs uppercase text-foreground/45">
                               {formatEventDate(event.event_date)}
                             </span>
                             <span className="text-xs text-foreground/20">•</span>
@@ -494,7 +525,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                   {filteredEvents.length === 0 && (
                     <div className="text-center py-12">
-                      <p className="text-foreground/40 text-[12px] font-bold uppercase">NO EVENTS FOUND</p>
+                      <p className="text-foreground/40 text-xs font-bold uppercase">NO EVENTS FOUND</p>
                     </div>
                   )}
                 </div>
@@ -509,7 +540,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
             onClick={handleCreateChat}
             disabled={!canCreate || creating}
             className={cn(
-              "w-full h-12 rounded-[12px] font-bold text-[12px] uppercase flex items-center justify-center gap-3 transition-all",
+              "w-full h-12 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2.5 transition-all",
               canCreate
                 ? "bg-primary text-primary-foreground active:scale-[0.98] shadow-xs hover:opacity-95"
                 : "bg-foreground/5 text-foreground/30 cursor-not-allowed"

@@ -343,8 +343,19 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     <div className="flex items-center justify-between py-4 border-b border-foreground/10">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold">
-                            {getInitials(member)}
+                          <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold shrink-0 overflow-hidden">
+                            {member.profile?.avatar_url ? (
+                              <img
+                                src={member.profile.avatar_url}
+                                alt={member.profile.full_name || 'Member'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              getInitials(member)
+                            )}
                           </div>
                           {/* Neon Pro indicator dot — bottom-right overlap */}
                           {isProMember(member) && (
