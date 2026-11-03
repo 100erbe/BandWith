@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 
 interface CompletionScreenProps {
@@ -32,7 +32,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         <motion.div
           className="absolute inset-0"
           style={{
-            background: 'radial-gradient(circle at 50% 30%, rgba(212, 251, 70, 0.15) 0%, transparent 50%)',
+            background: 'radial-gradient(circle at 50% 30%, rgba(200, 67, 26, 0.14) 0%, transparent 50%)',
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Sparkles, Music, Layers, Infinity } from 'lucide-react';
+import { X, Check, Sparkles, Music, Layers, Infinity } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 
 interface UpgradePricingSheetProps {

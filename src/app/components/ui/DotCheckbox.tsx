@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from './utils';
-import { Check } from 'lucide-react';
+import { Check } from '@/app/components/icons';
 
 interface DotCheckboxProps {
   checked: boolean;

@@ -14,6 +14,8 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
+      // Route all Lucide icon imports to BandWith's unified custom icon system
+      'lucide-react': path.resolve(__dirname, './src/app/components/icons'),
     },
   },
 })

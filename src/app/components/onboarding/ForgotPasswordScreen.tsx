@@ -7,8 +7,9 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -60,10 +61,11 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
         >
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
-        <img
-          src="/brand/Logo - full text White.png"
-          alt="BANDWITH"
-          className="h-5 opacity-30"
+        <BrandLogo
+          variant="waveform"
+          lockup="horizontal"
+          className="h-6 opacity-60"
+          textClassName="text-lg"
         />
         <div className="w-11" />
       </div>

@@ -14,7 +14,7 @@ import {
   X,
   Reply,
   ArrowUpRight,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { getMessages, sendMessage, markChatAsRead, subscribeToChat, getChatParticipants, deleteChat, getChat } from '@/lib/services/chats';
 import type { Message } from '@/lib/services/chats';

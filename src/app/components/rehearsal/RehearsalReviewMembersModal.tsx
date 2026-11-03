@@ -1,6 +1,6 @@
 import React from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Users, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Clock } from '@/app/components/icons';
 import { RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
 

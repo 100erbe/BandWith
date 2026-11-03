@@ -5,7 +5,7 @@ import {
   Plus,
   Sparkles,
   Bell
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
 import { TabName } from '@/app/types';

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning,
   CloudDrizzle, Cloudy
-} from 'lucide-react';
+} from '@/app/components/icons';
 
 interface WeatherData {
   temp: number;

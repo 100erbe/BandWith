@@ -5,7 +5,7 @@ import {
   Search,
   Loader2,
   ArrowRight
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { EmptyState } from '@/app/components/ui/EmptyState';

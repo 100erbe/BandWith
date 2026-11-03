@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, X, Link, Music, ArrowLeft, Check } from 'lucide-react';
+import { Search, Plus, X, Link, Music, ArrowLeft, Check } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { getSongs, createSong, type Song } from '@/lib/services/songs';

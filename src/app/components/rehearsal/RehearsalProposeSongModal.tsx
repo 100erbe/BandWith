@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Mic2, Link as LinkIcon, Plus, UploadCloud } from 'lucide-react';
+import { Mic2, Link as LinkIcon, Plus, UploadCloud } from '@/app/components/icons';
 import { SongProposal } from './types';
 
 interface Props {

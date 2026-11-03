@@ -22,24 +22,24 @@
   --muted: #D1D1D1;
   --muted-fg: #4F4F4F;
 
-  /* ── Primary brand (all modes) ── */
-  --primary: #6A0DAD;
+  /* ── Primary brand — Burnt Orange (amp glow / warm analog) ── */
+  --primary: #C8431A;
   --primary-fg: #FFFFFF;
 
   /* ── Secondary ── */
   --secondary: #E5E7EB;
   --secondary-fg: #1A1A1A;
 
-  /* ── Action (gig) — Signal Vermilion ── */
-  --accent-gig: #E11D48;
+  /* ── Action (gig) — Petrol Teal ── */
+  --accent-gig: #0F6A6B;
   --accent-gig-fg: #FFFFFF;
 
-  /* ── Utility (rehearsal) — Indigo Violet ── */
-  --accent-rehearsal: #4F46E5;
+  /* ── Utility (rehearsal) — Vinyl Cobalt ── */
+  --accent-rehearsal: #1E4E8C;
   --accent-rehearsal-fg: #FFFFFF;
 
-  /* ── Context (quote) — Forest Emerald ── */
-  --accent-quote: #059669;
+  /* ── Context (quote) — Tolex Olive ── */
+  --accent-quote: #3D6B35;
   --accent-quote-fg: #FFFFFF;
 
   /* ── Inactive / Historical (past events) — Cool Slate ── */
@@ -47,10 +47,12 @@
   --accent-past-fg: #FFFFFF;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
-  --accent: #6A0DAD;
+  --accent: #C8431A;
   --accent-fg: #FFFFFF;
 
   /* ── Semantic ── */
+  --success: #059669;
+  --success-fg: #FFFFFF;
   --destructive: #B91C1C;
   --destructive-fg: #FFFFFF;
   --warning: #B45309;
@@ -60,7 +62,7 @@
   --surface-inverse-fg: #FFFFFF;
   --border: rgba(0, 0, 0, 0.12);
   --input: rgba(0, 0, 0, 0.12);
-  --ring: #6A0DAD;
+  --ring: #C8431A;
   --radius: 2.5rem;
 }
 
@@ -77,24 +79,24 @@
   --muted: #2C2C2C;
   --muted-fg: #9CA3AF;
 
-  /* ── Primary brand (accessible in dark) ── */
-  --primary: #9333EA;
-  --primary-fg: #FFFFFF;
+  /* ── Primary brand — Ember Orange (accessible in dark) ── */
+  --primary: #F2784B;
+  --primary-fg: #000000;
 
   /* ── Secondary ── */
   --secondary: #27272A;
   --secondary-fg: #E5E7EB;
 
-  /* ── Action (gig) — Coral Red ── */
-  --accent-gig: #FB7185;
+  /* ── Action (gig) — Bright Teal ── */
+  --accent-gig: #3CC4BC;
   --accent-gig-fg: #000000;
 
-  /* ── Utility (rehearsal) — Soft Indigo ── */
-  --accent-rehearsal: #818CF8;
+  /* ── Utility (rehearsal) — Soft Cobalt ── */
+  --accent-rehearsal: #7EA8F0;
   --accent-rehearsal-fg: #000000;
 
-  /* ── Context (quote) — Bright Emerald ── */
-  --accent-quote: #34D399;
+  /* ── Context (quote) — Sage Olive ── */
+  --accent-quote: #8DC77F;
   --accent-quote-fg: #000000;
 
   /* ── Inactive / Historical (past events) — Cool Slate ── */
@@ -102,10 +104,12 @@
   --accent-past-fg: #FFFFFF;
 
   /* ── General accent (legacy / fallback) — maps to primary brand ── */
-  --accent: #9333EA;
-  --accent-fg: #FFFFFF;
+  --accent: #F2784B;
+  --accent-fg: #000000;
 
   /* ── Semantic ── */
+  --success: #34D399;
+  --success-fg: #000000;
   --destructive: #F87171;
   --destructive-fg: #000000;
   --warning: #FBBF24;
@@ -115,7 +119,7 @@
   --surface-inverse-fg: #0A0A0A;
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.12);
-  --ring: #9333EA;
+  --ring: #F2784B;
 }
 
 /* ═══ Map CSS vars to Tailwind v4 theme tokens ═══
@@ -146,6 +150,8 @@
   --color-accent-past: var(--accent-past);
   --color-accent-past-foreground: var(--accent-past-fg);
 
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-fg);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-fg);
   --color-warning: var(--warning);

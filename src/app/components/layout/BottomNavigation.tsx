@@ -1,53 +1,20 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Music, FileText } from 'lucide-react';
+import {
+  X,
+  Mic2,
+  Music,
+  FileText,
+  IconHome,
+  IconCalendar,
+  IconChat,
+  IconMenu,
+  IconClose,
+  IconPlus,
+  type IconProps,
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
-
-/* ── SVG icons ── */
-
-const IconHome: React.FC<{ color: string }> = ({ color }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3.75 20.25H20.25V11.25C20.2501 11.1515 20.2307 11.0539 20.1931 10.9629C20.1555 10.8718 20.1003 10.7891 20.0306 10.7194L12.5306 3.21938C12.461 3.14964 12.3783 3.09432 12.2872 3.05658C12.1962 3.01884 12.0986 2.99941 12 2.99941C11.9014 2.99941 11.8038 3.01884 11.7128 3.05658C11.6217 3.09432 11.539 3.14964 11.4694 3.21938L3.96937 10.7194C3.89975 10.7891 3.84454 10.8718 3.8069 10.9629C3.76926 11.0539 3.74992 11.1515 3.75 11.25V20.25Z" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconMusic: React.FC<{ color: string }> = ({ color }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16.875 18C18.3247 18 19.5 16.8247 19.5 15.375C19.5 13.9253 18.3247 12.75 16.875 12.75C15.4253 12.75 14.25 13.9253 14.25 15.375C14.25 16.8247 15.4253 18 16.875 18Z" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.875 21C6.32475 21 7.5 19.8247 7.5 18.375C7.5 16.9253 6.32475 15.75 4.875 15.75C3.42525 15.75 2.25 16.9253 2.25 18.375C2.25 19.8247 3.42525 21 4.875 21Z" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19.5 6.75L7.5 9.75" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M7.5 18.375V5.25L19.5 2.25V15.375" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconPlus: React.FC<{ color: string; className?: string }> = ({ color, className }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M3.75 12H20.25" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M12 3.75V20.25" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconChat: React.FC<{ color: string }> = ({ color }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.23281 21.5728C4.12357 21.6647 3.99038 21.7235 3.84887 21.7423C3.70737 21.7612 3.56343 21.7392 3.43397 21.679C3.30451 21.6189 3.1949 21.523 3.11803 21.4028C3.04116 21.2825 3.00021 21.1428 3 21V6C3 5.80109 3.07902 5.61032 3.21967 5.46967C3.36032 5.32902 3.55109 5.25 3.75 5.25H20.25C20.4489 5.25 20.6397 5.32902 20.7803 5.46967C20.921 5.61032 21 5.80109 21 6V18C21 18.1989 20.921 18.3897 20.7803 18.5303C20.6397 18.671 20.4489 18.75 20.25 18.75H7.5L4.23281 21.5728Z" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconMenu: React.FC<{ color: string }> = ({ color }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3.75 12H20.25" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.75 6H20.25" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M3.75 18H20.25" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const IconClose: React.FC<{ color: string }> = ({ color }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4.5 19.5L19.5 4.5" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M4.5 4.5L19.5 19.5" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
 
 interface BottomNavigationProps {
   activeTab: TabName;
@@ -69,7 +36,7 @@ interface BottomNavigationProps {
 type TabDescriptor = {
   key: string;
   label: string;
-  icon: React.FC<{ color: string }>;
+  icon: React.ComponentType<IconProps>;
   isActive: boolean;
   onClick: () => void;
   badgeCount?: number;
@@ -137,7 +104,7 @@ const SlidingPill: React.FC<{
 const NavTab: React.FC<{
   tabKey: string;
   label: string;
-  icon: React.FC<{ color: string }>;
+  icon: React.ComponentType<IconProps>;
   isActive: boolean;
   onClick: () => void;
   isScrollingDown: boolean;
@@ -165,7 +132,7 @@ const NavTab: React.FC<{
         }}
         transition={SPRING}
       >
-        <Icon color="currentColor" />
+        <Icon color="currentColor" size={22} />
         {badgeCount !== undefined && badgeCount > 0 ? (
           <span className={cn(
             "absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2",
@@ -291,12 +258,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   const tabs: TabDescriptor[] = [
     { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
-    { key: 'Events', label: 'Calendar', icon: IconMusic, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
+    { key: 'Events', label: 'Calendar', icon: IconCalendar, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
     { key: 'Chat', label: 'Chat', icon: IconChat, isActive: isChatActive, badgeCount: unreadChatCount, onClick: () => handleTabClick('Chat') },
     {
       key: 'Settings',
       label: 'Settings',
-      icon: ({ color }: { color: string }) => (isControlDeckOpen ? <IconClose color={color} /> : <IconMenu color={color} />),
+      icon: isControlDeckOpen ? IconClose : IconMenu,
       isActive: isSettingsActive,
       onClick: () => {
         toggleControlDeck();
@@ -340,7 +307,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 {isAdmin && (
                   <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Calendar className="w-7 h-7 text-accent-gig" />
+                      <Mic2 className="w-7 h-7 text-accent-gig" />
                     </div>
                     <div className="flex flex-col gap-1 flex-1">
                       <span className="text-[20px] font-bold text-foreground uppercase">NEW GIG</span>

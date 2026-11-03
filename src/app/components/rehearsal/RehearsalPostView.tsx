@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Music, Clock, Users, ArrowRight, Share2, Calendar } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Music, Clock, Users, ArrowRight, Share2, Calendar } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 
 interface Props {

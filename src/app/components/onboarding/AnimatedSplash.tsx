@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface AnimatedSplashProps {
   onComplete: () => void;
@@ -28,14 +29,13 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
         >
-          <motion.img
-            src="/brand/app-icon.png"
-            alt=""
-            className="w-20 h-20 rounded-[1.25rem]"
+          <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          />
+          >
+            <BrandLogo variant="waveform" lockup="icon-only" className="w-20 h-20" />
+          </motion.div>
 
           <motion.div
             className="mt-8 flex items-baseline"
@@ -43,18 +43,7 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span
-              className="text-[32px] font-black tracking-[-0.02em] leading-none text-foreground"
-              style={{ fontFamily: 'var(--font-display), sans-serif' }}
-            >
-              BAND
-            </span>
-            <span
-              className="text-[32px] font-black tracking-[-0.02em] leading-none text-accent"
-              style={{ fontFamily: 'var(--font-display), sans-serif' }}
-            >
-              WITH
-            </span>
+            <BrandLogo variant="waveform" lockup="wordmark-only" textClassName="text-[34px] font-black" />
           </motion.div>
 
           <motion.p

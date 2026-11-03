@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { ListMusic, Search, Plus, Trash2, Save, Copy, CheckCircle2, History, Clock, Check, AlertCircle, X, ChevronRight, Music, Link, GripVertical } from 'lucide-react';
+import { ListMusic, Search, Plus, Trash2, Save, Copy, CheckCircle2, History, Clock, Check, AlertCircle, X, ChevronRight, Music, Link, GripVertical } from '@/app/components/icons';
 import { RehearsalSong, SetlistTemplate, RehearsalState } from './types';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Search, X, Calendar, DollarSign, Music, Check, ArrowUpRight } from 'lucide-react';
+import { ArrowLeft, Search, X, Calendar, DollarSign, Music, Check, ArrowUpRight } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
 import { APP_COPY } from '@/app/constants/copy';

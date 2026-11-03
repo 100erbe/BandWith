@@ -9,7 +9,7 @@ import {
   Check,
   Plus,
   Sparkles
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { createBand } from '@/lib/services/bands';
 import { useBand } from '@/lib/BandContext';

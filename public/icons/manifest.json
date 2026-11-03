@@ -1,0 +1,1150 @@
+[
+    {
+        "Name":  "PlugsConnectedIcon",
+        "File":  "plugs-connected-icon.svg",
+        "ViewBox":  "0 0 28 28",
+        "StrokeWidth":  "1.85",
+        "Category":  "Brand"
+    },
+    {
+        "Name":  "PlugsDisconnectedIcon",
+        "File":  "plugs-disconnected-icon.svg",
+        "ViewBox":  "0 0 28 28",
+        "StrokeWidth":  "1.85",
+        "Category":  "Brand"
+    },
+    {
+        "Name":  "ChecksIcon",
+        "File":  "checks-icon.svg",
+        "ViewBox":  "0 0 48 48",
+        "StrokeWidth":  "3",
+        "Category":  "Brand"
+    },
+    {
+        "Name":  "IconHome",
+        "File":  "icon-home.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconCalendar",
+        "File":  "icon-calendar.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconMusic",
+        "File":  "icon-music.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconPlus",
+        "File":  "icon-plus.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.85",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconChat",
+        "File":  "icon-chat.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconMenu",
+        "File":  "icon-menu.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "IconClose",
+        "File":  "icon-close.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2.65",
+        "Category":  "NavigationDock"
+    },
+    {
+        "Name":  "InstrumentGuitar",
+        "File":  "instrument-guitar.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentBass",
+        "File":  "instrument-bass.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentDrums",
+        "File":  "instrument-drums.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentVocals",
+        "File":  "instrument-vocals.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentKeys",
+        "File":  "instrument-keys.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentSax",
+        "File":  "instrument-sax.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentTrumpet",
+        "File":  "instrument-trumpet.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentViolin",
+        "File":  "instrument-violin.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentDJ",
+        "File":  "instrument-dj.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "InstrumentOther",
+        "File":  "instrument-other.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "Instrument"
+    },
+    {
+        "Name":  "GoogleBrandIcon",
+        "File":  "google-brand-icon.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "filled",
+        "Category":  "ThirdPartyBrand"
+    },
+    {
+        "Name":  "AppleBrandIcon",
+        "File":  "apple-brand-icon.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "filled",
+        "Category":  "ThirdPartyBrand"
+    },
+    {
+        "Name":  "SpotifyBrandIcon",
+        "File":  "spotify-brand-icon.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "filled",
+        "Category":  "ThirdPartyBrand"
+    },
+    {
+        "Name":  "AppleMusicBrandIcon",
+        "File":  "apple-music-brand-icon.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "filled",
+        "Category":  "ThirdPartyBrand"
+    },
+    {
+        "Name":  "Music",
+        "File":  "music.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Music2",
+        "File":  "music2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ListMusic",
+        "File":  "list-music.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "FileMusic",
+        "File":  "file-music.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Disc3",
+        "File":  "disc3.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Guitar",
+        "File":  "guitar.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Mic2",
+        "File":  "mic2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Volume2",
+        "File":  "volume2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "VolumeX",
+        "File":  "volume-x.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Play",
+        "File":  "play.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Pause",
+        "File":  "pause.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Repeat",
+        "File":  "repeat.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "SkipForward",
+        "File":  "skip-forward.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Radio",
+        "File":  "radio.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Calendar",
+        "File":  "calendar.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CalendarPlus",
+        "File":  "calendar-plus.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Clock",
+        "File":  "clock.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Timer",
+        "File":  "timer.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "History",
+        "File":  "history.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "MapPin",
+        "File":  "map-pin.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Truck",
+        "File":  "truck.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Briefcase",
+        "File":  "briefcase.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Hotel",
+        "File":  "hotel.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Plane",
+        "File":  "plane.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Utensils",
+        "File":  "utensils.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "UtensilsCrossed",
+        "File":  "utensils-crossed.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Wine",
+        "File":  "wine.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Navigation",
+        "File":  "navigation.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ArrowLeft",
+        "File":  "arrow-left.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ArrowRight",
+        "File":  "arrow-right.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ArrowUpRight",
+        "File":  "arrow-up-right.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ArrowDownLeft",
+        "File":  "arrow-down-left.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ChevronDown",
+        "File":  "chevron-down.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ChevronUp",
+        "File":  "chevron-up.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ChevronLeft",
+        "File":  "chevron-left.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ChevronRight",
+        "File":  "chevron-right.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Home",
+        "File":  "home.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "PanelLeft",
+        "File":  "panel-left.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Plus",
+        "File":  "plus.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Minus",
+        "File":  "minus.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "X",
+        "File":  "x.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "XCircle",
+        "File":  "x-circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Check",
+        "File":  "check.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CheckCheck",
+        "File":  "check-check.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CheckCircle",
+        "File":  "check-circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CheckCircle2",
+        "File":  "check-circle2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CheckSquare",
+        "File":  "check-square.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Circle",
+        "File":  "circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Square",
+        "File":  "square.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Edit",
+        "File":  "edit.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Edit2",
+        "File":  "edit2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Edit3",
+        "File":  "edit3.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Pencil",
+        "File":  "pencil.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Trash2",
+        "File":  "trash2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Save",
+        "File":  "save.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Copy",
+        "File":  "copy.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Download",
+        "File":  "download.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Upload",
+        "File":  "upload.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "UploadCloud",
+        "File":  "upload-cloud.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "RefreshCw",
+        "File":  "refresh-cw.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "RotateCcw",
+        "File":  "rotate-ccw.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "RotateCw",
+        "File":  "rotate-cw.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "MoreHorizontal",
+        "File":  "more-horizontal.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "GripVertical",
+        "File":  "grip-vertical.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Eye",
+        "File":  "eye.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "EyeOff",
+        "File":  "eye-off.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Search",
+        "File":  "search.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Loader2",
+        "File":  "loader2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Mail",
+        "File":  "mail.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "MessageCircle",
+        "File":  "message-circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "MessageSquare",
+        "File":  "message-square.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Phone",
+        "File":  "phone.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Send",
+        "File":  "send.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Reply",
+        "File":  "reply.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Share2",
+        "File":  "share2.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Bell",
+        "File":  "bell.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "BellOff",
+        "File":  "bell-off.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Paperclip",
+        "File":  "paperclip.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ThumbsUp",
+        "File":  "thumbs-up.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ThumbsDown",
+        "File":  "thumbs-down.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "User",
+        "File":  "user.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Users",
+        "File":  "users.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "UserPlus",
+        "File":  "user-plus.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "UserCheck",
+        "File":  "user-check.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "UserCog",
+        "File":  "user-cog.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Crown",
+        "File":  "crown.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Lock",
+        "File":  "lock.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Unlock",
+        "File":  "unlock.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "LogOut",
+        "File":  "log-out.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Shield",
+        "File":  "shield.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Fingerprint",
+        "File":  "fingerprint.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ScanFace",
+        "File":  "scan-face.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "DollarSign",
+        "File":  "dollar-sign.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Euro",
+        "File":  "euro.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Wallet",
+        "File":  "wallet.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Receipt",
+        "File":  "receipt.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "BarChart3",
+        "File":  "bar-chart3.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "TrendingUp",
+        "File":  "trending-up.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "TrendingDown",
+        "File":  "trending-down.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "FileSignature",
+        "File":  "file-signature.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "FileText",
+        "File":  "file-text.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "ScrollText",
+        "File":  "scroll-text.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "AlertCircle",
+        "File":  "alert-circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "AlertTriangle",
+        "File":  "alert-triangle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Info",
+        "File":  "info.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "HelpCircle",
+        "File":  "help-circle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Star",
+        "File":  "star.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Sparkles",
+        "File":  "sparkles.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Heart",
+        "File":  "heart.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Zap",
+        "File":  "zap.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Activity",
+        "File":  "activity.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Sun",
+        "File":  "sun.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Moon",
+        "File":  "moon.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Cloud",
+        "File":  "cloud.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Cloudy",
+        "File":  "cloudy.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CloudRain",
+        "File":  "cloud-rain.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CloudDrizzle",
+        "File":  "cloud-drizzle.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CloudSnow",
+        "File":  "cloud-snow.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "CloudLightning",
+        "File":  "cloud-lightning.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Droplet",
+        "File":  "droplet.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Smartphone",
+        "File":  "smartphone.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Monitor",
+        "File":  "monitor.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Globe",
+        "File":  "globe.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Box",
+        "File":  "box.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Package",
+        "File":  "package.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Wrench",
+        "File":  "wrench.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Settings",
+        "File":  "settings.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "LayoutGrid",
+        "File":  "layout-grid.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "LayoutTemplate",
+        "File":  "layout-template.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Layers",
+        "File":  "layers.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Infinity",
+        "File":  "infinity.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Link",
+        "File":  "link.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "File",
+        "File":  "file.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Folder",
+        "File":  "folder.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "FolderOpen",
+        "File":  "folder-open.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "StickyNote",
+        "File":  "sticky-note.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "BookOpen",
+        "File":  "book-open.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Camera",
+        "File":  "camera.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Image",
+        "File":  "image.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    },
+    {
+        "Name":  "Youtube",
+        "File":  "youtube.svg",
+        "ViewBox":  "0 0 24 24",
+        "StrokeWidth":  "2",
+        "Category":  "UI"
+    }
+]

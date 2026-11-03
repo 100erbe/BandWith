@@ -9,7 +9,8 @@ import {
   Plus,
   Send,
   Loader2,
-} from 'lucide-react';
+  InstrumentIcon,
+} from '@/app/components/icons';
 import { useOnboarding, MemberInvite, INSTRUMENTS } from '@/lib/OnboardingContext';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 
@@ -79,7 +80,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
         <div
           className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(200, 67, 26, 0.04) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -346,13 +347,14 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                           role: inst.label,
                         }))
                       }
-                      className={`px-3 py-2 rounded-xl text-[13px] font-medium ${
+                      className={`px-3 py-2 rounded-xl text-[13px] font-medium inline-flex items-center gap-1.5 ${
                         currentInvite.role === inst.label
                           ? 'bg-accent text-accent-foreground'
                           : 'bg-background/30 text-foreground border border-border'
                       }`}
                     >
-                      {inst.icon} {inst.label}
+                      <InstrumentIcon instrumentId={inst.id} className="w-3.5 h-3.5 shrink-0" />
+                      {inst.label}
                     </button>
                   ))}
                 </div>

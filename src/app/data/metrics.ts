@@ -4,11 +4,11 @@ import {
   RotateCw,
   ListMusic,
   Users,
-  Box,
+  Package,
   LayoutTemplate,
   FileSignature,
   type LucideIcon
-} from "lucide-react";
+} from '@/app/components/icons';
 
 // Types
 export interface Metrics {
@@ -96,7 +96,7 @@ export const SMART_INSIGHTS: SmartInsight[] = [
 export const QUICK_ACTIONS: QuickAction[] = [
   { id: 1, label: "Setlist & Repertoire", icon: ListMusic },
   { id: 2, label: "Band Members", icon: Users },
-  { id: 3, label: "Inventory", icon: Box },
+  { id: 3, label: "Inventory", icon: Package },
   { id: 4, label: "Task Templates", icon: LayoutTemplate },
   { id: 5, label: "Contracts & Riders", icon: FileSignature },
 ];

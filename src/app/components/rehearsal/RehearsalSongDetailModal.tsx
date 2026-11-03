@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Music, Link as LinkIcon, FileText, Plus, ArrowUpRight } from 'lucide-react';
+import { Music, Link as LinkIcon, FileText, Plus, ArrowUpRight } from '@/app/components/icons';
 import { RehearsalSong } from './types';
 import { cn } from '@/app/components/ui/utils';
 

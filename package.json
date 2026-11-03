@@ -9,6 +9,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "export:icons": "powershell -ExecutionPolicy Bypass -File scripts/export-icons.ps1",
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {

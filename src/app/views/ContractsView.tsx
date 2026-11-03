@@ -14,7 +14,7 @@ import {
   ScrollText,
   ArrowLeft,
   Search,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
 

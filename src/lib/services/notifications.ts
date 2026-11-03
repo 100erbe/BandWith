@@ -769,19 +769,18 @@ export const notifyNewMessage = async (
 
 // Event type configurations for notifications
 type EventTypeConfig = {
-  emoji: string;
   label: string;
   requiresRsvp: boolean;
 };
 
 const EVENT_TYPE_CONFIG: Record<string, EventTypeConfig> = {
-  rehearsal: { emoji: '🎵', label: 'Rehearsal', requiresRsvp: true },
-  gig: { emoji: '🎸', label: 'Gig', requiresRsvp: true },
-  wedding: { emoji: '💒', label: 'Wedding Gig', requiresRsvp: true },
-  corporate: { emoji: '🏢', label: 'Corporate Event', requiresRsvp: true },
-  private: { emoji: '🎤', label: 'Private Event', requiresRsvp: true },
-  festival: { emoji: '🎪', label: 'Festival', requiresRsvp: true },
-  other: { emoji: '📅', label: 'Event', requiresRsvp: true },
+  rehearsal: { label: 'Rehearsal', requiresRsvp: true },
+  gig: { label: 'Gig', requiresRsvp: true },
+  wedding: { label: 'Wedding Gig', requiresRsvp: true },
+  corporate: { label: 'Corporate Event', requiresRsvp: true },
+  private: { label: 'Private Event', requiresRsvp: true },
+  festival: { label: 'Festival', requiresRsvp: true },
+  other: { label: 'Event', requiresRsvp: true },
 };
 
 // Unified notification for all event types
@@ -847,7 +846,7 @@ export const notifyEventMembersCreated = async (
     const notifications = userIds.map(userId => ({
       user_id: userId,
       type: 'event_invite' as NotificationType,
-      title: `${config.emoji} New ${config.label}`,
+      title: `New ${config.label}`,
       body: buildBody(userId),
       band_id: bandId,
       data: { 
@@ -883,7 +882,7 @@ export const notifyEventMembersCreated = async (
       }
       await sendPushNotification(
         [userId],
-        `${config.emoji} New ${config.label}`,
+        `New ${config.label}`,
         pushBody,
         { event_id: eventId, type: 'event_invite', event_type: eventType, member_fee: String(personalFee || '') }
       );
@@ -948,10 +947,10 @@ export const notifyEventResponse = async (
   try {
     const config = EVENT_TYPE_CONFIG[eventType] || EVENT_TYPE_CONFIG.other;
     
-    const responseEmoji = {
-      confirmed: '✓',
-      declined: '✗',
-      tentative: '?'
+    const responseTitle = {
+      confirmed: `${config.label} Confirmed`,
+      declined: `${config.label} Declined`,
+      tentative: `${config.label} Tentative`
     };
     
     const responseText = {
@@ -963,7 +962,7 @@ export const notifyEventResponse = async (
     const notifications = adminIds.map(adminId => ({
       user_id: adminId,
       type: 'event_confirmed' as NotificationType,
-      title: `${responseEmoji[response]} ${config.label} RSVP`,
+      title: responseTitle[response],
       body: responseText[response],
       band_id: bandId,
       data: { 
@@ -987,7 +986,7 @@ export const notifyEventResponse = async (
     if (response === 'declined') {
       await sendPushNotification(
         adminIds,
-        `${responseEmoji[response]} Member Dropped Out`,
+        'Member Dropped Out',
         responseText[response],
         { event_id: eventId, type: 'event_confirmed', response }
       );
@@ -1139,19 +1138,19 @@ export const sendPushToUsers = async (
 
     switch (type) {
       case 'chat_message':
-        title = `💬 ${data.senderName || 'New message'}`;
+        title = data.senderName || 'New message';
         body = data.content?.substring(0, 100) || 'New message';
         break;
       case 'event_created':
-        title = '🎸 New Event';
+        title = 'New Event';
         body = data.eventTitle || 'A new event has been created';
         break;
       case 'event_invite':
-        title = '🎵 Event Invitation';
+        title = 'Event Invitation';
         body = `You're invited to "${data.eventTitle}"`;
         break;
       case 'member_joined':
-        title = '👋 New Member';
+        title = 'New Member';
         body = `${data.memberName || 'Someone'} joined the band`;
         break;
       default:

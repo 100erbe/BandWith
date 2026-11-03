@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Check, InstrumentIcon } from '@/app/components/icons';
 import { useOnboarding, INSTRUMENTS } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -89,7 +89,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
         <div
           className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(200, 67, 26, 0.04) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -184,7 +184,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   }`}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <span className="text-lg">{instrument.icon}</span>
+                  <InstrumentIcon instrumentId={instrument.id} className="w-4 h-4 shrink-0" />
                   {instrument.label}
                 </motion.button>
               );
@@ -207,7 +207,8 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   className="px-4 py-3 rounded-2xl font-medium text-[14px] flex items-center gap-2 bg-accent text-accent-foreground"
                   whileTap={{ scale: 0.95 }}
                 >
-                  ✓ {custom}
+                  <Check className="w-4 h-4 shrink-0" />
+                  {custom}
                 </motion.button>
               ))}
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil, Music, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus, MessageCircle, Check, Pencil, Music, RotateCcw } from '@/app/components/icons';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';

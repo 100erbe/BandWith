@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Users } from '@/app/components/icons';
 
 interface IntentSelectorProps {
   onSelectSolo: () => void;
@@ -27,9 +27,7 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
           onClick={onBack}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-[15px] font-medium"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
-            <path d="M12 4L6 10L12 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <ArrowLeft className="w-5 h-5" />
           Back
         </button>
       </div>

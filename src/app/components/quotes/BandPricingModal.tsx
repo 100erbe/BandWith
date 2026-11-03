@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Check, Plus, Minus, Trash2, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Plus, Minus, Trash2, RotateCcw, Sparkles } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import {
   DEFAULT_BAND_PRICING,

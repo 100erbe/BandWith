@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from './utils';
+import { BrandLogo } from './BrandLogo';
 
 interface LogoProps {
   variant?: 'full' | 'icon' | 'wordmark';
@@ -8,90 +9,11 @@ interface LogoProps {
   className?: string;
 }
 
-// Size mappings
-const sizeMap = {
-  sm: { icon: 24, wordmark: 80, full: 120 },
-  md: { icon: 40, wordmark: 120, full: 180 },
-  lg: { icon: 56, wordmark: 160, full: 240 },
-  xl: { icon: 80, wordmark: 200, full: 320 },
-};
-
-// Color mappings
-const colorMap = {
-  default: { band: 'var(--surface-inverse-fg)', with: 'var(--accent)', icon: 'var(--accent)' },
-  white: { band: 'var(--surface-inverse-fg)', with: 'var(--surface-inverse-fg)', icon: 'var(--surface-inverse-fg)' },
-  lime: { band: 'var(--accent)', with: 'var(--accent)', icon: 'var(--accent)' },
-  black: { band: 'var(--fg)', with: 'var(--fg)', icon: 'var(--fg)' },
-};
-
-// Icon SVG Component (Equalizer pattern)
-const IconMark: React.FC<{ size: number; color: string }> = ({ size, color }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 100 100"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    {/* Left column - 3 small squares */}
-    <rect x="8" y="8" width="18" height="18" rx="5" fill={color} />
-    <rect x="8" y="41" width="18" height="18" rx="5" fill={color} />
-    <rect x="8" y="74" width="18" height="18" rx="5" fill={color} />
-    
-    {/* Middle column - tall bar */}
-    <rect x="41" y="8" width="18" height="51" rx="5" fill={color} />
-    <rect x="41" y="74" width="18" height="18" rx="5" fill={color} />
-    
-    {/* Right column - 3 squares */}
-    <rect x="74" y="8" width="18" height="18" rx="5" fill={color} />
-    <rect x="74" y="41" width="18" height="18" rx="5" fill={color} />
-    <rect x="74" y="74" width="18" height="18" rx="5" fill={color} />
-  </svg>
-);
-
-// Wordmark SVG Component
-const Wordmark: React.FC<{ width: number; bandColor: string; withColor: string }> = ({
-  width,
-  bandColor,
-  withColor,
-}) => {
-  const height = width * 0.25; // Aspect ratio
-  return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 400 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* BAND */}
-      <text
-        x="0"
-        y="75"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontSize="80"
-        fontWeight="900"
-        fontStyle="italic"
-        fill={bandColor}
-        letterSpacing="-4"
-      >
-        BAND
-      </text>
-      {/* WITH */}
-      <text
-        x="195"
-        y="75"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontSize="80"
-        fontWeight="900"
-        fontStyle="italic"
-        fill={withColor}
-        letterSpacing="-4"
-      >
-        WITH
-      </text>
-    </svg>
-  );
+const heightMap = {
+  sm: 'h-6',
+  md: 'h-9',
+  lg: 'h-12',
+  xl: 'h-16',
 };
 
 export const Logo: React.FC<LogoProps> = ({
@@ -100,80 +22,50 @@ export const Logo: React.FC<LogoProps> = ({
   size = 'md',
   className,
 }) => {
-  const colors = colorMap[colorMode];
-  const sizes = sizeMap[size];
+  const lockup =
+    variant === 'icon'
+      ? 'icon-only'
+      : variant === 'wordmark'
+        ? 'wordmark-only'
+        : 'horizontal';
+  const monochrome = colorMode === 'white' || colorMode === 'black';
+  const toneClass =
+    colorMode === 'white'
+      ? 'text-[var(--surface-inverse-fg)]'
+      : colorMode === 'black'
+        ? 'text-foreground'
+        : '';
 
-  if (variant === 'icon') {
-    return (
-      <div className={cn('flex items-center justify-center', className)}>
-        <IconMark size={sizes.icon} color={colors.icon} />
-      </div>
-    );
-  }
-
-  if (variant === 'wordmark') {
-    return (
-      <div className={cn('flex items-center', className)}>
-        <Wordmark
-          width={sizes.wordmark}
-          bandColor={colors.band}
-          withColor={colors.with}
-        />
-      </div>
-    );
-  }
-
-  // Full logo (icon + wordmark)
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <IconMark size={sizes.icon} color={colors.icon} />
-      <Wordmark
-        width={sizes.wordmark}
-        bandColor={colors.band}
-        withColor={colors.with}
-      />
-    </div>
+    <BrandLogo
+      variant="waveform"
+      lockup={lockup}
+      monochrome={monochrome}
+      className={cn(heightMap[size], toneClass, className)}
+    />
   );
 };
 
-// App Icon Component (for use in splash screens, etc.)
 export const AppIcon: React.FC<{
   size?: number;
   className?: string;
 }> = ({ size = 96, className }) => (
   <div
     className={cn(
-      'flex items-center justify-center rounded-[22%]',
+      'flex items-center justify-center rounded-[22%] bg-card border border-foreground/10',
       className
     )}
     style={{
       width: size,
       height: size,
-      background: 'var(--accent)',
-      boxShadow: `0 ${size * 0.1}px ${size * 0.4}px rgba(212, 251, 70, 0.4)`,
+      boxShadow: `0 ${Math.round(size * 0.1)}px ${Math.round(size * 0.35)}px rgba(200, 67, 26, 0.25)`,
     }}
   >
-    <svg
-      width={size * 0.65}
-      height={size * 0.65}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Left column */}
-      <rect x="8" y="8" width="18" height="18" rx="5" fill="var(--fg)" />
-      <rect x="8" y="41" width="18" height="18" rx="5" fill="var(--fg)" />
-      <rect x="8" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
-      
-      {/* Middle column */}
-      <rect x="41" y="8" width="18" height="51" rx="5" fill="var(--fg)" />
-      <rect x="41" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
-      
-      {/* Right column */}
-      <rect x="74" y="8" width="18" height="18" rx="5" fill="var(--fg)" />
-      <rect x="74" y="41" width="18" height="18" rx="5" fill="var(--fg)" />
-      <rect x="74" y="74" width="18" height="18" rx="5" fill="var(--fg)" />
-    </svg>
+    <BrandLogo
+      variant="waveform"
+      lockup="icon-only"
+      style={{ height: Math.round(size * 0.56) }}
+    />
   </div>
 );
 

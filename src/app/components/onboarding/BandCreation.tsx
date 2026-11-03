@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowRight, Camera, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Sparkles, Loader2 } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 
 interface BandCreationProps {
@@ -78,7 +78,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         <div
           className="absolute bottom-0 left-0 right-0 h-[50%]"
           style={{
-            background: 'linear-gradient(to top, rgba(212, 251, 70, 0.03) 0%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(200, 67, 26, 0.04) 0%, transparent 100%)',
           }}
         />
       </div>
@@ -110,7 +110,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               className="text-center"
             >
               <h2 className="text-3xl font-black text-foreground mb-2">
-                🎉 "{bandName}"
+                "{bandName}"
               </h2>
               <p className="text-accent text-xl font-bold">is born!</p>
             </motion.div>
@@ -254,7 +254,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             
             <div className="flex-1">
               <p className="text-muted-foreground/70 text-[14px] mb-1">
-                {avatarPreview ? 'Looking good! 🎸' : 'Tap to add a photo'}
+                {avatarPreview ? 'Looking good!' : 'Tap to add a photo'}
               </p>
               <p className="text-muted-foreground/60 text-[12px]">
                 Skip for now, add later

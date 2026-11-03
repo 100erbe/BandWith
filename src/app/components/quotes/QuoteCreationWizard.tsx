@@ -7,7 +7,7 @@ import {
   Heart, Wine, Utensils, Zap, Sparkles, Moon,
   Check, AlertCircle,
   LucideIcon,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';

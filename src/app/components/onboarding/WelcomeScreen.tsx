@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2 } from '@/app/components/icons';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
@@ -71,11 +72,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <img
-            src="/brand/Logo - full text White.png"
-            alt="BANDWITH"
-            className="h-6"
-          />
+          <BrandLogo variant="waveform" lockup="horizontal" className="h-8" />
         </motion.div>
 
         {/* Main value prop area */}

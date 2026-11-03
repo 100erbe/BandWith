@@ -13,7 +13,7 @@ import {
   Copy,
   AlertCircle,
   Loader2
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { CONFIRMED_GIGS } from '@/app/data/events';

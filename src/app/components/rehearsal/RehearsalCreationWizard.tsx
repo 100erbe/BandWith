@@ -5,8 +5,8 @@ import {
   ArrowRight, ArrowLeft, ArrowUpRight, Plus, Trash2, FileText, Link, ThumbsUp, 
   ThumbsDown, MessageCircle, CheckCircle2, AlertCircle, Briefcase,
   Wrench, BookOpen, ChevronDown, Play, Search, X, Folder, ListMusic, History, Edit, Layers, ChevronUp, Copy, Paperclip, User, LayoutGrid,
-  Euro, Home, Lock, Unlock, Guitar, Check, Loader2
-} from 'lucide-react';
+  Euro, Home, Lock, Unlock, Guitar, Check, Loader2, Zap
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
@@ -2572,7 +2572,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 onClick={handleSubmit}
                 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground/50 hover:text-foreground transition-colors py-1 cursor-pointer"
               >
-                <span>⚡ Quick Save (Skip remaining steps)</span>
+                <Zap className="w-3.5 h-3.5 shrink-0" />
+                <span>Quick Save (Skip remaining steps)</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>

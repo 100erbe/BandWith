@@ -6,8 +6,9 @@ import {
   Download,
   Zap,
   LogOut,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface ControlDeckProps {
   isOpen: boolean;
@@ -248,9 +249,10 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({
                   SIGNED IN AS {user.email}
                 </p>
               )}
-              <p className="text-center text-[10px] text-foreground/20 uppercase">
-                BandWith v1.0.0
-              </p>
+              <div className="flex flex-col items-center justify-center gap-1 opacity-40">
+                <BrandLogo variant="waveform" lockup="horizontal" className="h-4" textClassName="text-xs" />
+                <span className="text-[10px] text-foreground/50 uppercase tracking-wider">v1.0.0</span>
+              </div>
             </div>
 
             {/* Bottom clearance spacer */}

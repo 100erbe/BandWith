@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Music, UploadCloud, Smartphone, FileText, Folder, Plus } from 'lucide-react';
+import { Music, UploadCloud, Smartphone, FileText, Folder, Plus } from '@/app/components/icons';
 import { RehearsalSong } from './types';
 import { cn } from '@/app/components/ui/utils';
 

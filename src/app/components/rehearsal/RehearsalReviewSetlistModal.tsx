@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { ListMusic, Clock, Layers, AlertCircle, GripVertical, Trash2, Plus, Check, X } from 'lucide-react';
+import { ListMusic, Clock, Layers, AlertCircle, GripVertical, Trash2, Plus, Check, X } from '@/app/components/icons';
 import { RehearsalSetlistSnapshotFinal } from './types';
 import { cn } from '@/app/components/ui/utils';
 

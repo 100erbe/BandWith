@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import { 
   Bell,
   Shield,
@@ -16,8 +17,9 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ArrowLeft,
+  Globe,
   X
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
@@ -231,9 +233,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const renderAboutSection = () => (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col">
-          <span className="text-[42px] font-bold text-foreground leading-none">BANDWITH</span>
-          <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mt-1">Version 1.0.0</span>
+        <div className="flex flex-col gap-2">
+          <BrandLogo variant="waveform" lockup="horizontal" className="h-10" textClassName="text-3xl" />
+          <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">Version 1.0.0</span>
         </div>
       </div>
 
@@ -267,7 +269,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </span>
         <button className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70">
           <div className="flex items-center gap-3">
-            <span className="text-lg">🇬🇧</span>
+            <Globe className="w-4 h-4 text-foreground/70 shrink-0" />
             <span className="text-xs font-bold text-foreground uppercase tracking-wide">ENGLISH</span>
           </div>
           <DotRadio selected={true} activeColor="var(--fg)" className="!w-[60px] !h-[38px]" />

@@ -1,4 +1,4 @@
-import { Play, Truck, Volume2, LogOut } from "lucide-react";
+import { Play, Truck, Volume2, LogOut } from '@/app/components/icons';
 
 // Event types
 export type EventStatus = 'CONFIRMED' | 'TENTATIVE' | 'DRAFT' | 'QUOTE' | 'REHEARSAL';

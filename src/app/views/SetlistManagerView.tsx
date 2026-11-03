@@ -21,7 +21,7 @@ import {
   Save,
   ChevronRight,
   CheckCircle2
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {

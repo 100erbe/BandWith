@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Calendar, Sparkles, Star } from 'lucide-react';
+import { ArrowRight, Calendar, Sparkles, Star } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 
 interface JoinerWelcomeBandProps {
@@ -226,7 +226,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           onClick={onComplete}
           className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px]"
           style={{
-            boxShadow: '0 4px 20px rgba(212, 251, 70, 0.3)',
+            boxShadow: '0 4px 20px rgba(200, 67, 26, 0.25)',
           }}
           whileHover={{ scale: 0.98 }}
           whileTap={{ scale: 0.95 }}

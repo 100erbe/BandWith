@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus } from "lucide-react";
+import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X } from '@/app/components/icons';
 import { cn } from "@/app/components/ui/utils";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
@@ -1231,7 +1231,7 @@ export default function AuthenticatedApp() {
 
       // Show confirmation toast with instant 1-tap UNDO action
       setSaveToast({
-        message: 'Quote confirmed as Gig! 🎸',
+        message: 'Quote confirmed as Gig!',
         type: 'success',
         duration: 8000,
         action: {
@@ -1291,7 +1291,7 @@ export default function AuthenticatedApp() {
         };
       });
 
-      setSaveToast({ message: 'Reverted back to Quote ↩️', type: 'info' });
+      setSaveToast({ message: 'Reverted back to Quote', type: 'info' });
 
       // If user was on Gigs filter, switch back to Quotes
       if (eventFilter === 'GIGS') {
@@ -1357,7 +1357,7 @@ export default function AuthenticatedApp() {
     }
 
     // DB succeeded — confirm with success toast
-    setSaveToast({ message: "You're confirmed! 🎸", type: 'success' });
+    setSaveToast({ message: "You're confirmed!", type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP D — Safe Notification Sandbox (autonomous try/catch)
@@ -2357,6 +2357,13 @@ export default function AuthenticatedApp() {
             )}
             onClick={() => !saveToast.action && setSaveToast(null)}
           >
+            {saveToast.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+            ) : saveToast.type === 'info' ? (
+              <Info className="w-4 h-4 shrink-0 text-white/80" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+            )}
             <span className="flex-1 text-left truncate">{saveToast.message}</span>
             {saveToast.action && (
               <button
@@ -2374,9 +2381,10 @@ export default function AuthenticatedApp() {
             {!saveToast.action && (
               <button
                 onClick={() => setSaveToast(null)}
-                className="text-white/70 hover:text-white text-xs font-bold shrink-0 ml-1"
+                aria-label="Dismiss notification"
+                className="text-white/70 hover:text-white shrink-0 ml-1"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             )}
           </motion.div>

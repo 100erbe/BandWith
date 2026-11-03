@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { DollarSign, CheckCircle2, Users } from 'lucide-react';
+import { DollarSign, CheckCircle2, Users } from '@/app/components/icons';
 import { RehearsalState, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';

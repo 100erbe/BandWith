@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from '@/app/components/icons';
 import { APP_COPY } from '@/app/constants/copy';
 
 interface EmptyStateProps {

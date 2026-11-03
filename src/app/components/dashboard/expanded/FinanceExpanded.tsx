@@ -9,7 +9,7 @@ import {
   Plus,
   Check,
   Calendar,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { createTransaction } from '@/lib/services/transactions';

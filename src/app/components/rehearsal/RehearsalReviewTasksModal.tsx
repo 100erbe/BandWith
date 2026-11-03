@@ -1,6 +1,6 @@
 import React from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Users, User, CheckCircle2 } from 'lucide-react';
+import { CheckSquare, Users, User, CheckCircle2 } from '@/app/components/icons';
 import { RehearsalTask, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
 

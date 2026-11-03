@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon } from '@/app/components/icons';
 
 interface NavButtonProps {
   icon: LucideIcon;

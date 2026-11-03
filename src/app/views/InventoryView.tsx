@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Search, Package, Loader2, Plus, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search, Package, Loader2, Plus, X, Trash2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
 

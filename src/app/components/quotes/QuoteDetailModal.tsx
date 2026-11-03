@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Plus } from '@/app/components/icons';
 import { Quote } from '@/app/data/quotes';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 

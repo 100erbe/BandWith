@@ -10,7 +10,7 @@ import {
   X,
   ChevronDown,
   History,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { EventData } from '@/app/components/dashboard/EventCard';

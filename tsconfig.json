@@ -13,7 +13,8 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "lucide-react": ["src/app/components/icons/index.ts"]
     },
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "vitest/globals"]

@@ -11,7 +11,7 @@ import {
   Navigation,
   AlertCircle,
   Loader2
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';

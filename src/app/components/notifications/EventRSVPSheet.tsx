@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowUpRight, MapPin, Clock, Calendar, Euro } from 'lucide-react';
+import { X, ArrowUpRight, MapPin, Clock, Calendar, Euro } from '@/app/components/icons';
 import type { Notification } from '@/lib/services/notifications';
 
 interface EventRSVPSheetProps {

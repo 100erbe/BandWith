@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { MapPin, Loader2, X, Check } from 'lucide-react';
+import { MapPin, Loader2, X, Check } from '@/app/components/icons';
 import { cn } from './utils';
 import { searchVenues, type VenuePlace } from '@/lib/services/location';
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Users } from '@/app/components/icons';
 import { InviteData } from './JoinerInviteLanding';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface JoinerInviteSelectProps {
   invites: InviteData[];
@@ -51,13 +52,17 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
           <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
         </button>
         
-        <motion.img
-          src="/brand/Logo - full text White.png"
-          alt="BANDWITH"
-          className="h-5 opacity-40"
+        <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-        />
+          animate={{ opacity: 0.6 }}
+        >
+          <BrandLogo
+            variant="waveform"
+            lockup="horizontal"
+            className="h-6"
+            textClassName="text-lg"
+          />
+        </motion.div>
         
         <div className="w-10" />
       </div>

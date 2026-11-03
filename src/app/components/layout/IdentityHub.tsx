@@ -7,21 +7,22 @@ import {
   ArrowUpRight,
   LogOut,
   Shield,
-  Music2,
+  ListMusic,
   Package,
-  FileText,
-  CheckSquare,
+  FileSignature,
+  LayoutTemplate,
   Sun,
   Moon,
   Monitor,
   Users,
   Bell,
   Sparkles,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface NotificationGroup {
   type: string;
@@ -96,7 +97,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       label: 'Setlist & Repertoire',
       count: entityCounts?.repertoire ?? 0,
       unit: 'songs',
-      icon: Music2,
+      icon: ListMusic,
     },
     {
       id: 'INVENTORY',
@@ -110,14 +111,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       label: 'Contracts & Docs',
       count: entityCounts?.documents ?? 0,
       unit: 'files',
-      icon: FileText,
+      icon: FileSignature,
     },
     {
       id: 'TEMPLATES',
       label: 'Task Templates',
       count: entityCounts?.templates ?? 0,
       unit: 'workflows',
-      icon: CheckSquare,
+      icon: LayoutTemplate,
     },
   ];
 
@@ -388,9 +389,12 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 <span className="text-[11px] font-bold text-foreground/40 uppercase tracking-wider">
                   SIGNED IN AS {displayEmail}
                 </span>
-                <span className="text-[10px] text-foreground/30 uppercase tracking-wider">
-                  BANDWITH V1.0.0 · ALL DATA ENCRYPTED
-                </span>
+                <div className="flex items-center gap-2 opacity-40 mt-1">
+                  <BrandLogo variant="waveform" lockup="horizontal" className="h-3.5" textClassName="text-[11px] font-bold" />
+                  <span className="text-[10px] text-foreground/50 uppercase tracking-wider">
+                    · V1.0.0 · ALL DATA ENCRYPTED
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowRight, Sparkles } from 'lucide-react';
+import { X, ArrowRight, Sparkles } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 

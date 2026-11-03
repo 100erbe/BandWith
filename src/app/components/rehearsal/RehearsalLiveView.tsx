@@ -4,7 +4,7 @@ import {
   X, Play, Pause, Square, SkipForward, Mic2, MessageSquare, 
   CheckCircle2, AlertTriangle, XCircle, RotateCcw, Clock, 
   Music, ChevronRight, User, Settings, Volume2, Plus, FileText
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { RehearsalSong } from './types';
 
@@ -111,7 +111,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     <div className="grid grid-cols-4 gap-4">
                         <button 
                             onClick={() => setIsPlaying(!isPlaying)}
-                            className="h-20 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(106,13,173,0.3)]"
+                            className="h-20 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center hover:scale-[1.02] transition-transform shadow-[0_0_20px_rgba(200, 67, 26,0.3)]"
                         >
                             {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current" />}
                         </button>

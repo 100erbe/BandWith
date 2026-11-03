@@ -20,7 +20,7 @@ import {
   Disc3,
   FolderOpen,
   ChevronDown
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { createSong } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';

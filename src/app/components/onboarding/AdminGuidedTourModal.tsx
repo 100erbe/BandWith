@@ -9,7 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 
 interface AdminGuidedTourModalProps {

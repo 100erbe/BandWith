@@ -40,18 +40,18 @@ export type CreatorStep = (typeof CREATOR_STEPS)[number];
 export type JoinerStep = (typeof JOINER_STEPS)[number];
 export type OnboardingStep = CreatorStep | JoinerStep;
 
-// Instrument options
+// Instrument options (rendered with <InstrumentIcon instrumentId={id} />)
 export const INSTRUMENTS = [
-  { id: 'guitar', label: 'Guitar', icon: '🎸' },
-  { id: 'bass', label: 'Bass', icon: '🎸' },
-  { id: 'drums', label: 'Drums', icon: '🥁' },
-  { id: 'vocals', label: 'Vocals', icon: '🎤' },
-  { id: 'keys', label: 'Keys', icon: '🎹' },
-  { id: 'saxophone', label: 'Saxophone', icon: '🎷' },
-  { id: 'trumpet', label: 'Trumpet', icon: '🎺' },
-  { id: 'violin', label: 'Violin', icon: '🎻' },
-  { id: 'dj', label: 'DJ', icon: '💿' },
-  { id: 'other', label: 'Other...', icon: '➕' },
+  { id: 'guitar', label: 'Guitar' },
+  { id: 'bass', label: 'Bass' },
+  { id: 'drums', label: 'Drums' },
+  { id: 'vocals', label: 'Vocals' },
+  { id: 'keys', label: 'Keys' },
+  { id: 'saxophone', label: 'Saxophone' },
+  { id: 'trumpet', label: 'Trumpet' },
+  { id: 'violin', label: 'Violin' },
+  { id: 'dj', label: 'DJ' },
+  { id: 'other', label: 'Other...' },
 ] as const;
 
 // Member invite

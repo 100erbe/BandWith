@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Plus, User, Users, Music, AlertCircle, Check } from 'lucide-react';
+import { CheckSquare, Plus, User, Users, Music, AlertCircle, Check } from '@/app/components/icons';
 import { RehearsalMember, RehearsalSong, RehearsalTask } from './types';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';

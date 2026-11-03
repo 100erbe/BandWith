@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, ArrowUpRight } from 'lucide-react';
+import { X, Plus, ArrowUpRight } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
 

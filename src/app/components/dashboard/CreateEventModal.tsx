@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, ArrowUpRight, AlertCircle, Music, Folder, Check } from 'lucide-react';
+import { X, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, ArrowRight, ArrowUpRight, AlertCircle, Music, Folder, Check, Zap } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
@@ -2815,7 +2815,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 onClick={handleCreate}
                 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground/50 hover:text-foreground transition-colors py-1 cursor-pointer"
               >
-                <span>⚡ Quick Save (Skip remaining steps)</span>
+                <Zap className="w-3.5 h-3.5 shrink-0" />
+                <span>Quick Save (Skip remaining steps)</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>

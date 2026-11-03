@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { FileText, Link, Paperclip, X, Plus, Save, Clock, User, CheckCircle2, ArrowLeft, Image as ImageIcon, Music, File } from 'lucide-react';
+import { FileText, Link, Paperclip, X, Plus, Save, Clock, User, CheckCircle2, ArrowLeft, Image as ImageIcon, Music, File } from '@/app/components/icons';
 import { SongProposal, ProposalAttachment } from './types';
 import { cn } from '@/app/components/ui/utils';
 

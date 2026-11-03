@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Users, Calendar, ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowRight, Users, Calendar, ArrowLeft, CheckCircle } from '@/app/components/icons';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 export interface InviteData {
   id: string;
@@ -92,13 +93,17 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
           <div className="w-10" />
         )}
         
-        <motion.img
-          src="/brand/Logo - full text White.png"
-          alt="BANDWITH"
-          className="h-5 opacity-40"
+        <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-        />
+          animate={{ opacity: 0.6 }}
+        >
+          <BrandLogo
+            variant="waveform"
+            lockup="horizontal"
+            className="h-6"
+            textClassName="text-lg"
+          />
+        </motion.div>
         
         <div className="w-10" />
       </div>

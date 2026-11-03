@@ -7,7 +7,7 @@ import {
   Clock,
   ListMusic,
   ChevronRight,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { dashboardContainerVariants, dashboardItemVariants } from '@/styles/motion';
 import { QUICK_ACTIONS } from '@/app/data/metrics';

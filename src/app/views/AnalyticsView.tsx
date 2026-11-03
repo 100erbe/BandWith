@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from '@/app/components/icons';
 import { useBand } from '@/lib/BandContext';
 import { useDashboardData } from '@/app/hooks/useData';
 

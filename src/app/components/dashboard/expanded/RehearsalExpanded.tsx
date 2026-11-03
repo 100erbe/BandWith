@@ -14,7 +14,7 @@ import {
   Mic2,
   Radio,
   X
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';

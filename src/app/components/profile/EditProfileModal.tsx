@@ -11,7 +11,7 @@ import {
   Check,
   Save,
   ArrowLeft,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';

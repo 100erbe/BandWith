@@ -15,12 +15,14 @@ import {
   BellOff,
   Sparkles,
   Music,
+  Mic2,
+  MessageSquare,
   UserPlus,
   Trash2,
   Mail,
   Shield,
   User,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
@@ -72,9 +74,18 @@ const formatEventDate = (dateStr: string): string => {
   });
 };
 
-function getNotificationMeta(type: string) {
+const cleanNotificationTitle = (title?: string): string => {
+  if (!title) return 'NOTIFICATION';
+  return title
+    .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D✓✗?]+\s*/gu, '')
+    .trim();
+};
+
+function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   const t = (type || '').toLowerCase();
-  if (t.includes('rehearsal')) {
+  const evType = String(data?.event_type || '').toLowerCase();
+
+  if (t.includes('rehearsal') || evType === 'rehearsal') {
     return {
       label: 'REHEARSAL',
       icon: Music,
@@ -82,11 +93,19 @@ function getNotificationMeta(type: string) {
       badgeClass: 'bg-indigo-500/15 text-indigo-400',
     };
   }
+  if (t.includes('chat')) {
+    return {
+      label: 'CHAT',
+      icon: MessageSquare,
+      tileClass: 'bg-primary/15 text-primary border border-primary/20',
+      badgeClass: 'bg-primary/15 text-primary',
+    };
+  }
   if (t.includes('gig') || t.includes('event')) {
     const isConfirmed = t.includes('confirmed');
     return {
-      label: isConfirmed ? 'CONFIRMED' : 'EVENT',
-      icon: Calendar,
+      label: isConfirmed ? 'CONFIRMED' : 'GIG',
+      icon: Mic2,
       tileClass: isConfirmed 
         ? 'bg-accent/15 text-accent border border-accent/25' 
         : 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
@@ -357,7 +376,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       {displayedNotifications.map((notif, i) => {
                         const originalIndex = allNotifications.findIndex(n => n.id === notif.id);
                         const isRead = notif.read;
-                        const meta = getNotificationMeta(notif.type);
+                        const meta = getNotificationMeta(notif.type, notif.data);
                         const IconComponent = meta.icon;
 
                         return (
@@ -402,7 +421,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                 'text-sm font-bold uppercase mt-1.5 leading-snug truncate',
                                 isRead ? 'text-foreground/80' : 'text-foreground'
                               )}>
-                                {notif.title}
+                                {cleanNotificationTitle(notif.title)}
                               </h3>
 
                               {notif.body && (
@@ -424,7 +443,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-right-4 duration-200">
                   {/* Hero Card */}
                   {(() => {
-                    const meta = getNotificationMeta(detailNotif.type);
+                    const meta = getNotificationMeta(detailNotif.type, detailNotif.data);
                     const IconComponent = meta.icon;
 
                     return (
@@ -451,7 +470,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
                         <div className="space-y-1.5">
                           <h2 className="text-lg sm:text-xl font-black uppercase text-foreground leading-tight">
-                            {detailNotif.title}
+                            {cleanNotificationTitle(detailNotif.title)}
                           </h2>
                           {detailNotif.body && (
                             <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed font-normal">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BrandLogo } from '@/app/components/ui/BrandLogo';
 
 interface WelcomeScreenProps {
   onComplete: () => void;
@@ -82,36 +83,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   ease: "easeInOut"
                 }}
                 style={{
-                  background: 'radial-gradient(circle, rgba(106,13,173,0.3) 0%, transparent 70%)'
+                  background: 'radial-gradient(circle, rgba(200, 67, 26,0.3) 0%, transparent 70%)'
                 }}
               />
               
               {/* Logo container with premium styling */}
               <div 
-                className="relative w-20 h-20 rounded-[1.5rem] flex items-center justify-center overflow-hidden"
+                className="relative w-24 h-24 rounded-[1.75rem] flex items-center justify-center overflow-hidden bg-card/60 backdrop-blur-md border border-border/50"
                 style={{
-                  background: 'linear-gradient(145deg, var(--accent) 0%, var(--primary) 100%)',
-                  boxShadow: '0 25px 50px -12px rgba(212, 251, 70, 0.35), 0 10px 25px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3)'
+                  boxShadow: '0 25px 50px -12px rgba(200, 67, 26, 0.35), 0 10px 25px rgba(0,0,0,0.2)'
                 }}
               >
-                {/* Inner subtle border */}
-                <div 
-                  className="absolute inset-[2px] rounded-[1.35rem] opacity-30"
-                  style={{
-                    background: 'linear-gradient(145deg, transparent 0%, rgba(255,255,255,0.4) 100%)'
-                  }}
-                />
-                
-                {/* BW Monogram with typography treatment */}
-                <span 
-                  className="relative text-[1.75rem] font-black text-[var(--fg)] tracking-[-0.05em]"
-                  style={{ 
-                    fontFamily: 'Inter, SF Pro Display, -apple-system, system-ui, sans-serif',
-                    letterSpacing: '-0.02em'
-                  }}
-                >
-                  BW
-                </span>
+                <BrandLogo variant="waveform" lockup="icon-only" className="w-14 h-14" />
               </div>
             </motion.div>
 
@@ -124,8 +107,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             >
               {/* Main title with letter stagger */}
               <div className="overflow-hidden">
-                <motion.h1
-                  className="text-4xl font-black text-white tracking-tight"
+                <motion.div
                   initial={{ y: 40 }}
                   animate={{ y: phase !== 'logo' ? 0 : 40 }}
                   transition={{ 
@@ -133,8 +115,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     ease: [0.4, 0, 0.2, 1] 
                   }}
                 >
-                  BANDWITH
-                </motion.h1>
+                  <BrandLogo variant="waveform" lockup="wordmark-only" textClassName="text-4xl text-foreground font-black" />
+                </motion.div>
               </div>
 
               {/* Tagline */}
@@ -171,7 +153,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 key={i}
                 className="w-1 h-1 rounded-full bg-white/20"
                 animate={{
-                  backgroundColor: ['rgba(255,255,255,0.2)', 'rgba(106,13,173,0.8)', 'rgba(255,255,255,0.2)'],
+                  backgroundColor: ['rgba(255,255,255,0.2)', 'rgba(200, 67, 26,0.8)', 'rgba(255,255,255,0.2)'],
                   scale: [1, 1.3, 1]
                 }}
                 transition={{

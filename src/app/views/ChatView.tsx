@@ -13,7 +13,7 @@ import {
   Loader2,
   Check,
   CheckCheck,
-} from 'lucide-react';
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { ChatItem, ChatFilterType, toTitleCase } from '@/app/data/chats';

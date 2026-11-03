@@ -1,6 +1,6 @@
 import React from 'react';
 import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { MessageCircle, ThumbsUp, ThumbsDown, CheckCircle2, Clock } from 'lucide-react';
+import { MessageCircle, ThumbsUp, ThumbsDown, CheckCircle2, Clock } from '@/app/components/icons';
 import { SongProposal } from './types';
 import { cn } from '@/app/components/ui/utils';
 
