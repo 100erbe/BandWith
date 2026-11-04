@@ -70,6 +70,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
                 <motion.div layoutId={`status-${event.id}`}>
                   <StatusBadge status={event.status} />
                 </motion.div>
+                {!event.band_id && (
+                  <div className="text-[11px] uppercase tracking-wider leading-tight text-foreground/60 mt-1 mb-0.5">
+                    <span className="font-bold text-accent-gig">PERSONAL</span> • GIG
+                  </div>
+                )}
                 <motion.h4 
                   layoutId={`title-${event.id}`}
                   className="text-2xl font-black text-foreground leading-tight mt-1 group-hover:text-foreground/80"

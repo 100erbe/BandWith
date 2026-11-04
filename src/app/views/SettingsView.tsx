@@ -3,339 +3,346 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import { 
   Bell,
-  Shield,
-  HelpCircle,
-  Info,
-  Moon,
-  Sun,
   Smartphone,
   Volume2,
   VolumeX,
-  Lock,
-  Eye,
+  ArrowLeft,
+  ArrowUpRight,
+  Shield,
+  HelpCircle,
+  Sun,
+  Moon,
+  Monitor,
+  Globe,
   Trash2,
   AlertTriangle,
-  ArrowUpRight,
-  ArrowLeft,
-  Globe,
-  X
 } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
-import { DotRadio } from '@/app/components/ui/DotRadio';
+import { Switch } from '@/app/components/ui/switch';
+import { cn } from '@/app/components/ui/utils';
 
-type SettingsSection = 'main' | 'notifications' | 'appearance' | 'privacy' | 'help' | 'about' | 'language' | 'biometric';
+type SettingsSection = 'notifications' | 'appearance' | 'privacy' | 'help' | 'about' | 'language';
 
 interface SettingsViewProps {
   onClose: () => void;
-  initialSection?: SettingsSection;
+  initialSection?: string;
   isAdmin?: boolean;
-  onOpenPricing?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
-  initialSection = 'main',
-  isAdmin = false,
-  onOpenPricing,
+  initialSection = 'notifications',
 }) => {
-  const { user, signOut, isAuthenticated } = useAuth();
+  const { signOut, user } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const safeInitialSection: SettingsSection = 
+    initialSection === 'main' || !initialSection
+      ? 'notifications'
+      : (initialSection as SettingsSection);
+
+  const [activeSection] = useState<SettingsSection>(safeInitialSection);
+
+  const [pushEnabled, setPushEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('bandwith_push_notifs') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [emailEnabled, setEmailEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('bandwith_email_notifs') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('bandwith_sound_notifs') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleTogglePush = (val: boolean) => {
+    setPushEnabled(val);
+    try {
+      localStorage.setItem('bandwith_push_notifs', String(val));
+    } catch {}
+  };
+
+  const handleToggleEmail = (val: boolean) => {
+    setEmailEnabled(val);
+    try {
+      localStorage.setItem('bandwith_email_notifs', String(val));
+    } catch {}
+  };
+
+  const handleToggleSound = (val: boolean) => {
+    setSoundEnabled(val);
+    try {
+      localStorage.setItem('bandwith_sound_notifs', String(val));
+    } catch {}
+  };
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const getSectionTitle = (): string => {
     switch (activeSection) {
       case 'notifications': return 'NOTIFICATIONS';
       case 'appearance': return 'APPEARANCE';
-      case 'privacy': return 'PRIVACY';
-      case 'help': return 'HELP';
+      case 'privacy': return 'PRIVACY & SECURITY';
+      case 'help': return 'HELP & SUPPORT';
       case 'about': return 'ABOUT';
       case 'language': return 'LANGUAGE';
       default: return 'SETTINGS';
     }
   };
 
-  const renderMainSection = () => (
-    <div className="flex flex-col gap-0">
-      {isAdmin && onOpenPricing && (
-        <motion.button
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={onOpenPricing}
-          className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70 transition-opacity"
-        >
-          <div className="flex flex-col items-start">
-            <span className="text-xs font-bold text-foreground uppercase tracking-wide">PRICING, FEES & SERVICES</span>
-            <span className="text-[10px] font-medium text-foreground/40 uppercase">Musician fees, services & travel expenses</span>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
-        </motion.button>
-      )}
-      {[
-        { id: 'notifications' as const, label: 'NOTIFICATIONS', desc: 'Push, email & sounds' },
-        { id: 'appearance' as const, label: 'APPEARANCE', desc: 'Theme & display' },
-        { id: 'language' as const, label: 'LANGUAGE', desc: 'English' },
-        { id: 'privacy' as const, label: 'PRIVACY & SECURITY', desc: 'Data & permissions' },
-        { id: 'help' as const, label: 'HELP & SUPPORT', desc: 'FAQ & contact' },
-        { id: 'about' as const, label: 'ABOUT', desc: 'Version & legal' },
-      ].map((item, i) => (
-        <motion.button
-          key={item.id}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.04 }}
-          onClick={() => setActiveSection(item.id)}
-          className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
-        >
-          <div className="flex flex-col items-start">
-            <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
-            <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
-        </motion.button>
-      ))}
-    </div>
-  );
-
   const renderNotificationsSection = () => (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-0">
-        <SettingsToggle
-          label="PUSH NOTIFICATIONS"
-          desc="Receive alerts on your device"
-          icon={Smartphone}
-          enabled={pushEnabled}
-          onToggle={setPushEnabled}
-        />
-        <SettingsToggle
-          label="EMAIL NOTIFICATIONS"
-          desc="Get updates in your inbox"
-          icon={Bell}
-          enabled={emailEnabled}
-          onToggle={setEmailEnabled}
-        />
-        <SettingsToggle
-          label="SOUND EFFECTS"
-          desc="Play sounds for notifications"
-          icon={soundEnabled ? Volume2 : VolumeX}
-          enabled={soundEnabled}
-          onToggle={setSoundEnabled}
-        />
+    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            <Smartphone className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+              Push Notifications
+            </span>
+            <span className="text-xs text-muted-foreground font-normal">
+              Receive alerts on this device
+            </span>
+          </div>
+        </div>
+        <Switch checked={pushEnabled} onCheckedChange={handleTogglePush} />
+      </div>
+
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            <Bell className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+              Email Notifications
+            </span>
+            <span className="text-xs text-muted-foreground font-normal">
+              Get schedule updates in your inbox
+            </span>
+          </div>
+        </div>
+        <Switch checked={emailEnabled} onCheckedChange={handleToggleEmail} />
+      </div>
+
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+              Sound Effects
+            </span>
+            <span className="text-xs text-muted-foreground font-normal">
+              Play sounds for alerts and notifications
+            </span>
+          </div>
+        </div>
+        <Switch checked={soundEnabled} onCheckedChange={handleToggleSound} />
       </div>
     </div>
   );
 
   const renderAppearanceSection = () => (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">THEME</span>
-        <div className="flex flex-col gap-0">
-          {[
-            { id: 'light' as const, icon: Sun, label: 'LIGHT' },
-            { id: 'dark' as const, icon: Moon, label: 'DARK' },
-            { id: 'system' as const, icon: Smartphone, label: 'SYSTEM' },
-          ].map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => setMode(theme.id)}
-              className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
-            >
-              <div className="flex items-center gap-3">
-                <theme.icon className="w-4 h-4 text-foreground/40" />
-                <span className="text-xs font-bold text-foreground uppercase tracking-wide">{theme.label}</span>
-              </div>
-              <DotRadio
-                selected={mode === theme.id}
-                activeColor={mode === theme.id ? 'var(--fg)' : undefined}
-                className="!w-[60px] !h-[38px]"
-              />
-            </button>
-          ))}
+    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            {resolvedTheme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Theme</span>
+            <span className="text-xs text-muted-foreground">Current: {resolvedTheme} mode</span>
+          </div>
         </div>
-        <p className="text-[10px] font-medium text-foreground/30 uppercase mt-2">
-          Current: {resolvedTheme === 'dark' ? 'Dark' : 'Light'} mode
-        </p>
+        <div className="flex items-center p-1 bg-foreground/5 rounded-xl border border-border/40 shrink-0">
+          {[
+            { id: 'light' as const, label: 'Light', icon: Sun },
+            { id: 'dark' as const, label: 'Dark', icon: Moon },
+            { id: 'system' as const, label: 'System', icon: Monitor },
+          ].map((t) => {
+            const Icon = t.icon;
+            const isSelected = mode === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setMode(t.id)}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all',
+                  isSelected
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Icon className="w-3 h-3" />
+                <span className="hidden sm:inline">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 
   const renderPrivacySection = () => (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-0">
-        <SettingsToggle
-          label="SHOW ONLINE STATUS"
-          desc="Let others see when you're active"
-          icon={Eye}
-          enabled={true}
-          onToggle={() => {}}
-        />
-        <SettingsToggle
-          label="TWO-FACTOR AUTH"
-          desc="Add extra security"
-          icon={Lock}
-          enabled={false}
-          onToggle={() => {}}
-        />
+    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+              Workspace Privacy
+            </span>
+            <span className="text-xs text-muted-foreground font-normal">
+              Member-only visibility within active band
+            </span>
+          </div>
+        </div>
+        <Switch checked={true} disabled />
       </div>
 
-      <div className="flex flex-col gap-4 pt-4 border-t border-border">
-        <span className="text-xs font-bold text-[var(--destructive)] uppercase tracking-wide">ACCOUNT</span>
+      <div className="p-4 flex items-center justify-between gap-3">
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-bold uppercase tracking-wide text-[var(--destructive)]">
+            Delete Account
+          </span>
+          <span className="text-xs text-muted-foreground font-normal">
+            Permanently remove your account and user profile
+          </span>
+        </div>
         <button
-          onClick={async () => {
-            await signOut();
-            onClose();
-          }}
-          className="w-full border border-[var(--destructive)]/30 hover:border-[var(--destructive)] bg-[var(--destructive)]/5 hover:bg-[var(--destructive)]/10 rounded-[12px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-all"
-        >
-          <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">SIGN OUT</span>
-        </button>
-        <button
+          type="button"
           onClick={() => setShowDeleteConfirm(true)}
-          className="w-full border border-[var(--destructive)]/20 hover:border-[var(--destructive)]/40 bg-[var(--destructive)]/5 rounded-[12px] py-3.5 flex items-center justify-center gap-2 active:scale-95 transition-all"
+          className="px-3 py-1.5 rounded-lg border border-[var(--destructive)]/30 text-[var(--destructive)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--destructive)]/10 active:scale-95 transition-all"
         >
-          <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
-          <span className="text-[12px] font-bold text-[var(--destructive)] uppercase">DELETE ACCOUNT</span>
+          Delete
         </button>
       </div>
     </div>
   );
 
   const renderHelpSection = () => (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-0">
-        {[
-          { label: 'FAQ', desc: 'Common questions answered' },
-          { label: 'CONTACT SUPPORT', desc: 'Get help from our team' },
-          { label: 'REPORT A BUG', desc: 'Help us improve the app' },
-          { label: 'FEATURE REQUEST', desc: 'Suggest new features' },
-        ].map((item, i) => (
-          <button
-            key={i}
-            className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
-          >
-            <div className="flex flex-col items-start">
-              <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
-              <span className="text-[10px] font-medium text-foreground/40 uppercase">{item.desc}</span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
-          </button>
-        ))}
-      </div>
+    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
+      <button
+        type="button"
+        onClick={() => window.open('mailto:support@bandwith.app?subject=Help%20Request', '_blank')}
+        className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left"
+      >
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+            <HelpCircle className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Contact Support</span>
+            <span className="text-xs text-muted-foreground font-normal">support@bandwith.app</span>
+          </div>
+        </div>
+        <ArrowUpRight className="w-4 h-4 text-foreground/40" />
+      </button>
     </div>
   );
 
   const renderAboutSection = () => (
-    <div className="flex flex-col gap-10">
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <BrandLogo variant="waveform" lockup="horizontal" className="h-10" textClassName="text-3xl" />
-          <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">Version 1.0.0</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-0">
-        {[
-          { label: 'TERMS OF SERVICE' },
-          { label: 'PRIVACY POLICY' },
-          { label: 'LICENSES' },
-        ].map((item, i) => (
-          <button
-            key={i}
-            className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity"
-          >
-            <span className="text-xs font-bold text-foreground uppercase tracking-wide">{item.label}</span>
-            <ArrowUpRight className="w-4 h-4 text-foreground shrink-0" />
-          </button>
-        ))}
-      </div>
-
-      <p className="text-[10px] font-normal text-foreground/30 text-center uppercase">
-        Made with love for musicians
+    <div className="bg-card rounded-2xl border border-border/40 p-6 flex flex-col gap-4 shadow-sm text-center items-center">
+      <BrandLogo variant="waveform" lockup="horizontal" className="h-8" textClassName="text-2xl" />
+      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Version 1.0.0</span>
+      <p className="text-xs text-muted-foreground">
+        All workspace data encrypted end-to-end. Built for musicians, managers, and touring crews.
       </p>
     </div>
   );
 
   const renderLanguageSection = () => (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-medium text-foreground/40 uppercase">
-          More languages coming soon.
-        </span>
-        <button className="flex items-center justify-between w-full py-4 border-b border-border active:opacity-70">
-          <div className="flex items-center gap-3">
-            <Globe className="w-4 h-4 text-foreground/70 shrink-0" />
-            <span className="text-xs font-bold text-foreground uppercase tracking-wide">ENGLISH</span>
-          </div>
-          <DotRadio selected={true} activeColor="var(--fg)" className="!w-[60px] !h-[38px]" />
-        </button>
+    <div className="bg-card rounded-2xl border border-border/40 p-4 flex items-center justify-between shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
+          <Globe className="w-5 h-5" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs font-bold uppercase tracking-wide text-foreground">Language</span>
+          <span className="text-xs text-muted-foreground font-normal">English (US)</span>
+        </div>
       </div>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Active</span>
     </div>
   );
 
-  const sectionTitle = getSectionTitle();
-
   return (
     <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
-      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background overflow-y-auto overflow-x-hidden"
+      initial={{ y: '100%' }}
+      animate={{ y: 0 }}
+      exit={{ y: '100%' }}
+      transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+      className="fixed inset-0 z-[70] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen pb-32"
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
-        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}
     >
-      {/* Header */}
+      {/* Sticky Header */}
       <div
-        className="px-4 shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+        className="px-4 shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          paddingBottom: '14px',
+        }}
       >
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={activeSection === 'main' ? onClose : () => setActiveSection('main')}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
-          >
-            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
-          </button>
-          <h1 className="text-[32px] font-bold text-foreground leading-none uppercase">{sectionTitle}</h1>
+        <div className="max-w-xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              aria-label="Back"
+              className="w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                APP SETTINGS
+              </span>
+              <h1 className="text-[20px] sm:text-[22px] font-black text-foreground uppercase tracking-tight leading-none">
+                {getSectionTitle()}
+              </h1>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-44">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeSection}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeSection === 'main' && renderMainSection()}
-            {activeSection === 'notifications' && renderNotificationsSection()}
-            {activeSection === 'appearance' && renderAppearanceSection()}
-            {activeSection === 'privacy' && renderPrivacySection()}
-            {activeSection === 'help' && renderHelpSection()}
-            {activeSection === 'about' && renderAboutSection()}
-            {activeSection === 'language' && renderLanguageSection()}
-          </motion.div>
-        </AnimatePresence>
+      <div className="px-4 py-6 max-w-xl mx-auto w-full flex flex-col gap-6 pb-36">
+        {activeSection === 'notifications' && renderNotificationsSection()}
+        {activeSection === 'appearance' && renderAppearanceSection()}
+        {activeSection === 'privacy' && renderPrivacySection()}
+        {activeSection === 'help' && renderHelpSection()}
+        {activeSection === 'about' && renderAboutSection()}
+        {activeSection === 'language' && renderLanguageSection()}
 
-        {/* Bottom clearance spacer */}
-        <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
+        {/* Footer */}
+        <div className="flex flex-col items-center justify-center gap-1.5 pt-4 pb-4 text-center opacity-40">
+          <BrandLogo variant="waveform" lockup="horizontal" className="h-3.5" textClassName="text-[11px] font-bold" />
+          <span className="text-[10px] text-foreground/50 uppercase tracking-wider">
+            v1.0.0 · All data encrypted
+          </span>
+        </div>
       </div>
 
-      {/* Delete Confirm */}
+      {/* Delete Confirm Modal */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div
@@ -346,35 +353,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             onClick={() => setShowDeleteConfirm(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-background rounded-[16px] border border-border p-6 max-w-sm w-full shadow-lg"
-              onClick={e => e.stopPropagation()}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl bg-card border border-border/40 p-6 flex flex-col gap-5 shadow-xl"
             >
-              <div className="flex flex-col gap-5">
-                <div className="w-12 h-12 mx-auto bg-[var(--destructive)]/10 rounded-[12px] flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
-                </div>
-                <div className="flex flex-col gap-2 text-center">
-                  <h2 className="text-[22px] font-bold text-foreground uppercase">DELETE ACCOUNT?</h2>
-                  <p className="text-[10px] font-medium text-foreground/40 uppercase">
-                    This action cannot be undone. All your data will be permanently deleted.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 h-12 rounded-[12px] bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="flex-1 h-12 rounded-[12px] bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-transform"
-                  >
-                    Delete
-                  </button>
-                </div>
+              <div className="w-12 h-12 mx-auto bg-[var(--destructive)]/10 rounded-2xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
+              </div>
+              <div className="flex flex-col gap-1.5 text-center">
+                <h2 className="text-lg font-bold text-foreground uppercase">Delete Account?</h2>
+                <p className="text-xs text-muted-foreground">
+                  This action cannot be undone. All your data will be permanently deleted.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 h-11 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut();
+                    onClose();
+                  }}
+                  className="flex-1 h-11 rounded-xl bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-all"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -383,29 +394,3 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </motion.div>
   );
 };
-
-interface SettingsToggleProps {
-  label: string;
-  desc: string;
-  icon: React.ElementType;
-  enabled: boolean;
-  onToggle: (value: boolean) => void;
-}
-
-const SettingsToggle: React.FC<SettingsToggleProps> = ({ label, desc, icon: Icon, enabled, onToggle }) => (
-  <button
-    type="button"
-    onClick={() => onToggle(!enabled)}
-    className="flex items-center justify-between w-full py-4 border-b border-border last:border-0 active:opacity-70 transition-opacity cursor-pointer"
-  >
-    <div className="flex items-center gap-3">
-      <Icon className="w-4 h-4 text-foreground/40 shrink-0" />
-      <div className="flex flex-col items-start">
-        <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
-        <span className="text-[10px] font-medium text-foreground/40 uppercase">{desc}</span>
-      </div>
-    </div>
-    <DotCheckbox checked={enabled} className="!w-[60px] !h-[38px]" />
-  </button>
-);
-

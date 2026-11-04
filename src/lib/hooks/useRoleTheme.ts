@@ -38,15 +38,15 @@ export const useRoleTheme = (): UseRoleThemeResult => {
 /**
  * CSS class helper for background colors
  */
-export const getRoleBgClass = (isAdmin: boolean): string => {
-  return isAdmin ? 'bg-[var(--bg)]' : 'bg-[var(--surface-alt)]';
+export const getRoleBgClass = (_isAdmin?: boolean): string => {
+  return 'bg-background';
 };
 
 /**
  * Inline style helper for background colors
  */
-export const getRoleBgStyle = (isAdmin: boolean): React.CSSProperties => {
+export const getRoleBgStyle = (_isAdmin?: boolean): React.CSSProperties => {
   return {
-    backgroundColor: isAdmin ? 'var(--bg)' : 'var(--surface-alt)',
+    backgroundColor: 'var(--bg)',
   };
 };

@@ -147,9 +147,70 @@ export const getChats = async (
       participantsByChat.set(p.chat_id, existing);
     });
 
+    // Enforce business rules:
+    // Members should only be allowed to text admins or band/event they're in.
+    const { data: myBandMemberships } = await supabase
+      .from('band_members')
+      .select('band_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    const myBandIds = (myBandMemberships || []).map((b: any) => b.band_id);
+    const myAdminBandIds = new Set((myBandMemberships || []).filter((b: any) => b.role === 'admin').map((b: any) => b.band_id));
+    const allMyBandIds = new Set(myBandIds);
+
+    const { data: myEventMemberships } = await supabase
+      .from('event_members')
+      .select('event_id, status')
+      .eq('user_id', user.id);
+    const myEventIds = new Set(
+      (myEventMemberships || [])
+        .filter((m: any) => m.status !== 'declined')
+        .map((m: any) => m.event_id)
+    );
+
+    const directOtherUserIds = Array.from(new Set(
+      (chats || [])
+        .filter(c => c.type === 'direct')
+        .flatMap(c => (participantsByChat.get(c.id) || []).map((p: any) => p.user_id).filter((id: string) => id !== user.id))
+    ));
+
+    let otherAdminUserIdsInSharedBands = new Set<string>();
+    if (directOtherUserIds.length > 0 && myBandIds.length > 0) {
+      const { data: otherAdmins } = await supabase
+        .from('band_members')
+        .select('user_id, band_id')
+        .in('user_id', directOtherUserIds)
+        .in('band_id', myBandIds)
+        .eq('role', 'admin')
+        .eq('is_active', true);
+      otherAdminUserIdsInSharedBands = new Set((otherAdmins || []).map((o: any) => o.user_id));
+    }
+
+    const allowedChats = (chats || []).filter(chat => {
+      if (chat.type === 'band' || chat.type === 'group') {
+        return chat.band_id ? allMyBandIds.has(chat.band_id) : true;
+      }
+      if (chat.type === 'event') {
+        const isBandAdmin = chat.band_id ? myAdminBandIds.has(chat.band_id) : false;
+        const isInEvent = chat.event_id ? myEventIds.has(chat.event_id) : false;
+        return isBandAdmin || isInEvent;
+      }
+      if (chat.type === 'direct') {
+        const otherId = (participantsByChat.get(chat.id) || []).find((p: any) => p.user_id !== user.id)?.user_id;
+        if (!otherId) return true;
+        const isCurrentUserAdmin = chat.band_id ? myAdminBandIds.has(chat.band_id) : myAdminBandIds.size > 0;
+        const isOtherUserAdmin = otherAdminUserIdsInSharedBands.has(otherId);
+        return isCurrentUserAdmin || isOtherUserAdmin;
+      }
+      return true;
+    });
+
+    const targetChats = bandId ? allowedChats.filter(c => c.band_id === bandId) : allowedChats;
+
     // Get last message for each chat and unread count
     const chatsWithDetails = await Promise.all(
-      (chats || []).map(async (chat) => {
+      targetChats.map(async (chat) => {
         const chatParticipants = participantsByChat.get(chat.id) || [];
 
         // Get last message
@@ -261,6 +322,77 @@ export const createChat = async (
     if (!user) throw new Error('Not authenticated');
 
     const allParticipants = [...new Set([user.id, ...data.participant_ids])];
+
+    // Enforce business rules:
+    // Members should only be allowed to text admins or band/event they're in.
+    if (data.type === 'direct') {
+      const targetUserId = data.participant_ids.find(id => id !== user.id);
+      if (!targetUserId) throw new Error('Recipient is required');
+
+      const { data: sharedMemberships, error: memErr } = await supabase
+        .from('band_members')
+        .select('band_id, role, user_id')
+        .in('user_id', [user.id, targetUserId])
+        .eq('is_active', true);
+
+      if (memErr) throw memErr;
+
+      const userBands = new Map<string, string>();
+      const targetBands = new Map<string, string>();
+      (sharedMemberships || []).forEach((m: any) => {
+        if (m.user_id === user.id) userBands.set(m.band_id, m.role);
+        if (m.user_id === targetUserId) targetBands.set(m.band_id, m.role);
+      });
+
+      let allowed = false;
+      for (const [bandId, userRole] of userBands.entries()) {
+        const targetRole = targetBands.get(bandId);
+        if (targetRole && (userRole === 'admin' || targetRole === 'admin')) {
+          allowed = true;
+          break;
+        }
+      }
+
+      if (!allowed) {
+        return { data: null, error: new Error('Members are only allowed to direct message band admins.') };
+      }
+    } else if (data.type === 'band' && data.band_id) {
+      const { data: bm } = await supabase
+        .from('band_members')
+        .select('id')
+        .eq('band_id', data.band_id)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!bm) {
+        return { data: null, error: new Error('You can only message bands you are a member of.') };
+      }
+    } else if (data.type === 'event' && data.event_id) {
+      let allowed = false;
+      if (data.band_id) {
+        const { data: bm } = await supabase
+          .from('band_members')
+          .select('role')
+          .eq('band_id', data.band_id)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (bm?.role === 'admin') allowed = true;
+      }
+      if (!allowed) {
+        const { data: em } = await supabase
+          .from('event_members')
+          .select('id, status')
+          .eq('event_id', data.event_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (em && em.status !== 'declined') allowed = true;
+      }
+      if (!allowed) {
+        return { data: null, error: new Error('You can only message in events you are participating in.') };
+      }
+    }
 
     // For direct chats, check if one already exists between these exact participants
     if (data.type === 'direct' && allParticipants.length === 2) {
@@ -435,10 +567,10 @@ export const sendMessage = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get chat to find band_id
+    // Get chat to find band_id, type, event_id
     const { data: chat, error: chatError } = await supabase
       .from('chats')
-      .select('band_id')
+      .select('band_id, type, event_id')
       .eq('id', chatId)
       .single();
 
@@ -452,6 +584,75 @@ export const sendMessage = async (
     
     if (partError) {
       console.warn('[sendMessage] Could not get participants:', partError);
+    }
+
+    // Permission enforcement:
+    // Members should only be allowed to text admins or band/event they're in.
+    if (chat.type === 'direct') {
+      const otherParticipant = (participants || []).find((p: any) => p.user_id !== user.id);
+      if (otherParticipant) {
+        const { data: sharedMemberships } = await supabase
+          .from('band_members')
+          .select('band_id, role, user_id')
+          .in('user_id', [user.id, otherParticipant.user_id])
+          .eq('is_active', true);
+
+        const userBands = new Map<string, string>();
+        const otherBands = new Map<string, string>();
+        (sharedMemberships || []).forEach((m: any) => {
+          if (m.user_id === user.id) userBands.set(m.band_id, m.role);
+          if (m.user_id === otherParticipant.user_id) otherBands.set(m.band_id, m.role);
+        });
+
+        let allowed = false;
+        for (const [bandId, userRole] of userBands.entries()) {
+          const otherRole = otherBands.get(bandId);
+          if (otherRole && (userRole === 'admin' || otherRole === 'admin')) {
+            allowed = true;
+            break;
+          }
+        }
+
+        if (!allowed) {
+          return { data: null, error: new Error('Direct messaging is only permitted with band admins.') };
+        }
+      }
+    } else if (chat.type === 'band' && chat.band_id) {
+      const { data: bm } = await supabase
+        .from('band_members')
+        .select('id')
+        .eq('band_id', chat.band_id)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!bm) {
+        return { data: null, error: new Error('You can only message in bands you are a member of.') };
+      }
+    } else if (chat.type === 'event' && chat.event_id) {
+      let allowed = false;
+      if (chat.band_id) {
+        const { data: bm } = await supabase
+          .from('band_members')
+          .select('role')
+          .eq('band_id', chat.band_id)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (bm?.role === 'admin') allowed = true;
+      }
+      if (!allowed) {
+        const { data: em } = await supabase
+          .from('event_members')
+          .select('id, status')
+          .eq('event_id', chat.event_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (em && em.status !== 'declined') allowed = true;
+      }
+      if (!allowed) {
+        return { data: null, error: new Error('You can only message in events you are participating in.') };
+      }
     }
 
     const { data, error } = await supabase
@@ -733,17 +934,16 @@ export const searchChatsAndMessages = async (
     const searchPattern = `%${query.toLowerCase()}%`;
 
     // 1. Search in chat names
-    // Use a two-step query: get the user's chat IDs first, then search names
-    const { data: userChatIdData } = await supabase
-      .from('chat_participants')
-      .select('chat_id')
-      .eq('user_id', user.id);
+    // Only search within chats the user has permission to access
+    const { data: allowedChats, error: allowedChatsErr } = await getChats();
+    if (allowedChatsErr) throw allowedChatsErr;
 
-    const userChatIds = (userChatIdData || []).map(c => c.chat_id);
-
-    if (userChatIds.length === 0) {
+    if (!allowedChats || allowedChats.length === 0) {
       return { data: [], error: null };
     }
+
+    const userChatIds = allowedChats.map(c => c.id);
+    const chatMap = new Map(allowedChats.map(c => [c.id, c]));
 
     const { data: chatNameResults } = await supabase
       .from('chats')
@@ -765,65 +965,34 @@ export const searchChatsAndMessages = async (
     }
 
     // 2. Search in messages content
-    // First get user's chats
-    const { data: userChats } = await supabase
-      .from('chat_participants')
-      .select('chat_id')
-      .eq('user_id', user.id);
+    const { data: messageResults } = await supabase
+      .from('messages')
+      .select(`
+        id,
+        chat_id,
+        content,
+        created_at
+      `)
+      .in('chat_id', userChatIds)
+      .ilike('content', searchPattern)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    if (userChats && userChats.length > 0) {
-      const chatIds = userChats.map(c => c.chat_id);
+    if (messageResults) {
+      for (const msg of messageResults) {
+        const chatInfo = chatMap.get(msg.chat_id);
 
-      const { data: messageResults } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          chat_id,
-          content,
-          created_at
-        `)
-        .in('chat_id', chatIds)
-        .ilike('content', searchPattern)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (messageResults) {
-        for (const msg of messageResults) {
-          // Get chat info
-          const { data: chatInfo } = await supabase
-            .from('chats')
-            .select('name, type')
-            .eq('id', msg.chat_id)
-            .single();
-
-          results.push({
-            type: 'message',
-            chat_id: msg.chat_id,
-            chat_name: chatInfo?.name || 'Chat',
-            chat_type: chatInfo?.type as ChatType,
-            message_id: msg.id,
-            message_content: msg.content,
-            message_sender: 'Unknown',
-            message_date: msg.created_at,
-            match_text: msg.content,
-          });
-        }
-      }
-
-      // 3. Search in participant names
-      const { data: participantResults } = await supabase
-        .from('chat_participants')
-        .select(`
-          chat_id,
-          user_id
-        `)
-        .in('chat_id', chatIds)
-        .not('user_id', 'eq', user.id);
-
-      // Participant name search disabled — requires FK relationship fix in schema cache
-      // TODO: re-enable when Supabase restores profile join for chat_participants
-      if (participantResults) {
-        // Names are resolved via separate query above if needed
+        results.push({
+          type: 'message',
+          chat_id: msg.chat_id,
+          chat_name: chatInfo?.name || 'Chat',
+          chat_type: chatInfo?.type as ChatType,
+          message_id: msg.id,
+          message_content: msg.content,
+          message_sender: 'Unknown',
+          message_date: msg.created_at,
+          match_text: msg.content,
+        });
       }
     }
 

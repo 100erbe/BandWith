@@ -14,7 +14,7 @@ interface DotCheckboxProps {
 export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   checked,
   disabled = false,
-  activeColor = 'var(--fg)',
+  activeColor = 'var(--wizard-accent, var(--fg))',
   inactiveColor,
   className,
   onClick,
@@ -26,7 +26,7 @@ export const DotCheckbox: React.FC<DotCheckboxProps> = ({
   const fg = disabled
     ? 'rgba(0,0,0,0.2)'
     : checked
-      ? 'var(--surface-inverse-fg)'
+      ? 'var(--wizard-accent-fg, var(--surface-inverse-fg))'
       : 'transparent';
 
   const boxClasses = cn(

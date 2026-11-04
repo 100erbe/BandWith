@@ -8,8 +8,6 @@ import {
   IconHome,
   IconCalendar,
   IconChat,
-  IconMenu,
-  IconClose,
   IconPlus,
   type IconProps,
 } from '@/app/components/icons';
@@ -21,9 +19,10 @@ interface BottomNavigationProps {
   setActiveTab: (tab: TabName) => void;
   isPlusMenuOpen: boolean;
   setIsPlusMenuOpen: (open: boolean) => void;
-  isControlDeckOpen: boolean;
+  isControlDeckOpen?: boolean;
   isIdentityOpen: boolean;
-  toggleControlDeck: () => void;
+  toggleControlDeck?: () => void;
+  toggleIdentity?: () => void;
   closeMenus: () => void;
   onCreateEvent: (type: CreateEventType) => void;
   isHidden: boolean;
@@ -75,6 +74,36 @@ const TAB_INDEX_MAP: Record<string, number> = {
 const PILL_POSITIONS = [4, 76, 208, 280];
 const PILL_WIDTH = 72;
 
+/* ═══ 2-Track Studio Faders — Music-Tech Aesthetic Navigation Icon ═══ */
+const SettingsIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = 'currentColor',
+  strokeWidth = 2,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <line x1="4" y1="8" x2="10" y2="8" />
+    <line x1="16" y1="8" x2="20" y2="8" />
+    <circle cx="13" cy="8" r="3" />
+    <line x1="4" y1="16" x2="8" y2="16" />
+    <line x1="14" y1="16" x2="20" y2="16" />
+    <circle cx="11" cy="16" r="3" />
+  </svg>
+);
+
 const SlidingPill: React.FC<{
   activeKey: string | null;
 }> = ({ activeKey }) => {
@@ -85,7 +114,7 @@ const SlidingPill: React.FC<{
 
   return (
     <motion.div
-      className="absolute rounded-full bg-foreground/10 z-0"
+      className="absolute rounded-full bg-foreground/10 dark:bg-white/10 z-0"
       style={{ top: '2px', bottom: '2px' }}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{
@@ -108,36 +137,29 @@ const NavTab: React.FC<{
   isActive: boolean;
   onClick: () => void;
   isScrollingDown: boolean;
-  isMenuOpen: boolean;
   badgeCount?: number;
-}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, isMenuOpen, badgeCount }) => {
-  // Always bold and black (design system foreground color) regardless of selection
-  const strokeColor = isMenuOpen ? 'var(--surface-inverse-fg)' : 'var(--fg)';
-
+}> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, badgeCount }) => {
   return (
     <button
       data-tab-key={tabKey}
       onClick={onClick}
       className={cn(
         'relative z-10 outline-none px-0 shrink-0 h-full overflow-hidden w-16',
-        'flex flex-col items-center justify-center'
+        'flex flex-col items-center justify-center transition-colors duration-150',
+        isActive ? 'text-[var(--fg)]' : 'text-muted-foreground hover:text-foreground/80'
       )}
     >
       {/* Icon: smoothly glides between elevated (with label) and dead-center (when shrunk) */}
       <motion.div
         className="w-[22px] h-[22px] flex items-center justify-center z-10 relative"
-        style={{ color: strokeColor }}
         animate={{
           y: isScrollingDown ? 0 : -6,
         }}
         transition={SPRING}
       >
-        <Icon color="currentColor" size={22} />
+        <Icon color="currentColor" size={22} strokeWidth={isActive ? 2.5 : 2} />
         {badgeCount !== undefined && badgeCount > 0 ? (
-          <span className={cn(
-            "absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2",
-            isMenuOpen ? "ring-[var(--surface-inverse)]" : "ring-background"
-          )}>
+          <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2 ring-card dark:ring-zinc-900">
             {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         ) : null}
@@ -157,8 +179,8 @@ const NavTab: React.FC<{
           className={cn(
             'text-[10px] tracking-tight select-none leading-none transition-colors duration-150',
             isActive
-              ? 'text-foreground/60 font-semibold'
-              : 'text-foreground/45 font-medium'
+              ? 'text-[var(--fg)] font-semibold'
+              : 'text-muted-foreground font-medium'
           )}
         >
           {label}
@@ -178,6 +200,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isControlDeckOpen,
   isIdentityOpen,
   toggleControlDeck,
+  toggleIdentity,
   closeMenus,
   onCreateEvent,
   isHidden,
@@ -238,23 +261,20 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     closeMenus();
   };
 
-  const isMenuOpen = isIdentityOpen;
-  const isHomeActive = activeTab === 'Home' && !isMenuOpen;
-  const isEventsActive = activeTab === 'Events' && !isMenuOpen;
-  const isChatActive = activeTab === 'Chat' && !isMenuOpen;
+  const isSettingsActive = isIdentityOpen || !!isControlDeckOpen;
+  const isHomeActive = activeTab === 'Home' && !isSettingsActive;
+  const isEventsActive = activeTab === 'Events' && !isSettingsActive;
+  const isChatActive = activeTab === 'Chat' && !isSettingsActive;
 
-  const isSettingsActive = isControlDeckOpen;
-  const pillActiveKey = isMenuOpen
-    ? null
-    : isSettingsActive
-      ? 'Settings'
-      : isHomeActive
-        ? 'Home'
-        : isEventsActive
-          ? 'Events'
-          : isChatActive
-            ? 'Chat'
-            : null;
+  const pillActiveKey = isSettingsActive
+    ? 'Settings'
+    : isHomeActive
+      ? 'Home'
+      : isEventsActive
+        ? 'Events'
+        : isChatActive
+          ? 'Chat'
+          : null;
 
   const tabs: TabDescriptor[] = [
     { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
@@ -263,10 +283,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     {
       key: 'Settings',
       label: 'Settings',
-      icon: isControlDeckOpen ? IconClose : IconMenu,
+      icon: SettingsIcon,
       isActive: isSettingsActive,
       onClick: () => {
-        toggleControlDeck();
+        if (!isSettingsActive) {
+          if (toggleIdentity) {
+            toggleIdentity();
+          } else if (toggleControlDeck) {
+            toggleControlDeck();
+          }
+        }
         setForceOpen(true);
       },
     },
@@ -304,7 +330,21 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 </button>
               </div>
               <div className="flex flex-col gap-6">
-                {isAdmin && (
+                {/* Solo or Non-Admin Member: Add Personal Gig */}
+                {(!isAdmin || isSolo) && (
+                  <button onClick={() => { onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                    <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                      <Mic2 className="w-7 h-7 text-accent-gig" />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <span className="text-[20px] font-bold text-foreground uppercase">ADD PERSONAL GIG</span>
+                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Log your outside gig, track personal earnings, and keep your calendar unified.</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Admins: Band Gig */}
+                {isAdmin && !isSolo && (
                   <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <Mic2 className="w-7 h-7 text-accent-gig" />
@@ -315,16 +355,28 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     </div>
                   </button>
                 )}
-                <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                  <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                    <Music className="w-7 h-7 text-accent-rehearsal" />
-                  </div>
-                  <div className="flex flex-col gap-1 flex-1">
-                    <span className="text-[20px] font-bold text-foreground uppercase">NEW REHEARSAL</span>
-                    <span className="text-[12px] font-medium text-foreground/60 leading-normal">Plan the session, share details, and keep everyone in sync.</span>
-                  </div>
-                </button>
-                {isAdmin && (
+
+                {/* Rehearsal: only if not solo */}
+                {!isSolo && (
+                  <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                    <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                      <Music className="w-7 h-7 text-accent-rehearsal" />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <span className="text-[20px] font-bold text-foreground uppercase">
+                        {isAdmin ? 'NEW REHEARSAL' : 'PROPOSE REHEARSAL'}
+                      </span>
+                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">
+                        {isAdmin
+                          ? 'Plan the session, share details, and keep everyone in sync.'
+                          : 'Suggest a rehearsal date or topic to the band admin.'}
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Quotes: Admin only */}
+                {isAdmin && !isSolo && (
                   <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-quote/15 border border-accent-quote/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <FileText className="w-7 h-7 text-accent-quote" />
@@ -332,6 +384,19 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                     <div className="flex flex-col gap-1 flex-1">
                       <span className="text-[20px] font-bold text-foreground uppercase">NEW QUOTE</span>
                       <span className="text-[12px] font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Admins: optional personal gig */}
+                {isAdmin && !isSolo && (
+                  <button onClick={() => { onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group opacity-80 hover:opacity-100 transition-opacity">
+                    <div className="w-14 h-14 rounded-2xl bg-foreground/5 border border-foreground/15 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                      <Mic2 className="w-7 h-7 text-foreground/60" />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <span className="text-[16px] font-bold text-foreground/80 uppercase">LOG PERSONAL GIG</span>
+                      <span className="text-[11px] font-medium text-foreground/50 leading-normal">Log an outside solo gig without inviting band members.</span>
                     </div>
                   </button>
                 )}
@@ -352,7 +417,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           ref={navRef}
           className={cn(
             'pointer-events-auto relative flex items-center justify-center rounded-[999px] origin-bottom',
-            isMenuOpen ? 'bg-[var(--surface-inverse)]/95' : 'bg-background/85',
+            'bg-card/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-300/80 dark:border-zinc-800/80',
             'h-[56px] gap-x-2 px-2'
           )}
           animate={{ scale: isShrunk ? 0.78 : 1 }}
@@ -361,14 +426,13 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
             boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
-            border: '0.5px solid var(--nav-border, rgba(0,0,0,0.08))',
             willChange: 'transform',
           }}
         >
           <SlidingPill activeKey={pillActiveKey} />
 
           {tabs.slice(0, 2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} />
           ))}
 
           <div className="relative z-10 flex items-center justify-center mx-1">
@@ -388,7 +452,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           </div>
 
           {tabs.slice(2).map((tab) => (
-            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} isMenuOpen={isMenuOpen} />
+            <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} />
           ))}
         </motion.div>
       </motion.div>

@@ -13,7 +13,7 @@ interface DotRadioProps {
 export const DotRadio: React.FC<DotRadioProps> = ({
   selected,
   disabled = false,
-  activeColor = 'var(--fg)',
+  activeColor = 'var(--wizard-accent, var(--fg))',
   inactiveColor,
   className,
   onClick,

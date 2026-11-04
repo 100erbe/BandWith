@@ -8,3 +8,4 @@ export * from './notifications';
 export * from './transactions';
 export * from './chats';
 export * from './rehearsals';
+export * from './rehearsalPolls';

@@ -11,7 +11,7 @@ export type RehearsalViewMode = 'index' | 'overview' | 'setlist' | 'tasks' | 'li
 export type ExpandedCardType = 'finance' | 'pending' | 'quotes' | 'confirmed' | 'rehearsal' | 'fee' | null;
 
 // Event creation types
-export type CreateEventType = 'gig' | 'quote' | 'rehearsal' | null;
+export type CreateEventType = 'gig' | 'quote' | 'rehearsal' | 'personal' | null;
 
 // Quote modal types
 export type QuoteModalType = 'create' | 'detail' | 'edit' | null;

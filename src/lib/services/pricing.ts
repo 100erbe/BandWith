@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase';
+
 export interface CustomService {
   id: string;
   name: string;
@@ -22,6 +24,8 @@ export interface BandPricingSettings {
   production_extra_location_fee: number;
   travel_rate_per_km: number;
   band_origin_address: string;
+  band_origin_lat?: number;
+  band_origin_lng?: number;
   low_season_multiplier: number;
   mid_season_multiplier: number;
   peak_season_multiplier: number;
@@ -94,6 +98,61 @@ const LEGACY_DUPLICATE_SERVICE_IDS = new Set([
 const STORAGE_PREFIX = 'bandwith_pricing_settings_';
 
 export async function getBandPricing(bandId: string): Promise<BandPricingSettings> {
+  // 1. Try to fetch from Supabase if valid UUID
+  if (bandId && bandId !== 'default') {
+    try {
+      const { data: band, error } = await supabase
+        .from('bands')
+        .select('*')
+        .eq('id', bandId)
+        .maybeSingle();
+
+      if (!error && band) {
+        const rules = band.pricing_rules || {};
+        const storedServices: CustomService[] | undefined = band.extra_services;
+        const cleanedServices = Array.isArray(storedServices)
+          ? storedServices.filter((s) => !LEGACY_DUPLICATE_SERVICE_IDS.has(s.id))
+          : [];
+
+        const loadedSettings: BandPricingSettings = {
+          band_id: band.id,
+          currency: band.pricing_currency || DEFAULT_BAND_PRICING.currency,
+          core_member_rate: Number(band.core_musician_fee ?? DEFAULT_BAND_PRICING.core_member_rate),
+          session_musician_rate: Number(band.additional_musician_fee ?? DEFAULT_BAND_PRICING.session_musician_rate),
+          core_members_count: Number(band.standard_lineup_size ?? DEFAULT_BAND_PRICING.core_members_count),
+          cocktail_musician_fee: Number(band.cocktail_musician_fee ?? DEFAULT_BAND_PRICING.cocktail_musician_fee),
+          ceremony_musician_fee: Number(band.ceremony_musician_fee ?? DEFAULT_BAND_PRICING.ceremony_musician_fee),
+          dj_hourly_rate: Number(band.dj_hourly_rate ?? DEFAULT_BAND_PRICING.dj_hourly_rate),
+          production_standard_fee: Number(band.production_standard_fee ?? DEFAULT_BAND_PRICING.production_standard_fee),
+          production_pro_fee: Number(band.production_pro_fee ?? DEFAULT_BAND_PRICING.production_pro_fee),
+          production_extra_location_fee: Number(band.production_extra_location_fee ?? DEFAULT_BAND_PRICING.production_extra_location_fee),
+          travel_rate_per_km: Number(band.travel_rate_per_km ?? DEFAULT_BAND_PRICING.travel_rate_per_km),
+          band_origin_address: band.home_base_address || '',
+          band_origin_lat: band.home_base_latitude !== null ? Number(band.home_base_latitude) : undefined,
+          band_origin_lng: band.home_base_longitude !== null ? Number(band.home_base_longitude) : undefined,
+          low_season_multiplier: Number(rules.low_season_multiplier ?? DEFAULT_BAND_PRICING.low_season_multiplier),
+          mid_season_multiplier: Number(rules.mid_season_multiplier ?? DEFAULT_BAND_PRICING.mid_season_multiplier),
+          peak_season_multiplier: Number(rules.peak_season_multiplier ?? DEFAULT_BAND_PRICING.peak_season_multiplier),
+          margin_divisor: Number(rules.margin_divisor ?? DEFAULT_BAND_PRICING.margin_divisor),
+          rounding_step: Number(rules.rounding_step ?? DEFAULT_BAND_PRICING.rounding_step),
+          default_vat_rate: Number(rules.default_vat_rate ?? DEFAULT_BAND_PRICING.default_vat_rate),
+          default_deposit_rate: Number(rules.default_deposit_rate ?? DEFAULT_BAND_PRICING.default_deposit_rate),
+          custom_services: cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
+        };
+
+        // Cache locally for offline resiliency
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}${bandId}`, JSON.stringify(loadedSettings));
+        } catch (_) {}
+
+        return loadedSettings;
+      }
+    } catch (err) {
+      console.warn('[PricingService] Error fetching band pricing from database, falling back to cache:', err);
+    }
+  }
+
+  // 2. Fallback to localStorage / default
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${bandId}`);
     if (raw) {
@@ -120,11 +179,55 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
 }
 
 export async function saveBandPricing(settings: BandPricingSettings): Promise<BandPricingSettings> {
+  // Always update local cache
   try {
     localStorage.setItem(`${STORAGE_PREFIX}${settings.band_id}`, JSON.stringify(settings));
   } catch (e) {
     console.warn('Error saving band pricing settings to storage:', e);
   }
+
+  // Persist directly to Supabase bands table matching current band_id
+  if (settings.band_id && settings.band_id !== 'default') {
+    try {
+      const { error } = await supabase
+        .from('bands')
+        .update({
+          standard_lineup_size: settings.core_members_count,
+          core_musician_fee: settings.core_member_rate,
+          additional_musician_fee: settings.session_musician_rate,
+          ceremony_musician_fee: settings.ceremony_musician_fee,
+          cocktail_musician_fee: settings.cocktail_musician_fee,
+          dj_hourly_rate: settings.dj_hourly_rate,
+          production_standard_fee: settings.production_standard_fee,
+          production_pro_fee: settings.production_pro_fee,
+          production_extra_location_fee: settings.production_extra_location_fee,
+          travel_rate_per_km: settings.travel_rate_per_km,
+          home_base_address: settings.band_origin_address || '',
+          home_base_latitude: typeof settings.band_origin_lat === 'number' ? settings.band_origin_lat : null,
+          home_base_longitude: typeof settings.band_origin_lng === 'number' ? settings.band_origin_lng : null,
+          pricing_currency: settings.currency || 'EUR',
+          pricing_rules: {
+            low_season_multiplier: settings.low_season_multiplier,
+            mid_season_multiplier: settings.mid_season_multiplier,
+            peak_season_multiplier: settings.peak_season_multiplier,
+            margin_divisor: settings.margin_divisor,
+            rounding_step: settings.rounding_step,
+            default_vat_rate: settings.default_vat_rate,
+            default_deposit_rate: settings.default_deposit_rate,
+          },
+          extra_services: settings.custom_services,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', settings.band_id);
+
+      if (error) {
+        console.error('[PricingService] Failed to persist band pricing to Supabase:', error);
+      }
+    } catch (err) {
+      console.error('[PricingService] Exception saving band pricing to Supabase:', err);
+    }
+  }
+
   return settings;
 }
 

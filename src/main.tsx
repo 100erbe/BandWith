@@ -25,11 +25,14 @@ createRoot(document.getElementById("root")!).render(
   </ThemeProvider>
 );
 
-requestAnimationFrame(() => {
+function removeSplash() {
   const splash = document.getElementById("css-splash");
   if (splash) {
     splash.style.opacity = "0";
     splash.style.transition = "opacity 0.4s ease";
     setTimeout(() => splash.remove(), 500);
   }
-});
+}
+
+requestAnimationFrame(removeSplash);
+setTimeout(removeSplash, 150);

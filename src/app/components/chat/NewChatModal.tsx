@@ -13,6 +13,7 @@ import { createChat } from '@/lib/services/chats';
 import { getBandMembersForChat, getBands } from '@/lib/services/bands';
 import { getEvents } from '@/lib/services/events';
 import { useBand } from '@/lib/BandContext';
+import { supabase } from '@/lib/supabase';
 import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
 
@@ -59,14 +60,37 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
       setIsLoading(true);
       
       try {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: bandsData, error: bandsError } = await getBands();
         
         if (bandsData) {
           setAllBands(bandsData);
+
+          // Fetch event memberships for the current user to restrict event chats
+          let myEventIdSet = new Set<string>();
+          if (user?.id) {
+            const { data: myMemberships } = await supabase
+              .from('event_members')
+              .select('event_id, status')
+              .eq('user_id', user.id);
+            myEventIdSet = new Set(
+              (myMemberships || [])
+                .filter((m: any) => m.status !== 'declined')
+                .map((m: any) => m.event_id)
+            );
+          }
           
           const membersPromises = bandsData.map(async (band) => {
             const { data: members } = await getBandMembersForChat(band.id);
-            return (members || []).map(m => ({
+            const isUserAdminInBand = band.user_role === 'admin';
+
+            // Members can ONLY text band admins. Admins can text anyone in their band.
+            const allowedMembers = (members || []).filter(m => {
+              if (isUserAdminInBand) return true;
+              return m.role === 'admin';
+            });
+
+            return allowedMembers.map(m => ({
               ...m,
               bandId: band.id,
               bandName: band.name
@@ -78,7 +102,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           
           const eventsPromises = bandsData.map(async (band) => {
             const { data: events } = await getEvents(band.id);
-            return (events || []).map(e => ({
+            const isUserAdminInBand = band.user_role === 'admin';
+
+            // Members can ONLY text in events they're participating in. Admins can access all band events.
+            const allowedEvents = (events || []).filter(e => {
+              if (isUserAdminInBand) return true;
+              return myEventIdSet.has(e.id);
+            });
+
+            return allowedEvents.map(e => ({
               ...e,
               bandName: band.name
             }));
@@ -197,7 +229,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         const { data, error: createError } = await createChat({
           type: 'event',
           name: selectedEvent.title,
-          band_id: selectedEvent.band_id,
+          band_id: selectedEvent.band_id || undefined,
           event_id: selectedEvent.id,
           participant_ids: [],
         });
@@ -307,9 +339,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
-              chatType === 'direct' ? 'SEARCH MEMBERS...' :
-              chatType === 'band' ? 'SEARCH BANDS...' :
-              'SEARCH EVENTS...'
+              chatType === 'direct' 
+                ? (allBands.some(b => b.user_role === 'admin') ? 'SEARCH MEMBERS...' : 'SEARCH ADMINS...') 
+                : chatType === 'band' ? 'SEARCH BANDS...' :
+                'SEARCH EVENTS...'
             }
             className="w-full h-10 bg-transparent text-xs font-bold text-foreground placeholder:text-foreground/35 uppercase focus:outline-none"
           />
@@ -348,10 +381,15 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                     
                     return (
                       <div key={band.id}>
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center justify-between gap-2 mb-3">
                           <span className="text-[10px] font-bold tracking-[0.15em] text-primary uppercase">
                             {band.name}
                           </span>
+                          {band.user_role !== 'admin' && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded-md">
+                              Admins
+                            </span>
+                          )}
                         </div>
                         
                         <div className="flex flex-col gap-1.5">
@@ -386,13 +424,20 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                     getInitials(member.full_name, member.email)
                                   )}
                                 </div>
-                                <div className="flex-1 text-left">
-                                  <p className={cn(
-                                    "font-bold text-sm uppercase",
-                                    isSelected ? "text-foreground" : "text-foreground/75"
-                                  )}>
-                                    {member.full_name || member.email}
-                                  </p>
+                                <div className="flex-1 text-left min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={cn(
+                                      "font-bold text-sm uppercase truncate",
+                                      isSelected ? "text-foreground" : "text-foreground/75"
+                                    )}>
+                                      {member.full_name || member.email}
+                                    </p>
+                                    {member.role === 'admin' && (
+                                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                                        Admin
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs uppercase text-foreground/45">
                                     {member.instrument || member.role || 'Member'}
                                   </p>
@@ -411,8 +456,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                   })}
                   
                   {filteredMembers.length === 0 && (
-                    <div className="text-center py-12">
-                      <p className="text-foreground/40 text-xs font-bold uppercase">NO MEMBERS FOUND</p>
+                    <div className="text-center py-12 flex flex-col items-center">
+                      <p className="text-foreground/40 text-xs font-bold uppercase">NO ADMINS AVAILABLE</p>
+                      <p className="text-foreground/30 text-[11px] mt-1 font-medium">Direct messaging is restricted to band admins.</p>
                     </div>
                   )}
                 </div>
@@ -524,8 +570,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                   })}
 
                   {filteredEvents.length === 0 && (
-                    <div className="text-center py-12">
+                    <div className="text-center py-12 flex flex-col items-center">
                       <p className="text-foreground/40 text-xs font-bold uppercase">NO EVENTS FOUND</p>
+                      <p className="text-foreground/30 text-[11px] mt-1 font-medium">You can only chat in events you are participating in.</p>
                     </div>
                   )}
                 </div>

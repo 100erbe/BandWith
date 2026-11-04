@@ -10,6 +10,31 @@ export interface Band {
   genre?: string;
   created_by?: string;
   plan?: string;
+  standard_lineup_size?: number;
+  core_musician_fee?: number;
+  additional_musician_fee?: number;
+  ceremony_musician_fee?: number;
+  cocktail_musician_fee?: number;
+  dj_hourly_rate?: number;
+  production_standard_fee?: number;
+  production_pro_fee?: number;
+  production_extra_location_fee?: number;
+  travel_rate_per_km?: number;
+  home_base_address?: string;
+  home_base_latitude?: number;
+  home_base_longitude?: number;
+  pricing_currency?: string;
+  pricing_rules?: {
+    low_season_multiplier?: number;
+    mid_season_multiplier?: number;
+    peak_season_multiplier?: number;
+    margin_divisor?: number;
+    rounding_step?: number;
+    default_vat_rate?: number;
+    default_deposit_rate?: number;
+    [key: string]: any;
+  };
+  extra_services?: any[];
   created_at: string;
   updated_at: string;
 }
@@ -79,14 +104,7 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
         band_id,
         role,
         bands (
-          id,
-          name,
-          slug,
-          logo_url,
-          description,
-          created_by,
-          created_at,
-          updated_at
+          *
         )
       `)
       .eq('user_id', user.id)
@@ -267,6 +285,16 @@ export const updateBand = async (
   } catch (error: any) {
     return { data: null, error };
   }
+};
+
+/**
+ * Update pricing and logistics formulas strictly scoped to the bandId.
+ */
+export const updateBandPricing = async (
+  bandId: string,
+  pricing: Partial<Band>
+): Promise<{ data: Band | null; error: Error | null }> => {
+  return updateBand(bandId, pricing);
 };
 
 export const deleteBand = async (bandId: string): Promise<{ error: Error | null }> => {

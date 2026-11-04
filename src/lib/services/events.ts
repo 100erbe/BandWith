@@ -6,7 +6,7 @@ export type EventStatus = 'draft' | 'tentative' | 'confirmed' | 'cancelled' | 'c
 
 export interface Event {
   id: string;
-  band_id: string;
+  band_id?: string | null;
   title: string;
   event_type: EventType;
   status: EventStatus;
@@ -111,6 +111,8 @@ export const getEvents = async (
     fromDate?: string;
     toDate?: string;
     limit?: number;
+    userId?: string;
+    includePersonal?: boolean;
   }
 ): Promise<{ data: Event[] | null; error: Error | null }> => {
   try {
@@ -119,10 +121,22 @@ export const getEvents = async (
       .select('*')
       .order('event_date', { ascending: true });
     
-    // Filter by band(s) - single band or multiple
-    const bIds = Array.isArray(bandIds) ? bandIds : [bandIds];
-    if (bIds.length > 0) {
+    // Filter by band(s) and/or personal events (band_id IS NULL AND created_by = userId)
+    const rawIds = Array.isArray(bandIds) ? bandIds : (bandIds ? [bandIds] : []);
+    const bIds = rawIds.filter(Boolean);
+    const resolvedUserId = options?.userId || (await supabase.auth.getUser()).data?.user?.id;
+    const includePersonal = options?.includePersonal !== false;
+
+    if (bIds.length > 0 && resolvedUserId && includePersonal) {
+      // Query band events alongside personal events
+      query = query.or(`band_id.in.(${bIds.join(',')}),and(band_id.is.null,created_by.eq.${resolvedUserId})`);
+    } else if (bIds.length > 0) {
       query = query.in('band_id', bIds);
+    } else if (resolvedUserId && includePersonal) {
+      // Solo / no bands: fetch personal events
+      query = query.is('band_id', null).eq('created_by', resolvedUserId);
+    } else {
+      return { data: [], error: null };
     }
 
     if (options?.status) {
@@ -155,7 +169,31 @@ export const getEvents = async (
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      // Resilient fallback in case of PostgREST nested .or syntax issues
+      if (bIds.length > 0 && resolvedUserId && includePersonal) {
+        let bandQuery = supabase.from('events').select('*').in('band_id', bIds);
+        let personalQuery = supabase.from('events').select('*').is('band_id', null).eq('created_by', resolvedUserId);
+        
+        if (options?.fromDate) {
+          bandQuery = bandQuery.gte('event_date', options.fromDate);
+          personalQuery = personalQuery.gte('event_date', options.fromDate);
+        }
+        if (options?.toDate) {
+          bandQuery = bandQuery.lte('event_date', options.toDate);
+          personalQuery = personalQuery.lte('event_date', options.toDate);
+        }
+        
+        const [bandRes, personalRes] = await Promise.all([bandQuery, personalQuery]);
+        if (bandRes.error) throw bandRes.error;
+        
+        let combined = [...(bandRes.data || []), ...(personalRes.data || [])];
+        combined.sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
+        if (options?.limit) combined = combined.slice(0, options.limit);
+        return { data: combined, error: null };
+      }
+      throw error;
+    }
 
     return { data, error: null };
   } catch (error: any) {
@@ -367,6 +405,173 @@ export const deleteEvent = async (eventId: string): Promise<{ error: Error | nul
 };
 
 // ============================================
+// PERSONAL GIGS (Solo / Non-Admin Members)
+// ============================================
+
+export interface CreatePersonalGigInput {
+  userId: string;
+  title: string;
+  eventDate: string;
+  startTime?: string;
+  endTime?: string;
+  venueName?: string;
+  fee?: number;
+  notes?: string;
+}
+
+export interface UpdatePersonalGigInput {
+  eventId: string;
+  userId: string;
+  title?: string;
+  eventDate?: string;
+  startTime?: string;
+  endTime?: string;
+  venueName?: string;
+  fee?: number;
+  notes?: string;
+}
+
+export const createPersonalGig = async (
+  input: CreatePersonalGigInput
+): Promise<{ data: Event | null; error: Error | null }> => {
+  try {
+    const { userId, title, eventDate, startTime, endTime, venueName, fee, notes } = input;
+    const { data: { user } } = await supabase.auth.getUser();
+    const effectiveUserId = user?.id || userId;
+
+    if (!effectiveUserId) throw new Error('User authentication is required');
+    if (!title?.trim()) throw new Error('Gig title is required');
+    if (!eventDate) throw new Error('Event date is required');
+
+    const personalFee = fee != null && !isNaN(Number(fee)) ? Number(fee) : 0;
+
+    // 1. Insert into public.events
+    const eventPayload = {
+      band_id: null,
+      created_by: effectiveUserId,
+      event_type: 'gig' as const,
+      status: 'confirmed' as const,
+      title: title.trim(),
+      event_date: eventDate,
+      start_time: startTime || null,
+      end_time: endTime || null,
+      venue_name: venueName?.trim() || null,
+      fee: personalFee,
+      notes: notes?.trim() || null,
+    };
+
+    const { data: newEvent, error: eventError } = await supabase
+      .from('events')
+      .insert(eventPayload)
+      .select()
+      .single();
+
+    if (eventError) throw eventError;
+
+    // 2. Insert single confirmed record into public.event_members
+    const memberPayload = {
+      event_id: newEvent.id,
+      user_id: effectiveUserId,
+      role: 'solo',
+      fee: personalFee,
+      status: 'confirmed',
+    };
+
+    const { error: memberError } = await supabase
+      .from('event_members')
+      .insert(memberPayload);
+
+    if (memberError) {
+      console.error('Failed to create personal gig event_member record, rolling back:', memberError);
+      await supabase.from('events').delete().eq('id', newEvent.id);
+      throw new Error(`Failed to save earnings tracker record: ${memberError.message}`);
+    }
+
+    return { data: newEvent, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+export const updatePersonalGig = async (
+  input: UpdatePersonalGigInput
+): Promise<{ data: Event | null; error: Error | null }> => {
+  try {
+    const { eventId, userId, title, eventDate, startTime, endTime, venueName, fee, notes } = input;
+    if (!eventId) throw new Error('Event ID is required');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const effectiveUserId = user?.id || userId;
+
+    const updates: Record<string, any> = {};
+    if (title !== undefined) updates.title = title.trim();
+    if (eventDate !== undefined) updates.event_date = eventDate;
+    if (startTime !== undefined) updates.start_time = startTime || null;
+    if (endTime !== undefined) updates.end_time = endTime || null;
+    if (venueName !== undefined) {
+      updates.venue_name = venueName?.trim() || null;
+    }
+    if (notes !== undefined) updates.notes = notes?.trim() || null;
+    if (fee !== undefined) {
+      updates.fee = fee != null && !isNaN(Number(fee)) ? Number(fee) : 0;
+    }
+
+    let eventQuery = supabase
+      .from('events')
+      .update(updates)
+      .eq('id', eventId)
+      .is('band_id', null);
+
+    if (effectiveUserId) {
+      eventQuery = eventQuery.eq('created_by', effectiveUserId);
+    }
+
+    const { data: updatedEvent, error: eventError } = await eventQuery
+      .select()
+      .single();
+
+    if (eventError) throw eventError;
+
+    if (fee !== undefined && effectiveUserId) {
+      const personalFee = fee != null && !isNaN(Number(fee)) ? Number(fee) : 0;
+      await supabase
+        .from('event_members')
+        .update({ fee: personalFee })
+        .eq('event_id', eventId)
+        .eq('user_id', effectiveUserId);
+    }
+
+    return { data: updatedEvent, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
+export const deletePersonalGig = async (
+  eventId: string,
+  userId?: string
+): Promise<{ error: Error | null }> => {
+  try {
+    if (!eventId) throw new Error('Event ID is required');
+
+    // Remove matching event_members first
+    let memberQuery = supabase.from('event_members').delete().eq('event_id', eventId);
+    if (userId) memberQuery = memberQuery.eq('user_id', userId);
+    await memberQuery;
+
+    // Delete personal event
+    let eventQuery = supabase.from('events').delete().eq('id', eventId).is('band_id', null);
+    if (userId) eventQuery = eventQuery.eq('created_by', userId);
+    const { error } = await eventQuery;
+    if (error) throw error;
+
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
+
+// ============================================
 // EVENT MEMBERS
 // ============================================
 
@@ -561,7 +766,7 @@ export const getEventStats = async (
 };
 
 export const getMemberPersonalStats = async (
-  bandId: string,
+  bandId: string | null | undefined,
   userId: string,
   year?: number
 ): Promise<{
@@ -579,24 +784,41 @@ export const getMemberPersonalStats = async (
     const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
     const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
 
-    const { data: memberships, error } = await supabase
+    // Query user's event_memberships
+    let query = supabase
       .from('event_members')
-      .select('fee, status, events!inner(band_id, event_date, status, event_type)')
-      .eq('user_id', userId)
-      .eq('events.band_id', bandId)
-      .gte('events.event_date', startOfYear)
-      .lte('events.event_date', endOfYear);
+      .select('fee, status, events!inner(band_id, event_date, status, event_type, created_by)')
+      .eq('user_id', userId);
+
+    if (year) {
+      query = query
+        .gte('events.event_date', startOfYear)
+        .lte('events.event_date', endOfYear);
+    }
+
+    const { data: memberships, error } = await query;
 
     if (error) throw error;
 
-    const rows = (memberships || []) as any[];
+    const rawRows = (memberships || []) as any[];
+    // Include events for the specific bandId (if given) PLUS any personal gigs (events.band_id IS NULL)
+    const rows = rawRows.filter(r => {
+      if (bandId && bandId !== 'all') {
+        return r.events?.band_id === bandId || !r.events?.band_id;
+      }
+      return true;
+    });
+
     const confirmed = rows.filter(r => 
       r.status === 'confirmed' && 
       (r.events?.status === 'confirmed' || r.events?.status === 'completed') &&
       r.events?.event_type !== 'rehearsal'
     );
     const upcomingConfirmed = confirmed.filter(r => (r.events?.event_date || '') >= today);
-    const totalEarned = confirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    const pastConfirmed = confirmed.filter(r => (r.events?.event_date || '') < today);
+
+    const confirmedFee = upcomingConfirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
+    const totalEarned = pastConfirmed.reduce((s: number, r: any) => s + (r.fee || 0), 0);
     const pending = rows.filter(r => r.status === 'pending');
     const pendingFee = pending.reduce((s: number, r: any) => s + (r.fee || 0), 0);
     const curMonth = confirmed.filter((r: any) => r.events?.event_date >= curStart && r.events?.event_date <= curEnd).reduce((s: number, r: any) => s + (r.fee || 0), 0);
@@ -605,7 +827,7 @@ export const getMemberPersonalStats = async (
     if (prevMonth > 0) revenueChange = Math.round(((curMonth - prevMonth) / prevMonth) * 100);
     else if (curMonth > 0) revenueChange = 100;
 
-    return { data: { totalEarned, confirmedFee: totalEarned, pendingFee, revenueChange, confirmedCount: upcomingConfirmed.length }, error: null };
+    return { data: { totalEarned, confirmedFee, pendingFee, revenueChange, confirmedCount: upcomingConfirmed.length }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

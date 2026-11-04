@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Check, Plus, Minus, Trash2, RotateCcw, Sparkles } from '@/app/components/icons';
+import { ArrowLeft, Check, Plus, Minus, Trash2, RotateCcw, Sparkles, MapPin, Lock } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { useBand } from '@/lib/BandContext';
 import {
   DEFAULT_BAND_PRICING,
   getBandPricing,
@@ -40,6 +42,9 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   bandId = 'default',
   onSaved,
 }) => {
+  const { isAdmin, selectedBand } = useBand();
+  const effectiveBandId = bandId !== 'default' ? bandId : (selectedBand?.id || 'default');
+
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [activeTab, setActiveTab] = useState<TabType>('rates');
   const [saving, setSaving] = useState(false);
@@ -55,13 +60,13 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   const [showAddService, setShowAddService] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      getBandPricing(bandId).then((res) => {
+    if (isOpen && effectiveBandId) {
+      getBandPricing(effectiveBandId).then((res) => {
         setSettings(res);
       });
       setConfirmingReset(false);
     }
-  }, [isOpen, bandId]);
+  }, [isOpen, effectiveBandId]);
 
   // Live quote preview calculation for standard core lineup, 50km travel, standard PA
   const sampleQuote = useMemo(() => {
@@ -82,17 +87,42 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
 
   if (!isOpen) return null;
 
+  if (!isAdmin) {
+    return (
+      <div className="fixed inset-0 z-[75] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-card border border-border p-6 rounded-[20px] max-w-sm w-full text-center flex flex-col items-center gap-4 shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+            <Lock className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-base font-bold text-foreground uppercase tracking-wide">Admin Access Required</h3>
+            <p className="text-xs text-foreground/60 leading-relaxed">
+              Only band administrators can access and configure the financial and logistical formulas for this band.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-[12px] bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const handleSave = async () => {
     setSaving(true);
-    await saveBandPricing(settings);
+    const toSave = { ...settings, band_id: effectiveBandId };
+    await saveBandPricing(toSave);
     setSaving(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
-    if (onSaved) onSaved(settings);
+    if (onSaved) onSaved(toSave);
   };
 
   const handleReset = () => {
-    setSettings({ ...DEFAULT_BAND_PRICING, band_id: bandId });
+    setSettings({ ...DEFAULT_BAND_PRICING, band_id: effectiveBandId });
     setConfirmingReset(false);
   };
 
@@ -485,21 +515,39 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 p-4 rounded-[16px] bg-card border border-foreground/10">
-                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                  Home Base City / Postcode
-                </span>
-                <input
-                  type="text"
-                  value={settings.band_origin_address}
-                  onChange={(e) =>
-                    setSettings({ ...settings, band_origin_address: e.target.value })
-                  }
-                  className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[12px] px-3.5 py-2.5 text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-                  placeholder="e.g. Milan, Italy"
-                />
+              <div className="flex flex-col gap-2.5 p-4 rounded-[16px] bg-card border border-foreground/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                    Band Home Base Location
+                  </span>
+                  {typeof settings.band_origin_lat === 'number' && typeof settings.band_origin_lng === 'number' && (
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-[6px] tracking-wider">
+                      COORDINATES SET ({settings.band_origin_lat.toFixed(2)}°, {settings.band_origin_lng.toFixed(2)}°)
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 bg-background border border-foreground/15 rounded-[12px] px-3 py-1">
+                  <MapPin className="w-4 h-4 text-foreground/40 shrink-0" />
+                  <div className="flex-1">
+                    <VenueAutocomplete
+                      value={settings.band_origin_address}
+                      onChange={(val) => setSettings({ ...settings, band_origin_address: val })}
+                      onSelect={(place) => {
+                        const formatted = place.fullAddress || [place.address, place.city, place.country].filter(Boolean).join(', ') || place.name;
+                        setSettings({
+                          ...settings,
+                          band_origin_address: formatted,
+                          band_origin_lat: place.latitude,
+                          band_origin_lng: place.longitude,
+                        });
+                      }}
+                      placeholder="e.g. Milan, Italy or Studio Address"
+                      className="border-0 pb-0"
+                    />
+                  </div>
+                </div>
                 <span className="text-[11px] text-foreground/50">
-                  Starting location used to estimate distance to the venue
+                  Origin coordinates used by the Google Distance Matrix & quote logistics engine to compute mileage to gig venues.
                 </span>
               </div>
 

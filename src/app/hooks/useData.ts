@@ -7,6 +7,7 @@ import * as songsService from '@/lib/services/songs';
 import * as notificationsService from '@/lib/services/notifications';
 import * as transactionsService from '@/lib/services/transactions';
 import * as chatsService from '@/lib/services/chats';
+import * as rehearsalPollsService from '@/lib/services/rehearsalPolls';
 import { supabase } from '@/lib/supabase';
 
 // ============================================
@@ -55,7 +56,16 @@ export const useBand = (bandId: string | null) => {
     fetchBand();
   }, [fetchBand]);
 
-  return { band, loading, error, refetch: fetchBand };
+  const updatePricing = useCallback(async (pricingUpdates: Partial<bandsService.Band>) => {
+    if (!bandId) return { data: null, error: new Error('No bandId provided') };
+    const res = await bandsService.updateBandPricing(bandId, pricingUpdates);
+    if (!res.error) {
+      await fetchBand();
+    }
+    return res;
+  }, [bandId, fetchBand]);
+
+  return { band, loading, error, refetch: fetchBand, updatePricing };
 };
 
 export const useBandMembers = (bandId: string | null) => {
@@ -94,13 +104,18 @@ export const useEvents = (
   const hasLoadedOnce = useRef(false);
 
   const fetchEvents = useCallback(async (isBackground = false) => {
-    if (!bandId) { setLoading(false); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    const hasBands = Array.isArray(bandId) ? bandId.length > 0 : !!bandId;
+    if (!hasBands && !user) { setLoading(false); return; }
     
     // Skip visual loading indicator during background refreshes
     if (!isBackground || !hasLoadedOnce.current) {
       setLoading(true);
     }
-    const { data, error } = await eventsService.getEvents(bandId, options);
+    const { data, error } = await eventsService.getEvents(bandId || [], {
+      ...options,
+      userId: user?.id,
+    });
     setEvents(data || []);
     setError(error);
     if (data) hasLoadedOnce.current = true;
@@ -113,7 +128,7 @@ export const useEvents = (
     // Poll for updates every 60 seconds to keep events in sync across devices
     // Polling is disabled when modals are open to prevent keyboard issues
     const pollInterval = setInterval(() => {
-      if (bandId && document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible') {
         const hasModalOpen = document.querySelector('[data-modal-open="true"]') || 
                             document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (!hasModalOpen) {
@@ -127,8 +142,6 @@ export const useEvents = (
 
   // Subscribe to realtime events updates
   useEffect(() => {
-    if (!bandId || (Array.isArray(bandId) && bandId.length === 0)) return;
-
     const uniqueChannelName = `events-list-${Math.random().toString(36).substring(2, 9)}`;
 
     const channel = supabase
@@ -139,7 +152,7 @@ export const useEvents = (
           event: '*',
           schema: 'public',
           table: 'events',
-          filter: Array.isArray(bandId) ? undefined : `band_id=eq.${bandId}`,
+          filter: Array.isArray(bandId) ? undefined : (bandId ? `band_id=eq.${bandId}` : undefined),
         },
         () => {
           // Refetch events on any insert/update/delete (silent background)
@@ -432,6 +445,7 @@ export const useNotifications = (options?: {
   unreadOnly?: boolean;
   limit?: number;
   onNewEventInvite?: (notification: notificationsService.Notification) => void;
+  onNewRehearsalPoll?: (notification: notificationsService.Notification) => void;
 }) => {
   const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<notificationsService.Notification[]>([]);
@@ -440,6 +454,8 @@ export const useNotifications = (options?: {
   const hasLoadedOnce = useRef(false);
   const onNewEventInviteRef = useRef(options?.onNewEventInvite);
   onNewEventInviteRef.current = options?.onNewEventInvite;
+  const onNewRehearsalPollRef = useRef(options?.onNewRehearsalPoll);
+  onNewRehearsalPollRef.current = options?.onNewRehearsalPoll;
 
   const fetchNotifications = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -475,6 +491,9 @@ export const useNotifications = (options?: {
         });
         if (notification.type === 'event_invite' && onNewEventInviteRef.current) {
           onNewEventInviteRef.current(notification);
+        }
+        if ((notification.type === 'rehearsal_poll' || notification.type === 'rehearsal_proposal') && onNewRehearsalPollRef.current) {
+          onNewRehearsalPollRef.current(notification);
         }
       },
       // On UPDATE - update existing notification (e.g., marked as read)
@@ -590,7 +609,7 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
   });
 
   const fetchData = useCallback(async (isBackground = false) => {
-    if (!isAuthenticated || !bandId) { setLoading(false); return; }
+    if (!isAuthenticated || (!bandId && !userId)) { setLoading(false); return; }
     
     // Skip visual loading indicator during background refreshes
     if (!isBackground || !hasLoadedOnce.current) {
@@ -599,13 +618,13 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     
     try {
       const promises: Promise<any>[] = [
-        eventsService.getEventStats(bandId),
-        quotesService.getQuoteStats(bandId),
-        eventsService.getUpcomingEvents(bandId, 5),
-        quotesService.getQuotes(bandId, { limit: 5 }),
+        bandId ? eventsService.getEventStats(bandId) : Promise.resolve({ data: null, error: null }),
+        bandId ? quotesService.getQuoteStats(bandId) : Promise.resolve({ data: null, error: null }),
+        bandId ? eventsService.getUpcomingEvents(bandId, 5) : Promise.resolve({ data: [], error: null }),
+        bandId ? quotesService.getQuotes(bandId, { limit: 5 }) : Promise.resolve({ data: [], error: null }),
       ];
       if (userId) {
-        promises.push(eventsService.getMemberPersonalStats(bandId, userId));
+        promises.push(eventsService.getMemberPersonalStats(bandId || null, userId));
       }
 
       const results = await Promise.all(promises);
@@ -613,11 +632,11 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       const memberStatsRes = userId ? results[4] : null;
 
       setData({
-        eventStats: eventStatsRes.data,
-        quoteStats: quoteStatsRes.data,
+        eventStats: eventStatsRes?.data || null,
+        quoteStats: quoteStatsRes?.data || null,
         memberStats: memberStatsRes?.data || null,
-        upcomingEvents: upcomingEventsRes.data || [],
-        recentQuotes: recentQuotesRes.data || [],
+        upcomingEvents: upcomingEventsRes?.data || [],
+        recentQuotes: recentQuotesRes?.data || [],
       });
       hasLoadedOnce.current = true;
     } catch (err: any) {
@@ -1013,4 +1032,46 @@ export const useMessages = (chatId: string | null, options?: { limit?: number })
   }, [chatId]);
 
   return { messages, loading, error, refetch: fetchMessages, sendMessage };
+};
+
+// ============================================
+// REHEARSAL POLLS HOOKS
+// ============================================
+
+export const useRehearsalPolls = (bandId: string | null, userId?: string | null) => {
+  const { isAuthenticated } = useAuth();
+  const [polls, setPolls] = useState<rehearsalPollsService.RehearsalPoll[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchPolls = useCallback(async () => {
+    if (!isAuthenticated || !bandId) {
+      setPolls([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const { data, error: fetchErr } = await rehearsalPollsService.getRehearsalPolls(bandId, userId);
+    setPolls(data || []);
+    setError(fetchErr);
+    setLoading(false);
+  }, [isAuthenticated, bandId, userId]);
+
+  useEffect(() => {
+    fetchPolls();
+  }, [fetchPolls]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!isAuthenticated || !bandId) return;
+
+    const unsubscribe = rehearsalPollsService.subscribeToRehearsalPolls(bandId, () => {
+      fetchPolls();
+    });
+
+    return unsubscribe;
+  }, [isAuthenticated, bandId, fetchPolls]);
+
+  return { polls, loading, error, refetch: fetchPolls };
 };

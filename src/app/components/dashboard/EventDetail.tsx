@@ -22,6 +22,7 @@ interface EventDetailProps {
   onRevertQuote?: (event: EventData) => Promise<void> | void;
   memberFee?: number;
   isAdmin?: boolean;
+  currentUserId?: string;
 }
 
 const formatEventDate = (dateStr: string): string => {
@@ -134,6 +135,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onRevertQuote,
   memberFee,
   isAdmin = true,
+  currentUserId,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,12 +143,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [isReverting, setIsReverting] = useState(false);
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
+  const isPersonalGig = !event.band_id && (event.createdBy === currentUserId || !event.band_id);
 
   useEffect(() => {
-    if (!isAdmin && (eventType === 'quote' || userResponse === 'declined')) {
+    if (!isAdmin && !isPersonalGig && (eventType === 'quote' || userResponse === 'declined')) {
       onClose();
     }
-  }, [isAdmin, eventType, userResponse, onClose]);
+  }, [isAdmin, isPersonalGig, eventType, userResponse, onClose]);
 
   if (!isAdmin && (eventType === 'quote' || userResponse === 'declined')) {
     return null;
@@ -310,6 +313,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
               {/* Eyebrow & Title */}
               <div className="flex flex-col mt-1">
+                {isPersonalGig && (
+                  <div className="text-[11px] uppercase tracking-wider leading-tight text-foreground/60 mb-1">
+                    <span className="font-bold text-accent-gig">PERSONAL</span> • GIG
+                  </div>
+                )}
                 {isPast && (
                   <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 leading-tight mb-[3px]">
                     ARCHIVED {eventType === 'rehearsal' ? 'REHEARSAL' : eventType === 'gig' ? 'GIG' : 'EVENT'}
@@ -366,7 +374,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             <RehearsalSections event={event} theme={theme as any} memberCount={memberCount} />
           )}
           {eventType === 'gig' && (
-            <GigSections event={event} theme={theme as any} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} />
+            <GigSections event={event} theme={theme as any} memberCount={memberCount} isAdmin={isAdmin} memberFee={memberFee} isPersonalGig={isPersonalGig} />
           )}
           {eventType === 'quote' && (
             <QuoteSections event={event} theme={theme as any} memberCount={memberCount} miniCalendar={miniCalendar} eventYear={eventYear} eventMonthDay={eventMonthDay} isAdmin={isAdmin} memberFee={memberFee} />
@@ -382,20 +390,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         >
           {isPast ? (
             <div className="flex flex-col gap-[14px] items-center w-full">
-              <div className="grid grid-cols-2 gap-[10px] w-full">
-                <button
-                  onClick={onChat}
-                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground text-background font-bold shadow-md hover:opacity-90 active:scale-[0.99] transition-all"
-                >
-                  <MessageCircle className="w-[18px] h-[18px]" />
-                  <span className="text-[15px] font-bold uppercase">EVENT CHAT</span>
-                </button>
+              <div className={cn("grid gap-[10px] w-full", (isAdmin || userResponse === 'accepted') ? "grid-cols-2" : "grid-cols-1")}>
+                {(isAdmin || userResponse === 'accepted') && (
+                  <button
+                    onClick={onChat}
+                    className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground text-background font-bold shadow-md hover:opacity-90 active:scale-[0.99] transition-all"
+                  >
+                    <MessageCircle className="w-[18px] h-[18px]" />
+                    <span className="text-[15px] font-bold uppercase">EVENT CHAT</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const el = document.getElementById('event-detail-setlist');
                     if (el) {
                       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    } else if (onChat) {
+                    } else if (onChat && (isAdmin || userResponse === 'accepted')) {
                       onChat();
                     }
                   }}
@@ -439,6 +449,49 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     </button>
                   </div>
                 )
+              )}
+            </div>
+          ) : isPersonalGig ? (
+            // Personal Gig view: User created it for themselves
+            // NEVER show Accept / Decline / Drop Out buttons
+            // Allow the user to Edit or Delete their own Personal Gig
+            <div className="flex flex-col gap-[16px] items-center w-full">
+              <div className="grid grid-cols-2 gap-[10px] w-full">
+                <button
+                  onClick={onEdit}
+                  style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
+                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] font-bold shadow-lg shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all"
+                >
+                  <Pencil className="w-[18px] h-[18px]" />
+                  <span className="text-[16px] font-bold uppercase">EDIT GIG</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-[var(--destructive)] font-bold active:scale-[0.99] transition-all"
+                >
+                  <span className="text-[16px] font-bold uppercase">DELETE GIG</span>
+                </button>
+              </div>
+              {showDeleteConfirm && (
+                <div className="flex flex-col gap-[12px] items-center">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">
+                    Are you sure you want to delete this personal gig?
+                  </p>
+                  <div className="flex items-center gap-[12px]">
+                    <button
+                      onClick={() => { onDelete?.(); setShowDeleteConfirm(false); }}
+                      className="text-[12px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[16px] py-[8px] uppercase"
+                    >
+                      CONFIRM DELETE
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[12px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ) : isPending && onAccept && onDecline ? (
@@ -807,7 +860,8 @@ const GigSections: React.FC<{
   memberCount: number;
   isAdmin?: boolean;
   memberFee?: number;
-}> = ({ event, theme, memberCount, isAdmin = true, memberFee }) => {
+  isPersonalGig?: boolean;
+}> = ({ event, theme, memberCount, isAdmin = true, memberFee, isPersonalGig }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggle = (key: string) => setExpandedSection(prev => prev === key ? null : key);
 
@@ -826,7 +880,7 @@ const GigSections: React.FC<{
 
   const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string }[]>([]);
   useEffect(() => {
-    if (!event.setlistId) return;
+    if (!event.setlistId || isPersonalGig) return;
     const fetchSetlist = async () => {
       const { data } = await supabase
         .from('setlist_songs')
@@ -838,7 +892,7 @@ const GigSections: React.FC<{
       }
     };
     fetchSetlist();
-  }, [event.setlistId]);
+  }, [event.setlistId, isPersonalGig]);
   const numSongs = setlistSongs.length;
 
   const perMemberFee = memberCount > 0 ? Math.round(parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0') / memberCount) : 0;
@@ -853,7 +907,7 @@ const GigSections: React.FC<{
 
   return (
     <div className="flex flex-col gap-[40px]">
-      {/* 2x2 Grid: Load In, Sound Check, Show Start, Band Total Fee */}
+      {/* 2x2 Grid: Load In, Sound Check, Show Start, Band Total / Personal Fee */}
       <div className="grid grid-cols-2 gap-x-[20px] gap-y-[40px]">
         {/* Load In */}
         <div className="flex flex-col gap-[8px]">
@@ -892,10 +946,10 @@ const GigSections: React.FC<{
         {/* Fee Section */}
         <div className="flex flex-col gap-[8px]">
           <div className="flex flex-col">
-            <SectionHeader label={isAdmin ? "BAND TOTAL FEE" : "YOUR FEE"} onTap={() => toggle('fee')} expanded={expandedSection === 'fee'} />
-            <SectionValue value={isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal)} />
+            <SectionHeader label={isPersonalGig ? "MY PERSONAL FEE" : (isAdmin ? "BAND TOTAL FEE" : "YOUR FEE")} onTap={() => toggle('fee')} expanded={expandedSection === 'fee'} />
+            <SectionValue value={isPersonalGig ? formatBandTotal(event.price) : (isAdmin ? bandTotal : (memberFee != null ? `$${memberFee}` : bandTotal))} />
           </div>
-          {isAdmin && (
+          {isAdmin && !isPersonalGig && (
             <ExpandableDetail expanded={expandedSection === 'fee'}>
               {members.map((m, i) => (
                 <DetailRow key={i} label={m.name} value={m.fee} />
@@ -906,80 +960,97 @@ const GigSections: React.FC<{
         </div>
       </div>
 
-      {/* Setlist */}
-      <div id="event-detail-setlist" className="flex flex-col gap-[8px]">
-        <div className="flex flex-col">
-          <SectionHeader label="SETLIST" alertColor={numSongs > 0 ? undefined : 'var(--warning)'} onTap={() => toggle('setlist')} expanded={expandedSection === 'setlist'} />
-          <div className="flex items-center gap-[10px]">
-            <SectionValue value={`${numSongs} SONGS`} />
+      {/* Personal Notes (for Personal Gigs) */}
+      {isPersonalGig && event.notes && (
+        <div className="flex flex-col gap-[8px]">
+          <div className="flex flex-col">
+            <SectionHeader label="PERSONAL NOTES" onTap={() => toggle('notes')} expanded={expandedSection === 'notes'} />
+          </div>
+          <div className="text-[14px] text-foreground/80 leading-relaxed font-medium bg-foreground/5 p-4 rounded-xl border border-foreground/10">
+            {event.notes}
           </div>
         </div>
-        <ExpandableDetail expanded={expandedSection === 'setlist'}>
-          {numSongs > 0 ? (
-            <>
-              {setlistSongs.slice(0, 10).map((song, i) => (
-                <DetailRow key={i} label={`${i + 1}`} value={song.title} />
-              ))}
-              {numSongs > 10 && (
-                <span className="text-[12px] font-medium pt-[4px] text-foreground/50">
-                  + {numSongs - 10} more songs
+      )}
+
+      {/* Band-specific sections: Setlist & Lineup (Strictly hidden for Personal Gigs) */}
+      {!isPersonalGig && (
+        <>
+          {/* Setlist */}
+          <div id="event-detail-setlist" className="flex flex-col gap-[8px]">
+            <div className="flex flex-col">
+              <SectionHeader label="SETLIST" alertColor={numSongs > 0 ? undefined : 'var(--warning)'} onTap={() => toggle('setlist')} expanded={expandedSection === 'setlist'} />
+              <div className="flex items-center gap-[10px]">
+                <SectionValue value={`${numSongs} SONGS`} />
+              </div>
+            </div>
+            <ExpandableDetail expanded={expandedSection === 'setlist'}>
+              {numSongs > 0 ? (
+                <>
+                  {setlistSongs.slice(0, 10).map((song, i) => (
+                    <DetailRow key={i} label={`${i + 1}`} value={song.title} />
+                  ))}
+                  {numSongs > 10 && (
+                    <span className="text-[12px] font-medium pt-[4px] text-foreground/50">
+                      + {numSongs - 10} more songs
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-[12px] font-medium text-foreground/50">
+                  No setlist assigned
                 </span>
               )}
-            </>
-          ) : (
-            <span className="text-[12px] font-medium text-foreground/50">
-              No setlist assigned
-            </span>
-          )}
-        </ExpandableDetail>
-      </div>
+            </ExpandableDetail>
+          </div>
 
-      {/* Lineup */}
-      <div className="flex flex-col gap-[8px]">
-        <button
-          className="flex items-center gap-[6px] appearance-none bg-transparent border-none p-0 m-0 cursor-pointer"
-          onClick={() => toggle('lineup')}
-        >
-          <span className="text-[42px] font-bold leading-none tracking-tight text-foreground">LINEUP</span>
-          <motion.div animate={{ rotate: expandedSection === 'lineup' ? 90 : 0 }} transition={{ duration: 0.2 }}>
-            <ArrowUpRight className="w-[42px] h-[42px] text-foreground" />
-          </motion.div>
-        </button>
-
-        <AnimatePresence>
-          {expandedSection === 'lineup' && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden"
+          {/* Lineup */}
+          <div className="flex flex-col gap-[8px]">
+            <button
+              className="flex items-center gap-[6px] appearance-none bg-transparent border-none p-0 m-0 cursor-pointer"
+              onClick={() => toggle('lineup')}
             >
-              <div className="flex flex-col gap-[10px] pt-[12px]">
-                {members.map((m, i) => (
-                  <div
-                    key={i}
-                    className="flex items-end p-[12px] rounded-[10px] bg-foreground/5 border border-foreground/10"
-                  >
-                    <div className="flex-1 flex flex-col">
-                      <span className="text-[12px] font-medium text-foreground/50">{m.role}</span>
-                      <span className="text-[22px] font-bold text-foreground">{m.name}</span>
-                    </div>
-                    <span className="text-[22px] font-bold text-foreground">{m.fee}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <span className="text-[42px] font-bold leading-none tracking-tight text-foreground">LINEUP</span>
+              <motion.div animate={{ rotate: expandedSection === 'lineup' ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                <ArrowUpRight className="w-[42px] h-[42px] text-foreground" />
+              </motion.div>
+            </button>
 
-        {/* Accepted Status — typographic only, no SVG icon */}
-        <div className="flex items-center justify-center gap-[6px] mt-[10px]">
-          <span className="text-[12px] font-bold uppercase leading-tight text-foreground/50">
-            • YOU HAVE ACCEPTED THIS EVENT
-          </span>
-        </div>
-      </div>
+            <AnimatePresence>
+              {expandedSection === 'lineup' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col gap-[10px] pt-[12px]">
+                    {members.map((m, i) => (
+                      <div
+                        key={i}
+                        className="flex items-end p-[12px] rounded-[10px] bg-foreground/5 border border-foreground/10"
+                      >
+                        <div className="flex-1 flex flex-col">
+                          <span className="text-[12px] font-medium text-foreground/50">{m.role}</span>
+                          <span className="text-[22px] font-bold text-foreground">{m.name}</span>
+                        </div>
+                        <span className="text-[22px] font-bold text-foreground">{m.fee}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Accepted Status — typographic only, no SVG icon */}
+            <div className="flex items-center justify-center gap-[6px] mt-[10px]">
+              <span className="text-[12px] font-bold uppercase leading-tight text-foreground/50">
+                • YOU HAVE ACCEPTED THIS EVENT
+              </span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

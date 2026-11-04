@@ -35,6 +35,7 @@ import {
   inviteToEvent,
   createEvent,
   updateEvent,
+  deletePersonalGig,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist } from "@/lib/services/songs";
@@ -52,7 +53,6 @@ import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@
 import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
-import { ControlDeck } from "@/app/components/layout/ControlDeck";
 import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
 
 import { HomeView } from "@/app/views/HomeView";
@@ -93,8 +93,15 @@ import { createQuote as createQuoteDB } from "@/lib/services/quotes";
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
 import { UpgradePricingSheet } from "@/app/components/modals/UpgradePricingSheet";
+import { PersonalGigModal } from "@/app/components/modals/PersonalGigModal";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
 import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
+import { ProposeRehearsalModal } from "@/app/components/rehearsal/ProposeRehearsalModal";
+import { RehearsalPollModal } from "@/app/components/rehearsal/RehearsalPollModal";
+import { RehearsalPollVoteSheet } from "@/app/components/rehearsal/RehearsalPollVoteSheet";
+import { UrgentNotificationPopup } from "@/app/components/notifications/UrgentNotificationPopup";
+import { useRehearsalPolls } from "@/app/hooks/useData";
+import type { RehearsalPoll } from "@/lib/services/rehearsalPolls";
 
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
@@ -246,6 +253,23 @@ export default function AuthenticatedApp() {
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [createEventType, setCreateEventType] = useState<CreateEventType>(null);
   const [editingEventData, setEditingEventData] = useState<EventData | null>(null);
+  const [showPersonalGigModal, setShowPersonalGigModal] = useState(false);
+  const [editingPersonalGig, setEditingPersonalGig] = useState<{
+    id: string;
+    title: string;
+    eventDate: string;
+    startTime?: string;
+    endTime?: string;
+    venueName?: string;
+    fee?: number;
+    notes?: string;
+  } | null>(null);
+
+  // Rehearsal Polls & Proposals
+  const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null);
+  const [showProposeRehearsalModal, setShowProposeRehearsalModal] = useState(false);
+  const [showRehearsalPollModal, setShowRehearsalPollModal] = useState(false);
+  const [pollModalInitialProposal, setPollModalInitialProposal] = useState<RehearsalPoll | null>(null);
   const [saveToast, setSaveToast] = useState<{
     message: string;
     type: 'success' | 'error' | 'info';
@@ -317,15 +341,65 @@ export default function AuthenticatedApp() {
   
   // ═══ LOCAL CLIENT-SIDE BAND PILL FILTER (instant, <1ms) ═══
   const [selectedBandPill, setSelectedBandPill] = useState<string>('all');
+  const [urgentNotification, setUrgentNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
+  const [pollNotification, setPollNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({
     limit: 20,
     onNewEventInvite: (notif) => {
       if (notif.data?.creator_id !== user?.id) {
-        setRsvpNotification(notif);
+        setUrgentNotification(notif);
       }
     },
+    onNewRehearsalPoll: (notif) => {
+      setUrgentNotification(notif);
+    },
   });
+
+  // Check for initial unread event invite or rehearsal poll on mount (small non-intrusive pop up, prompt once per session)
+  const hasPromptedInitialNotifs = useRef(false);
+  useEffect(() => {
+    if (!realNotifications?.length || hasPromptedInitialNotifs.current || rsvpNotification || pollNotification || urgentNotification) return;
+
+    // Look for unread event invite (where user is not the creator)
+    const unreadInvite = realNotifications.find(
+      (n) => !n.read && n.type === 'event_invite' && n.data?.creator_id !== user?.id
+    );
+    if (unreadInvite) {
+      hasPromptedInitialNotifs.current = true;
+      setUrgentNotification(unreadInvite);
+      return;
+    }
+
+    // Look for unread rehearsal poll
+    const unreadPoll = realNotifications.find(
+      (n) => !n.read && (n.type === 'rehearsal_poll' || n.type === 'rehearsal_proposal')
+    );
+    if (unreadPoll) {
+      hasPromptedInitialNotifs.current = true;
+      setUrgentNotification(unreadPoll);
+    }
+  }, [realNotifications, user?.id, rsvpNotification, pollNotification, urgentNotification]);
+
+  const handleOpenUrgentNotification = useCallback(async (notif: import('@/lib/services/notifications').Notification) => {
+    // 1. Immediately mark the notification as read so the red notification badge disappears
+    try {
+      await markNotificationAsRead(notif.id);
+      refetchNotifications?.();
+    } catch (e) {
+      console.error('Failed to mark urgent notification read:', e);
+    }
+
+    // 2. Dismiss the small pop up
+    setUrgentNotification(null);
+
+    // 3. Open the corresponding interactive sheet
+    if (notif.type === 'event_invite') {
+      setRsvpNotification(notif);
+    } else if (notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') {
+      setPollNotification(notif);
+    }
+  }, [refetchNotifications]);
   const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
   const onlineUserIds = useOnlinePresence(user?.id);
 
@@ -392,6 +466,7 @@ export default function AuthenticatedApp() {
       // AND members only see gigs or rehearsals where they've been added by an admin
       if (!isAdmin) {
         list = list.filter(e => {
+          if (!e.band_id && e.created_by === user?.id) return true;
           const s = e.status?.toLowerCase();
           const isQuote = (e.quote_id || (e.event_type as string) === 'quote' || s === 'tentative' || s === 'quoted' || s === 'quote') && s !== 'confirmed' && s !== 'completed';
           if (isQuote) return false;
@@ -414,7 +489,7 @@ export default function AuthenticatedApp() {
           item.memberUserIds = members.map(m => m.userId);
         }
         item.band_id = e.band_id || undefined;
-        item.band_name = e.band_id && bandLookup[e.band_id] ? bandLookup[e.band_id] : realBand?.name || undefined;
+        item.band_name = e.band_id && bandLookup[e.band_id] ? bandLookup[e.band_id] : (!e.band_id ? 'Personal' : realBand?.name || undefined);
         return item;
       });
     }
@@ -425,7 +500,9 @@ export default function AuthenticatedApp() {
   const visuallyFilteredEvents = useMemo(() => {
     let result = events;
     // Band pill filter
-    if (selectedBandPill !== 'all') {
+    if (selectedBandPill === 'personal') {
+      result = result.filter(e => !e.band_id);
+    } else if (selectedBandPill !== 'all') {
       result = result.filter(e => e.band_id === selectedBandPill);
     }
     // Optimistic UI: instantly strip events that should be visually hidden
@@ -435,6 +512,7 @@ export default function AuthenticatedApp() {
     // For members: strictly only include events where current user is added by admin and hasn't declined
     if (user?.id) {
       result = result.filter(e => {
+        if (!e.band_id && e.createdBy === user.id) return true;
         if (!e.eventId) return true; // no UUID key, can't filter
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
@@ -537,8 +615,17 @@ export default function AuthenticatedApp() {
 
   const notifications = useMemo(() => {
     if (!realNotifications?.length) return [];
+    const seen = new Set<string>();
     return realNotifications
-      .filter((n) => !n.type.includes("chat")) // Exclude chat messages from the Notification Hub
+      .filter((n) => {
+        if (n.type.includes("chat")) return false;
+        const pollId = (n.data as any)?.poll_id || '';
+        const eventId = (n.data as any)?.event_id || '';
+        const key = `${n.type}-${n.title}-${n.body}-${pollId || eventId || n.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .map((n) => {
         let uiType: "chat" | "event" | "finance" = "event";
         if (n.type.includes("quote") || n.type.includes("payment")) uiType = "finance";
@@ -636,6 +723,7 @@ export default function AuthenticatedApp() {
   const [showCreateBand, setShowCreateBand] = useState(false);
   const [showUpgradePricing, setShowUpgradePricing] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingReturnTo, setPricingReturnTo] = useState<'settings' | 'control_deck' | 'identity_hub' | null>(null);
   const [showAdminTour, setShowAdminTour] = useState(false);
 
   // Auto-launch Admin Guided Tour for first-time admins
@@ -688,7 +776,17 @@ export default function AuthenticatedApp() {
   const isNotificationsOpen = !!selectedNotification || selectedNotifications.length > 0;
 
   const handleOpenNotifications = useCallback(() => {
-    const nonChatNotifs = (realNotifications || []).filter((n) => !n.type.includes("chat"));
+    const seen = new Set<string>();
+    const nonChatNotifs = (realNotifications || [])
+      .filter((n) => !n.type.includes("chat"))
+      .filter((n) => {
+        const pollId = (n.data as any)?.poll_id || '';
+        const eventId = (n.data as any)?.event_id || '';
+        const key = `${n.type}-${n.title}-${n.body}-${pollId || eventId || n.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     setSelectedNotifications(nonChatNotifs);
     setSelectedNotification(null);
     if (unreadCount > 0) {
@@ -1012,17 +1110,25 @@ export default function AuthenticatedApp() {
 
   // Handlers
   const openIdentity = () => { setIsIdentityOpen(true); setIsControlDeckOpen(false); setIsBandSwitcherOpen(false); };
-  const closeIdentity = () => setIsIdentityOpen(false);
+  const closeIdentity = () => { setIsIdentityOpen(false); if (activeTab === "More") setActiveTab("Home"); };
 
-  const toggleControlDeck = () => {
-    if (isControlDeckOpen) { setIsControlDeckOpen(false); setActiveTab("Home"); }
-    else { setIsControlDeckOpen(true); setIsIdentityOpen(false); setActiveTab("More"); }
+  const toggleIdentity = () => {
+    setIsIdentityOpen(prev => !prev);
+    setIsControlDeckOpen(false);
+    setIsBandSwitcherOpen(false);
   };
 
-  const closeMenus = () => { setIsControlDeckOpen(false); setIsIdentityOpen(false); };
+  const toggleControlDeck = toggleIdentity;
+
+  const closeMenus = () => {
+    setIsControlDeckOpen(false);
+    setIsIdentityOpen(false);
+    if (activeTab === "More") setActiveTab("Home");
+  };
 
   const handleGridNav = (item: string) => {
     setIsControlDeckOpen(false);
+    if (activeTab === "More") setActiveTab("Home");
     if (item === "Home") setActiveTab("Home");
     if (item === "Messages") setActiveTab("Chat");
     if (item === "Finance") setExpandedCard("finance");
@@ -1033,7 +1139,10 @@ export default function AuthenticatedApp() {
       setShowSettings(true);
     }
     if (item === "Analytics") setShowAnalytics(true);
-    if (item === "PricingSettings") setShowPricingModal(true);
+    if (item === "PricingSettings") {
+      setPricingReturnTo('control_deck');
+      setShowPricingModal(true);
+    }
     if (item === "AdminTour") setShowAdminTour(true);
     if (item === "Quote" && isAdmin) { setCreateEventType("quote"); setIsCreateEventOpen(true); }
     if (item === "InviteMember") setShowBandMembers(true);
@@ -1061,9 +1170,34 @@ export default function AuthenticatedApp() {
       }
     }
 
-    const detailTypes = ["invite_sent", "invite_received", "invite_accepted", "invite_declined", "member_joined", "member_left", "quote_received", "task_assigned", "event_invite", "payment_received", "payment_due"];
     const realNotifForType = first ? realNotifications?.find((rn) => { const nid = parseInt(rn.id.replace(/-/g, "").slice(0, 8), 16) || 0; return nid === first.id; }) : null;
     const realType = realNotifForType?.type || first?.type;
+
+    // 1. Direct Pop-up for Gig Invitation RSVP
+    if (first && realType === 'event_invite') {
+      const realId = notificationIdMap.get(first.id);
+      const realNotif = (realId ? realNotifications?.find((rn) => rn.id === realId) : null) || realNotifForType;
+      if (realNotif) {
+        closeIdentity();
+        markNotificationAsRead(realNotif.id).then(() => refetchNotifications?.());
+        setRsvpNotification(realNotif);
+        return;
+      }
+    }
+
+    // 2. Direct Pop-up for Rehearsal Availability Poll / Proposal
+    if (first && (realType === 'rehearsal_poll' || realType === 'rehearsal_proposal')) {
+      const realId = notificationIdMap.get(first.id);
+      const realNotif = (realId ? realNotifications?.find((rn) => rn.id === realId) : null) || realNotifForType;
+      if (realNotif) {
+        closeIdentity();
+        markNotificationAsRead(realNotif.id).then(() => refetchNotifications?.());
+        setPollNotification(realNotif);
+        return;
+      }
+    }
+
+    const detailTypes = ["invite_sent", "invite_received", "invite_accepted", "invite_declined", "member_joined", "member_left", "quote_received", "task_assigned", "payment_received", "payment_due"];
 
     if (first && realType && detailTypes.includes(realType)) {
       const realData = clicked.map((n) => { const rid = notificationIdMap.get(n.id); return realNotifications?.find((rn) => rn.id === rid); }).filter(Boolean).map((n) => ({ id: n!.id, type: n!.type, title: n!.title, body: n!.body, data: n!.data as Record<string, unknown>, band_id: n!.band_id, created_at: n!.created_at, read: n!.read }));
@@ -1104,7 +1238,30 @@ export default function AuthenticatedApp() {
     refetchNotifications?.();
   };
 
-  const handleCreateEvent = (type: CreateEventType) => { setCreateEventType(type); setIsCreateEventOpen(true); };
+  const handleCreateEvent = (type: CreateEventType) => {
+    if (type === 'personal') {
+      setEditingPersonalGig(null);
+      setShowPersonalGigModal(true);
+      return;
+    }
+    if (type === 'rehearsal' && !isAdmin) {
+      setShowProposeRehearsalModal(true);
+      return;
+    }
+    setCreateEventType(type);
+    setIsCreateEventOpen(true);
+  };
+
+  const handleConvertProposal = (proposal: RehearsalPoll) => {
+    setPollModalInitialProposal(proposal);
+    setShowRehearsalPollModal(true);
+  };
+
+  const handleOpenPollBuilder = () => {
+    setIsCreateEventOpen(false);
+    setPollModalInitialProposal(null);
+    setShowRehearsalPollModal(true);
+  };
 
   const handleRehearsalClick = () => {
     setExpandedCard("rehearsal");
@@ -1131,6 +1288,23 @@ export default function AuthenticatedApp() {
 
   const handleEventEdit = async () => {
     if (!selectedEvent) return;
+    if (!selectedEvent.band_id) {
+      setEditingPersonalGig({
+        id: selectedEvent.eventId || String(selectedEvent.id),
+        title: selectedEvent.title,
+        eventDate: selectedEvent.date,
+        startTime: selectedEvent.time,
+        endTime: selectedEvent.endTime,
+        venueName: (selectedEvent as any).venueName || selectedEvent.location,
+        fee: selectedEvent.price ? parseFloat(selectedEvent.price.replace(/[^0-9.]/g, '')) : undefined,
+        notes: selectedEvent.notes,
+      });
+      setSelectedEvent(null);
+      setSelectedEventMembership(null);
+      setShowPersonalGigModal(true);
+      return;
+    }
+
     const s = selectedEvent.status?.toUpperCase();
     let evType: CreateEventType;
     if (s === 'REHEARSAL') evType = 'rehearsal';
@@ -1175,8 +1349,13 @@ export default function AuthenticatedApp() {
   const handleEventDelete = async () => {
     if (!selectedEvent?.eventId) return;
     try {
-      await supabase.from('events').delete().eq('id', selectedEvent.eventId);
+      if (!selectedEvent.band_id) {
+        await deletePersonalGig(selectedEvent.eventId, user?.id);
+      } else {
+        await supabase.from('events').delete().eq('id', selectedEvent.eventId);
+      }
       refetchEvents();
+      refetchDashboard?.();
     } catch (err) {
       console.error('Delete error:', err);
     }
@@ -1670,12 +1849,11 @@ export default function AuthenticatedApp() {
   const computedMemberStats = useMemo(() => {
     if (!user?.id) return null;
 
-    // Get the current year boundaries & today's local date
+    // Get today's local date
     const now = new Date();
-    const startOfYear = `${now.getFullYear()}-01-01`;
-    const endOfYear = `${now.getFullYear()}-12-31`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    let totalEarned = 0;
     let confirmedFee = 0;
     let pendingFee = 0;
     let confirmedCount = 0;
@@ -1687,8 +1865,8 @@ export default function AuthenticatedApp() {
       // Only include confirmed or completed events
       const evStatus = (event.status || '').toLowerCase();
       if (evStatus !== 'confirmed' && evStatus !== 'completed') continue;
-      // Skip events outside current year
-      if (!event.event_date || event.event_date < startOfYear || event.event_date > endOfYear) continue;
+      // Skip events without date
+      if (!event.event_date) continue;
       // Skip rehearsals
       if (event.event_type === 'rehearsal') continue;
 
@@ -1698,18 +1876,38 @@ export default function AuthenticatedApp() {
       const members = eventMembersMap[event.id || ''] || [];
       const myMembership = members.find((m: any) => m.userId === user.id);
 
+      let fee = 0;
+      let isConfirmed = false;
+      let isPending = false;
+
       if (myMembership) {
         if (myMembership.status === 'confirmed') {
-          confirmedFee += myMembership.fee || 0;
-          if (isUpcoming) confirmedCount++;
+          fee = myMembership.fee || 0;
+          isConfirmed = true;
         } else if (myMembership.status === 'pending') {
-          pendingFee += myMembership.fee || 0;
+          fee = myMembership.fee || 0;
+          isPending = true;
+        }
+      } else if (!event.band_id && event.created_by === user.id) {
+        // Instant optimistic/fallback sync for personal gig before eventMembersMap populates
+        fee = event.fee || 0;
+        isConfirmed = true;
+      }
+
+      if (isPending) {
+        pendingFee += fee;
+      } else if (isConfirmed) {
+        if (isUpcoming) {
+          confirmedFee += fee;
+          confirmedCount++;
+        } else {
+          totalEarned += fee;
         }
       }
     }
 
     return {
-      totalEarned: confirmedFee,
+      totalEarned,
       confirmedFee,
       pendingFee,
       revenueChange: 0,
@@ -1887,11 +2085,9 @@ export default function AuthenticatedApp() {
     };
   }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats, isAdmin, user?.id, eventMembersMap]);
 
-  const roleBgColor = isAdmin ? "#E6E5E1" : "#F0F7D8";
-
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
-      <div className="fixed inset-0 z-0 dark:hidden" style={{ backgroundColor: roleBgColor }} />
+      <div className="fixed inset-0 z-0 bg-background" />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
@@ -1908,12 +2104,20 @@ export default function AuthenticatedApp() {
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
-          onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }}
+          onCreateEvent={() => {
+            if (!isAdmin || isSolo) {
+              setEditingPersonalGig(null);
+              setShowPersonalGigModal(true);
+            } else {
+              setCreateEventType(null);
+              setIsCreateEventOpen(true);
+            }
+          }}
           onOpenIdentity={openIdentity} onOpenNotifications={handleOpenNotifications} unreadCount={isNotificationsOpen ? 0 : unreadCount} isHidden={isHeaderHidden}
         />
 
         <AnimatePresence mode="wait">
-          {activeTab === "Home" && (
+          {(activeTab === "Home" || activeTab === "More") && (
             <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
@@ -1933,28 +2137,67 @@ export default function AuthenticatedApp() {
               if (action === "Inventory") setShowInventory(true);
               if (action === "Contracts & Riders") setShowContracts(true);
               if (action === "Task Templates") setShowTaskTemplates(true);
-            }} isSolo={isSolo} />
+            }} isSolo={isSolo}
+            rehearsalPolls={rehearsalPolls}
+            onConvertProposal={handleConvertProposal}
+            onPollUpdated={() => {
+              refetchRehearsalPolls();
+              refetchEvents();
+            }}
+            onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+            currentUserId={user?.id}
+            />
           )}
           {activeTab === "Chat" && !isSolo && (
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
+            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => {
+              if (!isAdmin || isSolo) {
+                setEditingPersonalGig(null);
+                setShowPersonalGigModal(true);
+              } else {
+                setCreateEventType(null);
+                setIsCreateEventOpen(true);
+              }
+            }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
+              rehearsalPolls={rehearsalPolls}
+              onConvertProposal={handleConvertProposal}
+              onPollUpdated={() => {
+                refetchRehearsalPolls();
+                refetchEvents();
+              }}
+              onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+              currentUserId={user?.id}
+            />
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setCreateEventType(null); setIsCreateEventOpen(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
+            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setEditingPersonalGig(null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
 
-        <IdentityHub isOpen={isIdentityOpen} onClose={closeIdentity}
+        <IdentityHub
+          isOpen={isIdentityOpen}
+          onClose={closeIdentity}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
-          selectedBand={selectedBand} setSelectedBand={setSelectedBand} notificationGroups={notificationGroups} unreadCount={unreadCount} onNotificationClick={handleNotificationClick} onMarkAsRead={handleMarkSingleAsRead} onMarkGroupAsRead={handleMarkGroupAsRead}
+          selectedBand={selectedBand}
+          setSelectedBand={setSelectedBand}
+          notificationGroups={notificationGroups}
+          unreadCount={unreadCount}
+          onNotificationClick={handleNotificationClick}
+          onMarkAsRead={handleMarkSingleAsRead}
+          onMarkGroupAsRead={handleMarkGroupAsRead}
           onEntityDetailClick={(l) => { if (l === "INVENTORY") setShowInventory(true); if (l === "REPERTOIRE") setShowSetlistManager(true); if (l === "TEMPLATES") setShowTaskTemplates(true); if (l === "DOCUMENTS") setShowContracts(true); }}
           entityCounts={entityCounts}
-          onEditProfile={() => setShowEditProfile(true)} onEditBand={() => setShowBandMembers(true)} onAddEntity={handleRequestCreateBand} />
-
-        <ControlDeck isOpen={isControlDeckOpen} onClose={toggleControlDeck} onNavigate={handleGridNav} isAdmin={isAdmin} />
+          onEditProfile={() => setShowEditProfile(true)}
+          onEditBand={() => setShowBandMembers(true)}
+          onAddEntity={handleRequestCreateBand}
+          onOpenPricing={() => {
+            setPricingReturnTo('identity_hub');
+            setShowPricingModal(true);
+          }}
+        />
 
         <SwitchBandPopup
           isOpen={isBandSwitcherOpen}
@@ -1996,14 +2239,15 @@ export default function AuthenticatedApp() {
         setActiveTab={setActiveTab}
         isPlusMenuOpen={isPlusMenuOpen}
         setIsPlusMenuOpen={setIsPlusMenuOpen}
-        isControlDeckOpen={isControlDeckOpen}
+        isControlDeckOpen={isIdentityOpen}
         isIdentityOpen={isIdentityOpen}
-        toggleControlDeck={toggleControlDeck}
+        toggleControlDeck={toggleIdentity}
+        toggleIdentity={toggleIdentity}
         closeMenus={closeMenus}
         onCreateEvent={handleCreateEvent}
         isScrollingDown={isScrollingDown}
         unreadChatCount={chatUnreadCounts.all}
-        isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isIdentityOpen || isDayPickerOpen || !!rsvpNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat}
+        isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat}
         isAdmin={isAdmin}
         isSolo={userMode === 'solo'}
       />
@@ -2029,10 +2273,6 @@ export default function AuthenticatedApp() {
               onClose={() => { setShowSettings(false); setSettingsInitialSection("main"); }}
               initialSection={settingsInitialSection}
               isAdmin={isAdmin}
-              onOpenPricing={() => {
-                setShowSettings(false);
-                setShowPricingModal(true);
-              }}
             />
           )}
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
@@ -2052,12 +2292,21 @@ export default function AuthenticatedApp() {
           )}
 
           {showEditProfile && <EditProfileModal key="edit-profile" isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />}
-          {showPricingModal && (
+          {showPricingModal && isAdmin && (
             <BandPricingModal
               key="band-pricing"
               isOpen={showPricingModal}
-              onClose={() => setShowPricingModal(false)}
-              bandId={realBand?.id ? String(realBand.id) : 'default'}
+              onClose={() => {
+                setShowPricingModal(false);
+                if (pricingReturnTo === 'control_deck' || pricingReturnTo === 'identity_hub') {
+                  setIsIdentityOpen(true);
+                }
+                setPricingReturnTo(null);
+              }}
+              bandId={realBand?.id ? String(realBand.id) : (selectedBand?.id ? String(selectedBand.id) : 'default')}
+              onSaved={() => {
+                refreshBands();
+              }}
             />
           )}
           {showAdminTour && (
@@ -2071,14 +2320,74 @@ export default function AuthenticatedApp() {
               onOpenPricing={() => {
                 localStorage.setItem('bandwith_admin_tour_seen', 'true');
                 setShowAdminTour(false);
+                setPricingReturnTo(null);
                 setShowPricingModal(true);
               }}
             />
           )}
           {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
           <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
+          {showPersonalGigModal && user?.id && (
+            <PersonalGigModal
+              isOpen={showPersonalGigModal}
+              onClose={() => {
+                setShowPersonalGigModal(false);
+                setEditingPersonalGig(null);
+              }}
+              userId={user.id}
+              initialData={editingPersonalGig}
+              onSaved={() => {
+                refetchEvents();
+                refetchDashboard?.();
+              }}
+              onOpenUpgradeSheet={() => setShowUpgradePricing(true)}
+            />
+          )}
 
-          <AnimatePresence>{isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && <CreateEventModal initialType={createEventType as any} layoutId={`create-button-${createEventType}`} onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }} onCreate={handleEventCreate} currentUserId={user?.id} bandMembers={memoizedBandMembers} editingEvent={editingEventData} />}</AnimatePresence>
+          <AnimatePresence>
+            {isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && (
+              <CreateEventModal
+                initialType={createEventType as any}
+                layoutId={`create-button-${createEventType}`}
+                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }}
+                onCreate={handleEventCreate}
+                currentUserId={user?.id}
+                bandMembers={memoizedBandMembers}
+                editingEvent={editingEventData}
+                onOpenPollBuilder={handleOpenPollBuilder}
+                onOpenProposeRehearsal={() => setShowProposeRehearsalModal(true)}
+              />
+            )}
+          </AnimatePresence>
+
+          {showProposeRehearsalModal && realBand && user && (
+            <ProposeRehearsalModal
+              isOpen={showProposeRehearsalModal}
+              onClose={() => setShowProposeRehearsalModal(false)}
+              bandId={realBand.id}
+              userId={user.id}
+              onSuccess={refetchRehearsalPolls}
+              onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+            />
+          )}
+
+          {showRehearsalPollModal && realBand && user && (
+            <RehearsalPollModal
+              isOpen={showRehearsalPollModal}
+              onClose={() => {
+                setShowRehearsalPollModal(false);
+                setPollModalInitialProposal(null);
+              }}
+              bandId={realBand.id}
+              adminId={user.id}
+              initialProposal={pollModalInitialProposal}
+              onSuccess={() => {
+                refetchRehearsalPolls();
+                refetchEvents();
+              }}
+              onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+            />
+          )}
           <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
             if (realBand?.id) {
               const createdEventId = q.eventId || (await (async () => {
@@ -2153,6 +2462,18 @@ export default function AuthenticatedApp() {
             onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
             notification={selectedNotification}
             notifications={selectedNotifications}
+            onOpenRSVP={(notif) => {
+              setSelectedNotification(null);
+              setSelectedNotifications([]);
+              markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              setRsvpNotification(notif as any);
+            }}
+            onOpenPoll={(notif) => {
+              setSelectedNotification(null);
+              setSelectedNotifications([]);
+              markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              setPollNotification(notif as any);
+            }}
             onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
             onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}
             onDelete={(id) => { if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id)); else { setSelectedNotification(null); setSelectedNotifications([]); } }}
@@ -2245,6 +2566,7 @@ export default function AuthenticatedApp() {
           <EventDetail
             key="event-detail"
             event={selectedEvent}
+            currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
             userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
             onAccept={handleEventAccept}
@@ -2336,6 +2658,38 @@ export default function AuthenticatedApp() {
               if (navId) setTimeout(() => navigateToEvent(navId), 300);
             }}
             onClose={() => setRsvpNotification(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pollNotification && (
+          <RehearsalPollVoteSheet
+            key={pollNotification.id}
+            notification={pollNotification}
+            currentUserId={user?.id || ''}
+            isAdmin={isAdmin}
+            onClose={() => setPollNotification(null)}
+            onPollUpdated={() => {
+              refetchRehearsalPolls?.();
+              refetchEvents();
+            }}
+            onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+            onOpenAdminWizard={(proposal) => {
+              setPollNotification(null);
+              handleConvertProposal(proposal);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {urgentNotification && !rsvpNotification && !pollNotification && (
+          <UrgentNotificationPopup
+            key={urgentNotification.id}
+            notification={urgentNotification}
+            onOpen={() => handleOpenUrgentNotification(urgentNotification)}
+            onDismiss={() => setUrgentNotification(null)}
           />
         )}
       </AnimatePresence>

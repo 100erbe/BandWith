@@ -17,9 +17,9 @@ const TIERS = [
     price: '$0',
     period: '/mo forever',
     icon: Music,
-    accent: 'var(--accent)',
-    bgGradient: 'from-accent to-[var(--accent)]',
-    textColor: 'text-black',
+    accent: 'var(--foreground)',
+    bgGradient: 'bg-card border border-foreground/15 shadow-2xs',
+    textColor: 'text-foreground',
     description: 'Basic operations',
     features: [
       'Manage 1 band',
@@ -29,7 +29,7 @@ const TIERS = [
       'Standard support',
     ],
     cta: 'Current Plan',
-    ctaStyle: 'bg-white/30 text-black border-white/30 cursor-default',
+    ctaStyle: 'bg-foreground/10 text-foreground border border-foreground/15 cursor-default',
   },
   {
     id: 'multi_band',
@@ -138,6 +138,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
               <div className="flex flex-col gap-4">
                 {TIERS.map((tier, index) => {
                   const isCurrentPlan = currentTier === tier.id;
+                  const isNeutral = tier.textColor !== 'text-white';
                   const Icon = tier.icon;
 
                   return (
@@ -147,15 +148,21 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.08 }}
                       className={cn(
-                        'relative rounded-[20px] p-5 bg-gradient-to-br overflow-hidden',
+                        'relative rounded-[20px] p-5 overflow-hidden',
                         tier.bgGradient,
-                        isCurrentPlan && 'ring-2 ring-black/20'
+                        isCurrentPlan && 'ring-2 ring-primary/40'
                       )}
                     >
                       {/* Current Plan Badge */}
                       {isCurrentPlan && (
-                        <div className="absolute top-3 right-3 bg-black/20 backdrop-blur-sm rounded-full px-3 py-1">
-                          <span className="text-[10px] font-bold uppercase text-foreground/70">
+                        <div className={cn(
+                          "absolute top-3 right-3 rounded-full px-3 py-1",
+                          isNeutral ? "bg-foreground/10" : "bg-black/20 backdrop-blur-sm"
+                        )}>
+                          <span className={cn(
+                            "text-[10px] font-bold uppercase",
+                            isNeutral ? "text-foreground/80" : "text-white/90"
+                          )}>
                             Current
                           </span>
                         </div>
@@ -164,11 +171,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       <div className="flex items-start gap-4 mb-4">
                         <div className={cn(
                           'w-12 h-12 rounded-full flex items-center justify-center shrink-0',
-                          tier.textColor === 'text-black' ? 'bg-black/10' : 'bg-white/20'
+                          isNeutral ? 'bg-foreground/10' : 'bg-white/20'
                         )}>
                           <Icon className={cn(
                             'w-6 h-6',
-                            isCurrentPlan ? 'text-black' : tier.textColor
+                            tier.textColor
                           )} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -180,7 +187,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           </h3>
                           <p className={cn(
                             'text-[12px] font-bold mt-0.5',
-                            tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
+                            isNeutral ? 'text-muted-foreground' : 'text-white/70'
                           )}>
                             {tier.tagline}
                           </p>
@@ -194,7 +201,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           </span>
                           <span className={cn(
                             'text-[10px] font-bold ml-0.5',
-                            tier.textColor === 'text-black' ? 'text-foreground/50' : 'text-white/60'
+                            isNeutral ? 'text-muted-foreground' : 'text-white/60'
                           )}>
                             {tier.period}
                           </span>
@@ -203,7 +210,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
 
                       <p className={cn(
                         'text-[11px] font-medium mb-4',
-                        tier.textColor === 'text-black' ? 'text-foreground/60' : 'text-white/70'
+                        isNeutral ? 'text-muted-foreground' : 'text-white/70'
                       )}>
                         {tier.description}
                       </p>
@@ -214,11 +221,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                           <div key={fi} className="flex items-start gap-2.5">
                             <Check className={cn(
                               'w-4 h-4 mt-0.5 shrink-0',
-                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
+                              isNeutral ? 'text-primary' : 'text-white/80'
                             )} />
                             <span className={cn(
                               'text-[12px] font-medium',
-                              tier.textColor === 'text-black' ? 'text-foreground/70' : 'text-white/80'
+                              isNeutral ? 'text-foreground/80' : 'text-white/80'
                             )}>
                               {feature}
                             </span>

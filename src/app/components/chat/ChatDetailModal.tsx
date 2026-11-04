@@ -14,8 +14,10 @@ import {
   X,
   Reply,
   ArrowUpRight,
+  Lock,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { supabase } from '@/lib/supabase';
 import { getMessages, sendMessage, markChatAsRead, subscribeToChat, getChatParticipants, deleteChat, getChat } from '@/lib/services/chats';
 import type { Message } from '@/lib/services/chats';
 import { toTitleCase } from '@/app/data/chats';
@@ -86,6 +88,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     chat.initials && chat.initials !== 'NC' ? chat.initials : ''
   );
   const [chatAvatarUrl, setChatAvatarUrl] = useState<string | undefined>(chat.avatarUrl);
+  const [canText, setCanText] = useState<boolean>(true);
+  const [restrictionReason, setRestrictionReason] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -210,6 +214,85 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             setChatAvatarUrl((fullChat as any).logo_url || (fullChat as any).avatar_url);
           }
         }
+
+        // Business rule check: members can only text admins or band/event they're in
+        if (user) {
+          let permitted = true;
+          let reason = '';
+
+          if (fullChat.type === 'direct') {
+            const other = fullChat.participants.find(p => p.user_id !== user.id);
+            if (other) {
+              const { data: sharedMemberships } = await supabase
+                .from('band_members')
+                .select('band_id, role, user_id')
+                .in('user_id', [user.id, other.user_id])
+                .eq('is_active', true);
+
+              const userBands = new Map<string, string>();
+              const otherBands = new Map<string, string>();
+              (sharedMemberships || []).forEach((m: any) => {
+                if (m.user_id === user.id) userBands.set(m.band_id, m.role);
+                if (m.user_id === other.user_id) otherBands.set(m.band_id, m.role);
+              });
+
+              let hasAdmin = false;
+              for (const [bId, userRole] of userBands.entries()) {
+                const otherRole = otherBands.get(bId);
+                if (otherRole && (userRole === 'admin' || otherRole === 'admin')) {
+                  hasAdmin = true;
+                  break;
+                }
+              }
+
+              if (!hasAdmin) {
+                permitted = false;
+                reason = 'Direct messaging is only available with band admins.';
+              }
+            }
+          } else if (fullChat.type === 'band' && fullChat.band_id) {
+            const { data: bm } = await supabase
+              .from('band_members')
+              .select('id')
+              .eq('band_id', fullChat.band_id)
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            if (!bm) {
+              permitted = false;
+              reason = 'You can only message in bands you are an active member of.';
+            }
+          } else if (fullChat.type === 'event' && fullChat.event_id) {
+            let hasAccess = false;
+            if (fullChat.band_id) {
+              const { data: bm } = await supabase
+                .from('band_members')
+                .select('role')
+                .eq('band_id', fullChat.band_id)
+                .eq('user_id', user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+              if (bm?.role === 'admin') hasAccess = true;
+            }
+            if (!hasAccess) {
+              const { data: em } = await supabase
+                .from('event_members')
+                .select('id, status')
+                .eq('event_id', fullChat.event_id)
+                .eq('user_id', user.id)
+                .maybeSingle();
+              if (em && em.status !== 'declined') hasAccess = true;
+            }
+            if (!hasAccess) {
+              permitted = false;
+              reason = 'You can only message in events you are participating in.';
+            }
+          }
+
+          setCanText(permitted);
+          setRestrictionReason(reason);
+        }
       }
     })();
     
@@ -239,7 +322,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       clearInterval(pollInterval);
       setActiveChat(null);
     };
-  }, [chat.id]);
+  }, [chat.id, user?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -253,6 +336,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   };
 
   const handleSend = async () => {
+    if (!canText) return;
     if (!newMessage.trim() || sending) return;
     if (!chat.id || chat.id === 'undefined' || chat.id === 'null') return;
     
@@ -601,98 +685,109 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         className="bg-card/95 backdrop-blur-md border-t border-border flex-shrink-0"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
       >
-        {/* Reply preview */}
-        <AnimatePresence>
-          {replyingTo && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pt-3 flex items-start gap-2">
-                <div className="flex-1 bg-foreground/5 rounded-xl p-3 border-l-2 border-primary">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[10px] font-bold text-primary uppercase">
-                      Replying to {replyingTo.sender?.full_name || 'Message'}
-                    </span>
-                    <button
-                      onClick={() => setReplyingTo(null)}
-                      className="p-1 hover:bg-foreground/10 rounded-full text-foreground/50 hover:text-foreground transition-colors"
-                      aria-label="Cancel reply"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-foreground/70 line-clamp-1">{replyingTo.content}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <div className="px-4 py-3 flex items-center gap-2">
-          <div className="flex-1 relative">
+        {!canText ? (
+          <div className="px-4 py-3.5 flex items-center justify-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-foreground/5 border border-foreground/10 text-xs font-semibold text-foreground/60 uppercase tracking-wide">
+              <Lock className="w-3.5 h-3.5 text-foreground/50 shrink-0" />
+              <span>{restrictionReason || 'Messaging is restricted'}</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Reply preview */}
             <AnimatePresence>
-              {showMentionSuggestions && filteredParticipants.length > 0 && (
+              {replyingTo && (
                 <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="absolute bottom-full left-0 right-0 mb-2 bg-card rounded-xl border border-border shadow-xl max-h-40 overflow-y-auto z-10 divide-y divide-border"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
                 >
-                  {filteredParticipants.map((participant) => (
-                    <button
-                      key={participant.id}
-                      onClick={() => insertMention(participant)}
-                      className="w-full px-4 py-2.5 text-left hover:bg-foreground/5 flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    >
-                      <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-bold shrink-0">
-                        {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  <div className="px-4 pt-3 flex items-start gap-2">
+                    <div className="flex-1 bg-foreground/5 rounded-xl p-3 border-l-2 border-primary">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[10px] font-bold text-primary uppercase">
+                          Replying to {replyingTo.sender?.full_name || 'Message'}
+                        </span>
+                        <button
+                          onClick={() => setReplyingTo(null)}
+                          className="p-1 hover:bg-foreground/10 rounded-full text-foreground/50 hover:text-foreground transition-colors"
+                          aria-label="Cancel reply"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <span className="font-bold text-foreground text-xs uppercase truncate">{participant.name}</span>
-                    </button>
-                  ))}
+                      <p className="text-xs text-foreground/70 line-clamp-1">{replyingTo.content}</p>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
             
-            <input
-              ref={inputRef}
-              type="text"
-              value={newMessage}
-              onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setShowMentionSuggestions(false);
-                else if (e.key === 'Enter' && !showMentionSuggestions) handleSend();
-                else if (e.key === 'Enter' && showMentionSuggestions && filteredParticipants.length > 0) {
-                  e.preventDefault();
-                  insertMention(filteredParticipants[0]);
-                }
-              }}
-              placeholder={replyingTo ? "Write a reply..." : "Write a message..."}
-              className="w-full h-11 px-4 rounded-full bg-foreground/5 text-foreground text-sm font-medium placeholder:text-foreground/35 border border-foreground/10 focus:border-primary/50 focus:bg-background focus:outline-none transition-all"
-            />
-          </div>
-          
-          <button
-            onClick={handleSend}
-            disabled={!newMessage.trim() || sending}
-            aria-label="Send message"
-            className={cn(
-              "w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-90",
-              newMessage.trim()
-                ? "bg-primary text-primary-foreground shadow-xs hover:opacity-95"
-                : "bg-foreground/5 text-foreground/30 cursor-not-allowed"
-            )}
-          >
-            {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
-        </div>
+            <div className="px-4 py-3 flex items-center gap-2">
+              <div className="flex-1 relative">
+                <AnimatePresence>
+                  {showMentionSuggestions && filteredParticipants.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      className="absolute bottom-full left-0 right-0 mb-2 bg-card rounded-xl border border-border shadow-xl max-h-40 overflow-y-auto z-10 divide-y divide-border"
+                    >
+                      {filteredParticipants.map((participant) => (
+                        <button
+                          key={participant.id}
+                          onClick={() => insertMention(participant)}
+                          className="w-full px-4 py-2.5 text-left hover:bg-foreground/5 flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                        >
+                          <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-bold shrink-0">
+                            {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <span className="font-bold text-foreground text-xs uppercase truncate">{participant.name}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setShowMentionSuggestions(false);
+                    else if (e.key === 'Enter' && !showMentionSuggestions) handleSend();
+                    else if (e.key === 'Enter' && showMentionSuggestions && filteredParticipants.length > 0) {
+                      e.preventDefault();
+                      insertMention(filteredParticipants[0]);
+                    }
+                  }}
+                  placeholder={replyingTo ? "Write a reply..." : "Write a message..."}
+                  className="w-full h-11 px-4 rounded-full bg-foreground/5 text-foreground text-sm font-medium placeholder:text-foreground/35 border border-foreground/10 focus:border-primary/50 focus:bg-background focus:outline-none transition-all"
+                />
+              </div>
+              
+              <button
+                onClick={handleSend}
+                disabled={!newMessage.trim() || sending}
+                aria-label="Send message"
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-90",
+                  newMessage.trim()
+                    ? "bg-primary text-primary-foreground shadow-xs hover:opacity-95"
+                    : "bg-foreground/5 text-foreground/30 cursor-not-allowed"
+                )}
+              >
+                {sending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   );

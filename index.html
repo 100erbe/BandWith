@@ -82,6 +82,17 @@
       </svg>
     </div>
     <div id="root"></div>
+    <script>
+      // Failsafe: Ensure splash screen never hangs permanently if JS initialization is delayed or fails
+      setTimeout(function() {
+        var splash = document.getElementById("css-splash");
+        if (splash) {
+          splash.style.opacity = "0";
+          splash.style.transition = "opacity 0.4s ease";
+          setTimeout(function() { splash.remove(); }, 500);
+        }
+      }, 3500);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

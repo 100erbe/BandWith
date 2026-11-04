@@ -111,6 +111,22 @@ export const IconChat = createIcon(
   2.65
 );
 
+export const IconSettings = createIcon(
+  'IconSettings',
+  () => (
+    <>
+      <line x1="4" y1="8" x2="10" y2="8" />
+      <line x1="16" y1="8" x2="20" y2="8" />
+      <circle cx="13" cy="8" r="3" />
+      <line x1="4" y1="16" x2="8" y2="16" />
+      <line x1="14" y1="16" x2="20" y2="16" />
+      <circle cx="11" cy="16" r="3" />
+    </>
+  ),
+  '0 0 24 24',
+  2
+);
+
 export const IconMenu = createIcon(
   'IconMenu',
   () => (

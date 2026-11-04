@@ -17,6 +17,8 @@
   /* ── Surfaces ── */
   --card: #F2F0ED;
   --card-fg: #0A0A0A;
+  --surface-alt: #F2F0ED;
+  --surface-alt-fg: #0A0A0A;
   --popover: #F2F0ED;
   --popover-fg: #0A0A0A;
   --muted: #D1D1D1;
@@ -50,6 +52,10 @@
   --accent: #C8431A;
   --accent-fg: #FFFFFF;
 
+  /* ── Dynamic Wizard Accent (defaults to rehearsal) ── */
+  --wizard-accent: var(--accent-rehearsal);
+  --wizard-accent-fg: var(--accent-rehearsal-fg);
+
   /* ── Semantic ── */
   --success: #059669;
   --success-fg: #FFFFFF;
@@ -74,6 +80,8 @@
   /* ── Surfaces ── */
   --card: #1E1E1E;
   --card-fg: #E5E7EB;
+  --surface-alt: #1E1E1E;
+  --surface-alt-fg: #E5E7EB;
   --popover: #1E1E1E;
   --popover-fg: #E5E7EB;
   --muted: #2C2C2C;
@@ -107,6 +115,10 @@
   --accent: #F2784B;
   --accent-fg: #000000;
 
+  /* ── Dynamic Wizard Accent (defaults to rehearsal) ── */
+  --wizard-accent: var(--accent-rehearsal);
+  --wizard-accent-fg: var(--accent-rehearsal-fg);
+
   /* ── Semantic ── */
   --success: #34D399;
   --success-fg: #000000;
@@ -122,13 +134,33 @@
   --ring: #F2784B;
 }
 
+/* ═══ Wizard Type Semantic Scoping ═══ */
+[data-wizard-type="rehearsal"] {
+  --wizard-accent: var(--accent-rehearsal);
+  --wizard-accent-fg: var(--accent-rehearsal-fg);
+}
+
+[data-wizard-type="gig"] {
+  --wizard-accent: var(--accent-gig);
+  --wizard-accent-fg: var(--accent-gig-fg);
+}
+
+[data-wizard-type="quote"] {
+  --wizard-accent: var(--accent-quote);
+  --wizard-accent-fg: var(--accent-quote-fg);
+}
+
 /* ═══ Map CSS vars to Tailwind v4 theme tokens ═══
    These let you use utilities like bg-background, text-foreground, bg-primary, etc. */
 @theme inline {
+  --color-wizard-accent: var(--wizard-accent);
+  --color-wizard-accent-foreground: var(--wizard-accent-fg);
   --color-background: var(--bg);
   --color-foreground: var(--fg);
   --color-card: var(--card);
   --color-card-foreground: var(--card-fg);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-alt-foreground: var(--surface-alt-fg);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-fg);
   --color-primary: var(--primary);
@@ -179,7 +211,7 @@
   }
 
   /* Smooth theme transitions on interactive / surface elements */
-  body, .bg-background, .bg-card, .bg-popover, .bg-muted {
+  body, .bg-background, .bg-card, .bg-popover, .bg-muted, .bg-surface-alt {
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 }

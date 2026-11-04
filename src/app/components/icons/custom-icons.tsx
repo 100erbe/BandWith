@@ -74,6 +74,37 @@ export const Mic2 = createIcon('Mic2', () => (
   </>
 ));
 
+export const Mic = createIcon('Mic', () => (
+  <>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </>
+));
+
+export const Drum = createIcon('Drum', () => (
+  <>
+    <ellipse cx="12" cy="8" rx="8" ry="3.5" />
+    <path d="M4 8v7c0 1.93 3.58 3.5 8 3.5s8-1.57 8-3.5V8" />
+    <path d="m5 16 3-3" />
+    <path d="m19 16-3-3" />
+  </>
+));
+
+export const Sliders = createIcon('Sliders', () => (
+  <>
+    <line x1="4" y1="21" x2="4" y2="14" />
+    <line x1="4" y1="10" x2="4" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12" y2="3" />
+    <line x1="20" y1="21" x2="20" y2="16" />
+    <line x1="20" y1="12" x2="20" y2="3" />
+    <line x1="1" y1="14" x2="7" y2="14" />
+    <line x1="9" y1="8" x2="15" y2="8" />
+    <line x1="17" y1="16" x2="23" y2="16" />
+  </>
+));
+
 export const Volume2 = createIcon('Volume2', () => (
   <>
     <path d="M11 5.5 6.5 9H3.75A1.75 1.75 0 0 0 2 10.75v2.5C2 14.22 2.78 15 3.75 15H6.5L11 18.5V5.5Z" />

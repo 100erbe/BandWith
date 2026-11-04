@@ -85,6 +85,9 @@ export const Header: React.FC<HeaderProps> = ({
     return showPicture ? 180 : 0;
   })();
 
+  const isAdminRole = selectedBand.role === 'ADMIN' || profile?.role === 'admin';
+  const canSwitchBands = bands.length > 1 || isAdminRole;
+
   return (
     <motion.header 
       className="mb-8 relative z-50"
@@ -101,14 +104,14 @@ export const Header: React.FC<HeaderProps> = ({
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Messages</h1>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider">All caught up</span>
-                <Sparkles className="w-3 h-3 text-accent fill-accent" />
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">All caught up</span>
+                <Sparkles className="w-3 h-3 text-primary fill-primary" />
               </div>
             </motion.div>
           ) : activeTab === 'Events' ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col">
               <h1 className="text-5xl font-black tracking-tighter leading-[0.9] text-foreground uppercase">Events</h1>
-              <span className="text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider mt-2">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-2">
                 {filteredEventsCount} of {totalEventsCount} events
               </span>
             </motion.div>
@@ -117,15 +120,15 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div className="flex items-center gap-2 mb-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full", 
-                  selectedBand.role === 'ADMIN' ? "bg-accent" : "bg-[var(--warning)]"
+                  selectedBand.role === 'ADMIN' ? "bg-primary" : "bg-[var(--accent-rehearsal)]"
                 )} />
-                <span className="text-xs font-bold uppercase tracking-widest text-stone-500 group-hover:text-foreground transition-colors">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
                   {selectedBand.role}
                 </span>
               </motion.div>
 
-              {/* Band name — clickable only for admins to switch bands */}
-              {profile?.role === 'admin' ? (
+              {/* Band name — clickable when user has multiple bands or is an admin */}
+              {canSwitchBands ? (
                 <button 
                   onClick={onOpenBandSwitcher}
                   className="text-left outline-none"
@@ -143,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </motion.h1>
                   </AnimatePresence>
                   
-                  <div className="flex items-center gap-1.5 mt-2 text-foreground/50 group-hover:text-foreground transition-colors">
+                  <div className="flex items-center gap-1.5 mt-2 text-muted-foreground group-hover:text-foreground transition-colors">
                     <span className="text-xs font-bold uppercase tracking-wider">Change Band</span>
                     <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5" />
                   </div>
@@ -186,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
+                  className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
                 >
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </motion.div>

@@ -47,6 +47,8 @@ interface NotificationDetailModalProps {
   onMarkAllAsRead?: () => void;
   onDelete?: (id?: string) => void;
   onAction?: (action: string, notificationId?: string) => void;
+  onOpenRSVP?: (notification: NotificationData) => void;
+  onOpenPoll?: (notification: NotificationData) => void;
 }
 
 const formatTime = (dateStr: string): string => {
@@ -85,6 +87,22 @@ function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   const t = (type || '').toLowerCase();
   const evType = String(data?.event_type || '').toLowerCase();
 
+  if (t === 'rehearsal_poll') {
+    return {
+      label: 'POLL',
+      icon: Calendar,
+      tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
+      badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
+    };
+  }
+  if (t === 'rehearsal_proposal') {
+    return {
+      label: 'PROPOSAL',
+      icon: Sparkles,
+      tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
+      badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
+    };
+  }
   if (t.includes('rehearsal') || evType === 'rehearsal') {
     return {
       label: 'REHEARSAL',
@@ -169,6 +187,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onMarkAllAsRead,
   onDelete,
   onAction,
+  onOpenRSVP,
+  onOpenPoll,
 }) => {
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -382,7 +402,17 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         return (
                           <div
                             key={notif.id}
-                            onClick={() => setViewingIndex(originalIndex >= 0 ? originalIndex : i)}
+                            onClick={() => {
+                              if (notif.type === 'event_invite' && onOpenRSVP) {
+                                onOpenRSVP(notif);
+                                return;
+                              }
+                              if ((notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') && onOpenPoll) {
+                                onOpenPoll(notif);
+                                return;
+                              }
+                              setViewingIndex(originalIndex >= 0 ? originalIndex : i);
+                            }}
                             className={cn(
                               'p-4 rounded-[14px] border transition-all cursor-pointer flex items-start gap-3.5 shadow-2xs active:scale-[0.99]',
                               isRead
@@ -622,6 +652,31 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   >
                     DISMISS NOTIFICATION
                   </button>
+                </div>
+              ) : (detailNotif?.type === 'rehearsal_poll' || detailNotif?.type === 'rehearsal_proposal') ? (
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    onClick={() => onOpenPoll?.(detailNotif)}
+                    className="w-full rounded-[12px] py-3.5 flex items-center justify-center bg-[var(--accent-rehearsal)] hover:opacity-95 text-white active:scale-98 transition-all font-bold text-xs uppercase tracking-wider gap-2 shadow-xs"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>{detailNotif.type === 'rehearsal_poll' ? 'VOTE ON DATES' : 'VIEW PROPOSAL'}</span>
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={backToList}
+                      className="flex-1 py-3 rounded-[12px] flex items-center justify-center gap-2 bg-foreground/10 text-foreground font-bold uppercase text-xs tracking-wider active:scale-98 transition-all"
+                    >
+                      <span>BACK TO LIST</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(detailNotif?.id)}
+                      aria-label="Delete notification"
+                      className="w-11 h-11 rounded-[12px] flex items-center justify-center bg-foreground/5 hover:bg-red-500/10 hover:text-red-500 text-foreground/50 border border-foreground/10 active:scale-95 transition-all shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">

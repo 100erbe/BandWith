@@ -125,19 +125,19 @@ export const hasPermission = (role: UserRole, permission: keyof Permissions): bo
 export const getRoleTheme = (role: UserRole) => {
   if (role === 'admin') {
     return {
-      backgroundColor: '#E6E5E1', // Warm gray
-      accentColor: 'var(--accent)', // Lime
-      badgeColor: 'bg-amber-500',
-      badgeText: 'text-amber-700',
+      backgroundColor: 'var(--bg)',
+      accentColor: 'var(--primary)',
+      badgeColor: 'bg-primary/15',
+      badgeText: 'text-primary',
       roleLabel: 'Admin',
     };
   }
   
   return {
-    backgroundColor: '#F0F7D8', // Light lime tint (harmonizes with accent)
-    accentColor: 'var(--accent)', // Same lime accent
-    badgeColor: 'bg-blue-500',
-    badgeText: 'text-blue-700',
+    backgroundColor: 'var(--bg)',
+    accentColor: 'var(--accent-rehearsal)',
+    badgeColor: 'bg-[var(--accent-rehearsal)]/15',
+    badgeText: 'text-[var(--accent-rehearsal)]',
     roleLabel: 'Member',
   };
 };

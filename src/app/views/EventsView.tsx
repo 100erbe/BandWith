@@ -15,6 +15,8 @@ import { cn } from '@/app/components/ui/utils';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { EventData } from '@/app/components/dashboard/EventCard';
 import { APP_COPY } from '@/app/constants/copy';
+import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
+import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 
 interface EventsViewProps {
   eventFilter: string;
@@ -33,6 +35,11 @@ interface EventsViewProps {
   bands?: Array<{ id: string; name: string }>;
   selectedBandPill?: string;
   onBandPillClick?: (bandId: string) => void;
+  rehearsalPolls?: RehearsalPoll[];
+  onConvertProposal?: (poll: RehearsalPoll) => void;
+  onPollUpdated?: () => void;
+  onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  currentUserId?: string;
 }
 
 const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
@@ -201,7 +208,12 @@ export const EventsView: React.FC<EventsViewProps> = ({
   isAdmin = true,
   onDayPickerOpen,
   userFeeMap = {},
-  bands = []
+  bands = [],
+  rehearsalPolls = [],
+  onConvertProposal,
+  onPollUpdated,
+  onShowToast,
+  currentUserId,
 }) => {
   const getDisplayFee = (event: EventData): string => {
     if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) {
@@ -213,6 +225,17 @@ export const EventsView: React.FC<EventsViewProps> = ({
     if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) return 'YOUR FEE';
     return 'BAND TOTAL';
   };
+
+  const activePolls = useMemo(() => {
+    if (!rehearsalPolls) return [];
+    return rehearsalPolls.filter((p) => {
+      if (p.status === 'polling') return true;
+      if (p.status === 'proposed') {
+        return isAdmin || p.created_by === currentUserId;
+      }
+      return false;
+    });
+  }, [rehearsalPolls, isAdmin, currentUserId]);
 
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
@@ -478,10 +501,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
           <div className="flex items-start justify-between gap-[12px]">
             <div className="flex items-center gap-[6px] flex-wrap">
               {/* Multi-band member: band name pill */}
-              {!isAdmin && bands.length > 1 && event.band_name && (
-                <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
-                  {event.band_name}
-                </div>
+              {!isAdmin && (
+                !event.band_id ? (
+                  <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-accent-gig/15 text-accent-gig border border-accent-gig/30">
+                    Personal
+                  </div>
+                ) : (bands.length > 1 && event.band_name && (
+                  <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
+                    {event.band_name}
+                  </div>
+                ))
               )}
               {/* Primary Type Badge */}
               <div
@@ -593,6 +622,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* Card Body: Title & Venue */}
           <div className="flex flex-col gap-[3px]">
+            {!event.band_id && (
+              <div className="text-[11px] uppercase tracking-wider leading-tight text-foreground/60 mb-0.5">
+                <span className="font-bold text-accent-gig">PERSONAL</span> • GIG
+              </div>
+            )}
             <h3 className="text-[19px] sm:text-[21px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
               {event.title}
             </h3>
@@ -733,7 +767,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </AnimatePresence>
 
           {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
-          {bands.length > 1 && !isAdmin && (
+          {!isAdmin && (
             <div className="flex gap-[4px] items-center flex-wrap pb-1 mb-1">
               <button
                 key="all"
@@ -764,6 +798,18 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   </button>
                 );
               })}
+              <button
+                key="personal"
+                onClick={() => onBandPillClick('personal')}
+                className={cn(
+                  'inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[11px] font-bold uppercase flex-shrink-0 transition-all leading-tight',
+                  selectedBandPill === 'personal'
+                    ? 'bg-foreground text-background'
+                    : 'bg-foreground/10 text-foreground/50'
+                )}
+              >
+                Personal
+              </button>
             </div>
           )}
 
@@ -801,6 +847,28 @@ export const EventsView: React.FC<EventsViewProps> = ({
               <Search className="w-[14px] h-[14px]" />
             </button>
           </div>
+
+          {/* ═══ ACTIVE REHEARSAL POLLS & PROPOSALS ═══ */}
+          {activePolls.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">
+                Rehearsal Availability Polls ({activePolls.length})
+              </span>
+              <div className="flex flex-col gap-3">
+                {activePolls.map((poll) => (
+                  <RehearsalPollCard
+                    key={poll.id}
+                    poll={poll}
+                    currentUserId={currentUserId || ''}
+                    isAdmin={!!isAdmin}
+                    onConvertProposal={onConvertProposal}
+                    onPollUpdated={onPollUpdated}
+                    onShowToast={onShowToast}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ═══ CALENDAR ═══ */}
           <div className="flex flex-col gap-[20px]">
@@ -1040,7 +1108,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           )}
 
       {/* Bottom clearance spacer ensuring last card clears floating navbar */}
-      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
+      <div className="h-32 shrink-0 pointer-events-none" aria-hidden="true" />
     </motion.div>
   );
 };

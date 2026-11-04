@@ -36,6 +36,9 @@ export type NotificationType =
   // Rehearsal
   | 'rehearsal_reminder'
   | 'rehearsal_notes_added'
+  | 'rehearsal_proposal'
+  | 'rehearsal_poll'
+  | 'rehearsal_poll_finalized'
   // Chat
   | 'chat_message'
   | 'chat_mention'
@@ -132,6 +135,9 @@ export const getNotificationIcon = (type: NotificationType): string => {
     // Rehearsal
     rehearsal_reminder: 'clock',
     rehearsal_notes_added: 'file-text',
+    rehearsal_proposal: 'help-circle',
+    rehearsal_poll: 'check-square',
+    rehearsal_poll_finalized: 'calendar-check',
     // Chat
     chat_message: 'message-circle',
     chat_mention: 'at-sign',
@@ -338,6 +344,9 @@ const shouldSendPush = (type: NotificationType): boolean => {
     'event_invite',
     'quote_received',
     'task_assigned',
+    'rehearsal_proposal',
+    'rehearsal_poll',
+    'rehearsal_poll_finalized',
     // High priority - time-sensitive
     'event_reminder',
     'rehearsal_reminder',

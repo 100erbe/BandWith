@@ -78,8 +78,10 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
 
   // Upcoming payments
   const upcomingPayments = useMemo(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return events
-      .filter(e => e.status === 'confirmed' && e.fee > 0)
+      .filter(e => e.status === 'confirmed' && e.fee > 0 && (!e.date || e.date >= todayStr))
       .slice(0, 5)
       .map(e => ({
         id: e.id,

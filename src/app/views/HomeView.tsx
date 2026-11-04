@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   ArrowUpRight,
@@ -16,6 +16,8 @@ import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
 import { useBand } from '@/lib/BandContext';
 import { APP_COPY } from '@/app/constants/copy';
+import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
+import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 
 interface DashboardData {
   eventStats: {
@@ -59,6 +61,11 @@ interface HomeViewProps {
   onSelectEvent?: (eventId: string) => void;
   isAdmin?: boolean;
   isSolo?: boolean;  // PLG: Solo mode hides collaborative features
+  rehearsalPolls?: RehearsalPoll[];
+  onConvertProposal?: (poll: RehearsalPoll) => void;
+  onPollUpdated?: () => void;
+  onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  currentUserId?: string;
 }
 
 const formatEventTime = (timeStr?: string): string => {
@@ -172,6 +179,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onSelectEvent,
   isAdmin: _isAdminProp = true,
   isSolo = false,
+  rehearsalPolls = [],
+  onConvertProposal,
+  onPollUpdated,
+  onShowToast,
+  currentUserId,
 }) => {
   // Use the band context for role, fall back to prop for backwards compatibility
   const { isAdmin: isAdminFromContext } = useBand();
@@ -353,6 +365,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
     ? `${revenueChange > 0 ? '+' : ''}${revenueChange}%`
     : '--';
 
+  const activePolls = useMemo(() => {
+    if (!rehearsalPolls || isSolo) return [];
+    return rehearsalPolls.filter((p) => {
+      if (p.status === 'polling') return true;
+      if (p.status === 'proposed') {
+        return isAdmin || p.created_by === currentUserId;
+      }
+      return false;
+    });
+  }, [rehearsalPolls, isAdmin, currentUserId, isSolo]);
+
   return (
     <motion.div
       key={`dashboard-${selectedBand.id}`}
@@ -470,7 +493,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {APP_COPY.home.stats.upcomingPay}
                   </span>
                   <div className="h-[64px] flex items-center">
-                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
+                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-muted-foreground tracking-tight block truncate">
                       {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : formatRevenue(memberStats?.confirmedFee || 0)}
                     </span>
                   </div>
@@ -495,6 +518,30 @@ export const HomeView: React.FC<HomeViewProps> = ({
           )}
         </div>
       </motion.div>
+
+      {/* ═══ ACTIVE REHEARSAL POLLS & PROPOSALS WIDGET ═══ */}
+      {activePolls.length > 0 && (
+        <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">
+              Action Center • Rehearsal Scheduling ({activePolls.length})
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {activePolls.map((poll: RehearsalPoll) => (
+              <RehearsalPollCard
+                key={poll.id}
+                poll={poll}
+                currentUserId={currentUserId || ''}
+                isAdmin={!!isAdmin}
+                onConvertProposal={onConvertProposal}
+                onPollUpdated={onPollUpdated}
+                onShowToast={onShowToast}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* ═══ UPCOMING GIGS & REHEARSALS CARD ═══ */}
       <motion.div variants={dashboardItemVariants}>

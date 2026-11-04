@@ -17,13 +17,13 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
   onClose,
   title,
   children,
-  bgColor = 'var(--accent-rehearsal)',
-  textColor = 'white',
+  bgColor = 'var(--wizard-accent, var(--accent-rehearsal))',
+  textColor = 'var(--wizard-accent-fg, var(--surface-inverse-fg, white))',
 }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div data-wizard-type="rehearsal">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -38,21 +38,20 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
             className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
             style={{ backgroundColor: bgColor }}
           >
-            <div className="flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[40px]">
+            <div className="flex flex-col gap-8 px-4 pt-[max(env(safe-area-inset-top,24px),24px)] pb-8 max-w-2xl mx-auto w-full">
               {/* Header */}
-              <div className="flex items-center gap-[20px]">
+              <div className="flex items-center gap-4">
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2"
-                  style={{
-                    backgroundColor: 'rgba(216,216,216,0.2)',
-                    borderColor: textColor,
-                  }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center border-2 border-current/20 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors"
+                  style={{ color: textColor }}
+                  aria-label="Back"
                 >
-                  <ArrowLeft className="w-[24px] h-[24px]" style={{ color: textColor }} />
+                  <ArrowLeft className="w-5 h-5" style={{ color: textColor }} />
                 </button>
                 <span
-                  className="text-[32px] font-bold uppercase"
+                  className="text-2xl sm:text-3xl font-bold uppercase tracking-tight"
                   style={{ color: textColor }}
                 >
                   {title}
@@ -63,7 +62,7 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
               {children}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
