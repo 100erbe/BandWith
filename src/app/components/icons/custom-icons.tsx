@@ -875,15 +875,15 @@ export const Activity = createIcon('Activity', () => (
 
 export const Sun = createIcon('Sun', () => (
   <>
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2.5v2" />
-    <path d="M12 19.5v2" />
-    <path d="m5.28 5.28 1.42 1.42" />
-    <path d="m17.3 17.3 1.42 1.42" />
-    <path d="M2.5 12h2" />
-    <path d="M19.5 12h2" />
-    <path d="m6.7 17.3-1.42 1.42" />
-    <path d="m18.72 5.28-1.42 1.42" />
+    <circle cx="12" cy="12" r="5" />
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" />
+    <line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
   </>
 ));
 
@@ -944,6 +944,14 @@ export const CloudLightning = createIcon('CloudLightning', () => (
 
 export const Droplet = createIcon('Droplet', () => (
   <path d="M12 21.5a6.8 6.8 0 0 0 6.8-6.8c0-2-1-3.8-2.9-5.4S12.5 5.4 12 3c-.5 2.4-2 4.7-3.9 6.3S5.2 12.7 5.2 14.7a6.8 6.8 0 0 0 6.8 6.8Z" />
+));
+
+export const Wind = createIcon('Wind', () => (
+  <>
+    <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+    <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+    <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+  </>
 ));
 
 /* ── 10. Hardware, System & Content ── */
