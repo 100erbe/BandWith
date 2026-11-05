@@ -8,7 +8,7 @@ import {
   MapPin,
   Calendar,
 } from '@/app/components/icons';
-import { cn } from '@/lib/utils';
+import { cn } from './utils';
 
 export type WeatherCondition = 'sun' | 'cloud' | 'rain';
 
