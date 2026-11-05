@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useBand } from "@/lib/BandContext";
 import { useScrollDirection } from "@/app/hooks/useScrollDirection";
 import { syncSystemBarsAppearance } from "@/lib/systemBars";
+import { haptic } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
 import { getPermissions, type UserRole } from "@/lib/permissions";
 import {
@@ -59,6 +60,7 @@ import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
 import { HomeView } from "@/app/views/HomeView";
 import { ChatView } from "@/app/views/ChatView";
 import { EventsView } from "@/app/views/EventsView";
+import { PastEventsView } from "@/app/views/PastEventsView";
 
 const BandMembersView = React.lazy(() => import("@/app/views/BandMembersView").then(m => ({ default: m.BandMembersView })));
 const SetlistManagerView = React.lazy(() => import("@/app/views/SetlistManagerView").then(m => ({ default: m.SetlistManagerView })));
@@ -66,7 +68,6 @@ const SettingsView = React.lazy(() => import("@/app/views/SettingsView").then(m 
 const AnalyticsView = React.lazy(() => import("@/app/views/AnalyticsView").then(m => ({ default: m.AnalyticsView })));
 const InventoryView = React.lazy(() => import("@/app/views/InventoryView").then(m => ({ default: m.InventoryView })));
 const ContractsView = React.lazy(() => import("@/app/views/ContractsView").then(m => ({ default: m.ContractsView })));
-const PastEventsView = React.lazy(() => import("@/app/views/PastEventsView").then(m => ({ default: m.PastEventsView })));
 const TaskTemplatesView = React.lazy(() => import("@/app/views/TaskTemplatesView").then(m => ({ default: m.TaskTemplatesView })));
 const CreateEventModal = React.lazy(() => import("@/app/components/dashboard/CreateEventModal").then(m => ({ default: m.CreateEventModal })));
 const RehearsalLiveView = React.lazy(() => import("@/app/components/rehearsal/RehearsalLiveView").then(m => ({ default: m.RehearsalLiveView })));
@@ -321,6 +322,11 @@ export default function AuthenticatedApp() {
   } | null>(null);
   useEffect(() => {
     if (!saveToast) return;
+    if (saveToast.type === 'success') {
+      haptic.confirm();
+    } else if (saveToast.type === 'error') {
+      haptic.delete();
+    }
     const duration = saveToast.duration || (saveToast.action ? 8000 : 5000);
     const t = setTimeout(() => setSaveToast(null), duration);
     return () => clearTimeout(t);
@@ -519,6 +525,8 @@ export default function AuthenticatedApp() {
     return map;
   }, [realBands, realBand]);
 
+  const formattedBands = useMemo(() => realBands?.map(b => ({ id: b.id, name: b.name })) || [], [realBands]);
+
   const events = useMemo(() => {
     if (masterEventsList && masterEventsList.length > 0) {
       let list = masterEventsList;
@@ -654,6 +662,10 @@ export default function AuthenticatedApp() {
         navigateToEvent(d.eventId);
       } else if (d.screen === "event") {
         setActiveTab("Events");
+      } else if (d.screen === "quotes") {
+        setExpandedCard("quotes");
+      } else if (d.screen === "bandMembers") {
+        setShowBandMembers(true);
       } else if (d.screen === "home") setActiveTab("Home");
     };
     window.addEventListener("push-navigate", handler);
@@ -1642,6 +1654,7 @@ export default function AuthenticatedApp() {
 
   const handleEventDelete = async () => {
     if (!selectedEvent?.eventId) return;
+    haptic.delete();
     try {
       if (!selectedEvent.band_id) {
         await deletePersonalGig(selectedEvent.eventId, user?.id);
@@ -1863,6 +1876,7 @@ export default function AuthenticatedApp() {
 
   const handleEventDecline = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
+    haptic.delete();
 
     // ═══════════════════════════════════════════════════════════════
     // STEP A — Visual Shortcut: Hide the event card instantly (<1ms)
@@ -2456,7 +2470,7 @@ export default function AuthenticatedApp() {
                 setCreateEventType(null);
                 setIsCreateEventOpen(true);
               }
-            }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
+            }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
               rehearsalPolls={rehearsalPolls}
               onConvertProposal={handleConvertProposal}
               onPollUpdated={() => {
@@ -2469,7 +2483,7 @@ export default function AuthenticatedApp() {
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setEditingPersonalGig(null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
+            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setEditingPersonalGig(null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
 
@@ -2582,7 +2596,7 @@ export default function AuthenticatedApp() {
               allEvents={visuallyFilteredEvents}
               onEventClick={handleEventCardClick}
               isAdmin={isAdmin}
-              bands={realBands?.map(b => ({ id: b.id, name: b.name })) || []}
+              bands={formattedBands}
               userFeeMap={userFeeMap}
             />
           )}
@@ -2633,6 +2647,7 @@ export default function AuthenticatedApp() {
               userId={user.id}
               initialData={editingPersonalGig}
               onSaved={() => {
+                haptic.confirm();
                 refetchEvents();
                 refetchDashboard?.();
               }}

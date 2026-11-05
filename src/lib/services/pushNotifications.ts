@@ -84,21 +84,27 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
       return await saveTokenToDatabase(userId, cachedToken);
     }
 
-    // Remove old listeners before adding new ones
-    try {
-      await PushNotifications.removeAllListeners();
-      console.log('[Push] Cleared old listeners');
-    } catch (e) {
-      // Ignore errors
-    }
-
     // Wait for the token - set up listeners BEFORE calling register
     return new Promise((resolve) => {
       let resolved = false;
-      
+      let regHandle: any = null;
+      let errHandle: any = null;
+
+      const cleanup = () => {
+        if (regHandle) {
+          regHandle.remove().catch(() => {});
+          regHandle = null;
+        }
+        if (errHandle) {
+          errHandle.remove().catch(() => {});
+          errHandle = null;
+        }
+      };
+
       const timeout = setTimeout(async () => {
         if (resolved) return;
         resolved = true;
+        cleanup();
         console.log('[Push] Registration timeout - checking DB');
         const exists = await checkExistingSubscription(userId);
         if (exists) {
@@ -112,6 +118,7 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);
+        cleanup();
         cachedToken = token.value;
         console.log('[Push] Got token:', token.value.substring(0, 20) + '...');
         
@@ -123,13 +130,18 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);
+        cleanup();
         console.error('[Push] Registration error:', error);
         resolve({ success: false, error: new Error(error.error) });
       };
 
-      // Add listeners FIRST
-      PushNotifications.addListener('registration', registrationHandler);
-      PushNotifications.addListener('registrationError', errorHandler);
+      // Add listeners FIRST without wiping existing notification listeners
+      PushNotifications.addListener('registration', registrationHandler).then((h) => {
+        regHandle = h;
+      });
+      PushNotifications.addListener('registrationError', errorHandler).then((h) => {
+        errHandle = h;
+      });
       
       // THEN call register
       PushNotifications.register().then(() => {
@@ -138,6 +150,7 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         if (resolved) return;
         resolved = true;
         clearTimeout(timeout);
+        cleanup();
         console.error('[Push] Register call failed:', err);
         resolve({ success: false, error: err });
       });
@@ -206,6 +219,8 @@ export const setupNativePushListeners = (
   // Request local notification permissions (for foreground display)
   LocalNotifications.requestPermissions().catch(() => {});
 
+  const handles: Array<{ remove: () => Promise<void> }> = [];
+
   // Listen for push notifications received while app is in foreground
   PushNotifications.addListener('pushNotificationReceived', async (notification) => {
     console.log('[Push] Notification received in foreground:', notification);
@@ -253,7 +268,7 @@ export const setupNativePushListeners = (
       body: notification.body,
       data: notification.data,
     });
-  });
+  }).then(h => handles.push(h));
   
   // Listen for push notification actions (when user taps the notification)
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
@@ -267,7 +282,7 @@ export const setupNativePushListeners = (
       },
       actionId: action.actionId,
     });
-  });
+  }).then(h => handles.push(h));
 
   // Also listen for local notification actions
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
@@ -281,12 +296,15 @@ export const setupNativePushListeners = (
       },
       actionId: action.actionId,
     });
-  });
+  }).then(h => handles.push(h));
   
-  // Return cleanup function
+  // Return cleanup function removing only this instance's listeners
   return () => {
-    PushNotifications.removeAllListeners();
-    LocalNotifications.removeAllListeners();
+    handles.forEach(h => {
+      try {
+        h.remove().catch(() => {});
+      } catch (_) {}
+    });
   };
 };
 

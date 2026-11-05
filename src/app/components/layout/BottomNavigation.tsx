@@ -13,6 +13,7 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
+import { haptic } from '@/lib/haptics';
 
 interface BottomNavigationProps {
   activeTab: TabName;
@@ -286,6 +287,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const isShrunk = effectiveIsScrollingDown;
 
   const handleTabClick = (tab: TabName) => {
+    haptic.tap();
     if (isSolo && tab === 'Chat') tab = 'Events';
     setActiveTab(tab);
     setForceOpen(true);
@@ -317,6 +319,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       icon: SettingsIcon,
       isActive: isSettingsActive,
       onClick: () => {
+        haptic.tap();
         if (!isSettingsActive) {
           if (toggleIdentity) {
             toggleIdentity();
@@ -363,7 +366,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               <div className="flex flex-col gap-6">
                 {/* Solo or Non-Admin Member: Add Personal Gig */}
                 {(!isAdmin || isSolo) && (
-                  <button onClick={() => { onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <button onClick={() => { haptic.tap(); onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <Mic2 className="w-7 h-7 text-accent-gig" />
                     </div>
@@ -376,7 +379,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
                 {/* Admins: Band Gig */}
                 {isAdmin && !isSolo && (
-                  <button onClick={() => { onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <button onClick={() => { haptic.tap(); onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <Mic2 className="w-7 h-7 text-accent-gig" />
                     </div>
@@ -389,7 +392,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
                 {/* Rehearsal: only if not solo */}
                 {!isSolo && (
-                  <button onClick={() => { onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <button onClick={() => { haptic.tap(); onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <Music className="w-7 h-7 text-accent-rehearsal" />
                     </div>
@@ -408,7 +411,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
                 {/* Quotes: Admin only */}
                 {isAdmin && !isSolo && (
-                  <button onClick={() => { onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <button onClick={() => { haptic.tap(); onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
                     <div className="w-14 h-14 rounded-2xl bg-accent-quote/15 border border-accent-quote/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <FileText className="w-7 h-7 text-accent-quote" />
                     </div>
@@ -421,7 +424,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
                 {/* Admins: optional personal gig */}
                 {isAdmin && !isSolo && (
-                  <button onClick={() => { onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group opacity-80 hover:opacity-100 transition-opacity">
+                  <button onClick={() => { haptic.tap(); onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group opacity-80 hover:opacity-100 transition-opacity">
                     <div className="w-14 h-14 rounded-2xl bg-foreground/5 border border-foreground/15 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
                       <Mic2 className="w-7 h-7 text-foreground/60" />
                     </div>
@@ -469,6 +472,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           <div className="relative z-10 flex items-center justify-center mx-1">
             <motion.button
               onClick={() => {
+                haptic.tap();
                 setIsPlusMenuOpen(!isPlusMenuOpen);
                 setForceOpen(true);
               }}

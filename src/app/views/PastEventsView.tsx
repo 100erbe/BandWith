@@ -186,14 +186,14 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 30 }}
-      transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'tween', duration: 0.28, ease: 'easeOut' }}
+      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
       style={{
-        maskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        overscrollBehaviorX: 'none',
+        touchAction: 'pan-y',
       }}
     >
       {/* ═══ STICKY HEADER ═══ */}

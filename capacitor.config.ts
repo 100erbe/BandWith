@@ -23,6 +23,14 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: 'body',
       style: 'dark'
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
+    },
+    LocalNotifications: {
+      smallIcon: "ic_launcher",
+      iconColor: "#000000",
+      sound: "default"
     }
   },
   ios: {

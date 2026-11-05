@@ -70,14 +70,8 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
         );
       }
 
-      // Subscribe to push notifications
-      const result = await subscribeToPush(user.id);
-      console.log('[usePush] Subscribe result:', result);
-      
-      if (result.success) {
-        setPermissionStatus('granted');
-        
-        // Setup listeners for receiving notifications
+      // Setup listeners for receiving notifications immediately so cold-start tap actions aren't missed
+      if (!cleanupRef.current) {
         cleanupRef.current = setupNativePushListeners(
           (notification) => {
             console.log('[usePush] Notification received:', notification);
@@ -88,7 +82,14 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
             handleNotificationAction(action);
           }
         );
-        
+      }
+
+      // Subscribe to push notifications
+      const result = await subscribeToPush(user.id);
+      console.log('[usePush] Subscribe result:', result);
+      
+      if (result.success) {
+        setPermissionStatus('granted');
         return true;
       } else {
         console.log('[usePush] Subscribe failed:', result.error?.message);

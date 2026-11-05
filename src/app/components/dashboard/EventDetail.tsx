@@ -29,6 +29,7 @@ import { supabase } from '@/lib/supabase';
 import { useBand } from '@/lib/BandContext';
 import { cn } from '@/app/components/ui/utils';
 import { WizardAccentRail } from '@/app/components/ui/WizardAccentRail';
+import { haptic } from '@/lib/haptics';
 
 interface EventDetailProps {
   event: EventData;
@@ -359,6 +360,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   const handleConfirmQuote = async () => {
     if (isConfirming || !onConfirmQuote) return;
+    haptic.confirm();
     setIsConfirming(true);
     try {
       await onConfirmQuote(event);
@@ -371,6 +373,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   const handleRevertQuote = async () => {
     if (isReverting || !onRevertQuote) return;
+    haptic.tap();
     setIsReverting(true);
     try {
       await onRevertQuote(event);
@@ -383,6 +386,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   const handleAccept = async () => {
     if (onAccept && !isSubmitting) {
+      haptic.confirm();
       setIsSubmitting(true);
       try {
         await onAccept();
@@ -397,6 +401,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   const handleDecline = async () => {
     if (onDecline && !isSubmitting) {
+      haptic.delete();
       setIsSubmitting(true);
       try {
         await onDecline();
