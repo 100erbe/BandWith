@@ -144,11 +144,11 @@ const formatEventTime = (timeStr: string): string => {
 };
 
 const formatBandTotal = (price: string): string => {
-  if (!price) return '$0';
+  if (!price) return '€0';
   const num = parseFloat(price.replace(/[^0-9.]/g, ''));
   if (isNaN(num)) return price;
-  if (num >= 1000) return `$${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
-  return `$${num}`;
+  if (num >= 1000) return `€${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
+  return `€${num}`;
 };
 
 const getEventWarnings = (event: EventData): string[] => {

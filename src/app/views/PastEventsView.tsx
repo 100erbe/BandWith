@@ -436,10 +436,10 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                           </span>
                           <span className="text-[15px] font-bold text-foreground leading-none">
                             {isAdmin
-                              ? event.price || '$0'
+                              ? `€${parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0').toLocaleString()}`
                               : event.eventId && userFeeMap[event.eventId] != null
-                              ? `€${userFeeMap[event.eventId]}`
-                              : event.price || '$0'}
+                              ? `€${userFeeMap[event.eventId].toLocaleString()}`
+                              : `€${parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0').toLocaleString()}`}
                           </span>
                         </div>
                       )}
