@@ -76,9 +76,9 @@ const PILL_WIDTH = 72;
 
 /* ═══ 2-Track Studio Faders — Music-Tech Aesthetic Navigation Icon ═══ */
 const SettingsIcon: React.FC<IconProps> = ({
-  size = 24,
+  size = 26.4,
   color = 'currentColor',
-  strokeWidth = 2,
+  strokeWidth = 2.4,
   className,
   ...props
 }) => (
@@ -151,13 +151,13 @@ const NavTab: React.FC<{
     >
       {/* Icon: smoothly glides between elevated (with label) and dead-center (when shrunk) */}
       <motion.div
-        className="w-[22px] h-[22px] flex items-center justify-center z-10 relative"
+        className="w-[26px] h-[26px] flex items-center justify-center z-10 relative"
         animate={{
           y: isScrollingDown ? 0 : -6,
         }}
         transition={SPRING}
       >
-        <Icon color="currentColor" size={22} strokeWidth={isActive ? 2.5 : 2} />
+        <Icon color="currentColor" size={26.4} strokeWidth={isActive ? 2.85 : 2.4} />
         {badgeCount !== undefined && badgeCount > 0 ? (
           <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2 ring-card dark:ring-zinc-900">
             {badgeCount > 99 ? '99+' : badgeCount}
@@ -213,7 +213,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   
   const [forceOpen, setForceOpen] = useState(false);
   const [localScrollDown, setLocalScrollDown] = useState(false);
-  const lastScrollYRef = useRef(0);
+  const scrollTrackersRef = useRef<WeakMap<Element, { pivotTop: number; isDown: boolean }>>(new WeakMap());
 
   // When parent reports scrolling up, allow force-open to be cleared
   useEffect(() => {
@@ -229,24 +229,55 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     }
   }, [localScrollDown]);
 
-  // Local scroll detection — captures scroll on any scrollable container
-  // (e.g., Settings overlay or ControlDeck, which have their own scroll
-  // containers not tracked by the parent's useScrollDirection hook).
+  // Local scroll detection — captures scroll on overlay scrollable containers
+  // (e.g., IdentityHub) using 18px pivot hysteresis to prevent micro-tremor bounce.
   useEffect(() => {
+    const THRESHOLD = 18;
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
       const scrollEl = target instanceof Document ? document.documentElement : target;
-      const scrollTop = scrollEl.scrollTop ?? 0;
-      
-      if (scrollTop > 10 && scrollTop > lastScrollYRef.current) {
-        setLocalScrollDown(true);
-      } else if (scrollTop <= 10 || scrollTop < lastScrollYRef.current) {
-        setLocalScrollDown(false);
+      if (!(scrollEl instanceof HTMLElement)) return;
+
+      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+      // Ignore horizontal pill bars or non-vertically-scrollable elements
+      if (maxScroll <= 24) return;
+
+      const currentTop = Math.max(0, Math.min(scrollEl.scrollTop ?? 0, maxScroll));
+      let tracker = scrollTrackersRef.current.get(scrollEl);
+      if (!tracker) {
+        tracker = { pivotTop: currentTop, isDown: false };
+        scrollTrackersRef.current.set(scrollEl, tracker);
       }
-      lastScrollYRef.current = scrollTop;
+
+      if (currentTop <= 12) {
+        if (tracker.isDown) {
+          tracker.isDown = false;
+          setLocalScrollDown(false);
+        }
+        tracker.pivotTop = currentTop;
+        return;
+      }
+
+      if (!tracker.isDown) {
+        if (currentTop < tracker.pivotTop) {
+          tracker.pivotTop = currentTop;
+        } else if (currentTop > 32 && currentTop - tracker.pivotTop >= THRESHOLD) {
+          tracker.isDown = true;
+          tracker.pivotTop = currentTop;
+          setLocalScrollDown(true);
+        }
+      } else {
+        if (currentTop > tracker.pivotTop) {
+          tracker.pivotTop = currentTop;
+        } else if (tracker.pivotTop - currentTop >= THRESHOLD) {
+          tracker.isDown = false;
+          tracker.pivotTop = currentTop;
+          setLocalScrollDown(false);
+        }
+      }
     };
 
-    // Use capture phase to catch scroll events on any descendant
+    // Use capture phase to catch scroll events on any descendant overlay
     window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
   }, []);
@@ -442,12 +473,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 setForceOpen(true);
               }}
               className={cn(
-                'bg-accent rounded-[16px] flex items-center justify-center shadow-[0px_4px_16px_rgba(0,0,0,0.15)] w-[44px] h-[44px] -translate-y-3'
+                'bg-accent rounded-[18px] flex items-center justify-center shadow-[0px_4px_16px_rgba(0,0,0,0.15)] w-[48px] h-[48px] -translate-y-3'
               )}
               animate={{ scale: isShrunk ? 1.282 : 1 }}
               transition={SPRING}
             >
-              <IconPlus color="var(--accent-fg)" className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
+              <IconPlus size={29} color="var(--accent-fg)" strokeWidth={3.15} className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
             </motion.button>
           </div>
 

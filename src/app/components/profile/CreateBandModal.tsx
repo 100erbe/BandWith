@@ -102,12 +102,12 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
       style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {/* Header */}
-      <div className="px-6 pt-8 pb-4 flex justify-between items-start shrink-0">
+      <div className="px-6 pt-3 pb-4 flex justify-between items-start shrink-0">
         <div>
           <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
             New Entity

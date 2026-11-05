@@ -38,7 +38,10 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
             className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
             style={{ backgroundColor: bgColor }}
           >
-            <div className="flex flex-col gap-8 px-4 pt-[max(env(safe-area-inset-top,24px),24px)] pb-8 max-w-2xl mx-auto w-full">
+            <div
+              className="flex flex-col gap-8 px-4 pb-8 max-w-2xl mx-auto w-full"
+              style={{ paddingTop: 'calc(var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px)) + 8px)' }}
+            >
               {/* Header */}
               <div className="flex items-center gap-4">
                 <button

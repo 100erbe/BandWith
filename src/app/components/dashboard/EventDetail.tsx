@@ -264,7 +264,13 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       >
         <WizardAccentRail color={theme.accentColor} />
 
-        <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
+        <div
+          className="flex-1 flex flex-col gap-[40px] px-[16px]"
+          style={{
+            paddingTop: 'calc(var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px)) + 12px)',
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
+          }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-[14px]">
@@ -386,7 +392,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
         {/* Footer */}
         <div
-          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[95] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
+          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[16px] z-[95] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.15)]"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
         >
           {isPast ? (
             <div className="flex flex-col gap-[14px] items-center w-full">

@@ -289,7 +289,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed inset-0 z-[70] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen pb-32"
+      className="fixed inset-0 z-[70] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
@@ -299,7 +299,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div
         className="px-4 shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-30"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
           paddingBottom: '14px',
         }}
       >
@@ -325,7 +325,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Content */}
-      <div className="px-4 py-6 max-w-xl mx-auto w-full flex flex-col gap-6 pb-36">
+      <div
+        className="px-4 pt-6 pb-2 max-w-xl mx-auto w-full flex flex-col gap-6"
+      >
         {activeSection === 'notifications' && renderNotificationsSection()}
         {activeSection === 'appearance' && renderAppearanceSection()}
         {activeSection === 'privacy' && renderPrivacySection()}
@@ -340,6 +342,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             v1.0.0 · All data encrypted
           </span>
         </div>
+
+        {/* Bottom clearance spacer ensuring Brand Footer cleanly clears floating navbar */}
+        <div
+          className="shrink-0 pointer-events-none"
+          style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+          aria-hidden="true"
+        />
       </div>
 
       {/* Delete Confirm Modal */}

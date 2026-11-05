@@ -273,7 +273,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       <div
         className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
         style={{
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
           paddingBottom: '14px',
         }}
       >
@@ -529,7 +529,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             <div
               className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
               style={{
-                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+                paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
                 paddingBottom: '14px',
               }}
             >

@@ -8,6 +8,7 @@ import { App } from "@capacitor/app";
 import { useAuth } from "@/lib/AuthContext";
 import { useBand } from "@/lib/BandContext";
 import { useScrollDirection } from "@/app/hooks/useScrollDirection";
+import { syncSystemBarsAppearance } from "@/lib/systemBars";
 import { supabase } from "@/lib/supabase";
 import { getPermissions, type UserRole } from "@/lib/permissions";
 import {
@@ -177,14 +178,13 @@ export default function AuthenticatedApp() {
     let alive = true;
     const init = async () => {
       try {
-        const { StatusBar, Style } = await import("@capacitor/status-bar");
         const { Keyboard } = await import("@capacitor/keyboard");
         if (!alive) return;
-        // Use system-preference check instead of Capacitor Appearance API
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        await StatusBar.setStyle({ style: prefersDark ? Style.Dark : Style.Light });
-        await StatusBar.setBackgroundColor({ color: prefersDark ? "#050505" : "#E6E5E1" });
+        // Sync system bars (both top status bar & bottom navigation bar) with the active theme
+        const isDark = document.documentElement.classList.contains('dark');
+        await syncSystemBarsAppearance(isDark ? 'dark' : 'light');
         if (Capacitor.getPlatform() === "ios") {
+          const { StatusBar } = await import("@capacitor/status-bar");
           await StatusBar.setOverlaysWebView({ overlay: true });
         }
         try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch (_) {}
@@ -227,6 +227,38 @@ export default function AuthenticatedApp() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isScrollingDown = useScrollDirection(scrollContainerRef);
 
+  // Sticky header collapse state with robust 32px hysteresis deadband (collapses at >48px, expands at <16px)
+  // This physically prevents any oscillation or flickering when stopped near the threshold
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const isHeaderScrolledRef = useRef(false);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    let rafId: number | null = null;
+    const handleScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        const top = container.scrollTop;
+        if (!isHeaderScrolledRef.current && top > 36) {
+          isHeaderScrolledRef.current = true;
+          setIsHeaderScrolled(true);
+        } else if (isHeaderScrolledRef.current && top < 12) {
+          isHeaderScrolledRef.current = false;
+          setIsHeaderScrolled(false);
+        }
+        rafId = null;
+      });
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   // Data hooks
   const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
@@ -236,6 +268,13 @@ export default function AuthenticatedApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
+  useEffect(() => {
+    isHeaderScrolledRef.current = false;
+    setIsHeaderScrolled(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
   const [isBandSwitcherOpen, setIsBandSwitcherOpen] = useState(false);
   const [isDayPickerOpen, setIsDayPickerOpen] = useState(false);
   const [expandedCard, setExpandedCard] = useState<ExpandedCardType>(null);
@@ -273,6 +312,7 @@ export default function AuthenticatedApp() {
   const [saveToast, setSaveToast] = useState<{
     message: string;
     type: 'success' | 'error' | 'info';
+    minimal?: boolean;
     action?: {
       label: string;
       onClick: () => void | Promise<void>;
@@ -344,7 +384,7 @@ export default function AuthenticatedApp() {
   const [urgentNotification, setUrgentNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [pollNotification, setPollNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
-  const { notifications: realNotifications, refetch: refetchNotifications } = useNotifications({
+  const { notifications: realNotifications, refetch: refetchNotifications, setNotifications: setRealNotifications } = useNotifications({
     limit: 20,
     onNewEventInvite: (notif) => {
       if (notif.data?.creator_id !== user?.id) {
@@ -382,24 +422,44 @@ export default function AuthenticatedApp() {
   }, [realNotifications, user?.id, rsvpNotification, pollNotification, urgentNotification]);
 
   const handleOpenUrgentNotification = useCallback(async (notif: import('@/lib/services/notifications').Notification) => {
-    // 1. Immediately mark the notification as read so the red notification badge disappears
+    // 1. Immediately remove notification badge optimistically (zero delay)
+    const targetEventId = notif.data?.event_id;
+    const targetPollId = notif.data?.poll_id;
+    
+    setRealNotifications(prev => prev.map(n => {
+      const match = n.id === notif.id || 
+        (targetEventId && n.data?.event_id === targetEventId) || 
+        (targetPollId && n.data?.poll_id === targetPollId);
+      return match ? { ...n, read: true } : n;
+    }));
+
+    // 2. Mark as read on the backend for this notification and any related duplicates
     try {
       await markNotificationAsRead(notif.id);
+      const related = realNotifications.filter(n => 
+        n.id !== notif.id && !n.read && (
+          (targetEventId && n.data?.event_id === targetEventId) || 
+          (targetPollId && n.data?.poll_id === targetPollId)
+        )
+      );
+      if (related.length > 0) {
+        await Promise.all(related.map(r => markNotificationAsRead(r.id)));
+      }
       refetchNotifications?.();
     } catch (e) {
       console.error('Failed to mark urgent notification read:', e);
     }
 
-    // 2. Dismiss the small pop up
+    // 3. Dismiss the small pop up
     setUrgentNotification(null);
 
-    // 3. Open the corresponding interactive sheet
+    // 4. Open the corresponding interactive sheet
     if (notif.type === 'event_invite') {
       setRsvpNotification(notif);
     } else if (notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') {
       setPollNotification(notif);
     }
-  }, [refetchNotifications]);
+  }, [realNotifications, refetchNotifications, setRealNotifications]);
   const { chats: realChats, loading: chatsLoading, refetch: refetchChats } = useChats();
   const onlineUserIds = useOnlinePresence(user?.id);
 
@@ -1063,18 +1123,6 @@ export default function AuthenticatedApp() {
   // Effects
   useBodyScrollLock([!!expandedCard, isIdentityOpen, isControlDeckOpen]);
 
-  // Android back button — exit app when on home screen with no overlays
-  useEffect(() => {
-    if (!isNative) return;
-    const handler = App.addListener('backButton', () => {
-      if (isIdentityOpen || isControlDeckOpen || isPlusMenuOpen || selectedChat || selectedEvent || !!selectedNotification || showSettings || isBandSwitcherOpen || showBandMembers || isCreateEventOpen) {
-        return;
-      }
-      App.exitApp();
-    });
-    return () => { handler.then(h => h.remove()); };
-  }, [isNative, isIdentityOpen, isControlDeckOpen, isPlusMenuOpen, selectedChat, selectedEvent, selectedNotification, showSettings, isBandSwitcherOpen, showBandMembers, isCreateEventOpen]);
-
   useEffect(() => {
     if (!realBand?.id) return;
     const bandId = realBand.id;
@@ -1285,6 +1333,252 @@ export default function AuthenticatedApp() {
       setRehearsalViewMode("post");
     }
   };
+
+  // Android hardware / gesture back button — hierarchical navigation
+  const lastBackPressRef = useRef<number>(0);
+  const backNavStateRef = useRef({
+    urgentNotification,
+    rsvpNotification,
+    pollNotification,
+    selectedNotifications,
+    selectedNotification,
+    showPersonalGigModal,
+    showProposeRehearsalModal,
+    showRehearsalPollModal,
+    isCreateEventOpen,
+    showNewChat,
+    showEditProfile,
+    showCreateBand,
+    showUpgradePricing,
+    showPricingModal,
+    showAdminTour,
+    isPlusMenuOpen,
+    isDayPickerOpen,
+    isBandSwitcherOpen,
+    selectedChat,
+    selectedEvent,
+    expandedCard,
+    rehearsalViewMode,
+    isLive,
+    showSettings,
+    showBandMembers,
+    showSetlistManager,
+    showAnalytics,
+    showInventory,
+    showContracts,
+    showTaskTemplates,
+    showPastEvents,
+    isControlDeckOpen,
+    isIdentityOpen,
+    activeTab,
+  });
+
+  // Keep ref synchronized with latest state on every render
+  backNavStateRef.current = {
+    urgentNotification,
+    rsvpNotification,
+    pollNotification,
+    selectedNotifications,
+    selectedNotification,
+    showPersonalGigModal,
+    showProposeRehearsalModal,
+    showRehearsalPollModal,
+    isCreateEventOpen,
+    showNewChat,
+    showEditProfile,
+    showCreateBand,
+    showUpgradePricing,
+    showPricingModal,
+    showAdminTour,
+    isPlusMenuOpen,
+    isDayPickerOpen,
+    isBandSwitcherOpen,
+    selectedChat,
+    selectedEvent,
+    expandedCard,
+    rehearsalViewMode,
+    isLive,
+    showSettings,
+    showBandMembers,
+    showSetlistManager,
+    showAnalytics,
+    showInventory,
+    showContracts,
+    showTaskTemplates,
+    showPastEvents,
+    isControlDeckOpen,
+    isIdentityOpen,
+    activeTab,
+  };
+
+  useEffect(() => {
+    if (!isNative) return;
+
+    const handlerPromise = App.addListener('backButton', () => {
+      const s = backNavStateRef.current;
+
+      // 1. Transient Notifications & Popups
+      if (s.urgentNotification) {
+        setUrgentNotification(null);
+        return;
+      }
+      if (s.rsvpNotification) {
+        setRsvpNotification(null);
+        return;
+      }
+      if (s.pollNotification) {
+        setPollNotification(null);
+        return;
+      }
+      if (s.selectedNotifications.length > 0) {
+        setSelectedNotifications([]);
+        return;
+      }
+      if (s.selectedNotification) {
+        setSelectedNotification(null);
+        return;
+      }
+
+      // 2. Modals, Sheets & Creation Flows
+      if (s.showPersonalGigModal) {
+        setShowPersonalGigModal(false);
+        return;
+      }
+      if (s.showProposeRehearsalModal) {
+        setShowProposeRehearsalModal(false);
+        return;
+      }
+      if (s.showRehearsalPollModal) {
+        setShowRehearsalPollModal(false);
+        return;
+      }
+      if (s.isCreateEventOpen) {
+        setIsCreateEventOpen(false);
+        return;
+      }
+      if (s.showNewChat) {
+        setShowNewChat(false);
+        return;
+      }
+      if (s.showEditProfile) {
+        setShowEditProfile(false);
+        return;
+      }
+      if (s.showCreateBand) {
+        setShowCreateBand(false);
+        return;
+      }
+      if (s.showUpgradePricing || s.showPricingModal) {
+        setShowUpgradePricing(false);
+        setShowPricingModal(false);
+        return;
+      }
+      if (s.showAdminTour) {
+        setShowAdminTour(false);
+        return;
+      }
+      if (s.isPlusMenuOpen) {
+        setIsPlusMenuOpen(false);
+        return;
+      }
+      if (s.isDayPickerOpen) {
+        setIsDayPickerOpen(false);
+        return;
+      }
+      if (s.isBandSwitcherOpen) {
+        setIsBandSwitcherOpen(false);
+        return;
+      }
+
+      // 3. Detail & Management Screens (Chat, Event, Expanded Cards, Tools)
+      if (s.selectedChat) {
+        setSelectedChat(null);
+        refetchChats?.();
+        return;
+      }
+      if (s.selectedEvent) {
+        setSelectedEvent(null);
+        setSelectedEventMembership(null);
+        return;
+      }
+      if (s.expandedCard) {
+        if (s.expandedCard === "rehearsal" && (s.rehearsalViewMode === "live" || s.rehearsalViewMode === "post")) {
+          if (s.isLive) toggleLive();
+          setRehearsalViewMode("overview");
+        } else {
+          setExpandedCard(null);
+        }
+        return;
+      }
+      if (s.showSettings) {
+        setShowSettings(false);
+        setSettingsInitialSection("main");
+        return;
+      }
+      if (s.showBandMembers) {
+        setShowBandMembers(false);
+        return;
+      }
+      if (s.showSetlistManager) {
+        setShowSetlistManager(false);
+        return;
+      }
+      if (s.showAnalytics) {
+        setShowAnalytics(false);
+        return;
+      }
+      if (s.showInventory) {
+        setShowInventory(false);
+        return;
+      }
+      if (s.showContracts) {
+        setShowContracts(false);
+        return;
+      }
+      if (s.showTaskTemplates) {
+        setShowTaskTemplates(false);
+        return;
+      }
+      if (s.showPastEvents) {
+        setShowPastEvents(false);
+        return;
+      }
+
+      // 4. Slide-over Hubs & Panels
+      if (s.isControlDeckOpen) {
+        setIsControlDeckOpen(false);
+        return;
+      }
+      if (s.isIdentityOpen) {
+        closeIdentity();
+        return;
+      }
+
+      // 5. Secondary Tabs -> Return to Home
+      if (s.activeTab !== "Home") {
+        setActiveTab("Home");
+        return;
+      }
+
+      // 6. First Level (Home tab with no overlays) -> Double tap to exit
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        App.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        setSaveToast({
+          message: "Tap again to exit",
+          type: "info",
+          duration: 2000,
+          minimal: true,
+        });
+      }
+    });
+
+    return () => {
+      handlerPromise.then((h) => h.remove());
+    };
+  }, [isNative, closeIdentity, toggleLive, refetchChats]);
 
   const handleEventEdit = async () => {
     if (!selectedEvent) return;
@@ -2091,10 +2385,11 @@ export default function AuthenticatedApp() {
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
       <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
-        paddingTop: isAndroid && isNative ? "56px" : "max(env(safe-area-inset-top, 0px), 12px)",
-        paddingBottom: isAndroid && isNative ? "calc(140px + 24px)" : "calc(140px + env(safe-area-inset-bottom, 20px))",
+        paddingTop: "0px",
+        paddingBottom: "0px",
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
+        overflowAnchor: 'none',
         maskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
         WebkitMaskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
       }}>
@@ -2114,6 +2409,7 @@ export default function AuthenticatedApp() {
             }
           }}
           onOpenIdentity={openIdentity} onOpenNotifications={handleOpenNotifications} unreadCount={isNotificationsOpen ? 0 : unreadCount} isHidden={isHeaderHidden}
+          isScrolled={isHeaderScrolled}
         />
 
         <AnimatePresence mode="wait">
@@ -2587,6 +2883,8 @@ export default function AuthenticatedApp() {
           <EventRSVPSheet
             key={rsvpNotification.id}
             notification={rsvpNotification}
+            calendarEvents={events}
+            currentUserId={user?.id}
             onAccept={async () => {
               const eventId = rsvpNotification.data?.event_id as string;
               if (eventId && user?.id) {
@@ -2696,52 +2994,64 @@ export default function AuthenticatedApp() {
 
       <AnimatePresence>
         {saveToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              "fixed bottom-24 left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl text-sm font-bold shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
-              saveToast.type === 'error'
-                ? "bg-red-600/95 text-white border-red-500/40"
-                : saveToast.type === 'info'
-                ? "bg-zinc-900/95 text-white border-white/20"
-                : "bg-emerald-600/95 text-white border-emerald-500/40"
-            )}
-            onClick={() => !saveToast.action && setSaveToast(null)}
-          >
-            {saveToast.type === 'error' ? (
-              <AlertCircle className="w-4 h-4 shrink-0 text-white" />
-            ) : saveToast.type === 'info' ? (
-              <Info className="w-4 h-4 shrink-0 text-white/80" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
-            )}
-            <span className="flex-1 text-left truncate">{saveToast.message}</span>
-            {saveToast.action && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const act = saveToast.action?.onClick;
-                  setSaveToast(null);
-                  act?.();
-                }}
-                className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shrink-0 shadow-xs"
-              >
-                {saveToast.action.label}
-              </button>
-            )}
-            {!saveToast.action && (
-              <button
-                onClick={() => setSaveToast(null)}
-                aria-label="Dismiss notification"
-                className="text-white/70 hover:text-white shrink-0 ml-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </motion.div>
+          saveToast.minimal ? (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[250] px-4 py-2 rounded-full text-xs font-semibold text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+            >
+              {saveToast.message}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "fixed bottom-24 left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl text-sm font-bold shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
+                saveToast.type === 'error'
+                  ? "bg-red-600/95 text-white border-red-500/40"
+                  : saveToast.type === 'info'
+                  ? "bg-zinc-900/95 text-white border-white/20"
+                  : "bg-emerald-600/95 text-white border-emerald-500/40"
+              )}
+              onClick={() => !saveToast.action && setSaveToast(null)}
+            >
+              {saveToast.type === 'error' ? (
+                <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+              ) : saveToast.type === 'info' ? (
+                <Info className="w-4 h-4 shrink-0 text-white/80" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+              )}
+              <span className="flex-1 text-left truncate">{saveToast.message}</span>
+              {saveToast.action && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const act = saveToast.action?.onClick;
+                    setSaveToast(null);
+                    act?.();
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shrink-0 shadow-xs"
+                >
+                  {saveToast.action.label}
+                </button>
+              )}
+              {!saveToast.action && (
+                <button
+                  onClick={() => setSaveToast(null)}
+                  aria-label="Dismiss notification"
+                  className="text-white/70 hover:text-white shrink-0 ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </motion.div>
+          )
         )}
       </AnimatePresence>
     </div>

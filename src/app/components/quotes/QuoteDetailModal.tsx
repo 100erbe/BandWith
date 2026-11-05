@@ -58,7 +58,13 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         className="fixed inset-0 z-[120] flex flex-col overflow-y-auto"
         style={{ backgroundColor: 'var(--accent-quote)' }}
       >
-        <div className="flex-1 flex flex-col gap-[40px] px-[16px] pt-[62px] pb-[200px]">
+        <div
+          className="flex-1 flex flex-col gap-[40px] px-[16px]"
+          style={{
+            paddingTop: 'calc(var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px)) + 12px)',
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)',
+          }}
+        >
           {/* Header */}
           <div className="flex items-center gap-[20px]">
             <button
@@ -236,8 +242,12 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
         {/* Footer */}
         <div
-          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[130]"
-          style={{ backgroundColor: 'var(--accent-quote)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
+          className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] z-[130]"
+          style={{
+            backgroundColor: 'var(--accent-quote)',
+            boxShadow: '0px -4px 20px rgba(0,0,0,0.15)',
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
+          }}
         >
           <div className="flex flex-col gap-[20px] items-center">
             <div className="grid grid-cols-2 gap-[10px] w-full">

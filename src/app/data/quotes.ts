@@ -99,10 +99,12 @@ export interface QuoteMusician {
 // Custom line item
 export interface QuoteCustomItem {
   id: string;
-  description: string;
+  description?: string;
   name?: string;
   amount: number;
+  price?: number;
   quantity: number;
+  taxable?: boolean;
 }
 
 // Line item interface (legacy compatibility)

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -75,6 +76,31 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   const { signOut, user, profile } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
   const { isAdmin: isBandAdmin } = useBand();
+
+  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+  const isAndroid = typeof window !== 'undefined' && (Capacitor.getPlatform() === 'android' || /Android/i.test(navigator.userAgent));
+  const topInset = (isAndroid && isNative) ? '56px' : 'max(env(safe-area-inset-top, 0px), 12px)';
+
+  const [isScrolled, setIsScrolled] = useState(false);
+  const isScrolledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      isScrolledRef.current = false;
+      setIsScrolled(false);
+    }
+  }, [isOpen]);
+
+  const handleContainerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    if (!isScrolledRef.current && top > 36) {
+      isScrolledRef.current = true;
+      setIsScrolled(true);
+    } else if (isScrolledRef.current && top < 12) {
+      isScrolledRef.current = false;
+      setIsScrolled(false);
+    }
+  };
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(() => {
@@ -185,43 +211,81 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-          className="fixed inset-0 z-[60] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen pb-32"
+          onScroll={handleContainerScroll}
+          className="fixed inset-0 z-[60] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
           }}
         >
-          {/* ═══ STICKY HEADER ═══ */}
+          {/* ═══ STICKY HEADER (Consistent Expanded -> Compact Morph, Zero Layout Shift) ═══ */}
           <div
-            className="px-4 shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+            className="sticky top-0 z-30 shrink-0 pointer-events-none select-none"
             style={{
-              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
-              paddingBottom: '14px',
+              height: `calc(${topInset} + 72px)`,
+              overflowAnchor: 'none',
             }}
           >
-            <div className="max-w-xl mx-auto w-full flex items-center justify-between">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  IDENTITY & ACCOUNT
-                </span>
-                <h1 className="text-[22px] sm:text-[24px] font-black text-foreground uppercase tracking-tight leading-none">
-                  WHO YOU ARE
-                </h1>
-              </div>
-              {showCloseButton && (
-                <button
-                  onClick={onClose}
-                  aria-label="Close Account Hub"
-                  className="w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+            <div
+              className={cn(
+                'absolute top-0 left-0 right-0 px-4 pointer-events-auto transition-[background-color,border-color,box-shadow] duration-300',
+                isScrolled
+                  ? 'bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs'
+                  : 'bg-background/80 backdrop-blur-md border-b border-transparent'
               )}
+              style={{
+                paddingTop: topInset,
+              }}
+            >
+              <motion.div
+                initial={false}
+                animate={{
+                  height: isScrolled ? 54 : 72,
+                }}
+                transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                className="max-w-xl mx-auto w-full relative overflow-hidden"
+              >
+                <div className="flex flex-col pr-14">
+                  <motion.span
+                    initial={false}
+                    animate={{
+                      y: isScrolled ? 4 : 0,
+                      scale: isScrolled ? 0.9 : 1,
+                    }}
+                    transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                    className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest leading-none h-[14px] flex items-center origin-top-left"
+                  >
+                    IDENTITY & ACCOUNT
+                  </motion.span>
+                  <motion.h1
+                    initial={false}
+                    animate={{
+                      scale: isScrolled ? 0.52 : 1,
+                      y: isScrolled ? 6 : 5,
+                    }}
+                    transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                    className="text-[40px] sm:text-[44px] font-black text-foreground uppercase tracking-tighter leading-[0.9] origin-top-left"
+                  >
+                    WHO YOU ARE
+                  </motion.h1>
+                </div>
+                {showCloseButton && (
+                  <button
+                    onClick={onClose}
+                    aria-label="Close Account Hub"
+                    className="absolute top-[5px] right-0 w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </motion.div>
             </div>
           </div>
 
           {/* ═══ SCROLLABLE CONTENT ═══ */}
-          <div className="px-4 py-6 max-w-xl mx-auto w-full flex flex-col gap-6 pb-36">
+          <div
+            className="px-4 pt-3 pb-2 max-w-xl mx-auto w-full flex flex-col gap-6"
+          >
             {/* ═══ 1. PROFILE CARD ═══ */}
             <div className="p-5 rounded-2xl bg-card border border-border/40 flex flex-col gap-4 shadow-sm">
               <div className="flex items-start justify-between gap-4">
@@ -685,6 +749,13 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 v1.0.0 · All data encrypted
               </span>
             </div>
+
+            {/* Bottom clearance spacer ensuring Brand Footer cleanly clears floating navbar */}
+            <div
+              className="shrink-0 pointer-events-none"
+              style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+              aria-hidden="true"
+            />
           </div>
         </motion.div>
       )}

@@ -419,7 +419,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       {/* ── Header ── */}
       <div
         className="flex items-center gap-3 px-4 py-3 bg-card/90 backdrop-blur-md border-b border-border"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+        style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
       >
         <button
           onClick={onClose}
@@ -520,7 +520,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-x-0 top-0 z-10 bg-card/95 backdrop-blur-md border-b border-destructive/20 flex items-center justify-between px-4 py-3"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+            style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
           >
             <div className="flex-1 min-w-0 mr-3">
               <p className="text-xs font-bold text-foreground uppercase">Delete this chat?</p>

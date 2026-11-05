@@ -384,7 +384,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       animate="show"
       exit="exit"
       className={cn(
-        "flex flex-col gap-8 sm:gap-10 relative z-10 pb-44",
+        "flex flex-col gap-8 sm:gap-10 relative z-10",
         isHidden && "opacity-0 pointer-events-none"
       )}
     >
@@ -784,8 +784,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
       </motion.div>
 
-      {/* Bottom clearance spacer ensuring last card clears floating navbar */}
-      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
+      {/* Bottom clearance spacer ensuring last card cleanly clears floating navbar */}
+      <div
+        className="shrink-0 pointer-events-none"
+        style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+        aria-hidden="true"
+      />
     </motion.div>
   );
 };

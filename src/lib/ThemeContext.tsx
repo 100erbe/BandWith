@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { syncSystemBarsAppearance } from './systemBars';
 
 /* ─── Types ─── */
 
@@ -52,6 +53,8 @@ function applyTheme(resolved: 'light' | 'dark') {
   } else {
     root.classList.remove('dark');
   }
+  // Sync phone soft buttons (Android navigation bar) and status bar colors
+  syncSystemBarsAppearance(resolved);
 }
 
 /* ─── Provider ─── */

@@ -20,6 +20,11 @@
           document.documentElement.classList.add('dark');
           document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#050505');
         }
+        // Detect Android or mobile native container for safe margins
+        if (/Android/i.test(navigator.userAgent) || window.Capacitor?.getPlatform?.() === 'android') {
+          document.documentElement.classList.add('is-android');
+          document.documentElement.setAttribute('data-platform', 'android');
+        }
       })();
     </script>
     <style>

@@ -200,7 +200,22 @@ export const getNotifications = async (options?: {
 
     if (error) throw error;
 
-    return { data, error: null };
+    // Deduplicate notifications (e.g. if push edge function and app both inserted an invite for the same event)
+    const deduped: Notification[] = [];
+    const seenEventInvites = new Set<string>();
+
+    for (const notif of data || []) {
+      const eventId = notif.data?.event_id as string | undefined;
+      if (notif.type === 'event_invite' && eventId) {
+        if (seenEventInvites.has(eventId)) {
+          continue;
+        }
+        seenEventInvites.add(eventId);
+      }
+      deduped.push(notif);
+    }
+
+    return { data: deduped, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -387,6 +402,7 @@ const sendPushNotification = async (
         title,
         body: body || '',
         data: pushData,
+        create_in_app: false, // In-app notification already created by caller
       },
     });
   } catch (error) {

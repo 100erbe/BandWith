@@ -205,12 +205,12 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       exit={{ opacity: 0 }}
       className={cn('fixed inset-0 z-[110] flex flex-col overflow-hidden', themeColors.bg)}
       style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 shrink-0">
+      <div className="px-4 pt-1 pb-3 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <button onClick={onClose} className={cn(
             'w-10 h-10 rounded-full border-2 flex items-center justify-center',

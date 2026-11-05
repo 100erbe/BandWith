@@ -107,52 +107,42 @@ export const ChatView: React.FC<ChatViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col gap-8 relative z-10 pb-44 min-h-[50vh]"
+      className="flex flex-col gap-5 relative z-10 min-h-[50vh]"
     >
-      {/* ═══ HEADER ═══ */}
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-foreground/60 uppercase leading-none">
-            MESSAGES
-          </span>
-          <h1 className="text-3xl font-black text-foreground uppercase leading-none">
-            INBOX
-          </h1>
+      {/* ═══ FILTER PILLS & NEW CHAT ═══ */}
+      <div className="flex gap-2.5 items-center justify-between">
+        <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide flex-1">
+          {FILTERS.map(({ key, label }) => {
+            const count = unreadCounts[key];
+            const isActive = chatFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setChatFilter(key)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5",
+                  isActive
+                    ? "bg-card text-foreground font-bold shadow-xs border border-foreground/15"
+                    : "bg-foreground/5 text-foreground/60 hover:text-foreground font-medium border border-transparent"
+                )}
+              >
+                {label}
+                {count > 0 && (
+                  <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center">
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
         <button
           onClick={() => onStartChat?.()}
           aria-label="New chat"
-          className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs hover:opacity-95 active:scale-95 transition-all"
+          className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs hover:opacity-95 active:scale-95 transition-all shrink-0 ml-1"
         >
-          <Plus className="w-5 h-5 text-primary-foreground" />
+          <Plus className="w-4 h-4 text-primary-foreground" />
         </button>
-      </div>
-
-      {/* ═══ FILTER PILLS ═══ */}
-      <div className="flex gap-2.5 items-center">
-        {FILTERS.map(({ key, label }) => {
-          const count = unreadCounts[key];
-          const isActive = chatFilter === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setChatFilter(key)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5",
-                isActive
-                  ? "bg-card text-foreground font-bold shadow-xs border border-foreground/15"
-                  : "bg-foreground/5 text-foreground/60 hover:text-foreground font-medium border border-transparent"
-              )}
-            >
-              {label}
-              {count > 0 && (
-                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center">
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
 
       {/* ═══ SEARCH ═══ */}
@@ -342,8 +332,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
         )}
       </div>
 
-      {/* Bottom clearance spacer ensuring last chat clears floating navbar */}
-      <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
+      {/* Bottom clearance spacer ensuring last chat cleanly clears floating navbar */}
+      <div
+        className="shrink-0 pointer-events-none"
+        style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+        aria-hidden="true"
+      />
     </motion.div>
   );
 };

@@ -10,6 +10,12 @@
    ══════════════════════════════════════════════════════════════════ */
 
 :root {
+  /* ── Safe System Margins & Insets (Status bar, Navigation bar) ── */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --wizard-header-pt: calc(env(safe-area-inset-top, 0px) + 16px);
+  --content-bottom-clearance: calc(env(safe-area-inset-bottom, 0px) + 136px);
+
   /* ── Base ── */
   --bg: #E6E5E1;
   --fg: #0A0A0A;
@@ -132,6 +138,15 @@
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.12);
   --ring: #F2784B;
+}
+
+/* ═══ Safe System Insets on Android Native & WebViews ═══ */
+.is-android,
+:root[data-platform="android"] {
+  --safe-top: max(env(safe-area-inset-top, 0px), 48px);
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  --wizard-header-pt: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px);
+  --content-bottom-clearance: calc(max(env(safe-area-inset-bottom, 0px), 16px) + 136px);
 }
 
 /* ═══ Wizard Type Semantic Scoping ═══ */

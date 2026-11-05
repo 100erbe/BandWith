@@ -41,7 +41,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
       {/* Header */}
       <div
         className="px-4 shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+        style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
       >
         <div className="flex items-center gap-4 mb-10">
           <button

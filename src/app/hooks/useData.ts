@@ -487,6 +487,10 @@ export const useNotifications = (options?: {
         console.log('[useNotifications] Realtime INSERT:', notification.title);
         setNotifications(prev => {
           if (prev.some(n => n.id === notification.id)) return prev;
+          const eventId = notification.data?.event_id;
+          if (notification.type === 'event_invite' && eventId && prev.some(n => n.type === 'event_invite' && n.data?.event_id === eventId)) {
+            return prev;
+          }
           return [notification, ...prev];
         });
         if (notification.type === 'event_invite' && onNewEventInviteRef.current) {
@@ -530,7 +534,7 @@ export const useNotifications = (options?: {
     return () => clearInterval(pollInterval);
   }, [isAuthenticated, fetchNotifications]);
 
-  return { notifications, loading, error, refetch: fetchNotifications };
+  return { notifications, loading, error, refetch: fetchNotifications, setNotifications };
 };
 
 export const useUnreadCount = () => {

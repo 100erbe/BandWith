@@ -598,14 +598,16 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // Travel calculation
   const handleCalculateDistance = async (venueLoc: string) => {
-    if (!venueLoc || !selectedBand?.location) return;
+    const originAddress = pricingSettings.band_origin_address || (selectedBand as any)?.location || (selectedBand as any)?.address;
+    if (!venueLoc || !originAddress) return;
     setIsCalculatingDistance(true);
     try {
-      const dist = await calculateTravelDistance(selectedBand.location, venueLoc);
-      if (dist != null) {
-        setTravelDistanceKm(dist);
-        const ratePerKm = pricingSettings.travel_per_km_rate || 0.5;
-        const autoTravelFee = Math.round(dist * 2 * ratePerKm);
+      const origin = typeof originAddress === 'string' ? { address: originAddress } : originAddress;
+      const distResult = await calculateTravelDistance(origin, { address: venueLoc });
+      if (distResult != null) {
+        setTravelDistanceKm(distResult.distanceKm);
+        const ratePerKm = pricingSettings.travel_rate_per_km || 0.5;
+        const autoTravelFee = Math.round(distResult.distanceKm * 2 * ratePerKm);
         setTravelFee(autoTravelFee);
         setTravelIncluded(false);
       }
@@ -644,7 +646,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   const customItemsTotal = useMemo(
-    () => customItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => customItems.reduce((sum, item) => sum + (item.price ?? item.amount ?? 0) * item.quantity, 0),
     [customItems]
   );
 
@@ -1481,6 +1483,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                       {
                         id: `item-${Date.now()}`,
                         name: 'Custom Service',
+                        amount: 150,
                         price: 150,
                         quantity: 1,
                         taxable: true,
@@ -1511,14 +1514,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     <span className="text-muted-foreground font-bold">{currencySymbol}</span>
                     <input
                       type="number"
-                      value={item.price}
-                      onChange={e =>
+                      value={item.price ?? item.amount ?? 0}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
                         setCustomItems(prev =>
                           prev.map((it, i) =>
-                            i === idx ? { ...it, price: parseFloat(e.target.value) || 0 } : it
+                            i === idx ? { ...it, price: val, amount: val } : it
                           )
-                        )
-                      }
+                        );
+                      }}
                       className="w-20 bg-card border border-border/40 rounded-lg px-2 py-1.5 text-right text-xs text-[var(--fg)] focus:outline-none"
                     />
                   </div>
@@ -1954,7 +1958,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <WizardAccentRail color={activeAccentColor} />
 
         {/* Top Header Zone (shrink-0) */}
-        <div className="px-6 pt-[env(safe-area-inset-top,16px)] pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between">
+        <div className="px-6 pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
           <div className="flex flex-col gap-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] shadow-xs">
@@ -2036,7 +2040,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <WizardAccentRail color={activeAccentColor} />
 
       {/* Top Header Zone (shrink-0) */}
-      <div className="shrink-0 px-6 pt-4 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3">
+      <div className="shrink-0 px-6 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
         {/* Step indicator bar */}
         <div className="pt-1">
           <InteractiveQuoteStepIndicator

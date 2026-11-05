@@ -2432,7 +2432,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <WizardAccentRail color={activeAccentColor} />
 
           {/* Top Header Zone (shrink-0) */}
-          <div className="px-6 pt-[env(safe-area-inset-top,16px)] pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between">
+          <div className="px-6 pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
             <div className="flex flex-col gap-1 min-w-0 pr-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] shadow-xs">
@@ -2537,7 +2537,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <WizardAccentRail color={activeAccentColor} />
 
         {/* Top Header Zone (shrink-0) */}
-        <div className="shrink-0 px-6 pt-4 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3">
+        <div className="shrink-0 px-6 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
           {/* Step indicator bar */}
           <div className="pt-1">
             <InteractiveStepIndicator
