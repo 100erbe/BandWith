@@ -97,46 +97,38 @@ export const Header: React.FC<HeaderProps> = ({
   const isAdminRole = selectedBand.role === 'ADMIN' || profile?.role === 'admin';
   const canSwitchBands = bands.length > 1 || isAdminRole;
 
-  const topInset = (isAndroid && isNative) ? '56px' : 'max(env(safe-area-inset-top, 0px), 12px)';
-  const expandedContentHeight = (activeTab === 'Chat' || activeTab === 'Events') ? 72 : 88;
+  const expandedContentHeight = (activeTab === 'Chat' || activeTab === 'Events') ? 72 : 92;
   const collapsedContentHeight = 54;
 
   return (
     <motion.header 
-      className="sticky top-0 z-40 -mx-4 pointer-events-none select-none"
+      className={cn(
+        "sticky top-0 z-40 -mx-4 px-4 select-none transition-[background-color,border-color,box-shadow] duration-300",
+        isScrolled 
+          ? "bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs" 
+          : "bg-background/80 backdrop-blur-md border-b border-transparent"
+      )}
       animate={{ 
         opacity: isHidden ? 0 : 1, 
         y: isHidden ? -20 : 0 
       }}
       transition={HEADER_SPRING}
       style={{ 
-        /* Constant in-flow height prevents any DOM layout shift or scroll-anchoring feedback loop */
-        height: `calc(${topInset} + ${expandedContentHeight}px)`,
-        marginBottom: '8px',
+        paddingTop: 'var(--safe-padding-top, 16px)',
+        paddingBottom: '12px',
+        marginBottom: '16px',
+        pointerEvents: isHidden ? 'none' : 'auto',
         overflowAnchor: 'none',
       }}
     >
-      {/* ═══ VISUAL HEADER BAR: Animates height out-of-flow (absolute) for 0px scroll layout shift ═══ */}
-      <div
-        className={cn(
-          "absolute top-0 left-0 right-0 px-4 transition-[background-color,border-color,box-shadow] duration-300",
-          isScrolled 
-            ? "bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs" 
-            : "bg-background/80 backdrop-blur-md border-b border-transparent"
-        )}
-        style={{ 
-          paddingTop: topInset,
-          pointerEvents: isHidden ? 'none' : 'auto',
+      <motion.div
+        initial={false}
+        animate={{
+          height: isScrolled ? collapsedContentHeight : expandedContentHeight,
         }}
+        transition={HEADER_SPRING}
+        className="relative w-full overflow-hidden"
       >
-        <motion.div
-          initial={false}
-          animate={{
-            height: isScrolled ? collapsedContentHeight : expandedContentHeight,
-          }}
-          transition={HEADER_SPRING}
-          className="relative w-full overflow-hidden"
-        >
           {/* ═══ LEFT: Single Unified Morphing Title Lockup (Zero duplicate DOM nodes) ═══ */}
           {activeTab === 'Chat' ? (
             <div className="flex flex-col pr-[104px]">
@@ -355,7 +347,6 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
           </div>
         </motion.div>
-      </div>
     </motion.header>
   );
 };
