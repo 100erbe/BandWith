@@ -1,483 +1,745 @@
 import { supabase } from '@/lib/supabase';
+import type { PerformanceType } from '@/app/data/quotes';
+
+export type PricingMode = 'per_musician' | 'flat_packages';
+export type BandMarkupType = 'none' | 'percent' | 'fixed';
+export type TravelCalcMode = 'per_vehicle' | 'per_musician' | 'flat_km';
+export type LogisticsBillingMode = 'included' | 'separate' | 'client_provided';
+export type ProductionBillingMode = 'included' | 'separate' | 'client_provided' | 'none';
+export type CustomServiceCategory = 'performance' | 'production' | 'logistics' | 'custom';
+export type CustomServiceUnit = 'flat' | 'per_person' | 'per_hour' | 'per_km';
+
+export interface LineupPackagePreset {
+  id: string;
+  name: string;
+  performanceType: PerformanceType;
+  musiciansCount: number;
+  flatPrice: number;
+  description?: string;
+  is_active: boolean;
+}
 
 export interface CustomService {
   id: string;
   name: string;
-  category: string;
+  category: CustomServiceCategory;
   description?: string;
   price: number;
-  unit: 'flat' | 'per_person' | 'per_hour' | 'per_km';
+  unit: CustomServiceUnit;
+  default_duration_mins?: number;
+  default_musicians?: number;
   is_active: boolean;
 }
 
 export interface BandPricingSettings {
   band_id: string;
-  currency: string;
+  currency: 'EUR' | 'USD' | 'GBP' | 'CHF' | string;
+
+  // ── 1. Universal Lineup & Base Pricing ────────────────────────
+  pricing_mode: PricingMode;
+  base_musician_rate: number;
+  use_roster_member_fees: boolean;
+  enable_external_sub_rate?: boolean;
+  external_sub_rate?: number;
+  lineup_packages: LineupPackagePreset[];
+
+  // Legacy fields kept in sync for backward compatibility
+  core_members_count: number;
   core_member_rate: number;
   session_musician_rate: number;
-  core_members_count: number;
-  cocktail_musician_fee: number;
   ceremony_musician_fee: number;
+  cocktail_musician_fee: number;
   dj_hourly_rate: number;
-  production_standard_fee: number;
-  production_pro_fee: number;
-  production_extra_location_fee: number;
-  travel_rate_per_km: number;
+
+  // ── 2. Band Fund / Agency Markup ──────────────────────────────
+  band_markup_type: BandMarkupType;
+  band_markup_value: number;
+  margin_divisor: number; // Legacy sync: e.g. 0.85 for 15% margin
+
+  // ── 3. Travel & Logistics ─────────────────────────────────────
   band_origin_address: string;
   band_origin_lat?: number;
   band_origin_lng?: number;
-  low_season_multiplier: number;
-  mid_season_multiplier: number;
+  travel_calc_mode: TravelCalcMode;
+  travel_rate_per_km: number;
+  travel_vehicles_count: number;
+  free_travel_radius_km: number;
+  default_travel_included: boolean;
+  default_travel_mode: LogisticsBillingMode;
+
+  // ── 4. Sound, Lighting & Production ───────────────────────────
+  default_production_mode: ProductionBillingMode;
+  default_production_tier: 'standard' | 'pro' | 'none';
+  production_standard_fee: number;
+  production_pro_fee: number;
+  production_extra_location_fee: number;
+
+  // ── 5. Unified Extra Sets & Add-On Services Catalog ───────────
+  custom_services: CustomService[];
+
+  // ── 6. Commercial Rules, Seasonality & Tax ────────────────────
+  seasonal_pricing_enabled: boolean;
   peak_season_multiplier: number;
-  margin_divisor: number;
-  rounding_step: number;
+  low_season_multiplier: number;
+  mid_season_multiplier?: number;
+  rounding_step?: number;
+  peak_months: number[];     // 1-12 (e.g. [5, 6, 9, 10])
+  off_peak_months: number[]; // 1-12 (e.g. [1, 2, 3, 11])
   default_vat_rate: number;
   default_deposit_rate: number;
-  custom_services: CustomService[];
-  // Quote Branding & Sign-off
+  default_validity_days: number;
+  default_quote_disclaimer?: string;
+
+  // ── 7. Branding, Sign-off & Bank Details (PDF) ────────────────
   band_logo_url?: string;
   signature_url?: string;
   signer_name?: string;
   signer_role?: string;
-  // Contact & Legal Info
+  bank_account_holder?: string;
+  bank_iban?: string;
+  bank_name?: string;
+  bank_bic_swift?: string;
+  default_payment_terms?: string;
   contact_email?: string;
   contact_phone?: string;
   website?: string;
   legal_company_name?: string;
   tax_vat_id?: string;
   legal_address?: string;
-  // Payment Details
-  bank_account_holder?: string;
-  bank_iban?: string;
-  bank_bic_swift?: string;
-  bank_name?: string;
-  default_payment_terms?: string;
-  // Quote Defaults
-  default_validity_days?: number;
-  default_quote_disclaimer?: string;
 }
 
 export const DEFAULT_QUOTE_DISCLAIMER =
-  'IMPORTANT: This quote is valid for {days} days from the date of issue. Pricing is valid exclusively for the event date indicated. Any modification to the date will require a new quote to guarantee availability and to update costs.';
+  'This quote is valid for {days} days from the issue date. Event date is officially reserved upon receipt of the booking deposit.';
 
-export const DEFAULT_PAYMENT_TERMS =
-  '{deposit}% initial deposit upon booking; {balance}% balance due before event';
+// ── Default Lineup Formation Packages ───────────────────────────
+export const DEFAULT_LINEUP_PACKAGES: LineupPackagePreset[] = [
+  {
+    id: 'pkg-solo',
+    name: 'Solo',
+    performanceType: 'solo',
+    musiciansCount: 1,
+    flatPrice: 350,
+    description: 'Solo performance',
+    is_active: true,
+  },
+  {
+    id: 'pkg-duo',
+    name: 'Duo',
+    performanceType: 'duo',
+    musiciansCount: 2,
+    flatPrice: 650,
+    description: 'Vocals + instrument duo',
+    is_active: true,
+  },
+  {
+    id: 'pkg-trio',
+    name: 'Trio',
+    performanceType: 'trio',
+    musiciansCount: 3,
+    flatPrice: 950,
+    description: '3-piece compact lineup',
+    is_active: true,
+  },
+  {
+    id: 'pkg-full',
+    name: 'Full Band',
+    performanceType: 'full_band',
+    musiciansCount: 5,
+    flatPrice: 1600,
+    description: 'Full live band show',
+    is_active: true,
+  },
+];
+
+// ── 1-Tap Genre / Band Type Service Preset Bundles ──────────────
+export const WEDDING_SERVICE_PRESETS: CustomService[] = [
+  {
+    id: 'srv-ceremony',
+    name: 'Ceremony Live Music',
+    category: 'performance',
+    description: 'Entrance, ceremony highlights & exit (30-45 mins)',
+    price: 150,
+    unit: 'per_person',
+    default_duration_mins: 45,
+    default_musicians: 2,
+    is_active: true,
+  },
+  {
+    id: 'srv-cocktail',
+    name: 'Cocktail / Aperitif Set',
+    category: 'performance',
+    description: 'Welcome drinks acoustic/lounge set (60 mins)',
+    price: 150,
+    unit: 'per_person',
+    default_duration_mins: 60,
+    default_musicians: 3,
+    is_active: true,
+  },
+  {
+    id: 'srv-dinner',
+    name: 'Dinner Background Set',
+    category: 'performance',
+    description: 'Soft background music during dinner',
+    price: 400,
+    unit: 'flat',
+    default_duration_mins: 90,
+    is_active: false,
+  },
+  {
+    id: 'srv-afterparty-dj',
+    name: 'After-Party DJ Set',
+    category: 'performance',
+    description: 'DJ music after the live band sets',
+    price: 150,
+    unit: 'per_hour',
+    default_duration_mins: 120,
+    is_active: true,
+  },
+  {
+    id: 'srv-second-zone',
+    name: 'Secondary Audio Zone',
+    category: 'production',
+    description: 'Extra speaker + wireless mic for outdoor/garden area',
+    price: 180,
+    unit: 'flat',
+    is_active: true,
+  },
+];
+
+export const CLUB_ROCK_SERVICE_PRESETS: CustomService[] = [
+  {
+    id: 'srv-extra-set',
+    name: 'Extra 45m Live Set',
+    category: 'performance',
+    description: 'Additional 45-minute live performance set',
+    price: 300,
+    unit: 'flat',
+    default_duration_mins: 45,
+    is_active: true,
+  },
+  {
+    id: 'srv-acoustic-opener',
+    name: 'Acoustic Opening Set',
+    category: 'performance',
+    description: 'Warm-up acoustic set before main show',
+    price: 250,
+    unit: 'flat',
+    default_duration_mins: 40,
+    is_active: true,
+  },
+  {
+    id: 'srv-sound-tech',
+    name: 'Dedicated FOH Sound Engineer',
+    category: 'production',
+    description: 'Professional sound technician for the event',
+    price: 250,
+    unit: 'flat',
+    is_active: true,
+  },
+  {
+    id: 'srv-backline-share',
+    name: 'Full Backline & Drum Kit Rental',
+    category: 'production',
+    description: 'Band provides full backline and drum kit',
+    price: 200,
+    unit: 'flat',
+    is_active: true,
+  },
+];
+
+export const CORPORATE_JAZZ_PRESETS: CustomService[] = [
+  {
+    id: 'srv-welcome-trio',
+    name: 'Networking / Welcome Reception Set',
+    category: 'performance',
+    description: 'Elegant instrumental background set (60 mins)',
+    price: 450,
+    unit: 'flat',
+    default_duration_mins: 60,
+    is_active: true,
+  },
+  {
+    id: 'srv-wireless-mics',
+    name: 'Speech & Awards Wireless Mic Package',
+    category: 'production',
+    description: 'PA coverage + 2 wireless microphones for speeches',
+    price: 150,
+    unit: 'flat',
+    is_active: true,
+  },
+  {
+    id: 'srv-early-loadin',
+    name: 'Early Load-In / Idle Waiting Time',
+    category: 'logistics',
+    description: 'Setup prior to corporate doors opening',
+    price: 75,
+    unit: 'per_hour',
+    is_active: true,
+  },
+];
+
+// Backward-compatible aliases
+export const WEDDING_EVENT_PRESETS = WEDDING_SERVICE_PRESETS;
+export const ORIGINAL_CLUB_PRESETS = CLUB_ROCK_SERVICE_PRESETS;
+export const JAZZ_CORPORATE_PRESETS = CORPORATE_JAZZ_PRESETS;
 
 export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   band_id: 'default',
   currency: 'EUR',
-  core_member_rate: 300,
-  session_musician_rate: 250,
-  core_members_count: 1,
-  cocktail_musician_fee: 150,
+
+  // Universal Lineup Pricing
+  pricing_mode: 'per_musician',
+  base_musician_rate: 250,
+  use_roster_member_fees: true,
+  enable_external_sub_rate: false,
+  external_sub_rate: 200,
+  lineup_packages: DEFAULT_LINEUP_PACKAGES,
+
+  // Legacy fields synced
+  core_members_count: 4,
+  core_member_rate: 250,
+  session_musician_rate: 200,
   ceremony_musician_fee: 150,
-  dj_hourly_rate: 100,
+  cocktail_musician_fee: 150,
+  dj_hourly_rate: 150,
+
+  // Band Fund / Markup
+  band_markup_type: 'none',
+  band_markup_value: 0,
+  margin_divisor: 1,
+
+  // Travel & Logistics
+  band_origin_address: '',
+  travel_calc_mode: 'per_vehicle',
+  travel_rate_per_km: 0.5,
+  travel_vehicles_count: 1,
+  free_travel_radius_km: 30,
+  default_travel_included: false,
+  default_travel_mode: 'separate',
+
+  // Sound & Lighting
+  default_production_mode: 'included',
+  default_production_tier: 'standard',
   production_standard_fee: 300,
   production_pro_fee: 600,
-  production_extra_location_fee: 150,
-  travel_rate_per_km: 0.15,
-  band_origin_address: '',
-  low_season_multiplier: 0.9,
-  mid_season_multiplier: 1,
+  production_extra_location_fee: 180,
+
+  // Unified Services Catalog
+  custom_services: WEDDING_SERVICE_PRESETS,
+
+  // Commercial Rules & Tax
+  seasonal_pricing_enabled: false,
   peak_season_multiplier: 1.15,
-  margin_divisor: 0.94,
-  rounding_step: 10,
+  low_season_multiplier: 0.9,
+  peak_months: [5, 6, 9, 10],
+  off_peak_months: [1, 2, 3, 11],
   default_vat_rate: 21,
-  default_deposit_rate: 20,
+  default_deposit_rate: 30,
+  default_validity_days: 30,
+  default_quote_disclaimer: DEFAULT_QUOTE_DISCLAIMER,
+
+  // Branding & Bank
   band_logo_url: '',
   signature_url: '',
   signer_name: '',
-  signer_role: 'Musical Director and Musician',
-  contact_email: '',
-  contact_phone: '',
-  website: '',
-  legal_company_name: '',
-  tax_vat_id: '',
-  legal_address: '',
+  signer_role: '',
   bank_account_holder: '',
   bank_iban: '',
-  bank_bic_swift: '',
   bank_name: '',
-  default_payment_terms: '20% initial deposit upon booking; 80% balance due before event',
-  default_validity_days: 30,
-  default_quote_disclaimer: DEFAULT_QUOTE_DISCLAIMER,
-  custom_services: [
-    {
-      id: 'srv-song-request',
-      name: 'Custom Song Arrangement',
-      category: 'performance',
-      description: 'Learn & arrange a special request outside the repertoire',
-      price: 120,
-      unit: 'flat',
-      is_active: true,
-    },
-    {
-      id: 'srv-early-loadin',
-      name: 'Early Load-In / Waiting Hour',
-      category: 'logistics',
-      description: 'Early setup & standby time before the event starts',
-      price: 35,
-      unit: 'per_person',
-      is_active: true,
-    },
-    {
-      id: 'srv-recording',
-      name: 'Live Multitrack Recording',
-      category: 'production',
-      description: 'Multi-channel audio capture of the live performance',
-      price: 250,
-      unit: 'flat',
-      is_active: false,
-    },
-  ],
+  bank_bic_swift: '',
+  default_payment_terms: '30% deposit upon booking; 70% balance due on event date.',
 };
 
-const LEGACY_DUPLICATE_SERVICE_IDS = new Set([
-  'srv-cocktail',
-  'srv-ceremony',
-  'srv-dj',
-  'srv-extra-sound',
-]);
-
-const STORAGE_PREFIX = 'bandwith_pricing_settings_';
-
-export async function getBandPricing(bandId: string): Promise<BandPricingSettings> {
-  // 1. Try to fetch from Supabase if valid UUID
-  if (bandId && bandId !== 'default') {
-    try {
-      const { data: band, error } = await supabase
-        .from('bands')
-        .select('*')
-        .eq('id', bandId)
-        .maybeSingle();
-
-      if (!error && band) {
-        const rules = band.pricing_rules || {};
-        const storedServices: CustomService[] | undefined = band.extra_services;
-        const cleanedServices = Array.isArray(storedServices)
-          ? storedServices.filter((s) => !LEGACY_DUPLICATE_SERVICE_IDS.has(s.id))
-          : [];
-
-        const loadedSettings: BandPricingSettings = {
-          band_id: band.id,
-          currency: band.pricing_currency || DEFAULT_BAND_PRICING.currency,
-          core_member_rate: Number(band.core_musician_fee ?? DEFAULT_BAND_PRICING.core_member_rate),
-          session_musician_rate: Number(band.additional_musician_fee ?? DEFAULT_BAND_PRICING.session_musician_rate),
-          core_members_count: Number(band.standard_lineup_size ?? DEFAULT_BAND_PRICING.core_members_count),
-          cocktail_musician_fee: Number(band.cocktail_musician_fee ?? DEFAULT_BAND_PRICING.cocktail_musician_fee),
-          ceremony_musician_fee: Number(band.ceremony_musician_fee ?? DEFAULT_BAND_PRICING.ceremony_musician_fee),
-          dj_hourly_rate: Number(band.dj_hourly_rate ?? DEFAULT_BAND_PRICING.dj_hourly_rate),
-          production_standard_fee: Number(band.production_standard_fee ?? DEFAULT_BAND_PRICING.production_standard_fee),
-          production_pro_fee: Number(band.production_pro_fee ?? DEFAULT_BAND_PRICING.production_pro_fee),
-          production_extra_location_fee: Number(band.production_extra_location_fee ?? DEFAULT_BAND_PRICING.production_extra_location_fee),
-          travel_rate_per_km: Number(band.travel_rate_per_km ?? DEFAULT_BAND_PRICING.travel_rate_per_km),
-          band_origin_address: band.home_base_address || '',
-          band_origin_lat: band.home_base_latitude !== null ? Number(band.home_base_latitude) : undefined,
-          band_origin_lng: band.home_base_longitude !== null ? Number(band.home_base_longitude) : undefined,
-          low_season_multiplier: Number(rules.low_season_multiplier ?? DEFAULT_BAND_PRICING.low_season_multiplier),
-          mid_season_multiplier: Number(rules.mid_season_multiplier ?? DEFAULT_BAND_PRICING.mid_season_multiplier),
-          peak_season_multiplier: Number(rules.peak_season_multiplier ?? DEFAULT_BAND_PRICING.peak_season_multiplier),
-          margin_divisor: Number(rules.margin_divisor ?? DEFAULT_BAND_PRICING.margin_divisor),
-          rounding_step: Number(rules.rounding_step ?? DEFAULT_BAND_PRICING.rounding_step),
-          default_vat_rate: Number(rules.default_vat_rate ?? DEFAULT_BAND_PRICING.default_vat_rate),
-          default_deposit_rate: Number(rules.default_deposit_rate ?? DEFAULT_BAND_PRICING.default_deposit_rate),
-          band_logo_url: band.logo_url || rules.band_logo_url || '',
-          signature_url: band.signature_url || rules.signature_url || '',
-          signer_name: band.signer_name || rules.signer_name || '',
-          signer_role: band.signer_role ?? rules.signer_role ?? DEFAULT_BAND_PRICING.signer_role,
-          contact_email: band.contact_email || rules.contact_email || '',
-          contact_phone: band.contact_phone || rules.contact_phone || '',
-          website: band.website || rules.website || '',
-          legal_company_name: band.legal_company_name || rules.legal_company_name || '',
-          tax_vat_id: band.tax_vat_id || rules.tax_vat_id || '',
-          legal_address: band.legal_address || rules.legal_address || '',
-          bank_account_holder: band.bank_account_holder || rules.bank_account_holder || '',
-          bank_iban: band.bank_iban || rules.bank_iban || '',
-          bank_bic_swift: band.bank_bic_swift || rules.bank_bic_swift || '',
-          bank_name: band.bank_name || rules.bank_name || '',
-          default_payment_terms:
-            band.default_payment_terms ||
-            rules.default_payment_terms ||
-            DEFAULT_BAND_PRICING.default_payment_terms,
-          default_validity_days: Number(
-            rules.default_validity_days ?? DEFAULT_BAND_PRICING.default_validity_days
-          ),
-          default_quote_disclaimer:
-            rules.default_quote_disclaimer || DEFAULT_BAND_PRICING.default_quote_disclaimer,
-          custom_services: cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
-        };
-
-        // Cache locally for offline resiliency
-        try {
-          localStorage.setItem(`${STORAGE_PREFIX}${bandId}`, JSON.stringify(loadedSettings));
-        } catch (_) {}
-
-        return loadedSettings;
-      }
-    } catch (err) {
-      console.warn('[PricingService] Error fetching band pricing from database, falling back to cache:', err);
-    }
+const normalizeServiceCategory = (cat?: string): CustomServiceCategory => {
+  if (cat === 'performance' || cat === 'production' || cat === 'logistics' || cat === 'custom') {
+    return cat;
   }
-
-  // 2. Fallback to localStorage / default
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${bandId}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const storedServices: CustomService[] | undefined = parsed.custom_services;
-      const cleanedServices = Array.isArray(storedServices)
-        ? storedServices.filter((s) => !LEGACY_DUPLICATE_SERVICE_IDS.has(s.id))
-        : [];
-      return {
-        ...DEFAULT_BAND_PRICING,
-        ...parsed,
-        core_members_count:
-          typeof parsed.core_members_count === 'number' && parsed.core_members_count > 0
-            ? parsed.core_members_count
-            : 1,
-        custom_services:
-          cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
-      };
-    }
-  } catch (e) {
-    console.warn('Error reading band pricing settings from storage:', e);
-  }
-  return { ...DEFAULT_BAND_PRICING, band_id: bandId };
-}
-
-export async function saveBandPricing(settings: BandPricingSettings): Promise<BandPricingSettings> {
-  // Always update local cache
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}${settings.band_id}`, JSON.stringify(settings));
-  } catch (e) {
-    console.warn('Error saving band pricing settings to storage:', e);
-  }
-
-  // Persist directly to Supabase bands table matching current band_id
-  if (settings.band_id && settings.band_id !== 'default') {
-    try {
-      const { error } = await supabase
-        .from('bands')
-        .update({
-          standard_lineup_size: settings.core_members_count,
-          core_musician_fee: settings.core_member_rate,
-          additional_musician_fee: settings.session_musician_rate,
-          ceremony_musician_fee: settings.ceremony_musician_fee,
-          cocktail_musician_fee: settings.cocktail_musician_fee,
-          dj_hourly_rate: settings.dj_hourly_rate,
-          production_standard_fee: settings.production_standard_fee,
-          production_pro_fee: settings.production_pro_fee,
-          production_extra_location_fee: settings.production_extra_location_fee,
-          travel_rate_per_km: settings.travel_rate_per_km,
-          home_base_address: settings.band_origin_address || '',
-          home_base_latitude: typeof settings.band_origin_lat === 'number' ? settings.band_origin_lat : null,
-          home_base_longitude: typeof settings.band_origin_lng === 'number' ? settings.band_origin_lng : null,
-          pricing_currency: settings.currency || 'EUR',
-          logo_url: settings.band_logo_url || null,
-          pricing_rules: {
-            low_season_multiplier: settings.low_season_multiplier,
-            mid_season_multiplier: settings.mid_season_multiplier,
-            peak_season_multiplier: settings.peak_season_multiplier,
-            margin_divisor: settings.margin_divisor,
-            rounding_step: settings.rounding_step,
-            default_vat_rate: settings.default_vat_rate,
-            default_deposit_rate: settings.default_deposit_rate,
-            band_logo_url: settings.band_logo_url || '',
-            signature_url: settings.signature_url || '',
-            signer_name: settings.signer_name || '',
-            signer_role: settings.signer_role || '',
-            contact_email: settings.contact_email || '',
-            contact_phone: settings.contact_phone || '',
-            website: settings.website || '',
-            legal_company_name: settings.legal_company_name || '',
-            tax_vat_id: settings.tax_vat_id || '',
-            legal_address: settings.legal_address || '',
-            bank_account_holder: settings.bank_account_holder || '',
-            bank_iban: settings.bank_iban || '',
-            bank_bic_swift: settings.bank_bic_swift || '',
-            bank_name: settings.bank_name || '',
-            default_payment_terms: settings.default_payment_terms || '',
-            default_validity_days: settings.default_validity_days ?? 30,
-            default_quote_disclaimer: settings.default_quote_disclaimer || '',
-          },
-          extra_services: settings.custom_services,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', settings.band_id);
-
-      if (error) {
-        console.error('[PricingService] Failed to persist band pricing to Supabase:', error);
-      }
-    } catch (err) {
-      console.error('[PricingService] Exception saving band pricing to Supabase:', err);
-    }
-  }
-
-  return settings;
-}
+  return 'custom';
+};
 
 /**
- * Resize/convert an uploaded image file to a clean Data URL, and try uploading to Supabase Storage.
- * Returns a reliable URL (Data URL for instant PDF canvas rendering or public storage URL).
+ * Ensures any previously saved band settings in Supabase/LocalStorage
+ * automatically gain the new universal fields without losing existing values.
  */
-export async function uploadBandBrandingAsset(
-  bandId: string,
-  file: File,
-  kind: 'logo' | 'signature'
-): Promise<string> {
-  // Always create a crisp, resized Data URL so client-side PDF rendering never suffers from CORS
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = kind === 'logo' ? 600 : 500;
-        const maxH = kind === 'logo' ? 300 : 220;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxW || h > maxH) {
-          const ratio = Math.min(maxW / w, maxH / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/png'));
-        } else {
-          resolve(String(reader.result));
-        }
-      };
-      img.onerror = () => resolve(String(reader.result));
-      img.src = String(reader.result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+export function normalizeBandPricingSettings(
+  raw?: Partial<BandPricingSettings> | null,
+  bandId = 'default'
+): BandPricingSettings {
+  const merged: BandPricingSettings = {
+    ...DEFAULT_BAND_PRICING,
+    ...(raw || {}),
+    band_id: raw?.band_id || bandId,
+  };
 
-  // Also attempt background upload to Supabase storage if authenticated
-  if (bandId && bandId !== 'default') {
-    try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `bands/${bandId}/${kind}-${Date.now()}.${ext}`;
-      await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-    } catch (_) {
-      // Ignore storage bucket errors — dataUrl is stored in pricing_rules / logo_url
+  // Sync base_musician_rate <-> core_member_rate (fallback to core_member_rate || 250)
+  if (raw?.base_musician_rate !== undefined && raw.core_member_rate === undefined) {
+    merged.core_member_rate = raw.base_musician_rate;
+  } else if (raw?.base_musician_rate === undefined) {
+    merged.base_musician_rate = raw?.core_member_rate || 250;
+    merged.core_member_rate = merged.base_musician_rate;
+  }
+
+  // Sync external_sub_rate <-> session_musician_rate
+  if (raw?.external_sub_rate !== undefined && raw.session_musician_rate === undefined) {
+    merged.session_musician_rate = raw.external_sub_rate;
+  } else if (raw?.external_sub_rate === undefined && raw?.session_musician_rate !== undefined) {
+    merged.external_sub_rate = raw.session_musician_rate;
+  }
+
+  // Migrate legacy margin_divisor (< 1) to transparent band_markup_type
+  if (
+    raw?.band_markup_type === undefined &&
+    typeof raw?.margin_divisor === 'number' &&
+    raw.margin_divisor > 0 &&
+    raw.margin_divisor < 1
+  ) {
+    merged.band_markup_type = 'percent';
+    merged.band_markup_value = Math.round((1 - raw.margin_divisor) * 100);
+  }
+
+  // Keep legacy margin_divisor synced with band_markup_type
+  if (merged.band_markup_type === 'percent' && merged.band_markup_value > 0) {
+    merged.margin_divisor = Math.max(0.1, Number((1 - merged.band_markup_value / 100).toFixed(2)));
+  } else {
+    merged.margin_divisor = 1;
+  }
+
+  // Sync default_travel_included <-> default_travel_mode
+  if (raw?.default_travel_included !== undefined && raw?.default_travel_mode === undefined) {
+    merged.default_travel_mode = raw.default_travel_included ? 'included' : 'separate';
+  } else if (raw?.default_travel_mode !== undefined && raw?.default_travel_included === undefined) {
+    merged.default_travel_included = raw.default_travel_mode === 'included';
+  } else {
+    merged.default_travel_included = Boolean(merged.default_travel_included);
+    if (merged.default_travel_included && merged.default_travel_mode === 'separate') {
+      merged.default_travel_mode = 'included';
+    } else if (!merged.default_travel_included && merged.default_travel_mode === 'included') {
+      merged.default_travel_mode = 'separate';
     }
   }
 
-  return dataUrl;
-}
-
-export function calculateSeasonality(
-  dateStr: string,
-  settings: BandPricingSettings
-): { multiplier: number; seasonName: 'LOW' | 'MID' | 'PEAK' } {
-  if (!dateStr) return { multiplier: 1, seasonName: 'MID' };
-  const month = new Date(dateStr).getMonth();
-  // Jan, Feb, Mar, Nov = Low
-  if (month === 0 || month === 1 || month === 2 || month === 10) {
-    return { multiplier: settings.low_season_multiplier, seasonName: 'LOW' };
-  }
-  // May, Jun, Sep, Oct = Peak
-  if (month === 4 || month === 5 || month === 8 || month === 9) {
-    return { multiplier: settings.peak_season_multiplier, seasonName: 'PEAK' };
-  }
-  return { multiplier: settings.mid_season_multiplier, seasonName: 'MID' };
-}
-
-export interface QuoteCalculationInput {
-  musiciansCount: number;
-  distanceKm: number;
-  eventDate?: string;
-  productionTier?: 'standard' | 'pro' | 'none';
-  extraLocationsCount: number;
-  cocktailMusicians: number;
-  ceremonyMusicians: number;
-  djHours: number;
-  selectedCustomServices?: { serviceId: string; quantity: number }[];
-  discountPercent: number;
-}
-
-export function calculateSmartQuote(input: QuoteCalculationInput, settings: BandPricingSettings) {
-  const musiciansCount = Math.max(1, input.musiciansCount);
-  const coreMusicians = Math.min(musiciansCount, settings.core_members_count);
-  const sessionMusicians = Math.max(0, musiciansCount - settings.core_members_count);
-  const coreMusiciansCost = coreMusicians * settings.core_member_rate;
-  const sessionMusiciansCost = sessionMusicians * settings.session_musician_rate;
-  const travelCost = input.distanceKm * settings.travel_rate_per_km * musiciansCount;
-  const { multiplier: seasonMultiplier, seasonName } = calculateSeasonality(
-    input.eventDate || '',
-    settings
-  );
-
-  let productionCost = 0;
-  if (input.productionTier === 'standard') {
-    productionCost = settings.production_standard_fee;
-  } else if (input.productionTier === 'pro') {
-    productionCost = settings.production_pro_fee;
-  }
-  if (input.extraLocationsCount > 0) {
-    productionCost += input.extraLocationsCount * settings.production_extra_location_fee;
+  // Normalize lineup packages
+  if (!Array.isArray(merged.lineup_packages) || merged.lineup_packages.length === 0) {
+    merged.lineup_packages = DEFAULT_LINEUP_PACKAGES.map(p => ({ ...p }));
   }
 
-  const mainBandCost = (coreMusiciansCost + sessionMusiciansCost + travelCost) * seasonMultiplier + productionCost;
-  const divisor = settings.margin_divisor > 0 ? settings.margin_divisor : 1;
-  const rounding = settings.rounding_step > 0 ? settings.rounding_step : 10;
-  const targetPrice = mainBandCost / divisor;
-  const mainBandPrice = Math.ceil(targetPrice / rounding) * rounding;
+  // Normalize custom_services & migrate legacy wedding fees if upgrading from pre-universal schema
+  if (!Array.isArray(merged.custom_services)) {
+    merged.custom_services = WEDDING_SERVICE_PRESETS.map(s => ({ ...s }));
+  } else {
+    merged.custom_services = merged.custom_services.map(s => ({
+      ...s,
+      category: normalizeServiceCategory(s.category),
+    }));
 
-  const cocktailPrice = input.cocktailMusicians > 0 ? input.cocktailMusicians * settings.cocktail_musician_fee : 0;
-  const ceremonyPrice = input.ceremonyMusicians > 0 ? input.ceremonyMusicians * settings.ceremony_musician_fee : 0;
-  const djPrice = input.djHours > 0 ? input.djHours * settings.dj_hourly_rate : 0;
+    if (raw && raw.pricing_mode === undefined) {
+      const existingIds = new Set(merged.custom_services.map(s => s.id));
+      const migratedWeddingSets: CustomService[] = [];
 
-  let customServicesTotal = 0;
-  if (input.selectedCustomServices && input.selectedCustomServices.length > 0) {
-    for (const item of input.selectedCustomServices) {
-      const srv = settings.custom_services.find((s) => s.id === item.serviceId);
-      if (srv && srv.is_active) {
-        customServicesTotal += srv.price * (item.quantity || 1);
+      if (!existingIds.has('srv-ceremony') && (raw.ceremony_musician_fee ?? 0) > 0) {
+        migratedWeddingSets.push({
+          ...WEDDING_SERVICE_PRESETS[0],
+          price: raw.ceremony_musician_fee!,
+        });
+      }
+      if (!existingIds.has('srv-cocktail') && (raw.cocktail_musician_fee ?? 0) > 0) {
+        migratedWeddingSets.push({
+          ...WEDDING_SERVICE_PRESETS[1],
+          price: raw.cocktail_musician_fee!,
+        });
+      }
+      if (!existingIds.has('srv-afterparty-dj') && (raw.dj_hourly_rate ?? 0) > 0) {
+        migratedWeddingSets.push({
+          ...WEDDING_SERVICE_PRESETS[3],
+          price: raw.dj_hourly_rate!,
+        });
+      }
+
+      if (migratedWeddingSets.length > 0) {
+        merged.custom_services = [...migratedWeddingSets, ...merged.custom_services];
       }
     }
   }
 
-  const subtotal = mainBandPrice + cocktailPrice + ceremonyPrice + djPrice + customServicesTotal;
-  const discountAmount = input.discountPercent > 0 ? Math.round(subtotal * (input.discountPercent / 100)) : 0;
-  const netTotal = subtotal - discountAmount;
-  const vatRate = settings.default_vat_rate || 21;
-  const vatAmount = Math.round(netTotal * (vatRate / 100) * 100) / 100;
-  const totalWithVat = Math.round((netTotal + vatAmount) * 100) / 100;
-  const depositRate = settings.default_deposit_rate || 20;
-  const initialDeposit = Math.round(totalWithVat * (depositRate / 100) * 100) / 100;
+  return merged;
+}
 
-  const estimatedMusiciansPayout = coreMusiciansCost + sessionMusiciansCost + cocktailPrice * 0.7 + ceremonyPrice * 0.7;
-  const estimatedPettyCashMargin = Math.max(0, netTotal - estimatedMusiciansPayout - productionCost);
+// ── Universal Calculation Helpers ───────────────────────────────
+
+export function calculateTravelFeeFromSettings(
+  oneWayDistanceKm: number,
+  musiciansCount: number,
+  settings: BandPricingSettings
+): number {
+  if (!oneWayDistanceKm || oneWayDistanceKm <= 0) return 0;
+  const freeRadius = Math.max(0, settings.free_travel_radius_km ?? 0);
+  const billableKm = Math.max(0, oneWayDistanceKm - freeRadius);
+  if (billableKm <= 0) return 0;
+
+  const rate = settings.travel_rate_per_km ?? 0.5;
+  const roundtripKm = billableKm * 2;
+
+  switch (settings.travel_calc_mode) {
+    case 'per_musician':
+      return Math.round(roundtripKm * rate * Math.max(1, musiciansCount));
+    case 'flat_km':
+      return Math.round(roundtripKm * rate);
+    case 'per_vehicle':
+    default: {
+      const vehicles = Math.max(1, settings.travel_vehicles_count || 1);
+      return Math.round(roundtripKm * rate * vehicles);
+    }
+  }
+}
+
+export function calculateLineupBaseFromSettings(params: {
+  packageId?: string;
+  performanceType?: PerformanceType;
+  musiciansCount: number;
+  rosterFeesSum?: number;
+  eventMonth?: number; // 1-12
+  settings: BandPricingSettings;
+}): {
+  rawLineupCost: number;
+  bandMarkupAmount: number;
+  seasonalAdjustmentAmount: number;
+  totalLineupBase: number;
+} {
+  const { packageId, performanceType, musiciansCount, rosterFeesSum, eventMonth, settings } = params;
+
+  let rawLineupCost = 0;
+
+  if (settings.pricing_mode === 'flat_packages') {
+    const activePkgs = (settings.lineup_packages || []).filter(p => p.is_active);
+    const matchedPkg =
+      (packageId ? activePkgs.find(p => p.id === packageId) : undefined) ||
+      (performanceType ? activePkgs.find(p => p.performanceType === performanceType) : undefined) ||
+      activePkgs.find(p => p.musiciansCount === musiciansCount) ||
+      activePkgs[activePkgs.length - 1];
+
+    rawLineupCost = matchedPkg
+      ? matchedPkg.flatPrice
+      : Math.max(1, musiciansCount) * (settings.base_musician_rate || settings.core_member_rate || 250);
+  } else {
+    if (settings.use_roster_member_fees && rosterFeesSum && rosterFeesSum > 0) {
+      rawLineupCost = rosterFeesSum;
+    } else {
+      const rate = settings.base_musician_rate || settings.core_member_rate || 250;
+      rawLineupCost = Math.max(1, musiciansCount) * rate;
+    }
+  }
+
+  // Band Fund / Agency Markup
+  let bandMarkupAmount = 0;
+  if (settings.band_markup_type === 'fixed' && settings.band_markup_value > 0) {
+    bandMarkupAmount = Math.round(settings.band_markup_value);
+  } else if (settings.band_markup_type === 'percent' && settings.band_markup_value > 0) {
+    bandMarkupAmount = Math.round(rawLineupCost * (settings.band_markup_value / 100));
+  }
+
+  const subtotalBeforeSeason = rawLineupCost + bandMarkupAmount;
+
+  // Optional Seasonal Adjustment
+  let seasonalAdjustmentAmount = 0;
+  if (settings.seasonal_pricing_enabled && eventMonth) {
+    if (settings.peak_months?.includes(eventMonth)) {
+      seasonalAdjustmentAmount = Math.round(
+        subtotalBeforeSeason * ((settings.peak_season_multiplier || 1) - 1)
+      );
+    } else if (settings.off_peak_months?.includes(eventMonth)) {
+      seasonalAdjustmentAmount = -Math.round(
+        subtotalBeforeSeason * (1 - (settings.low_season_multiplier || 1))
+      );
+    }
+  }
 
   return {
-    coreMusicians,
-    sessionMusicians,
-    coreMusiciansCost,
-    sessionMusiciansCost,
-    travelCost: Math.round(travelCost * 100) / 100,
-    seasonMultiplier,
-    seasonName,
+    rawLineupCost,
+    bandMarkupAmount,
+    seasonalAdjustmentAmount,
+    totalLineupBase: Math.max(0, subtotalBeforeSeason + seasonalAdjustmentAmount),
+  };
+}
+
+export interface SmartQuoteInput {
+  musiciansCount: number;
+  performanceType?: PerformanceType;
+  distanceKm: number;
+  productionTier: 'standard' | 'pro' | 'none';
+  extraLocationsCount?: number;
+  cocktailMusicians?: number;
+  ceremonyMusicians?: number;
+  djHours?: number;
+  discountPercent?: number;
+  eventMonth?: number;
+}
+
+export interface SmartQuoteBreakdown {
+  coreMusiciansCost: number;
+  bandMarkupCost: number;
+  seasonalAdjustmentCost: number;
+  totalLineupBase: number;
+  productionCost: number;
+  travelCost: number;
+  extrasCost: number;
+  netTotal: number;
+  vatAmount: number;
+  totalWithVat: number;
+}
+
+export function calculateSmartQuote(
+  input: SmartQuoteInput,
+  settings: BandPricingSettings
+): SmartQuoteBreakdown {
+  const lineup = calculateLineupBaseFromSettings({
+    performanceType: input.performanceType,
+    musiciansCount: input.musiciansCount,
+    eventMonth: input.eventMonth,
+    settings,
+  });
+
+  const isProductionFree =
+    settings.default_production_mode === 'included' ||
+    settings.default_production_mode === 'client_provided' ||
+    settings.default_production_mode === 'none' ||
+    input.productionTier === 'none';
+
+  const productionCost = isProductionFree
+    ? 0
+    : input.productionTier === 'pro'
+      ? settings.production_pro_fee
+      : settings.production_standard_fee;
+
+  const extraZonesCost =
+    (input.extraLocationsCount || 0) * (settings.production_extra_location_fee || 0);
+
+  const isTravelFree =
+    Boolean(settings.default_travel_included) ||
+    settings.default_travel_mode === 'included' ||
+    settings.default_travel_mode === 'client_provided';
+
+  const travelCost = isTravelFree
+    ? 0
+    : calculateTravelFeeFromSettings(input.distanceKm, input.musiciansCount, settings);
+
+  const ceremonyCost = (input.ceremonyMusicians || 0) * (settings.ceremony_musician_fee || 0);
+  const cocktailCost = (input.cocktailMusicians || 0) * (settings.cocktail_musician_fee || 0);
+  const djCost = (input.djHours || 0) * (settings.dj_hourly_rate || 0);
+  const extrasCost = ceremonyCost + cocktailCost + djCost + extraZonesCost;
+
+  const grossBeforeDiscount = lineup.totalLineupBase + productionCost + travelCost + extrasCost;
+  const discountAmt =
+    input.discountPercent && input.discountPercent > 0
+      ? Math.round(grossBeforeDiscount * (input.discountPercent / 100))
+      : 0;
+
+  const netTotal = Math.max(0, grossBeforeDiscount - discountAmt);
+  const vatAmount = Math.round(netTotal * ((settings.default_vat_rate || 0) / 100));
+  const totalWithVat = netTotal + vatAmount;
+
+  return {
+    coreMusiciansCost: lineup.rawLineupCost,
+    bandMarkupCost: lineup.bandMarkupAmount,
+    seasonalAdjustmentCost: lineup.seasonalAdjustmentAmount,
+    totalLineupBase: lineup.totalLineupBase,
     productionCost,
-    mainBandCost: Math.round(mainBandCost),
-    mainBandPrice,
-    cocktailPrice,
-    ceremonyPrice,
-    djPrice,
-    customServicesTotal,
-    subtotal,
-    discountAmount,
+    travelCost,
+    extrasCost,
     netTotal,
     vatAmount,
     totalWithVat,
-    initialDeposit,
-    estimatedMusiciansPayout,
-    estimatedPettyCashMargin,
   };
+}
+
+// ── Persistence Layer (Supabase + LocalStorage Fallback) ────────
+
+const STORAGE_KEY_PREFIX = 'bandwith_pricing_settings_';
+
+export async function getBandPricing(bandId: string): Promise<BandPricingSettings> {
+  const effectiveId = bandId || 'default';
+  const localKey = `${STORAGE_KEY_PREFIX}${effectiveId}`;
+
+  try {
+    if (effectiveId !== 'default') {
+      const { data, error } = await supabase
+        .from('bands')
+        .select('pricing_settings')
+        .eq('id', effectiveId)
+        .maybeSingle();
+
+      if (!error && data?.pricing_settings) {
+        const normalized = normalizeBandPricingSettings(data.pricing_settings, effectiveId);
+        localStorage.setItem(localKey, JSON.stringify(normalized));
+        return normalized;
+      }
+    }
+  } catch (err) {
+    console.warn('[pricing] Supabase fetch fallback to localStorage:', err);
+  }
+
+  try {
+    const cached = localStorage.getItem(localKey);
+    if (cached) {
+      return normalizeBandPricingSettings(JSON.parse(cached), effectiveId);
+    }
+  } catch {
+    // Ignore JSON parse errors
+  }
+
+  return normalizeBandPricingSettings(DEFAULT_BAND_PRICING, effectiveId);
+}
+
+export async function saveBandPricing(
+  settings: BandPricingSettings
+): Promise<BandPricingSettings> {
+  const effectiveId = settings.band_id || 'default';
+  const normalized = normalizeBandPricingSettings(settings, effectiveId);
+  const localKey = `${STORAGE_KEY_PREFIX}${effectiveId}`;
+
+  try {
+    localStorage.setItem(localKey, JSON.stringify(normalized));
+  } catch (err) {
+    console.warn('[pricing] Failed to cache pricing in localStorage:', err);
+  }
+
+  try {
+    if (effectiveId !== 'default') {
+      await supabase
+        .from('bands')
+        .update({ pricing_settings: normalized })
+        .eq('id', effectiveId);
+    }
+  } catch (err) {
+    console.warn('[pricing] Failed to save pricing_settings to Supabase:', err);
+  }
+
+  return normalized;
+}
+
+export async function uploadBandBrandingAsset(
+  bandId: string,
+  file: File,
+  assetType: 'logo' | 'signature'
+): Promise<string> {
+  try {
+    const ext = file.name.split('.').pop() || 'png';
+    const path = `${bandId || 'default'}/${assetType}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('band-branding')
+      .upload(path, file, { upsert: true });
+
+    if (!error) {
+      const { data } = supabase.storage.from('band-branding').getPublicUrl(path);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch {
+    // Fallback to Data URL if storage bucket is not configured
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = err => reject(err);
+    reader.readAsDataURL(file);
+  });
 }

@@ -273,20 +273,20 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Bell / Notifications */}
             <motion.button 
               type="button"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={onOpenNotifications}
               aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
-              className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center transition-colors shadow-2xs focus:outline-none cursor-pointer"
+              className="relative shrink-0 p-2 text-foreground/80 hover:text-foreground flex items-center justify-center transition-colors focus:outline-none cursor-pointer"
             >
-              <Bell className="w-5 h-5 text-foreground" />
+              <Bell className="w-6 h-6 text-foreground" />
               <AnimatePresence>
                 {unreadCount > 0 && (
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
+                    className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
                   >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </motion.div>

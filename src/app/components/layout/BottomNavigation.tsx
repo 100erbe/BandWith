@@ -9,6 +9,7 @@ import {
   IconCalendar,
   IconChat,
   IconPlus,
+  IconSettings,
   type IconProps,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -74,36 +75,6 @@ const TAB_INDEX_MAP: Record<string, number> = {
 
 const PILL_POSITIONS = [4, 76, 208, 280];
 const PILL_WIDTH = 72;
-
-/* ═══ 2-Track Studio Faders — Music-Tech Aesthetic Navigation Icon ═══ */
-const SettingsIcon: React.FC<IconProps> = ({
-  size = 26.4,
-  color = 'currentColor',
-  strokeWidth = 2.4,
-  className,
-  ...props
-}) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={color}
-    strokeWidth={strokeWidth}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    {...props}
-  >
-    <line x1="4" y1="8" x2="10" y2="8" />
-    <line x1="16" y1="8" x2="20" y2="8" />
-    <circle cx="13" cy="8" r="3" />
-    <line x1="4" y1="16" x2="8" y2="16" />
-    <line x1="14" y1="16" x2="20" y2="16" />
-    <circle cx="11" cy="16" r="3" />
-  </svg>
-);
 
 const SlidingPill: React.FC<{
   activeKey: string | null;
@@ -316,7 +287,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     {
       key: 'Settings',
       label: 'Settings',
-      icon: SettingsIcon,
+      icon: IconSettings,
       isActive: isSettingsActive,
       onClick: () => {
         haptic.tap();

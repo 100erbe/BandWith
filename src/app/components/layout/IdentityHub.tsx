@@ -24,13 +24,20 @@ import {
   ChevronDown,
   HelpCircle,
   Download,
-  Settings,
+  IconSettings,
+  Check,
+  Edit3,
+  Upload,
+  Trash2,
+  Loader2,
 } from '@/app/components/icons';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useBand } from '@/lib/BandContext';
+import { updateBand } from '@/lib/services/bands';
+import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import { Switch } from '@/app/components/ui/switch';
 
@@ -78,7 +85,12 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 }) => {
   const { signOut, user, profile } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
-  const { isAdmin: isBandAdmin } = useBand();
+  const {
+    isAdmin: isBandAdmin,
+    selectedBand: activeBandDetails,
+    bands: realBandsList,
+    refreshBands,
+  } = useBand();
 
   const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
   const isAndroid = typeof window !== 'undefined' && (Capacitor.getPlatform() === 'android' || /Android/i.test(navigator.userAgent));
@@ -106,6 +118,76 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   };
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isEditingBandDetails, setIsEditingBandDetails] = useState(false);
+  const [editBandName, setEditBandName] = useState('');
+  const [editBandDescription, setEditBandDescription] = useState('');
+  const [editBandCity, setEditBandCity] = useState('');
+  const [editBandLogoUrl, setEditBandLogoUrl] = useState('');
+  const [uploadingBandLogo, setUploadingBandLogo] = useState(false);
+  const [savingBandDetails, setSavingBandDetails] = useState(false);
+  const bandLogoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setEditBandName(activeBandDetails?.name || selectedBand.name || '');
+    setEditBandDescription(activeBandDetails?.description || '');
+    setEditBandCity(activeBandDetails?.home_base_address || '');
+    setEditBandLogoUrl(activeBandDetails?.logo_url || '');
+    setIsEditingBandDetails(false);
+  }, [
+    activeBandDetails?.id,
+    activeBandDetails?.name,
+    activeBandDetails?.description,
+    activeBandDetails?.home_base_address,
+    activeBandDetails?.logo_url,
+    selectedBand.name,
+  ]);
+
+  const handleBandLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBandLogo(true);
+    try {
+      const bandIdStr = activeBandDetails?.id || String(selectedBand.id || 'default');
+      const url = await uploadBandBrandingAsset(bandIdStr, file, 'logo');
+      setEditBandLogoUrl(url);
+    } catch (err) {
+      console.error('Band logo upload failed:', err);
+    } finally {
+      setUploadingBandLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveBandIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = editBandName.trim();
+    if (!trimmedName) return;
+    setSavingBandDetails(true);
+    try {
+      if (activeBandDetails?.id) {
+        await updateBand(activeBandDetails.id, {
+          name: trimmedName,
+          description: editBandDescription.trim() || undefined,
+          home_base_address: editBandCity.trim() || undefined,
+          logo_url: editBandLogoUrl || undefined,
+        });
+        // Also keep quote PDF branding logo & origin synced
+        const currentPricing = await getBandPricing(activeBandDetails.id);
+        await saveBandPricing({
+          ...currentPricing,
+          band_id: activeBandDetails.id,
+          band_logo_url: editBandLogoUrl || currentPricing.band_logo_url || '',
+          band_origin_address: editBandCity.trim() || currentPricing.band_origin_address || '',
+        });
+        await refreshBands();
+      }
+      setIsEditingBandDetails(false);
+    } catch (err) {
+      console.error('Failed to update band details:', err);
+    } finally {
+      setSavingBandDetails(false);
+    }
+  };
   const [pushEnabled, setPushEnabled] = useState(() => {
     try {
       return localStorage.getItem('bandwith_push_notifs') !== 'false';
@@ -174,6 +256,31 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
   const roleLabel = selectedBand.role || (profile?.role ? profile.role.toUpperCase() : 'MEMBER');
   const isAdmin = isBandAdmin || roleLabel === 'ADMIN';
+
+  const rosterMembers = activeBandDetails?.members || [];
+  const lineupCount =
+    selectedBand.members || activeBandDetails?.member_count || rosterMembers.length || 1;
+  const myBandMember = rosterMembers.find((m) => m.user_id === user?.id);
+  const myInstrument = myBandMember?.instrument
+    ? myBandMember.instrument.charAt(0).toUpperCase() + myBandMember.instrument.slice(1)
+    : null;
+  const bandInitials =
+    selectedBand.initials ||
+    selectedBand.name
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() ||
+    'BW';
+  const bandSubtitle = [
+    `${lineupCount} ${lineupCount === 1 ? 'Musician' : 'Musicians'} in Lineup`,
+    isAdmin ? 'Band Admin' : 'Band Member',
+    myInstrument,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const assetShortcuts = [
     {
@@ -340,68 +447,291 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               </div>
             </div>
 
-            {/* ═══ 2. ACTIVE PROJECT & BAND ROSTER ═══ */}
+            {/* ═══ 2. CURRENT BAND & LINEUP ═══ */}
             <div className="p-5 rounded-2xl bg-card border border-border/40 flex flex-col gap-4 shadow-sm">
+              {/* Top Band Identity Row */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    ACTIVE PROJECT
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground leading-none mt-1">
-                    {selectedBand.name}
-                  </h3>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onOpenBandSettings) {
-                          onOpenBandSettings();
-                        } else {
-                          onOpenPricing?.();
-                        }
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Band Settings</span>
-                    </button>
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  {activeBandDetails?.logo_url ? (
+                    <img
+                      src={activeBandDetails.logo_url}
+                      alt={selectedBand.name}
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border border-border/40 shrink-0 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-foreground text-background font-black text-base sm:text-lg flex items-center justify-center shrink-0 shadow-xs tracking-tight">
+                      {bandInitials}
+                    </div>
                   )}
 
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+                        CURRENT BAND
+                      </span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground leading-tight truncate mt-1">
+                      {selectedBand.name}
+                    </h3>
+                    <span className="text-xs font-semibold text-muted-foreground truncate mt-0.5">
+                      {bandSubtitle}
+                      {activeBandDetails?.home_base_address
+                        ? ` · ${activeBandDetails.home_base_address}`
+                        : ''}
+                    </span>
+                    {activeBandDetails?.description && (
+                      <span className="text-[11px] text-foreground/65 truncate mt-0.5">
+                        {activeBandDetails.description}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingBandDetails((prev) => !prev)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-xl border text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-all shrink-0',
+                      isEditingBandDetails
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-foreground/5 hover:bg-foreground/10 border-border/40 text-foreground'
+                    )}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{isEditingBandDetails ? 'Close' : 'Edit'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Inline Edit Band Name & Details Drawer */}
+              <AnimatePresence initial={false}>
+                {isEditingBandDetails && isAdmin && (
+                  <motion.form
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeInOut' }}
+                    onSubmit={handleSaveBandIdentity}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 rounded-xl bg-background/70 border border-border/50 flex flex-col gap-3.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
+                            {editBandLogoUrl ? (
+                              <img
+                                src={editBandLogoUrl}
+                                alt="Band Emblem"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-black text-muted-foreground">
+                                {bandInitials}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                              Band Emblem / Logo
+                            </span>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              Shown on your band card, switcher & quote PDFs
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <input
+                            ref={bandLogoInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleBandLogoFileChange}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => bandLogoInputRef.current?.click()}
+                            disabled={uploadingBandLogo}
+                            className="px-3 py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground hover:text-background text-foreground text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                          >
+                            {uploadingBandLogo ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="w-3.5 h-3.5" />
+                            )}
+                            <span>{editBandLogoUrl ? 'Change' : 'Upload'}</span>
+                          </button>
+                          {editBandLogoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setEditBandLogoUrl('')}
+                              className="p-1.5 rounded-lg bg-foreground/5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove Logo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Band Name
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={editBandName}
+                            onChange={(e) => setEditBandName(e.target.value)}
+                            placeholder="e.g. Bandazz"
+                            className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:border-primary"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Home Base City
+                          </label>
+                          <input
+                            type="text"
+                            value={editBandCity}
+                            onChange={(e) => setEditBandCity(e.target.value)}
+                            placeholder="e.g. Milan, Italy"
+                            className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Band Bio / Tagline (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={editBandDescription}
+                          onChange={(e) => setEditBandDescription(e.target.value)}
+                          placeholder="e.g. Live Funk, Soul & Disco Collective"
+                          className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingBandDetails(false)}
+                          className="px-3.5 py-2 rounded-lg bg-foreground/5 hover:bg-foreground/10 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={savingBandDetails || !editBandName.trim()}
+                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 hover:opacity-95 transition-opacity disabled:opacity-50"
+                        >
+                          {savingBandDetails ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span>Save Details</span>
+                        </button>
+                      </div>
+                    </div>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+
+              {/* Interactive Lineup Roster & Band Settings Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onEditBand?.();
+                  }}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 flex items-center justify-between gap-3 active:scale-[0.99] transition-all group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {rosterMembers.length > 0 ? (
+                      <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+                        {rosterMembers.slice(0, 4).map((m) => {
+                          const mName =
+                            m.stage_name ||
+                            m.profile?.full_name ||
+                            m.profile?.email?.split('@')[0] ||
+                            'M';
+                          const mInitials = mName
+                            .split(' ')
+                            .filter(Boolean)
+                            .map((p) => p[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase();
+                          return m.profile?.avatar_url ? (
+                            <img
+                              key={m.id}
+                              src={m.profile.avatar_url}
+                              alt={mName}
+                              className="w-6 h-6 rounded-full object-cover border-2 border-card shrink-0"
+                            />
+                          ) : (
+                            <div
+                              key={m.id}
+                              className="w-6 h-6 rounded-full bg-foreground/15 text-foreground text-[9px] font-black flex items-center justify-center border-2 border-card shrink-0"
+                            >
+                              {mInitials}
+                            </div>
+                          );
+                        })}
+                        {lineupCount > 4 && (
+                          <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center border-2 border-card shrink-0">
+                            +{lineupCount - 4}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-7 h-7 rounded-lg bg-foreground/10 flex items-center justify-center text-foreground shrink-0">
+                        <Users className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
+                        Lineup & Members
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-foreground/10 text-[10px] font-black text-foreground/80 tabular-nums shrink-0">
+                        {lineupCount}
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                </button>
+
+                {isAdmin && (
                   <button
                     type="button"
                     onClick={() => {
-                      onEditBand?.();
+                      if (onOpenBandSettings) {
+                        onOpenBandSettings();
+                      } else {
+                        onOpenPricing?.();
+                      }
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-xs font-bold uppercase tracking-wider text-primary flex items-center justify-center gap-2 active:scale-[0.99] transition-all shrink-0"
                   >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Members</span>
+                    <IconSettings className="w-4 h-4" />
+                    <span>Band Settings</span>
                   </button>
-                </div>
+                )}
               </div>
 
-              {/* Band Metadata Pills */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-foreground/5 border border-border/40 text-foreground/80">
-                  {selectedBand.members} {selectedBand.members === 1 ? 'Member' : 'Members'}
-                </span>
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-foreground/5 border border-border/40 text-foreground/80">
-                  Genre: {selectedBand.genre || 'Live Music'}
-                </span>
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-foreground/5 border border-border/40 text-foreground/80">
-                  Plan: {selectedBand.plan || 'Standard'}
-                </span>
-              </div>
-
-              {/* Band Switcher Quick Row (Interactive) */}
-              {bands.length > 0 && (
-                <div className="flex flex-col gap-2 pt-2 border-t border-border/30">
+              {/* Band Switcher / Multi-Band Section */}
+              {bands.length > 1 ? (
+                <div className="flex flex-col gap-2.5 pt-3 border-t border-border/30">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      SWITCH BAND
+                      YOUR BANDS ({bands.length})
                     </span>
                     <button
                       type="button"
@@ -414,26 +744,95 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {bands.map((b) => {
-                      const isActive = b.id === selectedBand.id;
+                      const isActive = b.id === selectedBand.id || b.name === selectedBand.name;
+                      const matchedRealBand = realBandsList?.find((rb) => rb.name === b.name);
+                      const itemInitials =
+                        b.initials ||
+                        b.name
+                          .split(' ')
+                          .filter(Boolean)
+                          .map((w) => w[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase() ||
+                        'BW';
                       return (
                         <button
                           key={b.id}
                           type="button"
                           onClick={() => setSelectedBand(b)}
                           className={cn(
-                            'px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border',
+                            'p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 active:scale-[0.99]',
                             isActive
-                              ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                              : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-border/40'
+                              ? 'bg-primary/10 border-primary/40 shadow-2xs'
+                              : 'bg-foreground/[0.03] hover:bg-foreground/[0.07] border-border/40'
                           )}
                         >
-                          {b.name}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {matchedRealBand?.logo_url ? (
+                              <img
+                                src={matchedRealBand.logo_url}
+                                alt={b.name}
+                                className="w-9 h-9 rounded-lg object-cover border border-border/40 shrink-0"
+                              />
+                            ) : (
+                              <div
+                                className={cn(
+                                  'w-9 h-9 rounded-lg text-xs font-black flex items-center justify-center shrink-0 tracking-tight',
+                                  isActive
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-foreground/10 text-foreground/80'
+                                )}
+                              >
+                                {itemInitials}
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span
+                                className={cn(
+                                  'text-xs font-black uppercase tracking-wide truncate leading-tight',
+                                  isActive ? 'text-foreground' : 'text-foreground/85'
+                                )}
+                              >
+                                {b.name}
+                              </span>
+                              <span className="text-[10px] font-semibold text-muted-foreground truncate mt-0.5">
+                                {b.members} {b.members === 1 ? 'member' : 'members'} ·{' '}
+                                {b.role === 'ADMIN' ? 'Admin' : 'Member'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {isActive ? (
+                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md bg-foreground/5 shrink-0">
+                              Switch
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between pt-3 border-t border-border/30">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Playing in another act or side project?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddEntity?.();
+                    }}
+                    className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3 h-3" /> New Band
+                  </button>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -71,15 +71,39 @@ const SUGGESTED_SONGS: OnboardingSong[] = [
 interface AddSongsProps {
   onBack: () => void;
   onComplete: () => void;
+  closeModalRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
-export const AddSongs: React.FC<AddSongsProps> = ({ onBack, onComplete }) => {
+export const AddSongs: React.FC<AddSongsProps> = ({
+  onBack,
+  onComplete,
+  closeModalRef,
+}) => {
   const { songs, addSong, removeSong, addSongs } = useOnboarding();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (closeModalRef) {
+      closeModalRef.current = () => {
+        if (showAddModal) {
+          setShowAddModal(false);
+          return true;
+        }
+        if (showImportModal) {
+          setShowImportModal(false);
+          return true;
+        }
+        return false;
+      };
+    }
+    return () => {
+      if (closeModalRef) closeModalRef.current = null;
+    };
+  }, [showAddModal, showImportModal, closeModalRef]);
 
   // Custom song form
   const [customSong, setCustomSong] = useState<Partial<OnboardingSong>>({});

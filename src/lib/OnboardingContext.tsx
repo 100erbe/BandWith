@@ -193,7 +193,9 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
 
   // Get steps based on path
   const getSteps = useCallback(() => {
-    return state.path === 'creator' ? CREATOR_STEPS : JOINER_STEPS;
+    if (state.path === 'creator') return CREATOR_STEPS;
+    if (state.path === 'solo') return SOLO_STEPS;
+    return JOINER_STEPS;
   }, [state.path]);
 
   // Get current step name
@@ -222,7 +224,12 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
   // Navigation
   const nextStep = useCallback(() => {
     setState((prev) => {
-      const steps = prev.path === 'creator' ? CREATOR_STEPS : JOINER_STEPS;
+      const steps =
+        prev.path === 'creator'
+          ? CREATOR_STEPS
+          : prev.path === 'solo'
+          ? SOLO_STEPS
+          : JOINER_STEPS;
       const newStep = Math.min(prev.currentStep + 1, steps.length - 1);
       return { ...prev, currentStep: newStep };
     });

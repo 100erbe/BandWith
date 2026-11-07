@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, CheckCircle2, Loader2 } from '@/app/components/icons';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
@@ -9,6 +9,7 @@ interface WelcomeScreenProps {
   onInviteCodeSubmit: (code: string) => void;
   inviteCodeLoading: boolean;
   inviteCodeError: string | null;
+  closeInviteInputRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -17,10 +18,28 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onInviteCodeSubmit,
   inviteCodeLoading,
   inviteCodeError,
+  closeInviteInputRef,
 }) => {
   const [showInviteInput, setShowInviteInput] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (closeInviteInputRef) {
+      closeInviteInputRef.current = () => {
+        if (showInviteInput) {
+          setShowInviteInput(false);
+          setInviteCode('');
+          setSubmitted(false);
+          return true;
+        }
+        return false;
+      };
+    }
+    return () => {
+      if (closeInviteInputRef) closeInviteInputRef.current = null;
+    };
+  }, [showInviteInput, closeInviteInputRef]);
 
   const handleInviteSubmit = () => {
     if (inviteCode.trim().length < 2) return;

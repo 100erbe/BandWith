@@ -893,12 +893,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // ── STEP 01: EVENT & LINEUP ─────────────────────────────────
   const renderStep1 = () => (
-    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-      {/* Optional Title & Client Inputs (2-Column) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
+      {/* Optional Title & Client Inputs (Always 2-Column so Lineup peeks at 90% viewport) */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-            EVENT TITLE <span className="text-xs font-normal text-muted-foreground/60 lowercase">(optional)</span>
+          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5 truncate">
+            EVENT TITLE <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">(opt.)</span>
           </label>
           <input
             type="text"
@@ -908,12 +908,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               setTitleManuallyEdited(true);
             }}
             placeholder={getEffectiveTitle()}
-            className="w-full bg-transparent border-b border-border/40 pb-2 text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
+            className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm sm:text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-            CLIENT / PROMOTER <span className="text-xs font-normal text-muted-foreground/60 lowercase">(optional)</span>
+          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5 truncate">
+            CLIENT / PROMOTER <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">(opt.)</span>
           </label>
           <input
             type="text"
@@ -928,7 +928,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               }
             }}
             placeholder="e.g. Rossi / Red Bull"
-            className="w-full bg-transparent border-b border-border/40 pb-2 text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
+            className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm sm:text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
           />
         </div>
       </div>

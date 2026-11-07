@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Play, Pause, Square, SkipForward, Mic2, MessageSquare, 
   CheckCircle2, AlertTriangle, XCircle, RotateCcw, Clock, 
-  Music, ChevronRight, User, Settings, Volume2, Plus, FileText
+  Music, ChevronRight, User, Volume2, Plus, FileText
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { RehearsalSong } from './types';

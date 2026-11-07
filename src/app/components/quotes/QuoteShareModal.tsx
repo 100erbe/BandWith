@@ -9,7 +9,7 @@ import {
   Copy,
   Check,
   FileText,
-  Settings,
+  IconSettings,
   Sparkles,
   ChevronLeft,
   ChevronRight,
@@ -276,7 +276,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                 className="px-3.5 py-2 rounded-full bg-[#F2F2F0] hover:bg-black hover:text-white text-black text-[11px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5"
                 title="Configure Band Logo, Signature & Payment Details"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <IconSettings className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Branding & Payment</span>
               </button>
             )}

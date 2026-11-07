@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useOnboarding, OnboardingPath, CREATOR_STEPS } from '@/lib/OnboardingContext';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { useOnboarding, OnboardingPath } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
 
 import WelcomeScreen from './WelcomeScreen';
@@ -35,8 +37,6 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     path,
     currentStep,
     startOnboarding,
-    nextStep,
-    prevStep,
     goToStep,
     completeOnboarding,
     acceptInviteCode,
@@ -45,9 +45,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     resetOnboarding,
   } = useOnboarding();
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  // Single screen mode state (replaces multiple booleans)
+  // Screen mode state
   const [screenMode, setScreenMode] = useState<ScreenMode>(
     path ? 'flow' : 'welcome'
   );
@@ -59,20 +59,45 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [lookupEmail, setLookupEmail] = useState('');
   const [isLoading, setIsLoading] = useState(!!inviteToken);
 
+  // Modal and back handling refs
+  const closeInviteInputRef = useRef<(() => boolean) | null>(null);
+  const closeAddSongsModalRef = useRef<(() => boolean) | null>(null);
+  const lastBackPressRef = useRef<number>(0);
+  const [exitToast, setExitToast] = useState<string | null>(null);
+
+  // Keep a snapshot of navigation state for the hardware back button handler
+  const backNavStateRef = useRef({
+    screenMode,
+    path,
+    currentStep,
+    joinerSubStep,
+    foundInvites,
+    selectedInvite,
+    inviteData,
+    isAuthenticated,
+  });
+
+  useEffect(() => {
+    backNavStateRef.current = {
+      screenMode,
+      path,
+      currentStep,
+      joinerSubStep,
+      foundInvites,
+      selectedInvite,
+      inviteData,
+      isAuthenticated,
+    };
+  });
+
   // When user authenticates while on sign-in screen, go back to flow
   useEffect(() => {
     if (isAuthenticated && screenMode === 'sign-in') {
-      // User just signed in — go to the flow
-      // If they have no path selected, start creator flow automatically
       if (!path) {
         startOnboarding('creator');
       }
       setScreenMode('flow');
     }
-    
-    // Safety check: if we are at step 0 (Band Creation) but NOT authenticated, 
-    // we should be seeing account creation, not band creation.
-    // This fixed the "Get Started skips Account Creation" bug.
   }, [isAuthenticated, screenMode, path, startOnboarding]);
 
   // Handle invite token on mount
@@ -97,22 +122,166 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     setScreenMode('welcome');
   }, [resetOnboarding]);
 
-  const handleSelectPath = useCallback((selectedPath: OnboardingPath) => {
-    startOnboarding(selectedPath);
-    setScreenMode('flow');
-  }, [startOnboarding]);
-
   const handleComplete = useCallback(async () => {
-    console.log("OnboardingFlow handleComplete triggered!");
     try {
       await completeOnboarding();
-      console.log("completeOnboarding finished successfully!");
     } catch (e) {
-      console.error("Onboarding complete error:", e);
+      console.error('Onboarding complete error:', e);
     }
-    console.log("Calling onComplete callback!");
-    onComplete(); // Fire synchronously to guarantee execution
+    onComplete();
   }, [completeOnboarding, onComplete]);
+
+  // Unified Back Navigation Handler (used by Android soft key, Escape key, and back buttons)
+  const handleBack = useCallback(() => {
+    // 1. If child modal is open (e.g., custom song or import modal in AddSongs)
+    if (closeAddSongsModalRef.current && closeAddSongsModalRef.current()) {
+      return;
+    }
+
+    const s = backNavStateRef.current;
+
+    // 2. Screen modes: forgot-password -> sign-in
+    if (s.screenMode === 'forgot-password') {
+      setScreenMode('sign-in');
+      return;
+    }
+
+    // 3. Screen modes: sign-in -> welcome
+    if (s.screenMode === 'sign-in') {
+      setScreenMode('welcome');
+      return;
+    }
+
+    // 4. Welcome screen (root screen)
+    if (s.screenMode === 'welcome' && !s.path) {
+      // If inline invite input is open, close it first
+      if (closeInviteInputRef.current && closeInviteInputRef.current()) {
+        return;
+      }
+      // Double tap to exit on Android
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        App.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        setExitToast('Tap again to exit');
+        setTimeout(() => setExitToast(null), 2000);
+      }
+      return;
+    }
+
+    // 5. Flow navigation: CREATOR PATH
+    if (s.path === 'creator') {
+      // Step 0: Account creation (if not authenticated)
+      // Step 1: Intent selector
+      if (!s.isAuthenticated || s.currentStep <= 1) {
+        handleBackToWelcome();
+        return;
+      }
+      // Step 2: Band creation -> back to Intent selector (step 1)
+      if (s.currentStep === 2) {
+        goToStep(1);
+        return;
+      }
+      // Step 3: Profile setup -> back to Band creation (step 2)
+      if (s.currentStep === 3) {
+        goToStep(2);
+        return;
+      }
+      // Step 4: Invite members -> back to Profile setup (step 3)
+      if (s.currentStep === 4) {
+        goToStep(3);
+        return;
+      }
+      // Step 5: Add songs -> back to Invite members (step 4)
+      if (s.currentStep === 5) {
+        goToStep(4);
+        return;
+      }
+      // Step 6: Completion screen -> back to Add songs (step 5)
+      if (s.currentStep === 6) {
+        goToStep(5);
+        return;
+      }
+    }
+
+    // 6. Flow navigation: SOLO PATH
+    if (s.path === 'solo') {
+      // Step 1: Profile setup -> return to Intent selector in creator path
+      if (s.currentStep <= 1) {
+        startOnboarding('creator');
+        goToStep(1);
+        return;
+      }
+      // Step 2: Completion -> back to Profile setup (step 1)
+      if (s.currentStep === 2) {
+        goToStep(1);
+        return;
+      }
+    }
+
+    // 7. Flow navigation: JOINER PATH
+    if (s.path === 'joiner') {
+      if (s.currentStep === 0) {
+        if (s.inviteData) {
+          handleBackToWelcome();
+          return;
+        }
+        if (s.joinerSubStep === 'invite-found') {
+          if (s.foundInvites.length > 1) {
+            setJoinerSubStep('select-invite');
+          } else {
+            setJoinerSubStep('email-lookup');
+          }
+          return;
+        }
+        if (s.joinerSubStep === 'select-invite' || s.joinerSubStep === 'no-invites') {
+          setJoinerSubStep('email-lookup');
+          return;
+        }
+        if (s.joinerSubStep === 'email-lookup') {
+          handleBackToWelcome();
+          return;
+        }
+      }
+      // Step 1 or higher in joiner -> back to step 0 (invite landing / lookup)
+      if (s.currentStep >= 1) {
+        goToStep(0);
+        return;
+      }
+    }
+
+    // Fallback: return to welcome screen
+    handleBackToWelcome();
+  }, [handleBackToWelcome, goToStep, startOnboarding]);
+
+  // Register Capacitor hardware/soft-key back button listener + Escape key for web
+  useEffect(() => {
+    let removeListener: (() => void) | undefined;
+
+    try {
+      const handlerPromise = App.addListener('backButton', () => {
+        handleBack();
+      });
+      handlerPromise.then((h) => {
+        removeListener = () => h.remove();
+      });
+    } catch {
+      // Non-native environment
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      if (removeListener) removeListener();
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleBack]);
 
   // Loading state for invite
   if (isLoading) {
@@ -157,24 +326,39 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   if (screenMode === 'welcome' && !path) {
     return (
-      <WelcomeScreen
-        onGetStarted={() => {
-          startOnboarding('creator');
-          setScreenMode('flow');
-        }}
-        onSignIn={() => setScreenMode('sign-in')}
-        onInviteCodeSubmit={(code) => {
-          acceptInviteCode(code).then((valid) => {
-            if (valid) {
-              // Code validated — pendingBandId is set. Proceed as creator path.
-              startOnboarding('creator');
-              setScreenMode('flow');
-            }
-          });
-        }}
-        inviteCodeLoading={false}
-        inviteCodeError={null}
-      />
+      <>
+        <WelcomeScreen
+          onGetStarted={() => {
+            startOnboarding('creator');
+            setScreenMode('flow');
+          }}
+          onSignIn={() => setScreenMode('sign-in')}
+          onInviteCodeSubmit={(code) => {
+            acceptInviteCode(code).then((valid) => {
+              if (valid) {
+                startOnboarding('creator');
+                setScreenMode('flow');
+              }
+            });
+          }}
+          inviteCodeLoading={false}
+          inviteCodeError={null}
+          closeInviteInputRef={closeInviteInputRef}
+        />
+        <AnimatePresence>
+          {exitToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[250] px-4 py-2 rounded-full text-xs font-semibold text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+            >
+              {exitToast}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -182,54 +366,52 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   if (path === 'creator') {
     const renderCreatorStep = () => {
-      // ── Not yet authenticated: show account creation first ──
+      // Step 0: Not yet authenticated -> show account creation
       if (!isAuthenticated) {
-        if (currentStep === 0) {
-          return (
-            <AccountCreation
-              key="account"
-              onBack={handleBackToWelcome}
-              onComplete={nextStep}
-            />
-          );
-        }
-        // After account creation, the user becomes authenticated,
-        // so this branch is never reached for currentStep > 0.
-        return null;
+        return (
+          <AccountCreation
+            key="account"
+            onBack={handleBackToWelcome}
+            onComplete={() => goToStep(1)}
+          />
+        );
       }
 
-      // ── Authenticated: skip 'welcome' (index 0), offset by +1 ──
-      const stepName = CREATOR_STEPS[currentStep + 1];
-      switch (stepName) {
-        case 'account':
-          // User is already authenticated — skip account creation, go to intent
-          return <IntentSelector
+      // Step 0 or 1: Authenticated intent selector
+      if (currentStep <= 1) {
+        return (
+          <IntentSelector
             key="intent"
             onSelectSolo={() => {
               startOnboarding('solo');
               goToStep(1);
             }}
-            onSelectBand={() => { nextStep(); nextStep(); }} // skip past 'intent' to 'band'
-            onBack={() => {}} // no going back from account
-          />;
-        case 'intent':
+            onSelectBand={() => goToStep(2)}
+            onBack={handleBackToWelcome}
+          />
+        );
+      }
+
+      switch (currentStep) {
+        case 2:
+          return <BandCreation key="band" onBack={() => goToStep(1)} onComplete={() => goToStep(3)} />;
+        case 3:
+          return <ProfileSetup key="profile" onBack={() => goToStep(2)} onComplete={() => goToStep(4)} />;
+        case 4:
+          return <InviteMembers key="invite" onBack={() => goToStep(3)} onComplete={() => goToStep(5)} />;
+        case 5:
           return (
-            <IntentSelector
-              key="intent"
-              onSelectSolo={() => {
-                startOnboarding('solo');
-                goToStep(1);
-              }}
-              onSelectBand={() => nextStep()}
-              onBack={prevStep}
+            <AddSongs
+              key="songs"
+              onBack={() => goToStep(4)}
+              onComplete={() => goToStep(6)}
+              closeModalRef={closeAddSongsModalRef}
             />
           );
-        case 'band': return <BandCreation key="band" onBack={prevStep} onComplete={nextStep} />;
-        case 'profile': return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
-        case 'invite': return <InviteMembers key="invite" onBack={prevStep} onComplete={nextStep} />;
-        case 'songs': return <AddSongs key="songs" onBack={prevStep} onComplete={nextStep} />;
-        case 'complete': return <CompletionScreen key="complete" onComplete={handleComplete} />;
-        default: return null;
+        case 6:
+          return <CompletionScreen key="complete" onComplete={handleComplete} />;
+        default:
+          return null;
       }
     };
 
@@ -250,53 +432,35 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   }
 
   // ─── SOLO FLOW ───
-  // After user selects "Organize My Schedule" from the IntentSelector,
-  // the path switches to 'solo'. The solo path only has:
-  //   account → profile → complete
 
   if (path === 'solo') {
     const renderSoloStep = () => {
       if (!isAuthenticated) {
-        // Step 0: Account creation (not yet authenticated)
-        if (currentStep === 0) {
-          return (
-            <AccountCreation
-              key="solo-account"
-              onBack={handleBackToWelcome}
-              onComplete={nextStep}
-            />
-          );
-        }
-        // After account, currentStep 1+ maps to profile, complete
-        const steps = ['account', 'profile', 'complete'];
-        const stepName = steps[currentStep] || 'complete';
-        switch (stepName) {
-          case 'profile':
-            return <ProfileSetup key="solo-profile" onBack={prevStep} onComplete={nextStep} />;
-          case 'complete':
-          default:
-            return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
-        }
+        return (
+          <AccountCreation
+            key="solo-account"
+            onBack={handleBackToWelcome}
+            onComplete={() => goToStep(1)}
+          />
+        );
       }
 
-      // Authenticated solo path
-      const steps = ['account', 'profile', 'complete'];
-      const stepName = steps[currentStep] || 'complete';
-      switch (stepName) {
-        case 'account':
-          return (
-            <AccountCreation
-              key="solo-account-auth"
-              onBack={handleBackToWelcome}
-              onComplete={nextStep}
-            />
-          );
-        case 'profile':
-          return <ProfileSetup key="solo-profile" onBack={prevStep} onComplete={nextStep} />;
-        case 'complete':
-        default:
-          return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
+      // Step 1: Profile setup for solo artist
+      if (currentStep <= 1) {
+        return (
+          <ProfileSetup
+            key="solo-profile"
+            onBack={() => {
+              startOnboarding('creator');
+              goToStep(1);
+            }}
+            onComplete={() => goToStep(2)}
+          />
+        );
       }
+
+      // Step 2: Completion
+      return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
     };
 
     return (
@@ -340,7 +504,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     };
 
     const handleAcceptInvite = () => {
-      nextStep();
+      goToStep(1);
     };
 
     const activeInvite = inviteData || selectedInvite;
@@ -354,6 +518,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               inviteData={inviteData}
               onAccept={handleAcceptInvite}
               onDecline={handleBackToWelcome}
+              onBack={handleBackToWelcome}
             />
           );
         }
@@ -410,46 +575,37 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         }
       }
 
+      // Step 1: Account creation if not yet authenticated
       if (!isAuthenticated) {
-        switch (currentStep) {
-          case 1:
-            return (
-              <AccountCreation
-                key="account"
-                onBack={prevStep}
-                onComplete={nextStep}
-                prefilledEmail={activeInvite?.email || lookupEmail}
-              />
-            );
-          case 2:
-            return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
-          case 3:
-            return (
-              <JoinerWelcomeBand
-                key="welcome-band"
-                inviteData={activeInvite}
-                onComplete={handleComplete}
-              />
-            );
-          default:
-            return null;
-        }
-      } else {
-        switch (currentStep) {
-          case 1:
-            return <ProfileSetup key="profile" onBack={prevStep} onComplete={nextStep} />;
-          case 2:
-            return (
-              <JoinerWelcomeBand
-                key="welcome-band"
-                inviteData={activeInvite}
-                onComplete={handleComplete}
-              />
-            );
-          default:
-            return null;
-        }
+        return (
+          <AccountCreation
+            key="joiner-account"
+            onBack={() => goToStep(0)}
+            onComplete={() => goToStep(2)}
+            prefilledEmail={activeInvite?.email || lookupEmail}
+          />
+        );
       }
+
+      // Step 1 or 2: Profile setup
+      if (currentStep === 1 || currentStep === 2) {
+        return (
+          <ProfileSetup
+            key="joiner-profile"
+            onBack={() => goToStep(0)}
+            onComplete={() => goToStep(3)}
+          />
+        );
+      }
+
+      // Step 3: Welcome to band
+      return (
+        <JoinerWelcomeBand
+          key="welcome-band"
+          inviteData={activeInvite}
+          onComplete={handleComplete}
+        />
+      );
     };
 
     return (
@@ -468,25 +624,41 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     );
   }
 
-  // Fallback — if path is set but none of the above matched, show welcome
+  // Fallback: Welcome screen
   return (
-    <WelcomeScreen
-      onGetStarted={() => {
-        startOnboarding('creator');
-        setScreenMode('flow');
-      }}
-      onSignIn={() => setScreenMode('sign-in')}
-      onInviteCodeSubmit={(code) => {
-        acceptInviteCode(code).then((valid) => {
-          if (valid) {
-            startOnboarding('creator');
-            setScreenMode('flow');
-          }
-        });
-      }}
-      inviteCodeLoading={false}
-      inviteCodeError={null}
-    />
+    <>
+      <WelcomeScreen
+        onGetStarted={() => {
+          startOnboarding('creator');
+          setScreenMode('flow');
+        }}
+        onSignIn={() => setScreenMode('sign-in')}
+        onInviteCodeSubmit={(code) => {
+          acceptInviteCode(code).then((valid) => {
+            if (valid) {
+              startOnboarding('creator');
+              setScreenMode('flow');
+            }
+          });
+        }}
+        inviteCodeLoading={false}
+        inviteCodeError={null}
+        closeInviteInputRef={closeInviteInputRef}
+      />
+      <AnimatePresence>
+        {exitToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[250] px-4 py-2 rounded-full text-xs font-semibold text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+          >
+            {exitToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

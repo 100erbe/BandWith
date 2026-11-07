@@ -17,9 +17,17 @@ interface QuoteDetailModalProps {
   onOpenBandSettings?: () => void;
 }
 
-const formatBandTotal = (total: number): string => {
-  if (total >= 1000) return `€${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}K`;
-  return `€${total}`;
+const getCurrencySym = (currency?: string): string => {
+  if (currency === 'USD') return '$';
+  if (currency === 'GBP') return '£';
+  if (currency === 'CHF') return 'CHF ';
+  return '€';
+};
+
+const formatBandTotal = (total: number, currency?: string): string => {
+  const sym = getCurrencySym(currency);
+  if (total >= 1000) return `${sym}${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}K`;
+  return `${sym}${Math.round(total)}`;
 };
 
 export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
@@ -33,12 +41,23 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
   const eventDate = quote.eventDate ? new Date(quote.eventDate) : null;
-  const year = eventDate ? eventDate.getFullYear() : '';
-  const monthDay = eventDate
+  const year = eventDate && !isNaN(eventDate.getTime()) ? eventDate.getFullYear() : '';
+  const monthDay = eventDate && !isNaN(eventDate.getTime())
     ? `${eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${eventDate.getDate()}`
     : 'TBD';
 
-  const miniCal = eventDate ? (() => {
+  const clientDisplayName = (quote.clientName || 'Client TBD').trim();
+  const clientParts = clientDisplayName.split(/\s+/);
+  const clientPrimary = clientParts[0]?.toUpperCase() || 'CLIENT';
+  const clientSecondary = clientParts.slice(1).join(' ')?.toUpperCase() || '';
+  const displayTitle = quote.eventTitle || quote.eventName || 'UNTITLED';
+  const setsAndExtrasCount =
+    (quote.selectedMoments?.length || 0) + (quote.customItems?.length || 0) ||
+    quote.lineItems?.length ||
+    quote.numberOfSets ||
+    1;
+
+  const miniCal = eventDate && !isNaN(eventDate.getTime()) ? (() => {
     const y = eventDate.getFullYear();
     const m = eventDate.getMonth();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -98,17 +117,17 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </div>
                 <div className="rounded-[6px] px-[10px] py-[4px] bg-white">
                   <span className="text-[12px] font-bold uppercase text-accent-quote">
-                    {quote.eventTitle?.split(' ')[0]?.toUpperCase() || 'EVENT'}
+                    {(quote.eventType || displayTitle.split(' ')[0] || 'EVENT').toUpperCase()}
                   </span>
                 </div>
               </div>
               <h2 className="text-[32px] font-bold text-white uppercase leading-tight">
-                {quote.eventTitle || 'UNTITLED'}
+                {displayTitle}
               </h2>
               <div className="flex flex-col gap-[2px]">
                 <div className="flex items-center gap-[8px]">
                   <span className="text-[16px] font-bold text-white uppercase">
-                    {quote.clientName || 'TBD'}
+                    {quote.clientName || 'Client TBD'}
                   </span>
                   <ArrowUpRight className="w-[18px] h-[18px] text-white" />
                 </div>
@@ -118,12 +137,12 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <div className="flex flex-col items-end justify-between self-stretch shrink-0 gap-[4px]">
               <WeatherWidget
                 eventDate={quote.eventDate}
-                location={quote.clientName}
+                location={quote.venueCity || quote.venueName}
                 textColor="white"
               />
               <div className="rounded-[10px] px-[10px] py-[10px]" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                 <span className="text-[12px] font-bold text-white uppercase whitespace-nowrap">
-                  START - 3:30 PM
+                  START - {quote.eventTimeStart || '20:00'}
                 </span>
               </div>
             </div>
@@ -135,7 +154,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               <div className="flex items-center gap-[6px]">
                 <span className="text-[12px] font-bold text-white uppercase">YEAR</span>
               </div>
-              <span className="text-[42px] font-bold text-white leading-none">{year || '2028'}</span>
+              <span className="text-[42px] font-bold text-white leading-none">{year || new Date().getFullYear()}</span>
             </div>
             <div className="flex-1 flex flex-col">
               <div className="flex items-center gap-[6px]">
@@ -190,12 +209,14 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <span className="text-[12px] font-bold text-white uppercase">CLIENT</span>
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">
-                  {(quote.clientName || 'MIA').split(' ')[0]?.toUpperCase()}
+                <span className="text-[42px] font-bold text-white leading-none truncate">
+                  {clientPrimary}
                 </span>
-                <span className="text-[22px] font-bold text-white leading-none">
-                  {(quote.clientName || 'MIA CALIFA').split(' ').slice(1).join(' ')?.toUpperCase() || 'CALIFA'}
-                </span>
+                {clientSecondary && (
+                  <span className="text-[22px] font-bold text-white leading-none truncate">
+                    {clientSecondary}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -206,7 +227,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
                 <span className="text-[42px] font-bold text-white leading-none">
-                  {formatBandTotal(quote.total)}
+                  {formatBandTotal(quote.total, quote.currency)}
                 </span>
                 <span className="text-[22px] font-bold text-white leading-none">
                   DP{dp}%
@@ -237,7 +258,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
                 <span className="text-[42px] font-bold text-white leading-none">
-                  {quote.selectedMoments?.length || quote.lineItems?.length || 1}
+                  {setsAndExtrasCount}
                 </span>
               </div>
             </div>

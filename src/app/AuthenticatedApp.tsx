@@ -761,7 +761,7 @@ export default function AuthenticatedApp() {
         role: realBand.user_role === "admin" ? "ADMIN" : "MEMBER",
         initials: realBand.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(),
         members: realBand.member_count,
-        genre: "Rock",
+        genre: realBand.genre || "",
         plan: realBand.plan === "pro" || realBand.plan === "enterprise" ? "Pro" : "Free",
       } as Band;
     }
@@ -2440,7 +2440,7 @@ export default function AuthenticatedApp() {
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
@@ -2521,7 +2521,7 @@ export default function AuthenticatedApp() {
         <IdentityHub
           isOpen={isIdentityOpen}
           onClose={closeIdentity}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           setSelectedBand={setSelectedBand}
           notificationGroups={notificationGroups}
@@ -2549,7 +2549,7 @@ export default function AuthenticatedApp() {
         <SwitchBandPopup
           isOpen={isBandSwitcherOpen}
           onClose={() => setIsBandSwitcherOpen(false)}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: "Rock", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           onSelectBand={setSelectedBand}
           onAddNewBand={handleRequestCreateBand}
