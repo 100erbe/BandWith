@@ -390,24 +390,22 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   </button>
                 )}
 
-                {/* Rehearsal: only if not solo */}
-                {!isSolo && (
-                  <button onClick={() => { haptic.tap(); onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                    <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Music className="w-7 h-7 text-accent-rehearsal" />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[20px] font-bold text-foreground uppercase">
-                        {isAdmin ? 'NEW REHEARSAL' : 'PROPOSE REHEARSAL'}
-                      </span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">
-                        {isAdmin
-                          ? 'Plan the session, share details, and keep everyone in sync.'
-                          : 'Suggest a rehearsal date or topic to the band admin.'}
-                      </span>
-                    </div>
-                  </button>
-                )}
+                {/* Rehearsal / Propose Rehearsal: Always accessible */}
+                <button onClick={() => { haptic.tap(); onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
+                  <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                    <Music className="w-7 h-7 text-accent-rehearsal" />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <span className="text-[20px] font-bold text-foreground uppercase">
+                      {isAdmin ? 'NEW REHEARSAL' : 'PROPOSE REHEARSAL'}
+                    </span>
+                    <span className="text-[12px] font-medium text-foreground/60 leading-normal">
+                      {isAdmin
+                        ? 'Plan the session, share details, and keep everyone in sync.'
+                        : 'Suggest a rehearsal date or topic to the band admin.'}
+                    </span>
+                  </div>
+                </button>
 
                 {/* Quotes: Admin only */}
                 {isAdmin && !isSolo && (

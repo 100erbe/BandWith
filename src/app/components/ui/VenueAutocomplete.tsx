@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { MapPin, Loader2, X, Check } from '@/app/components/icons';
 import { cn } from './utils';
-import { searchVenues, type VenuePlace } from '@/lib/services/location';
+import { searchVenues, getGooglePlaceDetails, type VenuePlace } from '@/lib/services/location';
 
 export interface VenueAutocompleteProps {
   value: string;
@@ -91,9 +91,25 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
     }, 280);
   };
 
-  const handleSelectPlace = (place: VenuePlace) => {
-    onChange(place.name);
-    onSelect(place);
+  const handleSelectPlace = async (place: VenuePlace) => {
+    let selectedPlace = place;
+    if (place.provider === 'google' && place.placeId && (!place.latitude || !place.city || !place.address)) {
+      try {
+        const details = await getGooglePlaceDetails(place.placeId);
+        if (details) {
+          selectedPlace = {
+            ...place,
+            ...details,
+            // Keep user-friendly display name if details name is available
+            name: details.name || place.name,
+          };
+        }
+      } catch (err) {
+        console.warn('[VenueAutocomplete] Could not fetch place details:', err);
+      }
+    }
+    onChange(selectedPlace.name);
+    onSelect(selectedPlace);
     setIsOpen(false);
     setSuggestions([]);
   };

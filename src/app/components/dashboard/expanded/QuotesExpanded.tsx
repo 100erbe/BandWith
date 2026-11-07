@@ -26,6 +26,7 @@ import {
 import type { Quote } from '@/app/data/quotes';
 import { QuoteCreationWizard } from '@/app/components/quotes/QuoteCreationWizard';
 import { QuoteDetailModal } from '@/app/components/quotes/QuoteDetailModal';
+import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 import type { Quote as RealQuote } from '@/lib/services/quotes';
 
 interface QuotesExpandedProps {
@@ -43,6 +44,7 @@ interface QuotesExpandedProps {
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
+  bandId,
   onClose,
   realQuotes,
   quoteStats,
@@ -115,6 +117,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [sharingQuote, setSharingQuote] = useState<Partial<Quote> | null>(null);
   
   // Chart interaction
   const [activeChartId, setActiveChartId] = useState<string | null>(null);
@@ -194,6 +197,9 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     setQuotes(prev => [newQuote, ...prev]);
     setIsCreating(false);
     setEditingQuote(null);
+    if (!quoteData.status || quoteData.status === 'SENT') {
+      setSharingQuote({ ...newQuote, ...quoteData });
+    }
   };
 
   const handleSendQuote = (quote: Quote) => {
@@ -434,6 +440,19 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             onSend={handleSendQuote}
             onDuplicate={handleDuplicateQuote}
             onDelete={handleDeleteQuote}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Quote Share Modal */}
+      <AnimatePresence>
+        {sharingQuote && (
+          <QuoteShareModal
+            isOpen={!!sharingQuote}
+            onClose={() => setSharingQuote(null)}
+            quote={sharingQuote}
+            bandId={bandId || 'default'}
+            bandName="Band"
           />
         )}
       </AnimatePresence>

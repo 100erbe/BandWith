@@ -34,7 +34,34 @@ export interface BandPricingSettings {
   default_vat_rate: number;
   default_deposit_rate: number;
   custom_services: CustomService[];
+  // Quote Branding & Sign-off
+  band_logo_url?: string;
+  signature_url?: string;
+  signer_name?: string;
+  signer_role?: string;
+  // Contact & Legal Info
+  contact_email?: string;
+  contact_phone?: string;
+  website?: string;
+  legal_company_name?: string;
+  tax_vat_id?: string;
+  legal_address?: string;
+  // Payment Details
+  bank_account_holder?: string;
+  bank_iban?: string;
+  bank_bic_swift?: string;
+  bank_name?: string;
+  default_payment_terms?: string;
+  // Quote Defaults
+  default_validity_days?: number;
+  default_quote_disclaimer?: string;
 }
+
+export const DEFAULT_QUOTE_DISCLAIMER =
+  'IMPORTANT: This quote is valid for {days} days from the date of issue. Pricing is valid exclusively for the event date indicated. Any modification to the date will require a new quote to guarantee availability and to update costs.';
+
+export const DEFAULT_PAYMENT_TERMS =
+  '{deposit}% initial deposit upon booking; {balance}% balance due before event';
 
 export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   band_id: 'default',
@@ -57,6 +84,23 @@ export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   rounding_step: 10,
   default_vat_rate: 21,
   default_deposit_rate: 20,
+  band_logo_url: '',
+  signature_url: '',
+  signer_name: '',
+  signer_role: 'Musical Director and Musician',
+  contact_email: '',
+  contact_phone: '',
+  website: '',
+  legal_company_name: '',
+  tax_vat_id: '',
+  legal_address: '',
+  bank_account_holder: '',
+  bank_iban: '',
+  bank_bic_swift: '',
+  bank_name: '',
+  default_payment_terms: '20% initial deposit upon booking; 80% balance due before event',
+  default_validity_days: 30,
+  default_quote_disclaimer: DEFAULT_QUOTE_DISCLAIMER,
   custom_services: [
     {
       id: 'srv-song-request',
@@ -137,6 +181,29 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
           rounding_step: Number(rules.rounding_step ?? DEFAULT_BAND_PRICING.rounding_step),
           default_vat_rate: Number(rules.default_vat_rate ?? DEFAULT_BAND_PRICING.default_vat_rate),
           default_deposit_rate: Number(rules.default_deposit_rate ?? DEFAULT_BAND_PRICING.default_deposit_rate),
+          band_logo_url: band.logo_url || rules.band_logo_url || '',
+          signature_url: band.signature_url || rules.signature_url || '',
+          signer_name: band.signer_name || rules.signer_name || '',
+          signer_role: band.signer_role ?? rules.signer_role ?? DEFAULT_BAND_PRICING.signer_role,
+          contact_email: band.contact_email || rules.contact_email || '',
+          contact_phone: band.contact_phone || rules.contact_phone || '',
+          website: band.website || rules.website || '',
+          legal_company_name: band.legal_company_name || rules.legal_company_name || '',
+          tax_vat_id: band.tax_vat_id || rules.tax_vat_id || '',
+          legal_address: band.legal_address || rules.legal_address || '',
+          bank_account_holder: band.bank_account_holder || rules.bank_account_holder || '',
+          bank_iban: band.bank_iban || rules.bank_iban || '',
+          bank_bic_swift: band.bank_bic_swift || rules.bank_bic_swift || '',
+          bank_name: band.bank_name || rules.bank_name || '',
+          default_payment_terms:
+            band.default_payment_terms ||
+            rules.default_payment_terms ||
+            DEFAULT_BAND_PRICING.default_payment_terms,
+          default_validity_days: Number(
+            rules.default_validity_days ?? DEFAULT_BAND_PRICING.default_validity_days
+          ),
+          default_quote_disclaimer:
+            rules.default_quote_disclaimer || DEFAULT_BAND_PRICING.default_quote_disclaimer,
           custom_services: cleanedServices.length > 0 ? cleanedServices : DEFAULT_BAND_PRICING.custom_services,
         };
 
@@ -206,6 +273,7 @@ export async function saveBandPricing(settings: BandPricingSettings): Promise<Ba
           home_base_latitude: typeof settings.band_origin_lat === 'number' ? settings.band_origin_lat : null,
           home_base_longitude: typeof settings.band_origin_lng === 'number' ? settings.band_origin_lng : null,
           pricing_currency: settings.currency || 'EUR',
+          logo_url: settings.band_logo_url || null,
           pricing_rules: {
             low_season_multiplier: settings.low_season_multiplier,
             mid_season_multiplier: settings.mid_season_multiplier,
@@ -214,6 +282,23 @@ export async function saveBandPricing(settings: BandPricingSettings): Promise<Ba
             rounding_step: settings.rounding_step,
             default_vat_rate: settings.default_vat_rate,
             default_deposit_rate: settings.default_deposit_rate,
+            band_logo_url: settings.band_logo_url || '',
+            signature_url: settings.signature_url || '',
+            signer_name: settings.signer_name || '',
+            signer_role: settings.signer_role || '',
+            contact_email: settings.contact_email || '',
+            contact_phone: settings.contact_phone || '',
+            website: settings.website || '',
+            legal_company_name: settings.legal_company_name || '',
+            tax_vat_id: settings.tax_vat_id || '',
+            legal_address: settings.legal_address || '',
+            bank_account_holder: settings.bank_account_holder || '',
+            bank_iban: settings.bank_iban || '',
+            bank_bic_swift: settings.bank_bic_swift || '',
+            bank_name: settings.bank_name || '',
+            default_payment_terms: settings.default_payment_terms || '',
+            default_validity_days: settings.default_validity_days ?? 30,
+            default_quote_disclaimer: settings.default_quote_disclaimer || '',
           },
           extra_services: settings.custom_services,
           updated_at: new Date().toISOString(),
@@ -229,6 +314,62 @@ export async function saveBandPricing(settings: BandPricingSettings): Promise<Ba
   }
 
   return settings;
+}
+
+/**
+ * Resize/convert an uploaded image file to a clean Data URL, and try uploading to Supabase Storage.
+ * Returns a reliable URL (Data URL for instant PDF canvas rendering or public storage URL).
+ */
+export async function uploadBandBrandingAsset(
+  bandId: string,
+  file: File,
+  kind: 'logo' | 'signature'
+): Promise<string> {
+  // Always create a crisp, resized Data URL so client-side PDF rendering never suffers from CORS
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = kind === 'logo' ? 600 : 500;
+        const maxH = kind === 'logo' ? 300 : 220;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(String(reader.result));
+        }
+      };
+      img.onerror = () => resolve(String(reader.result));
+      img.src = String(reader.result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  // Also attempt background upload to Supabase storage if authenticated
+  if (bandId && bandId !== 'default') {
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `bands/${bandId}/${kind}-${Date.now()}.${ext}`;
+      await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    } catch (_) {
+      // Ignore storage bucket errors — dataUrl is stored in pricing_rules / logo_url
+    }
+  }
+
+  return dataUrl;
 }
 
 export function calculateSeasonality(

@@ -4,6 +4,18 @@ export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED'
 // Event types
 export type QuoteEventType = 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'other';
 
+export const getEventTypeLabel = (type?: string): string => {
+  switch (type?.toLowerCase()) {
+    case 'wedding': return 'Wedding';
+    case 'corporate': return 'Corporate Event';
+    case 'private': return 'Private Party';
+    case 'festival': return 'Festival';
+    case 'club': return 'Club / Bar';
+    case 'rehearsal': return 'Rehearsal';
+    default: return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Event';
+  }
+};
+
 // Performance types
 export type PerformanceType = 'full_band' | 'duo' | 'trio' | 'solo' | 'dj_set' | 'acoustic';
 
@@ -116,6 +128,40 @@ export interface QuoteLineItem {
   total: number;
 }
 
+// Package tier option for multi-option quotes & Event Proposal Summary
+export interface QuotePackageOption {
+  id: string;
+  name?: string;
+  label: string; // e.g. "Option 1: 6-Piece Band"
+  lineupLabel: string; // e.g. "6pc band" or "6 Musicians"
+  musiciansCount: number;
+  instrumentsSummary: string; // e.g. "Core 6pc" or "Core 6pc + Roaming Sax"
+  instrumentsDetail: string; // e.g. "(e.g. Drums, Bass, Keys, Guitar, 2 Vocalists)"
+  instrumentsText?: string;
+  setsCount?: number;
+  setDurationMinutes?: number;
+  grossFee: number;
+  discountPercent: number;
+  discountAmount: number;
+  netSubtotal: number;
+  vatRate: number;
+  vatAmount: number;
+  totalWithVat: number;
+  depositPercentage: number;
+  depositAmount: number;
+}
+
+export interface QuoteSelectedMoment {
+  id: string;
+  name: string;
+  description: string;
+  musicians: number;
+  duration: number;
+  instruments: string[];
+  price: number;
+  included?: boolean;
+}
+
 // Full Quote interface matching the new spec
 export interface Quote {
   id: string;
@@ -142,7 +188,7 @@ export interface Quote {
   venueAddress?: string;
   venueCity: string;
   venueCountry: string;
-  indoorOutdoor?: 'indoor' | 'outdoor';
+  indoorOutdoor?: 'indoor' | 'outdoor' | 'hybrid';
 
   // Step 2: Performance
   performanceType: PerformanceType;
@@ -220,6 +266,7 @@ export interface Quote {
 
   // Legacy fields for compatibility
   eventId?: string;
+  musicianCount?: number;
   lineItems?: QuoteLineItem[];
   discount?: number;
   tax?: number;
@@ -228,6 +275,23 @@ export interface Quote {
   depositAmount?: number;
   quote_id?: string;
   name?: string;
+
+  // Extended Quote PDF & Multi-Option configuration
+  quoteDescription?: string;
+  validityDays?: number;
+  customDisclaimer?: string;
+  productionTier?: 'standard' | 'pro' | 'custom' | 'none';
+  productionBullets?: string[];
+  travelMode?: 'included' | 'separate' | 'client_provided';
+  accommodationMode?: 'none' | 'included' | 'separate' | 'client_provided';
+  accommodationRooms?: number;
+  accommodationNights?: number;
+  mealsMode?: 'included' | 'separate' | 'client_provided';
+  showBankDetailsOnPdf?: boolean;
+  paymentTermsText?: string;
+  selectedMoments?: QuoteSelectedMoment[];
+  includeProposalSummary?: boolean;
+  quoteOptions?: QuotePackageOption[];
 }
 
 // Available band members for selection

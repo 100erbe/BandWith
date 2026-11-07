@@ -21,6 +21,7 @@ import {
   AlertCircle,
   X,
   Copy,
+  Share2,
 } from '@/app/components/icons';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
@@ -30,6 +31,7 @@ import { useBand } from '@/lib/BandContext';
 import { cn } from '@/app/components/ui/utils';
 import { WizardAccentRail } from '@/app/components/ui/WizardAccentRail';
 import { haptic } from '@/lib/haptics';
+import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 
 interface EventDetailProps {
   event: EventData;
@@ -42,6 +44,8 @@ interface EventDetailProps {
   onChat?: () => void;
   onConfirmQuote?: (event: EventData) => Promise<void> | void;
   onRevertQuote?: (event: EventData) => Promise<void> | void;
+  onShareQuote?: (event: EventData) => void;
+  onOpenBandSettings?: () => void;
   memberFee?: number;
   isAdmin?: boolean;
   currentUserId?: string;
@@ -180,6 +184,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   onChat,
   onConfirmQuote,
   onRevertQuote,
+  onShareQuote,
+  onOpenBandSettings,
   memberFee,
   isAdmin = true,
   currentUserId,
@@ -191,6 +197,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [isReverting, setIsReverting] = useState(false);
   const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [isShareQuoteOpen, setIsShareQuoteOpen] = useState(false);
 
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
@@ -1566,24 +1573,35 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             ) : isAdmin ? (
               eventType === 'quote' ? (
                 <div className="flex flex-col gap-[10px] items-center w-full">
-                  <div className="grid grid-cols-2 gap-[10px] w-full">
+                  <div className="grid grid-cols-3 gap-[8px] w-full">
                     <button
                       onClick={handleConfirmQuote}
                       disabled={isConfirming}
                       style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
+                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
                     >
-                      <Check className="w-[17px] h-[17px]" />
-                      <span className="text-[14px] font-bold uppercase">
-                        {isConfirming ? 'CONFIRMING...' : 'CONFIRM GIG'}
+                      <Check className="w-[16px] h-[16px]" />
+                      <span className="text-[13px] font-bold uppercase">
+                        {isConfirming ? '...' : 'CONFIRM'}
                       </span>
                     </button>
                     <button
-                      onClick={onEdit}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold active:scale-[0.99] transition-all cursor-pointer"
+                      onClick={() => {
+                        if (onShareQuote) onShareQuote(event);
+                        else setIsShareQuoteOpen(true);
+                      }}
+                      style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
+                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
                     >
-                      <Pencil className="w-[16px] h-[16px] text-foreground" />
-                      <span className="text-[14px] font-bold uppercase">EDIT</span>
+                      <Share2 className="w-[16px] h-[16px]" />
+                      <span className="text-[13px] font-bold uppercase">SHARE QUOTE</span>
+                    </button>
+                    <button
+                      onClick={onEdit}
+                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold active:scale-[0.99] transition-all cursor-pointer"
+                    >
+                      <Pencil className="w-[15px] h-[15px] text-foreground" />
+                      <span className="text-[13px] font-bold uppercase">EDIT</span>
                     </button>
                   </div>
                   {showDeleteConfirm ? (
@@ -1733,6 +1751,41 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           </div>
         </div>
       </motion.div>
+
+      <QuoteShareModal
+        isOpen={isShareQuoteOpen}
+        quote={{
+          id: String(event.id),
+          quoteNumber: `EVT-${String(event.id).slice(0, 6).toUpperCase()}`,
+          eventName: event.title,
+          eventTitle: event.title,
+          clientName: event.clientName || 'Client',
+          eventType: (event.eventType as any) || 'wedding',
+          eventDate: event.date,
+          eventTimeStart: event.time,
+          venueName: event.location,
+          venueAddress: event.venueAddress,
+          indoorOutdoor: event.indoorOutdoor || 'indoor',
+          musicianCount: memberCount || 1,
+          musicians: resolvedMembers.map((m, idx) => ({
+            id: m.userId || `m-${idx}`,
+            name: m.name,
+            instrument: m.role,
+            fee: m.fee,
+            isExternal: false,
+            isAvailable: true,
+          })),
+          baseFee: parseFloat(String(event.price || '0').replace(/[^0-9.]/g, '')) || 0,
+          subtotal: parseFloat(String(event.price || '0').replace(/[^0-9.]/g, '')) || 0,
+          netAmount: parseFloat(String(event.price || '0').replace(/[^0-9.]/g, '')) || 0,
+          total: parseFloat(String(event.price || '0').replace(/[^0-9.]/g, '')) || 0,
+          clientNotes: event.notes,
+        }}
+        bandId={event.band_id || selectedBand?.id}
+        bandName={event.band_name || selectedBand?.name}
+        onClose={() => setIsShareQuoteOpen(false)}
+        onOpenBandSettings={onOpenBandSettings}
+      />
     </>
   );
 };

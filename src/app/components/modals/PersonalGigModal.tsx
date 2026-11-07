@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mic2, Calendar, Clock, MapPin, DollarSign, FileText, Sparkles, Loader2, Lock } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { DatePicker } from '@/app/components/ui/DatePicker';
+import { TimePicker } from '@/app/components/ui/TimePicker';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
 
 interface PersonalGigModalProps {
@@ -156,7 +159,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
               </div>
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-accent-gig leading-tight">
-                  PERSONAL GIG • FREEMIUM
+                  PERSONAL GIG
                 </div>
                 <h2 className="text-lg font-black text-foreground uppercase tracking-tight leading-tight mt-0.5">
                   {isEditing ? 'EDIT PERSONAL GIG' : 'LOG PERSONAL GIG'}
@@ -197,51 +200,56 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
               />
             </div>
 
-            {/* Date & Time Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Date & Time Group */}
+            <div className="space-y-3">
               {/* Event Date */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-accent-gig" />
                   Date <span className="text-accent-gig">*</span>
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full bg-card border border-foreground/15 rounded-xl px-3 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-accent-gig transition-colors"
-                  required
+                  onChange={setEventDate}
+                  accentColor="var(--accent-gig)"
+                  placeholder="Select event date..."
+                  className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
                 />
               </div>
 
-              {/* Start Time */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-accent-gig" />
-                  Start <span className="text-accent-gig">*</span>
-                </label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full bg-card border border-foreground/15 rounded-xl px-3 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-accent-gig transition-colors"
-                  required
-                />
-              </div>
+              {/* Start & End Times */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Start Time */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-accent-gig" />
+                    Start <span className="text-accent-gig">*</span>
+                  </label>
+                  <TimePicker
+                    value={startTime}
+                    onChange={setStartTime}
+                    accentColor="var(--accent-gig)"
+                    align="start"
+                    textSize="text-sm"
+                    className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
+                  />
+                </div>
 
-              {/* End Time */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-accent-gig" />
-                  End <span className="text-accent-gig">*</span>
-                </label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full bg-card border border-foreground/15 rounded-xl px-3 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:border-accent-gig transition-colors"
-                  required
-                />
+                {/* End Time */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-accent-gig" />
+                    End <span className="text-accent-gig">*</span>
+                  </label>
+                  <TimePicker
+                    value={endTime}
+                    onChange={setEndTime}
+                    accentColor="var(--accent-gig)"
+                    align="end"
+                    textSize="text-sm"
+                    className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
+                  />
+                </div>
               </div>
             </div>
 
@@ -251,10 +259,10 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                 <MapPin className="w-3.5 h-3.5 text-foreground/50" />
                 Venue / Location Name (Optional)
               </label>
-              <input
-                type="text"
+              <VenueAutocomplete
                 value={venueName}
-                onChange={(e) => setVenueName(e.target.value)}
+                onChange={setVenueName}
+                onSelect={(place) => setVenueName(place.name)}
                 placeholder="e.g. Dublin Castle, St. Stephen's Green"
                 className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent-gig transition-colors"
               />

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Sparkles, Music, Layers, Infinity } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 
 interface UpgradePricingSheetProps {
   isOpen: boolean;
@@ -9,7 +10,24 @@ interface UpgradePricingSheetProps {
   currentTier?: string | null;
 }
 
-const TIERS = [
+interface PricingTier {
+  id: string;
+  name: string;
+  tagline: string;
+  price: string;
+  period: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isPopular?: boolean;
+  badgeLabel?: string;
+  accentBadgeClass: string;
+  iconBgClass: string;
+  checkIconClass: string;
+  description: string;
+  features: string[];
+  ctaLabel: string;
+}
+
+const TIERS: PricingTier[] = [
   {
     id: 'single_band',
     name: 'Indie Act Plan',
@@ -17,19 +35,18 @@ const TIERS = [
     price: '$0',
     period: '/mo forever',
     icon: Music,
-    accent: 'var(--foreground)',
-    bgGradient: 'bg-card border border-foreground/15 shadow-2xs',
-    textColor: 'text-foreground',
-    description: 'Basic operations',
+    accentBadgeClass: 'bg-muted text-muted-foreground border-border',
+    iconBgClass: 'bg-muted/70 text-foreground border-border/40',
+    checkIconClass: 'text-muted-foreground',
+    description: 'Essential management toolkit for solo artists and single-group acts.',
     features: [
-      'Manage 1 band',
-      'Event calendar & RSVPs',
-      'Basic setlist management',
-      'Band chat & messaging',
-      'Standard support',
+      'Manage 1 active band',
+      'Event calendar & member RSVPs',
+      'Setlist & song repertoire management',
+      'Band chat & announcements',
+      'Standard community support',
     ],
-    cta: 'Current Plan',
-    ctaStyle: 'bg-foreground/10 text-foreground border border-foreground/15 cursor-default',
+    ctaLabel: 'Current Plan',
   },
   {
     id: 'multi_band',
@@ -38,20 +55,21 @@ const TIERS = [
     price: '$12',
     period: '/mo',
     icon: Layers,
-    accent: 'var(--primary)',
-    bgGradient: 'from-[var(--primary)] to-[var(--primary)]',
-    textColor: 'text-white',
-    description: 'Cross-band availability calendars',
+    isPopular: true,
+    badgeLabel: 'Most Popular',
+    accentBadgeClass: 'bg-primary/15 text-primary border-primary/30',
+    iconBgClass: 'bg-primary/15 text-primary border-primary/25',
+    checkIconClass: 'text-primary',
+    description: 'Cross-band availability and tools for active musicians & bandleaders.',
     features: [
-      'Manage up to 5 bands',
-      'Cross-band availability calendar',
-      'Advanced setlists & repertoire',
-      'Priority chat & messaging',
-      'Shared document & contract templates',
-      'Priority support',
+      'Manage up to 5 bands simultaneously',
+      'Cross-band availability & conflict calendar',
+      'Advanced repertoire tracking & song keys',
+      'Gig quote creator & client PDFs',
+      'Priority rehearsal polls & notifications',
+      'Priority developer support',
     ],
-    cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[var(--primary)] hover:scale-[1.02]',
+    ctaLabel: 'Upgrade to Maestro',
   },
   {
     id: 'unlimited',
@@ -60,29 +78,31 @@ const TIERS = [
     price: '$29',
     period: '/mo',
     icon: Infinity,
-    accent: 'var(--amber)',
-    bgGradient: 'from-[var(--amber)] to-[var(--amber)]',
-    textColor: 'text-white',
-    description: 'Multi-agent management tools',
+    badgeLabel: 'Agency Scale',
+    accentBadgeClass: 'bg-accent-gig/15 text-accent-gig border-accent-gig/30',
+    iconBgClass: 'bg-accent-gig/15 text-accent-gig border-accent-gig/25',
+    checkIconClass: 'text-accent-gig',
+    description: 'Comprehensive roster and multi-manager tools for agencies and studios.',
     features: [
-      'Unlimited bands',
-      'Multi-agent management tools',
-      'White-label invoicing & quotes',
-      'Advanced analytics & reporting',
-      'Custom branding & templates',
-      'Dedicated account manager',
-      'API access & webhooks',
+      'Unlimited managed bands & acts',
+      'Multi-manager & booking agent tools',
+      'White-label quotes & contract templates',
+      'Financial tracking, payouts & mileage logs',
+      'Cross-roster scheduling intelligence',
+      'Dedicated account support',
     ],
-    cta: 'Upgrade',
-    ctaStyle: 'bg-white text-[var(--amber)] hover:scale-[1.02]',
+    ctaLabel: 'Upgrade to Agency',
   },
 ];
 
 export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
   isOpen,
   onClose,
-  currentTier,
+  currentTier = 'single_band',
 }) => {
+  const activeTierId = currentTier || 'single_band';
+  const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -92,172 +112,164 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[8px]"
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
-          {/* Bottom Sheet */}
+          {/* Bottom Sheet Modal with 90% Viewport Peeking Elements Affordance */}
           <motion.div
+            ref={containerRef}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed bottom-0 left-0 right-0 z-[81] bg-background rounded-t-[26px] max-h-[90vh] overflow-y-auto"
-            style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}
+            transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed bottom-0 left-0 right-0 z-[121] bg-background border-t border-border rounded-t-3xl max-h-[92vh] overflow-y-auto shadow-2xl"
+            style={{
+              paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
+              ...maskStyle,
+            }}
           >
-            {/* Pill handle */}
-            <div className="sticky top-0 z-10 bg-background pt-4 pb-2 flex flex-col items-center">
-              <div className="w-10 h-1 rounded-full bg-black/20 mb-4" />
+            {/* Top Bar with Grab Handle & Close Button */}
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pt-3.5 pb-2 px-4 flex items-center justify-between border-b border-border/30">
+              <div className="w-9" /> {/* Spacer for symmetry */}
+              <div className="w-10 h-1.5 rounded-full bg-foreground/20" />
               <button
+                type="button"
                 onClick={onClose}
-                className="absolute right-4 top-4 w-9 h-9 rounded-full border border-black/10 flex items-center justify-center text-foreground/50 hover:text-black hover:bg-black/5 transition-all"
+                aria-label="Close"
+                className="w-9 h-9 rounded-full border border-border bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="px-4 pb-6">
-              {/* Header */}
-              <div className="mb-8 text-center">
-                <div className="inline-flex items-center gap-2 bg-black/5 rounded-full px-4 py-1.5 mb-4">
-                  <Sparkles className="w-4 h-4 text-[var(--primary)]" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/50">
+            <div className="px-4 sm:px-6 pt-5 pb-8 max-w-xl mx-auto">
+              {/* Header Title Section */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 rounded-full px-3.5 py-1 text-primary mb-3">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-[11px] font-extrabold uppercase tracking-widest">
                     Unlock More Power
                   </span>
                 </div>
-                <h2 className="text-[28px] font-black text-black leading-tight uppercase tracking-tight">
+
+                <h2 className="text-2xl sm:text-3xl font-black text-foreground uppercase tracking-tight leading-tight">
                   Choose Your Plan
                 </h2>
-                <p className="text-sm font-medium text-foreground/50 mt-2 max-w-xs mx-auto">
+
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1.5 max-w-sm mx-auto">
                   Scale your music operations with the right plan for your needs.
                 </p>
               </div>
 
-              {/* Tiers */}
+              {/* Tiers List */}
               <div className="flex flex-col gap-4">
                 {TIERS.map((tier, index) => {
-                  const isCurrentPlan = currentTier === tier.id;
-                  const isNeutral = tier.textColor !== 'text-white';
+                  const isCurrent = activeTierId === tier.id;
                   const Icon = tier.icon;
 
                   return (
                     <motion.div
                       key={tier.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + index * 0.08 }}
+                      transition={{ delay: 0.05 + index * 0.06 }}
                       className={cn(
-                        'relative rounded-[20px] p-5 overflow-hidden',
-                        tier.bgGradient,
-                        isCurrentPlan && 'ring-2 ring-primary/40'
+                        'relative rounded-2xl p-5 sm:p-6 transition-all border bg-card shadow-2xs',
+                        tier.isPopular && !isCurrent
+                          ? 'border-primary/50 ring-1 ring-primary/30'
+                          : 'border-border/60',
+                        isCurrent && 'ring-2 ring-foreground/20'
                       )}
                     >
-                      {/* Current Plan Badge */}
-                      {isCurrentPlan && (
-                        <div className={cn(
-                          "absolute top-3 right-3 rounded-full px-3 py-1",
-                          isNeutral ? "bg-foreground/10" : "bg-black/20 backdrop-blur-sm"
-                        )}>
-                          <span className={cn(
-                            "text-[10px] font-bold uppercase",
-                            isNeutral ? "text-foreground/80" : "text-white/90"
-                          )}>
-                            Current
+                      {/* Top Badges (Popular or Current Plan) */}
+                      <div className="absolute top-4 right-4 flex items-center gap-2">
+                        {tier.isPopular && !isCurrent && (
+                          <span className="bg-primary text-primary-foreground text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
+                            {tier.badgeLabel || 'Popular'}
                           </span>
-                        </div>
-                      )}
+                        )}
+                        {isCurrent && (
+                          <span className="bg-muted text-muted-foreground border border-border text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                            Current Plan
+                          </span>
+                        )}
+                      </div>
 
-                      <div className="flex items-start gap-4 mb-4">
+                      {/* Header Row: Icon, Name & Tagline */}
+                      <div className="flex items-start gap-3.5 mb-3.5 pr-20">
                         <div className={cn(
-                          'w-12 h-12 rounded-full flex items-center justify-center shrink-0',
-                          isNeutral ? 'bg-foreground/10' : 'bg-white/20'
+                          'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border',
+                          tier.iconBgClass
                         )}>
-                          <Icon className={cn(
-                            'w-6 h-6',
-                            tier.textColor
-                          )} />
+                          <Icon className="w-5 h-5" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className={cn(
-                            'text-[18px] font-black uppercase leading-tight',
-                            tier.textColor
-                          )}>
+                        <div className="min-w-0">
+                          <h3 className="text-base sm:text-lg font-black uppercase text-foreground leading-tight tracking-tight">
                             {tier.name}
                           </h3>
-                          <p className={cn(
-                            'text-[12px] font-bold mt-0.5',
-                            isNeutral ? 'text-muted-foreground' : 'text-white/70'
-                          )}>
+                          <p className="text-xs font-semibold text-muted-foreground mt-0.5">
                             {tier.tagline}
                           </p>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className={cn(
-                            'text-[24px] font-black',
-                            tier.textColor
-                          )}>
-                            {tier.price}
-                          </span>
-                          <span className={cn(
-                            'text-[10px] font-bold ml-0.5',
-                            isNeutral ? 'text-muted-foreground' : 'text-white/60'
-                          )}>
-                            {tier.period}
-                          </span>
-                        </div>
                       </div>
 
-                      <p className={cn(
-                        'text-[11px] font-medium mb-4',
-                        isNeutral ? 'text-muted-foreground' : 'text-white/70'
-                      )}>
+                      {/* Pricing Block */}
+                      <div className="flex items-baseline gap-1 my-3 pb-3 border-b border-border/40">
+                        <span className="text-3xl font-black text-foreground tracking-tight">
+                          {tier.price}
+                        </span>
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {tier.period}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs font-medium text-foreground/80 mb-4">
                         {tier.description}
                       </p>
 
-                      {/* Features */}
-                      <div className="space-y-2 mb-5">
+                      {/* Features List */}
+                      <div className="space-y-2.5 mb-5">
                         {tier.features.map((feature, fi) => (
                           <div key={fi} className="flex items-start gap-2.5">
-                            <Check className={cn(
-                              'w-4 h-4 mt-0.5 shrink-0',
-                              isNeutral ? 'text-primary' : 'text-white/80'
-                            )} />
-                            <span className={cn(
-                              'text-[12px] font-medium',
-                              isNeutral ? 'text-foreground/80' : 'text-white/80'
-                            )}>
+                            <Check className={cn('w-4 h-4 mt-0.5 shrink-0', tier.checkIconClass)} />
+                            <span className="text-xs font-medium text-foreground/90 leading-snug">
                               {feature}
                             </span>
                           </div>
                         ))}
                       </div>
 
-                      {/* CTA */}
+                      {/* CTA Action Button */}
                       <button
-                        disabled={isCurrentPlan}
-                        className={cn(
-                          'w-full py-3.5 rounded-full font-bold text-sm uppercase tracking-wider transition-all active:scale-[0.97]',
-                          tier.ctaStyle,
-                          isCurrentPlan && 'opacity-60 cursor-not-allowed'
-                        )}
+                        type="button"
+                        disabled={isCurrent}
                         onClick={() => {
-                          if (!isCurrentPlan) {
-                            // Future: open checkout/upgrade flow
-                            console.log(`Upgrade to ${tier.id}`);
+                          if (!isCurrent) {
+                            console.log(`[UpgradePricingSheet] Selected tier: ${tier.id}`);
                           }
                         }}
+                        className={cn(
+                          'w-full py-3 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all',
+                          isCurrent
+                            ? 'bg-muted text-muted-foreground border border-border cursor-default opacity-80'
+                            : tier.isPopular
+                              ? 'bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] shadow-sm cursor-pointer'
+                              : 'bg-foreground text-background hover:opacity-90 active:scale-[0.98] shadow-sm cursor-pointer'
+                        )}
                       >
-                        {isCurrentPlan ? 'Current Plan' : tier.cta}
+                        {isCurrent ? 'Current Plan' : tier.ctaLabel}
                       </button>
                     </motion.div>
                   );
                 })}
               </div>
 
-              {/* Footer */}
-              <p className="text-center text-[10px] font-medium text-foreground/30 mt-6">
-                Upgrade anytime. Cancel anytime. Plans are per account.
+              {/* Footer Guarantee */}
+              <p className="text-center text-[11px] font-medium text-muted-foreground/70 mt-6">
+                Upgrade anytime • Cancel anytime • Plans are billed per user account
               </p>
             </div>
           </motion.div>

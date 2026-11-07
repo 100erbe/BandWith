@@ -11,6 +11,7 @@ import {
   Sparkles
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { createBand } from '@/lib/services/bands';
 import { useBand } from '@/lib/BandContext';
 
@@ -126,8 +127,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-32">
+      {/* Content with 90% Viewport Peeking Affordance */}
+      <PeekingScrollContainer className="flex-1 px-6 pb-32">
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
             {error}
@@ -283,7 +284,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             </div>
           </motion.div>
         </div>
-      </div>
+      </PeekingScrollContainer>
 
       {/* Footer */}
       <div

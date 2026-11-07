@@ -35,12 +35,15 @@ import {
   CheckSquare,
   Layers,
   Euro,
+  Share2,
+  Truck,
   type LucideIcon,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker } from '@/app/components/ui/DatePicker';
@@ -52,6 +55,8 @@ import {
   PaymentMethod,
   QuoteMusician,
   QuoteCustomItem,
+  QuotePackageOption,
+  QuoteSelectedMoment,
   VAT_RATES,
   BAND_MEMBERS,
   MUSIC_GENRES,
@@ -429,7 +434,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // Review step collapsibles in creation mode (all closed by default)
   const [isReviewMomentsExpanded, setIsReviewMomentsExpanded] = useState(false);
+  const [isReviewLogisticsExpanded, setIsReviewLogisticsExpanded] = useState(false);
   const [isReviewBillingExpanded, setIsReviewBillingExpanded] = useState(false);
+  const [isReviewMultiOptionExpanded, setIsReviewMultiOptionExpanded] = useState(
+    Boolean(initialData?.includeProposalSummary)
+  );
   const [isReviewTermsExpanded, setIsReviewTermsExpanded] = useState(false);
 
   // Lineup bar expansion in Step 1
@@ -459,7 +468,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [venueAddress, setVenueAddress] = useState(initialData?.venueAddress || '');
   const [venueCity, setVenueCity] = useState(initialData?.venueCity || '');
   const [venueCountry, setVenueCountry] = useState(initialData?.venueCountry || 'IT');
-  const [indoorOutdoor, setIndoorOutdoor] = useState<'indoor' | 'outdoor'>(
+  const [indoorOutdoor, setIndoorOutdoor] = useState<'indoor' | 'outdoor' | 'hybrid'>(
     initialData?.indoorOutdoor || 'indoor'
   );
 
@@ -543,6 +552,43 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [clientNotes, setClientNotes] = useState(initialData?.clientNotes || '');
   const [internalNotes, setInternalNotes] = useState(initialData?.internalNotes || '');
 
+  // Extended PDF & Proposal fields
+  const [quoteDescription, setQuoteDescription] = useState(initialData?.quoteDescription || '');
+  const [productionTier, setProductionTier] = useState<'standard' | 'pro' | 'custom' | 'none'>(
+    initialData?.productionTier || 'standard'
+  );
+  const [travelMode, setTravelMode] = useState<'included' | 'separate' | 'client_provided'>(
+    initialData?.travelMode || (initialData?.travelIncluded === false ? 'separate' : 'included')
+  );
+  const [accommodationMode, setAccommodationMode] = useState<
+    'none' | 'included' | 'separate' | 'client_provided'
+  >(
+    initialData?.accommodationMode ||
+      (initialData?.accommodationNeeded
+        ? (initialData?.accommodationFee || 0) > 0
+          ? 'separate'
+          : 'included'
+        : 'included')
+  );
+  const [accommodationRooms, setAccommodationRooms] = useState<number>(
+    initialData?.accommodationRooms || 3
+  );
+  const [accommodationNights, setAccommodationNights] = useState<number>(
+    initialData?.accommodationNights || 1
+  );
+  const [showBankDetailsOnPdf, setShowBankDetailsOnPdf] = useState<boolean>(
+    initialData?.showBankDetailsOnPdf !== undefined ? initialData.showBankDetailsOnPdf : true
+  );
+  const [customVatRate, setCustomVatRate] = useState<number | null>(
+    initialData?.vatRate !== undefined ? initialData.vatRate : null
+  );
+  const [includeProposalSummary, setIncludeProposalSummary] = useState<boolean>(
+    Boolean(initialData?.includeProposalSummary)
+  );
+  const [quoteOptions, setQuoteOptions] = useState<QuotePackageOption[]>(
+    initialData?.quoteOptions || []
+  );
+
   // Load Pricing Settings
   const hasInitializedPricingRef = useRef(false);
 
@@ -589,6 +635,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       if (settings.default_deposit_rate) {
         setDepositPercentage(settings.default_deposit_rate);
       }
+      if (settings.default_validity_days) {
+        setValidityDays(settings.default_validity_days);
+      }
     });
 
     return () => {
@@ -610,6 +659,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         const autoTravelFee = Math.round(distResult.distanceKm * 2 * ratePerKm);
         setTravelFee(autoTravelFee);
         setTravelIncluded(false);
+        setTravelMode('separate');
       }
     } finally {
       setIsCalculatingDistance(false);
@@ -618,6 +668,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // Totals
   const vatRate = useMemo(() => {
+    if (vatExempt || reverseCharge) return 0;
+    if (customVatRate !== null) return customVatRate;
+    if (pricingSettings.default_vat_rate !== undefined && pricingSettings.default_vat_rate > 0) {
+      return pricingSettings.default_vat_rate;
+    }
     return calculateVAT(
       billingCountry,
       'IT',
@@ -626,7 +681,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       vatExempt,
       reverseCharge
     );
-  }, [billingCountry, vatNumber, clientCompany, vatExempt, reverseCharge]);
+  }, [billingCountry, vatNumber, clientCompany, vatExempt, reverseCharge, customVatRate, pricingSettings.default_vat_rate]);
 
   const allMusicians = useMemo(
     () => [...selectedMusicians, ...externalMusicians],
@@ -651,14 +706,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   const totals = useMemo(() => {
-    const effectiveBase =
-      baseFee > 0
-        ? baseFee
-        : selectedMomentsTotal > 0
-          ? selectedMomentsTotal
-          : musiciansTotal > 0
-            ? musiciansTotal
-            : 0;
+    const lineupBase = baseFee > 0 ? baseFee : musiciansTotal > 0 ? musiciansTotal : 0;
+    const effectiveBase = lineupBase + selectedMomentsTotal;
     return calculateQuoteTotals(
       effectiveBase,
       travelIncluded ? 0 : travelFee,
@@ -828,9 +877,175 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     );
   };
 
+  const toggleBandCustomService = (srv: {
+    id: string;
+    name: string;
+    price: number;
+    description?: string;
+    unit?: string;
+  }) => {
+    setCustomItems(prev => {
+      const exists = prev.some(it => it.id === srv.id || it.name === srv.name);
+      if (exists) {
+        return prev.filter(it => it.id !== srv.id && it.name !== srv.name);
+      }
+      const qty =
+        srv.unit === 'per_person'
+          ? Math.max(1, allMusicians.length)
+          : srv.unit === 'per_km'
+            ? Math.max(1, travelDistanceKm || 50)
+            : 1;
+      return [
+        ...prev,
+        {
+          id: srv.id,
+          name: srv.name,
+          description: srv.description,
+          price: srv.price,
+          amount: srv.price * qty,
+          quantity: qty,
+          taxable: true,
+        },
+      ];
+    });
+  };
+
+  const computePackageOption = useCallback(
+    (
+      id: string,
+      name: string,
+      musiciansCount: number,
+      instrumentsText: string,
+      grossFee: number,
+      discountPct: number
+    ): QuotePackageOption => {
+      const discAmt = discountPct > 0 ? Math.round(grossFee * (discountPct / 100)) : 0;
+      const netSub = grossFee - discAmt;
+      const vRate = vatExempt || reverseCharge ? 0 : vatRate;
+      const vAmt = Math.round(netSub * (vRate / 100));
+      const totWithVat = netSub + vAmt;
+      const depPct = depositRequired ? depositPercentage : 0;
+      const depAmt = Math.round(totWithVat * (depPct / 100));
+      return {
+        id,
+        name,
+        label: name,
+        lineupLabel: `${musiciansCount} Musicians`,
+        musiciansCount,
+        instrumentsSummary: instrumentsText,
+        instrumentsDetail: instrumentsText,
+        instrumentsText,
+        setsCount: numberOfSets,
+        setDurationMinutes: setDuration,
+        grossFee,
+        discountPercent: discountPct,
+        discountAmount: discAmt,
+        netSubtotal: netSub,
+        vatRate: vRate,
+        vatAmount: vAmt,
+        totalWithVat: totWithVat,
+        depositPercentage: depPct,
+        depositAmount: depAmt,
+      };
+    },
+    [vatExempt, reverseCharge, vatRate, depositRequired, depositPercentage, numberOfSets, setDuration]
+  );
+
+  const handleToggleProposalSummary = (enabled: boolean) => {
+    setIncludeProposalSummary(enabled);
+    if (enabled && quoteOptions.length === 0) {
+      const baseCount = Math.max(4, allMusicians.length || 6);
+      const baseGross = Math.max(1500, totals.subtotal || 5000);
+      const stepFee = pricingSettings.session_musician_rate || 500;
+      const discPct = discountType === 'percentage' && discountValue > 0 ? discountValue : 15;
+
+      const defaultTiers: QuotePackageOption[] = [
+        computePackageOption(
+          'opt-1',
+          `${baseCount}pc Band`,
+          baseCount,
+          `${baseCount} Musicians (Drums, Bass, Guitar, Keys, Vocals)`,
+          baseGross,
+          discPct
+        ),
+        computePackageOption(
+          'opt-2',
+          `${baseCount + 1}pc Band`,
+          baseCount + 1,
+          `${baseCount + 1} Musicians (+ Saxophone / Brass)`,
+          baseGross + stepFee,
+          discPct
+        ),
+        computePackageOption(
+          'opt-3',
+          `${baseCount + 2}pc Band`,
+          baseCount + 2,
+          `${baseCount + 2} Musicians (+ Additional Vocalist & Brass)`,
+          baseGross + stepFee * 2,
+          discPct
+        ),
+      ];
+      setQuoteOptions(defaultTiers);
+    }
+  };
+
+  const addPackageOption = () => {
+    const idx = quoteOptions.length + 1;
+    const prev = quoteOptions[quoteOptions.length - 1];
+    const nextCount = prev ? prev.musiciansCount + 1 : Math.max(4, allMusicians.length + 1);
+    const nextGross = prev
+      ? prev.grossFee + (pricingSettings.session_musician_rate || 500)
+      : Math.max(1500, totals.subtotal || 3500);
+    const nextDisc = prev ? prev.discountPercent : discountType === 'percentage' ? discountValue : 15;
+    setQuoteOptions([
+      ...quoteOptions,
+      computePackageOption(
+        `opt-${Date.now()}`,
+        `${nextCount}pc Band`,
+        nextCount,
+        `${nextCount} Musicians`,
+        nextGross,
+        nextDisc
+      ),
+    ]);
+  };
+
+  const updatePackageOption = (id: string, patch: Partial<QuotePackageOption>) => {
+    setQuoteOptions(prev =>
+      prev.map(opt => {
+        if (opt.id !== id) return opt;
+        const merged = { ...opt, ...patch };
+        return computePackageOption(
+          merged.id,
+          merged.name || merged.label || '',
+          merged.musiciansCount,
+          merged.instrumentsText || merged.instrumentsDetail || '',
+          merged.grossFee,
+          merged.discountPercent
+        );
+      })
+    );
+  };
+
+  const removePackageOption = (id: string) => {
+    setQuoteOptions(prev => prev.filter(o => o.id !== id));
+  };
+
   const handleCreate = (sendImmediately = true) => {
     const finalEventName = getEffectiveTitle();
     const finalClientName = clientName.trim() || 'Client';
+
+    const selectedMomentsPayload: QuoteSelectedMoment[] = musicalMoments
+      .filter(m => m.selected)
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        musicians: m.customMusicians ?? m.defaultMusicians,
+        duration: m.customDuration ?? m.defaultDuration,
+        instruments: m.customInstruments ?? m.instruments,
+        price: m.customPrice ?? m.basePrice,
+      }));
 
     const quoteData: Partial<Quote> = {
       ...(initialData?.id ? { id: initialData.id } : {}),
@@ -856,6 +1071,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       numberOfSets,
       breakDuration,
       musicians: allMusicians,
+      musicianCount: allMusicians.length,
       genres: selectedGenres,
       specialRequests: specialRequests || undefined,
       billingCountry,
@@ -873,11 +1089,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             : selectedMomentsTotal > 0
               ? selectedMomentsTotal
               : 1000,
-      travelIncluded,
-      travelFee: travelIncluded ? 0 : travelFee,
+      travelIncluded: travelMode === 'included',
+      travelFee: travelMode === 'separate' ? travelFee : 0,
       travelDistanceKm,
-      accommodationNeeded,
-      accommodationFee: accommodationNeeded ? accommodationFee : 0,
+      travelMode,
+      accommodationNeeded: accommodationMode !== 'none',
+      accommodationFee: accommodationMode === 'separate' ? accommodationFee : 0,
+      accommodationMode,
+      accommodationRooms,
+      accommodationNights,
       mealsIncluded,
       mealsFee: mealsIncluded ? 0 : mealsFee,
       soundIncluded,
@@ -886,11 +1106,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       lightsFee: lightsIncluded ? 0 : lightsFee,
       backlineIncluded,
       backlineFee: backlineIncluded ? 0 : backlineFee,
+      productionTier,
       customItems,
+      selectedMoments: selectedMomentsPayload,
       discountType,
       discountValue,
       discountReason: discountReason || undefined,
       ...totals,
+      validityDays,
       validUntil: validUntilDate,
       depositRequired,
       depositPercentage,
@@ -901,6 +1124,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       cancellationTerms: cancellationTerms || undefined,
       clientNotes: clientNotes || undefined,
       internalNotes: internalNotes || undefined,
+      quoteDescription: quoteDescription.trim() || undefined,
+      showBankDetailsOnPdf,
+      includeProposalSummary,
+      quoteOptions: includeProposalSummary ? quoteOptions : undefined,
       sentAt: sendImmediately ? new Date().toISOString() : initialData?.sentAt,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1261,6 +1488,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <TimePicker
               value={eventTimeStart}
               onChange={val => setEventTimeStart(val)}
+              accentColor={activeAccentColor}
               textSize="text-base"
               showIcon
               className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
@@ -1278,9 +1506,76 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <TimePicker
               value={eventTimeEnd}
               onChange={val => setEventTimeEnd(val)}
+              accentColor={activeAccentColor}
+              align="end"
               textSize="text-base"
               showIcon
               className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
+            />
+          </div>
+        </div>
+
+        {/* Performance Sets & Set Duration (Used on PDF "Details / Qty" column) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div>
+            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
+              NUMBER OF SETS
+            </label>
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setNumberOfSets(n)}
+                  className={cn(
+                    'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
+                    numberOfSets === n
+                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+                  )}
+                >
+                  {n} {n === 1 ? 'Set' : 'Sets'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
+              MINS PER SET
+            </label>
+            <div className="flex gap-1.5">
+              {[45, 60, 90, 120].map(mins => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => setSetDuration(mins)}
+                  className={cn(
+                    'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
+                    setDuration === mins
+                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+                  )}
+                >
+                  {mins}m
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
+              GUEST COUNT <span className="text-[10px] font-normal lowercase opacity-60">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={guestCount ?? ''}
+              onChange={e =>
+                setGuestCount(e.target.value ? Math.max(0, parseInt(e.target.value)) : undefined)
+              }
+              placeholder="e.g. 150"
+              className="w-full bg-card border border-border/40 rounded-lg px-3 py-1.5 text-xs font-bold text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
             />
           </div>
         </div>
@@ -1470,6 +1765,58 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 })}
               </div>
 
+              {/* Band Extra Services from Pricing Settings */}
+              {pricingSettings.custom_services?.some(s => s.is_active) && (
+                <div className="pt-2 border-t border-border/30 space-y-2">
+                  <span className="text-xs font-bold uppercase text-muted-foreground block">
+                    Band Extra Services
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {pricingSettings.custom_services
+                      .filter(s => s.is_active)
+                      .map(srv => {
+                        const isAdded = customItems.some(
+                          it => it.id === srv.id || it.name === srv.name
+                        );
+                        return (
+                          <div
+                            key={srv.id}
+                            onClick={() => toggleBandCustomService(srv)}
+                            className={cn(
+                              'p-2.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer',
+                              isAdded
+                                ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)] text-[var(--fg)]'
+                                : 'bg-card border-border/40 text-muted-foreground hover:text-[var(--fg)]'
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              <DotCheckbox
+                                checked={isAdded}
+                                activeColor="var(--wizard-accent)"
+                                inactiveColor="var(--border)"
+                              />
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold uppercase truncate block text-[var(--fg)]">
+                                  {srv.name}
+                                </span>
+                                {srv.description && (
+                                  <span className="text-[11px] text-muted-foreground block truncate">
+                                    {srv.description}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold shrink-0 text-[var(--fg)]">
+                              {currencySymbol}
+                              {srv.price}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
               {/* Add custom service item */}
               <div className="pt-2 border-t border-border/30 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase text-muted-foreground">
@@ -1540,7 +1887,270 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Accordion 2: Billing, VAT & Deposit (Optional) */}
+      {/* Accordion 2: Production, Travel & Accommodation (Optional) */}
+      <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setIsReviewLogisticsExpanded(!isReviewLogisticsExpanded)}
+          className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
+              <Truck className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-[var(--fg)]">
+                  Production, Travel & Accommodation
+                </span>
+                <span className="text-xs uppercase font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  Optional
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground block truncate mt-0.5">
+                PA: {productionTier.toUpperCase()} ({soundIncluded ? 'Included' : `${currencySymbol}${soundFee}`}) • Travel:{' '}
+                {travelMode === 'included'
+                  ? 'Included'
+                  : travelMode === 'separate'
+                    ? `${currencySymbol}${travelFee}`
+                    : 'Client Provided'}{' '}
+                • Hotel: {accommodationMode.toUpperCase()}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2',
+              isReviewLogisticsExpanded && 'rotate-180'
+            )}
+          />
+        </button>
+
+        <AnimatePresence>
+          {isReviewLogisticsExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="px-4 pb-4 border-t border-border/30 pt-3 space-y-4 overflow-hidden"
+            >
+              {/* Musical Production / Sound System */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    MUSICAL PRODUCTION (PA, BACKLINE & LIGHTING)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextIncluded = !soundIncluded;
+                      setSoundIncluded(nextIncluded);
+                      if (!nextIncluded && soundFee === 0) {
+                        setSoundFee(
+                          productionTier === 'pro'
+                            ? pricingSettings.production_pro_fee || 600
+                            : pricingSettings.production_standard_fee || 300
+                        );
+                      }
+                    }}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
+                      soundIncluded
+                        ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30'
+                        : 'bg-[var(--wizard-accent)]/15 text-[var(--wizard-accent)] border-[var(--wizard-accent)]/30'
+                    )}
+                  >
+                    {soundIncluded ? 'Included in Base Fee' : 'Billed Separately'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'standard', label: 'Standard PA' },
+                      { id: 'pro', label: 'Pro Production' },
+                      { id: 'none', label: 'Client PA / None' },
+                    ] as const
+                  ).map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setProductionTier(t.id);
+                        if (!soundIncluded) {
+                          setSoundFee(
+                            t.id === 'pro'
+                              ? pricingSettings.production_pro_fee || 600
+                              : t.id === 'standard'
+                                ? pricingSettings.production_standard_fee || 300
+                                : 0
+                          );
+                        }
+                      }}
+                      className={cn(
+                        'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
+                        productionTier === t.id
+                          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                          : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {!soundIncluded && productionTier !== 'none' && (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground">Production Fee</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {currencySymbol}
+                      </span>
+                      <input
+                        type="number"
+                        value={soundFee || ''}
+                        onChange={e => setSoundFee(parseFloat(e.target.value) || 0)}
+                        className="w-24 bg-card border border-border/40 rounded-lg px-2.5 py-1 text-right text-xs font-bold text-[var(--fg)]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Travel Expenses */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                  TRAVEL & TRANSPORT EXPENSES
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'included', label: 'Included' },
+                      { id: 'separate', label: 'Separate Fee' },
+                      { id: 'client_provided', label: 'Client Arranged' },
+                    ] as const
+                  ).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setTravelMode(opt.id);
+                        setTravelIncluded(opt.id !== 'separate');
+                      }}
+                      className={cn(
+                        'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
+                        travelMode === opt.id
+                          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                          : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {travelMode === 'separate' && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-3 py-1.5">
+                      <span className="text-xs text-muted-foreground">Distance (km)</span>
+                      <input
+                        type="number"
+                        value={travelDistanceKm ?? ''}
+                        onChange={e =>
+                          setTravelDistanceKm(parseFloat(e.target.value) || undefined)
+                        }
+                        placeholder="0"
+                        className="w-16 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-3 py-1.5">
+                      <span className="text-xs text-muted-foreground">Fee ({currencySymbol})</span>
+                      <input
+                        type="number"
+                        value={travelFee || ''}
+                        onChange={e => setTravelFee(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-20 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Accommodation */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                  ACCOMMODATION / HOTEL
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(
+                    [
+                      { id: 'included', label: 'Included' },
+                      { id: 'separate', label: 'Separate Fee' },
+                      { id: 'client_provided', label: 'Client Hotel' },
+                      { id: 'none', label: 'Not Needed' },
+                    ] as const
+                  ).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setAccommodationMode(opt.id);
+                        setAccommodationNeeded(opt.id === 'separate');
+                      }}
+                      className={cn(
+                        'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
+                        accommodationMode === opt.id
+                          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                          : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {accommodationMode === 'separate' && (
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
+                      <span className="text-[11px] text-muted-foreground">Rooms</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={accommodationRooms}
+                        onChange={e => setAccommodationRooms(parseInt(e.target.value) || 1)}
+                        className="w-10 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
+                      <span className="text-[11px] text-muted-foreground">Nights</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={accommodationNights}
+                        onChange={e => setAccommodationNights(parseInt(e.target.value) || 1)}
+                        className="w-10 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
+                      <span className="text-[11px] text-muted-foreground">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        value={accommodationFee || ''}
+                        onChange={e => setAccommodationFee(parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-16 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Accordion 3: Billing, Discounts, VAT & Deposit (Optional) */}
       <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
         <button
           type="button"
@@ -1553,13 +2163,16 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-[var(--fg)]">Billing, VAT & Deposit</span>
+                <span className="text-sm font-bold text-[var(--fg)]">
+                  Billing, Discounts, VAT & Deposit
+                </span>
                 <span className="text-xs uppercase font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                   Optional
                 </span>
               </div>
               <span className="text-xs text-muted-foreground block truncate mt-0.5">
-                Subtotal: {currencySymbol}{totals.subtotal.toLocaleString()} • VAT: {vatRate}% • Deposit: {depositPercentage}%
+                Net: {currencySymbol}{totals.netAmount.toLocaleString()}
+                {totals.discountAmount > 0 ? ` (-${currencySymbol}${totals.discountAmount} disc.)` : ''} • VAT: {vatRate}% • Deposit: {depositPercentage}%
               </span>
             </div>
           </div>
@@ -1586,7 +2199,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     BASE FEE OVERRIDE
                   </label>
                   <span className="text-xs text-muted-foreground">
-                    Current: {currencySymbol}{baseFee}
+                    Lineup auto-sum: {currencySymbol}{musiciansTotal}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -1596,22 +2209,133 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     value={baseFee || ''}
                     onChange={e => setBaseFee(parseFloat(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-24 bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-lg px-2.5 py-1.5 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                    className="w-28 bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-lg px-2.5 py-1.5 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
                   />
                 </div>
               </div>
 
+              {/* Package Discount (Strikethrough + Discounted Total on PDF) */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    PACKAGE DISCOUNT
+                  </label>
+                  <div className="flex gap-1">
+                    {(
+                      [
+                        { id: 'none', label: 'None' },
+                        { id: 'percentage', label: '% Off' },
+                        { id: 'fixed', label: `${currencySymbol} Off` },
+                      ] as const
+                    ).map(d => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => {
+                          setDiscountType(d.id);
+                          if (d.id === 'none') setDiscountValue(0);
+                          else if (d.id === 'percentage' && discountValue === 0) setDiscountValue(10);
+                        }}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
+                          discountType === d.id
+                            ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                            : 'bg-card text-muted-foreground border-border/40'
+                        )}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {discountType !== 'none' && (
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    {discountType === 'percentage' && (
+                      <div className="flex gap-1.5">
+                        {[5, 10, 15, 20].map(pct => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => setDiscountValue(pct)}
+                            className={cn(
+                              'px-2.5 py-1 rounded-lg text-xs font-bold border transition-all',
+                              discountValue === pct
+                                ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                                : 'bg-card text-muted-foreground border-border/40'
+                            )}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 ml-auto">
+                      <input
+                        type="number"
+                        min="0"
+                        value={discountValue || ''}
+                        onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                        className="w-20 bg-card border border-border/40 rounded-lg px-2.5 py-1 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {discountType === 'percentage' ? '%' : currencySymbol}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* VAT Rate & Exempt */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    TAX / VAT RATE
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setVatExempt(!vatExempt)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
+                        vatExempt
+                          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
+                          : 'bg-card text-muted-foreground border-border/40'
+                      )}
+                    >
+                      VAT Exempt (0%)
+                    </button>
+                    {!vatExempt && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          value={vatRate}
+                          onChange={e => setCustomVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-16 bg-card border border-border/40 rounded-lg px-2 py-1 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
+                        />
+                        <span className="text-xs font-bold text-muted-foreground">%</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Deposit Percentage Pills */}
-              <div>
+              <div className="pt-2 border-t border-border/30">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                  DEPOSIT REQUIRED
+                  INITIAL BOOKING DEPOSIT REQUIRED
                 </label>
                 <div className="flex gap-2">
-                  {[20, 30, 50].map(pct => (
+                  {[0, 20, 30, 50].map(pct => (
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => setDepositPercentage(pct)}
+                      onClick={() => {
+                        setDepositPercentage(pct);
+                        setDepositRequired(pct > 0);
+                      }}
                       className={cn(
                         'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center',
                         depositPercentage === pct
@@ -1619,35 +2343,240 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                           : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
                       )}
                     >
-                      {pct}%
+                      {pct === 0 ? 'None' : `${pct}%`}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Validity Days */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-                  QUOTE VALIDITY
-                </label>
-                <select
-                  value={validityDays}
-                  onChange={e => setValidityDays(parseInt(e.target.value) || 30)}
-                  className="w-full bg-card border border-border/40 rounded-xl px-3 py-2 text-sm font-semibold text-[var(--fg)] focus:outline-none cursor-pointer"
-                >
-                  {[7, 14, 30, 60, 90].map(days => (
-                    <option key={days} value={days} className="bg-card text-[var(--fg)]">
-                      {days} Days (until {validUntilDate})
-                    </option>
-                  ))}
-                </select>
+              {/* Validity Days & Bank Details Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/30">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                    QUOTE VALIDITY
+                  </label>
+                  <select
+                    value={validityDays}
+                    onChange={e => setValidityDays(parseInt(e.target.value) || 30)}
+                    className="w-full bg-card border border-border/40 rounded-xl px-3 py-2 text-xs font-bold text-[var(--fg)] focus:outline-none cursor-pointer"
+                  >
+                    {[7, 14, 30, 60, 90].map(days => (
+                      <option key={days} value={days} className="bg-card text-[var(--fg)]">
+                        {days} Days (until {validUntilDate})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
+                    className={cn(
+                      'w-full py-2 px-3 rounded-xl border text-xs font-bold uppercase flex items-center justify-between transition-all cursor-pointer',
+                      showBankDetailsOnPdf
+                        ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)] text-[var(--fg)]'
+                        : 'bg-card border-border/40 text-muted-foreground'
+                    )}
+                  >
+                    <span>Show IBAN on PDF</span>
+                    <DotCheckbox
+                      checked={showBankDetailsOnPdf}
+                      activeColor="var(--wizard-accent)"
+                      inactiveColor="var(--border)"
+                    />
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Accordion 3: Terms, Payment & Notes (Optional) */}
+      {/* Accordion 4: Multi-Option Proposal Summary (Optional, like 4-page LUXE PDF) */}
+      <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setIsReviewMultiOptionExpanded(!isReviewMultiOptionExpanded)}
+          className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-[var(--fg)]">
+                  Multi-Option Proposal Summary
+                </span>
+                <span className="text-xs uppercase font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  Optional
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground block truncate mt-0.5">
+                {includeProposalSummary
+                  ? `Enabled (${quoteOptions.length} lineup tiers + Summary comparison page)`
+                  : 'Single-option 1-page quote (Enable to compare multiple band sizes)'}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2',
+              isReviewMultiOptionExpanded && 'rotate-180'
+            )}
+          />
+        </button>
+
+        <AnimatePresence>
+          {isReviewMultiOptionExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="px-4 pb-4 border-t border-border/30 pt-3 space-y-3 overflow-hidden"
+            >
+              <div
+                onClick={() => handleToggleProposalSummary(!includeProposalSummary)}
+                className={cn(
+                  'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all',
+                  includeProposalSummary
+                    ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)]'
+                    : 'bg-card border-border/40'
+                )}
+              >
+                <div className="pr-3">
+                  <span className="text-xs font-bold uppercase block text-[var(--fg)]">
+                    Include Multi-Option Proposal Summary Page
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block mt-0.5">
+                    Generates individual quote pages for each lineup tier plus a final Event Proposal Summary comparison table.
+                  </span>
+                </div>
+                <DotCheckbox
+                  checked={includeProposalSummary}
+                  activeColor="var(--wizard-accent)"
+                  inactiveColor="var(--border)"
+                />
+              </div>
+
+              {includeProposalSummary && (
+                <div className="space-y-3 pt-1">
+                  {quoteOptions.map((opt, idx) => (
+                    <div
+                      key={opt.id}
+                      className="p-3 rounded-xl bg-background border border-border/40 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[var(--wizard-accent)]">
+                          OPTION 0{idx + 1} • TOTAL INCL. VAT: {currencySymbol}
+                          {opt.totalWithVat.toLocaleString()}
+                        </span>
+                        {quoteOptions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removePackageOption(opt.id)}
+                            className="text-muted-foreground hover:text-[var(--danger)] p-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
+                            Tier Name
+                          </label>
+                          <input
+                            type="text"
+                            value={opt.name}
+                            onChange={e => updatePackageOption(opt.id, { name: e.target.value })}
+                            className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
+                            Musicians
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={opt.musiciansCount}
+                            onChange={e =>
+                              updatePackageOption(opt.id, {
+                                musiciansCount: Math.max(1, parseInt(e.target.value) || 1),
+                              })
+                            }
+                            className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
+                            Gross Fee ({currencySymbol})
+                          </label>
+                          <input
+                            type="number"
+                            value={opt.grossFee}
+                            onChange={e =>
+                              updatePackageOption(opt.id, {
+                                grossFee: Math.max(0, parseFloat(e.target.value) || 0),
+                              })
+                            }
+                            className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
+                            Discount %
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="90"
+                            value={opt.discountPercent}
+                            onChange={e =>
+                              updatePackageOption(opt.id, {
+                                discountPercent: Math.max(0, parseFloat(e.target.value) || 0),
+                              })
+                            }
+                            className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
+                          Lineup / Instrumentation Description
+                        </label>
+                        <input
+                          type="text"
+                          value={opt.instrumentsText}
+                          onChange={e =>
+                            updatePackageOption(opt.id, { instrumentsText: e.target.value })
+                          }
+                          className="w-full bg-card border border-border/40 rounded-lg px-2.5 py-1 text-xs text-[var(--fg)]"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addPackageOption}
+                    className="w-full py-2 rounded-xl border border-dashed border-border hover:border-[var(--wizard-accent)] text-xs font-bold uppercase text-[var(--wizard-accent)] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Lineup Option Tier</span>
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Accordion 5: Terms, Payment & Notes (Optional) */}
       <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
         <button
           type="button"
@@ -1687,6 +2616,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               exit={{ opacity: 0, height: 0 }}
               className="px-4 pb-4 border-t border-border/30 pt-3 space-y-4 overflow-hidden"
             >
+              {/* Custom Quote Header Description */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                  QUOTE SUBTITLE / DESCRIPTION{' '}
+                  <span className="text-[10px] font-normal lowercase opacity-60">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={quoteDescription}
+                  onChange={e => setQuoteDescription(e.target.value)}
+                  placeholder={`Formal quote for an event in ${venueName || venueCity || 'Venue'}`}
+                  className="w-full bg-background border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl px-3 py-2 text-xs text-[var(--fg)] focus:outline-none"
+                />
+              </div>
+
               {/* Payment Methods */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
@@ -1877,6 +2821,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <TimePicker
                   value={eventTimeStart}
                   onChange={setEventTimeStart}
+                  accentColor={activeAccentColor}
                   textSize="text-base"
                   showIcon
                   className="border-b border-border/40 pb-1.5 uppercase text-[var(--fg)]"
@@ -1889,6 +2834,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <TimePicker
                   value={eventTimeEnd}
                   onChange={setEventTimeEnd}
+                  accentColor={activeAccentColor}
+                  align="end"
                   textSize="text-base"
                   showIcon
                   className="border-b border-border/40 pb-1.5 uppercase text-[var(--fg)]"
@@ -1940,7 +2887,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const isLastStep = step === STEPS.length - 1;
   const isFirstStep = step === 0;
 
-  const rightButtonLabel = isLastStep ? 'SEND QUOTE' : 'NEXT';
+  const rightButtonLabel = isLastStep ? 'SHARE QUOTE' : 'NEXT';
   const rightButtonAction = isLastStep ? () => handleCreate(true) : handleNext;
 
   // ── EDIT MODE RENDER ────────────────────────────────────────
@@ -1988,10 +2935,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </button>
         </div>
 
-        {/* Scrollable Body Zone */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+        {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
+        <PeekingScrollContainer className="flex-1 px-6 py-4 min-h-0">
           {renderEditAccordionView()}
-        </div>
+        </PeekingScrollContainer>
 
         {/* Bottom Action Bar (shrink-0) */}
         <div className="px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 shrink-0 border-t border-border/40 bg-[var(--bg)]/95 backdrop-blur-md">
@@ -2003,11 +2950,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               {currencySymbol}{totals.total.toLocaleString()}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-4 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-4 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <X className="w-4 h-4 text-[var(--fg)]" />
               CANCEL
@@ -2015,10 +2962,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <button
               type="button"
               onClick={() => handleCreate(false)}
-              className="rounded-xl py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer"
+              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-4 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              SAVE CHANGES
+              SAVE
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCreate(true)}
+              className="rounded-xl py-4 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer"
+            >
+              <Share2 className="w-4 h-4" />
+              SHARE QUOTE
             </button>
           </div>
         </div>
@@ -2075,12 +3030,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
 
-      {/* Scrollable Body Zone */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 min-h-0">
+      {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
+      <PeekingScrollContainer className="flex-1 px-6 py-4 space-y-5 min-h-0">
         {step === 0 && renderStep1()}
         {step === 1 && renderStep2()}
         {step === 2 && renderStep3()}
-      </div>
+      </PeekingScrollContainer>
 
       {/* Bottom Action Bar */}
       <div className="shrink-0 border-t border-border/40 px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 bg-[var(--bg)]/95 backdrop-blur-md">
@@ -2116,7 +3071,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             )}
           >
             <span>{rightButtonLabel}</span>
-            {isLastStep ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+            {isLastStep ? <Share2 className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
       </div>

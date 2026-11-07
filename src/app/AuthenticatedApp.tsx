@@ -74,6 +74,8 @@ const RehearsalLiveView = React.lazy(() => import("@/app/components/rehearsal/Re
 const RehearsalPostView = React.lazy(() => import("@/app/components/rehearsal/RehearsalPostView").then(m => ({ default: m.RehearsalPostView })));
 const QuoteCreationWizard = React.lazy(() => import("@/app/components/quotes/QuoteCreationWizard").then(m => ({ default: m.QuoteCreationWizard })));
 const BandPricingModal = React.lazy(() => import("@/app/components/quotes/BandPricingModal").then(m => ({ default: m.BandPricingModal })));
+const QuoteShareModal = React.lazy(() => import("@/app/components/quotes/QuoteShareModal").then(m => ({ default: m.QuoteShareModal })));
+import type { PricingModalTabType } from "@/app/components/quotes/BandPricingModal";
 
 import { EventData } from "@/app/components/dashboard/EventCard";
 import { EventDetail } from "@/app/components/dashboard/EventDetail";
@@ -96,6 +98,8 @@ import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
 import { UpgradePricingSheet } from "@/app/components/modals/UpgradePricingSheet";
 import { PersonalGigModal } from "@/app/components/modals/PersonalGigModal";
+import { NoBandRehearsalModal } from "@/app/components/modals/NoBandRehearsalModal";
+import { ChooseBandProposalModal, type BandOption } from "@/app/components/modals/ChooseBandProposalModal";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
 import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 import { ProposeRehearsalModal } from "@/app/components/rehearsal/ProposeRehearsalModal";
@@ -308,6 +312,9 @@ export default function AuthenticatedApp() {
   // Rehearsal Polls & Proposals
   const { polls: rehearsalPolls, refetch: refetchRehearsalPolls } = useRehearsalPolls(realBand?.id || null, user?.id || null);
   const [showProposeRehearsalModal, setShowProposeRehearsalModal] = useState(false);
+  const [showNoBandRehearsalModal, setShowNoBandRehearsalModal] = useState(false);
+  const [showChooseBandProposalModal, setShowChooseBandProposalModal] = useState(false);
+  const [proposalTargetBand, setProposalTargetBand] = useState<BandOption | null>(null);
   const [showRehearsalPollModal, setShowRehearsalPollModal] = useState(false);
   const [pollModalInitialProposal, setPollModalInitialProposal] = useState<RehearsalPoll | null>(null);
   const [saveToast, setSaveToast] = useState<{
@@ -795,7 +802,9 @@ export default function AuthenticatedApp() {
   const [showCreateBand, setShowCreateBand] = useState(false);
   const [showUpgradePricing, setShowUpgradePricing] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingModalInitialTab, setPricingModalInitialTab] = useState<PricingModalTabType>('rates');
   const [pricingReturnTo, setPricingReturnTo] = useState<'settings' | 'control_deck' | 'identity_hub' | null>(null);
+  const [sharingQuote, setSharingQuote] = useState<Partial<Quote> | null>(null);
   const [showAdminTour, setShowAdminTour] = useState(false);
 
   // Auto-launch Admin Guided Tour for first-time admins
@@ -1305,6 +1314,16 @@ export default function AuthenticatedApp() {
       return;
     }
     if (type === 'rehearsal' && !isAdmin) {
+      if (!realBands || realBands.length === 0) {
+        setShowNoBandRehearsalModal(true);
+        return;
+      }
+      if (realBands.length > 1) {
+        setShowChooseBandProposalModal(true);
+        return;
+      }
+      // User is in a single band
+      setProposalTargetBand(realBands[0]);
       setShowProposeRehearsalModal(true);
       return;
     }
@@ -1355,6 +1374,8 @@ export default function AuthenticatedApp() {
     selectedNotifications,
     selectedNotification,
     showPersonalGigModal,
+    showNoBandRehearsalModal,
+    showChooseBandProposalModal,
     showProposeRehearsalModal,
     showRehearsalPollModal,
     isCreateEventOpen,
@@ -1393,6 +1414,8 @@ export default function AuthenticatedApp() {
     selectedNotifications,
     selectedNotification,
     showPersonalGigModal,
+    showNoBandRehearsalModal,
+    showChooseBandProposalModal,
     showProposeRehearsalModal,
     showRehearsalPollModal,
     isCreateEventOpen,
@@ -1454,6 +1477,14 @@ export default function AuthenticatedApp() {
       // 2. Modals, Sheets & Creation Flows
       if (s.showPersonalGigModal) {
         setShowPersonalGigModal(false);
+        return;
+      }
+      if (s.showNoBandRehearsalModal) {
+        setShowNoBandRehearsalModal(false);
+        return;
+      }
+      if (s.showChooseBandProposalModal) {
+        setShowChooseBandProposalModal(false);
         return;
       }
       if (s.showProposeRehearsalModal) {
@@ -2502,8 +2533,14 @@ export default function AuthenticatedApp() {
           entityCounts={entityCounts}
           onEditProfile={() => setShowEditProfile(true)}
           onEditBand={() => setShowBandMembers(true)}
+          onOpenBandSettings={() => {
+            setPricingModalInitialTab('branding');
+            setPricingReturnTo('identity_hub');
+            setShowPricingModal(true);
+          }}
           onAddEntity={handleRequestCreateBand}
           onOpenPricing={() => {
+            setPricingModalInitialTab('rates');
             setPricingReturnTo('identity_hub');
             setShowPricingModal(true);
           }}
@@ -2606,6 +2643,7 @@ export default function AuthenticatedApp() {
             <BandPricingModal
               key="band-pricing"
               isOpen={showPricingModal}
+              initialTab={pricingModalInitialTab}
               onClose={() => {
                 setShowPricingModal(false);
                 if (pricingReturnTo === 'control_deck' || pricingReturnTo === 'identity_hub') {
@@ -2666,16 +2704,54 @@ export default function AuthenticatedApp() {
                 bandMembers={memoizedBandMembers}
                 editingEvent={editingEventData}
                 onOpenPollBuilder={handleOpenPollBuilder}
-                onOpenProposeRehearsal={() => setShowProposeRehearsalModal(true)}
+                onOpenProposeRehearsal={() => {
+                  setIsCreateEventOpen(false);
+                  if (!realBands || realBands.length === 0) {
+                    setShowNoBandRehearsalModal(true);
+                  } else if (realBands.length > 1) {
+                    setShowChooseBandProposalModal(true);
+                  } else {
+                    setProposalTargetBand(realBands[0]);
+                    setShowProposeRehearsalModal(true);
+                  }
+                }}
               />
             )}
           </AnimatePresence>
 
-          {showProposeRehearsalModal && realBand && user && (
+          {showNoBandRehearsalModal && (
+            <NoBandRehearsalModal
+              isOpen={showNoBandRehearsalModal}
+              onClose={() => setShowNoBandRehearsalModal(false)}
+              onOpenUpgrade={() => {
+                setShowNoBandRehearsalModal(false);
+                setShowUpgradePricing(true);
+              }}
+            />
+          )}
+
+          {showChooseBandProposalModal && (
+            <ChooseBandProposalModal
+              isOpen={showChooseBandProposalModal}
+              onClose={() => setShowChooseBandProposalModal(false)}
+              bands={realBands}
+              onSelectBand={(band) => {
+                setProposalTargetBand(band);
+                setShowChooseBandProposalModal(false);
+                setShowProposeRehearsalModal(true);
+              }}
+            />
+          )}
+
+          {showProposeRehearsalModal && (proposalTargetBand || realBand) && user && (
             <ProposeRehearsalModal
               isOpen={showProposeRehearsalModal}
-              onClose={() => setShowProposeRehearsalModal(false)}
-              bandId={realBand.id}
+              onClose={() => {
+                setShowProposeRehearsalModal(false);
+                setProposalTargetBand(null);
+              }}
+              bandId={(proposalTargetBand || realBand)!.id}
+              bandName={(proposalTargetBand || realBand)!.name}
               userId={user.id}
               onSuccess={refetchRehearsalPolls}
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
@@ -2766,7 +2842,26 @@ export default function AuthenticatedApp() {
               if (refetchDashboard) await refetchDashboard();
             }
             setIsCreateEventOpen(false);
+            if (!q.status || q.status === 'SENT') {
+              setSharingQuote(q);
+            }
           }} />}</AnimatePresence>
+
+          <AnimatePresence>
+            {sharingQuote && (
+              <QuoteShareModal
+                isOpen={!!sharingQuote}
+                onClose={() => setSharingQuote(null)}
+                quote={sharingQuote}
+                bandId={realBand?.id ? String(realBand.id) : (selectedBand?.id ? String(selectedBand.id) : 'default')}
+                bandName={realBand?.name || selectedBand?.name || 'Band'}
+                onOpenBandSettings={() => {
+                  setPricingModalInitialTab('branding');
+                  setShowPricingModal(true);
+                }}
+              />
+            )}
+          </AnimatePresence>
 
           <NotificationDetailModal key="notification-detail"
             isOpen={isNotificationsOpen}

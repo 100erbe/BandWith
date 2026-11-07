@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowUpRight, Plus } from '@/app/components/icons';
+import { ArrowLeft, ArrowUpRight, Plus, Share2 } from '@/app/components/icons';
 import { Quote } from '@/app/data/quotes';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
+import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
+import { useBand } from '@/lib/BandContext';
+import { QuoteShareModal } from './QuoteShareModal';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -11,6 +14,7 @@ interface QuoteDetailModalProps {
   onSend?: (quote: Quote) => void;
   onDuplicate?: (quote: Quote) => void;
   onDelete?: (quote: Quote) => void;
+  onOpenBandSettings?: () => void;
 }
 
 const formatBandTotal = (total: number): string => {
@@ -23,8 +27,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onOpenBandSettings,
 }) => {
-  const canEdit = quote.status === 'DRAFT';
+  const { selectedBand } = useBand();
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
   const eventDate = quote.eventDate ? new Date(quote.eventDate) : null;
   const year = eventDate ? eventDate.getFullYear() : '';
   const monthDay = eventDate
@@ -39,7 +46,8 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     return { daysInMonth, firstDay, eventDay: eventDate.getDate() };
   })() : null;
 
-  const dp = (quote.discount ?? 0) > 0 ? Math.round(((quote.discount ?? 0) / (quote.total || 1)) * 100) : 30;
+  const dp = quote.depositPercentage || 30;
+  const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>({ fadeHeight: 60 });
 
   return (
     <>
@@ -52,11 +60,15 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       />
 
       <motion.div
+        ref={containerRef}
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         className="fixed inset-0 z-[120] flex flex-col overflow-y-auto"
-        style={{ backgroundColor: 'var(--accent-quote)' }}
+        style={{
+          backgroundColor: 'var(--accent-quote)',
+          ...maskStyle,
+        }}
       >
         <div
           className="flex-1 flex flex-col gap-[40px] px-[16px]"
@@ -210,7 +222,9 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 <span className="text-[12px] font-bold text-white uppercase">GUESTS</span>
                 <ArrowUpRight className="w-[14px] h-[14px] text-white" />
               </div>
-              <span className="text-[42px] font-bold text-white leading-none">150</span>
+              <span className="text-[42px] font-bold text-white leading-none">
+                {quote.guestCount || 'TBD'}
+              </span>
             </div>
           </div>
 
@@ -223,7 +237,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
                 <span className="text-[42px] font-bold text-white leading-none">
-                  {quote.lineItems?.length || 3}
+                  {quote.selectedMoments?.length || quote.lineItems?.length || 1}
                 </span>
               </div>
             </div>
@@ -234,7 +248,9 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <span className="text-[12px] font-bold text-white uppercase">MEMBERS</span>
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
-                <span className="text-[42px] font-bold text-white leading-none">8</span>
+                <span className="text-[42px] font-bold text-white leading-none">
+                  {quote.musicians?.length || quote.musicianCount || 1}
+                </span>
               </div>
             </div>
           </div>
@@ -249,18 +265,21 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
           }}
         >
-          <div className="flex flex-col gap-[20px] items-center">
+          <div className="flex flex-col gap-[16px] items-center">
             <div className="grid grid-cols-2 gap-[10px] w-full">
               <button
                 onClick={() => canEdit && onEdit?.(quote)}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black"
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black/80 hover:bg-black transition-colors"
               >
                 <Plus className="w-[18px] h-[18px] text-white" />
-                <span className="text-[16px] font-bold text-white uppercase">EDIT</span>
+                <span className="text-[15px] font-bold text-white uppercase">EDIT</span>
               </button>
-              <button className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black">
-                <Plus className="w-[18px] h-[18px] text-white" />
-                <span className="text-[16px] font-bold text-white uppercase">CONVERT</span>
+              <button
+                onClick={() => setIsShareOpen(true)}
+                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-black hover:bg-black/90 transition-colors"
+              >
+                <Share2 className="w-[18px] h-[18px] text-[#D5FB46]" />
+                <span className="text-[15px] font-bold text-white uppercase">SHARE QUOTE</span>
               </button>
             </div>
             <button
@@ -272,6 +291,15 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </div>
         </div>
       </motion.div>
+
+      <QuoteShareModal
+        isOpen={isShareOpen}
+        quote={quote}
+        bandId={selectedBand?.id}
+        bandName={selectedBand?.name}
+        onClose={() => setIsShareOpen(false)}
+        onOpenBandSettings={onOpenBandSettings}
+      />
     </>
   );
 };

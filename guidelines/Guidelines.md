@@ -1,7 +1,19 @@
-**Add your own guidelines here**
-<!--
+# BandWith Design & Architecture Guidelines
 
+## 90% Viewport Rule & Peeking Elements Standard
+To eliminate "false bottoms" (the illusion of completeness where users assume there is no more content and fail to scroll):
+1. **Peeking Affordance**:
+   - In creation wizards, modals, sheets, and scrollable application views, never let the visible content align flush with the bottom boundary or fixed bottom action bar when more content exists below the fold.
+   - The subsequent section, form field, or card must visually "peek" (~10% visible cut-off) into the viewport.
+2. **PeekingScrollContainer Component**:
+   - Use `<PeekingScrollContainer>` (located at `@/app/components/ui/PeekingScrollContainer`) or the `usePeekingScroll()` hook for scrollable bodies.
+   - It dynamically applies a bottom alpha gradient mask (`mask-image: linear-gradient(...)`) whenever scrollable content remains below the fold, smoothly clearing once the user reaches the bottom.
+3. **Modal & Sheet Height**:
+   - Bottom sheets and floating modals should cap height at `max-h-[90vh]` or `max-h-[92vh]` (or bottom sheet equivalent) so background context remains visible and the modal itself feels responsive and non-trapping.
+
+<!--
 System Guidelines
+
 
 Use this file to provide the AI with rules and guidelines you want it to follow.
 This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs

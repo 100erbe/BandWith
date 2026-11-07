@@ -11,6 +11,7 @@ import {
   AlertTriangle, 
   CheckCircle2 
 } from '@/app/components/icons';
+import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 import type { Notification } from '@/lib/services/notifications';
 
 interface EventRSVPSheetProps {
@@ -54,6 +55,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   currentUserId,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
 
   const data = notification.data || {};
   const eventId = data.event_id as string;
@@ -129,12 +131,16 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       />
 
       <motion.div
+        ref={containerRef}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
         className="fixed bottom-0 left-0 right-0 z-[91] bg-card text-card-foreground border-t sm:border border-foreground/15 rounded-t-[28px] sm:rounded-[28px] px-5 pt-4 shadow-2xl sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto"
-        style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))' }}
+        style={{
+          paddingBottom: 'calc(32px + env(safe-area-inset-bottom, 0px))',
+          ...maskStyle,
+        }}
       >
         {/* Drag Handle */}
         <div className="flex justify-center mb-3">

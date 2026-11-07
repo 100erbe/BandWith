@@ -24,6 +24,7 @@ import {
   ChevronDown,
   HelpCircle,
   Download,
+  Settings,
 } from '@/app/components/icons';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
@@ -56,6 +57,7 @@ export interface IdentityHubProps {
   onEditBand?: () => void;
   onAddEntity?: () => void;
   onOpenPricing?: () => void;
+  onOpenBandSettings?: () => void;
   onOpenSettings?: (section?: string) => void;
 }
 
@@ -72,6 +74,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onEditBand,
   onAddEntity,
   onOpenPricing,
+  onOpenBandSettings,
 }) => {
   const { signOut, user, profile } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
@@ -349,16 +352,35 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   </h3>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    onEditBand?.();
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Members</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenBandSettings) {
+                          onOpenBandSettings();
+                        } else {
+                          onOpenPricing?.();
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Band Settings</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onEditBand?.();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Members</span>
+                  </button>
+                </div>
               </div>
 
               {/* Band Metadata Pills */}
@@ -475,7 +497,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground font-normal mt-0.5">
-                          Musician fees, quote services, base location & travel expenses
+                          Band logo, payment & IBAN details, musician fees & quote services
                         </span>
                       </div>
                     </div>

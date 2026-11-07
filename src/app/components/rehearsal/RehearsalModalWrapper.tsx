@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from '@/app/components/icons';
+import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
   bgColor = 'var(--wizard-accent, var(--accent-rehearsal))',
   textColor = 'var(--wizard-accent-fg, var(--surface-inverse-fg, white))',
 }) => {
+  const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -32,11 +35,15 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
             style={{ backgroundColor: bgColor }}
           />
           <motion.div
+            ref={containerRef}
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
             className="fixed inset-0 z-[101] flex flex-col overflow-y-auto"
-            style={{ backgroundColor: bgColor }}
+            style={{
+              backgroundColor: bgColor,
+              ...maskStyle,
+            }}
           >
             <div
               className="flex flex-col gap-8 px-4 pb-8 max-w-2xl mx-auto w-full"

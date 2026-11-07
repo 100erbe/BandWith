@@ -22,6 +22,7 @@ interface ProposeRehearsalModalProps {
   isOpen: boolean;
   onClose: () => void;
   bandId: string;
+  bandName?: string;
   userId: string;
   onSuccess?: () => void;
   onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -31,6 +32,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
   isOpen,
   onClose,
   bandId,
+  bandName,
   userId,
   onSuccess,
   onShowToast,
@@ -152,7 +154,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
                   Propose Rehearsal
                 </h2>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Member Request
+                  {bandName ? `FOR ${bandName}` : 'Member Request'}
                 </p>
               </div>
             </div>

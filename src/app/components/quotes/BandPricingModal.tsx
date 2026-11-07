@@ -1,26 +1,51 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Check, Plus, Minus, Trash2, RotateCcw, Sparkles, MapPin, Lock } from '@/app/components/icons';
+import {
+  ArrowLeft,
+  Check,
+  Plus,
+  Minus,
+  Trash2,
+  RotateCcw,
+  Sparkles,
+  MapPin,
+  Lock,
+  Upload,
+  Image,
+  FileSignature,
+  Wallet,
+  Mail,
+  Phone,
+  Globe,
+  FileText,
+  Edit3,
+  Loader2,
+} from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { useBand } from '@/lib/BandContext';
 import {
   DEFAULT_BAND_PRICING,
+  DEFAULT_QUOTE_DISCLAIMER,
   getBandPricing,
   saveBandPricing,
+  uploadBandBrandingAsset,
   calculateSmartQuote,
   type BandPricingSettings,
   type CustomService,
 } from '@/lib/services/pricing';
 
+export type PricingModalTabType = 'branding' | 'rates' | 'production' | 'services' | 'commercial';
+
 interface BandPricingModalProps {
   isOpen: boolean;
   onClose: () => void;
   bandId?: string;
+  initialTab?: PricingModalTabType;
   onSaved?: (settings: BandPricingSettings) => void;
 }
 
-type TabType = 'rates' | 'production' | 'services' | 'commercial';
+type TabType = PricingModalTabType;
 
 const UNIT_LABELS: Record<CustomService['unit'], string> = {
   flat: 'Flat fee',
@@ -40,16 +65,26 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   isOpen,
   onClose,
   bandId = 'default',
+  initialTab = 'rates',
   onSaved,
 }) => {
   const { isAdmin, selectedBand } = useBand();
   const effectiveBandId = bandId !== 'default' ? bandId : (selectedBand?.id || 'default');
 
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
-  const [activeTab, setActiveTab] = useState<TabType>('rates');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
+
+  // Branding & Signature state
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<'upload' | 'draw'>('upload');
+  const sigCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawingSig, setIsDrawingSig] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const sigInputRef = useRef<HTMLInputElement | null>(null);
 
   // New service form state
   const [newServiceName, setNewServiceName] = useState('');
@@ -60,6 +95,12 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   const [showAddService, setShowAddService] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  useEffect(() => {
     if (isOpen && effectiveBandId) {
       getBandPricing(effectiveBandId).then((res) => {
         setSettings(res);
@@ -67,6 +108,94 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       setConfirmingReset(false);
     }
   }, [isOpen, effectiveBandId]);
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadBandBrandingAsset(effectiveBandId, file, 'logo');
+      setSettings((prev) => ({ ...prev, band_logo_url: url }));
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSignatureFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSignature(true);
+    try {
+      const url = await uploadBandBrandingAsset(effectiveBandId, file, 'signature');
+      setSettings((prev) => ({ ...prev, signature_url: url }));
+    } catch (err) {
+      console.error('Signature upload failed:', err);
+    } finally {
+      setUploadingSignature(false);
+      e.target.value = '';
+    }
+  };
+
+  const getCanvasPoint = (
+    canvas: HTMLCanvasElement,
+    clientX: number,
+    clientY: number
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  };
+
+  const startSigDraw = (clientX: number, clientY: number) => {
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pt = getCanvasPoint(canvas, clientX, clientY);
+    setIsDrawingSig(true);
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pt.x, pt.y);
+  };
+
+  const moveSigDraw = (clientX: number, clientY: number) => {
+    if (!isDrawingSig) return;
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pt = getCanvasPoint(canvas, clientX, clientY);
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+  };
+
+  const endSigDraw = () => {
+    if (!isDrawingSig) return;
+    setIsDrawingSig(false);
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setSettings((prev) => ({ ...prev, signature_url: dataUrl }));
+  };
+
+  const clearSigCanvas = () => {
+    const canvas = sigCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    setSettings((prev) => ({ ...prev, signature_url: '' }));
+  };
 
   // Live quote preview calculation for standard core lineup, 50km travel, standard PA
   const sampleQuote = useMemo(() => {
@@ -172,6 +301,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   const activeServicesCount = settings.custom_services.filter((s) => s.is_active).length;
 
   const tabs: { id: TabType; label: string }[] = [
+    { id: 'branding', label: 'Branding & Payment' },
     { id: 'rates', label: 'Musician Fees' },
     { id: 'production', label: 'Travel & Sound' },
     { id: 'services', label: `Extra Services (${activeServicesCount})` },
@@ -287,6 +417,502 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ═══ TAB 0: BRANDING, SIGNATURE & PAYMENT DETAILS ═══ */}
+        {activeTab === 'branding' && (
+          <div className="flex flex-col gap-6">
+            {/* Group 1: Band Logo & Official Sign-Off */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  1. Band Logo & Quote Sign-Off
+                </h2>
+                <p className="text-[11px] text-foreground/50">
+                  Displayed on the top-right header and bottom signature block of your exported A4 Quote PDFs.
+                </p>
+              </div>
+
+              {/* Band Logo Upload Card */}
+              <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-[14px] bg-background border border-foreground/15 flex items-center justify-center overflow-hidden shrink-0">
+                    {settings.band_logo_url ? (
+                      <img
+                        src={settings.band_logo_url}
+                        alt="Band Logo"
+                        className="w-full h-full object-contain p-2"
+                      />
+                    ) : (
+                      <Image className="w-7 h-7 text-foreground/30" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      Band Logo
+                    </span>
+                    <span className="text-[11px] text-foreground/50 max-w-xs">
+                      High-resolution PNG, JPG or SVG (transparent or white background recommended for A4 PDF headers).
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="px-3.5 py-2 rounded-[10px] bg-foreground text-background text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 hover:opacity-90 transition-all"
+                  >
+                    {uploadingLogo ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    {settings.band_logo_url ? 'Change Logo' : 'Upload Logo'}
+                  </button>
+                  {settings.band_logo_url && (
+                    <button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, band_logo_url: '' })}
+                      className="p-2 rounded-[10px] bg-foreground/5 hover:bg-destructive/10 text-foreground/60 hover:text-destructive transition-colors"
+                      title="Remove Logo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Signer Name & Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    Signer Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Gabriel Rodriguez"
+                    value={settings.signer_name || ''}
+                    onChange={(e) => setSettings({ ...settings, signer_name: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Signer Role / Title
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Musical Director and Musician"
+                    value={settings.signer_role || ''}
+                    onChange={(e) => setSettings({ ...settings, signer_role: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Signature Upload or Draw Pad */}
+              <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                        Authorized Signature
+                      </span>
+                      <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                    </div>
+                    <span className="text-[11px] text-foreground/50">
+                      Appears at the bottom-right of your quote PDF above the signer&apos;s name.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-background border border-foreground/15 rounded-[10px] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setSignatureMode('upload')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-[7px] text-[10px] font-bold uppercase tracking-wider transition-all',
+                        signatureMode === 'upload'
+                          ? 'bg-foreground text-background'
+                          : 'text-foreground/60 hover:text-foreground'
+                      )}
+                    >
+                      Upload Image
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSignatureMode('draw')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-[7px] text-[10px] font-bold uppercase tracking-wider transition-all',
+                        signatureMode === 'draw'
+                          ? 'bg-foreground text-background'
+                          : 'text-foreground/60 hover:text-foreground'
+                      )}
+                    >
+                      Draw Signature
+                    </button>
+                  </div>
+                </div>
+
+                {signatureMode === 'upload' ? (
+                  <div className="flex items-center justify-between gap-4 pt-1">
+                    <div className="h-16 min-w-[160px] px-4 rounded-[12px] bg-white border border-foreground/15 flex items-center justify-center overflow-hidden">
+                      {settings.signature_url ? (
+                        <img
+                          src={settings.signature_url}
+                          alt="Signature Preview"
+                          className="max-h-12 w-auto object-contain"
+                        />
+                      ) : (
+                        <span className="text-[11px] font-medium text-black/40 italic">
+                          No signature uploaded
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={sigInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSignatureFileChange}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => sigInputRef.current?.click()}
+                        disabled={uploadingSignature}
+                        className="px-3.5 py-2 rounded-[10px] bg-foreground/10 hover:bg-foreground hover:text-background text-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                      >
+                        <FileSignature className="w-3.5 h-3.5" />
+                        {settings.signature_url ? 'Replace' : 'Upload PNG'}
+                      </button>
+                      {settings.signature_url && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, signature_url: '' })}
+                          className="p-2 rounded-[10px] bg-foreground/5 hover:bg-destructive/10 text-foreground/60 hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="relative w-full h-32 rounded-[12px] bg-white border border-foreground/20 overflow-hidden touch-none">
+                      <canvas
+                        ref={sigCanvasRef}
+                        width={600}
+                        height={180}
+                        onMouseDown={(e) => startSigDraw(e.clientX, e.clientY)}
+                        onMouseMove={(e) => moveSigDraw(e.clientX, e.clientY)}
+                        onMouseUp={endSigDraw}
+                        onMouseLeave={endSigDraw}
+                        onTouchStart={(e) => {
+                          const t = e.touches[0];
+                          if (t) startSigDraw(t.clientX, t.clientY);
+                        }}
+                        onTouchMove={(e) => {
+                          const t = e.touches[0];
+                          if (t) moveSigDraw(t.clientX, t.clientY);
+                        }}
+                        onTouchEnd={endSigDraw}
+                        className="w-full h-full cursor-crosshair"
+                      />
+                      <div className="pointer-events-none absolute bottom-2 left-3 right-3 border-b border-black/15 flex justify-between items-center pb-1">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-black/30">
+                          Sign above line
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={clearSigCanvas}
+                        className="px-3 py-1.5 rounded-[8px] bg-foreground/5 hover:bg-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground/70"
+                      >
+                        Clear Pad
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Group 2: Bank & Payment Details */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  2. Payment & Bank Transfer Details
+                </h2>
+                <p className="text-[11px] text-foreground/50">
+                  Bank coordinates and payment terms printed on quotes when payment details are enabled.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    Account Holder / Beneficiary
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Luxe Music Production S.L."
+                    value={settings.bank_account_holder || ''}
+                    onChange={(e) =>
+                      setSettings({ ...settings, bank_account_holder: e.target.value })
+                    }
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    IBAN
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. IT60 X054 2811 1010 0000 0123 456"
+                    value={settings.bank_iban || ''}
+                    onChange={(e) => setSettings({ ...settings, bank_iban: e.target.value })}
+                    className="w-full text-sm font-bold font-mono bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Bank Name
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Intesa Sanpaolo / Revolut Business"
+                    value={settings.bank_name || ''}
+                    onChange={(e) => setSettings({ ...settings, bank_name: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      BIC / SWIFT Code
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. BCITITMM"
+                    value={settings.bank_bic_swift || ''}
+                    onChange={(e) => setSettings({ ...settings, bank_bic_swift: e.target.value })}
+                    className="w-full text-sm font-bold font-mono bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                  Default Payment Terms Note
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 20% initial deposit upon booking; 80% balance due before event"
+                  value={settings.default_payment_terms || ''}
+                  onChange={(e) =>
+                    setSettings({ ...settings, default_payment_terms: e.target.value })
+                  }
+                  className="w-full text-sm font-medium bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+
+            {/* Group 3: Contact & Legal Info */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  3. Band Contact & Legal Details
+                </h2>
+                <p className="text-[11px] text-foreground/50">
+                  Contact details and optional fiscal information for agency or corporate quotes.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    Booking Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="booking@yourband.com"
+                    value={settings.contact_email || ''}
+                    onChange={(e) => setSettings({ ...settings, contact_email: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    Contact Phone / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+39 333 123 4567"
+                    value={settings.contact_phone || ''}
+                    onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Website / Portfolio URL
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="www.yourband.com"
+                    value={settings.website || ''}
+                    onChange={(e) => setSettings({ ...settings, website: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Legal / Company Name
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Luxe Live Entertainment S.r.l."
+                    value={settings.legal_company_name || ''}
+                    onChange={(e) =>
+                      setSettings({ ...settings, legal_company_name: e.target.value })
+                    }
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Tax / VAT ID (P.IVA / CIF)
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. IT12345678901"
+                    value={settings.tax_vat_id || ''}
+                    onChange={(e) => setSettings({ ...settings, tax_vat_id: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                      Registered Legal Address
+                    </label>
+                    <span className="text-[10px] font-medium text-foreground/40">(optional)</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Street, City, Postal Code, Country"
+                    value={settings.legal_address || ''}
+                    onChange={(e) => setSettings({ ...settings, legal_address: e.target.value })}
+                    className="w-full text-sm font-bold bg-background border border-foreground/15 rounded-[10px] px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Group 4: Quote Document Defaults */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-0.5 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  4. Quote Validity & Disclaimer Defaults
+                </h2>
+                <p className="text-[11px] text-foreground/50">
+                  Default validity period and legal note printed beneath the Event Date on your PDF quotes.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-[16px] bg-card border border-foreground/10 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wide">
+                    Default Quote Validity (Days)
+                  </span>
+                  <span className="text-[11px] text-foreground/50">
+                    Number of days a quote remains valid from the issue date
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-background border border-foreground/15 rounded-[12px] px-3 py-2 w-28 shrink-0">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={settings.default_validity_days ?? 30}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        default_validity_days: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                    className="w-full text-base font-bold bg-transparent text-foreground focus:outline-none text-right tabular-nums"
+                  />
+                  <span className="text-[10px] font-bold text-foreground/40 uppercase">days</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                    Default Quote Disclaimer Text (use &#123;days&#125; for dynamic validity)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        default_quote_disclaimer: DEFAULT_QUOTE_DISCLAIMER,
+                      })
+                    }
+                    className="text-[10px] font-bold uppercase text-primary hover:underline"
+                  >
+                    Reset Text
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={settings.default_quote_disclaimer || DEFAULT_QUOTE_DISCLAIMER}
+                  onChange={(e) =>
+                    setSettings({ ...settings, default_quote_disclaimer: e.target.value })
+                  }
+                  className="w-full text-xs font-medium leading-relaxed bg-background border border-foreground/15 rounded-[10px] p-3 text-foreground focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ TAB 1: MUSICIAN FEES ═══ */}
         {activeTab === 'rates' && (

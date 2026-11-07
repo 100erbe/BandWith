@@ -10,6 +10,7 @@ import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { WizardAccentRail, getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker } from '@/app/components/ui/DatePicker';
@@ -1006,6 +1007,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <TimePicker
               value={data.time}
               onChange={val => setData(prev => ({ ...prev, time: val }))}
+              accentColor={activeAccentColor}
               textSize="text-base"
               showIcon
               className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
@@ -1023,6 +1025,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <TimePicker
               value={endTime}
               onChange={val => setEndTime(val)}
+              accentColor={activeAccentColor}
+              align="end"
               textSize="text-base"
               showIcon
               className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
@@ -1684,6 +1688,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 <TimePicker
                   value={data.time}
                   onChange={val => setData(prev => ({ ...prev, time: val }))}
+                  accentColor={activeAccentColor}
                   textSize="text-base"
                   showIcon
                   className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
@@ -1696,6 +1701,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 <TimePicker
                   value={endTime}
                   onChange={val => setEndTime(val)}
+                  accentColor={activeAccentColor}
+                  align="end"
                   textSize="text-base"
                   showIcon
                   className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
@@ -2120,10 +2127,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </button>
           </div>
 
-          {/* Scrollable Body Zone */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+          {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
+          <PeekingScrollContainer className="flex-1 px-6 py-4 min-h-0">
             {renderEditAccordionView()}
-          </div>
+          </PeekingScrollContainer>
 
           {/* Bottom Action Bar (shrink-0) */}
           <div className="px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 shrink-0 border-t border-border/40 bg-[var(--bg)]/95 backdrop-blur-md">
@@ -2272,12 +2279,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           </div>
         </div>
 
-        {/* Scrollable Body Zone */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 min-h-0">
+        {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
+        <PeekingScrollContainer className="flex-1 px-6 py-4 space-y-5 min-h-0">
           {step === 0 && renderSessionRosterStep()}
           {step === 1 && renderDateLocationStep()}
           {step === 2 && renderReviewExtrasStep()}
-        </div>
+        </PeekingScrollContainer>
 
         {/* Bottom Action Bar */}
         <div className="shrink-0 border-t border-border/40 px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 bg-[var(--bg)]/95 backdrop-blur-md">

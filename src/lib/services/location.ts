@@ -54,18 +54,6 @@ async function searchGooglePlaces(query: string, signal?: AbortSignal): Promise<
     },
     body: JSON.stringify({
       input: query,
-      includedPrimaryTypes: [
-        'establishment',
-        'point_of_interest',
-        'event_venue',
-        'restaurant',
-        'bar',
-        'night_club',
-        'performing_arts_theater',
-        'stadium',
-        'hotel',
-        'geocode',
-      ],
     }),
   });
 
