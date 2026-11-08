@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 
 // Types
 export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' | 'negotiating' | 'archived';
@@ -219,7 +219,7 @@ export const createQuote = async (
   musicians?: Omit<QuoteMusician, 'id' | 'quote_id' | 'created_at'>[]
 ): Promise<{ data: Quote | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     // Generate quote number using RPC

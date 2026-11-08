@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Calendar, Mic2, X, ArrowRight, Sparkles } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import type { Notification } from '@/lib/services/notifications';
+import { springs } from '@/styles/motion';
 
 interface UrgentNotificationPopupProps {
   notification: Notification;
@@ -68,7 +69,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       initial={{ opacity: 0, y: -24, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -24, scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+      transition={springs.snappy}
       className="fixed top-3 sm:top-5 left-3 right-3 sm:left-auto sm:right-6 sm:w-[420px] z-[98] bg-card border border-foreground/15 rounded-2xl shadow-2xl overflow-hidden select-none"
     >
       {/* Top semantic accent strip */}

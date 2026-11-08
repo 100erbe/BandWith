@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 
 // Types
 export type SongStatus = 'learning' | 'ready' | 'archived';
@@ -144,7 +144,7 @@ export const getSong = async (songId: string): Promise<{ data: Song | null; erro
 
 export const createSong = async (songData: Partial<Song>): Promise<{ data: Song | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -204,7 +204,7 @@ export const bulkCreateSongs = async (
   songs: Omit<Song, 'id' | 'band_id' | 'created_at' | 'updated_at'>[]
 ): Promise<{ data: Song[] | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
@@ -230,7 +230,7 @@ export const seedRepertoireSongs = async (
   bandId: string
 ): Promise<{ data: Song[] | null; count: number; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { REPERTOIRE_SONGS } = await import('@/app/data/repertoire-songs');
@@ -354,7 +354,7 @@ export const createSetlist = async (
   songs?: { song_id: string; position: number; set_number?: number; notes?: string }[]
 ): Promise<{ data: Setlist | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data: setlist, error: insertError } = await supabase

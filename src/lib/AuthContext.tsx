@@ -6,8 +6,9 @@ import React, {
   ReactNode,
 } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, signIn, signUp, signOut, resetPassword, signInWithOAuth } from './supabase';
+import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWithOAuth } from './supabase';
 import { Capacitor } from '@capacitor/core';
+import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
 
@@ -75,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
+    const profileCacheKey = getCacheKey(userId, 'global', 'user_profile');
     try {
       // First attempt to get the profile
       const { data, error } = await supabase
@@ -86,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) {
         // If profile doesn't exist (PGRST116), create a basic one
         if (error.code === 'PGRST116') {
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await getSafeUser();
           if (!user) return null;
 
           const fallbackProfile: Profile = {
@@ -115,23 +117,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.error('Error creating fallback profile:', createError);
             return fallbackProfile;
           }
+          setOfflineItem(profileCacheKey, createdProfile).catch(() => {});
           return createdProfile as Profile;
         }
         console.error('Error fetching profile:', error);
-        return null;
+        const cached = await getOfflineItem<Profile>(profileCacheKey);
+        return cached || null;
       }
 
+      if (data) {
+        setOfflineItem(profileCacheKey, data).catch(() => {});
+      }
       return data as Profile;
     } catch (error) {
       console.error('Unexpected error in fetchProfile:', error);
-      return null;
+      const cached = await getOfflineItem<Profile>(profileCacheKey);
+      return cached || null;
     }
   };
 
   const refreshProfile = async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
+      if (profileData) {
+        setProfile(profileData);
+      }
     }
   };
 
@@ -167,8 +177,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (session) {
           setSession(session);
           setUser(session.user);
+          const cachedProfile = await getOfflineItem<Profile>(getCacheKey(session.user.id, 'global', 'user_profile'));
+          if (cachedProfile) {
+            setProfile(cachedProfile);
+            setLoading(false);
+          }
           const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          if (profileData) {
+            setProfile(profileData);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -190,13 +207,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (session?.user) {
         setTimeout(async () => {
           const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          if (profileData) {
+            setProfile(profileData);
+          }
         }, 0);
-      } else {
-        setProfile(null);
-      }
-
-      if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
       }
     });
@@ -321,6 +336,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setProfile(null);
       setSession(null);
+      clearOfflineCache().catch(() => {});
     }
     return { error };
   };

@@ -68,6 +68,12 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
           'Notifications about events and gigs',
           5
         );
+        await createNotificationChannel(
+          'bandwith_finance',
+          'Finance & Payments',
+          'Notifications about quotes and payments',
+          4
+        );
       }
 
       // Setup listeners for receiving notifications immediately so cold-start tap actions aren't missed

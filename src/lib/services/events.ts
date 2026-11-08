@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 
 // Types
 export type EventType = 'gig' | 'rehearsal' | 'wedding' | 'corporate' | 'private' | 'festival' | 'other';
@@ -69,6 +69,10 @@ export interface Event {
   created_by?: string;
   created_at: string;
   updated_at: string;
+  
+  // Offline support
+  _isPendingSync?: boolean;
+  _tempId?: string;
 }
 
 export interface EventMember {
@@ -124,7 +128,7 @@ export const getEvents = async (
     // Filter by band(s) and/or personal events (band_id IS NULL AND created_by = userId)
     const rawIds = Array.isArray(bandIds) ? bandIds : (bandIds ? [bandIds] : []);
     const bIds = rawIds.filter(Boolean);
-    const resolvedUserId = options?.userId || (await supabase.auth.getUser()).data?.user?.id;
+    const resolvedUserId = options?.userId || (await getSafeUser()).data?.user?.id;
     const includePersonal = options?.includePersonal !== false;
 
     if (bIds.length > 0 && resolvedUserId && includePersonal) {
@@ -286,7 +290,7 @@ export const createEvent = async (
   memberIds?: { user_id: string; role?: string; fee?: number; status?: string }[]
 ): Promise<{ data: Event | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
     if (!eventData.band_id) throw new Error('band_id is required');
 
@@ -436,7 +440,7 @@ export const createPersonalGig = async (
 ): Promise<{ data: Event | null; error: Error | null }> => {
   try {
     const { userId, title, eventDate, startTime, endTime, venueName, fee, notes } = input;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     const effectiveUserId = user?.id || userId;
 
     if (!effectiveUserId) throw new Error('User authentication is required');
@@ -500,7 +504,7 @@ export const updatePersonalGig = async (
     const { eventId, userId, title, eventDate, startTime, endTime, venueName, fee, notes } = input;
     if (!eventId) throw new Error('Event ID is required');
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     const effectiveUserId = user?.id || userId;
 
     const updates: Record<string, any> = {};

@@ -22,10 +22,12 @@ import {
   Mail,
   Shield,
   User,
+  AlertTriangle,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { durations, easings } from '@/styles/motion';
 
 export interface NotificationData {
   id: string;
@@ -87,9 +89,17 @@ function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   const t = (type || '').toLowerCase();
   const evType = String(data?.event_type || '').toLowerCase();
 
+  if (t === 'member_dropped_out' || t === 'event_declined' || data?.response === 'declined') {
+    return {
+      label: (data?.tag as string) || 'DROPOUT ALERT',
+      icon: AlertTriangle,
+      tileClass: 'bg-red-500/15 text-red-500 border border-red-500/30',
+      badgeClass: 'bg-red-500/15 text-red-500 font-bold',
+    };
+  }
   if (t === 'rehearsal_poll') {
     return {
-      label: 'POLL',
+      label: (data?.tag as string) || 'POLL',
       icon: Calendar,
       tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
       badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
@@ -97,7 +107,7 @@ function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   }
   if (t === 'rehearsal_proposal') {
     return {
-      label: 'PROPOSAL',
+      label: (data?.tag as string) || 'PROPOSAL',
       icon: Sparkles,
       tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
       badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
@@ -105,34 +115,50 @@ function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   }
   if (t.includes('rehearsal') || evType === 'rehearsal') {
     return {
-      label: 'REHEARSAL',
+      label: (data?.tag as string) || 'REHEARSAL',
       icon: Music,
       tileClass: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20',
       badgeClass: 'bg-indigo-500/15 text-indigo-400',
     };
   }
   if (t.includes('chat')) {
+    const isDirect = data?.chatType === 'direct' || data?.tag === 'Direct Message' || !data?.band_id;
     return {
-      label: 'CHAT',
+      label: (data?.tag as string) || (isDirect ? 'PRIVATE MESSAGE' : 'BAND MESSAGE'),
       icon: MessageSquare,
-      tileClass: 'bg-primary/15 text-primary border border-primary/20',
-      badgeClass: 'bg-primary/15 text-primary',
+      tileClass: isDirect
+        ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
+        : 'bg-primary/15 text-primary border border-primary/20',
+      badgeClass: isDirect ? 'bg-blue-500/15 text-blue-400' : 'bg-primary/15 text-primary',
+    };
+  }
+  if (t === 'event_invite') {
+    return {
+      label: (data?.tag as string) || 'GIG INVITATION',
+      icon: Mic2,
+      tileClass: 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
+      badgeClass: 'bg-rose-500/15 text-rose-400',
+    };
+  }
+  if (t === 'event_confirmed') {
+    return {
+      label: (data?.tag as string) || 'GIG CONFIRMED',
+      icon: CheckCheck,
+      tileClass: 'bg-accent/15 text-accent border border-accent/25',
+      badgeClass: 'bg-accent/15 text-accent',
     };
   }
   if (t.includes('gig') || t.includes('event')) {
-    const isConfirmed = t.includes('confirmed');
     return {
-      label: isConfirmed ? 'CONFIRMED' : 'GIG',
+      label: (data?.tag as string) || 'GIG',
       icon: Mic2,
-      tileClass: isConfirmed 
-        ? 'bg-accent/15 text-accent border border-accent/25' 
-        : 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
-      badgeClass: isConfirmed ? 'bg-accent/15 text-accent' : 'bg-rose-500/15 text-rose-400',
+      tileClass: 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
+      badgeClass: 'bg-rose-500/15 text-rose-400',
     };
   }
   if (t.includes('quote') || t.includes('payment') || t.includes('finance')) {
     return {
-      label: 'FINANCE',
+      label: (data?.tag as string) || 'FINANCE',
       icon: Euro,
       tileClass: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
       badgeClass: 'bg-emerald-500/15 text-emerald-400',
@@ -140,14 +166,14 @@ function getNotificationMeta(type: string, data?: Record<string, unknown>) {
   }
   if (t.includes('invite') || t.includes('member')) {
     return {
-      label: 'INVITE',
+      label: (data?.tag as string) || 'INVITE',
       icon: UserPlus,
       tileClass: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
       badgeClass: 'bg-amber-500/15 text-amber-400',
     };
   }
   return {
-    label: 'ALERT',
+    label: (data?.tag as string) || 'ALERT',
     icon: Bell,
     tileClass: 'bg-primary/15 text-primary border border-primary/20',
     badgeClass: 'bg-primary/15 text-primary',
@@ -260,7 +286,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+          transition={{ duration: durations.normal, ease: easings.smooth }}
           className="fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
           style={{ overscrollBehaviorX: 'none' }}
         >
@@ -431,13 +457,18 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                                   <span className={cn(
                                     'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px]',
                                     meta.badgeClass
                                   )}>
                                     {meta.label}
                                   </span>
+                                  {Boolean(notif.data?.subtitle) && (
+                                    <span className="text-[9px] font-medium text-foreground/50 bg-foreground/5 px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px]">
+                                      {String(notif.data.subtitle)}
+                                    </span>
+                                  )}
                                   {!isRead && (
                                     <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
                                   )}
@@ -479,7 +510,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     return (
                       <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2.5 flex-wrap">
                             <div className={cn(
                               'w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0',
                               meta.tileClass
@@ -492,6 +523,11 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             )}>
                               {meta.label}
                             </span>
+                            {Boolean(detailNotif.data?.subtitle) && (
+                              <span className="text-[10px] font-medium text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded-[5px]">
+                                {String(detailNotif.data.subtitle)}
+                              </span>
+                            )}
                           </div>
                           <span className="text-xs font-semibold text-foreground/40">
                             {formatTime(detailNotif.created_at)}

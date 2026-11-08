@@ -189,7 +189,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
-      transition={{ type: 'tween', duration: 0.28, ease: 'easeOut' }}
+      transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
       className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
       style={{
         overscrollBehaviorX: 'none',

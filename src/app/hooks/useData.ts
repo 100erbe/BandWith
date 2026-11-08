@@ -8,27 +8,43 @@ import * as notificationsService from '@/lib/services/notifications';
 import * as transactionsService from '@/lib/services/transactions';
 import * as chatsService from '@/lib/services/chats';
 import * as rehearsalPollsService from '@/lib/services/rehearsalPolls';
-import { supabase } from '@/lib/supabase';
+import { supabase, getSafeUser } from '@/lib/supabase';
+import { getOfflineItem, setOfflineItem, getCacheKey } from '@/lib/offline/storage';
+import { getPendingMutations } from '@/lib/offline/syncQueue';
 
 // ============================================
 // BANDS HOOKS
 // ============================================
 
 export const useBands = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [bands, setBands] = useState<bandsService.BandWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, 'global', 'bands_list');
+
+  useEffect(() => {
+    let isMounted = true;
+    getOfflineItem<bandsService.BandWithMembers[]>(cacheKey).then((cached) => {
+      if (isMounted && cached?.length) {
+        setBands(cached);
+        setLoading(false);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [cacheKey]);
 
   const fetchBands = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     
-    setLoading(true);
     const { data, error } = await bandsService.getBands();
-    setBands(data || []);
+    if (data) {
+      setBands(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, cacheKey]);
 
   useEffect(() => {
     fetchBands();
@@ -38,19 +54,36 @@ export const useBands = () => {
 };
 
 export const useBand = (bandId: string | null) => {
+  const { user } = useAuth();
   const [band, setBand] = useState<bandsService.BandWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, 'band_detail');
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<bandsService.BandWithMembers>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setBand(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchBand = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
-    setLoading(true);
     const { data, error } = await bandsService.getBand(bandId);
-    setBand(data);
+    if (data) {
+      setBand(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId]);
+  }, [bandId, cacheKey]);
 
   useEffect(() => {
     fetchBand();
@@ -69,19 +102,36 @@ export const useBand = (bandId: string | null) => {
 };
 
 export const useBandMembers = (bandId: string | null) => {
+  const { user } = useAuth();
   const [members, setMembers] = useState<bandsService.BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, 'band_members');
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<bandsService.BandMember[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setMembers(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchMembers = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
-    setLoading(true);
     const { data, error } = await bandsService.getBandMembers(bandId);
-    setMembers(data || []);
+    if (data) {
+      setMembers(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId]);
+  }, [bandId, cacheKey]);
 
   useEffect(() => {
     fetchMembers();
@@ -98,29 +148,139 @@ export const useEvents = (
   bandId: string | string[] | null,
   options?: any
 ) => {
+  const { user } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const hasLoadedOnce = useRef(false);
+  const eventsRef = useRef<eventsService.Event[]>([]);
+  eventsRef.current = events;
+
+  const bandKey = Array.isArray(bandId) ? bandId.slice().sort().join(',') : (bandId || 'all');
+  const optionsKey = JSON.stringify(options || {});
+  const cacheKey = getCacheKey(user?.id, bandKey || 'all', `events_${optionsKey}`);
+  const fallbackCacheKey = getCacheKey(user?.id, 'global', `events_fallback_${optionsKey}`);
+
+  const mergePendingEvents = useCallback(async (baseEvents: eventsService.Event[]) => {
+    try {
+      const mutations = await getPendingMutations();
+      if (mutations.length === 0) return baseEvents;
+
+      const deletedIds = new Set(
+        mutations
+          .filter(m => m.type === 'delete_event' && m.payload?.eventId)
+          .map(m => m.payload.eventId as string)
+      );
+
+      const updatesMap = new Map<string, Partial<eventsService.Event>>();
+      mutations
+        .filter(m => m.type === 'update_event' && m.payload?.eventId && m.payload?.updates)
+        .forEach(m => {
+          const prev = updatesMap.get(m.payload.eventId) || {};
+          updatesMap.set(m.payload.eventId, { ...prev, ...m.payload.updates, _isPendingSync: true });
+        });
+
+      const pendingEvents = mutations
+        .filter(m => m.type === 'create_event' && m.payload?.eventData)
+        .map(m => ({ ...m.payload.eventData, _isPendingSync: true } as eventsService.Event));
+
+      const relevant = pendingEvents.filter(pe => {
+        if (deletedIds.has(pe.id)) return false;
+        if (!pe.band_id) return true;
+        if (Array.isArray(bandId)) return bandId.length === 0 || bandId.includes(pe.band_id);
+        if (bandId) return pe.band_id === bandId;
+        return true;
+      });
+
+      const processedBase = baseEvents
+        .filter(e => !deletedIds.has(e.id))
+        .map(e => (updatesMap.has(e.id) ? { ...e, ...updatesMap.get(e.id) } : e));
+
+      const existingIds = new Set(processedBase.map(e => e.id));
+      const toAdd = relevant
+        .filter(pe => !existingIds.has(pe.id))
+        .map(pe => (updatesMap.has(pe.id) ? { ...pe, ...updatesMap.get(pe.id) } : pe));
+
+      return [...toAdd, ...processedBase];
+    } catch {
+      return baseEvents;
+    }
+  }, [bandId]);
+
+  // Seed from cache immediately on mount or key change
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      getOfflineItem<eventsService.Event[]>(cacheKey),
+      getOfflineItem<eventsService.Event[]>(fallbackCacheKey),
+    ]).then(async ([cached, fallbackCached]) => {
+      if (!isMounted) return;
+      const source = (cached && cached.length > 0) ? cached : fallbackCached;
+      if (!source) return;
+      const merged = await mergePendingEvents(source);
+      if (isMounted) {
+        setEvents(merged);
+        hasLoadedOnce.current = true;
+        setLoading(false);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [cacheKey, fallbackCacheKey, mergePendingEvents]);
 
   const fetchEvents = useCallback(async (isBackground = false) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const resolvedUser = user || (await getSafeUser()).data?.user;
     const hasBands = Array.isArray(bandId) ? bandId.length > 0 : !!bandId;
-    if (!hasBands && !user) { setLoading(false); return; }
+    if (!hasBands && !resolvedUser) {
+      setLoading(false);
+      return;
+    }
     
-    // Skip visual loading indicator during background refreshes
-    if (!isBackground || !hasLoadedOnce.current) {
+    // Skip visual loading indicator if we already have cached/loaded data
+    if (!isBackground && !hasLoadedOnce.current && eventsRef.current.length === 0) {
       setLoading(true);
     }
-    const { data, error } = await eventsService.getEvents(bandId || [], {
+
+    const { data, error: fetchError } = await eventsService.getEvents(bandId || [], {
       ...options,
-      userId: user?.id,
+      userId: resolvedUser?.id,
     });
-    setEvents(data || []);
-    setError(error);
-    if (data) hasLoadedOnce.current = true;
+
+    if (!fetchError && data) {
+      // Guard against overwriting cached band events when bandId is temporarily [] while bands load or offline
+      const isEmptyBandArray = Array.isArray(bandId) && bandId.length === 0;
+      if (isEmptyBandArray && data.length === 0) {
+        const fallback = await getOfflineItem<eventsService.Event[]>(fallbackCacheKey);
+        if (fallback && fallback.length > 0) {
+          const mergedFallback = await mergePendingEvents(fallback);
+          setEvents(mergedFallback);
+          hasLoadedOnce.current = true;
+          setLoading(false);
+          return;
+        }
+      }
+
+      const merged = await mergePendingEvents(data);
+      setEvents(merged);
+      setOfflineItem(cacheKey, data).catch(() => {});
+      if (data.length > 0 || hasBands) {
+        setOfflineItem(fallbackCacheKey, data).catch(() => {});
+      }
+      hasLoadedOnce.current = true;
+      setError(null);
+    } else {
+      // Offline or fetch error: preserve cached/current events and merge any newly enqueued offline events
+      if (fetchError) setError(fetchError);
+      const cached = (await getOfflineItem<eventsService.Event[]>(cacheKey))
+        || (await getOfflineItem<eventsService.Event[]>(fallbackCacheKey))
+        || eventsRef.current.filter(e => !e._isPendingSync);
+      const merged = await mergePendingEvents(cached || []);
+      setEvents(merged);
+      if (merged.length > 0) {
+        hasLoadedOnce.current = true;
+      }
+    }
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, user, optionsKey, cacheKey, fallbackCacheKey, mergePendingEvents]);
 
   useEffect(() => {
     fetchEvents();
@@ -174,19 +334,37 @@ export const useEvents = (
 };
 
 export const useEvent = (eventId: string | null) => {
+  const { user } = useAuth();
   const [event, setEvent] = useState<eventsService.EventWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, 'global', `event_detail_${eventId}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (eventId) {
+      getOfflineItem<eventsService.EventWithMembers>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setEvent(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [eventId, cacheKey]);
 
   const fetchEvent = useCallback(async () => {
     if (!eventId) return;
     
     setLoading(true);
     const { data, error } = await eventsService.getEvent(eventId);
-    setEvent(data);
+    if (data) {
+      setEvent(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [eventId]);
+  }, [eventId, cacheKey]);
 
   useEffect(() => {
     fetchEvent();
@@ -196,11 +374,24 @@ export const useEvent = (eventId: string | null) => {
 };
 
 export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const hasLoadedOnce = useRef(false);
+  const cacheKey = getCacheKey(user?.id, bandId || 'all', `upcoming_events_${limit}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    getOfflineItem<eventsService.Event[]>(cacheKey).then((cached) => {
+      if (isMounted && cached?.length) {
+        setEvents(cached);
+        hasLoadedOnce.current = true;
+        setLoading(false);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [cacheKey]);
 
   const fetchEvents = useCallback(async (isBackground = false) => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -210,11 +401,14 @@ export const useUpcomingEvents = (bandId?: string, limit: number = 10) => {
       setLoading(true);
     }
     const { data, error } = await eventsService.getUpcomingEvents(bandId, limit);
-    setEvents(data || []);
+    if (data) {
+      setEvents(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+      hasLoadedOnce.current = true;
+    }
     setError(error);
-    if (data) hasLoadedOnce.current = true;
     setLoading(false);
-  }, [isAuthenticated, bandId, limit]);
+  }, [isAuthenticated, bandId, limit, cacheKey]);
 
   useEffect(() => {
     fetchEvents();
@@ -290,19 +484,37 @@ export const useQuotes = (
   bandId: string | null,
   options?: Parameters<typeof quotesService.getQuotes>[1]
 ) => {
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<quotesService.Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, `quotes_${JSON.stringify(options || {})}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<quotesService.Quote[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setQuotes(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchQuotes = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await quotesService.getQuotes(bandId, options);
-    setQuotes(data || []);
+    if (data) {
+      setQuotes(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, JSON.stringify(options), cacheKey]);
 
   useEffect(() => {
     fetchQuotes();
@@ -312,19 +524,37 @@ export const useQuotes = (
 };
 
 export const useQuote = (quoteId: string | null) => {
+  const { user } = useAuth();
   const [quote, setQuote] = useState<quotesService.QuoteWithMusicians | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, 'global', `quote_${quoteId}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (quoteId) {
+      getOfflineItem<quotesService.QuoteWithMusicians>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setQuote(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [quoteId, cacheKey]);
 
   const fetchQuote = useCallback(async () => {
     if (!quoteId) return;
     
     setLoading(true);
     const { data, error } = await quotesService.getQuote(quoteId);
-    setQuote(data);
+    if (data) {
+      setQuote(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [quoteId]);
+  }, [quoteId, cacheKey]);
 
   useEffect(() => {
     fetchQuote();
@@ -334,6 +564,7 @@ export const useQuote = (quoteId: string | null) => {
 };
 
 export const useQuoteStats = (bandId: string | null) => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<{
     totalQuotes: number;
     pendingQuotes: number;
@@ -343,16 +574,33 @@ export const useQuoteStats = (bandId: string | null) => {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, 'quote_stats');
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<typeof stats>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setStats(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchStats = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await quotesService.getQuoteStats(bandId);
-    setStats(data);
+    if (data) {
+      setStats(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId]);
+  }, [bandId, cacheKey]);
 
   useEffect(() => {
     fetchStats();
@@ -369,19 +617,37 @@ export const useSongs = (
   bandId: string | null,
   options?: Parameters<typeof songsService.getSongs>[1]
 ) => {
+  const { user } = useAuth();
   const [songs, setSongs] = useState<songsService.Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, `songs_${JSON.stringify(options || {})}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<songsService.Song[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setSongs(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchSongs = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await songsService.getSongs(bandId, options);
-    setSongs(data || []);
+    if (data) {
+      setSongs(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, JSON.stringify(options), cacheKey]);
 
   useEffect(() => {
     fetchSongs();
@@ -394,19 +660,37 @@ export const useSetlists = (
   bandId: string | null,
   options?: Parameters<typeof songsService.getSetlists>[1]
 ) => {
+  const { user } = useAuth();
   const [setlists, setSetlists] = useState<songsService.Setlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, `setlists_${JSON.stringify(options || {})}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<songsService.Setlist[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setSetlists(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchSetlists = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await songsService.getSetlists(bandId, options);
-    setSetlists(data || []);
+    if (data) {
+      setSetlists(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, JSON.stringify(options), cacheKey]);
 
   useEffect(() => {
     fetchSetlists();
@@ -416,19 +700,37 @@ export const useSetlists = (
 };
 
 export const useSetlist = (setlistId: string | null) => {
+  const { user } = useAuth();
   const [setlist, setSetlist] = useState<songsService.SetlistWithSongs | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, 'global', `setlist_${setlistId}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (setlistId) {
+      getOfflineItem<songsService.SetlistWithSongs>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setSetlist(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [setlistId, cacheKey]);
 
   const fetchSetlist = useCallback(async () => {
     if (!setlistId) return;
     
     setLoading(true);
     const { data, error } = await songsService.getSetlist(setlistId);
-    setSetlist(data);
+    if (data) {
+      setSetlist(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [setlistId]);
+  }, [setlistId, cacheKey]);
 
   useEffect(() => {
     fetchSetlist();
@@ -575,10 +877,13 @@ export const useUnreadCount = () => {
 // ============================================
 
 export const useDashboardData = (bandId: string | null, userId?: string | null) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const hasLoadedOnce = useRef(false);
+  const effectiveUserId = userId || user?.id;
+  const cacheKey = getCacheKey(effectiveUserId, bandId, 'dashboard_data');
+  const fallbackCacheKey = getCacheKey(effectiveUserId, 'global', 'dashboard_data_fallback');
   
   const [data, setData] = useState<{
     eventStats: {
@@ -612,20 +917,40 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
     recentQuotes: [],
   });
 
+  // Seed from cache immediately on mount
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      getOfflineItem<typeof data>(cacheKey),
+      getOfflineItem<typeof data>(fallbackCacheKey),
+    ]).then(([cached, fallbackCached]) => {
+      if (!isMounted) return;
+      const source = (cached && (cached.eventStats || cached.memberStats || cached.upcomingEvents?.length))
+        ? cached
+        : fallbackCached;
+      if (source && (source.eventStats || source.memberStats || source.upcomingEvents?.length)) {
+        setData(source);
+        hasLoadedOnce.current = true;
+        setLoading(false);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [cacheKey, fallbackCacheKey]);
+
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || (!bandId && !userId)) { setLoading(false); return; }
     
-    // Skip visual loading indicator during background refreshes
-    if (!isBackground || !hasLoadedOnce.current) {
+    // Skip visual loading indicator if we already have cached/loaded data
+    if (!isBackground && !hasLoadedOnce.current) {
       setLoading(true);
     }
     
     try {
       const promises: Promise<any>[] = [
-        bandId ? eventsService.getEventStats(bandId) : Promise.resolve({ data: null, error: null }),
-        bandId ? quotesService.getQuoteStats(bandId) : Promise.resolve({ data: null, error: null }),
-        bandId ? eventsService.getUpcomingEvents(bandId, 5) : Promise.resolve({ data: [], error: null }),
-        bandId ? quotesService.getQuotes(bandId, { limit: 5 }) : Promise.resolve({ data: [], error: null }),
+        bandId ? eventsService.getEventStats(bandId) : Promise.resolve({ data: null, error: null, skipped: true }),
+        bandId ? quotesService.getQuoteStats(bandId) : Promise.resolve({ data: null, error: null, skipped: true }),
+        bandId ? eventsService.getUpcomingEvents(bandId, 5) : Promise.resolve({ data: [], error: null, skipped: true }),
+        bandId ? quotesService.getQuotes(bandId, { limit: 5 }) : Promise.resolve({ data: [], error: null, skipped: true }),
       ];
       if (userId) {
         promises.push(eventsService.getMemberPersonalStats(bandId || null, userId));
@@ -635,20 +960,47 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
       const [eventStatsRes, quoteStatsRes, upcomingEventsRes, recentQuotesRes] = results;
       const memberStatsRes = userId ? results[4] : null;
 
-      setData({
-        eventStats: eventStatsRes?.data || null,
-        quoteStats: quoteStatsRes?.data || null,
-        memberStats: memberStatsRes?.data || null,
-        upcomingEvents: upcomingEventsRes?.data || [],
-        recentQuotes: recentQuotesRes?.data || [],
+      const hasAnyError = Boolean(
+        eventStatsRes?.error ||
+        quoteStatsRes?.error ||
+        upcomingEventsRes?.error ||
+        recentQuotesRes?.error ||
+        memberStatsRes?.error
+      );
+
+      setData(prev => {
+        const nextData = {
+          eventStats: (!eventStatsRes?.error && !eventStatsRes?.skipped && eventStatsRes?.data)
+            ? eventStatsRes.data
+            : prev.eventStats,
+          quoteStats: (!quoteStatsRes?.error && !quoteStatsRes?.skipped && quoteStatsRes?.data)
+            ? quoteStatsRes.data
+            : prev.quoteStats,
+          memberStats: (!memberStatsRes?.error && memberStatsRes?.data)
+            ? memberStatsRes.data
+            : prev.memberStats,
+          upcomingEvents: (!upcomingEventsRes?.error && !upcomingEventsRes?.skipped && upcomingEventsRes?.data)
+            ? upcomingEventsRes.data
+            : prev.upcomingEvents,
+          recentQuotes: (!recentQuotesRes?.error && !recentQuotesRes?.skipped && recentQuotesRes?.data)
+            ? recentQuotesRes.data
+            : prev.recentQuotes,
+        };
+
+        if (!hasAnyError && (nextData.eventStats || nextData.memberStats || nextData.upcomingEvents.length > 0)) {
+          setOfflineItem(cacheKey, nextData).catch(() => {});
+          setOfflineItem(fallbackCacheKey, nextData).catch(() => {});
+        }
+        return nextData;
       });
+
       hasLoadedOnce.current = true;
     } catch (err: any) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId, userId]);
+  }, [isAuthenticated, bandId, userId, cacheKey, fallbackCacheKey]);
 
   useEffect(() => {
     fetchData();
@@ -719,19 +1071,37 @@ export const useTransactions = (
   bandId: string | null,
   options?: Parameters<typeof transactionsService.getTransactions>[1]
 ) => {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<transactionsService.Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, `txs_${JSON.stringify(options || {})}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<transactionsService.Transaction[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setTransactions(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchTransactions = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await transactionsService.getTransactions(bandId, options);
-    setTransactions(data || []);
+    if (data) {
+      setTransactions(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId, JSON.stringify(options)]);
+  }, [bandId, JSON.stringify(options), cacheKey]);
 
   useEffect(() => {
     fetchTransactions();
@@ -741,6 +1111,7 @@ export const useTransactions = (
 };
 
 export const useFinancialStats = (bandId: string | null, year?: number, month?: number) => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<{
     totalIncome: number;
     totalExpenses: number;
@@ -749,16 +1120,33 @@ export const useFinancialStats = (bandId: string | null, year?: number, month?: 
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, `fin_stats_${year || 'curr'}_${month || 'all'}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<typeof stats>(cacheKey).then((cached) => {
+        if (isMounted && cached) {
+          setStats(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchStats = useCallback(async () => {
     if (!bandId) { setLoading(false); return; }
     
     setLoading(true);
     const { data, error } = await transactionsService.getFinancialStats(bandId, year, month);
-    setStats(data);
+    if (data) {
+      setStats(data);
+      setOfflineItem(cacheKey, data).catch(() => {});
+    }
     setError(error);
     setLoading(false);
-  }, [bandId, year, month]);
+  }, [bandId, year, month, cacheKey]);
 
   useEffect(() => {
     fetchStats();
@@ -772,9 +1160,10 @@ export const useFinancialStats = (bandId: string | null, year?: number, month?: 
 // ============================================
 
 export const useExpandedFinanceData = (bandId: string | null) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, 'expanded_finance_data');
   
   const [data, setData] = useState<{
     financialStats: {
@@ -788,6 +1177,19 @@ export const useExpandedFinanceData = (bandId: string | null) => {
     recentTransactions: [],
   });
 
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<typeof data>(cacheKey).then((cached) => {
+        if (isMounted && cached && (cached.financialStats || cached.recentTransactions?.length)) {
+          setData(cached);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
+
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || !bandId) { setLoading(false); return; }
     
@@ -799,20 +1201,25 @@ export const useExpandedFinanceData = (bandId: string | null) => {
         transactionsService.getTransactions(bandId, { limit: 10 }),
       ]);
 
-      setData({
-        financialStats: statsRes.data ? {
-          totalIncome: statsRes.data.totalIncome,
-          totalExpenses: statsRes.data.totalExpenses,
-          netProfit: statsRes.data.netProfit,
-        } : null,
-        recentTransactions: transactionsRes.data || [],
-      });
+      if (!statsRes.error && !transactionsRes.error) {
+        const fresh = {
+          financialStats: statsRes.data ? {
+            totalIncome: statsRes.data.totalIncome,
+            totalExpenses: statsRes.data.totalExpenses,
+            netProfit: statsRes.data.netProfit,
+          } : null,
+          recentTransactions: transactionsRes.data || [],
+        };
+
+        setData(fresh);
+        setOfflineItem(cacheKey, fresh).catch(() => {});
+      }
     } catch (err: any) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId]);
+  }, [isAuthenticated, bandId, cacheKey]);
 
   useEffect(() => {
     fetchData();
@@ -822,11 +1229,26 @@ export const useExpandedFinanceData = (bandId: string | null) => {
 };
 
 export const useExpandedEventsData = (bandId: string | null, statusFilter?: string[]) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [events, setEvents] = useState<eventsService.Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const hasLoadedOnce = useRef(false);
+  const cacheKey = getCacheKey(user?.id, bandId, `expanded_events_${JSON.stringify(statusFilter || [])}`);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<eventsService.Event[]>(cacheKey).then((cached) => {
+        if (isMounted && cached?.length) {
+          setEvents(cached);
+          hasLoadedOnce.current = true;
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchEvents = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || !bandId) { setLoading(false); return; }
@@ -844,14 +1266,17 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
       });
 
       if (fetchError) throw fetchError;
-      setEvents(data || []);
-      if (data) hasLoadedOnce.current = true;
+      if (data) {
+        setEvents(data);
+        setOfflineItem(cacheKey, data).catch(() => {});
+        hasLoadedOnce.current = true;
+      }
     } catch (err: any) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId, JSON.stringify(statusFilter)]);
+  }, [isAuthenticated, bandId, JSON.stringify(statusFilter), cacheKey]);
 
   useEffect(() => {
     fetchEvents();
@@ -893,7 +1318,7 @@ export const useExpandedEventsData = (bandId: string | null, statusFilter?: stri
 };
 
 export const useExpandedQuotesData = (bandId: string | null) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [quotes, setQuotes] = useState<quotesService.Quote[]>([]);
   const [stats, setStats] = useState<{
     totalQuotes: number;
@@ -904,6 +1329,21 @@ export const useExpandedQuotesData = (bandId: string | null) => {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const cacheKey = getCacheKey(user?.id, bandId, 'expanded_quotes_data');
+
+  useEffect(() => {
+    let isMounted = true;
+    if (bandId) {
+      getOfflineItem<{ quotes: quotesService.Quote[]; stats: typeof stats }>(cacheKey).then((cached) => {
+        if (isMounted && cached && (cached.quotes?.length || cached.stats)) {
+          setQuotes(cached.quotes || []);
+          setStats(cached.stats || null);
+          setLoading(false);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [bandId, cacheKey]);
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || !bandId) { setLoading(false); return; }
@@ -916,14 +1356,20 @@ export const useExpandedQuotesData = (bandId: string | null) => {
         quotesService.getQuoteStats(bandId),
       ]);
 
-      setQuotes(quotesRes.data || []);
-      setStats(statsRes.data);
+      if (!quotesRes.error && !statsRes.error) {
+        const freshQuotes = quotesRes.data || [];
+        const freshStats = statsRes.data || null;
+
+        setQuotes(freshQuotes);
+        setStats(freshStats);
+        setOfflineItem(cacheKey, { quotes: freshQuotes, stats: freshStats }).catch(() => {});
+      }
     } catch (err: any) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, bandId]);
+  }, [isAuthenticated, bandId, cacheKey]);
 
   useEffect(() => {
     fetchData();

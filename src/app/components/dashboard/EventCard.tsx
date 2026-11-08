@@ -34,6 +34,7 @@ export interface EventData {
   recurrence_rule?: { freq?: string; frequency?: string; interval?: number; until?: string; count?: number };
   memberUserIds?: string[];
   memberFeeMap?: Record<string, string>;
+  _isPendingSync?: boolean;
 }
 
 interface EventCardProps {

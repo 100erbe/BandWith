@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 
 // Types
 export type TransactionType = 'income' | 'expense';
@@ -75,7 +75,7 @@ export const createTransaction = async (
   transactionData: Partial<Transaction>
 ): Promise<{ data: Transaction | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase

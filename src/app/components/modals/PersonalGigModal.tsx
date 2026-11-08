@@ -6,6 +6,8 @@ import { DatePicker } from '@/app/components/ui/DatePicker';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
+import { enqueueMutation } from '@/lib/offline/syncQueue';
+import { isOfflineError, reportNetworkStatus } from '@/lib/offline/useNetworkStatus';
 
 interface PersonalGigModalProps {
   isOpen: boolean;
@@ -87,8 +89,106 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
     setError(null);
 
     const numericFee = fee.trim() ? parseFloat(fee.replace(/[^0-9.]/g, '')) : 0;
+    const cleanFee = isNaN(numericFee) ? 0 : numericFee;
+
+    const savePersonalGigOffline = async () => {
+      reportNetworkStatus(false);
+      if (isEditing && initialData?.id) {
+        const updates: Partial<Event> = {
+          title: title.trim(),
+          event_date: eventDate,
+          start_time: startTime,
+          end_time: endTime,
+          venue_name: venueName.trim() || undefined,
+          fee: cleanFee,
+          notes: notes.trim() || undefined,
+          _isPendingSync: true,
+        };
+        await enqueueMutation('update_event', {
+          eventId: initialData.id,
+          updates,
+          isPersonalGig: true,
+          personalGigInput: {
+            eventId: initialData.id,
+            userId,
+            title: title.trim(),
+            eventDate,
+            startTime,
+            endTime,
+            venueName: venueName.trim() || undefined,
+            fee: cleanFee,
+            notes: notes.trim() || undefined,
+          },
+        });
+        if (onSaved) {
+          onSaved({
+            id: initialData.id,
+            band_id: null,
+            created_by: userId,
+            title: title.trim(),
+            event_type: 'gig',
+            status: 'confirmed',
+            event_date: eventDate,
+            start_time: startTime,
+            end_time: endTime,
+            venue_name: venueName.trim() || undefined,
+            fee: cleanFee,
+            notes: notes.trim() || undefined,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            _isPendingSync: true,
+          });
+        }
+      } else {
+        const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const offlineEv: Event = {
+          id: tempId,
+          band_id: null,
+          created_by: userId,
+          title: title.trim(),
+          event_type: 'gig',
+          status: 'confirmed',
+          event_date: eventDate,
+          start_time: startTime,
+          end_time: endTime,
+          venue_name: venueName.trim() || undefined,
+          fee: cleanFee,
+          notes: notes.trim() || undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          _isPendingSync: true,
+          _tempId: tempId,
+        };
+        await enqueueMutation(
+          'create_event',
+          {
+            eventData: offlineEv,
+            isPersonalGig: true,
+            personalGigInput: {
+              userId,
+              title: title.trim(),
+              eventDate,
+              startTime,
+              endTime,
+              venueName: venueName.trim() || undefined,
+              fee: cleanFee,
+              notes: notes.trim() || undefined,
+            },
+            memberIds: [{ user_id: userId, role: 'solo', fee: cleanFee, status: 'confirmed' }],
+          },
+          tempId
+        );
+        if (onSaved) onSaved(offlineEv);
+      }
+      onClose();
+    };
 
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await savePersonalGigOffline();
+        return;
+      }
+
       if (isEditing && initialData?.id) {
         const { data, error: updateErr } = await updatePersonalGig({
           eventId: initialData.id,
@@ -98,11 +198,17 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
           startTime,
           endTime,
           venueName: venueName.trim() || undefined,
-          fee: isNaN(numericFee) ? 0 : numericFee,
+          fee: cleanFee,
           notes: notes.trim() || undefined,
         });
 
-        if (updateErr) throw updateErr;
+        if (updateErr) {
+          if (isOfflineError(updateErr)) {
+            await savePersonalGigOffline();
+            return;
+          }
+          throw updateErr;
+        }
         if (data && onSaved) onSaved(data);
       } else {
         const { data, error: createErr } = await createPersonalGig({
@@ -112,16 +218,26 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
           startTime,
           endTime,
           venueName: venueName.trim() || undefined,
-          fee: isNaN(numericFee) ? 0 : numericFee,
+          fee: cleanFee,
           notes: notes.trim() || undefined,
         });
 
-        if (createErr) throw createErr;
+        if (createErr) {
+          if (isOfflineError(createErr)) {
+            await savePersonalGigOffline();
+            return;
+          }
+          throw createErr;
+        }
         if (data && onSaved) onSaved(data);
       }
 
       onClose();
     } catch (err: any) {
+      if (isOfflineError(err)) {
+        await savePersonalGigOffline();
+        return;
+      }
       console.error('Failed to save personal gig:', err);
       setError(err?.message || 'Failed to save personal gig. Please try again.');
     } finally {

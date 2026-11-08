@@ -141,11 +141,33 @@ export const resetPassword = async (email: string) => {
   return { data, error };
 };
 
+// Offline-safe getUser wrapper: resolves from persisted local session first
+// so offline operations never fail with "Not authenticated" when a session exists.
+const originalGetUser = supabase.auth.getUser.bind(supabase.auth);
+supabase.auth.getUser = (async (jwt?: string) => {
+  if (!jwt) {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        return { data: { user: sessionData.session.user }, error: null } as any;
+      }
+    } catch {
+      // Fall through to network getUser
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return { data: { user: null }, error: new Error('Offline') as any };
+    }
+  }
+  return originalGetUser(jwt);
+}) as typeof supabase.auth.getUser;
+
+export const getSafeUser = () => supabase.auth.getUser();
+
 export const getCurrentUser = async () => {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await getSafeUser();
   return { user, error };
 };
 

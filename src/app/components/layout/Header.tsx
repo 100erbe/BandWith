@@ -10,6 +10,9 @@ import { Band } from '@/app/data/bands';
 import { TabName } from '@/app/types';
 import { useAuth } from '@/lib/AuthContext';
 import { Capacitor } from '@capacitor/core';
+import { HEADER_SPRING, durations, easings } from '@/styles/motion';
+
+export { HEADER_SPRING };
 
 interface HeaderProps {
   activeTab: TabName;
@@ -28,13 +31,6 @@ interface HeaderProps {
   isScrolled?: boolean;
 }
 
-/* Critically-damped spring: silky iOS-grade deceleration, zero bounce/overshoot */
-const HEADER_SPRING = {
-  type: 'spring' as const,
-  stiffness: 240,
-  damping: 28,
-  mass: 0.85,
-};
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
@@ -103,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <motion.header 
       className={cn(
-        "sticky top-0 z-40 -mx-4 px-4 select-none transition-[background-color,border-color,box-shadow] duration-300",
+        "sticky top-0 z-40 -mx-4 px-4 select-none transition-[background-color,border-color,box-shadow] duration-200",
         isScrolled 
           ? "bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs" 
           : "bg-background/80 backdrop-blur-md border-b border-transparent"
@@ -127,6 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
           height: isScrolled ? collapsedContentHeight : expandedContentHeight,
         }}
         transition={HEADER_SPRING}
+        style={{ willChange: 'height' }}
         className="relative w-full overflow-hidden"
       >
           {/* ═══ LEFT: Single Unified Morphing Title Lockup (Zero duplicate DOM nodes) ═══ */}
@@ -139,6 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
                   y: isScrolled ? 5 : 2,
                 }}
                 transition={HEADER_SPRING}
+                style={{ willChange: 'transform' }}
                 className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase origin-top-left"
               >
                 Messages
@@ -151,6 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
                   opacity: isScrolled ? 0.85 : 1,
                 }}
                 transition={HEADER_SPRING}
+                style={{ willChange: 'transform, opacity' }}
                 className="flex items-center gap-1.5 origin-top-left"
               >
                 <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none">
@@ -168,6 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
                   y: isScrolled ? 5 : 2,
                 }}
                 transition={HEADER_SPRING}
+                style={{ willChange: 'transform' }}
                 className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase origin-top-left"
               >
                 Events
@@ -180,6 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
                   opacity: isScrolled ? 0.85 : 1,
                 }}
                 transition={HEADER_SPRING}
+                style={{ willChange: 'transform, opacity' }}
                 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none origin-top-left"
               >
                 {filteredEventsCount} of {totalEventsCount} events
@@ -195,6 +196,7 @@ export const Header: React.FC<HeaderProps> = ({
                   scale: isScrolled ? 0.9 : 1,
                 }}
                 transition={HEADER_SPRING}
+                style={{ willChange: 'transform' }}
                 className="flex items-center gap-1.5 h-[14px] origin-top-left"
               >
                 <div className={cn(
@@ -220,6 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
                       y: isScrolled ? 6 : 5,
                     }}
                     transition={HEADER_SPRING}
+                    style={{ willChange: 'transform' }}
                     className="flex items-center gap-2 origin-top-left"
                   >
                     <h1 className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase truncate max-w-[260px] group-hover:text-foreground/75 transition-colors">
@@ -232,6 +235,7 @@ export const Header: React.FC<HeaderProps> = ({
                         scale: isScrolled ? 1.6 : 0.8,
                       }}
                       transition={HEADER_SPRING}
+                      style={{ willChange: 'transform, opacity' }}
                       className="text-muted-foreground shrink-0"
                     >
                       <ChevronDown className="w-4 h-4" />
@@ -245,7 +249,10 @@ export const Header: React.FC<HeaderProps> = ({
                       opacity: isScrolled ? 0 : 1,
                     }}
                     transition={HEADER_SPRING}
-                    style={{ pointerEvents: isScrolled ? 'none' : 'auto' }}
+                    style={{ 
+                      pointerEvents: isScrolled ? 'none' : 'auto',
+                      willChange: 'transform, opacity',
+                    }}
                     className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors origin-top-left"
                   >
                     <span className="text-[11px] font-bold uppercase tracking-wider leading-none">Change Band</span>
@@ -260,6 +267,7 @@ export const Header: React.FC<HeaderProps> = ({
                     y: isScrolled ? 6 : 5,
                   }}
                   transition={HEADER_SPRING}
+                  style={{ willChange: 'transform' }}
                   className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase truncate max-w-[260px] origin-top-left"
                 >
                   {selectedBand.name}
@@ -314,7 +322,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full h-full relative"
                     style={{ transformStyle: 'preserve-3d' }}
                     animate={{ rotateY: targetRotation }}
-                    transition={{ duration: 0.65, ease: [0.34, 1.25, 0.64, 1] }}
+                    transition={{ duration: durations.slow, ease: [0.34, 1.25, 0.64, 1] }}
                   >
                     {/* Front Face: Initials */}
                     <div 

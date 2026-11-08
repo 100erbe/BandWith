@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { flushSync } from 'react-dom';
+import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { 
   ArrowUpRight,
   ChevronRight,
@@ -10,6 +11,10 @@ import {
   X,
   ChevronDown,
   History,
+  Calendar,
+  MapPin,
+  Clock,
+  RefreshCw,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { StatusBadge } from '@/app/components/ui/StatusBadge';
@@ -17,8 +22,10 @@ import { EventData } from '@/app/components/dashboard/EventCard';
 import { APP_COPY } from '@/app/constants/copy';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
+import { EventsSkeleton } from '@/app/components/ui/EventsSkeleton';
 
 interface EventsViewProps {
+  loading?: boolean;
   eventFilter: string;
   setEventFilter: (filter: string) => void;
   eventSearch: string;
@@ -26,8 +33,9 @@ interface EventsViewProps {
   eventView: 'list' | 'calendar';
   groupedEvents: [string, EventData[]][];
   allEvents: EventData[];
+  rawEvents?: EventData[];
   onEventClick: (event: EventData) => void;
-  onCreateEvent?: () => void;
+  onCreateEvent?: (type: 'gig' | 'rehearsal' | 'quote', date?: string) => void;
   onOpenPastEvents?: () => void;
   isAdmin?: boolean;
   onDayPickerOpen?: (open: boolean) => void;
@@ -129,6 +137,40 @@ const formatEventDate = (dateStr: string): string => {
   return `${month} ${day}`;
 };
 
+const formatEventDateShort = (dateStr?: string): string => {
+  if (!dateStr) return 'TBD';
+  const norm = normalizeDateStr(dateStr);
+  if (!norm) return dateStr;
+  const parts = norm.split('-');
+  if (parts.length === 3) {
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  }
+  return dateStr;
+};
+
+const getPrimaryBadge = (event: EventData): string => {
+  const s = event.status?.toUpperCase();
+  if (s === 'REHEARSAL' || event.eventType === 'rehearsal') return 'REHEARSAL';
+  if (s === 'QUOTED' || s === 'QUOTE' || event.eventType === 'quote') return 'QUOTE';
+  if (s === 'DRAFT' || s === 'PENDING') return 'DRAFT';
+  return 'GIG';
+};
+
+const getBadgeStyleClass = (event: EventData): string => {
+  const badge = getPrimaryBadge(event);
+  if (badge === 'REHEARSAL') return 'bg-accent-rehearsal/15 text-accent-rehearsal border border-accent-rehearsal/25';
+  if (badge === 'QUOTE') return 'bg-accent-quote/15 text-accent-quote border border-accent-quote/25';
+  if (badge === 'DRAFT') return 'bg-foreground/10 text-foreground/60 border border-foreground/15';
+  return 'bg-accent-gig/15 text-accent-gig border border-accent-gig/25';
+};
+
 const formatEventTime = (timeStr: string): string => {
   if (!timeStr) return '';
   const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
@@ -195,6 +237,7 @@ const getEventSuggestions = (event: EventData): string[] => {
 };
 
 export const EventsView: React.FC<EventsViewProps> = ({
+  loading = false,
   eventFilter,
   setEventFilter,
   eventSearch,
@@ -202,6 +245,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   selectedBandPill = 'all',
   onBandPillClick = () => {},
   allEvents,
+  rawEvents = [],
   onEventClick,
   onCreateEvent,
   onOpenPastEvents,
@@ -237,9 +281,28 @@ export const EventsView: React.FC<EventsViewProps> = ({
     });
   }, [rehearsalPolls, isAdmin, currentUserId]);
 
-  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
-  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const baseDateRef = useRef(new Date());
+  const [monthOffset, setMonthOffset] = useState(0);
+  const monthOffsetRef = useRef(monthOffset);
+  monthOffsetRef.current = monthOffset;
+  const [selectedEmptyDate, setSelectedEmptyDate] = useState<string | null>(null);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowAutocomplete(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside, { capture: true });
+    document.addEventListener('touchstart', handleClickOutside, { capture: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, { capture: true });
+      document.removeEventListener('touchstart', handleClickOutside, { capture: true });
+    };
+  }, []);
+
   const [warningPopoverId, setWarningPopoverId] = useState<number | null>(null);
   const [suggestionPopoverId, setSuggestionPopoverId] = useState<number | null>(null);
 
@@ -282,6 +345,57 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return allEvents;
   }, [allEvents, isAdmin]);
 
+  const autocompleteResults = useMemo(() => {
+    const query = eventSearch.trim().toLowerCase();
+    if (!query) return { upcomingMatches: [], pastMatches: [], totalCount: 0 };
+
+    const pool = rawEvents && rawEvents.length > 0 ? rawEvents : filteredAllEvents;
+    
+    // Regular members must never see quotes
+    const accessiblePool = isAdmin 
+      ? pool 
+      : pool.filter(e => (e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote');
+
+    const seen = new Set<string>();
+    const matches: EventData[] = [];
+
+    accessiblePool.forEach(e => {
+      const key = String(e.eventId || e.id);
+      if (seen.has(key)) return;
+
+      const titleMatch = (e.title || '').toLowerCase().includes(query);
+      const locMatch = (e.location || '').toLowerCase().includes(query);
+      const clientMatch = (e.clientName || '').toLowerCase().includes(query);
+      const notesMatch = (e.notes || '').toLowerCase().includes(query);
+
+      if (titleMatch || locMatch || clientMatch || notesMatch) {
+        seen.add(key);
+        matches.push(e);
+      }
+    });
+
+    const upcomingMatches: EventData[] = [];
+    const pastMatches: EventData[] = [];
+
+    matches.forEach(e => {
+      const norm = normalizeDateStr(e.date);
+      if (!norm || norm >= todayStr) {
+        upcomingMatches.push(e);
+      } else {
+        pastMatches.push(e);
+      }
+    });
+
+    upcomingMatches.sort((a, b) => (normalizeDateStr(a.date) || '9999').localeCompare(normalizeDateStr(b.date) || '9999'));
+    pastMatches.sort((a, b) => (normalizeDateStr(b.date) || '').localeCompare(normalizeDateStr(a.date) || ''));
+
+    return {
+      upcomingMatches: upcomingMatches.slice(0, 6),
+      pastMatches: pastMatches.slice(0, 6),
+      totalCount: matches.length,
+    };
+  }, [eventSearch, rawEvents, filteredAllEvents, isAdmin, todayStr]);
+
   const { upcomingEvents, pastEvents } = useMemo(() => {
     const upcoming: EventData[] = [];
     const past: EventData[] = [];
@@ -304,7 +418,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
         const freq = (rule.freq || rule.frequency || '').toLowerCase();
         if (freq) {
           const [y, m, day] = normDate.split('-').map(Number);
-          const until = rule.until ? new Date(rule.until) : new Date(calendarYear, calendarMonth + 6, 0);
+          const until = rule.until ? new Date(rule.until) : new Date(new Date().getFullYear() + 1, 11, 31);
           const maxCount = rule.count || 24;
           let cursor = new Date(y, m - 1, day, 12, 0, 0);
           let generated = 0;
@@ -344,7 +458,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     });
 
     return { upcomingEvents: upcoming, pastEvents: past };
-  }, [filteredAllEvents, todayStr, calendarYear, calendarMonth]);
+  }, [filteredAllEvents, todayStr]);
 
   const eyebrowLabel = useMemo(() => {
     if (eventFilter === 'All' || eventFilter === 'ALL') return 'SCHEDULE';
@@ -365,10 +479,34 @@ export const EventsView: React.FC<EventsViewProps> = ({
   };
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const getMonthForOffset = (offset: number) => {
+    const base = baseDateRef.current;
+    const d = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const days = new Date(year, month + 1, 0).getDate();
+    const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
+    const name = d.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+    const totalCells = firstDay + days;
+    const numRows = Math.ceil(totalCells / 7);
+    return { offset, year, month, daysInMonth: days, firstDayOfWeek: firstDay, monthName: name, numRows };
+  };
+
+  const currMonthInfo = useMemo(() => getMonthForOffset(monthOffset), [monthOffset]);
+  const prevMonthInfo = useMemo(() => getMonthForOffset(monthOffset - 1), [monthOffset]);
+  const nextMonthInfo = useMemo(() => getMonthForOffset(monthOffset + 1), [monthOffset]);
+
+  const calendarYear = currMonthInfo.year;
+  const calendarMonth = currMonthInfo.month;
+  const daysInMonth = currMonthInfo.daysInMonth;
+  const firstDayOfWeek = currMonthInfo.firstDayOfWeek;
+  const monthName = currMonthInfo.monthName;
+
+  const today = new Date();
+  const isCurrentMonth = monthOffset === 0;
+
   const eventDatesMap = useMemo(() => {
     const map: Record<string, EventData[]> = {};
-    const monthStart = new Date(calendarYear, calendarMonth, 1);
-    const monthEnd = new Date(calendarYear, calendarMonth + 1, 0);
     const source = filteredAllEvents;
 
     const addToMap = (ev: EventData, dateObj: Date) => {
@@ -387,7 +525,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
     source.forEach(ev => {
       if (!ev.date) return;
-      const d = new Date(ev.date);
+      const normD = normalizeDateStr(ev.date);
+      if (!normD) return;
+      const [y, m, day] = normD.split('-').map(Number);
+      if (!y || !m || !day) return;
+      const d = new Date(y, m - 1, day, 12, 0, 0);
       addToMap(ev, d);
 
       const rec = ev as any;
@@ -395,11 +537,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
         const rule = rec.recurrence_rule;
         const freq = (rule.freq || rule.frequency || '').toLowerCase();
         if (!freq) return;
-        const normD = normalizeDateStr(ev.date);
-        if (!normD) return;
-        const [y, m, day] = normD.split('-').map(Number);
-        const until = rule.until ? new Date(rule.until) : new Date(calendarYear, calendarMonth + 3, 0);
-        const maxCount = rule.count || 52;
+        const until = rule.until ? new Date(rule.until) : new Date(new Date().getFullYear() + 2, 11, 31);
+        const maxCount = rule.count || 104;
         let cursor = new Date(y, m - 1, day, 12, 0, 0);
         let generated = 0;
         while (cursor <= until && generated < maxCount) {
@@ -408,31 +547,134 @@ export const EventsView: React.FC<EventsViewProps> = ({
           else if (freq === 'monthly') cursor.setMonth(cursor.getMonth() + (rule.interval || 1));
           else break;
           if (cursor > until) break;
-          if (cursor >= monthStart && cursor <= monthEnd) {
-            addToMap(ev, new Date(cursor));
-          }
+          addToMap(ev, new Date(cursor));
           generated++;
         }
       }
     });
     return map;
-  }, [filteredAllEvents, calendarMonth, calendarYear]);
+  }, [filteredAllEvents]);
 
-  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-  const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
-  const monthName = new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+  const carouselContainerRef = useRef<HTMLDivElement>(null);
+  const [carouselWidth, setCarouselWidth] = useState<number>(0);
+  const x = useMotionValue(0);
+  const isAnimatingRef = useRef(false);
+
+  useEffect(() => {
+    if (!carouselContainerRef.current) return;
+    const updateWidth = () => {
+      if (carouselContainerRef.current) {
+        const w = carouselContainerRef.current.offsetWidth;
+        if (w > 0 && w !== carouselWidth) {
+          setCarouselWidth(w);
+          x.set(-monthOffsetRef.current * w);
+        }
+      }
+    };
+    updateWidth();
+    const resizeObserver = new ResizeObserver(() => updateWidth());
+    resizeObserver.observe(carouselContainerRef.current);
+    return () => resizeObserver.disconnect();
+  }, [carouselWidth]);
 
   const prevMonth = () => {
-    if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
-    else setCalendarMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
-    else setCalendarMonth(m => m + 1);
+    if (isAnimatingRef.current || carouselWidth <= 0) return;
+    isAnimatingRef.current = true;
+    setSelectedEmptyDate(null);
+    const targetOffset = monthOffset - 1;
+    animate(x, -targetOffset * carouselWidth, {
+      duration: 0.24,
+      ease: [0.25, 1, 0.5, 1],
+      onComplete: () => {
+        setMonthOffset(targetOffset);
+        isAnimatingRef.current = false;
+      },
+    });
   };
 
-  const today = new Date();
-  const isCurrentMonth = calendarMonth === today.getMonth() && calendarYear === today.getFullYear();
+  const nextMonth = () => {
+    if (isAnimatingRef.current || carouselWidth <= 0) return;
+    isAnimatingRef.current = true;
+    setSelectedEmptyDate(null);
+    const targetOffset = monthOffset + 1;
+    animate(x, -targetOffset * carouselWidth, {
+      duration: 0.24,
+      ease: [0.25, 1, 0.5, 1],
+      onComplete: () => {
+        setMonthOffset(targetOffset);
+        isAnimatingRef.current = false;
+      },
+    });
+  };
+
+  const jumpToToday = () => {
+    if (isAnimatingRef.current || carouselWidth <= 0 || monthOffset === 0) return;
+    isAnimatingRef.current = true;
+    setSelectedEmptyDate(null);
+    if (Math.abs(monthOffset) === 1) {
+      animate(x, 0, {
+        duration: 0.24,
+        ease: [0.25, 1, 0.5, 1],
+        onComplete: () => {
+          setMonthOffset(0);
+          isAnimatingRef.current = false;
+        },
+      });
+    } else {
+      x.set(0);
+      setMonthOffset(0);
+      isAnimatingRef.current = false;
+    }
+  };
+
+  const handleDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
+    if (carouselWidth <= 0) return;
+    const currentVal = x.get();
+    const restingX = -monthOffset * carouselWidth;
+    const displacement = currentVal - restingX;
+    const threshold = carouselWidth * 0.2;
+    const velocityThreshold = 250;
+
+    if (displacement < -threshold || info.velocity.x < -velocityThreshold) {
+      isAnimatingRef.current = true;
+      const targetOffset = monthOffset + 1;
+      animate(x, -targetOffset * carouselWidth, {
+        duration: 0.22,
+        ease: [0.25, 1, 0.5, 1],
+        onComplete: () => {
+          setMonthOffset(targetOffset);
+          isAnimatingRef.current = false;
+        },
+      });
+    } else if (displacement > threshold || info.velocity.x > velocityThreshold) {
+      isAnimatingRef.current = true;
+      const targetOffset = monthOffset - 1;
+      animate(x, -targetOffset * carouselWidth, {
+        duration: 0.22,
+        ease: [0.25, 1, 0.5, 1],
+        onComplete: () => {
+          setMonthOffset(targetOffset);
+          isAnimatingRef.current = false;
+        },
+      });
+    } else {
+      animate(x, restingX, {
+        duration: 0.2,
+        ease: [0.25, 1, 0.5, 1],
+      });
+    }
+  };
+
+  const formatSelectedDate = (dateKey: string) => {
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
 
   const renderEventCard = (event: EventData, isPast: boolean = false) => {
     const status = event.status?.toUpperCase();
@@ -542,6 +784,12 @@ export const EventsView: React.FC<EventsViewProps> = ({
               {isPast && (
                 <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/50">
                   PAST
+                </div>
+              )}
+              {event._isPendingSync && (
+                <div className="inline-flex items-center gap-1 rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <span>Syncing</span>
                 </div>
               )}
             </div>
@@ -763,6 +1011,122 @@ export const EventsView: React.FC<EventsViewProps> = ({
     );
   };
 
+  const renderMonthGrid = (
+    info: ReturnType<typeof getMonthForOffset>,
+    isInteractive: boolean
+  ) => {
+    const { offset, year, month, daysInMonth, firstDayOfWeek, numRows } = info;
+    return (
+      <div
+        className="grid grid-cols-7 gap-[4px] w-full"
+        style={{
+          gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
+          height: numRows * 30,
+        }}
+      >
+        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+          <div key={`empty-${offset}-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const dateKey = `${year}-${month}-${day}`;
+          const dateKeyStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const eventsOnDay = eventDatesMap[dateKey] || [];
+          const hasEvents = eventsOnDay.length > 0;
+          const multipleEvents = eventsOnDay.length > 1;
+          const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
+          const isSelected = selectedEmptyDate === dateKeyStr;
+
+          let bgColor = 'rgba(0,0,0,0.1)';
+          let textColor = 'text-foreground';
+          let bgStyle: React.CSSProperties = { backgroundColor: bgColor };
+
+          if (hasEvents) {
+            const primary = eventsOnDay[0];
+            bgColor = getCalendarColor(primary);
+            const status = primary.status?.toUpperCase();
+            textColor =
+              status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED'
+                ? 'text-white'
+                : 'text-accent-gig-foreground';
+
+            if (multipleEvents) {
+              const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
+              if (colors.length > 1) {
+                bgStyle = { background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
+                textColor = 'text-white';
+              } else {
+                bgStyle = { backgroundColor: bgColor };
+              }
+            } else {
+              bgStyle = { backgroundColor: bgColor };
+            }
+          }
+
+          return hasEvents ? (
+            <button
+              key={`${year}-${month}-${day}`}
+              type="button"
+              disabled={!isInteractive}
+              onClick={() => {
+                if (!isInteractive) return;
+                setSelectedEmptyDate(null);
+                if (multipleEvents) {
+                  openDayPicker(eventsOnDay);
+                } else {
+                  onEventClick(eventsOnDay[0]);
+                }
+              }}
+              className={cn(
+                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer relative select-none",
+                isInteractive && "hover:scale-105 active:scale-95",
+                textColor,
+                isToday && "ring-2 ring-primary ring-offset-2 ring-offset-background font-bold shadow-md"
+              )}
+              style={bgStyle}
+            >
+              <span className="text-[16px] font-medium leading-none">{day}</span>
+              {multipleEvents && (
+                <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-[8px] font-bold rounded-full flex items-center justify-center shadow-xs">
+                  {eventsOnDay.length}
+                </span>
+              )}
+              {isToday && !multipleEvents && (
+                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white dark:bg-primary" />
+              )}
+            </button>
+          ) : (
+            <button
+              key={`${year}-${month}-${day}`}
+              type="button"
+              disabled={!isInteractive}
+              onClick={() => {
+                if (!isInteractive) return;
+                setSelectedEmptyDate(isSelected ? null : dateKeyStr);
+              }}
+              className={cn(
+                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer relative select-none",
+                isSelected
+                  ? "bg-foreground/20 text-foreground ring-2 ring-foreground/60 shadow-xs scale-105 z-10"
+                  : isToday
+                  ? "bg-primary/15 text-primary font-bold ring-2 ring-primary/80 ring-offset-1 ring-offset-background hover:bg-primary/25 active:scale-95"
+                  : "text-foreground/60 dark:text-muted-foreground hover:bg-foreground/10 active:scale-95"
+              )}
+              style={!isSelected && !isToday ? { backgroundColor: 'var(--muted)' } : undefined}
+            >
+              <span className={cn("text-[16px] leading-none", isToday ? "font-bold" : "font-medium")}>
+                {day}
+              </span>
+              {isToday && (
+                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <motion.div
       key="events"
@@ -774,36 +1138,178 @@ export const EventsView: React.FC<EventsViewProps> = ({
     >
       {/* ═══ SEARCH & FILTERS SECTION ═══ */}
       <div className="flex flex-col gap-2.5 shrink-0">
-        {/* ═══ SEARCH BAR ═══ */}
-        <AnimatePresence>
-          {isSearchOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-[8px] bg-black/10 rounded-[10px] px-[12px] py-[8px]">
-                <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  value={eventSearch}
-                  onChange={(e) => setEventSearch(e.target.value)}
-                  placeholder="Search events..."
-                  className="bg-transparent text-[14px] font-medium text-[var(--fg)] placeholder:text-foreground/30 focus:outline-none flex-1"
-                  autoFocus
-                />
-                {eventSearch && (
-                  <button onClick={() => setEventSearch('')}>
-                    <X className="w-[14px] h-[14px] text-foreground/40" />
-                  </button>
+        {/* ═══ PERMANENT SEARCH BAR & AUTOCOMPLETE ═══ */}
+        <div ref={searchContainerRef} className="relative z-30">
+          <div className="flex items-center gap-[10px] bg-foreground/5 border border-foreground/10 hover:border-foreground/20 focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-foreground/5 rounded-[12px] px-[14px] py-[9px] transition-all">
+            <Search className="w-[16px] h-[16px] text-foreground/45 shrink-0" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={eventSearch}
+              onChange={(e) => {
+                setEventSearch(e.target.value);
+                setShowAutocomplete(true);
+              }}
+              onFocus={() => {
+                if (eventSearch.trim().length > 0) {
+                  setShowAutocomplete(true);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setShowAutocomplete(false);
+                  searchRef.current?.blur();
+                } else if (e.key === 'Escape') {
+                  setShowAutocomplete(false);
+                }
+              }}
+              placeholder="Search events by title, venue, client..."
+              className="bg-transparent text-[13px] font-medium text-foreground placeholder:text-foreground/35 focus:outline-none flex-1 min-w-0"
+            />
+            {eventSearch && (
+              <button 
+                type="button"
+                onClick={() => {
+                  setEventSearch('');
+                  setShowAutocomplete(false);
+                  searchRef.current?.focus();
+                }}
+                className="p-1 text-foreground/40 hover:text-foreground transition-colors rounded-full shrink-0"
+                aria-label="Clear search"
+              >
+                <X className="w-[14px] h-[14px]" />
+              </button>
+            )}
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          <AnimatePresence>
+            {showAutocomplete && eventSearch.trim().length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="absolute top-full left-0 right-0 mt-2 bg-card text-card-foreground rounded-[16px] shadow-2xl border border-foreground/15 max-h-[380px] overflow-y-auto z-50 divide-y divide-foreground/10 backdrop-blur-md"
+              >
+                {autocompleteResults.totalCount === 0 ? (
+                  <div className="px-4 py-8 text-center text-foreground/50 text-[12px] flex flex-col items-center gap-1.5">
+                    <Search className="w-5 h-5 text-foreground/30 mb-0.5" />
+                    <span className="font-bold uppercase text-[11px] tracking-wider text-foreground/70">
+                      No matching events found
+                    </span>
+                    <span className="text-foreground/40 text-[11px]">
+                      No events matching &ldquo;{eventSearch}&rdquo; were found
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Upcoming Matches */}
+                    {autocompleteResults.upcomingMatches.length > 0 && (
+                      <div>
+                        <div className="px-3.5 py-2 bg-foreground/[0.03] text-[10px] font-bold uppercase tracking-wider text-foreground/50 sticky top-0 backdrop-blur-xs flex items-center justify-between">
+                          <span>Upcoming Events</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-foreground/10 text-foreground/70">
+                            {autocompleteResults.upcomingMatches.length}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-foreground/5">
+                          {autocompleteResults.upcomingMatches.map((event) => (
+                            <div
+                              key={String(event.id || event.eventId)}
+                              onClick={() => {
+                                setShowAutocomplete(false);
+                                onEventClick(event);
+                              }}
+                              className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-foreground/5 cursor-pointer transition-colors group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span className={cn(
+                                  'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px] shrink-0',
+                                  getBadgeStyleClass(event)
+                                )}>
+                                  {getPrimaryBadge(event)}
+                                </span>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-[13px] font-bold text-foreground truncate uppercase group-hover:text-primary transition-colors">
+                                    {event.title}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-foreground/50 truncate font-medium">
+                                    {event.date && (
+                                      <span>{formatEventDateShort(event.date)}</span>
+                                    )}
+                                    {event.time && <span>· {event.time}</span>}
+                                    {event.location && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="truncate">{event.location}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground shrink-0 transition-colors" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Past Matches */}
+                    {autocompleteResults.pastMatches.length > 0 && (
+                      <div>
+                        <div className="px-3.5 py-2 bg-foreground/[0.03] text-[10px] font-bold uppercase tracking-wider text-foreground/50 sticky top-0 backdrop-blur-xs flex items-center justify-between">
+                          <span>Past Events</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-foreground/10 text-foreground/70">
+                            {autocompleteResults.pastMatches.length}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-foreground/5">
+                          {autocompleteResults.pastMatches.map((event) => (
+                            <div
+                              key={String(event.id || event.eventId)}
+                              onClick={() => {
+                                setShowAutocomplete(false);
+                                onEventClick(event);
+                              }}
+                              className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-foreground/5 cursor-pointer transition-colors group opacity-80 hover:opacity-100"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span className={cn(
+                                  'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px] shrink-0',
+                                  getBadgeStyleClass(event)
+                                )}>
+                                  {getPrimaryBadge(event)}
+                                </span>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-[13px] font-bold text-foreground truncate uppercase group-hover:text-primary transition-colors">
+                                    {event.title}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-foreground/50 truncate font-medium">
+                                    {event.date && (
+                                      <span>{formatEventDateShort(event.date)}</span>
+                                    )}
+                                    {event.location && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="truncate">{event.location}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground shrink-0 transition-colors" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
         {!isAdmin && (
@@ -876,15 +1382,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 {f}
               </button>);
             })}
-            <button
-              onClick={() => { setIsSearchOpen(!isSearchOpen); if (!isSearchOpen) setTimeout(() => searchRef.current?.focus(), 100); }}
-              className={cn(
-                "w-[32px] h-[32px] rounded-full border-[1.5px] flex items-center justify-center transition-all shrink-0",
-                isSearchOpen ? "border-black bg-black text-white" : "border-black/30 bg-transparent text-foreground/50"
-              )}
-            >
-              <Search className="w-[14px] h-[14px]" />
-            </button>
           </div>
         </div>
 
@@ -910,115 +1407,178 @@ export const EventsView: React.FC<EventsViewProps> = ({
             </div>
           )}
 
-          {/* ═══ CALENDAR ═══ */}
-          <div className="flex flex-col gap-[20px]">
-            {/* Month Navigation */}
-            <div className="flex gap-[16px] items-center">
-              <div className="flex gap-[12px] items-center">
-                <button
-                  onClick={prevMonth}
-                  className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
-                >
-                  <ChevronLeft className="w-[20px] h-[20px]" />
-                </button>
-                <button
-                  onClick={nextMonth}
-                  className="border-[1.5px] border-border border-solid rounded-full p-[4px] flex items-center"
-                >
-                  <ChevronRight className="w-[20px] h-[20px]" />
-                </button>
+          {/* ═══ CALENDAR (GOOGLE CALENDAR LATERAL SCROLLING STYLE) ═══ */}
+          <div className="flex flex-col gap-[16px]">
+            {/* Calendar Header: Month Navigation, Title & Today Shortcut */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-[12px]">
+                <div className="flex gap-[6px] items-center">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    aria-label="Previous month"
+                    className="border border-border/70 hover:border-foreground/30 bg-card active:scale-95 rounded-full p-[6px] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronLeft className="w-[18px] h-[18px] text-foreground" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    aria-label="Next month"
+                    className="border border-border/70 hover:border-foreground/30 bg-card active:scale-95 rounded-full p-[6px] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronRight className="w-[18px] h-[18px] text-foreground" />
+                  </button>
+                </div>
+                <span className="text-[16px] font-bold text-foreground uppercase tracking-tight leading-tight">
+                  {monthName} {calendarYear}
+                </span>
               </div>
-              <span className="text-[16px] font-bold text-foreground uppercase leading-tight">
-                {monthName} {calendarYear}
-              </span>
+
+              {/* Today jump button */}
+              <button
+                type="button"
+                onClick={jumpToToday}
+                className={cn(
+                  "inline-flex items-center gap-[6px] px-[12px] py-[6px] rounded-full text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95",
+                  isCurrentMonth
+                    ? "bg-foreground/5 text-foreground/45 border border-foreground/10"
+                    : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/15 shadow-2xs"
+                )}
+              >
+                <Calendar className="w-[13px] h-[13px]" />
+                <span>Today</span>
+              </button>
             </div>
 
-            {/* Day Labels */}
+            {/* Day Labels & Lateral Swipable Grid */}
             <div className="flex flex-col gap-[10px]">
-              <div className="bg-black/10 rounded-[10px] flex">
+              {/* Day Labels (M T W T F S S) */}
+              <div className="bg-black/10 dark:bg-white/5 rounded-[10px] flex">
                 {['M','T','W','T','F','S','S'].map((d, i) => (
                   <div key={i} className="flex-1 py-[4px] text-center">
-                    <span className="text-[10px] font-medium text-muted-foreground leading-tight">{d}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground leading-tight">{d}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Day Grid */}
-              {(() => {
-                const totalCells = firstDayOfWeek + daysInMonth;
-                const numRows = Math.ceil(totalCells / 7);
-                return (
-                  <div
-                    className="grid grid-cols-7 gap-[4px]"
-                    style={{
-                      gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
-                      height: numRows * 28,
-                    }}
+              {/* Continuous Lateral Scrolling 3-Month Carousel (Physical 1:1 Peeking Track) */}
+              <div
+                ref={carouselContainerRef}
+                className="overflow-hidden relative w-full touch-pan-y select-none"
+                style={{
+                  height: currMonthInfo.numRows * 30,
+                  transition: 'height 0.2s ease',
+                }}
+              >
+                <motion.div
+                  style={{ x }}
+                  drag="x"
+                  dragConstraints={{
+                    left: -(monthOffset + 1) * (carouselWidth || 360),
+                    right: -(monthOffset - 1) * (carouselWidth || 360),
+                  }}
+                  dragElastic={0.25}
+                  onDragEnd={handleDragEnd}
+                  className="w-full h-full relative cursor-grab active:cursor-grabbing"
+                >
+                  {[prevMonthInfo, currMonthInfo, nextMonthInfo].map((info) => (
+                    <div
+                      key={info.offset}
+                      style={{
+                        position: 'absolute',
+                        left: `${info.offset * (carouselWidth || 360)}px`,
+                        width: carouselWidth > 0 ? carouselWidth : '100%',
+                        top: 0,
+                      }}
+                      className={cn("px-[2px]", info.offset !== monthOffset && "pointer-events-none")}
+                    >
+                      {renderMonthGrid(info, info.offset === monthOffset)}
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
+
+              {/* Floating Context Pill: Two-Tier Layout (Date/Status + 3 Action Chips) */}
+              <AnimatePresence>
+                {selectedEmptyDate && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="overflow-hidden"
                   >
-                    {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                      <div key={`empty-${i}`} />
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                      const day = i + 1;
-                      const dateKey = `${calendarYear}-${calendarMonth}-${day}`;
-                      const eventsOnDay = eventDatesMap[dateKey] || [];
-                      const hasEvents = eventsOnDay.length > 0;
-                      const multipleEvents = eventsOnDay.length > 1;
-
-                      let bgColor = 'rgba(0,0,0,0.1)';
-                      let textColor = 'text-foreground';
-                      let bgStyle: React.CSSProperties = { backgroundColor: bgColor };
-
-                      if (hasEvents) {
-                        const primary = eventsOnDay[0];
-                        bgColor = getCalendarColor(primary);
-                        const status = primary.status?.toUpperCase();
-                        textColor = (status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED')
-                          ? 'text-white' : 'text-accent-gig-foreground';
-
-                        if (multipleEvents) {
-                          const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
-                          if (colors.length > 1) {
-                            bgStyle = { background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
-                            textColor = 'text-white';
-                          } else {
-                            bgStyle = { backgroundColor: bgColor };
-                          }
-                        } else {
-                          bgStyle = { backgroundColor: bgColor };
-                        }
-                      }
-
-                      return hasEvents ? (
-                        <button
-                          key={day}
-                          onClick={() => multipleEvents ? openDayPicker(eventsOnDay) : onEventClick(eventsOnDay[0])}
-                          className={cn(
-                            "rounded-[10px] flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 relative",
-                            textColor
-                          )}
-                          style={bgStyle}
-                        >
-                          <span className="text-[16px] font-medium leading-none">{day}</span>
-                          {multipleEvents && (
-                            <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-[8px] font-bold rounded-full flex items-center justify-center">
-                              {eventsOnDay.length}
+                    <div className="flex flex-col gap-2.5 p-3 rounded-[16px] bg-card border border-foreground/15 shadow-sm">
+                      {/* Top Tier: Date, Status & Dismiss */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-foreground/5 flex items-center justify-center shrink-0 text-foreground/70">
+                            <Calendar className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[12px] font-bold text-foreground truncate">
+                              {formatSelectedDate(selectedEmptyDate)}
                             </span>
-                          )}
-                        </button>
-                      ) : (
-                        <div
-                          key={day}
-                          className="rounded-[10px] flex items-center justify-center text-foreground/60 dark:text-muted-foreground"
-                          style={{ backgroundColor: 'var(--muted)' }}
-                        >
-                          <span className="text-[16px] font-medium leading-none">{day}</span>
+                            <span className="text-[10px] text-muted-foreground font-medium hidden xs:inline">
+                              • No events scheduled
+                            </span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedEmptyDate(null)}
+                          className="p-1 rounded-full text-foreground/40 hover:text-foreground hover:bg-foreground/5 transition-colors cursor-pointer"
+                          aria-label="Dismiss date selection"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Bottom Tier: 3 Action Chips (+ Gig, + Rehearsal, + Quote) */}
+                      {isAdmin && onCreateEvent && (
+                        <div className="grid grid-cols-3 gap-2 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onCreateEvent('gig', selectedEmptyDate);
+                              setSelectedEmptyDate(null);
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-gig text-accent-gig-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3 shrink-0" />
+                            <span>Gig</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onCreateEvent('rehearsal', selectedEmptyDate);
+                              setSelectedEmptyDate(null);
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-rehearsal text-accent-rehearsal-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3 shrink-0" />
+                            <span>Rehearsal</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onCreateEvent('quote', selectedEmptyDate);
+                              setSelectedEmptyDate(null);
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-quote text-accent-quote-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3 shrink-0" />
+                            <span>Quote</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -1041,7 +1601,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ UPCOMING EVENT CARDS ═══ */}
           <div className="flex flex-col gap-[14px]">
-            {upcomingEvents.length > 0 ? (
+            {loading && allEvents.length === 0 ? (
+              <EventsSkeleton />
+            ) : upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => renderEventCard(event, false))
             ) : (
               <div className="rounded-[16px] border border-dashed border-foreground/15 bg-card/40 p-[28px] text-center flex flex-col items-center justify-center gap-[8px]">

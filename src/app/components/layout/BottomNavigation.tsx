@@ -15,6 +15,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 import { haptic } from '@/lib/haptics';
+import { springs } from '@/styles/motion';
 
 interface BottomNavigationProps {
   activeTab: TabName;
@@ -43,10 +44,10 @@ type TabDescriptor = {
   badgeCount?: number;
 };
 
-/* ═══ Shared spring config — snappy, controlled, no visible bounce ═══ */
+/* ═══ Shared spring config — unified design system springs ═══ */
 
-const SPRING = { type: 'spring' as const, stiffness: 350, damping: 27, mass: 0.8 };
-const STIFF_SPRING = { type: 'spring' as const, stiffness: 400, damping: 30, mass: 0.7 };
+const SPRING = springs.smooth;
+const STIFF_SPRING = springs.snappy;
 
 /* ═══ Tab index map ═══ */
 

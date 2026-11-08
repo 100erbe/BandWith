@@ -288,7 +288,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       initial={{ y: '100%' }}
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
-      transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+      transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
       className="fixed inset-0 z-[70] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
       style={{
         overscrollBehaviorX: 'none',

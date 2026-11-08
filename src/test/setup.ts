@@ -49,6 +49,19 @@ Object.defineProperty(globalThis, 'crypto', {
   },
 });
 
+// Polyfill localStorage for Node.js 22+ / Vitest jsdom compatibility
+const storageMap = new Map<string, string>();
+const localStorageMock = {
+  getItem: (key: string) => storageMap.get(key) ?? null,
+  setItem: (key: string, value: string) => storageMap.set(key, String(value)),
+  removeItem: (key: string) => storageMap.delete(key),
+  clear: () => storageMap.clear(),
+  get length() { return storageMap.size; },
+  key: (i: number) => Array.from(storageMap.keys())[i] ?? null,
+};
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, configurable: true, writable: true });
+Object.defineProperty(window, 'localStorage', { value: localStorageMock, configurable: true, writable: true });
+
 // Suppress console errors during tests (optional)
 // Uncomment if tests are too noisy
 // vi.spyOn(console, 'error').mockImplementation(() => {});

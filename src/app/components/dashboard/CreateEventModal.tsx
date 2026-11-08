@@ -95,6 +95,7 @@ interface CreateEventModalProps {
   onClose: () => void;
   onCreate: (eventData: any) => void;
   initialType?: EventType | null;
+  initialDate?: string;
   layoutId?: string;
   bandMembers?: BandMember[];
   currentUserId?: string;
@@ -256,6 +257,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onCreate,
   initialType,
+  initialDate,
   bandMembers = [],
   currentUserId,
   editingEvent,
@@ -420,7 +422,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     province: '',
     zip: '',
     country: '',
-    date: editingEvent?.date || new Date().toISOString().split('T')[0],
+    date: editingEvent?.date || initialDate || new Date().toISOString().split('T')[0],
     startTime: editingEvent?.time || '20:00',
     endTime: editingEvent?.endTime || '23:30',
     guests: editingEvent?.guests || 0,

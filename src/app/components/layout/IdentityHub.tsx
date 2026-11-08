@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { HEADER_SPRING } from '@/styles/motion';
 import {
   X,
   Plus,
@@ -66,6 +67,7 @@ export interface IdentityHubProps {
   onOpenPricing?: () => void;
   onOpenBandSettings?: () => void;
   onOpenSettings?: (section?: string) => void;
+  onBandUpdated?: () => void;
 }
 
 export const IdentityHub: React.FC<IdentityHubProps> = ({
@@ -82,6 +84,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onAddEntity,
   onOpenPricing,
   onOpenBandSettings,
+  onBandUpdated,
 }) => {
   const { signOut, user, profile } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
@@ -108,10 +111,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
   const handleContainerScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const top = e.currentTarget.scrollTop;
-    if (!isScrolledRef.current && top > 36) {
+    if (!isScrolledRef.current && top > 20) {
       isScrolledRef.current = true;
       setIsScrolled(true);
-    } else if (isScrolledRef.current && top < 12) {
+    } else if (isScrolledRef.current && top < 8) {
       isScrolledRef.current = false;
       setIsScrolled(false);
     }
@@ -180,6 +183,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           band_origin_address: editBandCity.trim() || currentPricing.band_origin_address || '',
         });
         await refreshBands();
+        onBandUpdated?.();
       }
       setIsEditingBandDetails(false);
     } catch (err) {
@@ -338,7 +342,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           >
             <div
               className={cn(
-                'absolute top-0 left-0 right-0 px-4 pointer-events-auto transition-[background-color,border-color,box-shadow] duration-300',
+                'absolute top-0 left-0 right-0 px-4 pointer-events-auto transition-[background-color,border-color,box-shadow] duration-200',
                 isScrolled
                   ? 'bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs'
                   : 'bg-background/80 backdrop-blur-md border-b border-transparent'
@@ -352,7 +356,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 animate={{
                   height: isScrolled ? 54 : 72,
                 }}
-                transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                transition={HEADER_SPRING}
+                style={{ willChange: 'height' }}
                 className="max-w-xl mx-auto w-full relative overflow-hidden"
               >
                 <div className="flex flex-col pr-14">
@@ -362,7 +367,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       y: isScrolled ? 4 : 0,
                       scale: isScrolled ? 0.9 : 1,
                     }}
-                    transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                    transition={HEADER_SPRING}
+                    style={{ willChange: 'transform' }}
                     className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest leading-none h-[14px] flex items-center origin-top-left"
                   >
                     IDENTITY & ACCOUNT
@@ -373,7 +379,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       scale: isScrolled ? 0.52 : 1,
                       y: isScrolled ? 6 : 5,
                     }}
-                    transition={{ type: 'spring', stiffness: 240, damping: 28, mass: 0.85 }}
+                    transition={HEADER_SPRING}
+                    style={{ willChange: 'transform' }}
                     className="text-[40px] sm:text-[44px] font-black text-foreground uppercase tracking-tighter leading-[0.9] origin-top-left"
                   >
                     WHO YOU ARE
@@ -472,7 +479,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       </span>
                     </div>
                     <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground leading-tight truncate mt-1">
-                      {selectedBand.name}
+                      {activeBandDetails?.name || selectedBand.name}
                     </h3>
                     <span className="text-xs font-semibold text-muted-foreground truncate mt-0.5">
                       {bandSubtitle}

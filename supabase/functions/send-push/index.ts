@@ -1,22 +1,15 @@
-// Supabase Edge Function: Send Push Notification
-// Supports iOS APNs and Android FCM
-// Deploy with: supabase functions deploy send-push
-
+// Supabase Edge Function: Send Push Notification (Zero External Dependencies)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { encode as base64url } from "https://deno.land/std@0.177.0/encoding/base64url.ts";
 
-// APNs Configuration (for iOS)
 const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID');
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
-const APNS_PRIVATE_KEY = Deno.env.get('APNS_PRIVATE_KEY'); // Content of .p8 file
+const APNS_PRIVATE_KEY = Deno.env.get('APNS_PRIVATE_KEY'); 
 const APNS_BUNDLE_ID = 'app.bandwith.mobile';
 
-// Use production APNs for App Store builds, sandbox for development
 const APNS_HOST = Deno.env.get('APNS_PRODUCTION') === 'true' 
   ? 'api.push.apple.com' 
   : 'api.sandbox.push.apple.com';
 
-// FCM Configuration (for Android)
 const FCM_PROJECT_ID = Deno.env.get('FCM_PROJECT_ID');
 const FCM_CLIENT_EMAIL = Deno.env.get('FCM_CLIENT_EMAIL');
 const FCM_PRIVATE_KEY = Deno.env.get('FCM_PRIVATE_KEY');
@@ -25,44 +18,44 @@ interface PushRequest {
   user_id?: string;
   user_ids?: string[];
   title: string;
+  subtitle?: string;
+  tag?: string;
+  channel_id?: string;
   body: string;
   data?: Record<string, any>;
   badge?: number;
   sound?: string;
-  create_in_app?: boolean; // Also create in-app notification
+  create_in_app?: boolean; 
 }
 
-// Generate JWT for APNs authentication (using crypto.subtle directly)
+// Pure JS Base64URL encoder to avoid external std library imports
+function encodeBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
 async function generateAPNsJWT(): Promise<string> {
   if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) {
-    const missing = [];
-    if (!APNS_KEY_ID) missing.push('APNS_KEY_ID');
-    if (!APNS_TEAM_ID) missing.push('APNS_TEAM_ID');
-    if (!APNS_PRIVATE_KEY) missing.push('APNS_PRIVATE_KEY');
-    throw new Error(`APNs credentials missing: ${missing.join(', ')}`);
+    throw new Error(`APNs credentials missing`);
   }
-  
-  console.log('[APNs] Generating JWT with keyId:', APNS_KEY_ID, 'teamId:', APNS_TEAM_ID);
 
-  const header = {
-    alg: 'ES256',
-    kid: APNS_KEY_ID,
-  };
-
+  const header = { alg: 'ES256', kid: APNS_KEY_ID };
   const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: APNS_TEAM_ID,
-    iat: now,
-  };
+  const payload = { iss: APNS_TEAM_ID, iat: now };
 
-  const encodedHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = base64url(new TextEncoder().encode(JSON.stringify(payload)));
+  const encoder = new TextEncoder();
+  const encodedHeader = encodeBase64Url(encoder.encode(JSON.stringify(header)));
+  const encodedPayload = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
   const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-  // Import the private key and sign
   let pemContent = APNS_PRIVATE_KEY;
-  
-  // Handle different formats: might be the raw key or with headers
   if (pemContent.includes('-----BEGIN PRIVATE KEY-----')) {
     pemContent = pemContent
       .replace(/\\n/g, '\n')
@@ -70,50 +63,31 @@ async function generateAPNsJWT(): Promise<string> {
       .replace('-----END PRIVATE KEY-----', '')
       .replace(/\s/g, '');
   } else {
-    // Already just the base64 content, just remove whitespace and handle escape sequences
     pemContent = pemContent.replace(/\\n/g, '').replace(/\s/g, '');
   }
-  
-  console.log('[APNs] Key content length:', pemContent.length);
 
-  let binaryKey: Uint8Array;
-  try {
-    binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
-    console.log('[APNs] Binary key length:', binaryKey.length);
-  } catch (e) {
-    console.error('[APNs] Failed to decode base64 key:', e);
-    throw new Error('Invalid APNs private key format - base64 decode failed');
-  }
-
-  let cryptoKey: CryptoKey;
-  try {
-    cryptoKey = await crypto.subtle.importKey(
-      'pkcs8',
-      binaryKey as any,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['sign']
-    );
-    console.log('[APNs] Crypto key imported successfully');
-  } catch (e) {
-    console.error('[APNs] Failed to import key:', e);
-    throw new Error('Invalid APNs private key - crypto import failed');
-  }
+  const binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey as any,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
 
   const signature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     cryptoKey,
-    new TextEncoder().encode(unsignedToken)
+    encoder.encode(unsignedToken)
   );
 
-  const encodedSignature = base64url(new Uint8Array(signature));
-  return `${unsignedToken}.${encodedSignature}`;
+  return `${unsignedToken}.${encodeBase64Url(new Uint8Array(signature))}`;
 }
 
-// Send push notification to iOS device via APNs
 async function sendToAPNs(
   deviceToken: string, 
   title: string, 
+  subtitle: string | undefined,
   body: string,
   data?: Record<string, any>,
   badge?: number,
@@ -121,13 +95,14 @@ async function sendToAPNs(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const jwt = await generateAPNsJWT();
+    const alert: Record<string, string> = { title, body };
+    if (subtitle) {
+      alert.subtitle = subtitle;
+    }
 
     const apnsPayload = {
       aps: {
-        alert: {
-          title,
-          body,
-        },
+        alert,
         badge: badge ?? 1,
         sound: sound ?? 'default',
         'mutable-content': 1,
@@ -135,8 +110,6 @@ async function sendToAPNs(
       },
       ...data,
     };
-
-    console.log(`[APNs] Sending to ${APNS_HOST} for device ${deviceToken.substring(0, 20)}...`);
     
     const response = await fetch(`https://${APNS_HOST}/3/device/${deviceToken}`, {
       method: 'POST',
@@ -153,33 +126,20 @@ async function sendToAPNs(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`[APNs] Error ${response.status}:`, errorBody);
-      
-      // Handle invalid token
       if (response.status === 410 || response.status === 400) {
         return { success: false, error: 'invalid_token' };
       }
-      
       return { success: false, error: `APNs error: ${response.status} - ${errorBody}` };
     }
-
-    console.log(`[APNs] Successfully sent to iOS device: ${deviceToken.substring(0, 20)}...`);
     return { success: true };
   } catch (error) {
-    console.error(`[APNs] Exception:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMessage };
   }
 }
 
-// Generate OAuth2 access token for FCM v1 API
 async function getFCMAccessToken(): Promise<string | null> {
-  console.log('[FCM] Getting access token, hasEmail:', !!FCM_CLIENT_EMAIL, 'hasKey:', !!FCM_PRIVATE_KEY);
-  
-  if (!FCM_CLIENT_EMAIL || !FCM_PRIVATE_KEY) {
-    console.warn('[FCM] Missing FCM_CLIENT_EMAIL or FCM_PRIVATE_KEY');
-    return null;
-  }
+  if (!FCM_CLIENT_EMAIL || !FCM_PRIVATE_KEY) return null;
 
   try {
     const now = Math.floor(Date.now() / 1000);
@@ -193,11 +153,11 @@ async function getFCMAccessToken(): Promise<string | null> {
       scope: 'https://www.googleapis.com/auth/firebase.messaging',
     };
 
-    const encodedHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
-    const encodedPayload = base64url(new TextEncoder().encode(JSON.stringify(payload)));
+    const encoder = new TextEncoder();
+    const encodedHeader = encodeBase64Url(encoder.encode(JSON.stringify(header)));
+    const encodedPayload = encodeBase64Url(encoder.encode(JSON.stringify(payload)));
     const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-    // Parse PEM private key - handle \n escape sequences properly
     let pemContent = FCM_PRIVATE_KEY;
     pemContent = pemContent
       .replace(/\\n/g, '\n')
@@ -205,83 +165,59 @@ async function getFCMAccessToken(): Promise<string | null> {
       .replace('-----END PRIVATE KEY-----', '')
       .replace(/[\n\r\s]/g, '');
 
-    console.log('[FCM] PEM content length after processing:', pemContent.length);
-
-    let binaryKey: Uint8Array;
-    try {
-      binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
-      console.log('[FCM] Binary key length:', binaryKey.length);
-    } catch (e) {
-      console.error('[FCM] Base64 decode failed:', e);
-      return null;
-    }
-
-    let cryptoKey: CryptoKey;
-    try {
-      cryptoKey = await crypto.subtle.importKey(
-        'pkcs8',
-        binaryKey as any,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
-      console.log('[FCM] Crypto key imported successfully');
-    } catch (e) {
-      console.error('[FCM] Crypto key import failed:', e);
-      return null;
-    }
+    const binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      binaryKey as any,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
 
     const signature = await crypto.subtle.sign(
       'RSASSA-PKCS1-v1_5',
       cryptoKey,
-      new TextEncoder().encode(unsignedToken)
+      encoder.encode(unsignedToken)
     );
 
-    const jwt = `${unsignedToken}.${base64url(new Uint8Array(signature))}`;
-    console.log('[FCM] JWT generated, length:', jwt.length);
-
-    // Exchange JWT for access token
+    const jwt = `${unsignedToken}.${encodeBase64Url(new Uint8Array(signature))}`;
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
     });
 
-    if (!tokenResponse.ok) {
-      const error = await tokenResponse.text();
-      console.error('[FCM] Token exchange failed:', tokenResponse.status, error);
-      return null;
-    }
-
+    if (!tokenResponse.ok) return null;
     const tokenData = await tokenResponse.json();
-    console.log('[FCM] Access token obtained successfully');
     return tokenData.access_token;
-  } catch (error) {
-    console.error('[FCM] Error getting access token:', error);
+  } catch {
     return null;
   }
 }
 
-// Send push notification to Android device via FCM v1 API
 async function sendToFCM(
   deviceToken: string,
   title: string,
+  subtitle: string | undefined,
   body: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
+  channelId?: string,
+  tag?: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!FCM_PROJECT_ID) {
-    console.warn('[FCM] FCM_PROJECT_ID not configured');
-    return { success: false, error: 'FCM not configured' };
-  }
-
+  if (!FCM_PROJECT_ID) return { success: false, error: 'FCM not configured' };
   const accessToken = await getFCMAccessToken();
-  if (!accessToken) {
-    return { success: false, error: 'Could not get FCM access token' };
-  }
+  if (!accessToken) return { success: false, error: 'Could not get FCM access token' };
 
   try {
-    console.log(`[FCM] Sending to device ${deviceToken.substring(0, 20)}...`);
-    
+    const displayTitle = subtitle ? `${title} · ${subtitle}` : title;
+    const androidNotification: Record<string, any> = {
+      sound: 'default',
+      channelId: channelId || 'bandwith_general',
+      icon: 'ic_stat_notification',
+      color: '#050505',
+    };
+    if (tag) androidNotification.tag = tag;
+
     const response = await fetch(
       `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`,
       {
@@ -293,18 +229,18 @@ async function sendToFCM(
         body: JSON.stringify({
           message: {
             token: deviceToken,
-            notification: {
-              title,
-              body,
-            },
+            notification: { title: displayTitle, body },
             android: {
               priority: 'high',
-              notification: {
-                sound: 'default',
-                channelId: 'bandwith_general',
-              },
+              notification: androidNotification,
             },
-            data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : undefined,
+            data: {
+              ...(data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {}),
+              title,
+              subtitle: subtitle || '',
+              tag: tag || '',
+              channel_id: channelId || 'bandwith_general',
+            },
           },
         }),
       }
@@ -312,28 +248,19 @@ async function sendToFCM(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`[FCM] Error ${response.status}:`, errorBody);
-      
       if (errorBody.includes('UNREGISTERED') || errorBody.includes('INVALID_ARGUMENT')) {
         return { success: false, error: 'invalid_token' };
       }
-      
       return { success: false, error: `FCM error: ${response.status}` };
     }
-
-    const result = await response.json();
-    console.log('[FCM] Success! Message ID:', result.name);
     return { success: true };
   } catch (error) {
-    console.error('[FCM] Exception:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMessage };
   }
 }
 
 Deno.serve(async (req: Request) => {
-  console.log('[send-push] Request received:', req.method);
-  
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -341,47 +268,44 @@ Deno.serve(async (req: Request) => {
   };
 
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+    return new Response('ok', { status: 200, headers: corsHeaders });
   }
 
   try {
-    // Debug: Check configuration
-    console.log('[send-push] Config:', { 
-      hasApnsKey: !!APNS_KEY_ID, 
-      hasApnsTeam: !!APNS_TEAM_ID, 
-      hasApnsPrivateKey: !!APNS_PRIVATE_KEY,
-      apnsHost: APNS_HOST,
-      hasFcmProject: !!FCM_PROJECT_ID,
-    });
-    
     const body = await req.json();
-    const { user_id, user_ids, title, body: notificationBody, data, badge, sound, create_in_app } = body as PushRequest;
+    const { 
+      user_id, 
+      user_ids, 
+      title, 
+      subtitle, 
+      tag, 
+      channel_id, 
+      body: notificationBody, 
+      data, 
+      badge, 
+      sound, 
+      create_in_app 
+    } = body as PushRequest;
     
-    if (!title || !notificationBody) {
-      throw new Error('Missing title or body');
-    }
-
-    // Get list of user IDs to notify
+    if (!title || !notificationBody) throw new Error('Missing title or body');
     const targetUserIds = user_ids || (user_id ? [user_id] : []);
-    
-    if (targetUserIds.length === 0) {
-      throw new Error('No user IDs provided');
-    }
+    if (targetUserIds.length === 0) throw new Error('No user IDs provided');
 
-    console.log(`[send-push] Sending to ${targetUserIds.length} user(s): "${title}", create_in_app: ${create_in_app}`);
+    const effectiveSubtitle = subtitle || data?.subtitle;
+    const effectiveTag = tag || data?.tag;
+    const notificationType = data?.type || 'chat_message';
+    const effectiveChannel = channel_id || data?.channel_id || (
+      notificationType.includes('chat') ? 'bandwith_messages' :
+      notificationType.includes('quote') || notificationType.includes('payment') ? 'bandwith_finance' :
+      notificationType.includes('event') || notificationType.includes('member_dropped_out') ? 'bandwith_events' :
+      'bandwith_general'
+    );
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Create in-app notifications if requested (uses service role, bypasses RLS)
     if (create_in_app !== false) {
-      const notificationType = data?.type || 'chat_message';
-      // Support both chatId and chat_id for compatibility
       const chatId = data?.chat_id || data?.chatId;
       
       const notifications = targetUserIds.map(userId => ({
@@ -389,105 +313,71 @@ Deno.serve(async (req: Request) => {
         type: notificationType,
         title: title,
         body: notificationBody,
-        data: {
-          ...data,
-          chat_id: chatId, // Ensure consistent snake_case for lookups
+        data: { 
+          ...data, 
+          subtitle: effectiveSubtitle,
+          tag: effectiveTag,
+          chat_id: chatId 
         },
         read: false,
         band_id: data?.band_id || null,
         action_url: chatId ? `/chat/${chatId}` : null,
       }));
 
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert(notifications);
-
-      if (notifError) {
-        console.error('[send-push] Failed to create in-app notifications:', notifError);
-      } else {
-        console.log(`[send-push] Created ${notifications.length} in-app notification(s)`);
-      }
+      await supabase.from('notifications').insert(notifications);
     }
 
-    // Get push tokens for users from push_tokens table
     const { data: tokens, error: tokenError } = await supabase
       .from('push_tokens')
       .select('*')
       .in('user_id', targetUserIds)
       .eq('is_active', true);
 
-    if (tokenError) {
-      console.error('[send-push] Database error:', tokenError);
-      throw tokenError;
-    }
+    if (tokenError) throw tokenError;
 
     if (!tokens || tokens.length === 0) {
-      console.log('[send-push] No active tokens found');
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: 'No active tokens found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[send-push] Found ${tokens.length} token(s)`);
-
-    // Send push to each token based on platform
     const results = await Promise.allSettled(
       tokens.map(async (tokenRecord: any) => {
         const platform = tokenRecord.platform;
         const deviceToken = tokenRecord.token;
 
-        console.log(`[send-push] Processing: platform=${platform}, token=${deviceToken.substring(0, 20)}...`);
-
         if (platform === 'ios') {
-          const result = await sendToAPNs(deviceToken, title, notificationBody, data, badge, sound);
-          
-          // Deactivate invalid tokens
+          const result = await sendToAPNs(deviceToken, title, effectiveSubtitle, notificationBody, data, badge, sound);
           if (!result.success && result.error === 'invalid_token') {
-            console.log(`[send-push] Deactivating invalid iOS token: ${tokenRecord.id}`);
             await supabase.from('push_tokens').update({ is_active: false }).eq('id', tokenRecord.id);
           }
-          
           return { token_id: tokenRecord.id, platform, ...result };
         } else if (platform === 'android') {
-          const result = await sendToFCM(deviceToken, title, notificationBody, data);
-          
-          // Deactivate invalid tokens
+          const result = await sendToFCM(deviceToken, title, effectiveSubtitle, notificationBody, data, effectiveChannel, effectiveTag);
           if (!result.success && result.error === 'invalid_token') {
-            console.log(`[send-push] Deactivating invalid Android token: ${tokenRecord.id}`);
             await supabase.from('push_tokens').update({ is_active: false }).eq('id', tokenRecord.id);
           }
-          
           return { token_id: tokenRecord.id, platform, ...result };
         }
-
         return { token_id: tokenRecord.id, platform, success: false, error: 'Unknown platform' };
       })
     );
 
     const successful = results.filter((r: any) => r.status === 'fulfilled' && r.value.success).length;
-    const failed = results.length - successful;
-
-    console.log(`[send-push] Complete: ${successful} success, ${failed} failed`);
-
     return new Response(
       JSON.stringify({ 
         success: true, 
         sent: successful, 
-        failed,
         results: results.map((r: any) => r.status === 'fulfilled' ? r.value : { error: 'promise_rejected' })
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[send-push] Error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

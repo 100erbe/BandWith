@@ -136,24 +136,21 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
       };
 
       // Add listeners FIRST without wiping existing notification listeners
-      PushNotifications.addListener('registration', registrationHandler).then((h) => {
-        regHandle = h;
-      });
-      PushNotifications.addListener('registrationError', errorHandler).then((h) => {
-        errHandle = h;
-      });
-      
-      // THEN call register
-      PushNotifications.register().then(() => {
-        console.log('[Push] Registered with APNs/FCM');
-      }).catch((err) => {
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(timeout);
-        cleanup();
-        console.error('[Push] Register call failed:', err);
-        resolve({ success: false, error: err });
-      });
+      (async () => {
+        try {
+          regHandle = await PushNotifications.addListener('registration', registrationHandler);
+          errHandle = await PushNotifications.addListener('registrationError', errorHandler);
+          await PushNotifications.register();
+          console.log('[Push] Registered with APNs/FCM');
+        } catch (err: any) {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timeout);
+          cleanup();
+          console.error('[Push] Register call failed:', err);
+          resolve({ success: false, error: err instanceof Error ? err : new Error(String(err)) });
+        }
+      })();
     });
   } catch (err: any) {
     console.error('[Push] Subscribe error:', err);
@@ -177,6 +174,7 @@ const saveTokenToDatabase = async (userId: string, token: string): Promise<{ suc
           token: token,
           platform: platform,
           is_active: true,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: 'token' }
       );
@@ -246,14 +244,20 @@ export const setupNativePushListeners = (
       // Use a smaller ID that fits in Java int (max ~2 billion)
       const notificationId = Math.floor(Math.random() * 2147483647);
       
+      const channelId = (notification.data?.channel_id as string) || 'bandwith_messages';
+      const summaryText = (notification.data?.subtitle as string) || (notification.data?.tag as string) || undefined;
+
       await LocalNotifications.schedule({
         notifications: [{
           id: notificationId,
           title: notification.title || 'BandWith',
           body: notification.body || '',
           largeBody: notification.body,
+          summaryText: summaryText,
           sound: 'default',
-          channelId: 'bandwith_messages',
+          channelId: channelId,
+          smallIcon: 'ic_stat_notification',
+          iconColor: '#050505',
           extra: notification.data,
         }],
       });

@@ -92,6 +92,15 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const [restrictionReason, setRestrictionReason] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chat.name && chat.name !== 'New Chat') {
+      setChatName(chat.name);
+      const initials = chat.name.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+      if (initials) setChatInitials(initials);
+    }
+    if (chat.avatarUrl) setChatAvatarUrl(chat.avatarUrl);
+  }, [chat.name, chat.initials, chat.avatarUrl]);
   
   const filteredParticipants = chatParticipants.filter(p => 
     p.name.toLowerCase().includes(mentionQuery.toLowerCase()) && p.id !== user?.id
@@ -205,13 +214,28 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             setChatAvatarUrl(other.profile.avatar_url);
           }
         } else if (fullChat.type === 'band' || fullChat.type === 'event') {
-          if (fullChat.name && fullChat.name !== 'New Chat') {
+          if (fullChat.type === 'band' && fullChat.band_id) {
+            const { data: bData } = await supabase
+              .from('bands')
+              .select('name, logo_url')
+              .eq('id', fullChat.band_id)
+              .maybeSingle();
+            const bName = bData?.name || fullChat.name;
+            if (bName && bName !== 'New Chat') {
+              setChatName(bName);
+              const initials = bName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+              if (initials) setChatInitials(initials);
+            }
+            if (bData?.logo_url || (fullChat as any).logo_url || (fullChat as any).avatar_url) {
+              setChatAvatarUrl(bData?.logo_url || (fullChat as any).logo_url || (fullChat as any).avatar_url);
+            }
+          } else if (fullChat.name && fullChat.name !== 'New Chat') {
             setChatName(fullChat.name);
             const initials = fullChat.name.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
             if (initials) setChatInitials(initials);
-          }
-          if ((fullChat as any).logo_url || (fullChat as any).avatar_url) {
-            setChatAvatarUrl((fullChat as any).logo_url || (fullChat as any).avatar_url);
+            if ((fullChat as any).logo_url || (fullChat as any).avatar_url) {
+              setChatAvatarUrl((fullChat as any).logo_url || (fullChat as any).avatar_url);
+            }
           }
         }
 

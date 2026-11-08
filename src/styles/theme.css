@@ -16,6 +16,21 @@
   --wizard-header-pt: calc(env(safe-area-inset-top, 0px) + 16px);
   --content-bottom-clearance: calc(env(safe-area-inset-bottom, 0px) + 136px);
 
+  /* ── Motion & Animation System (Uniform Durations & Curves) ── */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-moderate: 250ms;
+  --duration-medium: 300ms;
+  --duration-slow: 400ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* ── Base ── */
   --bg: #E6E5E1;
   --fg: #0A0A0A;
@@ -213,6 +228,20 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+
+  --duration-instant: var(--duration-instant);
+  --duration-fast: var(--duration-fast);
+  --duration-normal: var(--duration-normal);
+  --duration-moderate: var(--duration-moderate);
+  --duration-medium: var(--duration-medium);
+  --duration-slow: var(--duration-slow);
+
+  --ease-standard: var(--ease-standard);
+  --ease-smooth: var(--ease-smooth);
+  --ease-spring: var(--ease-spring);
+  --ease-out: var(--ease-out);
+  --ease-in: var(--ease-in);
+  --ease-in-out: var(--ease-in-out);
 }
 
 /* ═══ Base layer — applied to <body> via Tailwind ═══ */
@@ -227,6 +256,8 @@
 
   /* Smooth theme transitions on interactive / surface elements */
   body, .bg-background, .bg-card, .bg-popover, .bg-muted, .bg-surface-alt {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background-color var(--duration-normal) var(--ease-smooth),
+                color var(--duration-normal) var(--ease-smooth),
+                border-color var(--duration-normal) var(--ease-smooth);
   }
 }

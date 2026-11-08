@@ -34,6 +34,7 @@ export interface EventItem {
   quoteId?: string;
   is_recurring?: boolean;
   recurrence_rule?: any;
+  _isPendingSync?: boolean;
 }
 
 export interface PendingEvent {

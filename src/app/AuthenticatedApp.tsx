@@ -29,6 +29,7 @@ import {
   notifyEventMembersCreated,
   notifyEventPendingConfirmations,
   notifyEventResponse,
+  notifyMemberDroppedOut,
 } from "@/lib/services/notifications";
 import {
   respondToEventInvite,
@@ -61,6 +62,10 @@ import { HomeView } from "@/app/views/HomeView";
 import { ChatView } from "@/app/views/ChatView";
 import { EventsView } from "@/app/views/EventsView";
 import { PastEventsView } from "@/app/views/PastEventsView";
+import { OfflineBanner } from "@/app/components/ui/OfflineBanner";
+import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/offline/useNetworkStatus";
+import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
+import { getOfflineItem, setOfflineItem, getCacheKey } from "@/lib/offline/storage";
 
 const BandMembersView = React.lazy(() => import("@/app/views/BandMembersView").then(m => ({ default: m.BandMembersView })));
 const SetlistManagerView = React.lazy(() => import("@/app/views/SetlistManagerView").then(m => ({ default: m.SetlistManagerView })));
@@ -157,6 +162,7 @@ const eventToEventItem = (event: Event): EventItem => {
     quoteId: (event as any).quote_id || undefined,
     is_recurring: (event as any).is_recurring || false,
     recurrence_rule: (event as any).recurrence_rule || undefined,
+    _isPendingSync: event._isPendingSync,
   };
 };
 
@@ -246,10 +252,10 @@ export default function AuthenticatedApp() {
       if (rafId !== null) return;
       rafId = requestAnimationFrame(() => {
         const top = container.scrollTop;
-        if (!isHeaderScrolledRef.current && top > 36) {
+        if (!isHeaderScrolledRef.current && top > 20) {
           isHeaderScrolledRef.current = true;
           setIsHeaderScrolled(true);
-        } else if (isHeaderScrolledRef.current && top < 12) {
+        } else if (isHeaderScrolledRef.current && top < 8) {
           isHeaderScrolledRef.current = false;
           setIsHeaderScrolled(false);
         }
@@ -296,6 +302,7 @@ export default function AuthenticatedApp() {
   const [selectedEventMembership, setSelectedEventMembership] = useState<EventMember | null>(null);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
   const [createEventType, setCreateEventType] = useState<CreateEventType>(null);
+  const [createEventInitialDate, setCreateEventInitialDate] = useState<string | null>(null);
   const [editingEventData, setEditingEventData] = useState<EventData | null>(null);
   const [showPersonalGigModal, setShowPersonalGigModal] = useState(false);
   const [editingPersonalGig, setEditingPersonalGig] = useState<{
@@ -339,6 +346,12 @@ export default function AuthenticatedApp() {
     return () => clearTimeout(t);
   }, [saveToast]);
 
+  const { isOnline, wasOffline, pendingSyncCount, triggerSync } = useNetworkStatus((msg) => {
+    setSaveToast({ message: msg, type: 'success' });
+    refetchEvents();
+    if (refetchDashboard) refetchDashboard();
+  });
+
   const [chatFilter, setChatFilter] = useState<ChatFilterType>("all");
   const [chatSearch, setChatSearch] = useState("");
   const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
@@ -359,12 +372,13 @@ export default function AuthenticatedApp() {
   
   // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events ═══
   useEffect(() => {
-    if (!masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
+    if (!isOnline || !masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
 
     const seenMap = new Map<string, string>();
     const duplicateIdsToDelete: string[] = [];
 
     masterEventsList.forEach(e => {
+      if (!e.id || String(e.id).startsWith('offline_') || e._isPendingSync) return;
       if (e.band_id && e.band_id !== realBand.id) return;
       const title = (e.title || '').trim().toLowerCase();
       const date = (e.event_date || '').replace(/T.*$/, '');
@@ -478,6 +492,21 @@ export default function AuthenticatedApp() {
 
   const [eventMembersMap, setEventMembersMap] = useState<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>({});
   const [membersRefreshKey, setMembersRefreshKey] = useState(0);
+  const membersMapCacheKey = getCacheKey(user?.id, 'global', 'event_members_map');
+
+  // Seed eventMembersMap from offline cache on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    let isMounted = true;
+    getOfflineItem<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>(membersMapCacheKey)
+      .then((cached) => {
+        if (isMounted && cached && Object.keys(cached).length > 0) {
+          setEventMembersMap(prev => ({ ...cached, ...prev }));
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [user?.id, membersMapCacheKey]);
 
   // Filter confirmed events: admins see all, members only see events where they've been added
   const myConfirmedEvents = useMemo(() => {
@@ -495,34 +524,78 @@ export default function AuthenticatedApp() {
   useEffect(() => {
     if (!masterEventsList?.length) return;
     const fetchAllMembers = async () => {
-      const eventIds = masterEventsList.map(e => e.id);
-      const map: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = {};
-
-      // Simple query WITHOUT profile join to avoid FK/schema issues
-      const { data, error } = await supabase
-        .from('event_members')
-        .select('event_id, user_id, fee, status')
-        .in('event_id', eventIds);
-
-      if (error) {
-        console.error('event_members query failed:', error.message);
-        return; // Keep previous map rather than overwriting with empty
-      }
-
       // Resolve names from band members already in memory
       const bandNameMap: Record<string, string> = {};
       realBand?.members?.forEach((m: any) => {
         if (m.user_id) bandNameMap[m.user_id] = m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member';
       });
 
+      // Include pending offline event members from syncQueue
+      const pendingMap: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = {};
+      try {
+        const pendingMutations = await getPendingMutations();
+        pendingMutations.forEach(m => {
+          if (m.type === 'create_event' && m.payload?.eventData?.id) {
+            const evId = m.payload.eventData.id;
+            const rawMembers = m.payload.memberIds || [];
+            if (Array.isArray(rawMembers) && rawMembers.length > 0) {
+              pendingMap[evId] = rawMembers.map((rm: any) => {
+                const uid = rm.user_id || rm.id;
+                return {
+                  name: rm.name || bandNameMap[uid] || 'Member',
+                  userId: uid,
+                  fee: parseFloat(rm.fee) || 0,
+                  status: rm.status || (uid === user?.id ? 'confirmed' : 'pending'),
+                };
+              });
+            } else if (user?.id) {
+              pendingMap[evId] = [{
+                name: bandNameMap[user.id] || 'Me',
+                userId: user.id,
+                fee: Number(m.payload.eventData.fee) || 0,
+                status: 'confirmed',
+              }];
+            }
+          }
+        });
+      } catch {
+        // Ignore queue read error
+      }
+
+      const dbEventIds = masterEventsList
+        .map(e => e.id)
+        .filter(id => id && !String(id).startsWith('offline_'));
+
+      if (dbEventIds.length === 0) {
+        if (Object.keys(pendingMap).length > 0) {
+          setEventMembersMap(prev => ({ ...prev, ...pendingMap }));
+        }
+        return;
+      }
+
+      // Simple query WITHOUT profile join to avoid FK/schema issues
+      const { data, error } = await supabase
+        .from('event_members')
+        .select('event_id, user_id, fee, status')
+        .in('event_id', dbEventIds);
+
+      if (error) {
+        console.error('event_members query failed:', error.message);
+        const cached = await getOfflineItem<Record<string, { name: string; userId: string; fee?: number; status?: string }[]>>(membersMapCacheKey);
+        setEventMembersMap(prev => ({ ...(cached || {}), ...prev, ...pendingMap }));
+        return; // Keep previous/cached map rather than overwriting with empty
+      }
+
+      const map: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = { ...pendingMap };
       data?.forEach((em: any) => {
         if (!map[em.event_id]) map[em.event_id] = [];
         map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee, status: em.status });
       });
       setEventMembersMap(map);
+      setOfflineItem(membersMapCacheKey, map).catch(() => {});
     };
     fetchAllMembers();
-  }, [masterEventsList, membersRefreshKey, realBand?.members]);
+  }, [masterEventsList, membersRefreshKey, realBand?.members, user?.id, membersMapCacheKey]);
 
   // Build band lookup for event mapping
   const bandLookup = useMemo(() => {
@@ -915,6 +988,10 @@ export default function AuthenticatedApp() {
       if (chat.type === "event") type = "event";
       if (chat.type === "group") type = "band";
 
+      const chatBand = chat.band_id ? realBands.find((b) => b.id === chat.band_id) : realBand;
+      const currentBandName = chatBand?.name || realBand?.name;
+      const currentBandLogo = chatBand?.logo_url || realBand?.logo_url;
+
       const others = chat.participants.filter((p) => p.user_id !== user?.id);
       let displayName = "";
       let avatarUrl: string | undefined = undefined;
@@ -924,8 +1001,8 @@ export default function AuthenticatedApp() {
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
-        displayName = (chat.name && chat.name !== "New Chat") ? chat.name : (realBand?.name || "Band Chat");
-        avatarUrl = (chat as any).logo_url || (chat as any).avatar_url || realBand?.logo_url || undefined;
+        displayName = currentBandName || (chat.name && chat.name !== "New Chat" ? chat.name : "Band Chat");
+        avatarUrl = currentBandLogo || (chat as any).logo_url || (chat as any).avatar_url || undefined;
       } else if (type === "event") {
         displayName = (chat.name && chat.name !== "New Chat") ? chat.name : "Event Chat";
       }
@@ -953,7 +1030,7 @@ export default function AuthenticatedApp() {
       else if (diffHours > 0) timeStr = lastTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
       else if (diffMins > 0) timeStr = `${diffMins}m`;
 
-      const bandName = realBand?.name || "";
+      const bandName = currentBandName || "";
       let subtitle = "";
       if (type === "direct") subtitle = bandName;
       else if (type === "event") {
@@ -1015,7 +1092,7 @@ export default function AuthenticatedApp() {
         isLastMessageRead,
       };
     }) as ChatItem[];
-  }, [realChats, realBand?.name, user?.id, onlineUserIds]);
+  }, [realChats, realBand?.name, realBand?.logo_url, realBands, user?.id, onlineUserIds]);
 
   const filteredChats = useMemo(() => {
     return convertedChats
@@ -1945,18 +2022,20 @@ export default function AuthenticatedApp() {
     // ═══════════════════════════════════════════════════════════════
     try {
       const realEventId = selectedEvent.eventId;
-      if (realEventId) {
-        const { data: members } = await getEventMembers(realEventId);
-        const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
-        if (creator?.user_id && user?.id) {
-          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-          const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
-          await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "declined");
-        }
+      if (realEventId && user?.id) {
+        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        await notifyMemberDroppedOut(
+          realBand?.id || "",
+          realEventId,
+          selectedEvent.title,
+          selectedEvent.date,
+          memberName,
+          user.id
+        );
       }
     } catch (pushErr) {
       // CORS / network failures must never interrupt the UI thread
-      console.warn('[handleEventDecline] Push notification failed (CORS or network):', pushErr);
+      console.warn('[handleEventDecline] Member dropout notification failed:', pushErr);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -2107,17 +2186,66 @@ export default function AuthenticatedApp() {
         }
       };
 
-      const setlistId = await persistSetlist();
-      if (setlistId) {
-        eventData.setlist_id = setlistId;
-      }
-
       // Optimistically build member map from the form data
       const optimisticMembers = (data.members || []).map((m: any) => ({
         name: m.name || 'Member',
         userId: m.id,
         fee: parseFloat(m.fee) || 0,
+        status: m.id === user?.id ? 'confirmed' : 'pending',
       }));
+
+      const saveEventOffline = async (isEdit: boolean, editingId?: string) => {
+        reportNetworkStatus(false);
+        if (isEdit && editingId) {
+          await enqueueMutation('update_event', {
+            eventId: editingId,
+            updates: { ...eventData, _isPendingSync: true },
+          });
+          if (optimisticMembers.length > 0) {
+            setEventMembersMap(prev => {
+              const next = { ...prev, [editingId]: optimisticMembers };
+              setOfflineItem(membersMapCacheKey, next).catch(() => {});
+              return next;
+            });
+          }
+        } else {
+          const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const offlineEv: any = {
+            ...eventData,
+            id: tempId,
+            eventId: tempId,
+            created_by: user?.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            _isPendingSync: true,
+            _tempId: tempId,
+          };
+          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: data.members }, tempId);
+          if (optimisticMembers.length > 0) {
+            setEventMembersMap(prev => {
+              const next = { ...prev, [tempId]: optimisticMembers };
+              setOfflineItem(membersMapCacheKey, next).catch(() => {});
+              return next;
+            });
+          }
+        }
+        setSaveToast({ message: 'Saved offline • Will sync when connected', type: 'info' });
+        await refetchEvents();
+        if (refetchDashboard) await refetchDashboard();
+        setMembersRefreshKey(k => k + 1);
+        setEditingEventData(null);
+        setIsCreateEventOpen(false);
+      };
+
+      if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+        await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
+        return;
+      }
+
+      const setlistId = await persistSetlist();
+      if (setlistId) {
+        eventData.setlist_id = setlistId;
+      }
 
       if (data._editing && data._editingEventId) {
         const { error } = await updateEvent(data._editingEventId, eventData);
@@ -2133,6 +2261,9 @@ export default function AuthenticatedApp() {
           } else {
             setSaveToast({ message: 'Event updated!', type: 'success' });
           }
+        } else if (isOfflineError(error)) {
+          await saveEventOffline(true, data._editingEventId);
+          return;
         } else {
           setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
         }
@@ -2162,6 +2293,9 @@ export default function AuthenticatedApp() {
           } else {
             setSaveToast({ message: 'Event created!', type: 'success' });
           }
+        } else if (isOfflineError(error)) {
+          await saveEventOffline(false);
+          return;
         } else {
           setSaveToast({ message: `Create failed: ${error?.message || JSON.stringify(error)}`, type: 'error' });
         }
@@ -2170,7 +2304,26 @@ export default function AuthenticatedApp() {
       if (refetchDashboard) await refetchDashboard();
       setMembersRefreshKey(k => k + 1);
     } catch (err: any) {
-      setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
+      if (!isOnline || isOfflineError(err)) {
+        reportNetworkStatus(false);
+        const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const offlineEv: any = {
+          ...eventData,
+          id: tempId,
+          eventId: tempId,
+          created_by: user?.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          _isPendingSync: true,
+          _tempId: tempId,
+        };
+        await enqueueMutation('create_event', { eventData: offlineEv, memberIds: data.members }, tempId);
+        setSaveToast({ message: 'Saved offline • Will sync when connected', type: 'info' });
+        await refetchEvents();
+        if (refetchDashboard) await refetchDashboard();
+      } else {
+        setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
+      }
     }
 
     setEditingEventData(null);
@@ -2426,6 +2579,12 @@ export default function AuthenticatedApp() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
+      <OfflineBanner
+        isOnline={isOnline}
+        wasOffline={wasOffline}
+        pendingCount={pendingSyncCount}
+        onSyncNow={triggerSync}
+      />
       <div className="fixed inset-0 z-0 bg-background" />
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
@@ -2493,12 +2652,18 @@ export default function AuthenticatedApp() {
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => {
+            <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
+              if (date) {
+                setCreateEventInitialDate(date);
+              } else {
+                setCreateEventInitialDate(null);
+              }
               if (!isAdmin || isSolo) {
-                setEditingPersonalGig(null);
+                setEditingPersonalGig(date ? { id: '', title: '', eventDate: date } : null);
                 setShowPersonalGigModal(true);
               } else {
-                setCreateEventType(null);
+                setCreateEventType(type === 'gig' ? null : type);
+                setEditingEventData(null);
                 setIsCreateEventOpen(true);
               }
             }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
@@ -2514,13 +2679,17 @@ export default function AuthenticatedApp() {
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} onEventClick={handleEventCardClick} onCreateEvent={() => { setEditingPersonalGig(null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
+            <EventsView key="events-solo" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type?: string, date?: string) => { setEditingPersonalGig(date ? { id: '', title: '', eventDate: date } : null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
 
         <IdentityHub
           isOpen={isIdentityOpen}
           onClose={closeIdentity}
+          onBandUpdated={() => {
+            refetchChats?.();
+            refetchEvents();
+          }}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           setSelectedBand={setSelectedBand}
@@ -2697,8 +2866,9 @@ export default function AuthenticatedApp() {
             {isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && (
               <CreateEventModal
                 initialType={createEventType as any}
+                initialDate={createEventInitialDate || undefined}
                 layoutId={`create-button-${createEventType}`}
-                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); }}
+                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); setCreateEventInitialDate(null); }}
                 onCreate={handleEventCreate}
                 currentUserId={user?.id}
                 bandMembers={memoizedBandMembers}
@@ -2775,7 +2945,7 @@ export default function AuthenticatedApp() {
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             />
           )}
-          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} onClose={() => setIsCreateEventOpen(false)} onCreate={async (q) => {
+          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
             if (realBand?.id) {
               const createdEventId = q.eventId || (await (async () => {
                 const evD: Record<string, any> = {
@@ -2794,25 +2964,63 @@ export default function AuthenticatedApp() {
                   fee: q.total || 0,
                   client_name: q.clientName || null,
                 };
-                const { data: ev } = await createEvent(evD);
-                if (ev?.id && Array.isArray(q.musicians) && q.musicians.length > 0) {
-                  const memberRows = q.musicians
-                    .map((m: any) => {
-                      const bandMember = realBand.members?.find((bm: any) => bm.id === m.id || bm.user_id === m.id);
-                      const resolvedUserId = bandMember?.user_id || m.user_id || null;
-                      if (!resolvedUserId) return null;
-                      return {
-                        event_id: ev.id,
-                        user_id: resolvedUserId,
-                        status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
-                        fee: Number(m.rate || m.customFee || 0),
-                        role: m.instrument || bandMember?.role || 'Musician',
-                      };
-                    })
-                    .filter(Boolean);
-                  if (memberRows.length > 0) {
-                    await supabase.from('event_members').upsert(memberRows as any[], { onConflict: 'event_id,user_id' });
-                  }
+                const memberRows = Array.isArray(q.musicians)
+                  ? q.musicians
+                      .map((m: any) => {
+                        const bandMember = realBand.members?.find((bm: any) => bm.id === m.id || bm.user_id === m.id);
+                        const resolvedUserId = bandMember?.user_id || m.user_id || null;
+                        if (!resolvedUserId) return null;
+                        return {
+                          user_id: resolvedUserId,
+                          status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
+                          fee: Number(m.rate || m.customFee || 0),
+                          role: m.instrument || bandMember?.role || 'Musician',
+                        };
+                      })
+                      .filter(Boolean)
+                  : [];
+
+                if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+                  reportNetworkStatus(false);
+                  const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                  const offlineEv: any = {
+                    ...evD,
+                    id: tempId,
+                    eventId: tempId,
+                    created_by: user?.id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    _isPendingSync: true,
+                    _tempId: tempId,
+                  };
+                  await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
+                  setSaveToast({ message: 'Saved quote event offline • Will sync when connected', type: 'info' });
+                  return tempId;
+                }
+
+                const { data: ev, error: evErr } = await createEvent(evD);
+                if (evErr && isOfflineError(evErr)) {
+                  reportNetworkStatus(false);
+                  const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                  const offlineEv: any = {
+                    ...evD,
+                    id: tempId,
+                    eventId: tempId,
+                    created_by: user?.id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    _isPendingSync: true,
+                    _tempId: tempId,
+                  };
+                  await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
+                  setSaveToast({ message: 'Saved quote event offline • Will sync when connected', type: 'info' });
+                  return tempId;
+                }
+                if (ev?.id && memberRows.length > 0) {
+                  await supabase.from('event_members').upsert(
+                    memberRows.map((r: any) => ({ ...r, event_id: ev.id })),
+                    { onConflict: 'event_id,user_id' }
+                  );
                 }
                 return ev?.id || null;
               })());
@@ -2904,9 +3112,20 @@ export default function AuthenticatedApp() {
                       await respondToEventInvite(membership.id, status as 'confirmed' | 'declined');
                     }
 
-                    const creatorId = notif?.data?.creator_id as string;
-                    if (creatorId && creatorId !== user.id) {
-                      await notifyEventResponse([creatorId], notif?.band_id || "", eventId, eventTitle, eventType, memberName, status);
+                    if (status === 'declined') {
+                      await notifyMemberDroppedOut(
+                        notif?.band_id || "",
+                        eventId,
+                        eventTitle,
+                        notif?.data?.event_date as string | undefined,
+                        memberName,
+                        user.id
+                      );
+                    } else {
+                      const creatorId = notif?.data?.creator_id as string;
+                      if (creatorId && creatorId !== user.id) {
+                        await notifyEventResponse([creatorId], notif?.band_id || "", eventId, eventTitle, eventType, memberName, status);
+                      }
                     }
                     if (notificationId) await markNotificationAsRead(notificationId);
                     refetchNotifications?.();
@@ -3050,12 +3269,17 @@ export default function AuthenticatedApp() {
                   .eq('user_id', user.id)
                   .maybeSingle();
                 if (membership) await respondToEventInvite(membership.id, 'declined');
-                const creatorId = rsvpNotification.data?.creator_id as string;
-                if (creatorId) {
-                  const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
-                  const eventType = (rsvpNotification.data?.event_type as string) || 'gig';
-                  await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "declined");
-                }
+                const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                const eventTitle = (rsvpNotification.data?.event_title as string) || "Event";
+                const eventDate = (rsvpNotification.data?.event_date as string) || undefined;
+                await notifyMemberDroppedOut(
+                  rsvpNotification.band_id || "",
+                  eventId,
+                  eventTitle,
+                  eventDate,
+                  memberName,
+                  user.id
+                );
                 await markNotificationAsRead(rsvpNotification.id);
                 setMembersRefreshKey(prev => prev + 1);
                 refetchNotifications?.();

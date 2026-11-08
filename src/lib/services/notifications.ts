@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 
 // Types
 export type NotificationType =
@@ -15,6 +15,7 @@ export type NotificationType =
   | 'event_update'
   | 'event_cancelled'
   | 'event_confirmed'
+  | 'member_dropped_out'
   // Quotes
   | 'quote_received'
   | 'quote_accepted'
@@ -175,7 +176,7 @@ export const getNotifications = async (options?: {
   offset?: number;
 }): Promise<{ data: Notification[] | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     let query = supabase
@@ -223,7 +224,7 @@ export const getNotifications = async (options?: {
 
 export const getUnreadCount = async (): Promise<{ data: number | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { count, error } = await supabase
@@ -266,7 +267,7 @@ export const markAsRead = async (notificationId: string): Promise<{ error: Error
 
 export const markAllAsRead = async (): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { error } = await supabase
@@ -289,7 +290,7 @@ export const markAllAsRead = async (): Promise<{ error: Error | null }> => {
 // Mark all chat notifications for a specific chat as read
 export const markChatNotificationsAsRead = async (chatId: string): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     // Find and update all unread chat_message notifications for this chat
@@ -331,7 +332,7 @@ export const deleteNotification = async (notificationId: string): Promise<{ erro
 
 export const deleteAllNotifications = async (): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const { error } = await supabase
@@ -354,25 +355,19 @@ export const deleteAllNotifications = async (): Promise<{ error: Error | null }>
 // Determine if a notification type should trigger a push
 const shouldSendPush = (type: NotificationType): boolean => {
   const pushTypes: NotificationType[] = [
-    // High priority - requires action
+    // High priority - requires immediate action
     'invite_received',
     'event_invite',
-    'quote_received',
-    'task_assigned',
-    'rehearsal_proposal',
-    'rehearsal_poll',
-    'rehearsal_poll_finalized',
-    // High priority - time-sensitive
+    'member_dropped_out',
+    'event_confirmed',
+    'event_cancelled',
+    // High priority - time-sensitive reminders
     'event_reminder',
-    'rehearsal_reminder',
     'payment_due',
     'payment_overdue',
-    // Medium priority - important updates
-    'event_confirmed',
+    // High-value finance updates
     'quote_accepted',
     'payment_received',
-    'member_joined', // Interessante sapere chi si è unito
-    'member_left', // Inform if removed from band
     // Chat - real-time
     'chat_message',
     'chat_mention',
@@ -385,7 +380,10 @@ const sendPushNotification = async (
   userIds: string[],
   title: string,
   body: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
+  subtitle?: string,
+  tag?: string,
+  channelId?: string
 ): Promise<void> => {
   try {
     // Convert data to string values for push payload
@@ -400,6 +398,9 @@ const sendPushNotification = async (
       body: {
         user_ids: userIds,
         title,
+        subtitle: subtitle || (data?.subtitle as string),
+        tag: tag || (data?.tag as string),
+        channel_id: channelId || (data?.channel_id as string),
         body: body || '',
         data: pushData,
         create_in_app: false, // In-app notification already created by caller
@@ -505,7 +506,7 @@ export const subscribeToNotifications = (
   onUpdate?: (notification: Notification) => void
 ) => {
   // Get current user to filter notifications
-  supabase.auth.getUser().then(({ data: { user } }) => {
+  getSafeUser().then(({ data: { user } }) => {
     if (!user) {
       console.log('[Notifications] No user for subscription');
       return;
@@ -526,7 +527,7 @@ export const subscribeToNotifications = (
       async (payload) => {
         const notification = payload.new as Notification;
         // Check if this notification is for the current user
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getSafeUser();
         if (user && notification.user_id === user.id) {
           console.log('[Notifications] Realtime INSERT received:', notification.title);
           callback(notification);
@@ -543,7 +544,7 @@ export const subscribeToNotifications = (
       async (payload) => {
         if (onUpdate) {
           const notification = payload.new as Notification;
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await getSafeUser();
           if (user && notification.user_id === user.id) {
             console.log('[Notifications] Realtime UPDATE received:', notification.id);
             onUpdate(notification);
@@ -984,9 +985,13 @@ export const notifyEventResponse = async (
       tentative: `${memberName} is tentative for "${eventTitle}"`
     };
     
+    const notifType: NotificationType = response === 'declined' ? 'member_dropped_out' : 'event_confirmed';
+    const tag = response === 'declined' ? 'Gig Alert' : 'Gig RSVP';
+    const subtitle = `${config.label} · ${eventTitle}`;
+
     const notifications = adminIds.map(adminId => ({
       user_id: adminId,
-      type: 'event_confirmed' as NotificationType,
+      type: notifType,
       title: responseTitle[response],
       body: responseText[response],
       band_id: bandId,
@@ -997,6 +1002,8 @@ export const notifyEventResponse = async (
         member_name: memberName,
         response,
         alternative_date: alternativeDate,
+        subtitle,
+        tag,
       },
       read: false,
     }));
@@ -1007,19 +1014,113 @@ export const notifyEventResponse = async (
     
     if (error) throw error;
     
-    // Send push for declined responses (important to know)
-    if (response === 'declined') {
-      await sendPushNotification(
-        adminIds,
-        'Member Dropped Out',
-        responseText[response],
-        { event_id: eventId, type: 'event_confirmed', response }
-      );
-    }
+    // Send push notification to admins with subtitle and tag
+    await sendPushNotification(
+      adminIds,
+      responseTitle[response],
+      responseText[response],
+      { event_id: eventId, type: notifType, response, subtitle, tag, channel_id: 'bandwith_events' },
+      subtitle,
+      tag,
+      'bandwith_events'
+    );
     
     return { error: null };
   } catch (error: any) {
     console.error('Error notifying admins of response:', error);
+    return { error };
+  }
+};
+
+// Explicit notification when a band member drops out of a gig
+export const notifyMemberDroppedOut = async (
+  bandId: string,
+  eventId: string,
+  eventTitle: string,
+  eventDate: string | undefined,
+  memberName: string,
+  memberUserId: string
+): Promise<{ error: Error | null }> => {
+  try {
+    const adminUserIds = new Set<string>();
+
+    // 1. Fetch band admins
+    if (bandId) {
+      const { data: bandAdmins } = await supabase
+        .from('band_members')
+        .select('user_id')
+        .eq('band_id', bandId)
+        .eq('role', 'admin')
+        .eq('is_active', true);
+
+      (bandAdmins || []).forEach((a: any) => {
+        if (a.user_id && a.user_id !== memberUserId) {
+          adminUserIds.add(a.user_id);
+        }
+      });
+    }
+
+    // 2. Fetch event creator
+    if (eventId) {
+      const { data: ev } = await supabase
+        .from('events')
+        .select('created_by')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (ev?.created_by && ev.created_by !== memberUserId) {
+        adminUserIds.add(ev.created_by);
+      }
+    }
+
+    const recipients = Array.from(adminUserIds);
+    if (recipients.length === 0) return { error: null };
+
+    const title = `${memberName} dropped out`;
+    const subtitle = `Gig Alert · ${eventTitle}`;
+    const dateFormatted = eventDate ? ` on ${eventDate}` : '';
+    const body = `${memberName} dropped out of "${eventTitle}"${dateFormatted}. Roster replacement needed.`;
+
+    // 3. Create in-app notification in database
+    const notifications = recipients.map(adminId => ({
+      user_id: adminId,
+      type: 'member_dropped_out' as NotificationType,
+      title,
+      body,
+      band_id: bandId,
+      data: {
+        event_id: eventId,
+        event_title: eventTitle,
+        event_date: eventDate,
+        member_name: memberName,
+        subtitle,
+        tag: 'Gig Alert',
+      },
+      read: false,
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+
+    // 4. Send priority push notification to admins
+    await sendPushNotification(
+      recipients,
+      title,
+      body,
+      {
+        event_id: eventId,
+        type: 'member_dropped_out',
+        subtitle,
+        tag: 'Gig Alert',
+        channel_id: 'bandwith_events',
+      },
+      subtitle,
+      'Gig Alert',
+      'bandwith_events'
+    );
+
+    return { error: null };
+  } catch (error: any) {
+    console.error('Error notifying admins of member dropout:', error);
     return { error };
   }
 };
@@ -1159,39 +1260,102 @@ export const sendPushToUsers = async (
 
     // Create notification content based on type
     let title = 'BandWith';
+    let subtitle = data.subtitle || '';
+    let tag = data.tag || '';
+    let channelId = data.channel_id || 'bandwith_general';
     let body = '';
 
     switch (type) {
       case 'chat_message':
         title = data.senderName || 'New message';
-        body = data.content?.substring(0, 100) || 'New message';
+        const isDirect = data.chatType === 'direct' || !data.band_id;
+        subtitle = data.subtitle || (isDirect ? 'Private Message' : (data.bandName || 'Band Chat'));
+        tag = isDirect ? 'Direct Message' : 'Band Message';
+        channelId = 'bandwith_messages';
+        body = data.content?.substring(0, 120) || 'New message';
         break;
-      case 'event_created':
-        title = 'New Event';
-        body = data.eventTitle || 'A new event has been created';
+      case 'chat_mention':
+        title = data.senderName ? `${data.senderName} mentioned you` : 'You were mentioned';
+        subtitle = data.bandName || 'Band Chat';
+        tag = 'Mention';
+        channelId = 'bandwith_messages';
+        body = data.content?.substring(0, 120) || 'You were mentioned in chat';
         break;
       case 'event_invite':
-        title = 'Event Invitation';
-        body = `You're invited to "${data.eventTitle}"`;
+        title = 'Gig Invitation';
+        subtitle = data.bandName || data.venue || 'New Gig';
+        tag = 'Gig Invitation';
+        channelId = 'bandwith_events';
+        body = data.eventTitle ? `You're invited to "${data.eventTitle}"` : (data.body || 'You have a new gig invitation');
         break;
-      case 'member_joined':
-        title = 'New Member';
-        body = `${data.memberName || 'Someone'} joined the band`;
+      case 'member_dropped_out':
+        title = `${data.memberName || 'Member'} dropped out`;
+        subtitle = `Gig Alert · ${data.eventTitle || 'Event'}`;
+        tag = 'Gig Alert';
+        channelId = 'bandwith_events';
+        body = data.body || `${data.memberName || 'A member'} dropped out of "${data.eventTitle || 'the gig'}". Roster action needed.`;
+        break;
+      case 'event_confirmed':
+        title = `${data.memberName || 'Member'} confirmed`;
+        subtitle = `Gig RSVP · ${data.eventTitle || 'Event'}`;
+        tag = 'Gig RSVP';
+        channelId = 'bandwith_events';
+        body = data.body || `${data.memberName || 'Member'} confirmed attendance.`;
+        break;
+      case 'event_cancelled':
+        title = 'Gig Cancelled';
+        subtitle = data.eventTitle || 'Event Update';
+        tag = 'Gig Alert';
+        channelId = 'bandwith_events';
+        body = `"${data.eventTitle || 'Event'}" has been cancelled.`;
+        break;
+      case 'event_reminder':
+        title = 'Call Time Reminder';
+        subtitle = data.eventTitle || 'Upcoming Gig';
+        tag = 'Reminder';
+        channelId = 'bandwith_events';
+        body = data.body || `Reminder: "${data.eventTitle || 'Gig'}" is scheduled soon.`;
+        break;
+      case 'quote_accepted':
+        title = 'Booking Confirmed!';
+        subtitle = data.eventTitle || data.bandName || 'Finance';
+        tag = 'Booking Confirmed';
+        channelId = 'bandwith_finance';
+        body = data.body || `Client accepted quote for "${data.eventTitle || 'event'}"`;
+        break;
+      case 'payment_received':
+        title = 'Payment Received';
+        subtitle = data.eventTitle || data.bandName || 'Finance';
+        tag = 'Payment';
+        channelId = 'bandwith_finance';
+        body = data.body || `Payment processed for "${data.eventTitle || 'event'}"`;
+        break;
+      case 'invite_received':
+        title = 'Band Invitation';
+        subtitle = data.bandName || 'New Band';
+        tag = 'Band Invitation';
+        channelId = 'bandwith_general';
+        body = `You've been invited to join ${data.bandName || 'a new band'}`;
         break;
       default:
         title = data.title || 'BandWith';
+        subtitle = data.subtitle || '';
+        tag = data.tag || 'Alert';
         body = data.body || data.content || 'New notification';
     }
 
     // Call the Edge Function
-    console.log('[sendPushToUsers] Calling Edge Function with:', { user_ids: userIds, title, body });
+    console.log('[sendPushToUsers] Calling Edge Function with:', { user_ids: userIds, title, subtitle, tag, body });
     
     const { data: result, error } = await supabase.functions.invoke('send-push', {
       body: {
         user_ids: userIds,
         title,
+        subtitle,
+        tag,
+        channel_id: channelId,
         body,
-        data: { type, ...data },
+        data: { type, subtitle, tag, channel_id: channelId, ...data },
       },
     });
 

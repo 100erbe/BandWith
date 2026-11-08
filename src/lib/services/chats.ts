@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, getSafeUser } from '../supabase';
 import { sendPushToUsers } from './notifications';
 
 // ============================================
@@ -29,6 +29,7 @@ export interface ChatParticipant {
   chat_id: string;
   user_id: string;
   last_read_at?: string;
+  cleared_at?: string;
   muted: boolean;
   joined_at: string;
   profile?: {
@@ -68,7 +69,7 @@ export const getChats = async (
   bandId?: string
 ): Promise<{ data: ChatWithDetails[] | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     // Get chats where user is a participant
@@ -208,6 +209,19 @@ export const getChats = async (
 
     const targetChats = bandId ? allowedChats.filter(c => c.band_id === bandId) : allowedChats;
 
+    // Fetch band info for all chats with band_id in one batch
+    const allBandIds = Array.from(new Set(targetChats.map(c => c.band_id).filter(Boolean))) as string[];
+    let bandMap = new Map<string, { id: string; name: string; logo_url?: string }>();
+    if (allBandIds.length > 0) {
+      const { data: bandsData } = await supabase
+        .from('bands')
+        .select('id, name, logo_url')
+        .in('id', allBandIds);
+      if (bandsData) {
+        bandMap = new Map(bandsData.map((b: any) => [b.id, b]));
+      }
+    }
+
     // Get last message for each chat and unread count
     const chatsWithDetails = await Promise.all(
       targetChats.map(async (chat) => {
@@ -221,40 +235,61 @@ export const getChats = async (
           .order('created_at', { ascending: false })
           .limit(1);
 
-        // Get unread count
+        const lastMessage = messages?.[0];
+
+        // Check if current user cleared / deleted this chat
         const userParticipant = chatParticipants.find(
           (p: ChatParticipant) => p.user_id === user.id
         );
-        const lastReadAt = userParticipant?.last_read_at;
 
-        let unreadCount = 0;
-        if (lastReadAt) {
-          const { count } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chat.id)
-            .neq('sender_id', user.id)
-            .gt('created_at', lastReadAt);
-          unreadCount = count || 0;
-        } else {
-          const { count } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chat.id)
-            .neq('sender_id', user.id);
-          unreadCount = count || 0;
+        if (userParticipant?.cleared_at) {
+          const clearedTime = new Date(userParticipant.cleared_at).getTime();
+          const lastMsgTime = lastMessage ? new Date(lastMessage.created_at).getTime() : 0;
+          // If no messages or last message was sent before/at the time user deleted the chat, hide it
+          if (lastMsgTime <= clearedTime) {
+            return null;
+          }
         }
+
+        // Get unread count (respecting both last_read_at and cleared_at)
+        const lastReadAt = userParticipant?.last_read_at;
+        const clearedAt = userParticipant?.cleared_at;
+
+        let unreadQuery = supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('chat_id', chat.id)
+          .neq('sender_id', user.id);
+
+        if (lastReadAt && clearedAt) {
+          const cutOff = new Date(lastReadAt) > new Date(clearedAt) ? lastReadAt : clearedAt;
+          unreadQuery = unreadQuery.gt('created_at', cutOff);
+        } else if (lastReadAt) {
+          unreadQuery = unreadQuery.gt('created_at', lastReadAt);
+        } else if (clearedAt) {
+          unreadQuery = unreadQuery.gt('created_at', clearedAt);
+        }
+
+        const { count } = await unreadQuery;
+        const unreadCount = count || 0;
+
+        const bandInfo = chat.band_id ? bandMap.get(chat.band_id) : null;
+        const resolvedName = (chat.type === 'band' && bandInfo?.name) ? bandInfo.name : chat.name;
 
         return {
           ...chat,
+          name: resolvedName,
+          logo_url: bandInfo?.logo_url || (chat as any).logo_url,
+          band: bandInfo || undefined,
           participants: chatParticipants,
-          last_message: messages?.[0] || undefined,
+          last_message: lastMessage || undefined,
           unread_count: unreadCount,
         } as ChatWithDetails;
       })
     );
 
-    return { data: chatsWithDetails, error: null };
+    const validChats = chatsWithDetails.filter(Boolean) as ChatWithDetails[];
+    return { data: validChats, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
@@ -264,7 +299,7 @@ export const getChat = async (
   chatId: string
 ): Promise<{ data: ChatWithDetails | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     // Get chat (separate query - avoid Supabase join which may 400 on FK cache miss)
@@ -275,6 +310,18 @@ export const getChat = async (
       .single();
 
     if (error) throw error;
+
+    let bandInfo: { id: string; name: string; logo_url?: string } | null = null;
+    if (chat.band_id) {
+      const { data: b } = await supabase
+        .from('bands')
+        .select('id, name, logo_url')
+        .eq('id', chat.band_id)
+        .maybeSingle();
+      if (b) bandInfo = b;
+    }
+
+    const resolvedName = (chat.type === 'band' && bandInfo?.name) ? bandInfo.name : chat.name;
 
     // Fetch participants separately
     const { data: chatParticipants, error: partError } = await supabase
@@ -295,6 +342,9 @@ export const getChat = async (
     return {
       data: {
         ...chat,
+        name: resolvedName,
+        logo_url: bandInfo?.logo_url || (chat as any).logo_url,
+        band: bandInfo || undefined,
         participants: (chatParticipants || []).map((p: any) => ({
           ...p,
           profile: profileMap.get(p.user_id) || null,
@@ -308,6 +358,89 @@ export const getChat = async (
   }
 };
 
+// Find existing direct chat between two users (handles case where one user cleared/left)
+const findExistingDirectChat = async (userId1: string, userId2: string): Promise<Chat | null> => {
+  try {
+    // Find all direct chats where either user is currently a participant
+    const { data: participations } = await supabase
+      .from('chat_participants')
+      .select('chat_id, user_id')
+      .in('user_id', [userId1, userId2]);
+
+    const chatIds = Array.from(new Set((participations || []).map(p => p.chat_id)));
+    if (chatIds.length === 0) {
+      // Fallback: check if there is an existing direct chat created by either
+      const { data: createdChats } = await supabase
+        .from('chats')
+        .select('*')
+        .in('created_by', [userId1, userId2])
+        .eq('type', 'direct')
+        .limit(10);
+      
+      for (const c of (createdChats || [])) {
+        const { data: parts } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', c.id);
+        const pIds = (parts || []).map(p => p.user_id);
+        if (pIds.includes(userId1) || pIds.includes(userId2)) {
+          return c;
+        }
+      }
+      return null;
+    }
+
+    // Get direct chats from this list
+    const { data: directChats } = await supabase
+      .from('chats')
+      .select('*')
+      .in('id', chatIds)
+      .eq('type', 'direct');
+
+    if (!directChats || directChats.length === 0) return null;
+
+    // Fetch all participants for these candidate direct chats
+    const candidateIds = directChats.map(c => c.id);
+    const { data: allParts } = await supabase
+      .from('chat_participants')
+      .select('chat_id, user_id')
+      .in('chat_id', candidateIds);
+
+    const partsByChat = new Map<string, string[]>();
+    (allParts || []).forEach(p => {
+      const list = partsByChat.get(p.chat_id) || [];
+      list.push(p.user_id);
+      partsByChat.set(p.chat_id, list);
+    });
+
+    for (const chat of directChats) {
+      const pIds = partsByChat.get(chat.id) || [];
+      // 1. Both are already participants
+      if (pIds.includes(userId1) && pIds.includes(userId2)) {
+        return chat;
+      }
+      // 2. Only one is recorded as participant (other user had deleted their participation)
+      if (pIds.length === 1 && (pIds[0] === userId1 || pIds[0] === userId2)) {
+        // Check message senders or creator to confirm it was between these two users
+        const { data: msgSenders } = await supabase
+          .from('messages')
+          .select('sender_id')
+          .eq('chat_id', chat.id)
+          .limit(10);
+        const senders = new Set((msgSenders || []).map(m => m.sender_id));
+        if (senders.has(userId1) || senders.has(userId2) || chat.created_by === userId1 || chat.created_by === userId2) {
+          return chat;
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[findExistingDirectChat] Error:', error);
+    return null;
+  }
+};
+
 export const createChat = async (
   data: {
     type: ChatType;
@@ -318,7 +451,7 @@ export const createChat = async (
   }
 ): Promise<{ data: Chat | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const allParticipants = [...new Set([user.id, ...data.participant_ids])];
@@ -399,6 +532,15 @@ export const createChat = async (
       const existingChat = await findExistingDirectChat(allParticipants[0], allParticipants[1]);
       if (existingChat) {
         console.log('[createChat] Found existing direct chat:', existingChat.id);
+        const targetUserId = data.participant_ids.find(id => id !== user.id) || allParticipants[1];
+        // Ensure both participants exist in chat_participants and un-clear for current user
+        await supabase
+          .from('chat_participants')
+          .upsert([
+            { chat_id: existingChat.id, user_id: user.id, cleared_at: null },
+            { chat_id: existingChat.id, user_id: targetUserId },
+          ], { onConflict: 'chat_id,user_id' });
+
         return { data: existingChat, error: null };
       }
     }
@@ -410,10 +552,17 @@ export const createChat = async (
         .select('*')
         .eq('type', 'band')
         .eq('band_id', data.band_id)
-        .single();
+        .maybeSingle();
       
       if (existingBandChat) {
         console.log('[createChat] Found existing band chat:', existingBandChat.id);
+        // Ensure user is restored in chat_participants and cleared_at is reset
+        await supabase
+          .from('chat_participants')
+          .upsert(
+            { chat_id: existingBandChat.id, user_id: user.id, cleared_at: null },
+            { onConflict: 'chat_id,user_id' }
+          );
         return { data: existingBandChat, error: null };
       }
     }
@@ -425,10 +574,17 @@ export const createChat = async (
         .select('*')
         .eq('type', 'event')
         .eq('event_id', data.event_id)
-        .single();
+        .maybeSingle();
       
       if (existingEventChat) {
         console.log('[createChat] Found existing event chat:', existingEventChat.id);
+        // Ensure user is restored in chat_participants and cleared_at is reset
+        await supabase
+          .from('chat_participants')
+          .upsert(
+            { chat_id: existingEventChat.id, user_id: user.id, cleared_at: null },
+            { onConflict: 'chat_id,user_id' }
+          );
         return { data: existingEventChat, error: null };
       }
     }
@@ -453,6 +609,7 @@ export const createChat = async (
     const participantInserts = allParticipants.map(userId => ({
       chat_id: chat.id,
       user_id: userId,
+      cleared_at: null,
     }));
 
     const { error: partError } = await supabase
@@ -469,50 +626,6 @@ export const createChat = async (
   }
 };
 
-// Find existing direct chat between two users
-const findExistingDirectChat = async (userId1: string, userId2: string): Promise<Chat | null> => {
-  try {
-    // Get all direct chats where user1 is a participant
-    const { data: user1Chats } = await supabase
-      .from('chat_participants')
-      .select('chat_id')
-      .eq('user_id', userId1);
-
-    if (!user1Chats || user1Chats.length === 0) return null;
-
-    const chatIds = user1Chats.map(c => c.chat_id);
-
-    // Find which of these chats also has user2 and is of type 'direct'
-    const { data: directChats } = await supabase
-      .from('chats')
-      .select('*')
-      .in('id', chatIds)
-      .eq('type', 'direct');
-
-    if (!directChats || directChats.length === 0) return null;
-
-    // Check which of these has exactly user2 as the other participant
-    for (const chat of directChats) {
-      const { data: participants } = await supabase
-        .from('chat_participants')
-        .select('user_id')
-        .eq('chat_id', chat.id);
-
-      if (participants && participants.length === 2) {
-        const participantIds = participants.map(p => p.user_id);
-        if (participantIds.includes(userId1) && participantIds.includes(userId2)) {
-          return chat;
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error('[findExistingDirectChat] Error:', error);
-    return null;
-  }
-};
-
 // ============================================
 // MESSAGES CRUD
 // ============================================
@@ -523,6 +636,19 @@ export const getMessages = async (
 ): Promise<{ data: Message[] | null; error: Error | null }> => {
   try {
     console.log('[getMessages] Fetching messages for chat:', chatId);
+    const { data: { user } } = await getSafeUser();
+
+    // Check if current user previously cleared / deleted this chat
+    let clearedAt: string | null = null;
+    if (user) {
+      const { data: myPart } = await supabase
+        .from('chat_participants')
+        .select('cleared_at')
+        .eq('chat_id', chatId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (myPart?.cleared_at) clearedAt = myPart.cleared_at;
+    }
     
     // Note: removed .eq('deleted', false) - column doesn't exist in DB
     // Include reply_to message for quoting feature
@@ -531,6 +657,10 @@ export const getMessages = async (
       .select(`*`)
       .eq('chat_id', chatId)
       .order('created_at', { ascending: false });
+
+    if (clearedAt) {
+      query = query.gt('created_at', clearedAt);
+    }
 
     if (options?.limit) {
       query = query.limit(options.limit);
@@ -564,19 +694,27 @@ export const sendMessage = async (
   replyToId?: string // Optional: ID of message being replied to
 ): Promise<{ data: Message | null; error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get chat to find band_id, type, event_id
+    // Get chat to find band_id, type, event_id, name, created_by
     const { data: chat, error: chatError } = await supabase
       .from('chats')
-      .select('band_id, type, event_id')
+      .select('band_id, type, event_id, name, created_by')
       .eq('id', chatId)
       .single();
 
     if (chatError) throw chatError;
     
-    // Get ALL participants for this chat (separate query to work around RLS)
+    // Ensure the sender is an active participant and clear any deletion timestamp
+    await supabase
+      .from('chat_participants')
+      .upsert(
+        { chat_id: chatId, user_id: user.id, cleared_at: null },
+        { onConflict: 'chat_id,user_id' }
+      );
+
+    // Get ALL participants for this chat
     const { data: participants, error: partError } = await supabase
       .from('chat_participants')
       .select('user_id')
@@ -584,6 +722,54 @@ export const sendMessage = async (
     
     if (partError) {
       console.warn('[sendMessage] Could not get participants:', partError);
+    }
+
+    // Ensure missing participants are restored based on chat type
+    if (chat.type === 'band' && chat.band_id) {
+      const { data: bMembers } = await supabase
+        .from('band_members')
+        .select('user_id')
+        .eq('band_id', chat.band_id)
+        .eq('is_active', true);
+      if (bMembers && bMembers.length > 0) {
+        await supabase
+          .from('chat_participants')
+          .upsert(
+            bMembers.map(bm => ({ chat_id: chatId, user_id: bm.user_id })),
+            { onConflict: 'chat_id,user_id', ignoreDuplicates: true }
+          );
+      }
+    } else if (chat.type === 'event' && chat.event_id) {
+      const { data: eMembers } = await supabase
+        .from('event_members')
+        .select('user_id')
+        .eq('event_id', chat.event_id)
+        .neq('status', 'declined');
+      if (eMembers && eMembers.length > 0) {
+        await supabase
+          .from('chat_participants')
+          .upsert(
+            eMembers.map(em => ({ chat_id: chatId, user_id: em.user_id })),
+            { onConflict: 'chat_id,user_id', ignoreDuplicates: true }
+          );
+      }
+    } else if (chat.type === 'direct') {
+      const otherParticipant = (participants || []).find((p: any) => p.user_id !== user.id);
+      if (!otherParticipant) {
+        // If other participant was removed in an old hard delete, restore them from message history or creator
+        const { data: priorMsgs } = await supabase
+          .from('messages')
+          .select('sender_id')
+          .eq('chat_id', chatId)
+          .neq('sender_id', user.id)
+          .limit(1);
+        const otherUserId = priorMsgs?.[0]?.sender_id || (chat.created_by !== user.id ? chat.created_by : null);
+        if (otherUserId) {
+          await supabase
+            .from('chat_participants')
+            .upsert({ chat_id: chatId, user_id: otherUserId }, { onConflict: 'chat_id,user_id' });
+        }
+      }
     }
 
     // Permission enforcement:
@@ -677,7 +863,13 @@ export const sendMessage = async (
 
     // Send push notifications AND create in-app notifications for other participants
     try {
-      const otherParticipants = (participants || [])
+      // Re-fetch all participants to ensure restored members are notified
+      const { data: updatedParts } = await supabase
+        .from('chat_participants')
+        .select('user_id')
+        .eq('chat_id', chatId);
+
+      const otherParticipants = (updatedParts || participants || [])
         .map((p: any) => p.user_id)
         .filter((id: string) => id !== user.id);
 
@@ -691,15 +883,35 @@ export const sendMessage = async (
 
         const senderName = profile?.full_name || user.email?.split('@')[0] || 'Someone';
 
+        // Resolve latest band name for notification
+        let bandName = chat.name || undefined;
+        if (chat.band_id) {
+          const { data: b } = await supabase
+            .from('bands')
+            .select('name')
+            .eq('id', chat.band_id)
+            .maybeSingle();
+          if (b?.name) bandName = b.name;
+        }
+
+        const isDirect = chat.type === 'direct';
+        const subtitle = isDirect ? 'Private Message' : (bandName || 'Band Chat');
+        const tag = isDirect ? 'Direct Message' : 'Band Message';
+
         // Send push notification (Edge Function also creates in-app notifications)
         // Uses service role so RLS is bypassed
         try {
           const pushResult = await sendPushToUsers(otherParticipants, 'chat_message', {
             senderName,
-            content: content.substring(0, 100),
+            content: content.substring(0, 120),
             chatId,
             chat_id: chatId,
             band_id: chat.band_id,
+            chatType: chat.type,
+            bandName,
+            subtitle,
+            tag,
+            channel_id: 'bandwith_messages',
           });
           console.log('[sendMessage] Push result:', JSON.stringify(pushResult));
         } catch (pushErr) {
@@ -720,7 +932,7 @@ export const markChatAsRead = async (
   chatId: string
 ): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     // Best-effort: RLS or column issues shouldn't break the chat
@@ -806,17 +1018,22 @@ export const deleteChat = async (
   chatId: string
 ): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Soft leave: only remove the current user from participants.
-    // The chat and messages are preserved so the chat reappears
-    // when someone sends a new message (the user gets re-added).
+    // Soft delete / clear for current user:
+    // Mark cleared_at timestamp so chat is hidden from chat hub until a new message arrives.
+    // The chat and message history are preserved, and the chat will reappear if texting again.
     const { error: partError } = await supabase
       .from('chat_participants')
-      .delete()
-      .eq('chat_id', chatId)
-      .eq('user_id', user.id);
+      .upsert(
+        {
+          chat_id: chatId,
+          user_id: user.id,
+          cleared_at: new Date().toISOString(),
+        },
+        { onConflict: 'chat_id,user_id' }
+      );
     if (partError) throw partError;
 
     return { error: null };
@@ -927,7 +1144,7 @@ export const searchChatsAndMessages = async (
       return { data: [], error: null };
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
     const results: SearchResult[] = [];

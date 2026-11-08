@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { getBands, getBand, BandWithMembers } from './services/bands';
+import { getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
 
 export type MemberRole = 'admin' | 'member';
 
@@ -35,6 +36,34 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
   const [selectedBand, setSelectedBand] = useState<BandWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasLoadedCacheRef = useRef(false);
+
+  const bandsCacheKey = getCacheKey(user?.id, 'global', 'bands_context');
+  const selectedBandCacheKey = getCacheKey(user?.id, 'global', 'selected_band_id');
+
+  // Seed bands and selectedBand from offline cache immediately
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    let isMounted = true;
+    Promise.all([
+      getOfflineItem<BandWithMembers[]>(bandsCacheKey),
+      getOfflineItem<string>(selectedBandCacheKey),
+    ]).then(([cachedBands, cachedSelectedId]) => {
+      if (!isMounted || !cachedBands?.length) return;
+      hasLoadedCacheRef.current = true;
+      setBands(prev => (prev.length > 0 ? prev : cachedBands));
+      setSelectedBand(prev => {
+        if (prev) return prev;
+        if (cachedSelectedId) {
+          const match = cachedBands.find(b => b.id === cachedSelectedId);
+          if (match) return match;
+        }
+        return cachedBands[0];
+      });
+      setLoading(false);
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [isAuthenticated, user?.id, bandsCacheKey, selectedBandCacheKey]);
 
   // Robust RBAC calculation
   const currentMemberRole = useMemo(() => {
@@ -53,8 +82,8 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
       return;
     }
 
-    // Only set loading true on first attempt or if we have no data
-    if (retryCount === 0 && bands.length === 0) {
+    // Only set loading true on first attempt if we have no data in state or cache
+    if (retryCount === 0 && bands.length === 0 && !hasLoadedCacheRef.current) {
       setLoading(true);
     }
     
@@ -66,8 +95,8 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
         const errorCode = (fetchError as any)?.code || 'N/A';
         console.error('Bands fetch error:', { message: errorMsg, code: errorCode });
         
-        // Retry on network errors
-        if (retryCount < 3 && (
+        // Retry on network errors when online
+        if (retryCount < 2 && (typeof navigator === 'undefined' || navigator.onLine) && (
           errorMsg.includes('aborted') || 
           errorMsg.includes('fetch') ||
           errorCode === 'PGRST301'
@@ -76,7 +105,20 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
           return;
         }
         
-        setBands([]);
+        // Offline / network fallback: preserve cached or current bands instead of wiping to []
+        const cachedBands = await getOfflineItem<BandWithMembers[]>(bandsCacheKey);
+        const cachedSelectedId = await getOfflineItem<string>(selectedBandCacheKey);
+        if (cachedBands && cachedBands.length > 0) {
+          setBands(prev => (prev.length > 0 ? prev : cachedBands));
+          setSelectedBand(prev => {
+            if (prev) return prev;
+            if (cachedSelectedId) {
+              const found = cachedBands.find(b => b.id === cachedSelectedId);
+              if (found) return found;
+            }
+            return cachedBands[0];
+          });
+        }
         setError(fetchError);
         setLoading(false);
         return;
@@ -84,21 +126,17 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
 
       const fetchedBands = data || [];
       setBands(fetchedBands);
+      setOfflineItem(bandsCacheKey, fetchedBands).catch(() => {});
+      hasLoadedCacheRef.current = true;
 
       // Robust auto-selection logic
       if (fetchedBands.length > 0) {
-        if (!selectedBand) {
-          setSelectedBand(fetchedBands[0]);
-        } else {
-          // Refresh the currently selected band data if it still exists in the new list
-          const updatedSelected = fetchedBands.find(b => b.id === selectedBand.id);
-          if (updatedSelected) {
-            setSelectedBand(updatedSelected);
-          } else {
-            // If currently selected band is no longer in the list (e.g. removed), select the first one
-            setSelectedBand(fetchedBands[0]);
-          }
-        }
+        const cachedSelectedId = await getOfflineItem<string>(selectedBandCacheKey);
+        const targetId = selectedBand?.id || cachedSelectedId;
+        const updatedSelected = targetId ? fetchedBands.find(b => b.id === targetId) : null;
+        const nextBand = updatedSelected || fetchedBands[0];
+        setSelectedBand(nextBand);
+        setOfflineItem(selectedBandCacheKey, nextBand.id).catch(() => {});
       } else {
         setSelectedBand(null);
       }
@@ -108,12 +146,11 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
     } catch (err: any) {
       if (err?.name !== 'AbortError' && !err?.message?.includes('aborted')) {
         console.error('Error fetching bands:', err);
-        setBands([]);
         setError(err);
       }
       setLoading(false);
     }
-  }, [isAuthenticated, user, selectedBand, bands.length]);
+  }, [isAuthenticated, user, selectedBand, bands.length, bandsCacheKey, selectedBandCacheKey]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -130,6 +167,7 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
     const existingBand = bands.find(b => b.id === bandId);
     if (existingBand) {
       setSelectedBand(existingBand);
+      setOfflineItem(selectedBandCacheKey, existingBand.id).catch(() => {});
       return;
     }
 
@@ -139,6 +177,7 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
       if (fetchError) throw fetchError;
       if (data) {
         setSelectedBand(data);
+        setOfflineItem(selectedBandCacheKey, data.id).catch(() => {});
         setBands(prev => {
           if (prev.find(b => b.id === bandId)) return prev;
           return [...prev, data];
@@ -150,7 +189,7 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [bands]);
+  }, [bands, selectedBandCacheKey]);
 
   const value: BandContextType = {
     bands,

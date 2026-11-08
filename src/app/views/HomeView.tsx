@@ -9,6 +9,8 @@ import {
   ChevronRight,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { HomeSkeleton } from '@/app/components/ui/HomeSkeleton';
 import { dashboardContainerVariants, dashboardItemVariants } from '@/styles/motion';
 import { QUICK_ACTIONS } from '@/app/data/metrics';
 import { EventItem } from '@/app/data/events';
@@ -376,6 +378,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   }, [rehearsalPolls, isAdmin, currentUserId, isSolo]);
 
+  if (dashboardLoading && !dashboardData?.eventStats && !dashboardData?.memberStats) {
+    return (
+      <div className={cn("flex flex-col gap-8 sm:gap-10 relative z-10", isHidden && "opacity-0 pointer-events-none")}>
+        <HomeSkeleton isAdmin={isAdmin} />
+      </div>
+    );
+  }
+
   return (
     <motion.div
       key={`dashboard-${selectedBand.id}`}
@@ -404,7 +414,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : confirmedCount}
+                  {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : confirmedCount}
                 </span>
               </div>
             </div>
@@ -422,7 +432,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </span>
               <div className="h-[64px] flex items-center">
                 <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                  {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : rehearsalCount}
+                  {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : rehearsalCount}
                 </span>
               </div>
             </div>
@@ -455,7 +465,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </div>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : quotesCount}
+                      {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : quotesCount}
                     </span>
                   </div>
                 </div>
@@ -477,7 +487,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </div>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : formatRevenue(revenue)}
+                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(revenue)}
                     </span>
                   </div>
                 </div>
@@ -494,7 +504,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-muted-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : formatRevenue(memberStats?.confirmedFee || 0)}
+                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(memberStats?.confirmedFee || 0)}
                     </span>
                   </div>
                 </div>
@@ -509,7 +519,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </span>
                   <div className="h-[64px] flex items-center">
                     <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Loader2 className="w-8 h-8 animate-spin mt-4 text-foreground/40" /> : formatRevenue(memberStats?.totalEarned || 0)}
+                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(memberStats?.totalEarned || 0)}
                     </span>
                   </div>
                 </div>
@@ -694,7 +704,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-[32px] sm:text-[36px] font-bold leading-none text-foreground">
-                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : revenueChangeText}
+                  {dashboardLoading ? <Skeleton className="h-8 w-20 bg-foreground/10" /> : revenueChangeText}
                 </span>
                 <span className="text-[11px] text-foreground/50">
                   {APP_COPY.home.operations.vsPreviousMonth}
@@ -766,7 +776,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </span>
                 </div>
                 <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                  {dashboardLoading ? <Loader2 className="w-6 h-6 animate-spin text-foreground/40" /> : '—'}
+                  {dashboardLoading ? <Skeleton className="h-8 w-12 bg-foreground/10" /> : '—'}
                 </span>
                 <span className="text-[11px] text-foreground/50">
                   {APP_COPY.home.operations.nextGigSongs}

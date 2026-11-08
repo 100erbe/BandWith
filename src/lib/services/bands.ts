@@ -281,6 +281,15 @@ export const updateBand = async (
 
     if (error) throw error;
 
+    // If band name was updated, keep chats of type 'band' in sync
+    if (updates.name) {
+      await supabase
+        .from('chats')
+        .update({ name: updates.name, updated_at: new Date().toISOString() })
+        .eq('band_id', bandId)
+        .eq('type', 'band');
+    }
+
     return { data, error: null };
   } catch (error: any) {
     return { data: null, error };
