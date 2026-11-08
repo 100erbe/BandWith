@@ -7,7 +7,7 @@ import { TimePicker } from '@/app/components/ui/TimePicker';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
 import { enqueueMutation } from '@/lib/offline/syncQueue';
-import { isOfflineError, reportNetworkStatus } from '@/lib/offline/useNetworkStatus';
+import { isOfflineError, reportNetworkStatus, getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
 
 interface PersonalGigModalProps {
   isOpen: boolean;
@@ -184,13 +184,21 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
     };
 
     try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (!getIsNetworkOnline()) {
         await savePersonalGigOffline();
         return;
       }
 
+      const withFastTimeout = <T,>(promise: Promise<T>, ms = 4500): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('offline_timeout')), ms)
+          ),
+        ]);
+
       if (isEditing && initialData?.id) {
-        const { data, error: updateErr } = await updatePersonalGig({
+        const { data, error: updateErr } = await withFastTimeout(updatePersonalGig({
           eventId: initialData.id,
           userId,
           title: title.trim(),
@@ -200,7 +208,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
           venueName: venueName.trim() || undefined,
           fee: cleanFee,
           notes: notes.trim() || undefined,
-        });
+        }));
 
         if (updateErr) {
           if (isOfflineError(updateErr)) {
@@ -211,7 +219,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
         }
         if (data && onSaved) onSaved(data);
       } else {
-        const { data, error: createErr } = await createPersonalGig({
+        const { data, error: createErr } = await withFastTimeout(createPersonalGig({
           userId,
           title: title.trim(),
           eventDate,
@@ -220,7 +228,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
           venueName: venueName.trim() || undefined,
           fee: cleanFee,
           notes: notes.trim() || undefined,
-        });
+        }));
 
         if (createErr) {
           if (isOfflineError(createErr)) {

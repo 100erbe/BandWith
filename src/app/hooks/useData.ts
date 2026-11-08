@@ -11,6 +11,7 @@ import * as rehearsalPollsService from '@/lib/services/rehearsalPolls';
 import { supabase, getSafeUser } from '@/lib/supabase';
 import { getOfflineItem, setOfflineItem, getCacheKey } from '@/lib/offline/storage';
 import { getPendingMutations } from '@/lib/offline/syncQueue';
+import { getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
 
 // ============================================
 // BANDS HOOKS
@@ -238,6 +239,19 @@ export const useEvents = (
     // Skip visual loading indicator if we already have cached/loaded data
     if (!isBackground && !hasLoadedOnce.current && eventsRef.current.length === 0) {
       setLoading(true);
+    }
+
+    if (!getIsNetworkOnline()) {
+      const cached = (await getOfflineItem<eventsService.Event[]>(cacheKey))
+        || (await getOfflineItem<eventsService.Event[]>(fallbackCacheKey))
+        || eventsRef.current.filter(e => !e._isPendingSync);
+      const merged = await mergePendingEvents(cached || []);
+      setEvents(merged);
+      if (merged.length > 0) {
+        hasLoadedOnce.current = true;
+      }
+      setLoading(false);
+      return;
     }
 
     const { data, error: fetchError } = await eventsService.getEvents(bandId || [], {
@@ -939,6 +953,11 @@ export const useDashboardData = (bandId: string | null, userId?: string | null) 
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isAuthenticated || (!bandId && !userId)) { setLoading(false); return; }
+
+    if (!getIsNetworkOnline()) {
+      setLoading(false);
+      return;
+    }
     
     // Skip visual loading indicator if we already have cached/loaded data
     if (!isBackground && !hasLoadedOnce.current) {

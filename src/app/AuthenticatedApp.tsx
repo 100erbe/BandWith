@@ -2065,6 +2065,11 @@ export default function AuthenticatedApp() {
       return;
     }
 
+    // Close the wizard immediately so the UI feels instant even when offline or on slow connections
+    setEditingEventData(null);
+    setIsCreateEventOpen(false);
+    setCreateEventInitialDate(null);
+
     try {
       const venueAddress = isRehearsalWizard ? data.address : data.details?.address;
       const venueCity = isRehearsalWizard ? data.city : data.details?.city;
@@ -2230,25 +2235,31 @@ export default function AuthenticatedApp() {
           }
         }
         setSaveToast({ message: 'Saved offline • Will sync when connected', type: 'info' });
-        await refetchEvents();
-        if (refetchDashboard) await refetchDashboard();
         setMembersRefreshKey(k => k + 1);
-        setEditingEventData(null);
-        setIsCreateEventOpen(false);
+        refetchEvents().catch(() => {});
+        if (refetchDashboard) refetchDashboard().catch(() => {});
       };
+
+      const withFastTimeout = <T,>(promise: Promise<T>, ms = 4000): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('offline_timeout')), ms)
+          ),
+        ]);
 
       if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
         await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
         return;
       }
 
-      const setlistId = await persistSetlist();
+      const setlistId = await withFastTimeout(persistSetlist(), 3500).catch(() => null);
       if (setlistId) {
         eventData.setlist_id = setlistId;
       }
 
       if (data._editing && data._editingEventId) {
-        const { error } = await updateEvent(data._editingEventId, eventData);
+        const { error } = await withFastTimeout(updateEvent(data._editingEventId, eventData), 4500);
         if (!error) {
           const memberResult = await persistMembers(data._editingEventId, true);
           if (optimisticMembers.length > 0) {
@@ -2268,7 +2279,7 @@ export default function AuthenticatedApp() {
           setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
         }
       } else {
-        const { data: saved, error } = await createEvent(eventData);
+        const { data: saved, error } = await withFastTimeout(createEvent(eventData), 4500);
         if (!error && saved) {
           const memberResult = await persistMembers(saved.id, false);
           // Optimistic update
@@ -2300,34 +2311,16 @@ export default function AuthenticatedApp() {
           setSaveToast({ message: `Create failed: ${error?.message || JSON.stringify(error)}`, type: 'error' });
         }
       }
-      await refetchEvents();
-      if (refetchDashboard) await refetchDashboard();
       setMembersRefreshKey(k => k + 1);
+      refetchEvents().catch(() => {});
+      if (refetchDashboard) refetchDashboard().catch(() => {});
     } catch (err: any) {
       if (!isOnline || isOfflineError(err)) {
-        reportNetworkStatus(false);
-        const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const offlineEv: any = {
-          ...eventData,
-          id: tempId,
-          eventId: tempId,
-          created_by: user?.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          _isPendingSync: true,
-          _tempId: tempId,
-        };
-        await enqueueMutation('create_event', { eventData: offlineEv, memberIds: data.members }, tempId);
-        setSaveToast({ message: 'Saved offline • Will sync when connected', type: 'info' });
-        await refetchEvents();
-        if (refetchDashboard) await refetchDashboard();
+        await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
       } else {
         setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
       }
     }
-
-    setEditingEventData(null);
-    setIsCreateEventOpen(false);
   };
 
   // Render
@@ -2946,6 +2939,11 @@ export default function AuthenticatedApp() {
             />
           )}
           <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
+            setIsCreateEventOpen(false);
+            setCreateEventInitialDate(null);
+            if (!q.status || q.status === 'SENT') {
+              setSharingQuote(q);
+            }
             if (realBand?.id) {
               const createdEventId = q.eventId || (await (async () => {
                 const evD: Record<string, any> = {
@@ -2980,7 +2978,7 @@ export default function AuthenticatedApp() {
                       .filter(Boolean)
                   : [];
 
-                if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+                const saveQuoteEventOffline = async () => {
                   reportNetworkStatus(false);
                   const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
                   const offlineEv: any = {
@@ -2996,62 +2994,61 @@ export default function AuthenticatedApp() {
                   await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
                   setSaveToast({ message: 'Saved quote event offline • Will sync when connected', type: 'info' });
                   return tempId;
+                };
+
+                if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+                  return await saveQuoteEventOffline();
                 }
 
-                const { data: ev, error: evErr } = await createEvent(evD);
-                if (evErr && isOfflineError(evErr)) {
-                  reportNetworkStatus(false);
-                  const tempId = `offline_ev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-                  const offlineEv: any = {
-                    ...evD,
-                    id: tempId,
-                    eventId: tempId,
-                    created_by: user?.id,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    _isPendingSync: true,
-                    _tempId: tempId,
-                  };
-                  await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
-                  setSaveToast({ message: 'Saved quote event offline • Will sync when connected', type: 'info' });
-                  return tempId;
+                try {
+                  const { data: ev, error: evErr } = await Promise.race([
+                    createEvent(evD),
+                    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('offline_timeout')), 4500)),
+                  ]);
+                  if (evErr && isOfflineError(evErr)) {
+                    return await saveQuoteEventOffline();
+                  }
+                  if (ev?.id && memberRows.length > 0) {
+                    await supabase.from('event_members').upsert(
+                      memberRows.map((r: any) => ({ ...r, event_id: ev.id })),
+                      { onConflict: 'event_id,user_id' }
+                    );
+                  }
+                  return ev?.id || null;
+                } catch (err) {
+                  if (isOfflineError(err)) {
+                    return await saveQuoteEventOffline();
+                  }
+                  return null;
                 }
-                if (ev?.id && memberRows.length > 0) {
-                  await supabase.from('event_members').upsert(
-                    memberRows.map((r: any) => ({ ...r, event_id: ev.id })),
-                    { onConflict: 'event_id,user_id' }
-                  );
-                }
-                return ev?.id || null;
               })());
 
-              const quoteData = {
-                band_id: realBand.id,
-                quote_number: q.quoteNumber || `Q-${Date.now()}`,
-                status: (q.status || 'draft').toLowerCase(),
-                client_name: q.clientName || 'Unknown',
-                client_email: q.clientEmail || null,
-                client_phone: q.clientPhone || null,
-                client_company: q.clientCompany || null,
-                event_name: q.eventName || null,
-                event_type: q.eventType || null,
-                event_date: q.eventDate || null,
-                venue_name: q.venueName || null,
-                venue_city: q.venueCity || null,
-                subtotal: q.subtotal || 0,
-                vat_amount: q.vatAmount || 0,
-                total: q.total || 0,
-                deposit_percentage: q.depositPercentage ?? 30,
-                converted_to_event_id: createdEventId,
-              };
-              await createQuoteDB(quoteData as any);
-              await refetchEvents();
+              const isOfflineTempId = typeof createdEventId === 'string' && createdEventId.startsWith('offline_');
+              if (!isOfflineTempId && isOnline && (typeof navigator === 'undefined' || navigator.onLine)) {
+                const quoteData = {
+                  band_id: realBand.id,
+                  quote_number: q.quoteNumber || `Q-${Date.now()}`,
+                  status: (q.status || 'draft').toLowerCase(),
+                  client_name: q.clientName || 'Unknown',
+                  client_email: q.clientEmail || null,
+                  client_phone: q.clientPhone || null,
+                  client_company: q.clientCompany || null,
+                  event_name: q.eventName || null,
+                  event_type: q.eventType || null,
+                  event_date: q.eventDate || null,
+                  venue_name: q.venueName || null,
+                  venue_city: q.venueCity || null,
+                  subtotal: q.subtotal || 0,
+                  vat_amount: q.vatAmount || 0,
+                  total: q.total || 0,
+                  deposit_percentage: q.depositPercentage ?? 30,
+                  converted_to_event_id: createdEventId,
+                };
+                await createQuoteDB(quoteData as any).catch(() => {});
+              }
               setMembersRefreshKey(prev => prev + 1);
-              if (refetchDashboard) await refetchDashboard();
-            }
-            setIsCreateEventOpen(false);
-            if (!q.status || q.status === 'SENT') {
-              setSharingQuote(q);
+              refetchEvents().catch(() => {});
+              if (refetchDashboard) refetchDashboard().catch(() => {});
             }
           }} />}</AnimatePresence>
 

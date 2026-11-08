@@ -787,9 +787,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 </div>
               )}
               {event._isPendingSync && (
-                <div className="inline-flex items-center gap-1 rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                <div className="inline-flex items-center gap-1 rounded-[6px] px-[8px] py-[3px] text-[11px] font-black uppercase tracking-wider leading-tight bg-amber-400 text-zinc-950 border border-amber-500">
                   <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span>Syncing</span>
+                  <span>Pending Sync</span>
                 </div>
               )}
             </div>

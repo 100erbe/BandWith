@@ -10,8 +10,15 @@ export interface NetworkStatus {
 
 type NetworkListener = (online: boolean) => void;
 const networkListeners = new Set<NetworkListener>();
+let currentOnlineState = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+export const getIsNetworkOnline = (): boolean => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+  return currentOnlineState;
+};
 
 export const reportNetworkStatus = (online: boolean) => {
+  currentOnlineState = online;
   networkListeners.forEach((cb) => cb(online));
 };
 
@@ -62,6 +69,7 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
     networkListeners.add(handleStatusChange);
 
     const handleOnline = async () => {
+      currentOnlineState = true;
       setIsOnline(true);
       if (!isInitialMount.current) {
         setWasOffline(true);
@@ -71,6 +79,7 @@ export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): Network
     };
 
     const handleOffline = () => {
+      currentOnlineState = false;
       setIsOnline(false);
       setWasOffline(true);
     };

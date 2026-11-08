@@ -37,34 +37,34 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="fixed top-3 inset-x-0 z-[120] flex justify-center items-center pointer-events-none px-4"
-          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          className="fixed inset-x-0 z-[120] flex justify-center items-center pointer-events-none px-4"
+          style={{ top: 'calc(var(--safe-top, 12px) + 8px)' }}
         >
           <div
-            className={`pointer-events-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md text-[12px] font-semibold tracking-wide border transition-colors ${
+            className={`pointer-events-auto inline-flex items-center gap-2.5 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.45)] text-[12px] font-bold tracking-wide border-2 transition-colors ${
               !isOnline
-                ? 'bg-amber-500/15 border-amber-500/30 text-amber-200 dark:text-amber-300'
-                : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200 dark:text-emerald-300'
+                ? 'bg-zinc-950 text-white border-amber-400'
+                : 'bg-zinc-950 text-white border-emerald-400'
             }`}
           >
             {!isOnline ? (
               <>
-                <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                <span>Offline • Showing cached info</span>
+                <WifiOff className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                <span className="text-white">Offline • Showing cached info</span>
                 {pendingCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/30 text-amber-200">
-                    {pendingCount} pending upload{pendingCount > 1 ? 's' : ''}
+                  <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-zinc-950">
+                    {pendingCount} pending
                   </span>
                 )}
               </>
             ) : (
               <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Back online • Synced</span>
+                <Wifi className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-white">Back online • Synced</span>
                 {pendingCount > 0 && onSyncNow && (
                   <button
                     onClick={onSyncNow}
-                    className="ml-1 inline-flex items-center gap-1 text-[11px] underline opacity-90 hover:opacity-100"
+                    className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400 text-zinc-950 hover:bg-emerald-300"
                   >
                     <RefreshCw className="w-3 h-3 animate-spin" />
                     Sync now
