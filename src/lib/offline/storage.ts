@@ -8,6 +8,12 @@ const STORE_NAME = 'keyval';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/**
+ * Pre-namespacing key of the offline mutation queue. It did not carry the
+ * `bw:` prefix, so it survived logout; it is still cleared explicitly below.
+ */
+export const LEGACY_MUTATION_QUEUE_KEY = 'bw_offline_mutation_queue';
+
 const isIndexedDBAvailable = (): boolean => {
   try {
     return typeof window !== 'undefined' && 'indexedDB' in window && window.indexedDB !== null;
@@ -161,8 +167,15 @@ export const removeOfflineItem = async (key: string): Promise<void> => {
 
 /**
  * Clear cache entries (optionally filtered by prefix, e.g. on logout).
+ * With the default `bw:` prefix this also removes every per-user offline
+ * mutation queue (`bw:offline_queue:<userId>`) and the legacy un-prefixed
+ * queue key, so one user's unsynced edits can never replay for the next user.
  */
 export const clearOfflineCache = async (prefix: string = 'bw:'): Promise<void> => {
+  if (prefix === 'bw:') {
+    await removeOfflineItem(LEGACY_MUTATION_QUEUE_KEY);
+  }
+
   if (isIndexedDBAvailable()) {
     try {
       const db = await getDB();

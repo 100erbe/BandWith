@@ -1628,7 +1628,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   )}
                   {isAdmin && onCreateEvent && (
                     <button
-                      onClick={onCreateEvent}
+                      onClick={() => onCreateEvent('gig')}
                       className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
                     >
                       <Plus className="w-[14px] h-[14px]" />

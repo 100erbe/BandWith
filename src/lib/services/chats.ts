@@ -1082,16 +1082,18 @@ export const subscribeToChat = (
     });
 
   return () => {
-    console.log('[subscribeToChat] Unsubscribing from chat:', chatId);
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
   };
 };
 
 export const subscribeToNewMessages = (
   onMessage: (message: Message & { chat_id: string }) => void
 ) => {
+  // Realtime postgres_changes respects RLS, so only messages from chats the
+  // user participates in are delivered (requires RLS enabled on messages —
+  // see migration 042). Unique channel name avoids collisions on remount.
   const channel = supabase
-    .channel('new-messages')
+    .channel(`new-messages-${Math.random().toString(36).slice(2, 10)}`)
     .on(
       'postgres_changes',
       {
@@ -1104,7 +1106,7 @@ export const subscribeToNewMessages = (
           .from('messages')
           .select('*')
           .eq('id', payload.new.id)
-          .single();
+          .maybeSingle();
 
         if (data) {
           onMessage(data as Message & { chat_id: string });
@@ -1114,7 +1116,7 @@ export const subscribeToNewMessages = (
     .subscribe();
 
   return () => {
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
   };
 };
 

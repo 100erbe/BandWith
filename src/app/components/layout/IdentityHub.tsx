@@ -41,6 +41,7 @@ import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import { Switch } from '@/app/components/ui/switch';
+import { todayLocal } from '../../../lib/dates';
 
 interface NotificationGroup {
   type: string;
@@ -84,6 +85,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onAddEntity,
   onOpenPricing,
   onOpenBandSettings,
+  onOpenSettings,
   onBandUpdated,
 }) => {
   const { signOut, user, profile } = useAuth();
@@ -1078,6 +1080,30 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   </AnimatePresence>
                 </div>
 
+                {/* Settings & account (notifications, theme, language, delete account) */}
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenSettings('main')}
+                    className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
+                        <IconSettings className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+                          Settings & Account
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Notifications, appearance, privacy, delete account
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowUpRight aria-hidden className="w-4 h-4 text-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                  </button>
+                )}
+
                 {/* 3. Help & Support */}
                 <button
                   type="button"
@@ -1120,7 +1146,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `bandwith-export-${new Date().toISOString().split('T')[0]}.json`;
+                    link.download = `bandwith-export-${todayLocal()}.json`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);

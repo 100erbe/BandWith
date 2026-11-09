@@ -16,7 +16,10 @@ import {
   Globe,
   Trash2,
   AlertTriangle,
+  ChevronRight,
+  Loader2,
 } from '@/app/components/icons';
+import { deleteMyAccount } from '@/lib/services/account';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { Switch } from '@/app/components/ui/switch';
@@ -37,12 +40,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { signOut, user } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
 
-  const safeInitialSection: SettingsSection = 
-    initialSection === 'main' || !initialSection
-      ? 'notifications'
-      : (initialSection as SettingsSection);
+  const SECTIONS: { id: SettingsSection; label: string; hint: string }[] = [
+    { id: 'notifications', label: 'Notifications', hint: 'Push, email and sounds' },
+    { id: 'appearance', label: 'Appearance', hint: 'Light, dark or system theme' },
+    { id: 'privacy', label: 'Privacy & account', hint: 'Workspace privacy, delete account' },
+    { id: 'language', label: 'Language', hint: 'App language' },
+    { id: 'help', label: 'Help & support', hint: 'Contact the BandWith team' },
+    { id: 'about', label: 'About', hint: 'Version and info' },
+  ];
+  const isKnownSection = (v?: string): v is SettingsSection =>
+    !!v && SECTIONS.some((sec) => sec.id === v);
 
-  const [activeSection] = useState<SettingsSection>(safeInitialSection);
+  // 'main' (or nothing) opens the section list; a known id opens that section.
+  const openedFromMenu = !isKnownSection(initialSection);
+  const [activeSection, setActiveSection] = useState<SettingsSection | null>(
+    isKnownSection(initialSection) ? initialSection : null
+  );
+
+  const handleBack = () => {
+    if (activeSection && openedFromMenu) {
+      setActiveSection(null);
+      return;
+    }
+    onClose();
+  };
 
   const [pushEnabled, setPushEnabled] = useState(() => {
     try {
@@ -88,6 +109,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const closeDeleteConfirm = () => {
+    if (deleting) return;
+    setShowDeleteConfirm(false);
+    setDeleteText('');
+    setDeleteError(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteText.trim().toUpperCase() !== 'DELETE' || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const result = await deleteMyAccount();
+    if (result.ok) {
+      // The account no longer exists: clear the local session.
+      await signOut().catch(() => {});
+      onClose();
+      return;
+    }
+    setDeleting(false);
+    if (result.reason === 'admin_of_bands') {
+      const names = result.bands.join(', ');
+      setDeleteError(
+        `You're the only admin of ${names || 'a band'} with other members. Make someone else admin (Band members → role) or remove the members, then try again.`
+      );
+    } else {
+      setDeleteError(result.message);
+    }
+  };
 
   const getSectionTitle = (): string => {
     switch (activeSection) {
@@ -100,6 +153,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       default: return 'SETTINGS';
     }
   };
+
+  const renderMenu = () => (
+    <nav aria-label="Settings sections" className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
+      {SECTIONS.map((sec) => (
+        <button
+          key={sec.id}
+          type="button"
+          onClick={() => setActiveSection(sec.id)}
+          className="p-4 min-h-[56px] flex items-center justify-between gap-3 w-full text-left hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        >
+          <span className="flex flex-col min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
+              {sec.label}
+            </span>
+            <span className="text-xs text-muted-foreground font-normal">{sec.hint}</span>
+          </span>
+          <ChevronRight aria-hidden className="w-4 h-4 text-foreground/40 shrink-0" />
+        </button>
+      ))}
+    </nav>
+  );
 
   const renderNotificationsSection = () => (
     <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
@@ -306,7 +380,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="max-w-xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={onClose}
+              onClick={handleBack}
               aria-label="Back"
               className="w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
             >
@@ -328,6 +402,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div
         className="px-4 pt-6 pb-2 max-w-xl mx-auto w-full flex flex-col gap-6"
       >
+        {activeSection === null && renderMenu()}
         {activeSection === 'notifications' && renderNotificationsSection()}
         {activeSection === 'appearance' && renderAppearanceSection()}
         {activeSection === 'privacy' && renderPrivacySection()}
@@ -359,41 +434,70 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
-            onClick={() => setShowDeleteConfirm(false)}
+            onClick={closeDeleteConfirm}
           >
             <motion.div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+              aria-describedby="delete-account-desc"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}
               className="w-full max-w-sm rounded-2xl bg-card border border-border/40 p-6 flex flex-col gap-5 shadow-xl"
             >
               <div className="w-12 h-12 mx-auto bg-[var(--destructive)]/10 rounded-2xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
+                <AlertTriangle aria-hidden className="w-6 h-6 text-[var(--destructive)]" />
               </div>
               <div className="flex flex-col gap-1.5 text-center">
-                <h2 className="text-lg font-bold text-foreground uppercase">Delete Account?</h2>
-                <p className="text-xs text-muted-foreground">
-                  This action cannot be undone. All your data will be permanently deleted.
+                <h2 id="delete-account-title" className="text-lg font-bold text-foreground uppercase">Delete account?</h2>
+                <p id="delete-account-desc" className="text-xs text-muted-foreground">
+                  Your profile, your personal gigs and any band where you're the only member are deleted for good.
+                  Bands you share with others stay, without you. This can't be undone.
                 </p>
               </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="delete-account-confirm" className="text-xs font-semibold text-foreground">
+                  Type DELETE to confirm
+                </label>
+                <input
+                  id="delete-account-confirm"
+                  type="text"
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  autoFocus
+                  value={deleteText}
+                  onChange={(e) => setDeleteText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleDeleteAccount(); }}
+                  disabled={deleting}
+                  className="h-11 rounded-xl bg-background border border-border px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              {deleteError && (
+                <p role="alert" className="text-xs font-medium text-[var(--destructive)]">
+                  {deleteError}
+                </p>
+              )}
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 h-11 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all"
+                  onClick={closeDeleteConfirm}
+                  disabled={deleting}
+                  className="flex-1 h-11 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
-                    await signOut();
-                    onClose();
-                  }}
-                  className="flex-1 h-11 rounded-xl bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-all"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteText.trim().toUpperCase() !== 'DELETE'}
+                  aria-busy={deleting}
+                  className="flex-1 h-11 rounded-xl bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  Delete
+                  {deleting && <Loader2 aria-hidden className="w-4 h-4 animate-spin" />}
+                  {deleting ? 'Deleting…' : 'Delete forever'}
                 </button>
               </div>
             </motion.div>

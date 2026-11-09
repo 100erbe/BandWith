@@ -8,6 +8,7 @@ import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
 import { enqueueMutation } from '@/lib/offline/syncQueue';
 import { isOfflineError, reportNetworkStatus, getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
+import { todayLocal } from '../../../lib/dates';
 
 interface PersonalGigModalProps {
   isOpen: boolean;
@@ -24,7 +25,8 @@ interface PersonalGigModalProps {
     notes?: string;
   } | null;
   onSaved?: (event: Event) => void;
-  onOpenUpgradeSheet?: () => void;
+  /** Opens band creation on top of this form (the form stays open). */
+  onCreateBand?: () => void;
 }
 
 export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
@@ -33,7 +35,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
   userId,
   initialData,
   onSaved,
-  onOpenUpgradeSheet,
+  onCreateBand,
 }) => {
   const isEditing = Boolean(initialData?.id);
 
@@ -58,7 +60,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
       setFee(initialData.fee != null ? String(initialData.fee) : '');
       setNotes(initialData.notes || '');
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocal();
       setTitle('');
       setEventDate(today);
       setStartTime('20:00');
@@ -444,13 +446,10 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                   Want to invite bandmates, split fees, attach setlists, or send client quotes?{' '}
                   <button
                     type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenUpgradeSheet?.();
-                    }}
+                    onClick={() => onCreateBand?.()}
                     className="font-bold text-accent-gig hover:underline inline-flex items-center gap-1"
                   >
-                    Upgrade to Band Admin
+                    Create a free band
                     <Sparkles className="w-3 h-3 text-accent-gig inline" />
                   </button>
                 </p>

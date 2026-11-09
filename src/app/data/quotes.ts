@@ -1,3 +1,6 @@
+import { calculateQuoteTotals as calculateSharedQuoteTotals, roundCents } from '@/lib/services/quoteMath';
+import { toLocalDateString, todayLocal } from '@/lib/dates';
+
 // Quote Status enum matching backend
 export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'NEGOTIATING' | 'ARCHIVED';
 
@@ -310,7 +313,9 @@ export const MUSIC_GENRES = [
   'Swing', 'Blues', 'Country', 'Classical', 'Acoustic'
 ];
 
-// Helper: Generate quote number
+// Helper: Generate a LOCAL PLACEHOLDER quote number (mock data / offline previews only).
+// Real quote numbers come from the database (`generate_quote_number(p_band_id)`, see
+// services/quotes.ts createQuote) and must be used for anything shown to a client.
 export const generateQuoteNumber = (): string => {
   const year = new Date().getFullYear();
   const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
@@ -354,7 +359,8 @@ export const calculateVAT = (
   return countryData.rate;
 };
 
-// Helper: Calculate quote totals
+// Helper: Calculate quote totals (legacy signature; delegates to the shared quote math in
+// src/lib/services/quoteMath.ts so discounts are clamped and amounts are cents-rounded)
 export const calculateQuoteTotals = (
   baseFee: number,
   travelFee: number,
@@ -370,22 +376,31 @@ export const calculateQuoteTotals = (
   vatExempt: boolean,
   reverseCharge: boolean
 ): { subtotal: number; discountAmount: number; netAmount: number; vatAmount: number; total: number } => {
-  let subtotal = baseFee + travelFee + accommodationFee + mealsFee + soundFee + lightsFee + backlineFee;
-  subtotal += customItems.reduce((sum, item) => sum + item.amount * item.quantity, 0);
+  const t = calculateSharedQuoteTotals({
+    lineItems: [
+      { amount: baseFee },
+      { amount: travelFee },
+      { amount: accommodationFee },
+      { amount: mealsFee },
+      { amount: soundFee },
+      { amount: lightsFee },
+      { amount: backlineFee },
+      ...customItems.map(item => ({ amount: item.amount, quantity: item.quantity })),
+    ],
+    discountType,
+    discountValue,
+    vatRate,
+    vatExempt,
+    reverseCharge,
+  });
 
-  const discountAmount = discountType === 'percentage'
-    ? subtotal * (discountValue / 100)
-    : discountType === 'fixed' ? discountValue : 0;
-
-  const netAmount = subtotal - discountAmount;
-
-  const vatAmount = vatExempt || reverseCharge
-    ? 0
-    : netAmount * (vatRate / 100);
-
-  const total = netAmount + vatAmount;
-
-  return { subtotal, discountAmount, netAmount, vatAmount, total };
+  return {
+    subtotal: t.subtotal,
+    discountAmount: t.discount,
+    netAmount: t.net,
+    vatAmount: t.vat,
+    total: t.total,
+  };
 };
 
 // Helper: Create a full quote from partial data
@@ -408,10 +423,13 @@ export const createQuote = (
     item.unitPrice
   ));
 
-  const subtotal = calculateSubtotal(enrichedItems);
-  const discount = options.discount || 0;
-  const tax = options.tax || 0;
-  const total = subtotal - discount + tax;
+  const subtotal = roundCents(calculateSubtotal(enrichedItems));
+  // `discount` and `tax` are currency AMOUNTS here; clamp so totals can never go negative
+  const discount = roundCents(Math.min(subtotal, Math.max(0, options.discount || 0)));
+  const tax = roundCents(Math.max(0, options.tax || 0));
+  const total = roundCents(subtotal - discount + tax);
+  const validUntilDefault = new Date();
+  validUntilDefault.setDate(validUntilDefault.getDate() + 30);
 
   const now = new Date().toISOString();
   const defaults = getDefaultQuote();
@@ -425,7 +443,7 @@ export const createQuote = (
     clientEmail: '',
     eventName: options.eventTitle || 'Untitled Event',
     eventType: 'other',
-    eventDate: new Date().toISOString().split('T')[0],
+    eventDate: todayLocal(),
     eventTimeStart: '20:00',
     venueCity: '',
     venueCountry: 'IT',
@@ -457,10 +475,10 @@ export const createQuote = (
     discountValue: discount,
     subtotal,
     discountAmount: discount,
-    netAmount: subtotal - discount,
+    netAmount: roundCents(subtotal - discount),
     vatAmount: tax,
     total,
-    validUntil: options.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    validUntil: options.validUntil || toLocalDateString(validUntilDefault),
     depositRequired: true,
     depositPercentage: 30,
     balanceDueDate: '7_days_after',
@@ -488,7 +506,7 @@ export const createLineItem = (
   description,
   quantity,
   unitPrice,
-  total: quantity * unitPrice,
+  total: roundCents(quantity * unitPrice),
 });
 
 // Helper: Calculate subtotal (legacy)
@@ -498,7 +516,8 @@ export const calculateSubtotal = (lineItems: QuoteLineItem[]): number => {
 
 // Helper: Calculate total (legacy)
 export const calculateTotal = (subtotal: number, discount: number, tax: number): number => {
-  return subtotal - discount + tax;
+  const clampedDiscount = Math.min(Math.max(0, subtotal), Math.max(0, discount));
+  return roundCents(Math.max(0, subtotal - clampedDiscount + Math.max(0, tax)));
 };
 
 // Status display helpers

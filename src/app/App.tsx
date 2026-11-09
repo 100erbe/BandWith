@@ -2,8 +2,14 @@ import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react"
 import { useAuth } from "@/lib/AuthContext";
 import { useBand } from "@/lib/BandContext";
 import AuthCallback from "./auth/callback";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
+import { inviteTokenFromUrl } from "@/lib/services/invitations";
 
 const AuthenticatedApp = lazy(() => import("./AuthenticatedApp"));
+const SetNewPasswordScreen = lazy(
+  () => import("./components/onboarding/SetNewPasswordScreen")
+);
 const OnboardingFlow = lazy(
   () => import("./components/onboarding/OnboardingFlow")
 );
@@ -27,11 +33,37 @@ const isAuthCallback = (): boolean => {
 };
 
 export default function App() {
-  const { isAuthenticated, loading: authLoading, userMode, profile } = useAuth();
+  const { isAuthenticated, loading: authLoading, userMode, profile, isPasswordRecovery } = useAuth();
   const { bands, loading: bandsLoading, refreshBands } = useBand();
   const [showOnboarding, setShowOnboarding] = useState(true);
   const prevAuthRef = useRef(isAuthenticated);
   const onboardingCompletedRef = useRef(false);
+
+  // Invite link: web `/?invite=<token>`, native deep link `…://invite?invite=<token>`.
+  const [inviteToken, setInviteToken] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : inviteTokenFromUrl(window.location.href)
+  );
+
+  useEffect(() => {
+    // Drop the token from the address bar so a refresh doesn't re-open the invite.
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('invite')) {
+      url.searchParams.delete('invite');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+      const token = inviteTokenFromUrl(url);
+      if (token) setInviteToken(token);
+    });
+    return () => {
+      handle.then((h) => h.remove()).catch(() => {});
+    };
+  }, []);
 
   // Handle manual navigation when user presses onComplete in the onboarding flow.
   // Defined early with useCallback to be stable across renders and available before any early return.
@@ -89,6 +121,15 @@ export default function App() {
     return <BlackScreen />;
   }
 
+  // Opened a password-reset link: ask for the new password before anything else.
+  if (isAuthenticated && isPasswordRecovery) {
+    return (
+      <Suspense fallback={<BlackScreen />}>
+        <SetNewPasswordScreen />
+      </Suspense>
+    );
+  }
+
   // If bands are loading but we already know onboarding was completed, 
   // don't block navigation, allow it to render so the dashboard shows
   if (isAuthenticated && bandsLoading && !onboardingCompletedRef.current) {
@@ -101,6 +142,7 @@ export default function App() {
       <Suspense fallback={<BlackScreen />}>
         <OnboardingFlow
           onComplete={handleNavigationToDashboard}
+          inviteToken={inviteToken ?? undefined}
         />
       </Suspense>
     );

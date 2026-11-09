@@ -19,15 +19,14 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import { useAuth } from '@/lib/AuthContext';
-import { notifyMemberJoined, notifyMemberRemoved } from '@/lib/services/notifications';
+import { notifyMemberRemoved } from '@/lib/services/notifications';
 import {
   getBandMembers,
   removeMember,
   updateMemberRole,
-  inviteMember,
   searchUsers,
-  addExistingUserToBand,
 } from '@/lib/services/bands';
+import { inviteToBand } from '@/lib/services/invitations';
 import type { BandMember } from '@/lib/services/bands';
 import { DotRadio } from '@/app/components/ui/DotRadio';
 
@@ -132,28 +131,36 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch, inviteMode]);
 
-  const handleAddUser = async (user: SearchUser) => {
-    if (!selectedBand?.id) return;
+  // Everyone joins by accepting an invitation (no one is added without consent).
+  // Existing users see the invite in the app; new users get an email + link.
+  const sendInvite = async (email: string, displayName: string) => {
+    if (!selectedBand?.id) return false;
     setInviting(true);
     setError(null);
-
-    const { error } = await addExistingUserToBand(selectedBand.id, user.id, inviteRole);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setInviteSuccess(`${user.full_name || user.email} added!`);
-      await fetchMembers();
-      // Notify existing band members about the added user
-      const existingMemberIds = members
-        .filter(m => m.user_id !== currentProfile?.id)
-        .map(m => m.user_id);
-      if (existingMemberIds.length > 0 && selectedBand) {
-        notifyMemberJoined(
-          existingMemberIds,
-          selectedBand.id,
-          selectedBand.name,
-          user.full_name || user.email || 'A new member'
+    try {
+      const result = await inviteToBand({
+        bandId: selectedBand.id,
+        email,
+        role: inviteRole,
+        inviterName: currentProfile?.full_name ?? undefined,
+      });
+      if (result.kind === 'existing_user') {
+        setInviteSuccess(`Invite sent to ${displayName}. They’ll see it next time they open BandWith.`);
+      } else {
+        let copied = false;
+        if (result.inviteUrl) {
+          try {
+            await navigator.clipboard.writeText(result.inviteUrl);
+            copied = true;
+          } catch {
+            // clipboard unavailable
+          }
+        }
+        setInviteSuccess(
+          [
+            result.emailSent ? `Invite emailed to ${displayName}.` : `Invite created for ${displayName}.`,
+            copied ? 'Link copied — you can also share it directly.' : '',
+          ].filter(Boolean).join(' ')
         );
       }
       setTimeout(() => {
@@ -161,47 +168,24 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         setSearchQuery('');
         setSearchResults([]);
         setInviteSuccess(null);
-      }, 1500);
+      }, 2500);
+      return true;
+    } catch (e: any) {
+      setError(e?.message || 'We couldn’t send the invite. Try again.');
+      return false;
+    } finally {
+      setInviting(false);
     }
-    setInviting(false);
+  };
+
+  const handleAddUser = async (user: SearchUser) => {
+    await sendInvite(user.email, user.full_name || user.email);
   };
 
   const handleInviteByEmail = async () => {
     if (!selectedBand?.id || !searchQuery || !searchQuery.includes('@')) return;
-    setInviting(true);
-    setError(null);
-
-    const { data, error } = await inviteMember(selectedBand.id, searchQuery, inviteRole);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      if (data?.invited) {
-        setInviteSuccess('Invitation sent!');
-      } else {
-        setInviteSuccess('Member added!');
-        await fetchMembers();
-        // Notify existing band members about the new member
-        const addedUserName = searchQuery;
-        const existingMemberIds = members
-          .filter(m => m.user_id !== currentProfile?.id)
-          .map(m => m.user_id);
-        if (existingMemberIds.length > 0 && selectedBand && addedUserName) {
-          notifyMemberJoined(
-            existingMemberIds,
-            selectedBand.id,
-            selectedBand.name,
-            addedUserName
-          );
-        }
-      }
-      setTimeout(() => {
-        setShowInvite(false);
-        setSearchQuery('');
-        setInviteSuccess(null);
-      }, 1500);
-    }
-    setInviting(false);
+    const email = searchQuery.trim().toLowerCase();
+    await sendInvite(email, email);
   };
 
   const getInitials = (member: BandMember) => {
@@ -580,8 +564,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground rounded-[8px] font-bold text-[11px] uppercase shadow-xs">
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>ADD</span>
+                            <UserCheck aria-hidden className="w-3.5 h-3.5" />
+                            <span>INVITE</span>
                           </div>
                         </motion.button>
                       ))}

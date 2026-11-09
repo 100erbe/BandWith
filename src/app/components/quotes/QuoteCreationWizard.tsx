@@ -43,11 +43,16 @@ import {
   QuotePackageOption,
   QuoteSelectedMoment,
   BAND_MEMBERS,
-  generateQuoteNumber,
   calculateVAT,
-  calculateQuoteTotals,
 } from '@/app/data/quotes';
 import { useBand } from '@/lib/BandContext';
+import { todayLocal, toLocalDateString } from '@/lib/dates';
+import {
+  calculateQuoteTotals,
+  calculateTotalsFromSubtotal,
+  calculateDepositAmount,
+  formatQuoteMoney,
+} from '@/lib/services/quoteMath';
 import {
   getBandPricing,
   DEFAULT_BAND_PRICING,
@@ -375,7 +380,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const activeAccentColor = useMemo(() => getEventAccentColor(eventType, 'quote'), [eventType]);
 
   const [eventDate, setEventDate] = useState(
-    initialData?.eventDate || new Date().toISOString().split('T')[0]
+    initialData?.eventDate || todayLocal()
   );
   const [eventTimeStart, setEventTimeStart] = useState(initialData?.eventTimeStart || '20:00');
   const [eventTimeEnd, setEventTimeEnd] = useState(initialData?.eventTimeEnd || '23:30');
@@ -884,23 +889,33 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   const setsAndExtrasAmount = legacyMomentsTotal + customItemsTotal;
 
+  // Shared quote math (src/lib/services/quoteMath.ts): same numbers on screen, in the PDF and in the DB
   const totals = useMemo(() => {
     const effectiveBase = lineupBaseAmount + legacyMomentsTotal;
-    return calculateQuoteTotals(
-      effectiveBase,
-      effectiveTravelFee,
-      effectiveAccommodationFee,
-      effectiveMealsFee,
-      effectiveSoundFee,
-      effectiveLightsFee,
-      effectiveBacklineFee,
-      normalizedCustomItemsForCalc,
+    const t = calculateQuoteTotals({
+      lineItems: [
+        { amount: effectiveBase },
+        { amount: effectiveTravelFee },
+        { amount: effectiveAccommodationFee },
+        { amount: effectiveMealsFee },
+        { amount: effectiveSoundFee },
+        { amount: effectiveLightsFee },
+        { amount: effectiveBacklineFee },
+        ...normalizedCustomItemsForCalc.map(it => ({ amount: it.amount, quantity: it.quantity })),
+      ],
       discountType,
       discountValue,
       vatRate,
       vatExempt,
-      reverseCharge
-    );
+      reverseCharge,
+    });
+    return {
+      subtotal: t.subtotal,
+      discountAmount: t.discount,
+      netAmount: t.net,
+      vatAmount: t.vat,
+      total: t.total,
+    };
   }, [
     lineupBaseAmount,
     legacyMomentsTotal,
@@ -921,7 +936,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const validUntilDate = useMemo(() => {
     const date = new Date();
     date.setDate(date.getDate() + validityDays);
-    return date.toISOString().split('T')[0];
+    return toLocalDateString(date);
   }, [validityDays]);
 
   const calculatedDurationBadge = useMemo(() => {
@@ -1137,13 +1152,19 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       grossFee: number,
       discountPct: number
     ): QuotePackageOption => {
-      const discAmt = discountPct > 0 ? Math.round(grossFee * (discountPct / 100)) : 0;
-      const netSub = grossFee - discAmt;
+      const clampedPct = Math.min(100, Math.max(0, Number.isFinite(discountPct) ? discountPct : 0));
       const vRate = vatExempt || reverseCharge ? 0 : vatRate;
-      const vAmt = Math.round(netSub * (vRate / 100));
-      const totWithVat = netSub + vAmt;
+      const optTotals = calculateTotalsFromSubtotal(grossFee, {
+        discountType: 'percentage',
+        discountValue: clampedPct,
+        vatRate: vRate,
+      });
+      const discAmt = optTotals.discount;
+      const netSub = optTotals.net;
+      const vAmt = optTotals.vat;
+      const totWithVat = optTotals.total;
       const depPct = depositRequired ? depositPercentage : 0;
-      const depAmt = Math.round(totWithVat * (depPct / 100));
+      const depAmt = calculateDepositAmount(totWithVat, depPct);
       return {
         id,
         name,
@@ -1155,8 +1176,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         instrumentsText,
         setsCount: numberOfSets,
         setDurationMinutes: setDuration,
-        grossFee,
-        discountPercent: discountPct,
+        grossFee: optTotals.subtotal,
+        discountPercent: clampedPct,
         discountAmount: discAmt,
         netSubtotal: netSub,
         vatRate: vRate,
@@ -1294,13 +1315,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     const finalMusicianCount =
       activePkg?.musiciansCount || allMusicians.length || pricingSettings.core_members_count || 1;
 
-    const depositAmt = depositRequired
-      ? Math.round(totals.total * (depositPercentage / 100))
-      : 0;
+    const depositAmt = depositRequired ? calculateDepositAmount(totals.total, depositPercentage) : 0;
 
     const quoteData: Partial<Quote> = {
       ...(initialData?.id ? { id: initialData.id } : {}),
-      quoteNumber: initialData?.quoteNumber || generateQuoteNumber(),
+      // New quotes get their number from the database on insert (services/quotes.ts createQuote);
+      // the caller must put the DB number on the quote before the PDF/share step.
+      ...(initialData?.quoteNumber ? { quoteNumber: initialData.quoteNumber } : {}),
       status: sendImmediately ? 'SENT' : initialData?.status || 'DRAFT',
       clientName: finalClientName,
       clientEmail: clientEmail.trim() || '',
@@ -1308,7 +1329,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       clientCompany: clientCompany.trim() || undefined,
       eventName: finalEventName,
       eventType: (eventType || 'wedding') as QuoteEventType,
-      eventDate: eventDate || new Date().toISOString().split('T')[0],
+      eventDate: eventDate || todayLocal(),
       eventTimeStart: eventTimeStart || '20:00',
       eventTimeEnd: eventTimeEnd || undefined,
       guestCount,
@@ -2216,8 +2237,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <input
                 type="number"
                 min="0"
+                max={discountType === 'percentage' ? 100 : undefined}
                 value={discountValue || ''}
-                onChange={e => setDiscountValue(parseFloat(e.target.value) || 0)}
+                onChange={e => {
+                  const v = Math.max(0, parseFloat(e.target.value) || 0);
+                  setDiscountValue(discountType === 'percentage' ? Math.min(100, v) : v);
+                }}
                 className="w-20 bg-card border border-border/40 rounded-lg px-2.5 py-1 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
               />
               <span className="text-xs font-bold text-muted-foreground">
@@ -2681,8 +2706,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-[var(--wizard-accent)]">
-                    OPTION 0{idx + 1} • INCL. VAT: {currencySymbol}
-                    {opt.totalWithVat.toLocaleString()}
+                    OPTION 0{idx + 1} • INCL. VAT: {formatQuoteMoney(opt.totalWithVat, currencySymbol)}
                   </span>
                   {quoteOptions.length > 1 && (
                     <button
@@ -2749,7 +2773,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                       value={opt.discountPercent}
                       onChange={e =>
                         updatePackageOption(opt.id, {
-                          discountPercent: Math.max(0, parseFloat(e.target.value) || 0),
+                          discountPercent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)),
                         })
                       }
                       className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
@@ -2980,15 +3004,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               )}
             >
               {totals.discountAmount > 0
-                ? `−${currencySymbol}${Math.round(totals.discountAmount).toLocaleString()}`
+                ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`
                 : `${currencySymbol}0`}
             </span>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
             <span>VAT ({vatExempt || reverseCharge ? '0% Exempt' : `${vatRate}%`})</span>
             <span className="font-bold text-[var(--fg)] tabular-nums">
-              {currencySymbol}
-              {Math.round(totals.vatAmount).toLocaleString()}
+              {formatQuoteMoney(totals.vatAmount, currencySymbol)}
             </span>
           </div>
           <div className="pt-2 mt-1 border-t border-border/40 flex items-center justify-between">
@@ -2996,8 +3019,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               Total{depositRequired && depositPercentage > 0 ? ` (${depositPercentage}% Deposit)` : ''}
             </span>
             <span className="text-base font-black text-[var(--wizard-accent)] tabular-nums">
-              {currencySymbol}
-              {Math.round(totals.total).toLocaleString()}
+              {formatQuoteMoney(totals.total, currencySymbol)}
             </span>
           </div>
         </div>
@@ -3019,10 +3041,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 Billing, Discounts, VAT & Deposit
               </span>
               <span className="text-xs text-muted-foreground block truncate">
-                Net: {currencySymbol}
-                {Math.round(totals.netAmount).toLocaleString()}
+                Net: {formatQuoteMoney(totals.netAmount, currencySymbol)}
                 {totals.discountAmount > 0
-                  ? ` (−${currencySymbol}${Math.round(totals.discountAmount)})`
+                  ? ` (−${formatQuoteMoney(totals.discountAmount, currencySymbol)})`
                   : ''}{' '}
                 • VAT: {vatRate}% • Deposit: {depositRequired ? `${depositPercentage}%` : 'None'}
               </span>
@@ -3256,7 +3277,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         onToggle={() => toggleEditSection('pricing_billing')}
         stepNumber="04"
         title="PRICING, LOGISTICS & BILLING"
-        summary={`NET ${currencySymbol}${Math.round(totals.netAmount).toLocaleString()} • VAT ${vatRate}% • TOTAL ${currencySymbol}${Math.round(totals.total).toLocaleString()}`}
+        summary={`NET ${formatQuoteMoney(totals.netAmount, currencySymbol)} • VAT ${vatRate}% • TOTAL ${formatQuoteMoney(totals.total, currencySymbol)}`}
       >
         <div className="space-y-5">
           {renderBillingControls()}
@@ -3287,16 +3308,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           TOTAL ESTIMATE
         </span>
         <span className="text-[11px] text-muted-foreground truncate">
-          Net {currencySymbol}
-          {Math.round(totals.netAmount).toLocaleString()} ·{' '}
+          Net {formatQuoteMoney(totals.netAmount, currencySymbol)} ·{' '}
           {vatExempt || reverseCharge
             ? 'VAT Exempt'
-            : `+${vatRate}% VAT (${currencySymbol}${Math.round(totals.vatAmount).toLocaleString()})`}
+            : `+${vatRate}% VAT (${formatQuoteMoney(totals.vatAmount, currencySymbol)})`}
         </span>
       </div>
       <span className="text-xl font-black text-[var(--fg)] tabular-nums shrink-0">
-        {currencySymbol}
-        {Math.round(totals.total).toLocaleString()}
+        {formatQuoteMoney(totals.total, currencySymbol)}
       </span>
     </div>
   );

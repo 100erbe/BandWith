@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 async function checkBandCreation() {
   const { data: authData } = await supabase.auth.signInWithPassword({
     email: "rockstar_1781355953911@example.com",
-    password: "Password123!"
+    password: process.env.DEV_TEST_PASSWORD
   });
 
   const { data: bandData, error: bandError } = await supabase.from('bands').insert({

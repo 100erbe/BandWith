@@ -1,5 +1,5 @@
 // Supabase Edge Function: Send Push Notification (Zero External Dependencies)
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { adminClient, allowedRecipients, HttpError, requireCaller } from '../_shared/auth.ts';
 
 const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID');
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
@@ -272,24 +272,41 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // SECURITY: require a signed-in caller (or a server call with the service
+    // role key) and only deliver to users who share a band or chat with them.
+    const supabase = adminClient();
+    const caller = await requireCaller(req, supabase);
+
     const body = await req.json();
-    const { 
-      user_id, 
-      user_ids, 
-      title, 
-      subtitle, 
-      tag, 
-      channel_id, 
-      body: notificationBody, 
-      data, 
-      badge, 
-      sound, 
-      create_in_app 
+    const {
+      user_id,
+      user_ids,
+      title,
+      subtitle,
+      tag,
+      channel_id,
+      body: notificationBody,
+      data,
+      badge,
+      sound,
+      create_in_app
     } = body as PushRequest;
-    
-    if (!title || !notificationBody) throw new Error('Missing title or body');
-    const targetUserIds = user_ids || (user_id ? [user_id] : []);
-    if (targetUserIds.length === 0) throw new Error('No user IDs provided');
+
+    if (!title || !notificationBody) throw new HttpError(400, 'Missing title or body');
+    if (String(title).length > 200 || String(notificationBody).length > 2000) {
+      throw new HttpError(400, 'Title or body too long');
+    }
+    const requestedIds = (user_ids || (user_id ? [user_id] : [])).slice(0, 200);
+    if (requestedIds.length === 0) throw new HttpError(400, 'No user IDs provided');
+    const targetUserIds = caller.kind === 'service'
+      ? requestedIds
+      : await allowedRecipients(supabase, caller.id, requestedIds);
+    if (targetUserIds.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, sent: 0, message: 'No permitted recipients' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const effectiveSubtitle = subtitle || data?.subtitle;
     const effectiveTag = tag || data?.tag;
@@ -300,10 +317,6 @@ Deno.serve(async (req: Request) => {
       notificationType.includes('event') || notificationType.includes('member_dropped_out') ? 'bandwith_events' :
       'bandwith_general'
     );
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (create_in_app !== false) {
       const chatId = data?.chat_id || data?.chatId;
@@ -374,9 +387,15 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (error instanceof HttpError) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: error.status }
+      );
+    }
+    console.error('send-push error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: 'Internal error' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

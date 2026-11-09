@@ -13,7 +13,7 @@ async function runFixes() {
   const email = `fixer_${Date.now()}@example.com`;
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
-    password: "Password123!"
+    password: process.env.DEV_TEST_PASSWORD
   });
   
   if (authError) {

@@ -426,9 +426,8 @@ export const removeBandMember = async (memberId: string): Promise<{ error: Error
 // ============================================
 
 /**
- * Invite a person by email. If they already have a profile (existing user),
- * add them directly to band_members. If not, create an invitation in the
- * invitations table.
+ * @deprecated Use `inviteToBand` from `./invitations`. Kept for old imports:
+ * everyone now joins by accepting an invitation (band_invitations).
  */
 export const inviteMember = async (
   bandId: string,
@@ -436,35 +435,9 @@ export const inviteMember = async (
   role: 'admin' | 'member' = 'member'
 ): Promise<{ data: { userId?: string; invited: boolean } | null; error: Error | null }> => {
   try {
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // First check if user exists in profiles
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', normalizedEmail)
-      .maybeSingle(); // Use maybeSingle to avoid PGRST116 error
-
-    if (existingProfile) {
-      // User exists, add them directly to band_members
-      const { error } = await addExistingUserToBand(bandId, existingProfile.id, role);
-      if (error) throw error;
-      return { data: { userId: existingProfile.id, invited: false }, error: null };
-    }
-
-    // User doesn't exist — create a pending invitation
-    const { error: inviteError } = await supabase
-      .from('invitations')
-      .insert({
-        band_id: bandId,
-        email: normalizedEmail,
-        role,
-        status: 'pending',
-      });
-
-    if (inviteError) throw inviteError;
-
-    return { data: { invited: true }, error: null };
+    const { inviteToBand } = await import('./invitations');
+    const result = await inviteToBand({ bandId, email: email.toLowerCase().trim(), role });
+    return { data: { invited: result.kind === 'invited' }, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

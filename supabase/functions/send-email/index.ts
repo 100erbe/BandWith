@@ -2,6 +2,13 @@
 // Uses Resend for email delivery
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  activeBandIds,
+  adminClient,
+  HttpError,
+  requireBandAdmin,
+  requireCaller,
+} from "../_shared/auth.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // Use Resend test domain until bandwith.app is verified
@@ -12,6 +19,7 @@ interface EmailRequest {
   type: string;
   data: {
     to: string;
+    bandId?: string;
     bandName?: string;
     inviterName?: string;
     inviteUrl?: string;
@@ -240,6 +248,46 @@ function generateEmailContent(type: string, data: EmailRequest["data"]): { subje
   }
 }
 
+// ── Security helpers ────────────────────────────────────────────────────────
+// Every value interpolated into the HTML templates is user-controlled, so it is
+// escaped, and links may only point at the app's own domain (otherwise this
+// function is a free phishing relay sending from the BandWith address).
+const escapeHtml = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .slice(0, 200);
+
+const allowedLinkHosts = (): string[] => {
+  const hosts = new Set<string>(["bandwith.app", "www.bandwith.app"]);
+  for (const raw of [Deno.env.get("APP_URL"), Deno.env.get("SITE_URL")]) {
+    try {
+      if (raw) hosts.add(new URL(raw).host);
+    } catch { /* ignore malformed env */ }
+  }
+  (Deno.env.get("EMAIL_ALLOWED_LINK_HOSTS") ?? "")
+    .split(",").map((h) => h.trim()).filter(Boolean).forEach((h) => hosts.add(h));
+  return [...hosts];
+};
+
+const safeLink = (value: unknown): string => {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== "https:" || !allowedLinkHosts().includes(url.host)) {
+      throw new HttpError(400, "Link not allowed");
+    }
+    return url.toString().replace(/"/g, "%22");
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    throw new HttpError(400, "Invalid link");
+  }
+};
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -247,6 +295,9 @@ serve(async (req) => {
   }
 
   try {
+    const admin = adminClient();
+    const caller = await requireCaller(req, admin);
+
     // Check for API key
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
@@ -260,15 +311,48 @@ serve(async (req) => {
       );
     }
 
-    const { type, data } = (await req.json()) as EmailRequest;
+    const { type, data: rawData } = (await req.json()) as EmailRequest;
 
-    if (!data.to) {
-      throw new Error("Missing recipient email");
+    const to = typeof rawData?.to === "string" ? rawData.to.trim().toLowerCase() : "";
+    if (!EMAIL_RE.test(to)) {
+      throw new HttpError(400, "Missing or invalid recipient email");
+    }
+    if (!["onboarding_invite", "onboarding_reminder", "member_joined"].includes(type)) {
+      throw new HttpError(400, "Unsupported email type");
     }
 
-    const { subject, html } = generateEmailContent(type, data);
+    // Authorise against the band and use its real name from the DB.
+    const bandId = rawData?.bandId;
+    if (!bandId) throw new HttpError(400, "Missing bandId");
+    if (caller.kind === "user") {
+      if (type === "member_joined") {
+        const bands = await activeBandIds(admin, caller.id);
+        if (!bands.includes(bandId)) throw new HttpError(403, "Not a member of this band");
+      } else {
+        await requireBandAdmin(admin, caller.id, bandId);
+      }
+    }
+    const { data: band } = await admin.from("bands").select("name").eq("id", bandId).maybeSingle();
+    if (!band) throw new HttpError(404, "Band not found");
 
-    console.log(`Sending ${type} email to ${data.to}`);
+    const data: EmailRequest["data"] = {
+      to,
+      bandName: escapeHtml(band.name),
+      inviterName: escapeHtml(rawData.inviterName),
+      role: escapeHtml(rawData.role || "Musician"),
+      newMemberName: escapeHtml(rawData.newMemberName),
+      newMemberEmail: escapeHtml(rawData.newMemberEmail),
+      daysRemaining: Math.max(0, Math.min(30, Number(rawData.daysRemaining) || 0)),
+      inviteUrl: type === "member_joined" ? undefined : safeLink(rawData.inviteUrl),
+    };
+
+    const { subject, html } = generateEmailContent(type, data);
+    // Subjects are plain text: undo the HTML escaping there.
+    const plainSubject = subject
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+
+    console.log(`Sending ${type} email`);
 
     // Send via Resend
     const res = await fetch("https://api.resend.com/emails", {
@@ -280,7 +364,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [data.to],
-        subject,
+        subject: plainSubject,
         html,
       }),
     });
@@ -288,7 +372,7 @@ serve(async (req) => {
     if (!res.ok) {
       const error = await res.text();
       console.error("Resend error:", error);
-      throw new Error(`Failed to send email: ${error}`);
+      throw new Error("Failed to send email");
     }
 
     const result = await res.json();
@@ -300,10 +384,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error:", error);
+    const status = error instanceof HttpError ? error.status : 500;
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof HttpError ? error.message : "Could not send email" }),
       { 
-        status: 500, 
+        status, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
     );

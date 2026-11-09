@@ -6,7 +6,7 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SU
 
 async function createFreshUser() {
   const email = `rockstar_${Date.now()}@example.com`;
-  const password = "Password123!";
+  const password = process.env.DEV_TEST_PASSWORD;
   
   console.log(`Attempting to sign up: ${email} / ${password}`);
   

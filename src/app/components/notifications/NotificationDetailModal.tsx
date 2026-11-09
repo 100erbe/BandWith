@@ -466,7 +466,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                   </span>
                                   {Boolean(notif.data?.subtitle) && (
                                     <span className="text-[9px] font-medium text-foreground/50 bg-foreground/5 px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px]">
-                                      {String(notif.data.subtitle)}
+                                      {String(notif.data?.subtitle)}
                                     </span>
                                   )}
                                   {!isRead && (
@@ -525,7 +525,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             </span>
                             {Boolean(detailNotif.data?.subtitle) && (
                               <span className="text-[10px] font-medium text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded-[5px]">
-                                {String(detailNotif.data.subtitle)}
+                                {String(detailNotif.data?.subtitle)}
                               </span>
                             )}
                           </div>

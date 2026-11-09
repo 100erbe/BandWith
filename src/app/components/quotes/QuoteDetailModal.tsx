@@ -6,6 +6,8 @@ import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 import { useBand } from '@/lib/BandContext';
 import { QuoteShareModal } from './QuoteShareModal';
+import { totalsForQuote } from '@/lib/services/quoteMath';
+import { parseLocalDate } from '@/lib/dates';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -40,7 +42,13 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const { selectedBand } = useBand();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
-  const eventDate = quote.eventDate ? new Date(quote.eventDate) : null;
+  const eventDate = quote.eventDate ? parseLocalDate(quote.eventDate) : null;
+  // Same shared math as the wizard and the PDF, so the amounts always agree
+  // (falls back to the stored total only for legacy rows without a subtotal / line items)
+  const displayTotal =
+    (quote.subtotal || 0) > 0 || (quote.lineItems?.length || 0) > 0
+      ? totalsForQuote(quote).total
+      : quote.total || 0;
   const year = eventDate && !isNaN(eventDate.getTime()) ? eventDate.getFullYear() : '';
   const monthDay = eventDate && !isNaN(eventDate.getTime())
     ? `${eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${eventDate.getDate()}`
@@ -227,7 +235,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <ArrowUpRight className="w-[14px] h-[14px] text-white" />
                 </div>
                 <span className="text-[42px] font-bold text-white leading-none">
-                  {formatBandTotal(quote.total, quote.currency)}
+                  {formatBandTotal(displayTotal, quote.currency)}
                 </span>
                 <span className="text-[22px] font-bold text-white leading-none">
                   DP{dp}%

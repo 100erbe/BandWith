@@ -7,6 +7,8 @@ interface WelcomeScreenProps {
   onGetStarted: () => void;
   onSignIn: () => void;
   onInviteCodeSubmit: (code: string) => void;
+  /** "No code? Find my invite by email" */
+  onFindInviteByEmail?: () => void;
   inviteCodeLoading: boolean;
   inviteCodeError: string | null;
   closeInviteInputRef?: React.MutableRefObject<(() => boolean) | null>;
@@ -16,11 +18,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onGetStarted,
   onSignIn,
   onInviteCodeSubmit,
+  onFindInviteByEmail,
   inviteCodeLoading,
   inviteCodeError,
   closeInviteInputRef,
 }) => {
-  const [showInviteInput, setShowInviteInput] = useState(false);
+  // Open the field straight away when we arrive with an error (e.g. a dead invite link).
+  const [showInviteInput, setShowInviteInput] = useState(!!inviteCodeError);
   const [inviteCode, setInviteCode] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -42,7 +46,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   }, [showInviteInput, closeInviteInputRef]);
 
   const handleInviteSubmit = () => {
-    if (inviteCode.trim().length < 2) return;
+    if (inviteCode.trim().length < 2 || inviteCodeLoading) return;
     setSubmitted(true);
     onInviteCodeSubmit(inviteCode.trim());
   };
@@ -160,15 +164,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               animate={{ opacity: 1, height: 'auto' }}
               transition={{ duration: 0.25 }}
             >
+              <label htmlFor="invite-code" className="sr-only">
+                Invite code or link
+              </label>
               <div className="flex items-center gap-2">
                 <input
+                  id="invite-code"
                   type="text"
+                  inputMode="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  aria-invalid={!!inviteCodeError}
+                  aria-describedby={inviteCodeError ? 'invite-code-error' : undefined}
                   value={inviteCode}
                   onChange={(e) => {
                     setInviteCode(e.target.value);
                     setSubmitted(false);
                   }}
-                  placeholder="Enter invite code"
+                  placeholder="Paste invite code or link"
                   className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
                   autoFocus
                   onKeyDown={(e) => {
@@ -177,16 +191,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 />
                 <button
                   onClick={handleInviteSubmit}
-                  disabled={inviteCode.trim().length < 2}
+                  disabled={inviteCode.trim().length < 2 || inviteCodeLoading}
                   className="h-12 px-5 rounded-xl bg-accent text-accent-foreground text-[13px] font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
                 >
                   Join
                 </button>
               </div>
               {inviteCodeError && (
-                <p className="text-red-400 text-[13px] font-medium px-1">
+                <p id="invite-code-error" role="alert" className="text-destructive text-[13px] font-medium px-1">
                   {inviteCodeError}
                 </p>
+              )}
+              {onFindInviteByEmail && (
+                <button
+                  type="button"
+                  onClick={onFindInviteByEmail}
+                  className="block text-muted-foreground/70 text-[12px] font-semibold underline underline-offset-4 hover:text-foreground transition-colors"
+                >
+                  No code? Find my invite by email
+                </button>
               )}
               <button
                 onClick={() => {

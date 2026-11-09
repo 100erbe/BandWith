@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { processSyncQueue, subscribeToSyncQueue } from './syncQueue';
+import { processSyncQueue, subscribeToSyncQueue, type SyncResult } from './syncQueue';
+
+export { isOfflineError } from './networkErrors';
 
 export interface NetworkStatus {
   isOnline: boolean;
   wasOffline: boolean;
   pendingSyncCount: number;
-  triggerSync: () => Promise<{ synced: number; failed: number }>;
+  triggerSync: () => Promise<SyncResult>;
 }
 
 type NetworkListener = (online: boolean) => void;
@@ -20,22 +22,6 @@ export const getIsNetworkOnline = (): boolean => {
 export const reportNetworkStatus = (online: boolean) => {
   currentOnlineState = online;
   networkListeners.forEach((cb) => cb(online));
-};
-
-export const isOfflineError = (err: any): boolean => {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
-  if (!err) return false;
-  const msg = String(err?.message || err?.error_description || err || '').toLowerCase();
-  return (
-    msg.includes('failed to fetch') ||
-    msg.includes('networkerror') ||
-    msg.includes('network request failed') ||
-    msg.includes('load failed') ||
-    msg.includes('offline') ||
-    msg.includes('fetch error') ||
-    msg.includes('err_internet_disconnected') ||
-    msg.includes('err_network')
-  );
 };
 
 export const useNetworkStatus = (onSyncSuccess?: (msg: string) => void): NetworkStatus => {

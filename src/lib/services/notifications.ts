@@ -505,60 +505,38 @@ export const subscribeToNotifications = (
   callback: (notification: Notification) => void,
   onUpdate?: (notification: Notification) => void
 ) => {
-  // Get current user to filter notifications
+  // Subscribe only once the user is known, with a server-side filter, so the
+  // client never receives other users' notification rows.
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+  let cancelled = false;
+
   getSafeUser().then(({ data: { user } }) => {
-    if (!user) {
-      console.log('[Notifications] No user for subscription');
-      return;
-    }
-    
-    console.log('[Notifications] Subscribing to realtime for user:', user.id);
+    if (cancelled || !user) return;
+    const filter = `user_id=eq.${user.id}`;
+    channel = supabase
+      .channel(`notifications-realtime-${user.id}-${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter },
+        (payload) => {
+          const notification = payload.new as Notification;
+          if (notification.user_id === user.id) callback(notification);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter },
+        (payload) => {
+          const notification = payload.new as Notification;
+          if (onUpdate && notification.user_id === user.id) onUpdate(notification);
+        }
+      )
+      .subscribe();
   });
 
-  const channel = supabase
-    .channel('notifications-realtime')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-      },
-      async (payload) => {
-        const notification = payload.new as Notification;
-        // Check if this notification is for the current user
-        const { data: { user } } = await getSafeUser();
-        if (user && notification.user_id === user.id) {
-          console.log('[Notifications] Realtime INSERT received:', notification.title);
-          callback(notification);
-        }
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'notifications',
-      },
-      async (payload) => {
-        if (onUpdate) {
-          const notification = payload.new as Notification;
-          const { data: { user } } = await getSafeUser();
-          if (user && notification.user_id === user.id) {
-            console.log('[Notifications] Realtime UPDATE received:', notification.id);
-            onUpdate(notification);
-          }
-        }
-      }
-    )
-    .subscribe((status) => {
-      console.log('[Notifications] Subscription status:', status);
-    });
-
   return () => {
-    console.log('[Notifications] Unsubscribing from realtime');
-    channel.unsubscribe();
+    cancelled = true;
+    if (channel) supabase.removeChannel(channel);
   };
 };
 

@@ -35,6 +35,7 @@ export const sendEmail = async (
 
 // Send onboarding invite email
 export const sendOnboardingInviteEmail = async (
+  bandId: string,
   email: string,
   bandName: string,
   inviterName: string,
@@ -43,6 +44,7 @@ export const sendOnboardingInviteEmail = async (
 ): Promise<{ success: boolean; error: Error | null }> => {
   return sendEmail('onboarding_invite', {
     to: email,
+    bandId,
     bandName,
     inviterName,
     inviteUrl,
@@ -52,6 +54,7 @@ export const sendOnboardingInviteEmail = async (
 
 // Send invite reminder email
 export const sendInviteReminderEmail = async (
+  bandId: string,
   email: string,
   bandName: string,
   inviterName: string,
@@ -60,6 +63,7 @@ export const sendInviteReminderEmail = async (
 ): Promise<{ success: boolean; error: Error | null }> => {
   return sendEmail('onboarding_reminder', {
     to: email,
+    bandId,
     bandName,
     inviterName,
     inviteUrl,
@@ -69,6 +73,7 @@ export const sendInviteReminderEmail = async (
 
 // Send member joined notification to admin
 export const sendMemberJoinedEmail = async (
+  bandId: string,
   adminEmail: string,
   bandName: string,
   newMemberName: string,
@@ -76,6 +81,7 @@ export const sendMemberJoinedEmail = async (
 ): Promise<{ success: boolean; error: Error | null }> => {
   return sendEmail('member_joined', {
     to: adminEmail,
+    bandId,
     bandName,
     newMemberName,
     newMemberEmail,

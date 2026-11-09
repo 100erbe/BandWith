@@ -56,6 +56,7 @@ import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@
 import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
+import { PendingInvitesPrompt } from "@/app/components/notifications/PendingInvitesPrompt";
 import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
 
 import { HomeView } from "@/app/views/HomeView";
@@ -66,6 +67,7 @@ import { OfflineBanner } from "@/app/components/ui/OfflineBanner";
 import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/offline/useNetworkStatus";
 import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
 import { getOfflineItem, setOfflineItem, getCacheKey } from "@/lib/offline/storage";
+import { todayLocal } from '../lib/dates';
 
 const BandMembersView = React.lazy(() => import("@/app/views/BandMembersView").then(m => ({ default: m.BandMembersView })));
 const SetlistManagerView = React.lazy(() => import("@/app/views/SetlistManagerView").then(m => ({ default: m.SetlistManagerView })));
@@ -97,7 +99,7 @@ import {
 
 import { AdminGuidedTourModal } from "@/app/components/onboarding/AdminGuidedTourModal";
 import { Quote } from "@/app/data/quotes";
-import { createQuote as createQuoteDB } from "@/lib/services/quotes";
+import { createQuote as createQuoteDB, appQuoteToDbRecord, appMusiciansToDb } from "@/lib/services/quotes";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
@@ -275,7 +277,7 @@ export default function AuthenticatedApp() {
   const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
   const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"]);
   const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"]);
-  const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading } = useExpandedQuotesData(realBand?.id || null);
+  const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading, refetch: refetchExpandedQuotes } = useExpandedQuotesData(realBand?.id || null);
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
@@ -897,9 +899,11 @@ export default function AuthenticatedApp() {
     // Count bands where the current user is admin
     const adminBandCount = realBands.filter((b) => b.user_role === 'admin').length;
 
-    // Define limits per tier
+    // Define limits per tier. Paid plans aren't on sale yet, so everyone gets
+    // the free Indie Act allowance (1 band) — before, solo users and members
+    // had 0 and hit a paywall whose Upgrade button did nothing.
     const limits: Record<string, number> = {
-      free_member: 0,
+      free_member: 1,
       single_band: 1,
       multi_band: 5,
       unlimited: Infinity,
@@ -2070,6 +2074,11 @@ export default function AuthenticatedApp() {
     setIsCreateEventOpen(false);
     setCreateEventInitialDate(null);
 
+    // Declared outside `try` so the `catch` below can still queue the event
+    // offline (it used to be block-scoped → ReferenceError on timeout and the
+    // event was silently lost).
+    let saveEventOffline: ((isEdit: boolean, editingId?: string) => Promise<void>) | null = null;
+
     try {
       const venueAddress = isRehearsalWizard ? data.address : data.details?.address;
       const venueCity = isRehearsalWizard ? data.city : data.details?.city;
@@ -2199,7 +2208,7 @@ export default function AuthenticatedApp() {
         status: m.id === user?.id ? 'confirmed' : 'pending',
       }));
 
-      const saveEventOffline = async (isEdit: boolean, editingId?: string) => {
+      saveEventOffline = async (isEdit: boolean, editingId?: string) => {
         reportNetworkStatus(false);
         if (isEdit && editingId) {
           await enqueueMutation('update_event', {
@@ -2315,8 +2324,13 @@ export default function AuthenticatedApp() {
       refetchEvents().catch(() => {});
       if (refetchDashboard) refetchDashboard().catch(() => {});
     } catch (err: any) {
-      if (!isOnline || isOfflineError(err)) {
-        await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
+      if (saveEventOffline && (!isOnline || isOfflineError(err))) {
+        try {
+          await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
+        } catch (offlineErr: any) {
+          console.error('Offline save failed:', offlineErr);
+          setSaveToast({ message: 'Could not save the event. Please try again.', type: 'error' });
+        }
       } else {
         setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
       }
@@ -2706,6 +2720,10 @@ export default function AuthenticatedApp() {
             setPricingReturnTo('identity_hub');
             setShowPricingModal(true);
           }}
+          onOpenSettings={(section) => {
+            closeIdentity();
+            handleGridNav(section && section !== 'main' ? `Settings:${section}` : 'Settings');
+          }}
         />
 
         <SwitchBandPopup
@@ -2720,7 +2738,7 @@ export default function AuthenticatedApp() {
         <AnimatePresence>
           {expandedCard === "finance" && <FinanceExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
           {expandedCard === "pending" && <PendingExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
-          {isAdmin && expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} />}
+          {isAdmin && expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
             <RehearsalExpanded upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
@@ -2836,7 +2854,18 @@ export default function AuthenticatedApp() {
             />
           )}
           {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
-          <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} />
+          <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} limitReached />
+          <PendingInvitesPrompt
+            key="pending-invites"
+            userId={user?.id}
+            hidden={!!expandedCard || !!selectedChat || !!selectedEvent || showSettings || isCreateEventOpen || isIdentityOpen || showUpgradePricing}
+            onToast={(message, type) => setSaveToast({ message, type })}
+            onJoined={(bandId) => {
+              refreshBands()
+                .then(() => selectBand(bandId))
+                .catch((e) => console.error('Error refreshing bands after joining:', e));
+            }}
+          />
           {showPersonalGigModal && user?.id && (
             <PersonalGigModal
               isOpen={showPersonalGigModal}
@@ -2851,7 +2880,7 @@ export default function AuthenticatedApp() {
                 refetchEvents();
                 refetchDashboard?.();
               }}
-              onOpenUpgradeSheet={() => setShowUpgradePricing(true)}
+              onCreateBand={handleRequestCreateBand}
             />
           )}
 
@@ -2888,7 +2917,7 @@ export default function AuthenticatedApp() {
               onClose={() => setShowNoBandRehearsalModal(false)}
               onOpenUpgrade={() => {
                 setShowNoBandRehearsalModal(false);
-                setShowUpgradePricing(true);
+                handleRequestCreateBand();
               }}
             />
           )}
@@ -2941,9 +2970,9 @@ export default function AuthenticatedApp() {
           <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
             setIsCreateEventOpen(false);
             setCreateEventInitialDate(null);
-            if (!q.status || q.status === 'SENT') {
-              setSharingQuote(q);
-            }
+            // The share sheet / PDF opens only after the quote is saved, so it
+            // carries the number assigned by the database.
+            const wantsShare = !q.status || q.status === 'SENT';
             if (realBand?.id) {
               const createdEventId = q.eventId || (await (async () => {
                 const evD: Record<string, any> = {
@@ -2951,7 +2980,7 @@ export default function AuthenticatedApp() {
                   title: q.eventName || q.clientName || 'Quote Event',
                   event_type: q.eventType || 'other',
                   status: 'tentative' as const,
-                  event_date: q.eventDate || new Date().toISOString().split('T')[0],
+                  event_date: q.eventDate || todayLocal(),
                   start_time: q.eventTimeStart || '20:00',
                   end_time: q.eventTimeEnd || null,
                   venue_name: q.venueName || 'TBD',
@@ -3025,26 +3054,21 @@ export default function AuthenticatedApp() {
 
               const isOfflineTempId = typeof createdEventId === 'string' && createdEventId.startsWith('offline_');
               if (!isOfflineTempId && isOnline && (typeof navigator === 'undefined' || navigator.onLine)) {
-                const quoteData = {
-                  band_id: realBand.id,
-                  quote_number: q.quoteNumber || `Q-${Date.now()}`,
-                  status: (q.status || 'draft').toLowerCase(),
-                  client_name: q.clientName || 'Unknown',
-                  client_email: q.clientEmail || null,
-                  client_phone: q.clientPhone || null,
-                  client_company: q.clientCompany || null,
-                  event_name: q.eventName || null,
-                  event_type: q.eventType || null,
-                  event_date: q.eventDate || null,
-                  venue_name: q.venueName || null,
-                  venue_city: q.venueCity || null,
-                  subtotal: q.subtotal || 0,
-                  vat_amount: q.vatAmount || 0,
-                  total: q.total || 0,
-                  deposit_percentage: q.depositPercentage ?? 30,
-                  converted_to_event_id: createdEventId,
-                };
-                await createQuoteDB(quoteData as any).catch(() => {});
+                const { data: savedQuote, error: quoteErr } = await createQuoteDB(
+                  { ...appQuoteToDbRecord(q, realBand.id), converted_to_event_id: createdEventId || undefined },
+                  appMusiciansToDb(q.musicians)
+                );
+                if (quoteErr || !savedQuote) {
+                  setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}. The event was kept as tentative.`, type: 'error' });
+                } else {
+                  if (wantsShare) {
+                    setSharingQuote({ ...q, id: savedQuote.id, quoteNumber: savedQuote.quote_number });
+                  }
+                  refetchExpandedQuotes();
+                }
+              } else if (isOfflineTempId) {
+                // Quotes need a database number, so they can't be queued offline yet.
+                setSaveToast({ message: 'Offline: the event was saved, but the quote itself needs a connection. Create it again when you are back online.', type: 'error' });
               }
               setMembersRefreshKey(prev => prev + 1);
               refetchEvents().catch(() => {});

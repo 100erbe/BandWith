@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function createAdminAndBand() {
   const email = "admin@bandwith.com";
-  const password = "Password123!";
+  const password = process.env.DEV_TEST_PASSWORD;
   
   console.log(`Signing up user: ${email}`);
   

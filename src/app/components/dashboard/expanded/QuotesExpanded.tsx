@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -17,17 +17,26 @@ import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { 
   Quote as MockQuote, 
   QuoteStatus,
-  QUOTES_DATA, 
   getStatusColor, 
   getStatusLabel,
-  duplicateQuote,
-  createQuote
 } from '@/app/data/quotes';
 import type { Quote } from '@/app/data/quotes';
 import { QuoteCreationWizard } from '@/app/components/quotes/QuoteCreationWizard';
 import { QuoteDetailModal } from '@/app/components/quotes/QuoteDetailModal';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 import type { Quote as RealQuote } from '@/lib/services/quotes';
+import {
+  createQuote as createQuoteDB,
+  updateQuote as updateQuoteDB,
+  deleteQuote as deleteQuoteDB,
+  duplicateQuote as duplicateQuoteDB,
+  sendQuote as sendQuoteDB,
+  appQuoteToDbRecord,
+  appMusiciansToDb,
+  dbQuoteToAppQuote,
+  isUuid,
+} from '@/lib/services/quotes';
+import { useBand } from '@/lib/BandContext';
 
 interface QuotesExpandedProps {
   bandId: string;
@@ -41,6 +50,10 @@ interface QuotesExpandedProps {
     acceptedRevenue: number;
   } | null;
   loading?: boolean;
+  /** Optional app-level toast; when absent an inline banner is shown. */
+  onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  /** Optional: called after a successful create/update/delete so the parent can refetch. */
+  onQuotesChanged?: () => void;
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
@@ -48,70 +61,51 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   onClose,
   realQuotes,
   quoteStats,
-  loading
+  loading,
+  onShowToast,
+  onQuotesChanged,
 }) => {
-  // Convert real quotes to display format
-  const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => {
-    return rq.map(q => ({
-      ...q,
-      id: q.id,
-      bandId: q.band_id,
-      eventId: q.id,
-      eventTitle: q.event_name || 'Untitled Quote',
-      clientName: q.client_name,
-      status: (q.status?.toUpperCase() || 'DRAFT') as QuoteStatus,
-      lineItems: [],
-      customItems: q.custom_items || [],
-      subtotal: q.subtotal || 0,
-      discount: q.discount_value || 0,
-      tax: q.vat_amount || 0,
-      total: q.total || 0,
-      notes: q.client_notes || '',
-      validUntil: q.valid_until || '',
-      createdAt: q.created_at,
-      updatedAt: q.updated_at,
-      quoteNumber: '',
-      clientEmail: '',
-      eventName: '',
-      eventType: 'other' as any,
-      eventDate: '',
-      eventTimeStart: '',
-      venueCity: '',
-      venueCountry: '',
-      performanceType: 'full_band' as any,
-      setDuration: 0,
-      numberOfSets: 0,
-      musicians: [],
-      genres: [],
-      billingCountry: '',
-      vatRate: 0,
-      vatExempt: false,
-      reverseCharge: false,
-      currency: 'EUR',
-      baseFee: 0,
-      lineItemsTotal: 0,
-      grandTotal: 0,
-      depositAmount: 0,
-      paymentTerms: '',
-      cancellationPolicy: '',
-      includeTravel: false,
-      includeAccommodation: false,
-      includeMeals: false,
-      createdBy: '',
-    })) as any;
-  };
+  const { selectedBand } = useBand();
+  // Real band id: BandContext first, then the prop (only if it is a real UUID, never a mock id)
+  const currentBandId: string | null =
+    (selectedBand?.id && isUuid(selectedBand.id) ? selectedBand.id : null) ||
+    (isUuid(bandId) ? bandId : null);
+
+  // Convert real quotes to display format (real quote number, VAT, discount etc. from the DB)
+  const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => rq.map(dbQuoteToAppQuote);
 
   // Quote data state - use real quotes only
   const [quotes, setQuotes] = useState<MockQuote[]>(
     realQuotes && realQuotes.length > 0 ? convertRealQuotes(realQuotes) : []
   );
 
-  // Update quotes when realQuotes changes
+  // Update quotes when realQuotes changes (including when it becomes empty)
   useEffect(() => {
-    if (realQuotes && realQuotes.length > 0) {
+    if (realQuotes) {
       setQuotes(convertRealQuotes(realQuotes));
     }
   }, [realQuotes]);
+
+  // Feedback: app toast if provided, otherwise an inline banner
+  const [inlineMessage, setInlineMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!inlineMessage) return;
+    const t = setTimeout(() => setInlineMessage(null), inlineMessage.type === 'error' ? 6000 : 3500);
+    return () => clearTimeout(t);
+  }, [inlineMessage]);
+
+  const notify = useCallback(
+    (text: string, type: 'success' | 'error' | 'info' = 'info') => {
+      if (onShowToast) onShowToast(text, type);
+      else setInlineMessage({ text, type });
+    },
+    [onShowToast]
+  );
+
+  const errorText = (err: unknown, fallback: string) =>
+    `${fallback}: ${(err as any)?.message || 'Unknown error'}`;
   
   // Modal states
   const [isCreating, setIsCreating] = useState(false);
@@ -129,97 +123,123 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   const activeQuotes = quotes.filter(q => q.status !== 'DECLINED' && q.status !== 'EXPIRED');
 
-  // Handlers
-  const handleCreateQuote = (quoteData: Partial<Quote>) => {
-    const lineItems = quoteData.lineItems || [];
-
-    if (lineItems.length === 0 && quoteData.baseFee) {
-      lineItems.push({
-        id: `li-${Date.now()}`,
-        description: 'Performance Fee',
-        quantity: 1,
-        unitPrice: quoteData.baseFee,
-        total: quoteData.baseFee,
-      });
+  // Handlers (all persist through src/lib/services/quotes.ts; optimistic changes are reverted on failure)
+  const handleCreateQuote = async (quoteData: Partial<Quote>) => {
+    if (isSaving) return;
+    if (!currentBandId) {
+      notify('No band selected — cannot save the quote', 'error');
+      return;
     }
-    if (quoteData.customItems) {
-      quoteData.customItems.forEach((ci: any) => {
-        if (ci.amount > 0) {
-          lineItems.push({
-            id: ci.id || `li-${Date.now()}-${Math.random()}`,
-            description: ci.name || 'Custom Item',
-            quantity: 1,
-            unitPrice: ci.amount,
-            total: ci.amount,
-          });
+
+    const existing = quoteData.id ? quotes.find(q => q.id === quoteData.id) : undefined;
+    const record = appQuoteToDbRecord(quoteData, currentBandId);
+    setIsSaving(true);
+
+    try {
+      if (existing && isUuid(existing.id)) {
+        // ── Edit an existing quote (optimistic, reverted on failure) ──
+        const previous = quotes;
+        const optimistic = { ...existing, ...quoteData, quoteNumber: existing.quoteNumber } as MockQuote;
+        setQuotes(prev => prev.map(q => (q.id === existing.id ? optimistic : q)));
+
+        const { band_id: _bandId, ...updates } = record;
+        const { data, error } = await updateQuoteDB(existing.id, updates);
+        if (error || !data) {
+          setQuotes(previous);
+          notify(errorText(error, 'Failed to update quote'), 'error');
+          return; // keep the wizard open so nothing is lost
         }
-      });
-    }
 
-    const newQuote = createQuote(
-      'band-1',
-      quoteData.eventId || `event-${Date.now()}`,
-      lineItems.map(li => ({
-        description: li.description,
-        quantity: li.quantity,
-        unitPrice: li.unitPrice,
-      })),
-      {
-        discount: quoteData.discount || (quoteData.discountType !== 'none' ? quoteData.discountValue : undefined),
-        tax: quoteData.tax || quoteData.vatRate,
-        notes: quoteData.notes || quoteData.clientNotes,
-        validUntil: quoteData.validUntil,
-        eventTitle: quoteData.eventTitle || quoteData.eventName,
-        clientName: quoteData.clientName,
+        const saved = { ...quoteData, ...dbQuoteToAppQuote(data), musicians: quoteData.musicians || existing.musicians } as MockQuote;
+        setQuotes(prev => prev.map(q => (q.id === existing.id ? saved : q)));
+        setIsCreating(false);
+        setEditingQuote(null);
+        notify('Quote updated', 'success');
+        onQuotesChanged?.();
+        if (quoteData.status === 'SENT') setSharingQuote(saved);
+        return;
       }
-    );
 
-    if (quoteData.status === 'SENT') {
-      newQuote.status = 'SENT';
-    }
+      // ── Create: the DB assigns the quote number; share/PDF only after the insert returns ──
+      const { data, error } = await createQuoteDB(record, appMusiciansToDb(quoteData.musicians));
+      if (error || !data) {
+        notify(errorText(error, 'Failed to create quote'), 'error');
+        return; // keep the wizard open so nothing is lost
+      }
 
-    Object.assign(newQuote, {
-      clientEmail: quoteData.clientEmail,
-      clientPhone: quoteData.clientPhone,
-      clientCompany: quoteData.clientCompany,
-      eventType: quoteData.eventType,
-      eventDate: quoteData.eventDate,
-      venueName: quoteData.venueName,
-      venueCity: quoteData.venueCity,
-      performanceType: quoteData.performanceType,
-      musicians: quoteData.musicians,
-      baseFee: quoteData.baseFee,
-      depositPercentage: quoteData.depositPercentage,
-      depositRequired: quoteData.depositRequired,
-      customItems: quoteData.customItems,
-    });
+      const { id: _localId, ...rest } = quoteData;
+      const saved = {
+        ...rest,
+        ...dbQuoteToAppQuote(data),
+        // keep wizard-only presentation fields (moments, options, musicians) for the share/PDF step
+        musicians: quoteData.musicians || [],
+        selectedMoments: quoteData.selectedMoments,
+        quoteOptions: quoteData.quoteOptions,
+        includeProposalSummary: quoteData.includeProposalSummary,
+      } as MockQuote;
 
-    setQuotes(prev => [newQuote, ...prev]);
-    setIsCreating(false);
-    setEditingQuote(null);
-    if (!quoteData.status || quoteData.status === 'SENT') {
-      setSharingQuote({ ...newQuote, ...quoteData });
+      setQuotes(prev => [saved, ...prev]);
+      setIsCreating(false);
+      setEditingQuote(null);
+      notify(`Quote ${saved.quoteNumber} saved`, 'success');
+      onQuotesChanged?.();
+      if (!quoteData.status || quoteData.status === 'SENT') {
+        setSharingQuote(saved);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSendQuote = (quote: Quote) => {
+  const handleSendQuote = async (quote: Quote) => {
+    const previous = quotes;
     setQuotes(prev => prev.map(q => 
       q.id === quote.id 
         ? { ...q, status: 'SENT' as QuoteStatus, updatedAt: new Date().toISOString() }
         : q
     ));
     setSelectedQuote(null);
+
+    const { data, error } = await sendQuoteDB(quote.id);
+    if (error || !data) {
+      setQuotes(previous);
+      notify(errorText(error, 'Failed to mark quote as sent'), 'error');
+      return;
+    }
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
+    onQuotesChanged?.();
   };
 
-  const handleDuplicateQuote = (quote: Quote) => {
-    const duplicated = duplicateQuote(quote);
-    setQuotes(prev => [duplicated, ...prev]);
+  const handleDuplicateQuote = async (quote: Quote) => {
     setSelectedQuote(null);
+    const { data, error } = await duplicateQuoteDB(quote.id);
+    if (error || !data) {
+      notify(errorText(error, 'Failed to duplicate quote'), 'error');
+      return;
+    }
+    setQuotes(prev => [dbQuoteToAppQuote(data), ...prev]);
+    notify(`Quote duplicated as ${data.quote_number}`, 'success');
+    onQuotesChanged?.();
   };
 
-  const handleDeleteQuote = (quote: Quote) => {
+  const handleDeleteQuote = async (quote: Quote) => {
+    const label = quote.quoteNumber || quote.eventTitle || quote.clientName || 'this quote';
+    if (typeof window !== 'undefined' && !window.confirm(`Delete ${label}? This cannot be undone.`)) {
+      return;
+    }
+
+    const previous = quotes;
     setQuotes(prev => prev.filter(q => q.id !== quote.id));
     setSelectedQuote(null);
+
+    const { error } = await deleteQuoteDB(quote.id);
+    if (error) {
+      setQuotes(previous);
+      notify(errorText(error, 'Failed to delete quote'), 'error');
+      return;
+    }
+    notify('Quote deleted', 'success');
+    onQuotesChanged?.();
   };
 
   const handleEditQuote = (quote: Quote) => {
@@ -415,6 +435,37 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </div>
       </div>
 
+      {/* Inline feedback (used when no app-level toast is provided) */}
+      <AnimatePresence>
+        {inlineMessage && (
+          <motion.div
+            role={inlineMessage.type === 'error' ? 'alert' : 'status'}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onClick={() => setInlineMessage(null)}
+            className={cn(
+              'fixed left-4 right-4 top-[max(env(safe-area-inset-top,0px),16px)] z-[300] mx-auto max-w-md rounded-2xl px-4 py-3 text-sm font-bold shadow-xl cursor-pointer',
+              inlineMessage.type === 'error'
+                ? 'bg-[var(--destructive)] text-white'
+                : 'bg-[var(--surface-inverse)] text-white'
+            )}
+          >
+            {inlineMessage.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isSaving && (
+        <div
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom,0px)+24px)] z-[300] flex items-center gap-2 rounded-full bg-[var(--surface-inverse)] px-4 py-2 text-xs font-bold text-white shadow-xl"
+        >
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Saving quote…
+        </div>
+      )}
+
       {/* Quote Creation Wizard */}
       <AnimatePresence>
         {isCreating && (
@@ -451,8 +502,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             isOpen={!!sharingQuote}
             onClose={() => setSharingQuote(null)}
             quote={sharingQuote}
-            bandId={bandId || 'default'}
-            bandName="Band"
+            bandId={currentBandId || bandId || 'default'}
+            bandName={selectedBand?.name || 'Band'}
           />
         )}
       </AnimatePresence>

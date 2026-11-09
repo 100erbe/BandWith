@@ -36,6 +36,7 @@ import { RehearsalSetlistEditorModal } from './RehearsalSetlistEditorModal';
 import { RehearsalEditProposalModal } from './RehearsalEditProposalModal';
 import { RehearsalTaskDetailModal } from './RehearsalTaskDetailModal';
 import { RehearsalReviewSetlistModal } from './RehearsalReviewSetlistModal';
+import { toLocalDateString } from '../../../lib/dates';
 
 interface TaskTemplateDB {
   id: string;
@@ -343,7 +344,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     title: editingEvent?.title || '',
     location: editingEvent?.location || '',
     address: editingEvent?.venueAddress || '',
-    date: editingEvent?.date || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    date: editingEvent?.date || toLocalDateString(new Date(Date.now() + 86400000)),
     time: editingEvent?.time || '20:00',
     duration: '2h',
     recurrence: initialRecurrence,

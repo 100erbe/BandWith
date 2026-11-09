@@ -17,6 +17,7 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
+import { todayLocal } from '../../lib/dates';
 
 interface Contract {
   id: string;
@@ -86,7 +87,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
         client_name: formClientName.trim(),
         status: 'draft',
         type: formType,
-        event_date: formEventDate || new Date().toISOString().split('T')[0],
+        event_date: formEventDate || todayLocal(),
         band_id: bandId,
         created_at: new Date().toISOString(),
       };

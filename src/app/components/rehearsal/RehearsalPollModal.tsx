@@ -19,6 +19,7 @@ import {
   cleanNotesWithoutDays,
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
+import { toLocalDateString } from '../../../lib/dates';
 
 interface TimeSlotDraft {
   id: string;
@@ -70,7 +71,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   const [customDate, setCustomDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 2);
-    return d.toISOString().split('T')[0];
+    return toLocalDateString(d);
   });
   const [customStartTime, setCustomStartTime] = useState('20:00');
   const [customEndTime, setCustomEndTime] = useState('22:00');
@@ -152,7 +153,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       const dateObj = new Date(targetMonday);
       const dayOffset = targetDay === 0 ? 6 : targetDay - 1; // 0=Sunday (day 6 from Monday)
       dateObj.setDate(targetMonday.getDate() + dayOffset);
-      const isoDate = dateObj.toISOString().split('T')[0];
+      const isoDate = toLocalDateString(dateObj);
 
       // Avoid duplicates
       const exists = timeSlots.some(

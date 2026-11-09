@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Calendar, Sparkles, Star } from '@/app/components/icons';
+import { ArrowRight, Loader2, Sparkles, Star } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 
 interface JoinerWelcomeBandProps {
   inviteData: any;
+  /** Joins the band (server-side) and opens the app. */
   onComplete: () => void;
+  joining?: boolean;
+  error?: string | null;
 }
 
 export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
   inviteData,
   onComplete,
+  joining = false,
+  error = null,
 }) => {
   const { profileData } = useOnboarding();
   const [showConfetti, setShowConfetti] = useState(true);
@@ -23,19 +28,14 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
   const bandName = inviteData?.band?.name || 'Your Band';
   const bandLogo = inviteData?.band?.logo_url;
 
-  // Mock bandmates (would come from API)
-  const bandmates = [
-    {
-      id: 1,
-      name:
-        inviteData?.inviter?.full_name ||
-        inviteData?.inviter?.email?.split('@')[0] ||
-        'Admin',
-      role: 'Admin, Guitar',
-      isAdmin: true,
-    },
-    { id: 2, name: 'Andrea', role: 'Drums', isAdmin: false },
-  ];
+  // Only what we actually know before joining: who invited you and how many
+  // people are in the band. (The member list is visible once you're in.)
+  const inviterName =
+    inviteData?.inviter?.full_name || inviteData?.inviter?.email?.split('@')[0];
+  const memberCount: number = inviteData?.member_count ?? 0;
+  const bandmates = inviterName
+    ? [{ id: 'inviter', name: inviterName, role: 'Invited you', isAdmin: true }]
+    : [];
 
   const getInitials = (name: string) => {
     return name
@@ -127,7 +127,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           transition={{ delay: 0.4 }}
         >
           <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
-            Welcome to
+            You’re joining
           </h1>
           <p className="text-accent text-[28px] font-black">"{bandName}"!</p>
         </motion.div>
@@ -140,7 +140,9 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           transition={{ delay: 0.6 }}
         >
           <p className="text-muted-foreground text-[12px] font-medium mb-4 uppercase">
-            Your Bandmates
+            {memberCount > 0
+              ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'} + you`
+              : 'Your band'}
           </p>
 
           <div className="space-y-3">
@@ -198,21 +200,6 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           </div>
         </motion.div>
 
-        {/* Upcoming Events Card */}
-        <motion.div
-          className="w-full max-w-sm mt-4 bg-card rounded-2xl p-5 border border-border"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-        >
-          <p className="text-muted-foreground text-[12px] font-medium mb-3 uppercase">
-            Upcoming
-          </p>
-          <div className="flex items-center gap-3 text-muted-foreground/70">
-            <Calendar className="w-5 h-5" />
-            <p className="text-[14px]">No gigs scheduled yet</p>
-          </div>
-        </motion.div>
       </div>
 
       {/* Footer */}
@@ -222,17 +209,33 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.2 }}
       >
+        {error && (
+          <p role="alert" className="mb-3 text-center text-[14px] font-medium text-destructive">
+            {error}
+          </p>
+        )}
         <motion.button
           onClick={onComplete}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px]"
+          disabled={joining}
+          aria-busy={joining}
+          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px] disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           style={{
             boxShadow: '0 4px 20px rgba(200, 67, 26, 0.25)',
           }}
-          whileHover={{ scale: 0.98 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={joining ? undefined : { scale: 0.98 }}
+          whileTap={joining ? undefined : { scale: 0.95 }}
         >
-          Explore Dashboard
-          <ArrowRight className="w-5 h-5" strokeWidth={2} />
+          {joining ? (
+            <>
+              <Loader2 aria-hidden className="w-5 h-5 animate-spin" />
+              Joining…
+            </>
+          ) : (
+            <>
+              {error ? 'Try again' : `Join ${bandName}`}
+              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+            </>
+          )}
         </motion.button>
       </motion.div>
     </div>

@@ -14,6 +14,7 @@ import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper } from './ExpandedCardWrapper';
 import { createTransaction } from '@/lib/services/transactions';
 import type { Transaction } from '@/lib/services/transactions';
+import { todayLocal } from '../../../../lib/dates';
 
 interface FinanceExpandedProps {
   bandId: string;
@@ -41,7 +42,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txCategory, setTxCategory] = useState<string>('GIG');
-  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+  const [txDate, setTxDate] = useState(todayLocal());
   const [saving, setSaving] = useState(false);
 
   const categories = {

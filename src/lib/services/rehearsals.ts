@@ -456,7 +456,7 @@ export const subscribeToRehearsalTasks = (
     .subscribe();
 
   return () => {
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
   };
 };
 
@@ -482,6 +482,6 @@ export const subscribeToSongProposals = (
     .subscribe();
 
   return () => {
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
   };
 };

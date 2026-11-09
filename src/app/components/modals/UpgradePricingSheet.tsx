@@ -8,6 +8,8 @@ interface UpgradePricingSheetProps {
   isOpen: boolean;
   onClose: () => void;
   currentTier?: string | null;
+  /** Opened because the user already manages as many bands as their plan allows. */
+  limitReached?: boolean;
 }
 
 interface PricingTier {
@@ -99,8 +101,11 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
   isOpen,
   onClose,
   currentTier = 'single_band',
+  limitReached = false,
 }) => {
-  const activeTierId = currentTier || 'single_band';
+  // Everyone without a paid plan is on the free Indie Act plan.
+  const activeTierId =
+    !currentTier || currentTier === 'free_member' ? 'single_band' : currentTier;
   const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
 
   return (
@@ -120,6 +125,9 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
           {/* Bottom Sheet Modal with 90% Viewport Peeking Elements Affordance */}
           <motion.div
             ref={containerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upgrade-sheet-title"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -132,13 +140,13 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
           >
             {/* Top Bar with Grab Handle & Close Button */}
             <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pt-3.5 pb-2 px-4 flex items-center justify-between border-b border-border/30">
-              <div className="w-9" /> {/* Spacer for symmetry */}
+              <div className="w-11" /> {/* Spacer for symmetry */}
               <div className="w-10 h-1.5 rounded-full bg-foreground/20" />
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="w-9 h-9 rounded-full border border-border bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                className="w-11 h-11 rounded-full border border-border bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -150,16 +158,18 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                 <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/25 rounded-full px-3.5 py-1 text-primary mb-3">
                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
                   <span className="text-[11px] font-extrabold uppercase tracking-widest">
-                    Unlock More Power
+                    {limitReached ? 'Free plan limit' : 'Plans'}
                   </span>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-black text-foreground uppercase tracking-tight leading-tight">
-                  Choose Your Plan
+                <h2 id="upgrade-sheet-title" className="text-2xl sm:text-3xl font-black text-foreground uppercase tracking-tight leading-tight">
+                  {limitReached ? 'You already manage a band' : 'BandWith plans'}
                 </h2>
 
                 <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1.5 max-w-sm mx-auto">
-                  Scale your music operations with the right plan for your needs.
+                  {limitReached
+                    ? 'The free plan includes 1 band you manage. Plans for more bands are coming soon. You can still join any number of bands as a member.'
+                    : 'The free plan includes 1 band you manage. Plans for more bands are coming soon.'}
                 </p>
               </div>
 
@@ -243,25 +253,17 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
                       </div>
 
                       {/* CTA Action Button */}
-                      <button
-                        type="button"
-                        disabled={isCurrent}
-                        onClick={() => {
-                          if (!isCurrent) {
-                            console.log(`[UpgradePricingSheet] Selected tier: ${tier.id}`);
-                          }
-                        }}
+                      {/* Paid plans aren't on sale yet: say so instead of a button that does nothing. */}
+                      <div
                         className={cn(
-                          'w-full py-3 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all',
+                          'w-full py-3 rounded-full text-xs font-extrabold uppercase tracking-wider text-center border',
                           isCurrent
-                            ? 'bg-muted text-muted-foreground border border-border cursor-default opacity-80'
-                            : tier.isPopular
-                              ? 'bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98] shadow-sm cursor-pointer'
-                              : 'bg-foreground text-background hover:opacity-90 active:scale-[0.98] shadow-sm cursor-pointer'
+                            ? 'bg-muted text-muted-foreground border-border opacity-80'
+                            : 'bg-transparent text-muted-foreground border-dashed border-border'
                         )}
                       >
-                        {isCurrent ? 'Current Plan' : tier.ctaLabel}
-                      </button>
+                        {isCurrent ? 'Your plan' : 'Coming soon'}
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -269,7 +271,7 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
 
               {/* Footer Guarantee */}
               <p className="text-center text-[11px] font-medium text-muted-foreground/70 mt-6">
-                Upgrade anytime • Cancel anytime • Plans are billed per user account
+                Paid plans aren’t available yet. We’ll announce them in the app.
               </p>
             </div>
           </motion.div>

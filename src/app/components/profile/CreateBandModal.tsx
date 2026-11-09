@@ -101,7 +101,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
+      className="fixed inset-0 z-[115] flex flex-col overflow-hidden bg-background"
       style={{
         paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',

@@ -21,7 +21,10 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'implicit',
+      // PKCE: the auth code can only be exchanged by the app instance that
+      // started the flow (it holds the code_verifier), so a crafted deep link
+      // can no longer log the user into someone else's account.
+      flowType: 'pkce',
       storage: Capacitor.isNativePlatform()
         ? {
             // For Capacitor native apps, use a simple in-memory + localStorage hybrid
@@ -78,24 +81,10 @@ export const signIn = async (email: string, password: string) => {
 
 export const signInWithOAuth = async (provider: 'google' | 'apple') => {
   const isNative = Capacitor.isNativePlatform();
-  const platform = Capacitor.getPlatform();
-  
   // For native apps, use deep link redirect with platform-specific scheme
-  let redirectTo: string;
-  if (isNative) {
-    // Use the app's URL scheme for deep linking
-    // iOS uses app.bandwith.mobile://, Android uses com.bandwith.app://
-    const scheme = platform === 'ios' ? 'app.bandwith.mobile' : 'com.bandwith.app';
-    redirectTo = `${scheme}://auth/callback`;
-    console.log('[OAuth] Native redirect to:', redirectTo);
-  } else {
-    // For web (including Capacitor WebView for dev), redirect back to the auth callback page
-    redirectTo = `${window.location.origin}/auth/callback`;
-  }
-  
-  console.log('[OAuth] Starting auth with provider:', provider);
-  console.log('[OAuth] Redirect URL:', redirectTo);
-  
+  // iOS uses app.bandwith.mobile://, Android uses com.bandwith.app://
+  const redirectTo = getAuthCallbackUrl();
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -114,7 +103,6 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
   // For native, open the browser manually using Capacitor Browser plugin
   // This gives a clean in-app browser instead of showing the Supabase URL
   if (isNative && data?.url) {
-    console.log('[OAuth] Opening in-app browser with URL:', data.url);
     try {
       const { Browser } = await import('@capacitor/browser');
       await Browser.open({ 
@@ -134,10 +122,30 @@ export const signOut = async () => {
   return { error };
 };
 
+/** Deep-link (native) or web URL that Supabase redirects auth flows back to. */
+export const getAuthCallbackUrl = (params?: Record<string, string>) => {
+  const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+  if (Capacitor.isNativePlatform()) {
+    const scheme = Capacitor.getPlatform() === 'ios' ? 'app.bandwith.mobile' : 'com.bandwith.app';
+    return `${scheme}://auth/callback${query}`;
+  }
+  return `${window.location.origin}/auth/callback${query}`;
+};
+
+/** Query flag added to the reset-password redirect so the app knows to ask for a new password. */
+export const RECOVERY_FLAG = 'bw_recovery';
+
 export const resetPassword = async (email: string) => {
+  // Inside Capacitor `window.location.origin` is https://localhost, a dead page
+  // for a link opened from an email, so native uses the app's deep link.
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: getAuthCallbackUrl({ [RECOVERY_FLAG]: '1' }),
   });
+  return { data, error };
+};
+
+export const updatePassword = async (password: string) => {
+  const { data, error } = await supabase.auth.updateUser({ password });
   return { data, error };
 };
 

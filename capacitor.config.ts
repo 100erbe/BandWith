@@ -1,5 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Debug-only native settings. Enable them for local builds with
+//   CAP_DEBUG=true npx cap sync
+// Release builds must NOT allow WebView debugging (anyone with USB access could
+// read the session tokens) or mixed http content.
+const isDebugBuild = process.env.CAP_DEBUG === 'true';
+
 const config: CapacitorConfig = {
   appId: 'com.bandwith.app',
   appName: 'BandWith',
@@ -39,9 +45,9 @@ const config: CapacitorConfig = {
     backgroundColor: '#000000'
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: isDebugBuild,
     captureInput: false,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: isDebugBuild
   }
 };
 

@@ -39,6 +39,7 @@ import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
+import { todayLocal } from '../../../lib/dates';
 
 export interface BandMember {
   id: string;
@@ -422,7 +423,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     province: '',
     zip: '',
     country: '',
-    date: editingEvent?.date || initialDate || new Date().toISOString().split('T')[0],
+    date: editingEvent?.date || initialDate || todayLocal(),
     startTime: editingEvent?.time || '20:00',
     endTime: editingEvent?.endTime || '23:30',
     guests: editingEvent?.guests || 0,

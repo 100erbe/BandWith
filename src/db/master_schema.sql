@@ -1,4 +1,14 @@
 -- ====================================================================
+-- ⚠️  QUARANTINED — DO NOT RUN AGAINST ANY REAL DATABASE  ⚠️
+-- This file DROPs every table (CASCADE) and DISABLES row level security.
+-- It is kept only as historical reference. The source of truth is
+-- supabase/migrations/. The statement below aborts execution on purpose.
+-- ====================================================================
+DO $$ BEGIN
+  RAISE EXCEPTION 'master_schema.sql is quarantined: it drops all tables and disables RLS. Use supabase/migrations instead.';
+END $$;
+
+-- ====================================================================
 -- 1. CLEAN UP EXISTING TABLES (Drops dependent structures safely)
 -- ====================================================================
 DROP TABLE IF EXISTS public.invitations CASCADE;
