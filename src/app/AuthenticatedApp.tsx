@@ -1060,9 +1060,12 @@ export default function AuthenticatedApp() {
         eventMonthStr = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
       }
 
+      // Presence is the source of truth once it has synced (our own id is in
+      // the set); the last-read heuristic only covers the first second or two.
+      const presenceReady = !!user?.id && onlineUserIds.has(user.id);
       const isOnline = others.some((p) => {
         if (onlineUserIds.has(p.user_id)) return true;
-        if (p.last_read_at) {
+        if (!presenceReady && p.last_read_at) {
           const diff = Date.now() - new Date(p.last_read_at).getTime();
           return diff < 4 * 60 * 1000;
         }

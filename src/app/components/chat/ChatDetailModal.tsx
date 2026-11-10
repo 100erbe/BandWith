@@ -463,6 +463,13 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     user?.id && onlineUserIds.has(user.id) && chatParticipants.length > 0
       ? 1 + chatParticipants.filter(p => onlineUserIds.has(p.id)).length
       : null;
+  // Read the others' status live from presence. chat.isOnline is the list's
+  // snapshot from when the chat was opened and never updates.
+  const presenceReady = !!user?.id && onlineUserIds.has(user.id);
+  const isOtherOnline =
+    presenceReady && chatParticipants.length > 0
+      ? chatParticipants.some(p => onlineUserIds.has(p.id))
+      : !!chat.isOnline;
   const eventKind = eventKindOf({ eventType: chat.eventType });
   const EventIcon = EVENT_ICON[eventKind];
   const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Member' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
@@ -514,7 +521,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 )}
               </div>
             )}
-            {chat.isOnline && (
+            {isOtherOnline && (
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success ring-2 ring-background" />
             )}
           </div>
@@ -526,7 +533,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             <p className="bw-body-sm text-muted-foreground truncate flex items-center gap-1.5">
               <span className="sr-only">{chatTypeLabel} · </span>
               {chat.type === 'direct' ? (
-                chat.isOnline ? (
+                isOtherOnline ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-success inline-block shrink-0" />
                     Online
@@ -760,6 +767,18 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 label="Send message"
                 variant="filled"
                 onClick={handleSend}
+                // A tap used to blur the input first: the keyboard closed, the
+                // composer moved down and the click missed, so it took two taps.
+                // Keep the focus on the input and send on the touch itself.
+                onPointerDown={(e) => e.preventDefault()}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  const t = e.changedTouches[0];
+                  const r = e.currentTarget.getBoundingClientRect();
+                  if (t && t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
+                    void handleSend();
+                  }
+                }}
                 disabled={!newMessage.trim() || sending}
                 icon={sending ? <Loader2 className="animate-spin" /> : <Send />}
               />
