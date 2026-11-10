@@ -18,6 +18,7 @@ import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { EventItem } from '@/app/data/events';
 import { RehearsalViewMode } from '@/app/types';
+import { MapsLink } from '@/app/components/ui/MapsLink';
 
 interface RehearsalDetails {
   setlist: Array<{ id: string; title: string; key?: string; bpm?: number; duration?: string }>;
@@ -207,10 +208,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 <div className="flex items-end justify-between gap-3">
                   <span className="flex flex-col gap-1 min-w-0">
                     {currentRehearsal.location && (
-                      <span className="bw-label-md flex items-center gap-1.5 min-w-0">
-                        <MapPin className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{currentRehearsal.location}</span>
-                      </span>
+                      <MapsLink pin query={currentRehearsal.location} className="bw-label-md">
+                        {currentRehearsal.location}
+                      </MapsLink>
                     )}
                     {currentRehearsal.date && <span className="bw-label-xs opacity-70">{currentRehearsal.date}</span>}
                   </span>
@@ -381,7 +381,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 z-50 bg-background px-4 pt-3"
+          className="bw-rail-clear fixed bottom-0 left-0 right-0 z-50 bg-background px-4 pt-3"
           style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
         >
           <div className="flex items-center gap-3 max-w-[700px] mx-auto">

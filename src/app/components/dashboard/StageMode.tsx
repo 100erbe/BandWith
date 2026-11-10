@@ -4,7 +4,9 @@ import { X } from '@/app/components/icons';
 import { durations, easings } from '@/styles/motion';
 import { haptic } from '@/lib/haptics';
 import { FIT, FitText } from '@/app/components/bw/FitText';
-import { IconButton } from '@/app/components/bw/Screen';
+import { HeaderAction } from '@/app/components/bw/Screen';
+import { RailCover, useRailTone } from '@/lib/railActions';
+import { setStatusBarTone } from '@/lib/systemBars';
 
 export interface StageStep {
   label: string;
@@ -97,6 +99,10 @@ export const StageMode: React.FC<StageModeProps> = ({
     onClose();
   };
 
+  // Black canvas: light system icons, and the iPhone Duo rail in dark glass.
+  useEffect(() => setStatusBarTone('dark'), []);
+  useRailTone('dark');
+
   return (
     <motion.div
       role="dialog"
@@ -106,7 +112,7 @@ export const StageMode: React.FC<StageModeProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: durations.normal, ease: easings.standard }}
-      className="fixed inset-0 z-[120] flex flex-col bg-black text-white select-none"
+      className="bw-pane-detail fixed inset-0 z-[120] flex flex-col bg-black text-white select-none"
       style={{
         paddingTop: 'calc(var(--safe-top) + 12px)',
         paddingBottom: 'calc(var(--safe-bottom) + 16px)',
@@ -114,7 +120,7 @@ export const StageMode: React.FC<StageModeProps> = ({
     >
       <div className="flex flex-col flex-1 min-h-0 w-full max-w-[640px] mx-auto px-4 gap-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 shrink-0">
+        <div className="flex items-start justify-between gap-4 shrink-0 bw-status-clear-shift">
           <div className="flex flex-col gap-2 min-w-0">
             <span className="flex items-center gap-2 bw-label-sm text-white">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
@@ -125,7 +131,8 @@ export const StageMode: React.FC<StageModeProps> = ({
               <span className="bw-label-md text-white truncate">{venue}</span>
             )}
           </div>
-          <IconButton label="Exit stage mode" variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
+          <RailCover pane />
+          <HeaderAction pane label="Exit stage mode" variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
         </div>
 
         {/* Run of show */}

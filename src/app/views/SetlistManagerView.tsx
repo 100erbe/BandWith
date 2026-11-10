@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -15,18 +15,22 @@ import {
   Save,
   ChevronRight,
   CheckCircle2,
+  FileText,
+  Upload,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {
   getSongs, createSong, deleteSong,
   getSetlists, getSetlist, createSetlist, updateSetlist, deleteSetlist,
-  replaceSetlistSongs, seedRepertoireSongs
+  replaceSetlistSongs, seedRepertoireSongs, bulkCreateSongs
 } from '@/lib/services/songs';
+import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import type { Song, Setlist } from '@/lib/services/songs';
 import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
 import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
+import { openSongResource } from '@/lib/services/songFiles';
 
 /** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
 const READINESS_COLS = 16;
@@ -105,7 +109,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     duration: ''
   });
   
-  const [, setEditingSong] = useState<Song | null>(null);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [newSetlistName, setNewSetlistName] = useState('');
 
   // Setlist editor state
@@ -164,15 +168,19 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setActionMenuId(null);
   };
 
-  const handlePlaySong = (song: Song) => {
-    if (song.spotify_id) {
-      window.open(`https://open.spotify.com/track/${song.spotify_id}`, '_blank');
-    } else if (song.youtube_url) {
-      window.open(song.youtube_url, '_blank');
-    } else if (song.audio_url) {
-      window.open(song.audio_url, '_blank');
-    }
+  const handlePlaySong = async (song: Song) => {
     setActionMenuId(null);
+    if (song.audio_url && (await openSongResource(song.audio_url))) return;
+    if (song.spotify_id) {
+      window.open(`https://open.spotify.com/track/${encodeURIComponent(song.spotify_id)}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    await openSongResource(song.youtube_url);
+  };
+
+  const handleOpenChart = async (song: Song) => {
+    setActionMenuId(null);
+    await openSongResource(song.chart_url);
   };
 
   const handleEditSong = (song: Song) => {
@@ -186,6 +194,59 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     });
     setShowAddSong(true);
     setActionMenuId(null);
+  };
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // Song list from CSV/TXT (Excel, Numbers, Sheets, Notes) → songs library.
+  const handleImportList = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !selectedBand?.id) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setImportStatus('That file is too large for a song list (max 2 MB).');
+      return;
+    }
+    setImporting(true);
+    try {
+      const parsed = parseSongList(await file.text());
+      if (parsed.length === 0) {
+        setImportStatus('No songs found. Use one song per line or a CSV with a “title” column.');
+        return;
+      }
+      const known = new Set(songs.map((s) => `${s.title.toLowerCase()}|${(s.artist || '').toLowerCase()}`));
+      const fresh = parsed.filter((p) => !known.has(`${p.title.toLowerCase()}|${(p.artist || '').toLowerCase()}`));
+      if (fresh.length === 0) {
+        setImportStatus(`All ${parsed.length} songs are already in your library.`);
+        return;
+      }
+      const { error } = await bulkCreateSongs(
+        selectedBand.id,
+        fresh.map((p) => ({
+          title: p.title,
+          artist: p.artist,
+          key: p.key,
+          bpm: p.bpm,
+          duration_seconds: p.duration,
+          genre: p.genre,
+          status: 'ready' as const,
+          priority: 'medium' as const,
+        })) as Parameters<typeof bulkCreateSongs>[1],
+      );
+      if (error) {
+        setImportStatus(`Import failed: ${error.message}`);
+        return;
+      }
+      setImportStatus(
+        `Imported ${fresh.length} song${fresh.length === 1 ? '' : 's'}` +
+          (fresh.length < parsed.length ? ` (${parsed.length - fresh.length} already in your library).` : '.'),
+      );
+      await fetchData();
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSeedRepertoire = async () => {
@@ -371,16 +432,40 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
         overline="Music & repertoire"
         title="Setlists & songs"
         actions={
-          <IconButton
-            label={viewMode === 'songs' ? 'Add song' : 'New setlist'}
-            variant="filled"
-            icon={<Plus />}
-            onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
-          />
+          <>
+            {viewMode === 'songs' && (
+              <IconButton
+                label="Import song list"
+                icon={<Upload />}
+                disabled={importing}
+                onClick={() => importInputRef.current?.click()}
+              />
+            )}
+            <IconButton
+              label={viewMode === 'songs' ? 'Add song' : 'New setlist'}
+              variant="filled"
+              icon={<Plus />}
+              onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
+            />
+          </>
         }
       />
 
+      <input
+        ref={importInputRef}
+        type="file"
+        accept={SONG_LIST_ACCEPT}
+        className="hidden"
+        onChange={handleImportList}
+        aria-hidden
+        tabIndex={-1}
+      />
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+        {importStatus && (
+          <p role="status" className="px-4 py-3 rounded-[16px] bg-card bw-body-sm">
+            {importStatus}
+          </p>
+        )}
         {/* View toggle (Figma Selector MD) */}
         <div className="flex gap-2">
           <Selector size="md" selected={viewMode === 'songs'} onClick={() => setViewMode('songs')} count={songs.length}>
@@ -467,6 +552,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowAddSong(true)}>
                         Add first song
                       </PillButton>
+                      <PillButton size="md" variant="outline" fullWidth={false} loading={importing} onClick={() => importInputRef.current?.click()}>
+                        Import list (CSV/TXT)
+                      </PillButton>
                       <PillButton size="md" variant="outline" fullWidth={false} loading={seeding} onClick={handleSeedRepertoire}>
                         Load 700+ songs
                       </PillButton>
@@ -477,6 +565,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 <ul className="flex flex-col gap-4" aria-label={`All songs (${filteredSongs.length})`}>
                   {filteredSongs.map((song, i) => {
                     const canPlay = !!(song.spotify_id || song.youtube_url || song.audio_url);
+                    const hasChart = !!song.chart_url;
                     const open = actionMenuId === song.id;
                     return (
                       <motion.li
@@ -519,6 +608,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                             <RowMenu
                               items={[
                                 ...(canPlay ? [{ label: 'Play', icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
+                                ...(hasChart ? [{ label: 'Open chart', icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: 'Edit', icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
                                 { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true },
                               ]}
@@ -591,6 +681,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             setNewSong({ title: '', artist: '', bpm: '', key: '', duration: '' });
           }}
           bandId={selectedBand.id}
+          song={editingSong}
           onSongAdded={fetchData}
         />
       )}

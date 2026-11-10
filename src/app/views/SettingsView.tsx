@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Toggle, IconButton, Tag, PillButton, Selector } from '@/app/components/bw';
+import { Toggle, IconButton, NavBackButton, Tag, PillButton, Selector } from '@/app/components/bw';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import {
@@ -389,13 +389,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     >
       {/* Sticky Top Bar (Figma: Top Bar — back circle + H2 title) */}
       <div
-        className="px-4 shrink-0 bg-[var(--bg)] sticky top-0 z-30"
+        className="px-4 shrink-0 bg-[var(--bg)] sticky top-0 z-30 bw-status-clear"
         style={{
           paddingTop: 'calc(var(--safe-top) + 8px)',
         }}
       >
         <div className="max-w-xl mx-auto w-full h-14 flex items-center gap-3">
-          <IconButton label="Back" size="sm" icon={<ArrowLeft />} onClick={handleBack} />
+          <NavBackButton size="sm" onClick={handleBack} />
           <h1 className="bw-h2 text-foreground truncate min-w-0 flex-1">{getSectionTitle()}</h1>
         </div>
       </div>

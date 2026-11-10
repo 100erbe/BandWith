@@ -23,8 +23,10 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { durations, easings } from '@/styles/motion';
 import { parseLocalDate } from '@/lib/dates';
-import { IconButton, Card, Tag } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton, NavBackButton, Card, Tag } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 export interface NotificationData {
   id: string;
@@ -183,6 +185,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onOpenRSVP,
   onOpenPoll,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
@@ -257,7 +260,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: durations.normal, ease: easings.smooth }}
-          className="fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
+          className="bw-pane-detail fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
           style={{ overscrollBehaviorX: 'none' }}
         >
           {/* ═══ HEADER ═══ */}
@@ -269,7 +272,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   <p className="bw-label-sm text-muted-foreground">Activity &amp; updates</p>
                   <h1 className="bw-display-lg text-foreground truncate">Inbox</h1>
                 </div>
-                <IconButton label="Close notifications" icon={<X />} onClick={handleClose} />
+                <RailCover pane />
+                <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
               </div>
             </header>
           ) : (
@@ -277,12 +281,15 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
               <div className="max-w-xl mx-auto w-full h-11 flex items-center gap-3">
                 {viewingIndex !== null ? (
-                  <IconButton label="Back to notification list" icon={<ArrowLeft />} onClick={backToList} />
+                  <NavBackButton pane label="Back to notification list" onClick={backToList} />
                 ) : (
-                  <IconButton label="Close notifications" icon={<X />} onClick={handleClose} />
+                  <>
+                    <RailCover pane />
+                    <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
+                  </>
                 )}
                 <p className="flex-1 min-w-0 text-center bw-label-sm text-muted-foreground truncate">Notification detail</p>
-                <IconButton label="Delete notification" variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
+                <HeaderAction pane label="Delete notification" variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
               </div>
             </header>
           )}
@@ -434,7 +441,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                               {(d.member_fee || d.fee) && (
                                 <KV
                                   k={d.member_fee ? 'Allocated fee' : 'Total fee'}
-                                  v={`€${Number(d.member_fee || d.fee).toLocaleString()}`}
+                                  v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString()}`}
                                 />
                               )}
                             </>

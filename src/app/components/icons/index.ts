@@ -35,3 +35,4 @@ export const MoreHorizontalIcon = MoreHorizontal;
 export const GripVerticalIcon = GripVertical;
 export const PanelLeftIcon = PanelLeft;
 export const XIcon = X;
+export * from './CurrencyIcon';

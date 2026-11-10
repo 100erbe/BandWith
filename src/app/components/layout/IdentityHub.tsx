@@ -11,7 +11,7 @@ import {
   Box,
   FileSignature,
   CheckSquare,
-  Euro,
+  CurrencyIcon,
   Users,
   Bell,
   Mail,
@@ -26,7 +26,8 @@ import {
   Trash2,
 } from '@/app/components/icons';
 import { DotText, Toggle } from '@/app/components/bw';
-import { IconButton, Tag, ListRow } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton, Tag, ListRow } from '@/app/components/bw/Screen';
+import { useRailCover, useRailOwnsChrome } from '@/lib/railActions';
 import { PillButton, PillField } from '@/app/components/bw/Form';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
@@ -104,6 +105,11 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   } = useBand();
 
   const topInset = 'max(var(--safe-top), 12px)';
+
+  // iPhone Duo: the profile covers the screen beneath, so its Back/Search
+  // leave the rail; the hub keeps its own close (Figma "Identity / Who you are").
+  useRailCover(isOpen, false, false);
+  const railChrome = useRailOwnsChrome();
 
   const [isScrolled, setIsScrolled] = useState(false);
   const isScrolledRef = useRef(false);
@@ -394,13 +400,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     Who you are
                   </motion.h1>
                 </div>
-                {showCloseButton && (
-                  <IconButton
+                {(showCloseButton || railChrome) && (
+                  <HeaderAction
                     label="Close Account Hub"
                     variant="filled"
+                    railProminent={false}
                     icon={<X />}
                     onClick={onClose}
-                    className="absolute top-2 right-0"
+                    className="absolute top-2 right-0 bw-status-clear-shift"
                   />
                 )}
               </motion.div>
@@ -808,7 +815,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 onClick={() => onOpenPricing?.()}
                 className="w-full p-4 rounded-[24px] bg-accent text-accent-foreground flex items-center gap-4 text-left transition-transform active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <Euro aria-hidden className="w-6 h-6 shrink-0" />
+                <CurrencyIcon aria-hidden className="w-6 h-6 shrink-0" />
                 <span className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="bw-label-md">Pricing, fees & services</span>
                   <span className="bw-body-sm">Logo, IBAN, musician fees & quote services</span>

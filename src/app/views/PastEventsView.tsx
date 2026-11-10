@@ -7,6 +7,7 @@ import { parseLocalDate } from '@/lib/dates';
 import { Metric } from '@/app/components/bw';
 import { BackButton, Selector } from '@/app/components/bw/Form';
 import { SearchField, Card } from '@/app/components/bw/Screen';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface PastEventsViewProps {
   onClose: () => void;
@@ -36,7 +37,7 @@ const parseFee = (price?: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const shortEuro = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `€${v.toLocaleString('en-US')}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${sym()}${v.toLocaleString('en-US')}`);
 
 const CATEGORIES = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES'] as const;
 type CategoryFilter = (typeof CATEGORIES)[number];
@@ -49,6 +50,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   bands = [],
   userFeeMap = {},
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
@@ -166,8 +168,8 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
 
     const formattedRevenue =
       totalRevenue >= 1000
-        ? `€${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
-        : `€${totalRevenue}`;
+        ? `${sym()}${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
+        : `${sym()}${totalRevenue}`;
 
     return { gigsCount, rehearsalsCount, totalRevenue, formattedRevenue };
   }, [rawPastEvents, isAdmin, userFeeMap]);
@@ -236,7 +238,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
 
         {/* Filter tabs (Figma Selector MD) */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+          <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
             {visibleCategories.map((cat) => (
               <Selector key={cat} size="md" selected={selectedCategory === cat} onClick={() => setSelectedCategory(cat)}>
                 {cat}
@@ -244,7 +246,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
             ))}
           </div>
           {availableYears.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+            <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
               {['ALL', ...availableYears].map((yr) => (
                 <Selector key={yr} selected={selectedYear === yr} onClick={() => setSelectedYear(yr)}>
                   {yr === 'ALL' ? 'All years' : yr}

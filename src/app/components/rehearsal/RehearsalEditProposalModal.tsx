@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, Link, Paperclip, X, Plus, Save, Clock, User, CheckCircle2, ArrowLeft, Image as ImageIcon, Music, File } from '@/app/components/icons';
 import { SongProposal, ProposalAttachment } from './types';
 import { BwSheet, IconButton, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
+import { useRailOwnsChrome } from '@/lib/railActions';
 
 interface Props {
   isOpen: boolean;
@@ -16,6 +17,8 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
   
   // Sub-flow State
   const [view, setView] = useState<'edit' | 'add_attachment'>('edit');
+  // iPhone Duo: the sheet's Back (rail) already returns to the proposal.
+  const railOwnsBack = useRailOwnsChrome();
   
   // Add Attachment State
   const [attType, setAttType] = useState<ProposalAttachment['type'] | null>(null);
@@ -122,16 +125,18 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
       {isAdding ? (
         /* --- SUB-VIEW: ADD ATTACHMENT --- */
         <div className="dark flex flex-col gap-5">
-          <PillButton
-            variant="ghost"
-            size="sm"
-            fullWidth={false}
-            className="self-start -ml-3"
-            icon={<ArrowLeft className="w-4 h-4" />}
-            onClick={() => setView('edit')}
-          >
-            Back to proposal
-          </PillButton>
+          {!railOwnsBack && (
+            <PillButton
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              className="self-start -ml-3"
+              icon={<ArrowLeft className="w-4 h-4" />}
+              onClick={() => setView('edit')}
+            >
+              Back to proposal
+            </PillButton>
+          )}
 
           <fieldset className="flex flex-col gap-2">
             <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Attachment type</legend>

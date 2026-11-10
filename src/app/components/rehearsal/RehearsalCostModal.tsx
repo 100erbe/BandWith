@@ -4,6 +4,7 @@ import { RehearsalState } from './types';
 import { BwSheet, PillButton } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onUpdate }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const { isAdmin } = useBand();
   const [totalCost, setTotalCost] = useState(data.totalCost);
   const [splitMethod, setSplitMethod] = useState(data.splitMethod);
@@ -70,7 +72,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
         <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-white/[0.08]">
           <span className="bw-label-sm text-sheet-foreground/70">Total room cost</span>
           <span className="flex items-baseline gap-2">
-            <span className="bw-value-lg">€</span>
+            <span className="bw-value-lg">{sym()}</span>
             <input
               type="number"
               value={totalCost}
@@ -120,7 +122,7 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
                 </span>
                 <span className="flex-1 min-w-0 bw-body-lg truncate">{member.name}</span>
                 <span className="flex items-baseline gap-1 shrink-0">
-                  <span className="bw-body-sm text-sheet-foreground/60">€</span>
+                  <span className="bw-body-sm text-sheet-foreground/60">{sym()}</span>
                   {splitMethod === 'custom' ? (
                     <input
                       type="number"

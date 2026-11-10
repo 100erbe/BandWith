@@ -158,21 +158,23 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
   }
 };
 
-// Helper to save token to database
+// Save the device token for the signed-in user. The RPC (migration 046) moves
+// the token to this account if another account used this device before;
+// the plain upsert is the fallback until the migration is applied.
 const saveTokenToDatabase = async (userId: string, token: string): Promise<{ success: boolean; error: Error | null }> => {
   const platform = Capacitor.getPlatform();
-  
+
   try {
-    console.log('[Push] Saving token for platform:', platform);
-    
-    // Upsert using token as the unique conflict target
+    const { error: rpcError } = await supabase.rpc('bw_register_push_token', { p_token: token, p_platform: platform });
+    if (!rpcError) return { success: true, error: null };
+
     const { error } = await supabase
       .from('push_tokens')
       .upsert(
         {
           user_id: userId,
-          token: token,
-          platform: platform,
+          token,
+          platform,
           is_active: true,
           updated_at: new Date().toISOString(),
         },
@@ -180,15 +182,29 @@ const saveTokenToDatabase = async (userId: string, token: string): Promise<{ suc
       );
 
     if (error) {
-      console.error('[Push] Upsert error:', error);
+      console.error('[Push] Token save failed:', error.message);
       return { success: false, error: new Error(error.message) };
     }
-    
-    console.log('[Push] Token saved successfully!');
     return { success: true, error: null };
   } catch (err: any) {
     console.error('[Push] Save error:', err);
     return { success: false, error: err };
+  }
+};
+
+/**
+ * Stop pushes to this device for the account that is signing out. Call it
+ * BEFORE the session ends (the RPC needs the user's JWT).
+ */
+export const unregisterPushToken = async (): Promise<void> => {
+  if (!isNative() || !cachedToken) return;
+  try {
+    const { error } = await supabase.rpc('bw_unregister_push_token', { p_token: cachedToken });
+    if (error) {
+      await supabase.from('push_tokens').update({ is_active: false }).eq('token', cachedToken);
+    }
+  } catch {
+    /* best effort: never block sign-out */
   }
 };
 
@@ -239,7 +255,14 @@ export const setupNativePushListeners = (
       return;
     }
     
-    // Show a local notification so user sees it even when app is in foreground
+    // iOS already shows the banner in the foreground (presentationOptions in
+    // capacitor.config), so a local notification would show it twice.
+    if (Capacitor.getPlatform() === 'ios') {
+      onNotification({ title: notification.title, body: notification.body, data: notification.data });
+      return;
+    }
+
+    // Android: show a local notification so the user sees it in the foreground
     try {
       // Use a smaller ID that fits in Java int (max ~2 billion)
       const notificationId = Math.floor(Math.random() * 2147483647);

@@ -31,7 +31,8 @@ import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker } from '@/app/components/ui/DatePicker';
 import { DotText, Toggle } from '@/app/components/bw';
-import { IconButton, Tag } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
+import { RailCover, useRailAction } from '@/lib/railActions';
 import { PillButton, PillField } from '@/app/components/bw/Form';
 import {
   Quote,
@@ -2824,6 +2825,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const footerPadBottom = { paddingBottom: 'calc(var(--safe-bottom) + 16px)' };
 
   // ── EDIT MODE RENDER ────────────────────────────────────────
+  // iPhone Duo: the wizard's close sits in the system column under the clock
+  // (Figma "Closed · Quote / New – 1 Event & lineup").
+  const closeInRail = useRailAction(isEditing ? undefined : onClose, {
+    label: 'Close quote wizard',
+    icon: <X />,
+    pane: true,
+  });
+
   if (isEditing) {
     return (
       <motion.div
@@ -2833,7 +2842,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-        className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+        className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
       >
         <header className="shrink-0 px-4 pb-4 bg-background" style={headerPadTop}>
           <div className="max-w-xl mx-auto w-full flex items-start gap-3">
@@ -2850,7 +2859,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 {formattedDateStr} · {eventTimeStart} – {eventTimeEnd} · {venueName || 'Venue TBD'}
               </span>
             </div>
-            <IconButton label="Close edit quote modal" icon={<X />} onClick={onClose} />
+            <RailCover pane />
+            <HeaderAction pane label="Close edit quote modal" icon={<X />} onClick={onClose} />
           </div>
         </header>
 
@@ -2887,19 +2897,19 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-      className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+      className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
     >
       {/* Header: back · title · close, then step bars */}
       <header className="shrink-0 px-4 pb-3 bg-background" style={headerPadTop}>
         <div className="max-w-xl mx-auto w-full flex flex-col gap-3">
           <div className="flex items-center gap-3 min-h-11">
-            <IconButton
+            <NavBackButton
+              pane
               label={isFirstStep ? 'Close quote wizard' : 'Previous step'}
-              icon={<ArrowLeft />}
               onClick={isFirstStep ? onClose : handleBack}
             />
             <h1 className="flex-1 min-w-0 bw-h2 truncate">New quote</h1>
-            <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={onClose} />
+            {!closeInRail && <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={onClose} />}
           </div>
           <InteractiveQuoteStepIndicator
             current={step}

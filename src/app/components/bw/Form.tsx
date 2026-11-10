@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertCircle, ArrowLeft, Loader2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { useRailBack } from '@/lib/railActions';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Form building blocks from the Figma design system (Button, Input, Top Bar,
@@ -70,7 +71,10 @@ export const BackButton: React.FC<{ onClick: () => void; label?: string; classNa
   label = 'Back',
   className,
   tone = 'default',
-}) => (
+}) => {
+  // iPhone Duo: Back lives in the side rail.
+  if (useRailBack(onClick, label)) return null;
+  return (
   <button
     type="button"
     onClick={onClick}
@@ -86,7 +90,8 @@ export const BackButton: React.FC<{ onClick: () => void; label?: string; classNa
       <ArrowLeft className="w-4 h-4" strokeWidth={2} />
     </span>
   </button>
-);
+  );
+};
 
 /** Overline in micro caps + display title (Figma "Kicker"). */
 export const Kicker: React.FC<{
@@ -214,7 +219,7 @@ export const AuthScreen: React.FC<{
     className={cn('min-h-[100dvh] bg-background text-foreground flex flex-col', className)}
     style={{ paddingTop: 'var(--safe-top)' }}
   >
-    {top && <div className="h-14 shrink-0 flex items-center px-4">{top}</div>}
+    {top && <div className="h-14 shrink-0 flex items-center px-4 bw-status-clear">{top}</div>}
     <div className={cn('flex-1 flex flex-col px-4 pt-4 pb-6', bodyClassName)}>{children}</div>
     {footer && (
       <div className="shrink-0 px-4 pt-3 flex flex-col gap-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>

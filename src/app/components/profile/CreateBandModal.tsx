@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Users, Link, Check, Plus } from '@/app/components/icons';
-import { IconButton } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
@@ -97,7 +98,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[115] flex flex-col overflow-hidden bg-background text-foreground"
+      className="bw-pane-detail fixed inset-0 z-[115] flex flex-col overflow-hidden bg-background text-foreground"
     >
       {/* Header (Figma: Band / Create band — Kicker + Outline close) */}
       <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
@@ -106,7 +107,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             <p className="bw-label-sm text-muted-foreground">New entity · Start a band or project</p>
             <h2 className="bw-display-lg text-foreground">Create</h2>
           </div>
-          <IconButton label="Close" icon={<X />} onClick={onClose} />
+          <RailCover pane />
+          <HeaderAction pane label="Close" icon={<X />} onClick={onClose} />
         </div>
       </header>
 

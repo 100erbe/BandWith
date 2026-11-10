@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { currencySymbol as symbolFor } from '@/lib/currency';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -24,7 +25,8 @@ import {
   Send,
   ArrowUpRight,
 } from '@/app/components/icons';
-import { IconButton, Tag } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
+import { RailCover, useRailAction } from '@/lib/railActions';
 import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
@@ -378,11 +380,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // --- Pricing Settings ---
   const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
 
-  const currencySymbol = useMemo(() => {
-    if (pricingSettings.currency === 'USD') return '$';
-    if (pricingSettings.currency === 'GBP') return '£';
-    return '€';
-  }, [pricingSettings.currency]);
+  const currencySymbol = symbolFor(pricingSettings.currency);
 
   const getAutoFeeForMember = useCallback(
     (
@@ -422,6 +420,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       : editingType || (modalCategory === 'quote' ? null : 'club');
 
   const [eventType, setEventType] = useState<EventType | null>(defaultEventType);
+  // iPhone Duo: the wizard's close sits in the system column under the clock
+  // (Figma "Closed · New gig / 1 Event & lineup").
+  const closeInRail = useRailAction(!isEditing && eventType !== 'rehearsal' ? onClose : undefined, {
+    label: `Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`,
+    icon: <X />,
+    pane: true,
+  });
   const [performanceType, setPerformanceType] = useState<PerformanceType>('full_band');
   const [setting, setSetting] = useState<SettingType>('indoor');
 
@@ -678,11 +683,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     if (!isAdmin) {
       return (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="bw-pane-detail fixed inset-0 z-[100]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="member-restriction-title"
         >
+          {/* iPhone Duo: trailing pane when open, scrim stops at the rail
+              (Figma "Modal / Member restriction"). */}
+          <RailCover pane />
+          <div className="relative h-full flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-black/65" aria-hidden />
           <div className="relative w-full max-w-[342px] rounded-[24px] bg-background text-foreground p-6 flex flex-col gap-4">
             <span className="w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center">
@@ -710,6 +719,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <PillButton variant="outline" size="lg" onClick={onClose}>
               Cancel
             </PillButton>
+          </div>
           </div>
         </div>
       );
@@ -1755,7 +1765,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-          className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+          className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
         >
           {/* Header */}
           <div className="shrink-0 px-4 pb-3 flex flex-col gap-2" style={headerPadTop}>
@@ -1765,7 +1775,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <Tag variant="subtle">{modalCategory}</Tag>
                 {eventType && <Tag variant="subtle">{eventType}</Tag>}
               </div>
-              <IconButton
+              <RailCover pane />
+              <HeaderAction
+                pane
                 label={`Close edit ${modalCategory} modal`}
                 variant="outline"
                 size="sm"
@@ -1836,26 +1848,28 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-        className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+        className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
       >
         {/* Top bar (Figma Top Bar Style=Canvas) + wizard steps */}
         <div className="shrink-0 bg-background" style={headerPadTop}>
-          <div className="h-14 px-4 flex items-center gap-3">
-            <IconButton
+          <div className="h-14 px-4 flex items-center gap-3 bw-status-clear">
+            <NavBackButton
+              pane
               label={isFirstStep ? `Cancel new ${modalCategory === 'quote' ? 'quote' : 'gig'}` : 'Back'}
               size="sm"
-              icon={<ArrowLeft />}
               onClick={isFirstStep ? onClose : handleBack}
             />
             <h2 className="bw-h2 flex-1 min-w-0 truncate">{modalCategory === 'quote' ? 'New quote' : 'New gig'}</h2>
-            <IconButton
-              label={`Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`}
-              variant="ghost"
-              size="sm"
-              icon={<X />}
-              onClick={onClose}
-              className="-mr-1.5"
-            />
+            {!closeInRail && (
+              <IconButton
+                label={`Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`}
+                variant="ghost"
+                size="sm"
+                icon={<X />}
+                onClick={onClose}
+                className="-mr-1.5"
+              />
+            )}
           </div>
           <div className="px-4 pb-3">
             <InteractiveStepIndicator

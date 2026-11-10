@@ -1,3 +1,4 @@
+import type { ReceiptStatus } from '@/lib/services/chats';
 // Chat types
 export type ChatType = 'direct' | 'band' | 'event';
 export type ChatFilterType = 'all' | 'direct' | 'band' | 'event';
@@ -28,6 +29,7 @@ export interface ChatItem {
   isOnline?: boolean;
   isLastMessageMine?: boolean;
   isLastMessageRead?: boolean;
+  lastMessageStatus?: ReceiptStatus;
 }
 
 export const toTitleCase = (str?: string): string => {

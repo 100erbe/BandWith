@@ -43,6 +43,7 @@ import {
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist } from "@/lib/services/songs";
+import { receiptFor, deleteChat as deleteChatService } from "@/lib/services/chats";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -56,6 +57,8 @@ import { TabName, ExpandedCardType, CreateEventType, RehearsalViewMode } from "@
 
 import { Header } from "@/app/components/layout/Header";
 import BottomNavigation from "@/app/components/layout/BottomNavigation";
+import { useRailLayout } from "@/lib/deviceRegions";
+import { HeaderAction, NavBackButton } from "@/app/components/bw/Screen";
 import { IdentityHub } from "@/app/components/layout/IdentityHub";
 import { PendingInvitesPrompt } from "@/app/components/notifications/PendingInvitesPrompt";
 import { SwitchBandPopup } from "@/app/components/layout/SwitchBandPopup";
@@ -120,6 +123,7 @@ import type { RehearsalPoll } from "@/lib/services/rehearsalPolls";
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
+import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -278,6 +282,8 @@ export default function AuthenticatedApp() {
 
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
+  // iPhone Duo rail (Figma "Duo"): the switch-band sheet keeps the tabs, the inbox hides them.
+  const { twoPane, rail: railLayout } = useRailLayout();
   useEffect(() => {
     isHeaderScrolledRef.current = false;
     setIsHeaderScrolled(false);
@@ -998,7 +1004,8 @@ export default function AuthenticatedApp() {
       let avatarUrl: string | undefined = undefined;
       if (type === "direct") {
         const otherWithProfile = others.find((p) => (p as any).profile?.full_name);
-        displayName = otherWithProfile?.profile?.full_name || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" ? chat.name : (others[0] ? `User ${others[0].user_id.slice(0, 6)}` : "Direct Chat"));
+        // Always the other person's name, never a generic "Direct Chat".
+        displayName = otherWithProfile?.profile?.full_name || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : "Member");
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
@@ -1065,10 +1072,10 @@ export default function AuthenticatedApp() {
       });
 
       const isLastMessageMine = chat.last_message ? chat.last_message.sender_id === user?.id : false;
-      const otherLastRead = others[0]?.last_read_at ? new Date(others[0].last_read_at) : null;
-      const isLastMessageRead = isLastMessageMine && otherLastRead && chat.last_message?.created_at
-        ? new Date(chat.last_message.created_at) <= otherLastRead
-        : false;
+      const lastMessageStatus = isLastMessageMine && chat.last_message?.created_at
+        ? receiptFor(chat.last_message.created_at, others)
+        : undefined;
+      const isLastMessageRead = lastMessageStatus === "read";
 
       return {
         id: uuidToNumericId(chat.id),
@@ -1091,6 +1098,7 @@ export default function AuthenticatedApp() {
         isOnline,
         isLastMessageMine,
         isLastMessageRead,
+        lastMessageStatus,
       };
     }) as ChatItem[];
   }, [realChats, realBand?.name, realBand?.logo_url, realBands, user?.id, onlineUserIds]);
@@ -1266,6 +1274,33 @@ export default function AuthenticatedApp() {
   };
 
   const toggleControlDeck = toggleIdentity;
+
+  // iPhone Duo rail profile: it is reachable from every screen, so opening it
+  // first closes the browsing layers that would otherwise sit on top of it.
+  // Create/edit flows keep it disabled so nothing typed is lost.
+  const railProfileLocked =
+    !isIdentityOpen && (isCreateEventOpen || showPersonalGigModal || showEditProfile || showUpgradePricing || showPricingModal || !!rsvpNotification || !!pollNotification);
+  const openRailProfile = () => {
+    if (isIdentityOpen) { closeIdentity(); return; }
+    if (railProfileLocked) return;
+    setShowSettings(false);
+    setShowBandMembers(false);
+    setShowSetlistManager(false);
+    setShowAnalytics(false);
+    setShowInventory(false);
+    setShowContracts(false);
+    setShowTaskTemplates(false);
+    setShowPastEvents(false);
+    setShowNewChat(false);
+    setIsBandSwitcherOpen(false);
+    setIsDayPickerOpen(false);
+    setSelectedChat(null);
+    setSelectedEvent(null);
+    setSelectedNotification(null);
+    setExpandedCard(null);
+    setIsPlusMenuOpen(false);
+    openIdentity();
+  };
 
   const closeMenus = () => {
     setIsControlDeckOpen(false);
@@ -2583,6 +2618,7 @@ export default function AuthenticatedApp() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
+      <MapsChooserHost />
       <OfflineBanner
         isOnline={isOnline}
         wasOffline={wasOffline}
@@ -2590,9 +2626,19 @@ export default function AuthenticatedApp() {
         onSyncNow={triggerSync}
       />
       <div className="fixed inset-0 z-0 bg-background" />
+      {/* iPhone Duo, open: the trailing pane shows details; this fills it until
+          one is open. Neutral canvas like the Figma "Open" panes, so the glass
+          rail (lime Create, active dots) stays legible over it. */}
+      <div aria-hidden="true" className="bw-pane-placeholder flex-col justify-end gap-3 p-6 pb-10 bg-background text-foreground select-none">
+        <span className="bw-label-sm text-muted-foreground">BandWith · Duo</span>
+        <span className="bw-display-lg">
+          {activeTab === 'Chat' ? 'Pick a chat' : activeTab === 'More' ? 'Your band, side by side' : 'Pick an event'}
+        </span>
+        <span className="bw-body-sm text-muted-foreground">Details open on this side.</span>
+      </div>
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
-      <div ref={scrollContainerRef} className="w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
+      <div ref={scrollContainerRef} className="bw-pane-main w-full max-w-[680px] mx-auto relative flex flex-col z-10 overflow-y-auto" style={{
         paddingTop: "0px",
         paddingBottom: "0px",
         paddingLeft: "16px", paddingRight: "16px",
@@ -2653,7 +2699,7 @@ export default function AuthenticatedApp() {
             />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (!error) refetchChats?.(); }} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
@@ -2742,9 +2788,9 @@ export default function AuthenticatedApp() {
           ) : expandedCard === "rehearsal" ? (
             <ExpandedCardWrapper key="expanded-card-wrapper" backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
               <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3">
-                <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-white" /></button>
+                <NavBackButton onClick={() => setExpandedCard(null)} variant="ghost" className="w-10 h-10 bg-white/20 text-white" icon={<ChevronLeft className="w-6 h-6 text-white" />} />
                 <h1 className="text-lg font-bold text-white">My Rehearsals</h1>
-                {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-white" /></button> : <div className="w-10" />}
+                {isAdmin ? <HeaderAction label="New rehearsal" variant="ghost" icon={<Plus />} onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 text-white" /> : <div className="w-10" />}
               </div>
               <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
                 <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-white" /></div>
@@ -2760,18 +2806,36 @@ export default function AuthenticatedApp() {
 
       <BottomNavigation
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          // Duo open: details live in the trailing pane, so switching tab
+          // clears them instead of leaving a stale detail beside a new list.
+          if (twoPane) {
+            setSelectedChat(null);
+            setSelectedEvent(null);
+            setSelectedNotification(null);
+          }
+          setActiveTab(tab);
+        }}
         isPlusMenuOpen={isPlusMenuOpen}
         setIsPlusMenuOpen={setIsPlusMenuOpen}
         isControlDeckOpen={isIdentityOpen}
         isIdentityOpen={isIdentityOpen}
         toggleControlDeck={toggleIdentity}
         toggleIdentity={toggleIdentity}
+        onRailProfile={openRailProfile}
+        railProfileLocked={railProfileLocked}
         closeMenus={closeMenus}
         onCreateEvent={handleCreateEvent}
         isScrollingDown={isScrollingDown}
         unreadChatCount={chatUnreadCounts.all}
-        isHidden={!!expandedCard || !!selectedChat || !!selectedEvent || !!selectedNotification || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat}
+        isHidden={
+          railLayout
+            ? // iPhone Duo: layers that hand their Back/close to the rail hide
+              // the tabs themselves (only on the pane they cover when open);
+              // these few register nothing with it.
+              !!expandedCard || isNotificationsOpen || isDayPickerOpen || (!twoPane && (!!rsvpNotification || !!pollNotification))
+            : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
+        }
         isAdmin={isAdmin}
         isSolo={userMode === 'solo'}
       />

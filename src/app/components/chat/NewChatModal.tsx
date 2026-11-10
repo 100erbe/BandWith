@@ -8,6 +8,7 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { EventMark, eventKindOf, IconButton, Tag, PillButton } from '@/app/components/bw';
+import { RailSheet } from '@/lib/railActions';
 import { createChat } from '@/lib/services/chats';
 import { getBandMembersForChat, getBands } from '@/lib/services/bands';
 import { getEvents } from '@/lib/services/events';
@@ -270,7 +271,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[90] bg-black/50"
+        className="bw-rail-sheet fixed inset-0 z-[90] bg-black/50"
         onClick={onClose}
       />
 
@@ -283,7 +284,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
-        className="dark fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] flex flex-col"
+        className="bw-rail-sheet dark fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] flex flex-col"
         style={{ 
           maxHeight: '85vh',
           paddingBottom: 'calc(var(--safe-bottom) + 16px)',
@@ -298,6 +299,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               <span className="bw-label-sm text-foreground/85">Start chat</span>
               <h2 id="new-chat-title" className="bw-h1 text-foreground">New chat</h2>
             </div>
+            <RailSheet onClose={onClose} />
             <IconButton label="Close" variant="sheet" size="sm" icon={<X />} onClick={onClose} />
           </div>
         </div>

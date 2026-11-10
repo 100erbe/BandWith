@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Calendar, ArrowLeft, ArrowRight, Check, X } from '@/app/components/icons';
 import { cn } from './utils';
 import { IconButton } from '@/app/components/bw/Screen';
+import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
 
 export interface DatePickerProps {
@@ -96,13 +97,13 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
     <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className="fixed inset-0 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+        className="bw-rail-sheet fixed inset-0 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
         style={{ zIndex: zIndex - 1 }}
       />
       <DialogPrimitive.Content
         aria-describedby={undefined}
         className={cn(
-          'fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
+          'bw-rail-sheet fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
           'bg-background text-foreground rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.35)] outline-none select-none',
           'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom duration-300',
         )}
@@ -116,6 +117,9 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
               {overline && <p className="bw-label-sm text-muted-foreground truncate">{overline}</p>}
               <DialogPrimitive.Title className="bw-h1 text-foreground [overflow-wrap:anywhere]">{title}</DialogPrimitive.Title>
             </div>
+            {/* iPhone Duo: an existing rail Back closes the picker first
+                (Figma "Closed · Picker / Date"). */}
+            <RailSheet onClose={() => onOpenChange(false)} />
             <DialogPrimitive.Close asChild>
               <IconButton label="Close" icon={<X />} size="sm" variant="outline" />
             </DialogPrimitive.Close>

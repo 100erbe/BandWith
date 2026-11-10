@@ -14,7 +14,8 @@ import {
   RefreshCw,
 } from '@/app/components/icons';
 import { createPortal } from 'react-dom';
-import { IconButton, Tag, SearchField, Card } from '@/app/components/bw/Screen';
+import { IconButton, NavBackButton, Tag, SearchField, Card } from '@/app/components/bw/Screen';
+import { useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
@@ -25,6 +26,7 @@ import { EventsSkeleton } from '@/app/components/ui/EventsSkeleton';
 import { parseLocalDate } from '@/lib/dates';
 import { DotMeter, DotText, EventMark, SectionHeader, type EventKind } from '@/app/components/bw';
 import { FIT, FitText } from '@/app/components/bw/FitText';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -142,11 +144,11 @@ const formatEventTime = (timeStr: string): string => {
 };
 
 const formatBandTotal = (price: string): string => {
-  if (!price) return '€0';
+  if (!price) return `${sym()}0`;
   const num = parseFloat(price.replace(/[^0-9.]/g, ''));
   if (isNaN(num)) return price;
-  if (num >= 1000) return `€${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
-  return `€${num}`;
+  if (num >= 1000) return `${sym()}${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}K`;
+  return `${sym()}${num}`;
 };
 
 const getEventWarnings = (event: EventData): string[] => {
@@ -214,6 +216,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onShowToast,
   currentUserId,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const getDisplayFee = (event: EventData): string => {
     if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) {
       return formatBandTotal(String(userFeeMap[event.eventId]));
@@ -251,6 +254,17 @@ export const EventsView: React.FC<EventsViewProps> = ({
     window.addEventListener('bw:open-event-search', open);
     return () => window.removeEventListener('bw:open-event-search', open);
   }, []);
+
+  // iPhone Duo: the header's search button is the rail's Search; it opens the
+  // same "Search events" screen, whose field then opens in the rail.
+  const railOwnsChrome = useRailOwnsChrome();
+  useRailSearch(searchOpen ? null : {
+    label: 'Search events',
+    value: '',
+    base: true,
+    onChange: () => {},
+    onActivate: () => setSearchOpen(true),
+  });
 
   const closeSearch = () => {
     setSearchOpen(false);
@@ -890,7 +904,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       <div className="flex flex-col gap-3 shrink-0">
         {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
         {!isAdmin && (
-          <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+          <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
             <Selector size="sm" selected={selectedBandPill === 'all'} onClick={() => onBandPillClick('all')}>
               All
             </Selector>
@@ -905,7 +919,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           </div>
         )}
 
-        <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+        <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {visibleFilters.map((f) => {
             const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
             return (
@@ -1262,14 +1276,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 style={{ paddingTop: 'var(--safe-top)' }}
               >
                 {/* Top Bar */}
-                <div className="h-14 shrink-0 px-4 flex items-center gap-3">
-                  <IconButton label="Close search" size="sm" icon={<ArrowLeft />} onClick={closeSearch} />
+                <div className="h-14 shrink-0 px-4 flex items-center gap-3 bw-status-clear">
+                  <NavBackButton label="Close search" size="sm" onClick={closeSearch} />
                   <h2 className="bw-h2 truncate">Search events</h2>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pt-2 flex flex-col gap-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}>
-                  <div className="flex flex-col gap-2">
-                    <span className="bw-label-sm text-muted-foreground" aria-hidden="true">Search</span>
+                  <div className="flex flex-col gap-2 empty:hidden">
+                    {!railOwnsChrome && <span className="bw-label-sm text-muted-foreground" aria-hidden="true">Search</span>}
                     <SearchField
                       value={eventSearch}
                       onChange={setEventSearch}
@@ -1280,7 +1294,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     />
                   </div>
 
-                  <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
                     {tabs.map((t) => (
                       <Selector
                         key={t}

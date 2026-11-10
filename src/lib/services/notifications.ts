@@ -1,5 +1,6 @@
 import { supabase, getSafeUser } from '../supabase';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol } from '@/lib/currency';
 
 // Types
 export type NotificationType =
@@ -353,65 +354,11 @@ export const deleteAllNotifications = async (): Promise<{ error: Error | null }>
 // PUSH NOTIFICATION LOGIC
 // ============================================
 
-// Determine if a notification type should trigger a push
-const shouldSendPush = (type: NotificationType): boolean => {
-  const pushTypes: NotificationType[] = [
-    // High priority - requires immediate action
-    'invite_received',
-    'event_invite',
-    'member_dropped_out',
-    'event_confirmed',
-    'event_cancelled',
-    // High priority - time-sensitive reminders
-    'event_reminder',
-    'payment_due',
-    'payment_overdue',
-    // High-value finance updates
-    'quote_accepted',
-    'payment_received',
-    // Chat - real-time
-    'chat_message',
-    'chat_mention',
-  ];
-  return pushTypes.includes(type);
-};
-
-// Send push notification via Edge Function
-const sendPushNotification = async (
-  userIds: string[],
-  title: string,
-  body: string,
-  data?: Record<string, unknown>,
-  subtitle?: string,
-  tag?: string,
-  channelId?: string
-): Promise<void> => {
-  try {
-    // Convert data to string values for push payload
-    const pushData: Record<string, string> = {};
-    if (data) {
-      Object.entries(data).forEach(([key, value]) => {
-        pushData[key] = String(value);
-      });
-    }
-    
-    await supabase.functions.invoke('send-push', {
-      body: {
-        user_ids: userIds,
-        title,
-        subtitle: subtitle || (data?.subtitle as string),
-        tag: tag || (data?.tag as string),
-        channel_id: channelId || (data?.channel_id as string),
-        body: body || '',
-        data: pushData,
-        create_in_app: false, // In-app notification already created by caller
-      },
-    });
-  } catch (error) {
-    // Don't fail the notification if push fails
-    console.error('Failed to send push notification:', error);
-  }
-};
+// Push is sent by the database (migration 046): every new notification row of a
+// push-worthy type triggers the `send-push` edge function server-side. The app
+// only writes rows; `sendPush: false` marks a row so the server skips the push.
+const withPushFlag = <T extends { data?: Record<string, unknown> }>(n: T, sendPush?: boolean): T =>
+  sendPush === false ? { ...n, data: { ...(n.data || {}), skip_push: true } } : n;
 
 // ============================================
 // CREATE NOTIFICATIONS (Internal use)
@@ -434,23 +381,13 @@ export const createNotification = async (
       .from('notifications')
       .insert({
         user_id: userId,
-        ...notification,
+        ...withPushFlag(notification, options?.sendPush),
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Send push notification if applicable
-    const shouldPush = options?.sendPush !== false && shouldSendPush(notification.type);
-    if (shouldPush && data) {
-      sendPushNotification(
-        [userId],
-        notification.title,
-        notification.body || '',
-        { ...notification.data, notification_id: data.id, type: notification.type }
-      );
-    }
 
     return { data, error: null };
   } catch (error: any) {
@@ -473,24 +410,9 @@ export const createBulkNotifications = async (
   try {
     const { error } = await supabase
       .from('notifications')
-      .insert(notifications);
+      .insert(notifications.map((n) => withPushFlag(n, options?.sendPush)));
 
     if (error) throw error;
-
-    // Send push notifications if applicable
-    // Group by type to avoid sending multiple pushes for the same message
-    if (options?.sendPush !== false && notifications.length > 0) {
-      const firstNotif = notifications[0];
-      if (shouldSendPush(firstNotif.type)) {
-        const userIds = notifications.map(n => n.user_id);
-        sendPushNotification(
-          userIds,
-          firstNotif.title,
-          firstNotif.body || '',
-          { ...firstNotif.data, type: firstNotif.type }
-        );
-      }
-    }
 
     return { error: null };
   } catch (error: any) {
@@ -606,41 +528,6 @@ export const notifyInviteAccepted = async (
   }).then(r => ({ error: r.error }));
 };
 
-export const notifyMemberJoined = async (
-  bandMemberIds: string[],
-  bandId: string,
-  bandName: string,
-  newMemberName: string
-): Promise<{ error: Error | null }> => {
-  const notifications = bandMemberIds.map(userId => ({
-    user_id: userId,
-    type: 'member_joined' as NotificationType,
-    title: 'New Band Member',
-    body: `${newMemberName} has joined ${bandName}`,
-    band_id: bandId,
-    data: { member_name: newMemberName, band_name: bandName },
-  }));
-  return createBulkNotifications(notifications);
-};
-
-// Event notifications
-
-export const notifyMemberRemoved = async (
-  removedMemberId: string,
-  removedMemberName: string,
-  bandId: string,
-  bandName: string,
-  adminName: string
-): Promise<{ error: Error | null }> => {
-  return createNotification(removedMemberId, {
-    type: 'member_left',
-    title: 'Band Removal',
-    body: `You have been removed from ${bandName} by ${adminName}`,
-    band_id: bandId,
-    data: { band_name: bandName, admin_name: adminName },
-  }).then(r => ({ error: r.error }));
-};
-
 export const notifyEventCreated = async (
   memberIds: string[],
   bandId: string,
@@ -690,7 +577,7 @@ export const notifyQuoteReceived = async (
   return createNotification(adminUserId, {
     type: 'quote_received',
     title: 'New Quote Request',
-    body: `${clientName} requested a quote for €${amount.toLocaleString()}`,
+    body: `${clientName} requested a quote for ${getActiveSymbol()}${amount.toLocaleString()}`,
     band_id: bandId,
     data: { quote_id: quoteId, client_name: clientName, amount },
   }).then(r => ({ error: r.error }));
@@ -707,34 +594,13 @@ export const notifyQuoteAccepted = async (
     user_id: userId,
     type: 'quote_accepted' as NotificationType,
     title: 'Quote Accepted!',
-    body: `${eventTitle} confirmed for €${amount.toLocaleString()}`,
+    body: `${eventTitle} confirmed for ${getActiveSymbol()}${amount.toLocaleString()}`,
     band_id: bandId,
     data: { quote_id: quoteId, event_title: eventTitle, amount },
   }));
   return createBulkNotifications(notifications);
 };
 
-// Payment notifications
-export const notifyPaymentReceived = async (
-  memberIds: string[],
-  bandId: string,
-  amount: number,
-  eventTitle?: string
-): Promise<{ error: Error | null }> => {
-  const notifications = memberIds.map(userId => ({
-    user_id: userId,
-    type: 'payment_received' as NotificationType,
-    title: 'Payment Received',
-    body: eventTitle 
-      ? `€${amount.toLocaleString()} received for ${eventTitle}`
-      : `€${amount.toLocaleString()} received`,
-    band_id: bandId,
-    data: { amount, event_title: eventTitle },
-  }));
-  return createBulkNotifications(notifications);
-};
-
-// Task notifications
 export const notifyTaskAssigned = async (
   userId: string,
   bandId: string,
@@ -816,7 +682,8 @@ export const notifyEventMembersCreated = async (
       const { data: members, error: membersError } = await supabase
         .from('band_members')
         .select('user_id')
-        .eq('band_id', bandId);
+        .eq('band_id', bandId)
+        .eq('is_active', true);
       
       if (membersError) throw membersError;
       userIds = members?.map(m => m.user_id).filter(id => id !== creatorId) || [];
@@ -841,7 +708,7 @@ export const notifyEventMembersCreated = async (
       if (additionalData?.venue) b += ` @ ${additionalData.venue}`;
       const personalFee = additionalData?.memberFees?.[userId];
       if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
-        b += ` | Your fee: €${personalFee.toLocaleString()}`;
+        b += ` | Your fee: ${getActiveSymbol()}${personalFee.toLocaleString()}`;
       }
       if (config.requiresRsvp) b += ' Confirm your availability.';
       return b;
@@ -878,20 +745,6 @@ export const notifyEventMembersCreated = async (
     
     if (insertError) throw insertError;
     
-    // Send push notifications (one per member so each gets their own fee in the body)
-    for (const userId of userIds) {
-      const personalFee = additionalData?.memberFees?.[userId];
-      let pushBody = `${creatorName} scheduled "${eventTitle}" for ${formattedDate}`;
-      if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
-        pushBody += ` | Your fee: €${personalFee.toLocaleString()}`;
-      }
-      await sendPushNotification(
-        [userId],
-        `New ${config.label}`,
-        pushBody,
-        { event_id: eventId, type: 'event_invite', event_type: eventType, member_fee: String(personalFee || '') }
-      );
-    }
     
     return { error: null };
   } catch (error: any) {
@@ -993,16 +846,6 @@ export const notifyEventResponse = async (
     
     if (error) throw error;
     
-    // Send push notification to admins with subtitle and tag
-    await sendPushNotification(
-      adminIds,
-      responseTitle[response],
-      responseText[response],
-      { event_id: eventId, type: notifType, response, subtitle, tag, channel_id: 'bandwith_events' },
-      subtitle,
-      tag,
-      'bandwith_events'
-    );
     
     return { error: null };
   } catch (error: any) {
@@ -1080,22 +923,6 @@ export const notifyMemberDroppedOut = async (
 
     await supabase.from('notifications').insert(notifications);
 
-    // 4. Send priority push notification to admins
-    await sendPushNotification(
-      recipients,
-      title,
-      body,
-      {
-        event_id: eventId,
-        type: 'member_dropped_out',
-        subtitle,
-        tag: 'Gig Alert',
-        channel_id: 'bandwith_events',
-      },
-      subtitle,
-      'Gig Alert',
-      'bandwith_events'
-    );
 
     return { error: null };
   } catch (error: any) {

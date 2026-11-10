@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Camera, Loader2, Check, ArrowLeft, Lock } from '@/app/components/icons';
-import { IconButton } from '@/app/components/bw/Screen';
+import { IconButton, NavBackButton } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -191,7 +191,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         {/* ═══ HEADER (Figma: Identity / Edit profile — back + H2 title) ═══ */}
         <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
           <div className="max-w-xl mx-auto w-full flex items-center gap-3 min-h-11">
-            <IconButton label="Go back" icon={<ArrowLeft />} onClick={onClose} />
+            <NavBackButton label="Go back" onClick={onClose} />
             <h2 className="bw-h2 text-foreground truncate">Edit profile</h2>
           </div>
         </header>

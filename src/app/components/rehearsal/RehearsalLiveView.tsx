@@ -7,6 +7,8 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Card, IconButton, PillButton } from '@/app/components/bw';
+import { RailCover, useRailAction, useRailTone } from '@/lib/railActions';
+import { setStatusBarTone } from '@/lib/systemBars';
 import { RehearsalSong } from './types';
 
 // Mock Data for Live Session
@@ -31,6 +33,10 @@ interface Props {
 }
 
 export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
+  const exitInRail = useRailAction(onClose, { label: 'Exit live mode', icon: <X /> });
+  // Dark canvas: light system icons, and the iPhone Duo rail in dark glass.
+  useEffect(() => setStatusBarTone('dark'), []);
+  useRailTone('dark');
   const [elapsed, setElapsed] = useState(2843); // 47m 23s
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeSongIndex, setActiveSongIndex] = useState(1);
@@ -67,9 +73,13 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
           <span className="w-2.5 h-2.5 rounded-full bg-destructive-solid animate-pulse" />
           Live rehearsal
         </span>
-        <PillButton variant="outline" size="sm" fullWidth={false} onClick={onClose}>
-          Exit live mode
-        </PillButton>
+        {/* iPhone Duo: the exit joins the side rail as a close (X). */}
+        <RailCover />
+        {!exitInRail && (
+          <PillButton variant="outline" size="sm" fullWidth={false} onClick={onClose}>
+            Exit live mode
+          </PillButton>
+        )}
       </div>
 
       {/* Main Content */}

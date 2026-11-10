@@ -5,12 +5,14 @@ import {
   Bell,
   Search,
   Plus,
+  Edit,
 } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
 import { TabName } from '@/app/types';
 import { useAuth } from '@/lib/AuthContext';
+import { RailHeaderActions, useRailOwnsChrome } from '@/lib/railActions';
 import { HEADER_SPRING, durations } from '@/styles/motion';
 import { FIT, FitText } from '@/app/components/bw/FitText';
 
@@ -48,6 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
   isScrolled = false,
 }) => {
   const { profile } = useAuth();
+  // iPhone Duo: search and the profile live in the side rail (Figma "Duo/Side Actions").
+  const railOwnsChrome = useRailOwnsChrome();
   
   // Calculate initials from actual profile or fallback
   const getInitials = () => {
@@ -286,8 +290,31 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
+          {/* iPhone Duo: the header's actions join the side rail (Figma "Duo/Side Actions"). */}
+          {railOwnsChrome && (
+            <RailHeaderActions base>
+              {activeTab === 'Chat' ? (
+                <IconButton
+                  label="New chat"
+                  variant="filled"
+                  icon={<Plus />}
+                  railIcon={<Edit />}
+                  onClick={() => window.dispatchEvent(new CustomEvent('bw:new-chat'))}
+                />
+              ) : activeTab === 'Events' ? null : (
+                <IconButton
+                  label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                  variant="ghost"
+                  icon={<Bell />}
+                  railBadge={unreadCount}
+                  onClick={onOpenNotifications}
+                />
+              )}
+            </RailHeaderActions>
+          )}
+
           {/* ═══ RIGHT: Stationary Bell & Identity Actions (Pinned at top-right, 0px vertical shift) ═══ */}
-          <div className="absolute top-[3px] right-0 flex items-center gap-2 z-20">
+          {!railOwnsChrome && <div className="absolute top-[3px] right-0 flex items-center gap-2 z-20">
             {activeTab === 'Chat' ? (
               /* Figma "Chat / Inbox": a single filled "+" starts a new conversation */
               <IconButton
@@ -298,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
               />
             ) : activeTab === 'Events' ? (
               /* Figma "Calendar": a single Outline search button opens "Search events" */
-              <IconButton
+              railOwnsChrome ? null : <IconButton
                 label="Search events"
                 icon={<Search />}
                 onClick={() => window.dispatchEvent(new CustomEvent('bw:open-event-search'))}
@@ -330,7 +357,7 @@ export const Header: React.FC<HeaderProps> = ({
             </motion.button>
 
             {/* Identity Trigger with 3D Welcome Flip */}
-            <motion.button 
+            {!railOwnsChrome && <motion.button 
               type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.94 }}
@@ -379,10 +406,10 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 initials
               )}
-            </motion.button>
+            </motion.button>}
             </>
             )}
-          </div>
+          </div>}
         </motion.div>
     </motion.header>
   );

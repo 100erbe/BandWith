@@ -15,6 +15,7 @@ import { createTransaction } from '@/lib/services/transactions';
 import type { Transaction } from '@/lib/services/transactions';
 import { todayLocal } from '../../../../lib/dates';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface FinanceExpandedProps {
   bandId: string;
@@ -37,6 +38,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   loading,
   onTransactionAdded,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
   const [txTitle, setTxTitle] = useState('');
@@ -88,8 +90,8 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
           }),
           amount:
             t.type === 'income'
-              ? `+€${Number(t.amount).toFixed(2)}`
-              : `-€${Math.abs(Number(t.amount)).toFixed(2)}`,
+              ? `+${sym()}${Number(t.amount).toFixed(2)}`
+              : `-${sym()}${Math.abs(Number(t.amount)).toFixed(2)}`,
           type: t.type as 'income' | 'expense',
           tag: t.category || 'OTHER',
         }))
@@ -127,17 +129,17 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         >
           <Metric
             label="Net profit"
-            value={loading ? '-' : `€${fmt(stats.netProfit)}`}
+            value={loading ? '-' : `${sym()}${fmt(stats.netProfit)}`}
             fill={income > 0 ? Math.max(0, stats.netProfit) / income : 0}
           />
           <Metric
             label="Revenue"
-            value={loading ? '-' : `€${fmt(stats.totalIncome)}`}
+            value={loading ? '-' : `${sym()}${fmt(stats.totalIncome)}`}
             fill={income + expenses > 0 ? income / (income + expenses) : 0}
           />
           <Metric
             label="Expenses"
-            value={loading ? '-' : `-€${fmt(expenses)}`}
+            value={loading ? '-' : `-${sym()}${fmt(expenses)}`}
             fill={income + expenses > 0 ? expenses / (income + expenses) : 0}
           />
         </motion.div>
@@ -226,7 +228,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             placeholder="e.g., Jazz Night @ Blue Note"
           />
           <PillField
-            label="Amount (€)"
+            label={`Amount (${sym()})`}
             type="number"
             inputMode="decimal"
             value={txAmount}

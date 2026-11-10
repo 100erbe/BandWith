@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { RailCover } from '@/lib/railActions';
 import { X, Users } from '@/app/components/icons';
 import { IconButton, ListRow, PillButton } from '@/app/components/bw';
 
@@ -32,14 +33,18 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      {/* iPhone Duo: on the open display the dialog sits on the trailing pane;
+          its scrim stops at the rail (Figma "Rehearsal / No band – modal"). */}
+      <div className="bw-pane-detail fixed inset-0 z-[180]">
+      <RailCover pane />
+      <div className="relative h-full flex items-center justify-center p-4">
         {/* Backdrop (clickable to close) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-0 bg-black/60 cursor-pointer"
+          className="absolute inset-0 z-0 bg-black/60 cursor-pointer"
         />
 
         {/* Dialog card */}
@@ -107,6 +112,7 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
             </PillButton>
           </div>
         </motion.div>
+      </div>
       </div>
     </AnimatePresence>
   );

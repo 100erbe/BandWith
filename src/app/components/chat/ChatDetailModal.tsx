@@ -11,19 +11,18 @@ import {
   Mic,
   FileText,
   Loader2,
-  Check,
-  CheckCheck,
-  Clock,
   X,
   Reply,
   ArrowUpRight,
   Lock,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { eventKindOf, type EventKind, IconButton, Tag, PillButton } from '@/app/components/bw';
+import { eventKindOf, type EventKind, HeaderAction, IconButton, NavBackButton, Tag, PillButton } from '@/app/components/bw';
 import { supabase } from '@/lib/supabase';
-import { getMessages, sendMessage, markChatAsRead, subscribeToChat, getChatParticipants, deleteChat, getChat } from '@/lib/services/chats';
-import type { Message } from '@/lib/services/chats';
+import { getMessages, sendMessage, markChatAsRead, subscribeToChat, subscribeToReceipts, getChatParticipants, deleteChat, getChat, receiptFor } from '@/lib/services/chats';
+import type { Message, ChatParticipant, ReceiptStatus } from '@/lib/services/chats';
+import { ReceiptTicks } from '@/app/components/chat/ReceiptTicks';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { toTitleCase } from '@/app/data/chats';
 import { markChatNotificationsAsRead } from '@/lib/services/notifications';
 import { setActiveChat } from '@/lib/services/activeChatTracker';
@@ -90,7 +89,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const [newMessage, setNewMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [otherParticipantsLastRead, setOtherParticipantsLastRead] = useState<Date | null>(null);
+  const [otherParticipants, setOtherParticipants] = useState<ChatParticipant[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [chatParticipants, setChatParticipants] = useState<Array<{id: string; name: string}>>([]);
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
@@ -166,10 +165,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     }
   };
 
-  const isMessageRead = (messageCreatedAt: string): boolean => {
-    if (!otherParticipantsLastRead) return false;
-    return new Date(messageCreatedAt) <= otherParticipantsLastRead;
-  };
+  const statusFor = (message: Message): ReceiptStatus =>
+    message.id.startsWith('temp-') ? 'sending' : receiptFor(message.created_at, otherParticipants);
 
   const loadParticipants = async () => {
     const { data: participants } = await getChatParticipants(chat.id);
@@ -178,7 +175,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       setChatParticipants(
         otherParticipants.map(p => ({
           id: p.user_id,
-          name: (p.profile as any)?.full_name || `User ${p.user_id.slice(0, 6)}`
+          name: (p.profile as any)?.full_name || 'Member'
         }))
       );
       
@@ -195,14 +192,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         }
       }
       
-      if (otherParticipants.length > 0) {
-        const lastReadDates = otherParticipants
-          .map(p => p.last_read_at ? new Date(p.last_read_at) : null)
-          .filter((d): d is Date => d !== null);
-        if (lastReadDates.length > 0) {
-          setOtherParticipantsLastRead(new Date(Math.min(...lastReadDates.map(d => d.getTime()))));
-        }
-      }
+      setOtherParticipants(otherParticipants);
     }
   };
 
@@ -344,6 +334,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       markChatAsRead(chat.id);
     });
 
+    const unsubscribeReceipts = subscribeToReceipts((changedChatId) => {
+      if (changedChatId === chat.id) loadParticipants();
+    });
+
     const pollInterval = setInterval(async () => {
       const { data } = await getMessages(chat.id, { limit: 50 });
       if (data) {
@@ -358,6 +352,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
     return () => {
       unsubscribe();
+      unsubscribeReceipts();
       clearInterval(pollInterval);
       setActiveChat(null);
     };
@@ -448,7 +443,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const chatTypeLabel = chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT';
   const eventKind = eventKindOf({ eventType: chat.eventType });
   const EventIcon = EVENT_ICON[eventKind];
-  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Direct Chat' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
+  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Member' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
 
   return (
     <motion.div
@@ -456,14 +451,14 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
+      className="bw-pane-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
     >
       {/* ── Header ── */}
       <div
-        className="relative flex items-center gap-3 px-4 pb-3 bg-background shrink-0"
+        className="relative flex items-center gap-3 px-4 pb-3 bg-background shrink-0 bw-status-clear"
         style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
       >
-        <IconButton label="Back" icon={<ArrowLeft />} onClick={onClose} />
+        <NavBackButton pane onClick={onClose} />
 
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
@@ -528,42 +523,16 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
           </div>
         </div>
 
-        <IconButton label="Delete chat" variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
+        <HeaderAction pane label="Delete chat" variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
       </div>
 
-      {/* Delete confirmation overlay */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-x-0 top-0 z-10 bg-background flex items-center justify-between gap-3 px-4 pb-3"
-            style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
-          >
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
-              <p className="bw-label-md text-foreground">Delete this chat?</p>
-              <p className="bw-body-sm text-muted-foreground">All messages will be permanently removed</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <PillButton variant="outline" size="md" fullWidth={false} onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
-              </PillButton>
-              <PillButton
-                variant="dark"
-                size="md"
-                fullWidth={false}
-                onClick={handleDeleteChat}
-                loading={deleting}
-                icon={<Trash2 className="w-4 h-4" />}
-                className="bg-destructive-solid text-white"
-              >
-                Delete
-              </PillButton>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <DeleteChatSheet
+        open={showDeleteConfirm}
+        chatName={chat.type === 'direct' ? displayTitle : undefined}
+        deleting={deleting}
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteChat}
+      />
 
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 bg-background">
@@ -608,8 +577,6 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 {group.messages.map((message) => {
                   const isMe = message.sender_id === user?.id;
                   const replyTo = message.reply_to;
-                  const isTemp = message.id.startsWith('temp-');
-                  const isRead = !isTemp && isMessageRead(message.created_at);
 
                   const replyButton = (
                     <button
@@ -667,19 +634,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <span className="bw-label-xs">{formatTime(message.created_at)}</span>
-                          {isMe && (
-                            isTemp ? (
-                              <Clock aria-label="Sending" className="w-3 h-3" />
-                            ) : isRead ? (
-                              <CheckCheck
-                                aria-label="Read"
-                                className="w-3 h-3"
-                                style={{ color: 'var(--accent-rehearsal-ink)' }}
-                              />
-                            ) : (
-                              <Check aria-label="Sent" className="w-3 h-3" />
-                            )
-                          )}
+                          {isMe && <ReceiptTicks status={statusFor(message)} className="w-3.5 h-3.5" />}
                         </div>
                       </div>
 

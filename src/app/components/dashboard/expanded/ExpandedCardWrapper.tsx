@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { setStatusBarTone, toneForBackground } from '@/lib/systemBars';
 import { BackButton } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
+import { RailHeaderActions } from '@/lib/railActions';
 
 interface CardOrigin {
   top: string;
@@ -140,8 +141,11 @@ export const ExpandedTopBar: React.FC<{
     <div className="h-14 flex items-center gap-3">
       <BackButton onClick={onBack} label={backLabel} />
       <h1 className="bw-h2 flex-1 min-w-0 truncate">{title}</h1>
-      {meta != null && <span className="shrink-0 flex items-center">{meta}</span>}
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {/* iPhone Duo: their IconButtons move into the side rail. */}
+      <RailHeaderActions>
+        {meta != null && <span className="shrink-0 flex items-center">{meta}</span>}
+        {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      </RailHeaderActions>
     </div>
   </header>
 );

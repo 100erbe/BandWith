@@ -1430,7 +1430,18 @@ export const useChats = (bandId?: string) => {
       fetchChats();
     });
 
-    return unsubscribe;
+    // Ticks in the list: refresh (debounced) when someone receives/reads.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribeReceipts = chatsService.subscribeToReceipts(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { fetchChats(); }, 1200);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeReceipts();
+      clearTimeout(timer);
+    };
   }, [isAuthenticated, fetchChats]);
 
   return { chats, loading, error, refetch: fetchChats };

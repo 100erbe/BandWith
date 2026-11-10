@@ -43,8 +43,30 @@ serve(async (req) => {
       }, 409);
     }
 
+    // Bands the user belongs to: the solo ones are deleted by the RPC below,
+    // and their files must go too.
+    const { data: myBands } = await admin
+      .from("band_members")
+      .select("band_id")
+      .eq("user_id", caller.id);
+    const myBandIds = [...new Set((myBands ?? []).map((b: { band_id: string }) => b.band_id))];
+
     const { error: prepError } = await admin.rpc("bw_prepare_account_deletion", { p_uid: caller.id });
     if (prepError) throw prepError;
+
+    try {
+      if (myBandIds.length > 0) {
+        const { data: stillThere } = await admin.from("bands").select("id").in("id", myBandIds);
+        const kept = new Set((stillThere ?? []).map((b: { id: string }) => b.id));
+        for (const bandId of myBandIds.filter((id) => !kept.has(id))) {
+          await removeFolder(admin, "song-files", bandId);
+          await removeFolder(admin, "band-branding", bandId);
+          await removeFolder(admin, "quotes", `quotes/${bandId}`);
+        }
+      }
+    } catch (_e) {
+      // ignore: storage cleanup must not block the deletion
+    }
 
     // Best effort: the avatar folder is <uid>/...
     try {
@@ -64,3 +86,23 @@ serve(async (req) => {
     return errorResponse(error);
   }
 });
+
+/** Delete every object under `prefix` (Storage lists one level at a time). */
+async function removeFolder(
+  admin: ReturnType<typeof adminClient>,
+  bucket: string,
+  prefix: string,
+  depth = 0,
+): Promise<void> {
+  if (depth > 4) return;
+  for (let round = 0; round < 50; round++) {
+    const { data: items, error } = await admin.storage.from(bucket).list(prefix, { limit: 100 });
+    if (error || !items || items.length === 0) return;
+    const files = items.filter((i) => i.id).map((i) => `${prefix}/${i.name}`);
+    const folders = items.filter((i) => !i.id).map((i) => `${prefix}/${i.name}`);
+    for (const f of folders) await removeFolder(admin, bucket, f, depth + 1);
+    if (files.length === 0) return;
+    await admin.storage.from(bucket).remove(files);
+    if (items.length < 100) return;
+  }
+}

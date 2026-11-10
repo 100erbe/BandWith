@@ -6,9 +6,15 @@ const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
 const APNS_PRIVATE_KEY = Deno.env.get('APNS_PRIVATE_KEY'); 
 const APNS_BUNDLE_ID = 'app.bandwith.mobile';
 
-const APNS_HOST = Deno.env.get('APNS_PRODUCTION') === 'true' 
-  ? 'api.push.apple.com' 
-  : 'api.sandbox.push.apple.com';
+// Xcode/debug builds get sandbox tokens, TestFlight/App Store builds get
+// production tokens. Try the preferred host first and fall back to the other
+// one on BadDeviceToken, so one deployment serves both kinds of build.
+// APNS_PRODUCTION=true only changes which host is tried first.
+const APNS_PROD_HOST = 'api.push.apple.com';
+const APNS_SANDBOX_HOST = 'api.sandbox.push.apple.com';
+const APNS_HOSTS = Deno.env.get('APNS_PRODUCTION') === 'false'
+  ? [APNS_SANDBOX_HOST, APNS_PROD_HOST]
+  : [APNS_PROD_HOST, APNS_SANDBOX_HOST];
 
 const FCM_PROJECT_ID = Deno.env.get('FCM_PROJECT_ID');
 const FCM_CLIENT_EMAIL = Deno.env.get('FCM_CLIENT_EMAIL');
@@ -41,7 +47,18 @@ function encodeBase64Url(bytes: Uint8Array): string {
     .replace(/\//g, "_");
 }
 
+// Apple rejects provider tokens refreshed more than once every 20 minutes
+// (TooManyProviderTokenUpdates) and expires them after 60: reuse for 50.
+let cachedApnsJwt: { token: string; at: number } | null = null;
+
 async function generateAPNsJWT(): Promise<string> {
+  if (cachedApnsJwt && Date.now() - cachedApnsJwt.at < 50 * 60 * 1000) return cachedApnsJwt.token;
+  const token = await signAPNsJWT();
+  cachedApnsJwt = { token, at: Date.now() };
+  return token;
+}
+
+async function signAPNsJWT(): Promise<string> {
   if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) {
     throw new Error(`APNs credentials missing`);
   }
@@ -111,27 +128,38 @@ async function sendToAPNs(
       ...data,
     };
     
-    const response = await fetch(`https://${APNS_HOST}/3/device/${deviceToken}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `bearer ${jwt}`,
-        'apns-topic': APNS_BUNDLE_ID,
-        'apns-push-type': 'alert',
-        'apns-priority': '10',
-        'apns-expiration': '0',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(apnsPayload),
-    });
+    let lastError = 'APNs: no host tried';
+    let badTokenEverywhere = true;
+    for (const host of APNS_HOSTS) {
+      const response = await fetch(`https://${host}/3/device/${deviceToken}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `bearer ${jwt}`,
+          'apns-topic': APNS_BUNDLE_ID,
+          'apns-push-type': 'alert',
+          'apns-priority': '10',
+          'apns-expiration': '0',
+          ...(data?.tag ? { 'apns-collapse-id': String(data.tag).slice(0, 64) } : {}),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apnsPayload),
+      });
+      if (response.ok) return { success: true };
 
-    if (!response.ok) {
       const errorBody = await response.text();
-      if (response.status === 410 || response.status === 400) {
-        return { success: false, error: 'invalid_token' };
-      }
-      return { success: false, error: `APNs error: ${response.status} - ${errorBody}` };
+      let reason = '';
+      try { reason = JSON.parse(errorBody)?.reason || ''; } catch { /* not JSON */ }
+      lastError = `APNs ${host} ${response.status} ${reason || errorBody}`;
+
+      // 410 Unregistered: the app was removed from the device. Final.
+      if (response.status === 410) return { success: false, error: 'invalid_token' };
+      // Token from the other environment: try the next host.
+      if (reason === 'BadDeviceToken' || reason === 'DeviceTokenNotForTopic') continue;
+      // Anything else (bad payload, auth, throttling) is not the token's fault.
+      badTokenEverywhere = false;
+      break;
     }
-    return { success: true };
+    return { success: false, error: badTokenEverywhere ? 'invalid_token' : lastError };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMessage };
@@ -275,7 +303,19 @@ Deno.serve(async (req: Request) => {
     // SECURITY: require a signed-in caller (or a server call with the service
     // role key) and only deliver to users who share a band or chat with them.
     const supabase = adminClient();
-    const caller = await requireCaller(req, supabase);
+    // The notifications trigger (migration 048) authenticates with a
+    // database-generated secret instead of the service role key.
+    const dispatchSecret = req.headers.get('x-bw-dispatch-secret');
+    let caller: Awaited<ReturnType<typeof requireCaller>>;
+    if (dispatchSecret) {
+      const { data: ok, error } = await supabase.rpc('bw_verify_push_dispatch_secret', {
+        p_secret: dispatchSecret,
+      });
+      if (error || ok !== true) throw new HttpError(401, 'Invalid dispatch secret');
+      caller = { kind: 'service' };
+    } else {
+      caller = await requireCaller(req, supabase);
+    }
 
     const body = await req.json();
     const {
@@ -326,11 +366,13 @@ Deno.serve(async (req: Request) => {
         type: notificationType,
         title: title,
         body: notificationBody,
-        data: { 
-          ...data, 
+        data: {
+          ...data,
           subtitle: effectiveSubtitle,
           tag: effectiveTag,
-          chat_id: chatId 
+          chat_id: chatId,
+          // This function pushes these itself: the DB push trigger must skip them.
+          skip_push: true,
         },
         read: false,
         band_id: data?.band_id || null,
@@ -338,6 +380,17 @@ Deno.serve(async (req: Request) => {
       }));
 
       await supabase.from('notifications').insert(notifications);
+    }
+
+    // Badge = real unread count when the push goes to one person.
+    let effectiveBadge = badge;
+    if (effectiveBadge === undefined && targetUserIds.length === 1) {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', targetUserIds[0])
+        .eq('read', false);
+      effectiveBadge = Math.max(1, count ?? 1);
     }
 
     const { data: tokens, error: tokenError } = await supabase
@@ -361,7 +414,7 @@ Deno.serve(async (req: Request) => {
         const deviceToken = tokenRecord.token;
 
         if (platform === 'ios') {
-          const result = await sendToAPNs(deviceToken, title, effectiveSubtitle, notificationBody, data, badge, sound);
+          const result = await sendToAPNs(deviceToken, title, effectiveSubtitle, notificationBody, data, effectiveBadge, sound);
           if (!result.success && result.error === 'invalid_token') {
             await supabase.from('push_tokens').update({ is_active: false }).eq('id', tokenRecord.id);
           }

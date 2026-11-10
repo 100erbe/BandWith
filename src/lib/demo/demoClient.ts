@@ -654,6 +654,38 @@ const rpc = (fn: string, args: Row = {}) => {
     case 'bw_decline_invitation':
       error = { message: 'Invitations are not available in demo mode', code: 'DEMO' };
       break;
+    case 'bw_search_invitable_users': {
+      const q = String(args.p_query ?? '').trim().toLowerCase();
+      const members = new Set(table('band_members').filter((r) => r.band_id === args.p_band_id).map((r) => r.user_id));
+      data = q.length < 3 ? [] : table('profiles')
+        .filter((p) => p.id !== DEMO_USER.id && !members.has(p.id))
+        .filter((p) => String(p.email ?? '').toLowerCase() === q || String(p.full_name ?? '').toLowerCase().includes(q))
+        .slice(0, 8)
+        .map((p) => {
+          const email = String(p.email ?? '');
+          const exact = email.toLowerCase() === q;
+          return {
+            id: p.id,
+            full_name: p.full_name ?? null,
+            avatar_url: p.avatar_url ?? null,
+            email_hint: exact ? email : `${email.split('@')[0].slice(0, 2)}•••@${email.split('@')[1] ?? ''}`,
+            email_exact: exact,
+          };
+        });
+      break;
+    }
+    case 'bw_mark_chats_delivered':
+      data = 0;
+      break;
+    case 'bw_mark_chat_read': {
+      const now = new Date().toISOString();
+      table('chat_participants')
+        .filter((r) => r.chat_id === args.p_chat_id && r.user_id === DEMO_USER.id)
+        .forEach((r) => { r.last_read_at = now; r.last_delivered_at = now; });
+      persist();
+      data = true;
+      break;
+    }
     case 'update_setlist_song_count': {
       const id = args.p_setlist_id ?? args.setlist_id;
       const s = table('setlists').find((r) => r.id === id);

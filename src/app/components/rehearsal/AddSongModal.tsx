@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
-  Smartphone,
   Cloud,
-  Droplet,
   FileText,
   Plus,
   Check,
@@ -16,9 +14,19 @@ import {
   Link as LinkIcon,
   Disc3,
 } from '@/app/components/icons';
-import { IconButton, PillButton, PillField, Selector, FormError } from '@/app/components/bw';
+import { IconButton, NavBackButton, PillButton, PillField, Selector, FormError } from '@/app/components/bw';
+import { useRailAction } from '@/lib/railActions';
 import { cn } from '@/app/components/ui/utils';
-import { createSong } from '@/lib/services/songs';
+import { createSong, updateSong, type Song } from '@/lib/services/songs';
+import {
+  SONG_FILE_ACCEPT,
+  classifySongFile,
+  isStoredSongFile,
+  removeSongFiles,
+  safeHttpsUrl,
+  uploadSongFile,
+  validateSongFile,
+} from '@/lib/services/songFiles';
 import { supabase } from '@/lib/supabase';
 
 interface AddSongModalProps {
@@ -26,9 +34,10 @@ interface AddSongModalProps {
   onClose: () => void;
   bandId: string;
   onSongAdded?: () => void;
+  /** Edit this song instead of creating a new one. */
+  song?: Song | null;
 }
 
-type SourceType = 'local' | 'google' | 'dropbox';
 type StepType = 'source' | 'details' | 'extras';
 
 interface Folder {
@@ -42,25 +51,24 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   onClose,
   bandId,
   onSongAdded,
+  song,
 }) => {
+  const isEdit = !!song;
   const [step, setStep] = useState<StepType>('source');
-  const [source, setSource] = useState<SourceType>('local');
   
   // Basic info
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [folders, setFolders] = useState<Folder[]>([
-    { id: '1', name: 'ROCK 80S' },
-    { id: '2', name: 'ROCK 70S' },
-    { id: '3', name: 'POP' },
-    { id: '4', name: 'JAZZ' },
-  ]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   
-  // Files
-  const [file, setFile] = useState<File | null>(null);
+  // Files (uploaded to the band's private storage on save)
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [chartFile, setChartFile] = useState<File | null>(null);
+  const [existingAudio, setExistingAudio] = useState<string | undefined>();
+  const [existingChart, setExistingChart] = useState<string | undefined>();
   
   // Extra fields
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -82,6 +90,22 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     }
   }, [isOpen, bandId]);
 
+  // Edit: start from the song's current values.
+  useEffect(() => {
+    if (!isOpen || !song) return;
+    setTitle(song.title || '');
+    setArtist(song.artist || '');
+    setBpm(song.bpm ? String(song.bpm) : '');
+    setKey(song.key || '');
+    setDuration(song.duration_seconds ? String(Math.round(song.duration_seconds / 60)) : '');
+    setYoutubeUrl(song.youtube_url || '');
+    setNotes(song.notes || '');
+    setExistingAudio(song.audio_url || undefined);
+    setExistingChart(song.chart_url || undefined);
+    setChartUrl(song.chart_url && !isStoredSongFile(song.chart_url) ? song.chart_url : '');
+    setStep('details');
+  }, [isOpen, song?.id]);
+
   const loadFolders = async () => {
     try {
       const { data } = await supabase
@@ -90,33 +114,51 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         .eq('band_id', bandId)
         .order('name');
       
-      if (data && data.length > 0) {
-        setFolders(data);
+      setFolders(data || []);
+      if (song?.category) {
+        const match = (data || []).find((f: Folder) => f.name === song.category);
+        if (match) setSelectedFolder(match.id);
       }
-    } catch (err) {
-      // Use default folders
+    } catch {
+      setFolders([]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      if (!title) {
-        const nameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "");
-        setTitle(nameWithoutExt);
+    const picked = Array.from(e.target.files || []);
+    e.target.value = '';
+    for (const f of picked) {
+      const problem = validateSongFile(f);
+      if (problem) {
+        setError(problem);
+        continue;
       }
+      setError(null);
+      if (classifySongFile(f) === 'audio') setAudioFile(f);
+      else setChartFile(f);
+      if (!title) setTitle(f.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim());
     }
   };
 
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) return;
-    const newFolder: Folder = {
-      id: `new-${Date.now()}`,
-      name: newFolderName.toUpperCase(),
-    };
-    setFolders([...folders, newFolder]);
-    setSelectedFolder(newFolder.id);
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim().toUpperCase();
+    if (!name) return;
+    const existing = folders.find((f) => f.name === name);
+    if (existing) {
+      setSelectedFolder(existing.id);
+    } else {
+      const { data, error: folderError } = await supabase
+        .from('song_folders')
+        .insert({ band_id: bandId, name })
+        .select('id, name, color')
+        .single();
+      if (folderError || !data) {
+        setError('Could not create the folder. Try again.');
+        return;
+      }
+      setFolders((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedFolder(data.id);
+    }
     setNewFolderName('');
     setShowNewFolder(false);
   };
@@ -131,36 +173,57 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setError(null);
 
     try {
-      let audioUrl: string | undefined;
-      
-      if (file) {
-        const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const isAudio = ['mp3', 'wav', 'm4a', 'aac'].includes(fileExt || '');
-        
-        if (isAudio) {
-          audioUrl = `pending-upload/${bandId}/${Date.now()}-${file.name}`;
-        }
+      // Links: https only.
+      const youtube = youtubeUrl.trim() ? safeHttpsUrl(youtubeUrl) : undefined;
+      const chartLink = chartUrl.trim() ? safeHttpsUrl(chartUrl) : undefined;
+      const chords = chordsUrl.trim() ? safeHttpsUrl(chordsUrl) : undefined;
+      if ((youtubeUrl.trim() && !youtube) || (chartUrl.trim() && !chartLink) || (chordsUrl.trim() && !chords)) {
+        throw new Error('Links must start with https://');
       }
 
-      const selectedFolderObj = folders.find(f => f.id === selectedFolder);
-      
-      const { error: songError } = await createSong({
-        band_id: bandId,
+      // Upload new files to the band's private storage.
+      let audioRef = existingAudio;
+      let chartRef = chartLink ?? existingChart;
+      const replaced: Array<string | undefined> = [];
+      if (audioFile) {
+        const up = await uploadSongFile(bandId, audioFile);
+        if (up.error) throw up.error;
+        if (existingAudio) replaced.push(existingAudio);
+        audioRef = up.ref;
+      }
+      if (chartFile) {
+        const up = await uploadSongFile(bandId, chartFile);
+        if (up.error) throw up.error;
+        if (existingChart) replaced.push(existingChart);
+        chartRef = up.ref;
+      } else if (chartLink && existingChart && existingChart !== chartLink) {
+        replaced.push(existingChart);
+      }
+
+      const selectedFolderObj = folders.find(f => f.name && f.id === selectedFolder);
+      const noteText = [notes.trim(), chords && !notes.includes(chords) ? `Chords: ${chords}` : '']
+        .filter(Boolean)
+        .join('\n');
+
+      const payload: Partial<Song> = {
         title: title.trim(),
         artist: artist.trim() || undefined,
         category: selectedFolderObj?.name,
-        audio_url: audioUrl,
-        chart_url: chartUrl || undefined,
-        youtube_url: youtubeUrl || undefined,
-        notes: notes || undefined,
+        audio_url: audioRef,
+        chart_url: chartRef,
+        youtube_url: youtube,
+        notes: noteText || undefined,
         bpm: bpm ? parseInt(bpm) : undefined,
         key: key || undefined,
-        duration_seconds: duration ? parseInt(duration) * 60 : undefined,
-        status: 'ready',
-        priority: 'medium',
-      });
+        duration_seconds: duration ? Math.round(parseFloat(duration) * 60) : undefined,
+      };
+
+      const { error: songError } = isEdit && song
+        ? await updateSong(song.id, payload)
+        : await createSong({ ...payload, band_id: bandId, status: 'ready', priority: 'medium' });
 
       if (songError) throw songError;
+      await removeSongFiles(replaced);
 
       setSuccess(true);
       setTimeout(() => {
@@ -168,7 +231,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         handleClose();
       }, 1000);
     } catch (err: any) {
-      setError(err.message || 'Failed to add song');
+      setError(err.message || (isEdit ? 'Failed to save song' : 'Failed to add song'));
     } finally {
       setSaving(false);
     }
@@ -178,7 +241,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setStep('source');
     setTitle('');
     setArtist('');
-    setFile(null);
+    setAudioFile(null);
+    setChartFile(null);
+    setExistingAudio(undefined);
+    setExistingChart(undefined);
     setSelectedFolder(null);
     setYoutubeUrl('');
     setChartUrl('');
@@ -212,11 +278,15 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
   const getStepInfo = () => {
     switch (step) {
-      case 'source': return { num: '01', title: 'Source', subtitle: 'Where is your song?' };
+      case 'source': return { num: '01', title: 'Files', subtitle: 'Add a recording and/or a chart (optional).' };
       case 'details': return { num: '02', title: 'Details', subtitle: 'Song information' };
       case 'extras': return { num: '03', title: 'Resources', subtitle: 'Links & notes' };
     }
   };
+
+  // iPhone Duo: close sits in the system column under the clock
+  // (Figma "Closed · Songs / Add song – details").
+  const closeInRail = useRailAction(isOpen ? handleClose : undefined, { label: 'Close', icon: <X />, pane: true });
 
   if (!isOpen) return null;
 
@@ -232,16 +302,16 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-song-title"
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
+      className="bw-pane-detail fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
     >
       {/* Header: Top Bar + wizard steps */}
       <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
         <div className="flex items-center gap-3 min-h-11">
-          <IconButton label={step === 'source' ? 'Cancel' : 'Back'} icon={<ArrowLeft />} onClick={prevStep} />
+          <NavBackButton pane label={step === 'source' ? 'Cancel' : 'Back'} onClick={prevStep} />
           <h2 id="add-song-title" className="flex-1 min-w-0 bw-h1 truncate">
-            Add song
+            {isEdit ? 'Edit song' : 'Add song'}
           </h2>
-          <IconButton label="Close" icon={<X />} variant="ghost" onClick={handleClose} />
+          {!closeInRail && <IconButton label="Close" icon={<X />} variant="ghost" onClick={handleClose} />}
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
@@ -274,56 +344,44 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
 
-              {/* Source Selection */}
-              <fieldset className="flex flex-col gap-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Select source</legend>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'local', icon: Smartphone, label: 'Local device' },
-                    { id: 'google', icon: Cloud, label: 'Google Drive' },
-                    { id: 'dropbox', icon: Droplet, label: 'Dropbox' },
-                  ].map(({ id, icon: Icon, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-pressed={source === id}
-                      onClick={() => setSource(id as SourceType)}
-                      className={cn(
-                        'flex flex-col items-center gap-2 py-5 px-2 rounded-[16px] transition-colors cursor-pointer',
-                        source === id ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-card text-foreground'
-                      )}
-                    >
-                      <Icon className="w-7 h-7" />
-                      <span className="bw-label-xs text-center">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
+              {/* Audio */}
+              <FileSlot
+                label="Recording"
+                hint="MP3, M4A, WAV · max 50 MB"
+                file={audioFile}
+                existing={existingAudio && isStoredSongFile(existingAudio) ? 'Recording uploaded' : undefined}
+                onClear={() => {
+                  setAudioFile(null);
+                  setExistingAudio(undefined);
+                }}
+              />
+              {/* Chart */}
+              <FileSlot
+                label="Chart / sheet music"
+                hint="PDF or photo · max 20 MB"
+                file={chartFile}
+                existing={existingChart && isStoredSongFile(existingChart) ? 'Chart uploaded' : undefined}
+                onClear={() => {
+                  setChartFile(null);
+                  setExistingChart(undefined);
+                }}
+              />
 
-              {/* File Upload */}
-              <div className="flex flex-col gap-2">
-                <span className="bw-label-sm text-muted-foreground">Upload file</span>
-                {file ? (
-                  <div className="flex items-center gap-3 pl-4 pr-1 py-3 rounded-[16px] bg-card">
-                    <FileText className="w-6 h-6 shrink-0" />
-                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                      <span className="bw-body-lg truncate">{file.name}</span>
-                      <span className="bw-body-sm text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
-                    <IconButton label="Remove file" icon={<X />} variant="ghost" size="sm" onClick={() => setFile(null)} />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 p-8 rounded-[24px] border-[1.5px] border-dashed border-foreground/25 text-center">
-                    <FileMusic className="w-10 h-10 text-muted-foreground" />
-                    <p className="bw-h3">Drag &amp; drop or choose</p>
-                    <p className="bw-label-sm text-muted-foreground">Supports PDF, MP3, WAV</p>
-                    <label className="mt-3 inline-flex items-center h-11 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
-                      <input type="file" accept=".pdf,.mp3,.wav,.m4a" onChange={handleFileChange} className="hidden" />
-                      Choose file
-                    </label>
-                  </div>
-                )}
+              <label className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
+                <input type="file" multiple accept={SONG_FILE_ACCEPT} onChange={handleFileChange} className="hidden" />
+                <Plus className="w-[18px] h-[18px]" />
+                Choose files
+              </label>
+
+              <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
+                <Cloud className="w-5 h-5 shrink-0 mt-0.5" aria-hidden />
+                <p className="bw-body-sm text-muted-foreground">
+                  Files on iCloud Drive, Google Drive or Dropbox: tap <span className="text-foreground">Choose files</span>,
+                  then <span className="text-foreground">Browse</span> and pick the app under Locations. Files are stored
+                  privately for your band.
+                </p>
               </div>
+              {error && <FormError>{error}</FormError>}
             </motion.div>
           )}
 
@@ -452,9 +510,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             icon={success ? <Check className="w-[18px] h-[18px]" /> : step === 'extras' ? <Disc3 className="w-[18px] h-[18px]" /> : undefined}
           >
             {success ? (
-              'Added!'
+              isEdit ? 'Saved!' : 'Added!'
             ) : step === 'extras' ? (
-              'Add song'
+              isEdit ? 'Save song' : 'Add song'
             ) : (
               <>
                 Next
@@ -467,3 +525,33 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     </motion.div>
   );
 };
+
+/** One upload slot: the picked file, an already uploaded one, or empty. */
+const FileSlot: React.FC<{
+  label: string;
+  hint: string;
+  file: File | null;
+  existing?: string;
+  onClear: () => void;
+}> = ({ label, hint, file, existing, onClear }) => (
+  <div className="flex flex-col gap-2">
+    <span className="bw-label-sm text-muted-foreground">{label}</span>
+    {file || existing ? (
+      <div className="flex items-center gap-3 pl-4 pr-1 py-3 rounded-[16px] bg-card">
+        <FileText className="w-6 h-6 shrink-0" aria-hidden />
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+          <span className="bw-body-lg truncate">{file ? file.name : existing}</span>
+          <span className="bw-body-sm text-muted-foreground">
+            {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB · uploads when you save` : 'Stored for your band'}
+          </span>
+        </div>
+        <IconButton label={`Remove ${label.toLowerCase()}`} icon={<X />} variant="ghost" size="sm" onClick={onClear} />
+      </div>
+    ) : (
+      <div className="flex items-center gap-3 px-4 py-4 rounded-[16px] border-[1.5px] border-dashed border-foreground/25">
+        <FileMusic className="w-6 h-6 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="bw-body-sm text-muted-foreground">{hint}</span>
+      </div>
+    )}
+  </div>
+);

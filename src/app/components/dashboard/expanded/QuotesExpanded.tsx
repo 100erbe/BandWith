@@ -35,6 +35,7 @@ import {
   isUuid,
 } from '@/lib/services/quotes';
 import { useBand } from '@/lib/BandContext';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface QuotesExpandedProps {
   bandId: string;
@@ -63,6 +64,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   onShowToast,
   onQuotesChanged,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand } = useBand();
   // Real band id: BandContext first, then the prop (only if it is a real UUID, never a mock id)
   const currentBandId: string | null =
@@ -312,7 +314,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         >
           <div className="flex flex-col gap-1">
             <span className="bw-label-sm">Pipeline potential</span>
-            <DotText text={`€${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={`Pipeline €${pipelineTotal.toLocaleString()}`} />
+            <DotText text={`${sym()}${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={`Pipeline ${sym()}${pipelineTotal.toLocaleString()}`} />
           </div>
 
           {/* One dot column per active quote: height = value, colour = likelihood */}
@@ -330,7 +332,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     type="button"
                     key={quote.id}
                     onClick={() => setActiveChartId(isActive ? null : quote.id)}
-                    aria-label={`${quote.eventTitle || quote.clientName}: €${quote.total.toLocaleString()}`}
+                    aria-label={`${quote.eventTitle || quote.clientName}: ${sym()}${quote.total.toLocaleString()}`}
                     className="relative flex flex-col gap-1 items-center cursor-pointer group"
                   >
                     <span
@@ -339,7 +341,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                         (isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
                       }
                     >
-                      €{(quote.total / 1000).toFixed(1)}k
+                      {sym()}{(quote.total / 1000).toFixed(1)}k
                     </span>
                     {Array.from({ length: CHART_ROWS }).map((_, r) => {
                       const on = CHART_ROWS - 1 - r < lit;
@@ -410,7 +412,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  <span className="bw-num whitespace-nowrap">€{quote.total.toLocaleString()}</span>
+                  <span className="bw-num whitespace-nowrap">{sym()}{quote.total.toLocaleString()}</span>
                 </span>
               </motion.button>
             );
@@ -428,7 +430,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             exit={{ opacity: 0, y: -10 }}
             onClick={() => setInlineMessage(null)}
             className={
-              'fixed left-4 right-4 top-[max(var(--safe-top),16px)] z-[300] mx-auto max-w-md rounded-[16px] px-4 py-3 bw-body-sm font-medium cursor-pointer ' +
+              'fixed left-4 right-4 bw-status-clear-inset top-[max(var(--safe-top),16px)] z-[300] mx-auto max-w-md rounded-[16px] px-4 py-3 bw-body-sm font-medium cursor-pointer ' +
               (inlineMessage.type === 'error'
                 ? 'bg-destructive-solid text-destructive-foreground'
                 : 'bg-surface-inverse text-surface-inverse-foreground')

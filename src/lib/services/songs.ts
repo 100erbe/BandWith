@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '../supabase';
+import { removeSongFiles } from './songFiles';
 
 // Types
 export type SongStatus = 'learning' | 'ready' | 'archived';
@@ -186,12 +187,20 @@ export const updateSong = async (
 
 export const deleteSong = async (songId: string): Promise<{ error: Error | null }> => {
   try {
+    const { data: existing } = await supabase
+      .from('songs')
+      .select('audio_url, chart_url')
+      .eq('id', songId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from('songs')
       .delete()
       .eq('id', songId);
 
     if (error) throw error;
+    // Files in storage go with the song.
+    await removeSongFiles([existing?.audio_url, existing?.chart_url]);
 
     return { error: null };
   } catch (error: any) {

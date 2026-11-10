@@ -8,6 +8,7 @@ import { cn } from '@/app/components/ui/utils';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface ConfirmedExpandedProps {
   bandId: string;
@@ -19,7 +20,7 @@ interface ConfirmedExpandedProps {
 /** "17:00:00" → "17:00"; empty → "--". */
 const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--');
 
-const shortEuro = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1).replace('.0', '')}k` : `€${v}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1).replace('.0', '')}k` : `${sym()}${v}`);
 
 /** Event-detail "Time Tile" (Figma 22:674): label XS + numeric value on a 16-radius tile. */
 const TimeTile: React.FC<{ label: string; value: string; className?: string }> = ({ label, value, className }) => (
@@ -34,6 +35,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
   events: realEvents,
   loading
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [expandedGigId, setExpandedGigId] = useState<number | null>(null);
 
   // Convert real events to display format - no mock fallback
@@ -176,7 +178,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                         <span className="bw-h3 line-clamp-2 [overflow-wrap:anywhere]">{gig.title}</span>
                         <span className="bw-body-sm text-muted-foreground truncate">{meta}</span>
                       </span>
-                      <span className="bw-label-md shrink-0 whitespace-nowrap">{gig.fee > 0 ? `€${gig.amount}` : '--'}</span>
+                      <span className="bw-label-md shrink-0 whitespace-nowrap">{gig.fee > 0 ? `${sym()}${gig.amount}` : '--'}</span>
                     </button>
 
                     <AnimatePresence initial={false}>

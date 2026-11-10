@@ -17,7 +17,9 @@ import {
 } from "../_shared/auth.ts";
 
 interface InviteRequest {
-  email: string;
+  email?: string;
+  /** Existing user picked from member search (the client only sees a masked email). */
+  userId?: string;
   bandId: string;
   bandName?: string;
   role?: string;
@@ -35,8 +37,17 @@ serve(async (req) => {
     const supabaseAdmin = adminClient();
     const caller = await requireCaller(req, supabaseAdmin);
 
-    const { email, bandId, role } = (await req.json()) as InviteRequest;
-    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const { email, userId, bandId, role } = (await req.json()) as InviteRequest;
+    let normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if (!normalizedEmail && typeof userId === "string" && userId) {
+      const { data: target, error: targetError } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .maybeSingle();
+      if (targetError) throw targetError;
+      normalizedEmail = (target?.email ?? "").trim().toLowerCase();
+    }
     if (!EMAIL_RE.test(normalizedEmail) || !bandId) {
       throw new HttpError(400, "Missing or invalid email or bandId");
     }

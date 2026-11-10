@@ -6,15 +6,18 @@ import {
   MapPin,
   Clock,
   Calendar,
-  Euro,
+  CurrencyIcon,
   AlertTriangle,
   CheckCircle2,
 } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
+import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
 import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 import type { Notification } from '@/lib/services/notifications';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { MapsLink } from '@/app/components/ui/MapsLink';
 
 interface EventRSVPSheetProps {
   notification: Notification;
@@ -56,6 +59,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   calendarEvents = [],
   currentUserId,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
 
@@ -126,7 +130,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[90] bg-black/60"
+        className="bw-rail-sheet fixed inset-0 z-[90] bg-black/60"
         onClick={onClose}
       />
 
@@ -140,7 +144,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
+        className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
         style={{
           paddingBottom: 'calc(16px + var(--safe-bottom))',
           ...maskStyle,
@@ -159,6 +163,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
                 <p className="bw-body-sm text-sheet-foreground/70 mt-1">Scheduled by {creatorName}</p>
               )}
             </div>
+            <RailSheet onClose={onClose} />
             <IconButton label="Close" icon={<X />} size="sm" variant="sheet" onClick={onClose} />
           </div>
         </div>
@@ -172,16 +177,21 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             icon={<MapPin className="w-4 h-4" />}
             k="Venue"
             v={
-              <>
-                {venue || 'Venue TBD'}
+              <span className="flex flex-col items-end gap-1">
+                <MapsLink
+                  query={[venue, venueAddress && venueAddress !== venue ? venueAddress : ''].filter(Boolean).join(', ')}
+                  className="justify-end"
+                >
+                  {venue || 'Venue TBD'}
+                </MapsLink>
                 {venueAddress && venueAddress !== venue && (
                   <span className="block bw-body-sm normal-case text-sheet-foreground/70">{venueAddress}</span>
                 )}
-              </>
+              </span>
             }
           />
           {displayFee != null && displayFee > 0 && (
-            <SheetKV icon={<Euro className="w-4 h-4" />} k={memberFee ? 'Your fee' : 'Fee'} v={`€${displayFee.toLocaleString()}`} />
+            <SheetKV icon={<CurrencyIcon className="w-4 h-4" />} k={memberFee ? 'Your fee' : 'Fee'} v={`${sym()}${displayFee.toLocaleString()}`} />
           )}
         </div>
 

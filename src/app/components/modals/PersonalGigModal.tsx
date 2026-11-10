@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Clock, MapPin, Euro, Users, Check } from '@/app/components/icons';
-import { IconButton } from '@/app/components/bw/Screen';
+import { X, Calendar, Clock, MapPin, CurrencyIcon, Users, Check } from '@/app/components/icons';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
 import { PillButton, PillField, FormError } from '@/app/components/bw/Form';
 import { DatePicker } from '@/app/components/ui/DatePicker';
 import { TimePicker } from '@/app/components/ui/TimePicker';
@@ -271,7 +272,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ type: 'tween', duration: 0.25 }}
-        className="fixed inset-0 z-[110] flex flex-col bg-background text-foreground"
+        className="bw-pane-detail fixed inset-0 z-[110] flex flex-col bg-background text-foreground"
       >
         <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
           <div className="flex-1 overflow-y-auto">
@@ -288,7 +289,8 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                       {isEditing ? 'Edit personal gig' : 'Log personal gig'}
                     </h2>
                   </div>
-                  <IconButton label="Close" variant="event" icon={<X />} onClick={onClose} className="self-start" />
+                  <RailCover pane />
+                  <HeaderAction pane label="Close" variant="event" icon={<X />} onClick={onClose} className="self-start" />
                 </div>
                 <p className="bw-body-md">
                   Only you can see it. It blocks the date for your bands and syncs to your earnings.
@@ -356,7 +358,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
 
               <PillField
                 label="My personal fee (optional)"
-                icon={<Euro className="w-5 h-5" />}
+                icon={<CurrencyIcon className="w-5 h-5" />}
                 type="number"
                 inputMode="decimal"
                 step="any"

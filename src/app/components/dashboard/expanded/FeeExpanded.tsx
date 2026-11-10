@@ -6,6 +6,7 @@ import { Selector } from '@/app/components/bw/Form';
 import { DotText, EventMark, Metric } from '@/app/components/bw';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface FeeExpandedProps {
   onClose: () => void;
@@ -22,7 +23,7 @@ interface FeeExpandedProps {
   }>;
 }
 
-const shortEuro = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1).replace('.0', '')}k` : `€${v}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1).replace('.0', '')}k` : `${sym()}${v}`);
 
 /** "2026-11-12" → "Thu, Nov 12"; anything unparseable is shown as is. */
 const formatDay = (d: string) => {
@@ -59,6 +60,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
   loading = false,
   events = []
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
   // Calculate earnings data
@@ -160,8 +162,8 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 </div>
                 <div className="flex justify-between gap-2">
                   {earningsData.monthlyEarnings.map((data) => (
-                    <span key={data.month} className="flex flex-col items-center gap-2 min-w-0" title={`${data.month}: €${data.amount}`}>
-                      <span className="bw-label-xs text-muted-foreground">€{data.amount}</span>
+                    <span key={data.month} className="flex flex-col items-center gap-2 min-w-0" title={`${data.month}: ${sym()}${data.amount}`}>
+                      <span className="bw-label-xs text-muted-foreground">{sym()}{data.amount}</span>
                       <DotColumn share={data.amount / earningsData.maxAmount} />
                       <span className="bw-label-xs">{data.month}</span>
                     </span>
@@ -170,7 +172,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 <div className="h-px bg-border" />
                 <span className="flex items-baseline justify-between gap-3">
                   <span className="bw-body-md text-muted-foreground">Average per gig</span>
-                  <span className="bw-label-md">€{earningsData.avgPerGig}</span>
+                  <span className="bw-label-md">{sym()}{earningsData.avgPerGig}</span>
                 </span>
               </Card>
             </motion.div>
@@ -194,7 +196,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                         icon={<EventMark kind={payment.type === 'rehearsal' ? 'rehearsal' : 'gig'} size={20} />}
                         title={payment.title}
                         subtitle={formatDay(payment.date)}
-                        trailing={<span className="bw-label-md shrink-0">€{payment.amount.toLocaleString()}</span>}
+                        trailing={<span className="bw-label-md shrink-0">{sym()}{payment.amount.toLocaleString()}</span>}
                       />
                     </motion.div>
                   ))}
@@ -210,7 +212,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
             {/* Default fee (Figma Fee card, dark) */}
             <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-5 flex flex-col gap-2">
               <span className="bw-label-sm">Your default fee</span>
-              <DotText text={memberFee ? `€${memberFee}` : '--'} size={32} label={memberFee ? `€${memberFee}` : 'Not set'} />
+              <DotText text={memberFee ? `${sym()}${memberFee}` : '--'} size={32} label={memberFee ? `${sym()}${memberFee}` : 'Not set'} />
               <span className="bw-body-sm text-sheet-foreground/70">per event</span>
             </section>
           </>

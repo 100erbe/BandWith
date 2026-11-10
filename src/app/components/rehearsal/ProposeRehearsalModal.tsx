@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Clock, Mail, Send, Loader2 } from '@/app/components/icons';
-import { IconButton, PillButton, PillField, Selector, Tag, Card, FormError } from '@/app/components/bw';
+import { HeaderAction, IconButton, PillButton, PillField, Selector, Tag, Card, FormError } from '@/app/components/bw';
+import { RailCover } from '@/lib/railActions';
 import {
   checkMemberProposalEligibility,
   createMemberRehearsalProposal,
@@ -134,7 +135,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ type: 'tween', duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed inset-0 z-[120] bg-background text-foreground flex flex-col overflow-y-auto"
+        className="bw-pane-detail fixed inset-0 z-[120] bg-background text-foreground flex flex-col overflow-y-auto"
       >
         {/* Figma "Rehearsal / Propose – member": rehearsal-blue header */}
         <header
@@ -143,7 +144,8 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
         >
           <div className="flex items-center gap-3 min-h-11">
             <p className="flex-1 min-w-0 bw-label-sm truncate">{bandName ? `For ${bandName}` : 'Member request'}</p>
-            <IconButton label="Close" icon={<X />} variant="sheet" onClick={onClose} />
+            <RailCover pane />
+            <HeaderAction pane label="Close" icon={<X />} variant="sheet" onClick={onClose} />
           </div>
           <h1 id="propose-rehearsal-title" className="bw-display-lg [overflow-wrap:anywhere]">
             Propose rehearsal

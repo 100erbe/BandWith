@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'motion/react';
 import { 
   Search, 
   User, 
@@ -11,14 +11,17 @@ import {
   MessageSquare,
   X,
   Loader2,
-  Check,
-  CheckCheck,
+  Trash2,
 } from '@/app/components/icons';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
+import { haptic } from '@/lib/haptics';
+import { ReceiptTicks } from '@/app/components/chat/ReceiptTicks';
 import { cn } from '@/app/components/ui/utils';
 import { EmptyState } from '@/app/components/ui/EmptyState';
 import { eventKindOf, type EventKind } from '@/app/components/bw';
 import { ChatItem, ChatFilterType, toTitleCase } from '@/app/data/chats';
 import { searchChatsAndMessages, SearchResult } from '@/lib/services/chats';
+import { useRailSearch } from '@/lib/railActions';
 
 interface ChatViewProps {
   chatFilter: ChatFilterType;
@@ -29,7 +32,79 @@ interface ChatViewProps {
   unreadCounts?: { all: number; direct: number; band: number; event: number };
   onChatClick?: (chat: ChatItem) => void;
   onStartChat?: () => void;
+  /** Swipe left → Delete. Removes the chat from my list only. */
+  onDeleteChat?: (chat: ChatItem) => Promise<void> | void;
 }
+
+const ACTION_W = 80;
+const ACTION_GAP = 16;
+/** How far the row slides: the action plus clear space before date/ticks. */
+const REVEAL = ACTION_W + ACTION_GAP;
+
+/** iOS-style row: swipe left to reveal Delete, tap elsewhere to close. */
+const SwipeRow: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  label: string;
+  children: React.ReactNode;
+}> = ({ open, onOpenChange, onDelete, label, children }) => {
+  const x = useMotionValue(0);
+  // Hidden at rest so no red edge peeks out next to the row.
+  const actionOpacity = useTransform(x, [-REVEAL, -6, 0], [1, 1, 0]);
+  const dragged = useRef(false);
+
+  useEffect(() => {
+    const controls = animate(x, open ? -REVEAL : 0, { type: 'spring', stiffness: 520, damping: 42 });
+    return () => controls.stop();
+  }, [open, x]);
+
+  return (
+    <div className="relative overflow-hidden">
+      <motion.button
+        type="button"
+        onClick={onDelete}
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
+        aria-label={`Delete chat with ${label}`}
+        className="absolute top-2 bottom-2 right-0 flex flex-col items-center justify-center gap-1 rounded-[20px] bg-destructive-solid text-white bw-label-xs active:scale-95 transition-transform"
+        style={{ width: ACTION_W, opacity: actionOpacity }}
+      >
+        <Trash2 className="w-5 h-5" aria-hidden />
+        Delete
+      </motion.button>
+      <motion.div
+        drag="x"
+        dragDirectionLock
+        dragMomentum={false}
+        dragConstraints={{ left: -REVEAL, right: 0 }}
+        dragElastic={{ left: 0.12, right: 0 }}
+        style={{ x, touchAction: 'pan-y' }}
+        onDragStart={() => { dragged.current = true; }}
+        onDragEnd={(_, info) => {
+          const next = open
+            ? !(info.offset.x > REVEAL / 3 || info.velocity.x > 400)
+            : info.offset.x < -REVEAL / 2 || info.velocity.x < -400;
+          animate(x, next ? -REVEAL : 0, { type: 'spring', stiffness: 520, damping: 42 });
+          if (next && !open) haptic.tap();
+          onOpenChange(next);
+          setTimeout(() => { dragged.current = false; }, 0);
+        }}
+        onClickCapture={(e) => {
+          // A swipe is not a tap; a tap on an open row just closes it.
+          if (dragged.current || open) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!dragged.current) onOpenChange(false);
+          }
+        }}
+        className="relative bg-background"
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+};
 
 const FILTERS = [
   { key: 'all' as const, label: 'ALL' },
@@ -106,11 +181,39 @@ export const ChatView: React.FC<ChatViewProps> = ({
   filteredChats,
   unreadCounts = { all: 0, direct: 0, band: 0, event: 0 },
   onChatClick,
-  onStartChat
+  onStartChat,
+  onDeleteChat,
 }) => {
+  const [openRowId, setOpenRowId] = useState<ChatItem['id'] | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ChatItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || !onDeleteChat) return;
+    setDeleting(true);
+    try {
+      await onDeleteChat(pendingDelete);
+      haptic.tap();
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+      setOpenRowId(null);
+    }
+  };
+
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // iPhone Duo: the chat search lives in the side rail (Figma "Duo/Rail Search Field").
+  const searchInRail = useRailSearch({
+    label: 'Search chats',
+    placeholder: 'Search chats…',
+    base: true,
+    value: chatSearch,
+    busy: isSearching,
+    onChange: setChatSearch,
+  });
 
   // The "+" lives in the screen header (Figma "Chat / Inbox"); Header.tsx signals it.
   useEffect(() => {
@@ -177,7 +280,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       className="flex flex-col gap-3 relative z-10 min-h-[50vh]"
     >
       {/* ═══ FILTER SELECTORS ═══ */}
-      <div className="flex gap-1.5 items-center overflow-x-auto scrollbar-hide -mx-4 px-4" role="tablist" aria-label="Chat filters">
+      <div className="flex gap-1.5 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4" role="tablist" aria-label="Chat filters">
         {FILTERS.map(({ key, label }) => {
           const count = unreadCounts[key];
           const isActive = chatFilter === key;
@@ -204,9 +307,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
         })}
       </div>
 
-      {/* ═══ SEARCH + NEW CHAT ═══ */}
-      <div className="relative">
-        <div className="flex items-center gap-3">
+      {/* ═══ SEARCH + NEW CHAT ═══ (on iPhone Duo only the results remain: the field is in the rail) */}
+      <div className={cn('relative', searchInRail && !(showSearchResults && searchResults.length > 0) && 'hidden')}>
+        {!searchInRail && <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0 h-[52px] bg-field border border-border rounded-full flex items-center px-4 gap-3">
             {isSearching ? (
               <Loader2 className="w-5 h-5 text-muted-foreground animate-spin shrink-0" />
@@ -236,7 +339,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </button>
             )}
           </div>
-        </div>
+        </div>}
         
         {/* Search Results Dropdown */}
         <AnimatePresence>
@@ -319,7 +422,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           filteredChats.map((chat, i) => {
             const hasUnread = chat.unread > 0;
             const displayName = toTitleCase(chat.name);
-            return (
+            const row = (
               <motion.div 
                 key={chat.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -368,25 +471,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         {chat.unread > 99 ? '99+' : chat.unread}
                       </span>
                     ) : chat.isLastMessageMine ? (
-                      chat.isLastMessageRead ? (
-                        <CheckCheck
-                          aria-label="Read"
-                          className="w-3.5 h-3.5 shrink-0"
-                          style={{ color: 'var(--accent-rehearsal-ink)' }}
-                        />
-                      ) : (
-                        <Check aria-label="Sent" className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      )
+                      <ReceiptTicks
+                        status={chat.lastMessageStatus ?? (chat.isLastMessageRead ? 'read' : 'sent')}
+                        className="w-3.5 h-3.5"
+                      />
                     ) : null}
                   </div>
                 </div>
               </motion.div>
+            );
+            if (!onDeleteChat) return row;
+            return (
+              <SwipeRow
+                key={chat.id}
+                label={displayName}
+                open={openRowId === chat.id}
+                onOpenChange={(o) => setOpenRowId(o ? chat.id : null)}
+                onDelete={() => setPendingDelete(chat)}
+              >
+                {row}
+              </SwipeRow>
             );
           })
         ) : (
           <EmptyState />
         )}
       </div>
+
+      <DeleteChatSheet
+        open={!!pendingDelete}
+        chatName={pendingDelete?.type === 'direct' ? toTitleCase(pendingDelete.name) : undefined}
+        deleting={deleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
+      />
 
       {/* Bottom clearance spacer ensuring last chat cleanly clears floating navbar */}
       <div

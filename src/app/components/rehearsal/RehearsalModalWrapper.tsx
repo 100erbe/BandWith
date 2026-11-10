@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from '@/app/components/icons';
 import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
+import { useRailBack } from '@/lib/railActions';
 
 interface Props {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
   textColor = 'var(--wizard-accent-fg, var(--surface-inverse-fg, white))',
 }) => {
   const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
+  // iPhone Duo: Back lives in the side rail.
+  const backInRail = useRailBack(isOpen ? onClose : undefined, 'Back');
 
   return (
     <AnimatePresence>
@@ -50,8 +53,8 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
               style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 56px)) + 8px)' }}
             >
               {/* Header */}
-              <div className="flex items-center gap-4">
-                <button
+              <div className="flex items-center gap-4 bw-status-clear-shift">
+                {!backInRail && <button
                   type="button"
                   onClick={onClose}
                   className="w-11 h-11 rounded-full flex items-center justify-center border-2 border-current/20 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors"
@@ -59,7 +62,7 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
                   aria-label="Back"
                 >
                   <ArrowLeft className="w-5 h-5" style={{ color: textColor }} />
-                </button>
+                </button>}
                 <span
                   className="text-2xl sm:text-3xl font-bold uppercase tracking-tight"
                   style={{ color: textColor }}

@@ -4,15 +4,16 @@ import { RehearsalSong, SetlistTemplate } from './types';
 import { cn } from '@/app/components/ui/utils';
 import { BwSheet, IconButton, PillButton, PillField, SearchField, Selector } from '@/app/components/bw';
 import { createSong } from '@/lib/services/songs';
+import { safeHttpsUrl } from '@/lib/services/songFiles';
 
-function detectUrlType(url: string): { spotify_id?: string; youtube_url?: string; audio_url?: string } {
-  if (url.includes('spotify.com') || url.includes('spotify:')) {
-    const match = url.match(/track[:/]([a-zA-Z0-9]+)/);
-    return { spotify_id: match?.[1] || url };
-  }
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    return { youtube_url: url };
-  }
+function detectUrlType(input: string): { spotify_id?: string; youtube_url?: string; audio_url?: string } {
+  const trimmed = input.trim();
+  const spotify = trimmed.match(/spotify(?::|\.com\/)(?:.*?)track[:/]([a-zA-Z0-9]{10,40})/);
+  if (spotify) return { spotify_id: spotify[1] };
+  // Everything else must be an https link (no javascript:, data:, file: …).
+  const url = safeHttpsUrl(trimmed);
+  if (!url) return {};
+  if (/(^|\.)(youtube\.com|youtu\.be)$/i.test(new URL(url).hostname)) return { youtube_url: url };
   return { audio_url: url };
 }
 

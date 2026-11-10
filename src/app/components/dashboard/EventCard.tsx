@@ -4,6 +4,7 @@ import { springs } from '@/styles/motion';
 import { ArrowUpRight } from '@/app/components/icons';
 import { EventMark, type EventKind } from '@/app/components/bw/EventMark';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 export interface EventData {
   id: number;
@@ -46,6 +47,7 @@ interface EventCardProps {
 
 /** Figma "Event Card": the whole card is the event colour (see EventsView). */
 export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const status = (event.status || '').toUpperCase();
   const kind: EventKind =
     status === 'REHEARSAL' ? 'rehearsal'
@@ -117,7 +119,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
         ) : (
           <span className="bw-label-xs opacity-70">No team</span>
         )}
-        {event.price && <span className="bw-num whitespace-nowrap">€{event.price}</span>}
+        {event.price && <span className="bw-num whitespace-nowrap">{sym()}{event.price}</span>}
       </motion.div>
     </motion.div>
   );

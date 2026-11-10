@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronRight, Search, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { RailHeaderActions, useRailAction, useRailBack, useRailHeaderSlot, useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Screen building blocks, 1:1 with the Figma components:
@@ -29,10 +30,49 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
   variant?: IconButtonStyle;
   /** SM 36 (icon 16) · MD 44 (icon 20). SM keeps a 44 hit area. */
   size?: 'sm' | 'md';
+  /** Icon to use when the button moves into the iPhone Duo rail. */
+  railIcon?: React.ReactNode;
+  /** Unread count shown on the button in the iPhone Duo rail. */
+  railBadge?: number;
+  /** Filled disc in the rail (defaults to the Filled variant). Closes never are. */
+  railProminent?: boolean;
 }
 
+/**
+ * Inside RailHeaderActions on the iPhone Duo the button hands itself to the
+ * rail (Figma "Duo/Side Actions") and renders nothing in the top bar.
+ */
+const RailSlotIconButton = React.forwardRef<
+  HTMLButtonElement,
+  IconButtonProps & { railSlot: { pane?: boolean; base?: boolean } }
+>(({ railSlot: slot, railIcon, railBadge, railProminent, ...props }, ref) => {
+  const { label, icon, variant, className, onClick, disabled } = props;
+  const run = onClick ? () => onClick({} as React.MouseEvent<HTMLButtonElement>) : undefined;
+  const inRail = useRailAction(run, {
+    label,
+    icon: railIcon ?? icon,
+    pane: slot.pane,
+    base: slot.base,
+    prominent: railProminent ?? variant === 'filled',
+    destructive: /\btext-destructive\b/.test(className ?? ''),
+    disabled: !!disabled,
+    badgeCount: railBadge,
+  });
+  if (inRail) return null;
+  return <PlainIconButton ref={ref} {...props} />;
+});
+RailSlotIconButton.displayName = 'RailSlotIconButton';
+
 /** Figma "Icon Button" (Outline / Filled / Ghost / Event, SM / MD). */
-export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>((props, ref) => {
+  const slot = useRailHeaderSlot();
+  if (slot) return <RailSlotIconButton ref={ref} railSlot={slot} {...props} />;
+  const { railIcon: _ri, railBadge: _rb, railProminent: _rp, ...rest } = props;
+  return <PlainIconButton ref={ref} {...rest} />;
+});
+IconButton.displayName = 'IconButton';
+
+const PlainIconButton = React.forwardRef<HTMLButtonElement, Omit<IconButtonProps, 'railIcon' | 'railBadge' | 'railProminent'>>(
   ({ label, icon, variant = 'outline', size = 'md', className, type = 'button', ...rest }, ref) => (
     <button
       ref={ref}
@@ -54,7 +94,36 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     </button>
   ),
 );
-IconButton.displayName = 'IconButton';
+PlainIconButton.displayName = 'PlainIconButton';
+
+/**
+ * A header's trailing button (close, delete, new…). On the iPhone Duo it
+ * moves into the side rail's Side Actions; elsewhere it is an IconButton.
+ * `pane`: it belongs to a trailing-pane detail on the open display.
+ */
+export const HeaderAction: React.FC<IconButtonProps & { pane?: boolean }> = ({ pane, ...props }) => (
+  <RailHeaderActions pane={pane}>
+    <IconButton {...props} />
+  </RailHeaderActions>
+);
+
+/**
+ * Back button for screens and details. On iPhone Duo it moves into the side
+ * rail (Figma "Duo/Side Actions") and renders nothing here.
+ */
+export const NavBackButton: React.FC<
+  Omit<IconButtonProps, 'icon' | 'label' | 'onClick'> & {
+    label?: string;
+    onClick: () => void;
+    icon?: React.ReactNode;
+    /** iPhone Duo open: this back belongs to a trailing-pane detail. */
+    pane?: boolean;
+  }
+> = ({ label = 'Back', onClick, icon, pane = false, ...rest }) => {
+  const inRail = useRailBack(onClick, label, true, pane);
+  if (inRail) return null;
+  return <IconButton label={label} icon={icon ?? <ArrowLeft />} onClick={onClick} {...rest} />;
+};
 
 /* ───────────────────────────────── Tag ───────────────────────────────── */
 
@@ -126,18 +195,26 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   children,
   sticky = false,
   className,
-}) => (
+}) => {
+  // iPhone Duo: Back lives in the side rail, so the row only remains for actions.
+  const backInRail = useRailBack(onBack, backLabel);
+  const showBack = !!onBack && !backInRail;
+  // ...and the actions (IconButtons) join it too, so the row goes away.
+  const railOwns = useRailOwnsChrome();
+  const actionsInRow = !!actions && !railOwns;
+  return (
   <header
     className={cn('px-4 flex flex-col gap-3 bg-background', sticky && 'sticky top-0 z-30', className)}
     style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
   >
-    {(onBack || actions) && (
+    {(showBack || actionsInRow) && (
       <div className="flex items-center gap-3 min-h-11">
-        {onBack && <IconButton label={backLabel} icon={<ArrowLeft />} onClick={onBack} />}
+        {showBack && <IconButton label={backLabel} icon={<ArrowLeft />} onClick={onBack} />}
         <div className="flex-1" />
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actionsInRow && <div className="flex items-center gap-2">{actions}</div>}
       </div>
     )}
+    {actions && railOwns && <RailHeaderActions>{actions}</RailHeaderActions>}
     {(overline || title) && (
       <div className="flex flex-col gap-1 min-w-0">
         {overline && <p className="bw-label-sm text-muted-foreground">{overline}</p>}
@@ -157,7 +234,8 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     )}
     {children}
   </header>
-);
+  );
+};
 
 /* ───────────────────────────── Search field ───────────────────────────── */
 
@@ -169,7 +247,18 @@ export interface SearchFieldProps extends Omit<React.InputHTMLAttributes<HTMLInp
 }
 
 /** Figma "Input" used as a search: 52pt white pill, search icon, Body/LG. */
-export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = 'Search', placeholder, className, ...rest }) => (
+export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = 'Search', placeholder, className, ...rest }) => {
+  // iPhone Duo: the search moves into the side rail (Figma "Duo/Rail Search Field").
+  const inRail = useRailSearch({
+    label,
+    value,
+    onChange,
+    placeholder: typeof placeholder === 'string' ? placeholder : undefined,
+    autoFocus: !!rest.autoFocus,
+    onKeyDown: rest.onKeyDown,
+  });
+  if (inRail) return null;
+  return (
   <label
     className={cn(
       'flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-foreground',
@@ -193,7 +282,8 @@ export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label
       </button>
     )}
   </label>
-);
+  );
+};
 
 /* ──────────────────────────────── Card ──────────────────────────────── */
 
@@ -273,6 +363,10 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   zIndex = 90,
 }) => {
   const dark = tone === 'dark';
+  // iPhone Duo (Figma "Home / Create menu", "Event / Fee & payouts sheet"):
+  // the sheet keeps its own close and the rail stays as the screen beneath
+  // had it; where that screen has a Back, Back closes the sheet first.
+  useRailBack(open ? onClose : undefined, closeLabel, open && zIndex < 190, true, true);
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -289,7 +383,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60"
+            className="bw-rail-sheet fixed inset-0 bg-black/60"
             style={{ zIndex: zIndex - 1 }}
             onClick={onClose}
           />
@@ -302,7 +396,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             exit={{ y: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             className={cn(
-              'fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
+              'bw-rail-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
               dark ? 'bg-sheet text-sheet-foreground' : 'bg-background text-foreground',
             )}
             style={{ zIndex }}

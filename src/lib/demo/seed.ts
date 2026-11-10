@@ -184,13 +184,14 @@ export const buildSeed = (): DemoDB => {
   const chats: Row[] = [
     { id: id(1100), band_id: IDS.band, event_id: null, type: 'band', name: 'Velvet Static', created_by: IDS.me, created_at: created, updated_at: ago(12) },
     { id: id(1101), band_id: IDS.band, event_id: id(600), type: 'event', name: 'Rooftop Session', created_by: IDS.me, created_at: created, updated_at: ago(45) },
-    { id: id(1102), band_id: IDS.band, event_id: null, type: 'direct', name: null, created_by: IDS.marta, created_at: created, updated_at: ago(60 * 5) },
+    { id: id(1102), band_id: IDS.band, event_id: null, type: 'direct', name: null, created_by: IDS.marta, created_at: created, updated_at: ago(60 * 4) },
   ];
   const chat_participants: Row[] = [
     ...members.map((m, i) => ({ id: id(1200 + i), chat_id: id(1100), user_id: m.u, last_read_at: m.u === IDS.me ? ago(60) : ago(5), muted: false, joined_at: created })),
     ...members.map((m, i) => ({ id: id(1210 + i), chat_id: id(1101), user_id: m.u, last_read_at: ago(30), muted: false, joined_at: created })),
-    { id: id(1220), chat_id: id(1102), user_id: IDS.me, last_read_at: ago(60 * 6), muted: false, joined_at: created },
-    { id: id(1221), chat_id: id(1102), user_id: IDS.marta, last_read_at: ago(60 * 5), muted: false, joined_at: created },
+    { id: id(1220), chat_id: id(1102), user_id: IDS.me, last_read_at: ago(60 * 4), last_delivered_at: ago(60 * 4), muted: false, joined_at: created },
+    // Marta's phone got the reply (✓✓ grey) but she hasn't opened it yet.
+    { id: id(1221), chat_id: id(1102), user_id: IDS.marta, last_read_at: ago(60 * 5), last_delivered_at: ago(60 * 3), muted: false, joined_at: created },
   ];
   const msg = (n: number, chat: string, sender: string, content: string, minutesAgo: number): Row => ({
     id: id(1300 + n), chat_id: chat, band_id: IDS.band, sender_id: sender, content, message_type: 'text',
@@ -204,6 +205,7 @@ export const buildSeed = (): DemoDB => {
     msg(4, id(1100), IDS.marta, '+1, then straight into September 🔥', 12),
     msg(5, id(1101), IDS.me, 'Setlist is attached to the event, check the second set order.', 45),
     msg(6, id(1102), IDS.marta, 'Do you have the click track for the new arrangement?', 60 * 5),
+    msg(7, id(1102), IDS.me, 'Yes, sending it tonight with the stems.', 60 * 4),
   ];
 
   const notifications: Row[] = [

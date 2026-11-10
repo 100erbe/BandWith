@@ -8,10 +8,9 @@ import {
   Music,
   Upload,
   Clock,
-  SpotifyBrandIcon,
-  AppleMusicBrandIcon,
 } from '@/app/components/icons';
 import { useOnboarding, OnboardingSong } from '@/lib/OnboardingContext';
+import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 
@@ -123,6 +122,42 @@ export const AddSongs: React.FC<AddSongsProps> = ({
     } else {
       addSong(song);
     }
+  };
+
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setImportMessage('That file is too large for a song list (max 2 MB).');
+      return;
+    }
+    const parsed = parseSongList(await file.text());
+    if (parsed.length === 0) {
+      setImportMessage('No songs found. Use one song per line or a CSV with a “title” column.');
+      return;
+    }
+    const existing = new Set(songs.map((s) => `${s.title.toLowerCase()}|${(s.artist || '').toLowerCase()}`));
+    const fresh = parsed.filter((p) => !existing.has(`${p.title.toLowerCase()}|${(p.artist || '').toLowerCase()}`));
+    addSongs(
+      fresh.map((p, i) => ({
+        id: `import-${Date.now()}-${i}`,
+        title: p.title,
+        artist: p.artist,
+        key: p.key,
+        bpm: p.bpm,
+        duration: p.duration,
+        genre: p.genre,
+        source: 'import' as const,
+      })),
+    );
+    setImportMessage(
+      fresh.length === parsed.length
+        ? `Imported ${fresh.length} song${fresh.length === 1 ? '' : 's'}.`
+        : `Imported ${fresh.length} new song${fresh.length === 1 ? '' : 's'} (${parsed.length - fresh.length} already in your list).`,
+    );
   };
 
   const handleAddCustomSong = () => {
@@ -411,51 +446,31 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                 onClose={() => setShowImportModal(false)}
                 closeIcon={<X className="w-4 h-4" strokeWidth={2} />}
               >
-                <p className="bw-body-sm text-muted-foreground -mt-2 mb-5">Choose a source to import your repertoire from.</p>
+                <p className="bw-body-sm text-muted-foreground -mt-2 mb-5">
+                  Pick a song list exported from Excel, Numbers or Google Sheets (CSV), or a plain text list with one
+                  song per line, like “Superstition - Stevie Wonder”.
+                </p>
 
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-2">
-                    <p className="bw-label-sm text-muted-foreground">Streaming services</p>
-                    <button type="button" className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-card text-left">
-                      {/* Spotify brand green */}
-                      <span className="w-11 h-11 rounded-full bg-[#1DB954] flex items-center justify-center shrink-0">
-                        <SpotifyBrandIcon className="w-5 h-5 text-white" />
-                      </span>
-                      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <span className="bw-label-md text-foreground">Spotify</span>
-                        <span className="bw-body-sm text-muted-foreground">Import from playlists</span>
-                      </span>
-                      <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
-                    </button>
-
-                    <button type="button" className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-card text-left">
-                      {/* Apple Music brand red */}
-                      <span className="w-11 h-11 rounded-full bg-[#FA243C] flex items-center justify-center shrink-0">
-                        <AppleMusicBrandIcon className="w-5 h-5 text-white" />
-                      </span>
-                      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <span className="bw-label-md text-foreground">Apple Music</span>
-                        <span className="bw-body-sm text-muted-foreground">Import from library</span>
-                      </span>
-                      <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <p className="bw-label-sm text-muted-foreground">File upload</p>
-                    <button type="button" className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-card text-left">
-                      <span className="w-11 h-11 rounded-full bg-accent text-accent-foreground flex items-center justify-center shrink-0">
-                        <Upload className="w-5 h-5" />
-                      </span>
-                      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                        <span className="bw-label-md text-foreground">Upload CSV/Excel</span>
-                        <span className="bw-body-sm text-muted-foreground">Import from local file</span>
-                      </span>
-                      <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  </div>
-
-                  <p className="bw-label-sm text-muted-foreground text-center">More import options coming soon</p>
+                <div className="flex flex-col gap-3">
+                  <label className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-card text-left cursor-pointer active:scale-[0.99] transition-transform">
+                    <input type="file" accept={SONG_LIST_ACCEPT} className="hidden" onChange={handleImportFile} />
+                    <span className="w-11 h-11 rounded-full bg-accent text-accent-foreground flex items-center justify-center shrink-0">
+                      <Upload className="w-5 h-5" />
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-label-md text-foreground">Choose a CSV or TXT file</span>
+                      <span className="bw-body-sm text-muted-foreground">From this device, iCloud Drive, Google Drive or Dropbox</span>
+                    </span>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
+                  </label>
+                  {importMessage && (
+                    <p role="status" className="bw-body-sm text-muted-foreground text-center">
+                      {importMessage}
+                    </p>
+                  )}
+                  <p className="bw-label-xs text-muted-foreground text-center">
+                    Columns we read: title, artist, key, BPM, duration
+                  </p>
                 </div>
               </OnboardingSheet>
             </motion.div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { RailCover } from '@/lib/railActions';
 import { Users, Plus } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw';
 
@@ -19,14 +20,18 @@ export const NoBandRehearsalModal: React.FC<NoBandRehearsalModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+      {/* iPhone Duo: on the open display the dialog sits on the trailing pane;
+          its scrim stops at the rail (Figma "Rehearsal / No band – modal"). */}
+      <div className="bw-pane-detail fixed inset-0 z-[180]">
+      <RailCover pane />
+      <div className="relative h-full flex items-center justify-center p-6">
         {/* Scrim (clickable to close) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-0 bg-black/60 cursor-pointer"
+          className="absolute inset-0 z-0 bg-black/60 cursor-pointer"
         />
 
         {/* Modal card */}
@@ -73,6 +78,7 @@ export const NoBandRehearsalModal: React.FC<NoBandRehearsalModalProps> = ({
             </PillButton>
           </div>
         </motion.div>
+      </div>
       </div>
     </AnimatePresence>
   );

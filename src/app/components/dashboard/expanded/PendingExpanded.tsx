@@ -9,6 +9,8 @@ import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { EVENT_FILTERS } from '@/app/data/events';
 import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { MapsLink } from '@/app/components/ui/MapsLink';
 
 interface PendingExpandedProps {
   bandId: string;
@@ -26,6 +28,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
   events: realEvents,
   loading
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   // Convert real events to display format and group by date
   const eventsByDate = useMemo(() => {
     if (!realEvents || realEvents.length === 0) {
@@ -106,7 +109,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         <SearchField value={query} onChange={setQuery} label="Search events" placeholder="Search title or venue…" />
 
         {/* Filter tabs (Figma Selector MD) */}
-        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
           {EVENT_FILTERS.map((filter) => (
             <Selector key={filter} size="md" selected={eventFilter === filter} onClick={() => setEventFilter(filter)}>
               {filter}
@@ -153,13 +156,12 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                         </span>
                         <h3 className="bw-h3 [overflow-wrap:anywhere]">{event.title}</h3>
                       </span>
-                      <span className="bw-num shrink-0 whitespace-nowrap">€{event.price}</span>
+                      <span className="bw-num shrink-0 whitespace-nowrap">{sym()}{event.price}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-1.5 min-w-0 bw-label-md">
-                        <MapPin className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{event.location}</span>
-                      </span>
+                      <MapsLink pin query={event.location} className="bw-label-md">
+                        {event.location}
+                      </MapsLink>
                       <span className="bw-label-md shrink-0">{event.time || 'Time TBD'}</span>
                     </div>
                   </Card>

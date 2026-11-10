@@ -9,6 +9,7 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWithOAuth, updatePassword, RECOVERY_FLAG } from './supabase';
 import { Capacitor } from '@capacitor/core';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
+import { unregisterPushToken } from './services/pushNotifications';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
 
@@ -317,6 +318,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const handleSignOut = async () => {
+    // Before the session ends: this device must stop receiving this account's pushes.
+    await unregisterPushToken();
     const { error } = await signOut();
     if (!error) {
       setUser(null);

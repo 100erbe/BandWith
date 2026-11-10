@@ -425,6 +425,10 @@ export const DollarSign = dotIcon('DollarSign', {
 
 export const Euro = dotIcon('Euro', { d: 'M17.5 6.5A7 7 0 1 0 17.5 17.5M3.5 10H11M3.5 14H11' });
 
+export const PoundSterling = dotIcon('PoundSterling', { d: 'M17 6.5A3.5 3.5 0 0 0 10 7.5V19.5M6 19.5H18M6 12.5H14' });
+
+export const SwissFranc = dotIcon('SwissFranc', { d: 'M17.5 4.5H10V19.5M10 11.5H16M6 15.5H14' });
+
 export const Wallet = dotIcon('Wallet', {
   d:
     open(

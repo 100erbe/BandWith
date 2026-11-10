@@ -14,6 +14,8 @@ import { APP_COPY } from '@/app/constants/copy';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { openMaps } from '@/app/components/ui/MapsLink';
 
 interface DashboardData {
   eventStats: {
@@ -172,6 +174,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onShowToast,
   currentUserId,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   // Use the band context for role, fall back to prop for backwards compatibility
   const { isAdmin: isAdminFromContext } = useBand();
   const isAdmin = isAdminFromContext ?? _isAdminProp;
@@ -200,9 +203,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const formatRevenue = (value: number): string => {
     if (value >= 1000) {
-      return `€${(value / 1000).toFixed(1)}k`;
+      return `${sym()}${(value / 1000).toFixed(1)}k`;
     }
-    return `€${value}`;
+    return `${sym()}${value}`;
   };
 
   const memberStats = dashboardData?.memberStats;
@@ -514,7 +517,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               .join(', ');
             const openLoadIn = () => {
               if (mapQuery) {
-                window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`, '_blank', 'noopener');
+                openMaps(mapQuery);
               } else if (nextMemberGig && onSelectEvent) {
                 onSelectEvent(nextMemberGig.eventId || nextMemberGig.id);
               } else {

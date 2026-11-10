@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, Clock, Sparkles, Send } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { IconButton, PillButton, PillField, Selector, Card, FormError } from '@/app/components/bw';
+import { HeaderAction, IconButton, PillButton, PillField, Selector, Card, FormError } from '@/app/components/bw';
+import { RailCover } from '@/lib/railActions';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import {
   createOrPublishAdminPoll,
@@ -256,7 +257,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ type: 'tween', duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed inset-0 z-[120] bg-background text-foreground flex flex-col"
+        className="bw-pane-detail fixed inset-0 z-[120] bg-background text-foreground flex flex-col"
       >
         <div className="flex-1 min-h-0 overflow-y-auto">
           {/* Figma "Rehearsal / Poll builder": rehearsal-blue header */}
@@ -266,7 +267,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
           >
             <div className="flex items-center gap-3 min-h-11">
               <p className="flex-1 min-w-0 bw-label-sm truncate">Admin tool · Find the best day</p>
-              <IconButton label="Close" icon={<X />} variant="sheet" onClick={onClose} />
+              <RailCover pane />
+              <HeaderAction pane label="Close" icon={<X />} variant="sheet" onClick={onClose} />
             </div>
             <h1 id="poll-builder-title" className="bw-display-lg [overflow-wrap:anywhere]">
               {initialProposal ? 'Proposal to poll' : 'Availability poll'}

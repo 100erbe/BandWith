@@ -2,13 +2,14 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowUpRight, Plus, AlertCircle,
-  ChevronDown, X, Layers, Euro, Guitar, Check,
+  ChevronDown, X, Layers, CurrencyIcon, Guitar, Check,
   Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Sparkles, Users
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
-import { Card, IconButton, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
+import { Card, IconButton, NavBackButton, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
+import { useRailAction } from '@/lib/railActions';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
@@ -36,6 +37,7 @@ import { RehearsalEditProposalModal } from './RehearsalEditProposalModal';
 import { RehearsalTaskDetailModal } from './RehearsalTaskDetailModal';
 import { RehearsalReviewSetlistModal } from './RehearsalReviewSetlistModal';
 import { toLocalDateString } from '../../../lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface TaskTemplateDB {
   id: string;
@@ -314,6 +316,7 @@ const RehearsalAccordionCard: React.FC<{
 );
 
 export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand, isAdmin } = useBand();
   const isEditing = !!editingEvent;
   const [step, setStep] = useState(0);
@@ -798,7 +801,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const audienceCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
   const costNumber = parseFloat(data.totalCost || '0') || 0;
   const perPerson = costNumber / Math.max(audienceCount, 1);
-  const perPersonLabel = `€ ${Number.isInteger(perPerson) ? perPerson : perPerson.toFixed(2)}`;
+  const perPersonLabel = `${sym().trim()} ${Number.isInteger(perPerson) ? perPerson : perPerson.toFixed(2)}`;
 
   const renderTypeTiles = () => (
     <div className="flex flex-col gap-2">
@@ -935,7 +938,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <label className="flex flex-col gap-2 min-w-0">
           <span className="bw-label-sm text-muted-foreground">Total studio cost</span>
           <span className="flex items-baseline gap-2">
-            <span className="bw-value-lg">€</span>
+            <span className="bw-value-lg">{sym()}</span>
             <input
               type="number"
               min="0"
@@ -1182,7 +1185,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <div className="flex items-center gap-1.5 flex-wrap">
               <Tag variant="rehearsal">{typeLabel}</Tag>
               <Tag variant="subtle">{recurrenceLabel}</Tag>
-              <Tag variant="subtle" icon={isPaid ? <Euro /> : undefined}>
+              <Tag variant="subtle" icon={isPaid ? <CurrencyIcon /> : undefined}>
                 {isPaid ? data.totalCost : 'Free studio'}
               </Tag>
             </div>
@@ -1739,6 +1742,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   // ── MAIN RENDER ───────────────────────────────────────────
 
+  // iPhone Duo: the wizard's close sits in the system column under the clock
+  // (Figma "Closed · Rehearsal / New – 1 Session & roster").
+  const closeInRail = useRailAction(isEditing ? undefined : onClose, {
+    label: 'Close rehearsal wizard',
+    icon: <X />,
+    pane: true,
+  });
+
   if (isEditing) {
     const typeLabel = TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band';
     return (
@@ -1748,13 +1759,15 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           animate={{ opacity: 1, y: 0 }}
           data-wizard-type="rehearsal"
           style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-          className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+          className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
         >
           {/* Header */}
           <header className="shrink-0 px-4 pb-4 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
             <div className="flex items-center gap-3 min-h-11">
-              <IconButton label="Close edit rehearsal" icon={<ArrowLeft />} onClick={onClose} />
-              <div className="flex-1" />
+              <NavBackButton pane label="Close edit rehearsal" onClick={onClose} />
+              {/* iPhone Duo: Back is in the rail, so the tag leads the row
+                  (as in the gig edit header) instead of floating top-right. */}
+              <div className="flex-1 [[data-bw-rail-host]_&]:hidden" />
               <Tag variant="rehearsal">Editing</Tag>
             </div>
             <div className="flex flex-col gap-1 min-w-0">
@@ -1803,14 +1816,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         animate={{ opacity: 1, y: 0 }}
         data-wizard-type="rehearsal"
         style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-        className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+        className="bw-pane-detail fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
       >
         {/* Header: Top Bar + wizard steps (Figma "Rehearsal / New") */}
         <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
           <div className="flex items-center gap-3 min-h-11">
-            <IconButton label={step > 0 ? 'Back' : 'Cancel'} icon={<ArrowLeft />} onClick={handleBack} />
+            <NavBackButton pane label={step > 0 ? 'Back' : 'Cancel'} onClick={handleBack} />
             <h2 className="flex-1 min-w-0 bw-h1 truncate">New rehearsal</h2>
-            <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={onClose} />
+            {!closeInRail && (
+              <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={onClose} />
+            )}
           </div>
           <WizardSteps current={step} steps={STEPS} maxAccessibleStep={maxAccessibleStep} onSelectStep={(s) => setStep(s)} />
         </header>

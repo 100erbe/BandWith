@@ -109,6 +109,8 @@
   --surface-inverse: #000000;
   --surface-inverse-fg: #FFFFFF;
   --border: rgba(0, 0, 0, 0.15);
+  --nav-glass: rgba(255, 255, 255, 0.55);
+  --nav-glass-border: rgba(255, 255, 255, 0.7);
   --input: rgba(0, 0, 0, 0.15);
   --ring: #000000;
   --radius: 2.5rem;
@@ -167,6 +169,8 @@
   --surface-inverse: #FFFFFF;
   --surface-inverse-fg: #000000;
   --border: rgba(255, 255, 255, 0.15);
+  --nav-glass: rgba(64, 64, 64, 0.75);
+  --nav-glass-border: rgba(255, 255, 255, 0.14);
   --input: rgba(255, 255, 255, 0.15);
   --ring: #D5FB46;
 }

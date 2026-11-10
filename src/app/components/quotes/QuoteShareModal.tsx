@@ -27,7 +27,8 @@ import {
   uploadQuotePdfForSharing,
 } from '@/lib/services/quotePdf';
 import { parseLocalDate } from '@/lib/dates';
-import { IconButton } from '@/app/components/bw/Screen';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 
 export interface QuoteShareModalProps {
@@ -296,7 +297,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Quote PDF ready"
-      className="dark fixed inset-0 z-[120] flex flex-col bg-background text-foreground"
+      className="bw-pane-detail dark fixed inset-0 z-[120] flex flex-col bg-background text-foreground"
     >
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div
@@ -312,7 +313,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                 </p>
                 <h1 className="bw-display-lg">PDF ready</h1>
               </div>
-              <IconButton label="Close" variant="filled" icon={<X />} onClick={onClose} />
+              <RailCover pane />
+              <HeaderAction pane label="Close" variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
             </div>
             <div className="flex items-center gap-2">
               {onOpenBandSettings && (

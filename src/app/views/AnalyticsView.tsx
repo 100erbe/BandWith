@@ -6,6 +6,7 @@ import { useBand } from '@/lib/BandContext';
 import { useDashboardData } from '@/app/hooks/useData';
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, Card } from '@/app/components/bw/Screen';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -54,13 +55,14 @@ const StatCard: React.FC<{ label: string; value: string | number; accent?: boole
 );
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboardData: sharedData, isAdmin = true }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand } = useBand();
   // Skip the query when Home's numbers were handed in.
   const { data: fetchedData, loading: fetching } = useDashboardData(sharedData ? null : selectedBand?.id || null);
   const dashboardData = sharedData ?? fetchedData;
   const loading = !sharedData && fetching;
 
-  const fmt = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1)}k` : `€${v}`);
+  const fmt = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1)}k` : `${sym()}${v}`);
 
   const totalRevenue = dashboardData?.eventStats?.totalRevenue || 0;
   const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
@@ -137,7 +139,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="bw-body-lg text-muted-foreground">All-time total earnings</span>
-                <span className="bw-label-md shrink-0">€{totalRevenue.toLocaleString('en-US')}</span>
+                <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString('en-US')}</span>
               </div>
             </Card>
 

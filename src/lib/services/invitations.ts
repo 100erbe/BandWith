@@ -187,12 +187,14 @@ export type InviteToBandResult =
  */
 export async function inviteToBand(input: {
   bandId: string;
-  email: string;
+  /** Either an email, or the id of an existing user from member search. */
+  email?: string;
+  userId?: string;
   role?: 'admin' | 'member';
   inviterName?: string;
 }): Promise<InviteToBandResult> {
   const { data, error } = await supabase.functions.invoke('invite-member', {
-    body: { bandId: input.bandId, email: input.email, role: input.role ?? 'member' },
+    body: { bandId: input.bandId, email: input.email, userId: input.userId, role: input.role ?? 'member' },
   });
   if (error) throw error;
   if (!data?.success) throw new Error(data?.error || 'Could not send the invite');
@@ -201,7 +203,7 @@ export async function inviteToBand(input: {
 
   const inviteUrl: string | null = data.inviteUrl ?? null;
   let emailSent = false;
-  if (inviteUrl) {
+  if (inviteUrl && input.email) {
     const { success } = await sendOnboardingInviteEmail(
       input.bandId,
       input.email,

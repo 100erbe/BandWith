@@ -17,7 +17,6 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import { useAuth } from '@/lib/AuthContext';
-import { notifyMemberRemoved } from '@/lib/services/notifications';
 import {
   getBandMembers,
   removeMember,
@@ -108,7 +107,9 @@ interface BandMembersViewProps {
 
 interface SearchUser {
   id: string;
+  /** Masked (gi•••@gmail.com) unless the exact address was searched. */
   email: string;
+  email_exact?: boolean;
   full_name?: string;
   avatar_url?: string;
 }
@@ -145,20 +146,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   };
 
   const handleRemoveMember = async (member: BandMember) => {
-    const memberName = member.profile?.full_name || member.profile?.email || 'Unknown';
     const { error } = await removeMember(member.id);
     if (!error) {
+      // The database notifies the removed member and the band (migration 046).
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
-      // Notify the removed member
-      if (selectedBand && currentProfile?.full_name) {
-        notifyMemberRemoved(
-          member.user_id,
-          memberName,
-          selectedBand.id,
-          selectedBand.name,
-          currentProfile.full_name
-        );
-      }
     }
     setActionMenuId(null);
   };
@@ -181,7 +172,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
   const handleSearch = useCallback(
     async (query: string) => {
-      if (!selectedBand?.id || query.length < 2) {
+      if (!selectedBand?.id || query.trim().length < 3) {
         setSearchResults([]);
         return;
       }
@@ -205,14 +196,14 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
   // Everyone joins by accepting an invitation (no one is added without consent).
   // Existing users see the invite in the app; new users get an email + link.
-  const sendInvite = async (email: string, displayName: string) => {
+  const sendInvite = async (target: { email?: string; userId?: string }, displayName: string) => {
     if (!selectedBand?.id) return false;
     setInviting(true);
     setError(null);
     try {
       const result = await inviteToBand({
         bandId: selectedBand.id,
-        email,
+        ...target,
         role: inviteRole,
         inviterName: currentProfile?.full_name ?? undefined,
       });
@@ -251,13 +242,18 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   };
 
   const handleAddUser = async (user: SearchUser) => {
-    await sendInvite(user.email, user.full_name || user.email);
+    // Search results only carry a masked email: invite by id, the server
+    // looks the address up.
+    await sendInvite(
+      user.email_exact ? { email: user.email } : { userId: user.id },
+      user.full_name || user.email
+    );
   };
 
   const handleInviteByEmail = async () => {
     if (!selectedBand?.id || !searchQuery || !searchQuery.includes('@')) return;
     const email = searchQuery.trim().toLowerCase();
-    await sendInvite(email, email);
+    await sendInvite({ email }, email);
   };
 
   const getInitials = (member: BandMember) => {
@@ -491,7 +487,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
           )}
 
           {/* No results: invite by email */}
-          {searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
+          {searchQuery.trim().length >= 3 && searchResults.length === 0 && !isSearching && (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <UserPlus className="w-8 h-8 text-sheet-foreground/50" />
               <p className="bw-body-sm text-sheet-foreground/70">

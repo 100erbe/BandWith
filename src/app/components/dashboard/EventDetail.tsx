@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   ArrowUpRight,
+  MapPin,
   MessageSquare,
   Check,
   Pencil,
@@ -22,8 +23,9 @@ import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { supabase } from '@/lib/supabase';
 import { useBand } from '@/lib/BandContext';
 import { cn } from '@/app/components/ui/utils';
+import { useRailAction, useRailOwnsChrome } from '@/lib/railActions';
 import { DotText } from '@/app/components/bw';
-import { IconButton, Tag, BwSheet } from '@/app/components/bw/Screen';
+import { IconButton, NavBackButton, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { haptic } from '@/lib/haptics';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
@@ -31,6 +33,8 @@ import { StageMode } from './StageMode';
 import { parseLocalDate } from '@/lib/dates';
 import { setStatusBarTone, toneForForeground } from '@/lib/systemBars';
 import { FIT, FitText } from '@/app/components/bw/FitText';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { openMaps } from '@/app/components/ui/MapsLink';
 
 interface EventDetailProps {
   event: EventData;
@@ -85,10 +89,10 @@ const formatEventTime = (timeStr?: string): string => {
 };
 
 const formatCurrencyExact = (price?: string | number): string => {
-  if (price === undefined || price === null || price === '') return '€0';
+  if (price === undefined || price === null || price === '') return `${sym()}0`;
   const raw = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.]/g, ''));
   if (isNaN(raw)) return String(price);
-  return `€${Math.round(raw).toLocaleString()}`;
+  return `${sym()}${Math.round(raw).toLocaleString()}`;
 };
 
 type EventCategory = 'rehearsal' | 'gig' | 'quote' | 'draft';
@@ -310,6 +314,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   isAdmin = true,
   currentUserId,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
+  const railChrome = useRailOwnsChrome();
   const { selectedBand, bands } = useBand();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -587,8 +593,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   const handleOpenMaps = () => {
     if (!hasValidLocation) return;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullLocationQuery)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openMaps(fullLocationQuery);
   };
 
   const handleCopyAddress = async () => {
@@ -663,6 +668,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const chatLabel = eventType === 'rehearsal' ? 'REHEARSAL CHAT' : 'EVENT CHAT';
   const showRsvpCard = !isPast && !isPersonalGig && isPending && !!onAccept && !!onDecline;
   const heroChipStyle: React.CSSProperties = { backgroundColor: theme.accentFg, color: theme.accentColor };
+  // iPhone Duo: Stage mode joins the rail's Side Actions; on gig day it is
+  // the screen's primary action (filled).
+  const stageInRail = useRailAction(
+    canStage
+      ? () => {
+          haptic.medium();
+          setIsStageOpen(true);
+        }
+      : undefined,
+    {
+      label: 'Open stage mode',
+      icon: <Play />,
+      pane: true,
+      prominent: isGigDay,
+    },
+  );
   const heroTintStyle: React.CSSProperties = {
     backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)',
   };
@@ -700,7 +721,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[85] bg-black/40 backdrop-blur-sm"
+        className="bw-pane-backdrop fixed inset-0 z-[85] bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -709,7 +730,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 32 }}
         transition={springs.smooth}
-        className="fixed inset-0 z-[90] flex flex-col overflow-hidden bg-background text-foreground select-none"
+        className="bw-pane-detail fixed inset-0 z-[90] flex flex-col overflow-hidden bg-background text-foreground select-none"
+        // iPhone Duo: the event colour runs under the rail (Figma "Event detail").
+        style={railChrome ? { backgroundColor: theme.accentColor } : undefined}
       >
         {/* Status-bar scrim: keeps scrolled content off the clock once the hero is gone */}
         <div
@@ -733,9 +756,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 44px)) + 4px)' }}
             >
               {/* Top bar: back + stage mode */}
-              <div className="flex items-center justify-between gap-2 h-11 -mt-1">
-                <IconButton label="Back" variant="event" size="sm" icon={<ArrowLeft />} onClick={onClose} />
-                {canStage && (
+              <div className="flex items-center justify-between gap-2 h-11 -mt-1 empty:hidden">
+                <NavBackButton pane variant="event" size="sm" onClick={onClose} />
+                {canStage && !stageInRail && (
                   <button
                     type="button"
                     onClick={() => {
@@ -744,7 +767,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     }}
                     aria-label="Open stage mode"
                     title="Stage mode"
-                    className="w-11 h-11 -mr-2.5 rounded-full flex items-center justify-center shrink-0 active:scale-[var(--press-scale)] transition-transform cursor-pointer"
+                    className="w-11 h-11 -mr-2.5 ml-auto rounded-full flex items-center justify-center shrink-0 active:scale-[var(--press-scale)] transition-transform cursor-pointer"
                     style={isGigDay ? heroChipStyle : undefined}
                   >
                     <Play className="w-6 h-6" />
@@ -856,9 +879,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       hasValidLocation ? 'cursor-pointer active:opacity-70' : 'cursor-default opacity-75'
                     )}
                   >
-                    <span className="bw-label-md truncate">{venueName}</span>
+                    {hasValidLocation && <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden />}
+                    <span
+                      className={cn(
+                        'bw-label-md truncate',
+                        hasValidLocation && 'underline decoration-dotted decoration-1 underline-offset-[3px]'
+                      )}
+                    >
+                      {venueName}
+                    </span>
                     {hasValidLocation && (
-                      <ArrowUpRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      <span className="inline-flex items-center gap-0.5 shrink-0 px-1.5 h-[18px] rounded-full border border-current/40 bw-label-xs opacity-80">
+                        MAP
+                        <ArrowUpRight className="w-2.5 h-2.5" aria-hidden />
+                      </span>
                     )}
                   </button>
                   {venueAddress && <span className="bw-label-xs opacity-70 truncate max-w-full">{venueAddress}</span>}

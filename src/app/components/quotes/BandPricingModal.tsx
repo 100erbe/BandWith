@@ -16,11 +16,13 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotText, Toggle } from '@/app/components/bw';
-import { IconButton, Tag, Card } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
+import { HeaderAction, IconButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
+import { CURRENCIES, COUNTRY_TAX_PRESETS, currencySymbol as symbolFor, findCountryPreset, type CurrencyCode } from '@/lib/currency';
 import type { PerformanceType } from '@/app/data/quotes';
 import {
   DEFAULT_BAND_PRICING,
@@ -297,12 +299,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
     }
   }, [isOpen, effectiveBandId, selectedBand?.name, selectedBand?.description, selectedBand?.logo_url, selectedBand?.home_base_address]);
 
-  const currencySymbol = useMemo(() => {
-    if (settings.currency === 'USD') return '$';
-    if (settings.currency === 'GBP') return '£';
-    if (settings.currency === 'CHF') return 'CHF ';
-    return '€';
-  }, [settings.currency]);
+  const currencySymbol = symbolFor(settings.currency);
+  const countryPreset = findCountryPreset(settings.country);
 
   const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -659,7 +657,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[75] bg-background text-foreground flex flex-col overflow-hidden"
+      className="bw-pane-detail fixed inset-0 z-[75] bg-background text-foreground flex flex-col overflow-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -670,7 +668,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
               <p className="bw-label-sm text-muted-foreground">Universal quote engine</p>
               <h1 className="bw-display-lg text-foreground [overflow-wrap:anywhere]">Pricing &amp; services</h1>
             </div>
-            <IconButton label="Close pricing" icon={<X />} onClick={onClose} />
+            <RailCover pane />
+            <HeaderAction pane label="Close pricing" icon={<X />} onClick={onClose} />
           </div>
         </header>
 
@@ -1392,7 +1391,49 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
           {/* ═══ TAB 4: RULES & TAX ═══ */}
           {activeTab === 'commercial' && (
             <div className="flex flex-col gap-6">
-              <Section title="1. Seasonal pricing" hint="Optional peak / off-peak adjustments based on the event month.">
+              <Section
+                title="1. Country & currency"
+                hint="Where the band invoices from. Picking a country sets the currency and its standard VAT rate; you can still change both."
+              >
+                <div role="radiogroup" aria-label="Country" className="flex flex-wrap gap-2">
+                  {COUNTRY_TAX_PRESETS.map((c) => (
+                    <Selector
+                      key={c.code}
+                      size="md"
+                      selected={settings.country === c.code}
+                      onClick={() =>
+                        setSettings({
+                          ...settings,
+                          country: c.code,
+                          currency: c.currency,
+                          default_vat_rate: c.vatRate,
+                        })
+                      }
+                    >
+                      {c.name}
+                    </Selector>
+                  ))}
+                  <Selector
+                    size="md"
+                    selected={!countryPreset}
+                    onClick={() => setSettings({ ...settings, country: undefined })}
+                  >
+                    Other
+                  </Selector>
+                </div>
+                <Segmented
+                  label="Currency"
+                  options={CURRENCIES.map((c) => ({
+                    id: c.code as CurrencyCode,
+                    label: `${c.code} ${c.symbol.trim() === c.code ? '' : c.symbol}`.trim(),
+                    active: (settings.currency || 'EUR') === c.code,
+                  }))}
+                  onSelect={(code) => setSettings({ ...settings, currency: code })}
+                />
+                {countryPreset?.note && <p className="bw-body-sm text-muted-foreground">{countryPreset.note}</p>}
+              </Section>
+
+              <Section title="2. Seasonal pricing" hint="Optional peak / off-peak adjustments based on the event month.">
                 <ToggleRow
                   label="Enable seasonal pricing"
                   hint="Apply peak & off-peak multipliers automatically when an event date is chosen"
@@ -1455,13 +1496,22 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 </AnimatePresence>
               </Section>
 
-              <Section title="2. Tax, deposit & validity" hint="Default VAT rate, booking deposit and quote expiry window.">
-                <SettingRow label="Default tax / VAT rate" hint="Applied to the net total on client quotes">
+              <Section title="3. Tax, deposit & validity" hint="Default VAT rate, booking deposit and quote expiry window.">
+                <SettingRow
+                  label={countryPreset ? `Default ${countryPreset.taxLabel} rate` : 'Default tax / VAT rate'}
+                  hint={
+                    countryPreset && countryPreset.vatRate !== settings.default_vat_rate
+                      ? `Standard rate in ${countryPreset.name} is ${countryPreset.vatRate}%. Applied to the net total on client quotes`
+                      : 'Applied to the net total on client quotes. Live shows may qualify for a reduced rate: check with your accountant'
+                  }
+                >
                   <NumberPill
                     label="Default VAT rate"
                     suffix="%"
                     min="0"
                     max="50"
+                    step="0.1"
+                    inputMode="decimal"
                     className="w-28"
                     value={settings.default_vat_rate}
                     onChange={(e) =>

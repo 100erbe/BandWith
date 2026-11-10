@@ -19,6 +19,8 @@ import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 import { haptic } from '@/lib/haptics';
 import { springs } from '@/styles/motion';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { DuoRail } from './DuoRail';
 
 interface BottomNavigationProps {
   activeTab: TabName;
@@ -29,6 +31,9 @@ interface BottomNavigationProps {
   isIdentityOpen: boolean;
   toggleControlDeck?: () => void;
   toggleIdentity?: () => void;
+  /** iPhone Duo rail profile button (opens over any screen). */
+  onRailProfile?: () => void;
+  railProfileLocked?: boolean;
   closeMenus: () => void;
   onCreateEvent: (type: CreateEventType) => void;
   isHidden: boolean;
@@ -125,6 +130,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isIdentityOpen,
   toggleControlDeck,
   toggleIdentity,
+  onRailProfile,
+  railProfileLocked = false,
   closeMenus,
   onCreateEvent,
   isHidden,
@@ -207,6 +214,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   }, []);
 
   const effectiveIsScrollingDown = (isScrollingDown || localScrollDown) && !forceOpen;
+  // iPhone Duo: the side rail (Figma "Duo/Side Tab Bar" + "Duo/Side Actions")
+  // replaces the bottom bar entirely.
+  const { rail } = useRailLayout();
   const isShrunk = effectiveIsScrollingDown;
 
   const handleTabClick = (tab: TabName) => {
@@ -316,7 +326,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         onClose={() => setIsPlusMenuOpen(false)}
         overline="Start"
         title="Create"
-        zIndex={79}
+        // Bottom bar: just under the bar (z-80). Duo rail: above the detail
+        // panes, still under the rail (z-190).
+        zIndex={rail ? 150 : 79}
       >
         <div className="flex flex-col gap-3">
           {createOptions.map((option) => (
@@ -350,11 +362,30 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
             </button>
           ))}
         </div>
-        {/* Clearance for the floating nav bar that stays above the sheet */}
-        <div aria-hidden="true" className="h-[104px]" />
+        {/* Clearance for the floating bottom bar that stays above the sheet */}
+        {!rail && <div aria-hidden="true" className="h-[104px]" />}
       </BwSheet>
 
-      {/* Main Bar Centering Wrapper */}
+      {rail ? (
+        <DuoRail
+          tabs={tabs.filter((t) => t.key !== 'Settings')}
+          isPlusMenuOpen={isPlusMenuOpen}
+          onPlus={() => {
+            haptic.tap();
+            setIsPlusMenuOpen(!isPlusMenuOpen);
+          }}
+          isProfileOpen={isIdentityOpen}
+          profileLocked={railProfileLocked}
+          onProfile={() => {
+            if (isPlusMenuOpen) setIsPlusMenuOpen(false);
+            if (onRailProfile) onRailProfile();
+            else if (toggleIdentity) toggleIdentity();
+            else toggleControlDeck?.();
+          }}
+          showTabs={!isHidden}
+        />
+      ) : (
+      /* Main Bar Centering Wrapper */
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center pointer-events-none"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}
@@ -366,7 +397,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           className={cn(
             'pointer-events-auto relative flex items-center justify-between rounded-full origin-bottom',
             'bg-white/[0.86] dark:bg-[#1c1c1c]/[0.86] border border-border',
-            'h-[60px] w-[calc(100%-32px)] max-w-[420px] px-6'
+            'h-[60px] w-[calc(100%-32px)] max-w-[420px] px-6',
           )}
           animate={{ scale: isShrunk ? 0.9 : 1 }}
           transition={SPRING}
@@ -391,7 +422,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 setForceOpen(true);
               }}
               className={cn(
-                'absolute -top-[24px] rounded-full flex items-center justify-center w-[60px] h-[60px] cursor-pointer transition-colors duration-200',
+                'rounded-full flex items-center justify-center cursor-pointer transition-colors duration-200',
+                'absolute -top-[24px] w-[60px] h-[60px]',
                 isPlusMenuOpen ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-accent text-accent-foreground',
               )}
               style={{ boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }}
@@ -410,6 +442,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           ))}
         </motion.div>
       </motion.div>
+      )}
     </>
   );
 };

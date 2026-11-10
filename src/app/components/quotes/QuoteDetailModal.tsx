@@ -8,7 +8,9 @@ import { QuoteShareModal } from './QuoteShareModal';
 import { totalsForQuote, formatQuoteMoney } from '@/lib/services/quoteMath';
 import { parseLocalDate } from '@/lib/dates';
 import { DotText } from '@/app/components/bw';
-import { IconButton, Tag, Card } from '@/app/components/bw/Screen';
+import { useRailOwnsChrome } from '@/lib/railActions';
+import { cn } from '@/app/components/ui/utils';
+import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 
 interface QuoteDetailModalProps {
@@ -58,6 +60,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   onOpenBandSettings,
 }) => {
   const { selectedBand } = useBand();
+  const railChrome = useRailOwnsChrome();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
   const sym = getCurrencySym(quote.currency);
@@ -148,14 +151,18 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] bg-background"
+        className="bw-pane-backdrop fixed inset-0 z-[110] bg-background"
       />
 
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
-        className="fixed inset-0 z-[120] flex flex-col overflow-y-auto overscroll-contain bg-background text-foreground"
+        // iPhone Duo: the quote colour runs under the rail (Figma "Event detail / Quote").
+        className={cn(
+          'bw-pane-detail fixed inset-0 z-[120] flex flex-col overflow-y-auto overscroll-contain text-foreground',
+          railChrome ? 'bg-accent-quote' : 'bg-background',
+        )}
       >
         {/* ═══ HERO (quote colour) ═══ */}
         <header className="w-full bg-accent-quote text-accent-quote-foreground">
@@ -163,8 +170,8 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             className="max-w-[640px] mx-auto w-full px-4 pb-14 flex flex-col gap-5"
             style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 44px)) + 4px)' }}
           >
-            <div className="flex items-center justify-between gap-2 min-h-11">
-              <IconButton label="Back" variant="event" icon={<ArrowLeft />} onClick={onClose} />
+            <div className="flex items-center justify-between gap-2 min-h-11 empty:hidden">
+              <NavBackButton pane variant="event" onClick={onClose} />
             </div>
 
             <div className="flex items-start justify-between gap-3">
