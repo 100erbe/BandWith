@@ -273,14 +273,10 @@ export const setupNativePushListeners = (
       return;
     }
     
-    // iOS already shows the banner in the foreground (presentationOptions in
-    // capacitor.config), so a local notification would show it twice.
-    if (Capacitor.getPlatform() === 'ios') {
-      onNotification({ title: notification.title, body: notification.body, data: notification.data });
-      return;
-    }
-
-    // Android: show a local notification so the user sees it in the foreground
+    // In the foreground the OS does not draw the banner itself
+    // (capacitor.config presentationOptions has no "alert"), so this listener is
+    // the only place that decides: the open chat is skipped above, everything
+    // else gets a local notification on both iOS and Android.
     try {
       // Use a smaller ID that fits in Java int (max ~2 billion)
       const notificationId = Math.floor(Math.random() * 2147483647);

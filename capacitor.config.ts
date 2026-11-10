@@ -41,7 +41,10 @@ const config: CapacitorConfig = {
       style: 'dark'
     },
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"]
+      // No "alert"/"sound": with the app open the OS would show every push
+      // before JS can skip the chat the user is reading. pushNotifications.ts
+      // shows a local notification for everything else.
+      presentationOptions: ["badge"]
     },
     LocalNotifications: {
       smallIcon: "ic_stat_notification",
