@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, RECOVERY_FLAG } from '@/lib/supabase';
 import { Loader2 } from '@/app/components/icons';
 
 /**
@@ -26,8 +26,6 @@ export default function AuthCallback() {
           window.location.hash.substring(1)
         );
         const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
 
         // Also check query params (PKCE flow or error callback)
         const queryParams = new URLSearchParams(window.location.search);
@@ -47,9 +45,12 @@ export default function AuthCallback() {
         }
 
         if (code) {
-          // PKCE flow — exchange code for session
-          console.log('[AuthCallback] Exchanging PKCE code for session...');
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          // PKCE flow. With detectSessionInUrl the client may already have
+          // exchanged the code during init; getSession() waits for that.
+          const { data: { session: existing } } = await supabase.auth.getSession();
+          const { error: exchangeError } = existing
+            ? { error: null }
+            : await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
             console.error('[AuthCallback] PKCE exchange error:', exchangeError);
             setError(exchangeError.message);
@@ -60,23 +61,13 @@ export default function AuthCallback() {
           }
           console.log('[AuthCallback] PKCE exchange successful');
         } else if (accessToken) {
-          // Implicit flow — set the session directly
-          console.log('[AuthCallback] Setting session from hash tokens...');
-          const { data, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-          });
-          if (sessionError) {
-            console.error('[AuthCallback] Set session error:', sessionError);
-            setError(sessionError.message);
-            setTimeout(() => {
-              if (!cancelled) cleanupAndRedirect();
-            }, 3000);
-            return;
-          }
-          if (data.session) {
-            console.log('[AuthCallback] Session established successfully');
-          }
+          // Tokens in the URL fragment (legacy implicit flow) are rejected:
+          // they cannot be tied to a sign-in this app started (login CSRF).
+          setError('This sign-in link is no longer valid. Please sign in again.');
+          setTimeout(() => {
+            if (!cancelled) cleanupAndRedirect();
+          }, 3000);
+          return;
         } else {
           // No tokens found — auth listener might have already caught them,
           // or this is a stale callback
@@ -108,6 +99,7 @@ export default function AuthCallback() {
 
     const cleanupAndRedirect = () => {
       if (cancelled) return;
+      const isRecovery = new URLSearchParams(window.location.search).get(RECOVERY_FLAG) === '1';
       // Replace the URL to remove all OAuth params, preventing
       // isAuthCallback() from triggering again after redirect
       window.history.replaceState(
@@ -115,8 +107,11 @@ export default function AuthCallback() {
         document.title,
         window.location.pathname
       );
-      // Redirect to app root (the history replaceState above already handles the URL clean)
-      window.location.href = window.location.origin;
+      // Redirect to app root, keeping only the password-recovery flag so the
+      // app can ask for a new password.
+      window.location.href = isRecovery
+        ? `${window.location.origin}/?${RECOVERY_FLAG}=1`
+        : window.location.origin;
     };
 
     handleCallback();

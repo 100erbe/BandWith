@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Users, User, Plus, MessageCircle } from '@/app/components/icons';
+import { Users, User, Check, Trash2 } from '@/app/components/icons';
+import { BwSheet, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
 import { RehearsalTask, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
 
@@ -66,143 +66,131 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
     : editedTask.assignedTo.map(id => members.find(m => m.id === id)?.name).filter(Boolean).join(', ');
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Task Details">
-      <div className="flex flex-col gap-[40px]">
-        {/* Status badges */}
-        <div className="flex flex-wrap gap-[4px]">
-          <div className="px-[10px] py-[4px] bg-white rounded-[6px]">
-            <span className="text-[12px] font-bold uppercase text-accent-rehearsal flex items-center gap-[4px]">
-              {isAssignedToAll ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
-              {isAssignedToAll ? 'BAND TASK' : 'ASSIGNED'}
-            </span>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline={isAssignedToAll ? 'Band task' : 'Assigned task'}
+      title="Task details"
+      zIndex={110}
+      footer={
+        readOnly ? undefined : (
+          <div className="dark grid grid-cols-[2fr_3fr] gap-3">
+            <PillButton variant="outline" onClick={handleDelete} icon={<Trash2 className="w-4 h-4" />}>
+              Delete
+            </PillButton>
+            <PillButton onClick={handleSave} icon={<Check className="w-[18px] h-[18px]" />}>
+              Save
+            </PillButton>
           </div>
-          <div className={cn(
-            "px-[10px] py-[4px] rounded-[6px]",
-            editedTask.completed ? "bg-card" : "bg-white/20"
-          )}>
-            <span className={cn(
-              "text-[12px] font-bold uppercase",
-              editedTask.completed ? "text-accent-rehearsal" : "text-white"
-            )}>
-              {editedTask.completed ? 'COMPLETED' : 'OPEN'}
-            </span>
-          </div>
+        )
+      }
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Status */}
+        <div className="flex flex-wrap gap-1.5">
+          <Tag variant="outline" icon={isAssignedToAll ? <Users /> : <User />}>
+            {isAssignedToAll ? 'Band task' : 'Assigned'}
+          </Tag>
+          <Tag variant={editedTask.completed ? 'accent' : 'outline'}>{editedTask.completed ? 'Completed' : 'Open'}</Tag>
         </div>
 
         {/* Description */}
-        <div className="flex flex-col gap-[8px]">
-          <span className="text-[12px] font-bold text-white uppercase">DESCRIPTION</span>
-          {readOnly ? (
-            <span className="text-[22px] font-bold text-white">{editedTask.text}</span>
-          ) : (
-            <input
-              value={editedTask.text}
-              onChange={(e) => setEditedTask({ ...editedTask, text: e.target.value })}
-              className="bg-transparent border-b-2 border-white/30 py-[8px] text-[22px] font-bold text-white placeholder:text-white/30 focus:outline-none focus:border-white transition-all"
-            />
-          )}
-        </div>
+        {readOnly ? (
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-sm text-sheet-foreground/70">Description</span>
+            <p className="bw-h2">{editedTask.text}</p>
+          </div>
+        ) : (
+          <PillField
+            tone="sheet"
+            label="Description"
+            value={editedTask.text}
+            onChange={(e) => setEditedTask({ ...editedTask, text: e.target.value })}
+          />
+        )}
 
         {/* Assigned To */}
-        <div className="flex flex-col gap-[12px]">
-          <span className="text-[12px] font-bold text-white uppercase">ASSIGNED TO</span>
+        <section className="flex flex-col gap-2">
+          <h3 className="bw-label-sm text-sheet-foreground/70">Assigned to</h3>
           {readOnly ? (
-            <span className="text-[22px] font-bold text-white">{assignedNames || 'Unassigned'}</span>
+            <p className="bw-body-lg">{assignedNames || 'Unassigned'}</p>
           ) : (
-            <div className="flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-2">
               <button
+                type="button"
+                aria-pressed={isAssignedToAll}
                 onClick={() => handleToggleMember('all')}
                 className={cn(
-                  "w-full px-[16px] py-[12px] rounded-[10px] text-[14px] font-bold flex items-center justify-between transition-all",
-                  isAssignedToAll
-                    ? "bg-white text-accent-rehearsal"
-                    : "bg-white/20 text-accent-rehearsal"
+                  'w-full flex items-center gap-3 p-4 rounded-[16px] text-left transition-colors cursor-pointer',
+                  isAssignedToAll ? 'bg-white/[0.08]' : 'bg-transparent'
                 )}
               >
-                <span>ENTIRE BAND</span>
-                <div className={cn(
-                  "w-[20px] h-[20px] rounded-full border-2",
-                  isAssignedToAll ? "bg-accent-rehearsal border-accent-rehearsal" : "border-white/50"
-                )} />
+                <DotCheck checked={isAssignedToAll} />
+                <span className="flex-1 bw-label-md">Entire band</span>
+                <Users className="w-5 h-5 text-sheet-foreground/70" />
               </button>
-
-              <div className="grid grid-cols-2 gap-[8px]">
-                {members.map(m => {
-                  const isSelected = editedTask.assignedTo.includes(m.id);
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => handleToggleMember(m.id)}
-                      disabled={isAssignedToAll}
-                      className={cn(
-                        "px-[12px] py-[10px] rounded-[10px] text-[12px] font-bold flex items-center justify-between transition-all text-left",
-                        isSelected ? "bg-white text-accent-rehearsal" : "bg-white/20 text-accent-rehearsal",
-                        isAssignedToAll && "opacity-40"
-                      )}
-                    >
-                      <span>{m.name}</span>
-                      <div className={cn(
-                        "w-[16px] h-[16px] rounded-full border-2",
-                        isSelected ? "bg-accent-rehearsal border-accent-rehearsal" : "border-white/50"
-                      )} />
-                    </button>
-                  );
-                })}
-              </div>
+              {members.map((m) => {
+                const isSelected = editedTask.assignedTo.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handleToggleMember(m.id)}
+                    disabled={isAssignedToAll}
+                    className={cn(
+                      'w-full flex items-center gap-3 p-4 rounded-[16px] text-left transition-[background-color,opacity] cursor-pointer disabled:opacity-40 disabled:cursor-default',
+                      isSelected ? 'bg-white/[0.08]' : 'bg-transparent'
+                    )}
+                  >
+                    <DotCheck checked={isSelected} />
+                    <span className="w-7 h-7 rounded-full border border-sheet-foreground/40 bw-label-xs flex items-center justify-center shrink-0">
+                      {m.initials}
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-label-md truncate">{m.name}</span>
+                      {m.role && <span className="bw-body-sm text-sheet-foreground/70 truncate">{m.role}</span>}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
-        </div>
+        </section>
 
         {/* Category */}
-        <div className="flex flex-col gap-[12px]">
-          <span className="text-[12px] font-bold text-white uppercase">CATEGORY</span>
+        <section className="flex flex-col gap-2">
+          <h3 className="bw-label-sm text-sheet-foreground/70">Category</h3>
           {readOnly ? (
-            <span className="text-[22px] font-bold text-white capitalize">{editedTask.type}</span>
+            <p className="bw-body-lg capitalize">{editedTask.type}</p>
           ) : (
-            <div className="flex flex-wrap gap-[8px]">
-              {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setEditedTask({ ...editedTask, type: t as RehearsalTask['type'] })}
-                  className={cn(
-                    "px-[16px] py-[8px] rounded-[10px] text-[12px] font-bold uppercase transition-all",
-                    editedTask.type === t
-                      ? "bg-white text-accent-rehearsal"
-                      : "bg-white/20 text-accent-rehearsal"
-                  )}
-                >
+            <div className="flex flex-wrap gap-2">
+              {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((t) => (
+                <Selector key={t} selected={editedTask.type === t} onClick={() => setEditedTask({ ...editedTask, type: t })}>
                   {t}
-                </button>
+                </Selector>
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
-
-      {/* Footer */}
-      {!readOnly && (
-        <div className="fixed bottom-0 left-0 right-0 rounded-t-[26px] px-[16px] pt-[20px] pb-[30px] z-[102]"
-          style={{ backgroundColor: 'var(--accent-rehearsal)', boxShadow: '0px -4px 20px rgba(0,0,0,0.15)' }}
-        >
-          <div className="flex flex-col gap-[20px] items-center">
-            <div className="grid grid-cols-2 gap-[10px] w-full">
-              <button
-                onClick={handleDelete}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-white/20"
-              >
-                <span className="text-[16px] font-bold text-white uppercase">DELETE</span>
-              </button>
-              <button
-                onClick={handleSave}
-                className="rounded-[10px] py-[16px] flex items-center justify-center gap-[8px] bg-card"
-              >
-                <Plus className="w-[18px] h-[18px] text-accent-rehearsal" />
-                <span className="text-[16px] font-bold text-accent-rehearsal uppercase">SAVE</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </RehearsalModalWrapper>
+    </BwSheet>
   );
 };
+
+/** Figma "Control": 24pt dot-grid check — solid dots on, a dotted outline off. */
+const DotCheck: React.FC<{ checked: boolean; className?: string }> = ({ checked, className }) => (
+  <span aria-hidden className={cn('grid grid-cols-4 gap-[2.67px] w-6 h-6 shrink-0', className)}>
+    {Array.from({ length: 16 }).map((_, i) => {
+      const r = Math.floor(i / 4);
+      const c = i % 4;
+      const edge = r === 0 || r === 3 || c === 0 || c === 3;
+      return (
+        <span
+          key={i}
+          className={cn('w-1 h-1 rounded-full bg-current transition-opacity', !checked && (edge ? 'opacity-35' : 'opacity-0'))}
+        />
+      );
+    })}
+  </span>
+);

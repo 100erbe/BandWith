@@ -1,25 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
+import { Toggle, IconButton, NavBackButton, Tag, PillButton, Selector } from '@/app/components/bw';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
-import { 
+import {
   Bell,
-  Smartphone,
-  Volume2,
-  VolumeX,
+  Mail,
+  Play,
   ArrowLeft,
   ArrowUpRight,
-  Shield,
-  HelpCircle,
+  Eye,
+  Lock,
   Sun,
-  Moon,
-  Monitor,
+  Star,
+  MessageSquare,
   Globe,
   Trash2,
-  AlertTriangle,
+  AlertCircle,
+  ChevronRight,
 } from '@/app/components/icons';
+import { deleteMyAccount } from '@/lib/services/account';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { Switch } from '@/app/components/ui/switch';
 import { cn } from '@/app/components/ui/utils';
 
 type SettingsSection = 'notifications' | 'appearance' | 'privacy' | 'help' | 'about' | 'language';
@@ -30,256 +32,314 @@ interface SettingsViewProps {
   isAdmin?: boolean;
 }
 
+/* ── Local building blocks (Figma: Card / Icon tile) ── */
+
+const IconTile: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className,
+}) => (
+  <span
+    aria-hidden
+    className={cn(
+      'size-10 rounded-full bg-foreground/[0.08] flex items-center justify-center text-foreground shrink-0 [&>svg]:size-[18px]',
+      className
+    )}
+  >
+    {children}
+  </span>
+);
+
+const RowText: React.FC<{ title: React.ReactNode; hint?: React.ReactNode; titleClassName?: string }> = ({
+  title,
+  hint,
+  titleClassName,
+}) => (
+  <span className="flex flex-col gap-1 min-w-0 flex-1">
+    <span className={cn('bw-label-md text-foreground', titleClassName)}>{title}</span>
+    {hint && <span className="bw-body-sm text-muted-foreground">{hint}</span>}
+  </span>
+);
+
+const CARD = 'bg-card text-card-foreground rounded-[24px]';
+const ROW = 'p-4 flex items-center gap-3 w-full text-left';
+const PRESSABLE =
+  'transition-colors hover:bg-foreground/[0.03] active:bg-foreground/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+
 export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
   initialSection = 'notifications',
 }) => {
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
 
-  const safeInitialSection: SettingsSection = 
-    initialSection === 'main' || !initialSection
-      ? 'notifications'
-      : (initialSection as SettingsSection);
+  const themeLabel = mode === 'system' ? 'System' : mode === 'dark' ? 'Dark' : 'Light';
 
-  const [activeSection] = useState<SettingsSection>(safeInitialSection);
+  const SECTIONS: {
+    id: SettingsSection;
+    label: string;
+    hint?: string;
+    value?: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { id: 'notifications', label: 'Notifications', hint: 'Push, email and sounds', icon: Bell },
+    { id: 'appearance', label: 'Appearance', hint: 'Light, dark or system', value: themeLabel, icon: Sun },
+    { id: 'privacy', label: 'Privacy & account', hint: 'Workspace privacy, delete account', icon: Lock },
+    { id: 'language', label: 'Language', value: 'English (US)', icon: MessageSquare },
+    { id: 'help', label: 'Help & support', hint: 'support@bandwith.app', icon: Mail },
+    { id: 'about', label: 'About', hint: 'Version 1.0.0', icon: Star },
+  ];
+  const isKnownSection = (v?: string): v is SettingsSection =>
+    !!v && SECTIONS.some((sec) => sec.id === v);
 
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_push_notifs') !== 'false';
-    } catch {
-      return true;
+  // 'main' (or nothing) opens the section list; a known id opens that section.
+  const openedFromMenu = !isKnownSection(initialSection);
+  const [activeSection, setActiveSection] = useState<SettingsSection | null>(
+    isKnownSection(initialSection) ? initialSection : null
+  );
+
+  const handleBack = () => {
+    if (activeSection && openedFromMenu) {
+      setActiveSection(null);
+      return;
     }
-  });
-  const [emailEnabled, setEmailEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_email_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_sound_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
+    onClose();
+  };
+
+  const [pushEnabled, setPushEnabled] = useState(() => readLocalPref('push'));
+  const [emailEnabled, setEmailEnabled] = useState(() => readLocalPref('email'));
+  useEffect(() => {
+    let cancelled = false;
+    loadNotificationPrefs().then((prefs) => {
+      if (cancelled || !prefs) return;
+      if (prefs.push !== undefined) setPushEnabled(prefs.push);
+      if (prefs.email !== undefined) setEmailEnabled(prefs.email);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleTogglePush = (val: boolean) => {
     setPushEnabled(val);
-    try {
-      localStorage.setItem('bandwith_push_notifs', String(val));
-    } catch {}
+    saveNotificationPref('push', val).then(({ error }) => { if (error) setPushEnabled(!val); });
   };
 
   const handleToggleEmail = (val: boolean) => {
     setEmailEnabled(val);
-    try {
-      localStorage.setItem('bandwith_email_notifs', String(val));
-    } catch {}
+    saveNotificationPref('email', val).then(({ error }) => { if (error) setEmailEnabled(!val); });
   };
 
-  const handleToggleSound = (val: boolean) => {
-    setSoundEnabled(val);
-    try {
-      localStorage.setItem('bandwith_sound_notifs', String(val));
-    } catch {}
-  };
+
+  const notificationStatus = (() => {
+    const on = [
+      pushEnabled && 'push',
+      emailEnabled && 'email',
+    ].filter(Boolean) as string[];
+    if (on.length === 0) return 'All alerts paused';
+    const list =
+      on.length === 1 ? on[0] : `${on.slice(0, -1).join(', ')} & ${on[on.length - 1]}`;
+    return `${list} alerts enabled`;
+  })();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const getSectionTitle = (): string => {
-    switch (activeSection) {
-      case 'notifications': return 'NOTIFICATIONS';
-      case 'appearance': return 'APPEARANCE';
-      case 'privacy': return 'PRIVACY & SECURITY';
-      case 'help': return 'HELP & SUPPORT';
-      case 'about': return 'ABOUT';
-      case 'language': return 'LANGUAGE';
-      default: return 'SETTINGS';
+  const closeDeleteConfirm = () => {
+    if (deleting) return;
+    setShowDeleteConfirm(false);
+    setDeleteText('');
+    setDeleteError(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteText.trim().toUpperCase() !== 'DELETE' || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const result = await deleteMyAccount();
+    if (result.ok) {
+      // The account no longer exists: clear the local session.
+      await signOut().catch(() => {});
+      onClose();
+      return;
+    }
+    setDeleting(false);
+    if (result.reason === 'admin_of_bands') {
+      const names = result.bands.join(', ');
+      setDeleteError(
+        `You're the only admin of ${names || 'a band'} with other members. Make someone else admin (Band members → role) or remove the members, then try again.`
+      );
+    } else {
+      setDeleteError(result.message);
     }
   };
 
+  const getSectionTitle = (): string => {
+    switch (activeSection) {
+      case 'notifications': return 'Notifications';
+      case 'appearance': return 'Appearance';
+      case 'privacy': return 'Privacy & account';
+      case 'help': return 'Help & support';
+      case 'about': return 'About';
+      case 'language': return 'Language';
+      default: return 'App settings';
+    }
+  };
+
+  const renderMenu = () => (
+    <nav aria-label="Settings sections" className="flex flex-col gap-3">
+      {SECTIONS.map((sec) => {
+        const Icon = sec.icon;
+        return (
+          <button
+            key={sec.id}
+            type="button"
+            onClick={() => setActiveSection(sec.id)}
+            className={cn(CARD, ROW, PRESSABLE, 'min-h-[72px]')}
+          >
+            <IconTile>
+              <Icon />
+            </IconTile>
+            <RowText title={sec.label} hint={sec.hint} />
+            {sec.value && (
+              <span className="bw-label-sm text-muted-foreground shrink-0">{sec.value}</span>
+            )}
+            <ChevronRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   const renderNotificationsSection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            <Smartphone className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-              Push Notifications
-            </span>
-            <span className="text-xs text-muted-foreground font-normal">
-              Receive alerts on this device
-            </span>
-          </div>
-        </div>
-        <Switch checked={pushEnabled} onCheckedChange={handleTogglePush} />
+    <div className="flex flex-col gap-3">
+      <div
+        role="status"
+        className="dark bg-sheet text-sheet-foreground rounded-full px-5 py-4 flex items-center gap-3"
+      >
+        <Bell aria-hidden className="w-[22px] h-[22px] text-accent shrink-0" />
+        <span className="bw-label-md">{notificationStatus}</span>
       </div>
 
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            <Bell className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-              Email Notifications
-            </span>
-            <span className="text-xs text-muted-foreground font-normal">
-              Get schedule updates in your inbox
-            </span>
-          </div>
-        </div>
-        <Switch checked={emailEnabled} onCheckedChange={handleToggleEmail} />
+      <div className={cn(CARD, ROW)}>
+        <IconTile>
+          <Bell />
+        </IconTile>
+        <RowText title="Push notifications" hint="Gig invites, polls, chat messages" />
+        <Toggle
+          checked={pushEnabled}
+          onCheckedChange={handleTogglePush}
+          aria-label="Push notifications"
+        />
       </div>
 
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-              Sound Effects
-            </span>
-            <span className="text-xs text-muted-foreground font-normal">
-              Play sounds for alerts and notifications
-            </span>
-          </div>
-        </div>
-        <Switch checked={soundEnabled} onCheckedChange={handleToggleSound} />
+      <div className={cn(CARD, ROW)}>
+        <IconTile>
+          <Mail />
+        </IconTile>
+        <RowText title="Email notifications" hint="Invites and schedule updates" />
+        <Toggle
+          checked={emailEnabled}
+          onCheckedChange={handleToggleEmail}
+          aria-label="Email notifications"
+        />
       </div>
+
+      <p className="bw-body-sm text-muted-foreground">
+        Urgent invites and polls always show a pop-up, even when push is off.
+      </p>
     </div>
   );
 
   const renderAppearanceSection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            {resolvedTheme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Theme</span>
-            <span className="text-xs text-muted-foreground">Current: {resolvedTheme} mode</span>
-          </div>
-        </div>
-        <div className="flex items-center p-1 bg-foreground/5 rounded-xl border border-border/40 shrink-0">
-          {[
-            { id: 'light' as const, label: 'Light', icon: Sun },
-            { id: 'dark' as const, label: 'Dark', icon: Moon },
-            { id: 'system' as const, label: 'System', icon: Monitor },
-          ].map((t) => {
-            const Icon = t.icon;
-            const isSelected = mode === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setMode(t.id)}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all',
-                  isSelected
-                    ? 'bg-primary text-primary-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="w-3 h-3" />
-                <span className="hidden sm:inline">{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
+    <div className={cn(CARD, 'p-4 flex flex-col gap-3')}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="bw-label-sm text-muted-foreground">Theme</span>
+        <span className="bw-label-sm text-muted-foreground">Current: {resolvedTheme} mode</span>
+      </div>
+      <div role="group" aria-label="Theme" className="flex items-center gap-2">
+        {[
+          { id: 'light' as const, label: 'Light' },
+          { id: 'dark' as const, label: 'Dark' },
+          { id: 'system' as const, label: 'System' },
+        ].map((t) => (
+          <Selector
+            key={t.id}
+            size="md"
+            selected={mode === t.id}
+            onClick={() => setMode(t.id)}
+            className="flex-1 min-w-0 justify-center"
+          >
+            {t.label}
+          </Selector>
+        ))}
       </div>
     </div>
   );
 
   const renderPrivacySection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-              Workspace Privacy
-            </span>
-            <span className="text-xs text-muted-foreground font-normal">
-              Member-only visibility within active band
-            </span>
-          </div>
-        </div>
-        <Switch checked={true} disabled />
+    <div className="flex flex-col gap-3">
+      <div className={cn(CARD, ROW)}>
+        <IconTile>
+          <Eye />
+        </IconTile>
+        <RowText title="Workspace privacy" hint="Member-only visibility within active band" />
+        <Toggle checked={true} disabled aria-label="Workspace privacy" />
       </div>
 
-      <div className="p-4 flex items-center justify-between gap-3">
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-bold uppercase tracking-wide text-[var(--destructive)]">
-            Delete Account
-          </span>
-          <span className="text-xs text-muted-foreground font-normal">
-            Permanently remove your account and user profile
-          </span>
+      <div className={cn(CARD, 'p-4 flex flex-col gap-3 border-[1.5px] border-destructive')}>
+        <div className="flex items-center gap-3">
+          <Trash2 aria-hidden className="w-5 h-5 text-destructive shrink-0" />
+          <span className="bw-h2 text-destructive">Delete account</span>
         </div>
-        <button
-          type="button"
+        <p className="bw-body-md text-foreground">
+          Permanently removes your account and user profile. If you're the only admin of a band
+          with other members, make someone else admin first.
+        </p>
+        <PillButton
+          variant="danger"
+          size="md"
+          fullWidth={false}
           onClick={() => setShowDeleteConfirm(true)}
-          className="px-3 py-1.5 rounded-lg border border-[var(--destructive)]/30 text-[var(--destructive)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--destructive)]/10 active:scale-95 transition-all"
+          icon={<Trash2 aria-hidden className="w-[18px] h-[18px]" />}
+          className="self-start"
         >
-          Delete
-        </button>
+          Delete account
+        </PillButton>
       </div>
     </div>
   );
 
   const renderHelpSection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
-      <button
-        type="button"
-        onClick={() => window.open('mailto:support@bandwith.app?subject=Help%20Request', '_blank')}
-        className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left"
-      >
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-            <HelpCircle className="w-5 h-5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Contact Support</span>
-            <span className="text-xs text-muted-foreground font-normal">support@bandwith.app</span>
-          </div>
-        </div>
-        <ArrowUpRight className="w-4 h-4 text-foreground/40" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => window.open('mailto:support@bandwith.app?subject=Help%20Request', '_blank')}
+      className={cn(CARD, ROW, PRESSABLE)}
+    >
+      <IconTile>
+        <Mail />
+      </IconTile>
+      <RowText title="Contact support" hint="support@bandwith.app" />
+      <ArrowUpRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
+    </button>
   );
 
   const renderAboutSection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 p-6 flex flex-col gap-4 shadow-sm text-center items-center">
+    <div className={cn(CARD, 'p-5 flex flex-col gap-4')}>
       <BrandLogo variant="waveform" lockup="horizontal" className="h-8" textClassName="text-2xl" />
-      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Version 1.0.0</span>
-      <p className="text-xs text-muted-foreground">
+      <span className="bw-label-sm text-muted-foreground">Version 1.0.0</span>
+      <p className="bw-body-sm text-muted-foreground">
         All workspace data encrypted end-to-end. Built for musicians, managers, and touring crews.
       </p>
     </div>
   );
 
   const renderLanguageSection = () => (
-    <div className="bg-card rounded-2xl border border-border/40 p-4 flex items-center justify-between shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-          <Globe className="w-5 h-5" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-xs font-bold uppercase tracking-wide text-foreground">Language</span>
-          <span className="text-xs text-muted-foreground font-normal">English (US)</span>
-        </div>
-      </div>
-      <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Active</span>
+    <div className={cn(CARD, ROW)}>
+      <IconTile>
+        <Globe />
+      </IconTile>
+      <RowText title="Language" hint="English (US)" />
+      <Tag variant="accent">Active</Tag>
     </div>
   );
 
@@ -295,39 +355,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         touchAction: 'pan-y',
       }}
     >
-      {/* Sticky Header */}
+      {/* Sticky Top Bar (Figma: Top Bar — back circle + H2 title) */}
       <div
-        className="px-4 shrink-0 border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-30"
+        className="px-4 shrink-0 bg-[var(--bg)] sticky top-0 z-30 bw-status-clear"
         style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          paddingBottom: '14px',
+          paddingTop: 'calc(var(--safe-top) + 8px)',
         }}
       >
-        <div className="max-w-xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              aria-label="Back"
-              className="w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                APP SETTINGS
-              </span>
-              <h1 className="text-[20px] sm:text-[22px] font-black text-foreground uppercase tracking-tight leading-none">
-                {getSectionTitle()}
-              </h1>
-            </div>
-          </div>
+        <div className="max-w-xl mx-auto w-full h-14 flex items-center gap-3">
+          <NavBackButton size="sm" onClick={handleBack} />
+          <h1 className="bw-h2 text-foreground truncate min-w-0 flex-1">{getSectionTitle()}</h1>
         </div>
       </div>
 
       {/* Content */}
-      <div
-        className="px-4 pt-6 pb-2 max-w-xl mx-auto w-full flex flex-col gap-6"
-      >
+      <div className="px-4 pt-3 pb-2 max-w-xl mx-auto w-full flex flex-col gap-3">
+        {activeSection === null && renderMenu()}
         {activeSection === 'notifications' && renderNotificationsSection()}
         {activeSection === 'appearance' && renderAppearanceSection()}
         {activeSection === 'privacy' && renderPrivacySection()}
@@ -336,65 +379,96 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {activeSection === 'language' && renderLanguageSection()}
 
         {/* Footer */}
-        <div className="flex flex-col items-center justify-center gap-1.5 pt-4 pb-4 text-center opacity-40">
-          <BrandLogo variant="waveform" lockup="horizontal" className="h-3.5" textClassName="text-[11px] font-bold" />
-          <span className="text-[10px] text-foreground/50 uppercase tracking-wider">
-            v1.0.0 · All data encrypted
-          </span>
-        </div>
+        <p className="bw-label-sm text-muted-foreground pt-1">v1.0.0 · All data encrypted</p>
 
-        {/* Bottom clearance spacer ensuring Brand Footer cleanly clears floating navbar */}
+        {/* Bottom spacer: the nav bar is hidden here, so only the home indicator needs clearing */}
         <div
           className="shrink-0 pointer-events-none"
-          style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+          style={{ height: 'calc(var(--safe-bottom) + 40px)' }}
           aria-hidden="true"
         />
       </div>
 
-      {/* Delete Confirm Modal */}
+      {/* Delete Confirm Modal (Figma: Account / Delete – confirm) */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
-            onClick={() => setShowDeleteConfirm(false)}
+            className="fixed inset-0 z-[80] bg-black/65 flex items-center justify-center p-6"
+            onClick={closeDeleteConfirm}
           >
             <motion.div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+              aria-describedby="delete-account-desc"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-2xl bg-card border border-border/40 p-6 flex flex-col gap-5 shadow-xl"
+              onKeyDown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}
+              className="w-full max-w-[342px] rounded-[24px] bg-[var(--bg)] text-foreground p-6 flex flex-col gap-4"
             >
-              <div className="w-12 h-12 mx-auto bg-[var(--destructive)]/10 rounded-2xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-[var(--destructive)]" />
+              <div className="w-14 h-14 rounded-full bg-destructive-solid text-white flex items-center justify-center shrink-0">
+                <AlertCircle aria-hidden className="w-6 h-6" />
               </div>
-              <div className="flex flex-col gap-1.5 text-center">
-                <h2 className="text-lg font-bold text-foreground uppercase">Delete Account?</h2>
-                <p className="text-xs text-muted-foreground">
-                  This action cannot be undone. All your data will be permanently deleted.
-                </p>
+              <h2 id="delete-account-title" className="bw-h1 text-foreground">
+                Delete account?
+              </h2>
+              <p id="delete-account-desc" className="bw-body-md text-muted-foreground">
+                This can't be undone. Your profile, your personal gigs and any band where you're the
+                only member are deleted for good. Bands you share with others stay, without you.
+              </p>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="delete-account-confirm" className="bw-label-sm text-muted-foreground">
+                  Type DELETE to confirm
+                </label>
+                <div
+                  className={cn(
+                    'h-[52px] rounded-full bg-field px-4 flex items-center gap-3 transition-colors',
+                    deleteError ? 'border-2 border-destructive' : 'border border-border focus-within:border-2 focus-within:border-foreground'
+                  )}
+                >
+                  <input
+                    id="delete-account-confirm"
+                    type="text"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    autoFocus
+                    value={deleteText}
+                    onChange={(e) => setDeleteText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleDeleteAccount(); }}
+                    disabled={deleting}
+                    aria-invalid={!!deleteError}
+                    className="flex-1 min-w-0 bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                  />
+                  {deleteError && (
+                    <AlertCircle aria-hidden className="w-5 h-5 text-destructive shrink-0" />
+                  )}
+                </div>
+                {deleteError && (
+                  <p role="alert" className="bw-body-sm text-destructive">
+                    {deleteError}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 h-11 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold text-xs uppercase active:scale-95 transition-all"
-                >
+                <PillButton variant="outline" className="flex-1" onClick={closeDeleteConfirm} disabled={deleting}>
                   Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await signOut();
-                    onClose();
-                  }}
-                  className="flex-1 h-11 rounded-xl bg-[var(--destructive)] text-white font-bold text-xs uppercase active:scale-95 transition-all"
+                </PillButton>
+                <PillButton
+                  variant="dark"
+                  className="flex-1 bg-destructive-solid text-white"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteText.trim().toUpperCase() !== 'DELETE'}
+                  aria-busy={deleting}
+                  loading={deleting}
+                  icon={<Trash2 aria-hidden className="w-5 h-5" />}
                 >
-                  Delete
-                </button>
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </PillButton>
               </div>
             </motion.div>
           </motion.div>

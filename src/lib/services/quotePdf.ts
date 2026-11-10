@@ -1,6 +1,7 @@
 import { Quote, QuotePackageOption } from '@/app/data/quotes';
 import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
+import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
 
 export interface QuotePdfGenerationResult {
   pdfBlob: Blob;
@@ -21,10 +22,8 @@ const getCurrencySymbol = (currency?: string): string => {
   return '€';
 };
 
-const formatMoney = (amount: number, sym = '€'): string => {
-  const rounded = Math.round(amount || 0);
-  return `${sym}${rounded.toLocaleString('en-US')}`;
-};
+// Same formatting as the wizard (whole amounts without decimals, otherwise cents)
+const formatMoney = (amount: number, sym = '€'): string => formatQuoteMoney(amount || 0, sym);
 
 const formatFormalEventDate = (dateStr?: string): string => {
   if (!dateStr) return 'Date TBD';
@@ -99,12 +98,19 @@ const drawBandLogoOrWordmark = (
     ctx.drawImage(logoImg, rightEdge - drawW, topY, drawW, drawH);
   } else {
     ctx.save();
-    ctx.font = '300 86px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#6e6a7c';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    const display = (bandName || 'BAND').toUpperCase().slice(0, 12);
-    ctx.fillText(display, rightEdge, topY + 10);
+    // Shrink the wordmark to fit instead of cutting the band name.
+    const display = (bandName || 'BAND').toUpperCase();
+    const maxW = 900;
+    let size = 86;
+    ctx.font = `300 ${size}px Georgia, "Times New Roman", serif`;
+    while (size > 36 && ctx.measureText(display).width > maxW) {
+      size -= 4;
+      ctx.font = `300 ${size}px Georgia, "Times New Roman", serif`;
+    }
+    ctx.fillText(display, rightEdge, topY + 10, maxW);
     ctx.restore();
   }
 };
@@ -390,34 +396,43 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   // 6. Totals Block
   y = Math.max(y + 40, 1110);
 
-  const grossSubtotal = optionOverride ? optionOverride.grossFee : quote.subtotal || mainBandFee;
+  // Totals always come from the shared quote math (src/lib/services/quoteMath.ts), so the
+  // PDF shows exactly what the wizard / detail modal show (clamped discount, cents rounding).
+  const vatRate = optionOverride ? optionOverride.vatRate : quote.vatRate ?? settings.default_vat_rate ?? 21;
+  const quoteTotals = totalsForQuote(
+    {
+      subtotal: quote.subtotal,
+      lineItems: quote.lineItems,
+      discountType: quote.discountType,
+      discountValue: quote.discountValue,
+      discountAmount: quote.discountAmount,
+      vatRate,
+      vatExempt: quote.vatExempt,
+      reverseCharge: quote.reverseCharge,
+    },
+    { subtotal: mainBandFee }
+  );
+  const grossSubtotal = optionOverride ? optionOverride.grossFee : quoteTotals.subtotal;
   const discountAmount = optionOverride
     ? optionOverride.discountAmount
-    : quote.discountAmount || 0;
+    : quoteTotals.discount;
   const discountPct = optionOverride
     ? optionOverride.discountPercent
     : quote.discountType === 'percentage'
-      ? quote.discountValue || 0
+      ? Math.min(100, Math.max(0, quote.discountValue || 0))
       : grossSubtotal > 0 && discountAmount > 0
         ? Math.round((discountAmount / grossSubtotal) * 100)
         : 0;
   const hasDiscount = discountAmount > 0;
-  const netTotal = optionOverride ? optionOverride.netSubtotal : quote.netAmount ?? grossSubtotal - discountAmount;
-  const vatRate = optionOverride ? optionOverride.vatRate : quote.vatRate ?? settings.default_vat_rate ?? 21;
-  const vatAmount = optionOverride
-    ? optionOverride.vatAmount
-    : quote.vatExempt || quote.reverseCharge
-      ? 0
-      : quote.vatAmount ?? Math.round(netTotal * (vatRate / 100));
-  const totalWithVat = optionOverride
-    ? optionOverride.totalWithVat
-    : quote.total ?? netTotal + vatAmount;
+  const netTotal = optionOverride ? optionOverride.netSubtotal : quoteTotals.net;
+  const vatAmount = optionOverride ? optionOverride.vatAmount : quoteTotals.vat;
+  const totalWithVat = optionOverride ? optionOverride.totalWithVat : quoteTotals.total;
   const depositPct = optionOverride
     ? optionOverride.depositPercentage
     : quote.depositPercentage ?? settings.default_deposit_rate ?? 20;
   const depositAmount = optionOverride
     ? optionOverride.depositAmount
-    : Math.round(totalWithVat * (depositPct / 100));
+    : calculateDepositAmount(totalWithVat, depositPct);
 
   // TOTAL Row
   ctx.font = '700 23px "Inter", "Helvetica Neue", Arial, sans-serif';
@@ -1110,8 +1125,18 @@ export async function generateQuotePdf(
   };
 }
 
+/** 16 random bytes as hex (32 chars) so shared PDF URLs cannot be guessed. */
+const randomHexToken = (bytes = 16): string => {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
 /**
- * Uploads the generated PDF to Supabase Storage (`quotes` or `avatars` bucket) and returns a public share URL.
+ * Uploads the generated PDF to the Supabase Storage `quotes` bucket and returns a public share URL.
+ * The path is `quotes/<bandId>/<quoteNumber>_<randomToken>_<fileName>`: the folder layout is what the
+ * storage RLS checks (folder[1] = 'quotes', folder[2] = bandId, uploader must be an active band admin),
+ * and the random token makes the public URL unguessable. There is deliberately no fallback bucket.
  */
 export async function uploadQuotePdfForSharing(
   bandId: string,
@@ -1121,27 +1146,18 @@ export async function uploadQuotePdfForSharing(
 ): Promise<string | null> {
   if (!bandId || bandId === 'default') return null;
   const safeNum = (quoteNumber || `Q-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
-  const storagePath = `quotes/${bandId}/${safeNum}_${fileName}`;
+  const storagePath = `quotes/${bandId}/${safeNum}_${randomHexToken()}_${fileName}`;
 
   try {
-    // Try dedicated 'quotes' bucket first
     const { error: qErr } = await supabase.storage
       .from('quotes')
-      .upload(storagePath, pdfBlob, { contentType: 'application/pdf', upsert: true });
+      .upload(storagePath, pdfBlob, { contentType: 'application/pdf', upsert: false });
 
     if (!qErr) {
       const { data } = supabase.storage.from('quotes').getPublicUrl(storagePath);
       if (data?.publicUrl) return data.publicUrl;
-    }
-
-    // Fallback to existing public 'avatars' bucket
-    const { error: avErr } = await supabase.storage
-      .from('avatars')
-      .upload(storagePath, pdfBlob, { contentType: 'application/pdf', upsert: true });
-
-    if (!avErr) {
-      const { data } = supabase.storage.from('avatars').getPublicUrl(storagePath);
-      if (data?.publicUrl) return data.publicUrl;
+    } else {
+      console.warn('[QuotePDF] Could not upload PDF to the quotes bucket:', qErr);
     }
   } catch (err) {
     console.warn('[QuotePDF] Could not upload PDF to storage bucket:', err);

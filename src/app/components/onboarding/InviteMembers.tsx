@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Mail,
-  X,
-  Users,
-  Plus,
-  Send,
-  Loader2,
-  InstrumentIcon,
-} from '@/app/components/icons';
+import { Mail, X, Users, Plus, Send } from '@/app/components/icons';
 import { useOnboarding, MemberInvite, INSTRUMENTS } from '@/lib/OnboardingContext';
-import { DotRadio } from '@/app/components/ui/DotRadio';
+import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
+import { ChoicePill, DotMatrixRadio, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 
 interface InviteMembersProps {
   onBack: () => void;
@@ -23,7 +14,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
   onBack,
   onComplete,
 }) => {
-  const { invites, addInvite, removeInvite, bandData } = useOnboarding();
+  const { invites, addInvite, removeInvite, path } = useOnboarding();
 
   const [emailInput, setEmailInput] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -67,215 +58,131 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
     onComplete();
   };
 
+  const { step, total } = wizardStep(path, 'invite');
+
+  const initialsFor = (invite: MemberInvite) => {
+    const source = invite.name?.trim() || invite.email.split('@')[0];
+    const parts = source.split(/[\s._-]+/).filter(Boolean);
+    const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
+    return letters.toUpperCase();
+  };
+
+  const metaFor = (invite: MemberInvite) => {
+    if (invite.permission === 'admin') return invite.role ? `Admin · ${invite.role}` : 'Admin · full access';
+    return invite.role ? `Musician · ${invite.role}` : 'Musician';
+  };
+
   return (
-    <div 
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{ 
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+    <AuthScreen
+      top={<WizardTop onBack={onBack} step={step} total={total} />}
+      bodyClassName="pt-2 gap-4"
+      footer={
+        <>
+          {invites.length === 0 && (
+            <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSubmit} disabled={isSubmitting}>
+              Skip for now
+            </PillButton>
+          )}
+          <PillButton
+            onClick={handleSubmit}
+            disabled={invites.length === 0 || isSubmitting}
+            loading={isSubmitting && invites.length > 0}
+            trailingIcon={<Send className="w-5 h-5" />}
+          >
+            {invites.length > 0 ? `Send ${invites.length} ${invites.length === 1 ? 'invite' : 'invites'}` : 'Send invites'}
+          </PillButton>
+        </>
+      }
     >
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[50%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(200, 67, 26, 0.04) 0%, transparent 100%)',
+      <Kicker overline="Your crew" title="Invite your bandmates" />
+
+      {/* Email Input */}
+      <div className="flex items-end gap-2">
+        <PillField
+          label="Email address"
+          type="email"
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          placeholder="member@email.com"
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          inputMode="email"
+          enterKeyHint="done"
+          className="flex-1 min-w-0"
+          icon={<Mail className="w-5 h-5" strokeWidth={1.75} />}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddEmail();
+            }
           }}
         />
-      </div>
-
-      {/* Header */}
-      <div className="px-6 pt-14 pb-4 relative z-10">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
-          </button>
-          <span className="text-muted-foreground text-[13px] font-medium">Step 3/4</span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-accent rounded-full"
-            initial={{ width: '50%' }}
-            animate={{ width: '75%' }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 py-8 relative z-10 overflow-y-auto">
-        {/* Title */}
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
-            Invite your bandmates
-          </h1>
-          <p className="text-muted-foreground text-[16px]">
-            They'll receive an email to join "{bandData?.name}"
-          </p>
-        </motion.div>
-
-        {/* Email Input */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-        >
-          <label className="text-muted-foreground text-[13px] font-medium mb-3 block">
-            EMAIL ADDRESS
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60" />
-              <input
-                type="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="member@email.com"
-                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddEmail();
-                  }
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleAddEmail}
-              disabled={!isValidEmail(emailInput)}
-              className="px-4 rounded-xl bg-accent text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Invited List */}
-        {invites.length > 0 && (
-          <motion.div
-            className="mb-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-muted-foreground text-[13px] font-medium">
-                INVITED ({invites.length})
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              {invites.map((invite, index) => (
-                <motion.div
-                  key={invite.email}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-3 bg-card rounded-xl p-3 border border-border"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[var(--secondary)]/20 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-[var(--secondary)]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-medium text-[14px] truncate">
-                      {invite.email}
-                    </p>
-                    <p className="text-muted-foreground text-[12px]">
-                      {invite.role || 'Musician'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeInvite(invite.email)}
-                    className="w-8 h-8 rounded-full bg-card flex items-center justify-center hover:bg-red-500/20 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Import from Contacts */}
-        <motion.button
+        <button
           type="button"
-          className="flex items-center gap-3 text-accent py-3"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          onClick={handleAddEmail}
+          disabled={!isValidEmail(emailInput)}
+          aria-label="Add bandmate"
+          className="shrink-0 w-11 h-11 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center mb-1 active:scale-[var(--press-scale,0.97)] transition-[transform,opacity] disabled:opacity-30"
         >
-          <Users className="w-5 h-5" />
-          <span className="text-[15px] font-medium">Import from Contacts</span>
-        </motion.button>
-
-        {/* Empty state illustration */}
-        {invites.length === 0 && (
-          <motion.div
-            className="flex-1 flex flex-col items-center justify-center py-12 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="w-20 h-20 rounded-full bg-card flex items-center justify-center mb-4">
-              <Send className="w-10 h-10 text-muted-foreground/60" />
-            </div>
-            <p className="text-muted-foreground text-[15px] max-w-[250px]">
-              Add emails above to invite your bandmates
-            </p>
-          </motion.div>
-        )}
+          <Plus className="w-5 h-5" strokeWidth={2} />
+        </button>
       </div>
 
-      {/* Footer */}
-      <div className="px-6 pb-10 pt-4 relative z-10">
-        <motion.button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className={`w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 active:scale-[0.98] transition-all ${
-            invites.length > 0
-              ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-              : 'bg-transparent text-muted-foreground/90 border border-border hover:border-white/40 hover:text-foreground'
-          }`}
-          whileTap={{ scale: 0.98 }}
-        >
-          {isSubmitting ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : invites.length > 0 ? (
-            <>
-              Send Invites
-              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-            </>
-          ) : (
-            <>
-              Skip for Now
-              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-            </>
-          )}
-        </motion.button>
+      {/* Invited List */}
+      {invites.length > 0 && (
+        <ul className="flex flex-col gap-2" aria-label={`Invited (${invites.length})`}>
+          <AnimatePresence initial={false}>
+            {invites.map((invite, index) => (
+              <motion.li
+                key={invite.email}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ delay: index * 0.05 }}
+                className="flex items-center gap-3 bg-card rounded-[24px] px-4 py-3"
+              >
+                <div className="w-11 h-11 rounded-full bg-field border-[1.5px] border-border text-foreground flex items-center justify-center shrink-0">
+                  <span className="font-[family-name:var(--font-display)] font-bold text-[18px] leading-none tracking-[-0.01em] uppercase">
+                    {initialsFor(invite)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-foreground truncate">{invite.email}</p>
+                  <p className="bw-label-sm text-muted-foreground truncate">{metaFor(invite)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeInvite(invite.email)}
+                  aria-label={`Remove ${invite.email}`}
+                  className="-m-2.5 p-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                >
+                  <X className="w-[18px] h-[18px]" strokeWidth={2} />
+                </button>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
+      )}
 
-        {invites.length > 0 && (
-          <p className="text-center text-muted-foreground/50 text-[12px] mt-3">
-            You can invite more members later
-          </p>
-        )}
-      </div>
+      {/* Empty state */}
+      {invites.length === 0 && (
+        <div className="flex items-center gap-4 rounded-[24px] border-[1.5px] border-dashed border-border p-4">
+          <div className="w-11 h-11 rounded-full bg-card flex items-center justify-center shrink-0">
+            <Send className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <p className="bw-body-sm text-muted-foreground">Add emails above to invite your bandmates.</p>
+        </div>
+      )}
 
-      {/* Invite Detail Modal */}
+      {/* Import from Contacts */}
+      <PillButton variant="outline" size="md" icon={<Users className="w-[18px] h-[18px]" />}>
+        Import from contacts
+      </PillButton>
+
+      <p className="bw-body-sm text-muted-foreground">You can invite more members later from Band members.</p>
+
+      {/* Invite Detail Sheet */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -285,148 +192,114 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
             exit={{ opacity: 0 }}
           >
             {/* Backdrop */}
-            <motion.div
-              className="absolute inset-0 bg-background/60 backdrop-blur-sm"
-              onClick={() => setShowModal(false)}
-            />
+            <motion.div className="absolute inset-0 bg-black/60" onClick={() => setShowModal(false)} />
 
-            {/* Modal */}
             <motion.div
-              className="relative w-full max-w-md bg-card rounded-t-[2rem] p-6"
+              className="relative w-full max-w-md"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25 }}
             >
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-6 right-6 text-muted-foreground"
+              <OnboardingSheet
+                overline={currentInvite.email}
+                title="Invite details"
+                labelledBy="invite-details-title"
+                onClose={() => setShowModal(false)}
+                closeIcon={<X className="w-4 h-4" strokeWidth={2} />}
               >
-                <X className="w-6 h-6" />
-              </button>
-
-              <h3 className="text-foreground font-bold text-[20px] mb-1">
-                Invite Details
-              </h3>
-              <p className="text-accent text-[15px] mb-6">
-                {currentInvite.email}
-              </p>
-
-              {/* Name (optional) */}
-              <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
-                  NAME (OPTIONAL)
-                </label>
-                <input
-                  type="text"
-                  value={currentInvite.name || ''}
-                  onChange={(e) =>
-                    setCurrentInvite((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="John Doe"
-                  className="w-full bg-background/30 border border-border rounded-xl px-4 py-3 text-foreground text-[15px] placeholder:text-muted-foreground/60 outline-none focus:border-accent/50"
-                />
-              </div>
-
-              {/* Role/Instrument */}
-              <div className="mb-4">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
-                  ROLE/INSTRUMENT
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {INSTRUMENTS.slice(0, 6).map((inst) => (
-                    <button
-                      key={inst.id}
-                      type="button"
-                      onClick={() =>
-                        setCurrentInvite((prev) => ({
-                          ...prev,
-                          role: inst.label,
-                        }))
-                      }
-                      className={`px-3 py-2 rounded-xl text-[13px] font-medium inline-flex items-center gap-1.5 ${
-                        currentInvite.role === inst.label
-                          ? 'bg-accent text-accent-foreground'
-                          : 'bg-background/30 text-foreground border border-border'
-                      }`}
-                    >
-                      <InstrumentIcon instrumentId={inst.id} className="w-3.5 h-3.5 shrink-0" />
-                      {inst.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Permission */}
-              <div className="mb-6">
-                <label className="text-muted-foreground text-[12px] font-medium mb-2 block">
-                  PERMISSION
-                </label>
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() =>
+                <div className="flex flex-col gap-5">
+                  {/* Name (optional) */}
+                  <PillField
+                    label="Name (optional)"
+                    type="text"
+                    value={currentInvite.name || ''}
+                    onChange={(e) =>
                       setCurrentInvite((prev) => ({
                         ...prev,
-                        permission: 'member',
+                        name: e.target.value,
                       }))
                     }
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:border-border"
-                  >
-                    <DotRadio
-                      selected={currentInvite.permission !== 'admin'}
-                      activeColor="var(--accent)"
-                      inactiveColor="rgba(255,255,255,0.15)"
-                    />
-                    <div className="text-left">
-                      <span className="text-foreground font-medium text-[14px]">
-                        Member
-                      </span>
-                      <p className="text-muted-foreground text-[12px]">
-                        Limited access
-                      </p>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCurrentInvite((prev) => ({
-                        ...prev,
-                        permission: 'admin',
-                      }))
-                    }
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:border-border"
-                  >
-                    <DotRadio
-                      selected={currentInvite.permission === 'admin'}
-                      activeColor="var(--accent)"
-                      inactiveColor="rgba(255,255,255,0.15)"
-                    />
-                    <div className="text-left">
-                      <span className="text-foreground font-medium text-[14px]">
-                        Admin
-                      </span>
-                      <p className="text-muted-foreground text-[12px]">Full access</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
+                    placeholder="Their name"
+                    autoCapitalize="words"
+                    enterKeyHint="done"
+                  />
 
-              {/* Confirm Button */}
-              <button
-                onClick={handleConfirmInvite}
-                className="w-full h-12 rounded-full text-sm font-black uppercase tracking-[0.1em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all"
-              >
-                Add to List
-              </button>
+                  {/* Role/Instrument */}
+                  <div className="flex flex-col gap-3">
+                    <p id="invite-role-label" className="bw-label-sm text-muted-foreground">
+                      Role / instrument
+                    </p>
+                    <div role="group" aria-labelledby="invite-role-label" className="flex flex-wrap gap-2">
+                      {INSTRUMENTS.slice(0, 6).map((inst) => (
+                        <ChoicePill
+                          key={inst.id}
+                          selected={currentInvite.role === inst.label}
+                          onClick={() =>
+                            setCurrentInvite((prev) => ({
+                              ...prev,
+                              role: inst.label,
+                            }))
+                          }
+                        >
+                          {inst.label}
+                        </ChoicePill>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Permission */}
+                  <div className="flex flex-col gap-3">
+                    <p id="invite-permission-label" className="bw-label-sm text-muted-foreground">
+                      Permission
+                    </p>
+                    <div role="radiogroup" aria-labelledby="invite-permission-label" className="flex flex-col gap-2">
+                      {(
+                        [
+                          { id: 'member', label: 'Member', hint: 'Limited access' },
+                          { id: 'admin', label: 'Admin', hint: 'Full access' },
+                        ] as const
+                      ).map((opt) => {
+                        const selected =
+                          opt.id === 'admin' ? currentInvite.permission === 'admin' : currentInvite.permission !== 'admin';
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() =>
+                              setCurrentInvite((prev) => ({
+                                ...prev,
+                                permission: opt.id,
+                              }))
+                            }
+                            className={`w-full flex items-center gap-3 p-4 rounded-[20px] text-left transition-colors ${
+                              selected ? 'bg-muted' : 'border border-border'
+                            }`}
+                          >
+                            <DotMatrixRadio checked={selected} />
+                            <span className="flex flex-col gap-0.5">
+                              <span className="bw-label-md text-foreground">{opt.label}</span>
+                              <span className="bw-body-sm text-muted-foreground">{opt.hint}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Confirm Button */}
+                  <PillButton onClick={handleConfirmInvite} trailingIcon={<Plus className="w-5 h-5" />}>
+                    Add to list
+                  </PillButton>
+                </div>
+              </OnboardingSheet>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AuthScreen>
   );
 };
 

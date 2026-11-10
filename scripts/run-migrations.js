@@ -3,8 +3,8 @@
  * Esegui con: node scripts/run-migrations.js
  */
 
-const SUPABASE_URL = 'https://elvlzpowkohjbhxjasvd.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsdmx6cG93a29oamJoeGphc3ZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODc5ODU4MSwiZXhwIjoyMDg0Mzc0NTgxfQ.ygK40BDOVYlxs56jJAhtwzG2feAXN7T4MRDAkjc3gU0';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function runSQL(sql) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {

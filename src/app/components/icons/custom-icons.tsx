@@ -1,1085 +1,654 @@
-import React from 'react';
 import { createIcon } from './IconBase';
+import {
+  CLOUD,
+  DOC,
+  arc,
+  arcDots,
+  box,
+  dot,
+  dotIcon,
+  head,
+  open,
+  ring,
+  seg,
+  star,
+} from './dots';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   BandWith Studio Vector System — Core UI & Domain Iconography
-   • Grid: 24×24 (2px optical safe zone)
-   • Stroke: 2.0px uniform, round caps & round joins
-   • DNA: Architectural squircle radii (rx=3), sculpted rounded vertices,
-          studio audio hardware precision, zero visual noise at 14px–28px
+   BandWith Dot Icons — UI & domain set
+   Built only from pills and dots (see ./dots.tsx for the rules). Same export
+   names and props as before (size, color, strokeWidth, className), so every
+   call site keeps working.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── 1. Music, Audio & Repertoire ── */
-
-export const Music = createIcon('Music', () => (
-  <>
-    <circle cx="6.5" cy="18" r="2.75" />
-    <circle cx="17.5" cy="16" r="2.75" />
-    <path d="M9.25 18V5.5l11-2v12.5" />
-  </>
-));
-
-export const Music2 = createIcon('Music2', () => (
-  <>
-    <circle cx="6.5" cy="18" r="2.75" />
-    <circle cx="17.5" cy="16" r="2.75" />
-    <path d="M9.25 18V5.5l11-2v12.5" />
-    <path d="M9.25 9.25l11-2" />
-  </>
-));
-
-export const ListMusic = createIcon('ListMusic', () => (
-  <>
-    <path d="M3.5 6.5h12" />
-    <path d="M3.5 12h8.5" />
-    <path d="M3.5 17.5h8.5" />
-    <circle cx="17" cy="17.5" r="2.5" />
-    <path d="M19.5 17.5V7l2 .5" />
-  </>
-));
-
-export const FileMusic = createIcon('FileMusic', () => (
-  <>
-    <path d="M14 2.5H6.5a2.5 2.5 0 0 0-2.5 2.5v14a2.5 2.5 0 0 0 2.5 2.5h11a2.5 2.5 0 0 0 2.5-2.5V8.5L14 2.5Z" />
-    <path d="M13.5 2.5V7a2 2 0 0 0 2 2H20" />
-    <circle cx="10.25" cy="16.75" r="1.75" />
-    <path d="M12 16.75V11.5l3-.6" />
-  </>
-));
-
-export const Disc3 = createIcon('Disc3', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <circle cx="12" cy="12" r="2.5" />
-    <path d="M6.5 12A5.5 5.5 0 0 1 12 6.5" />
-    <path d="M17.5 12A5.5 5.5 0 0 1 12 17.5" />
-  </>
-));
-
-export const Guitar = createIcon('Guitar', () => (
-  <>
-    <path d="M11.6 12.4c-2.1-.9-4.6-.4-6.2 1.2a4.4 4.4 0 0 0 6.2 6.2c1.6-1.6 2.1-4.1 1.2-6.2" />
-    <circle cx="9.2" cy="14.8" r="1.2" />
-    <path d="M12.4 11.6 18.5 5.5" />
-    <path d="M17.5 3.5l3 3" />
-  </>
-));
-
-export const Mic2 = createIcon('Mic2', () => (
-  <>
-    <circle cx="16.5" cy="7.5" r="4" />
-    <path d="M13.7 4.7l5.6 5.6" />
-    <path d="M13.3 8 4.7 16.6a2.1 2.1 0 0 0 2.7 2.7L16 10.7" />
-    <path d="M3 21l2-2" />
-  </>
-));
-
-export const Mic = createIcon('Mic', () => (
-  <>
-    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="22" />
-  </>
-));
-
-export const Drum = createIcon('Drum', () => (
-  <>
-    <ellipse cx="12" cy="8" rx="8" ry="3.5" />
-    <path d="M4 8v7c0 1.93 3.58 3.5 8 3.5s8-1.57 8-3.5V8" />
-    <path d="m5 16 3-3" />
-    <path d="m19 16-3-3" />
-  </>
-));
-
-export const Sliders = createIcon('Sliders', () => (
-  <>
-    <line x1="4" y1="21" x2="4" y2="14" />
-    <line x1="4" y1="10" x2="4" y2="3" />
-    <line x1="12" y1="21" x2="12" y2="12" />
-    <line x1="12" y1="8" x2="12" y2="3" />
-    <line x1="20" y1="21" x2="20" y2="16" />
-    <line x1="20" y1="12" x2="20" y2="3" />
-    <line x1="1" y1="14" x2="7" y2="14" />
-    <line x1="9" y1="8" x2="15" y2="8" />
-    <line x1="17" y1="16" x2="23" y2="16" />
-  </>
-));
-
-export const Volume2 = createIcon('Volume2', () => (
-  <>
-    <path d="M11 5.5 6.5 9H3.75A1.75 1.75 0 0 0 2 10.75v2.5C2 14.22 2.78 15 3.75 15H6.5L11 18.5V5.5Z" />
-    <path d="M15.5 8.8a4.8 4.8 0 0 1 0 6.4" />
-    <path d="M18.8 5.6a9.2 9.2 0 0 1 0 12.8" />
-  </>
-));
-
-export const VolumeX = createIcon('VolumeX', () => (
-  <>
-    <path d="M11 5.5 6.5 9H3.75A1.75 1.75 0 0 0 2 10.75v2.5C2 14.22 2.78 15 3.75 15H6.5L11 18.5V5.5Z" />
-    <path d="m16.5 9.5 5 5" />
-    <path d="m21.5 9.5-5 5" />
-  </>
-));
-
-export const Play = createIcon('Play', () => (
-  <path d="M6 4.8a1.25 1.25 0 0 1 1.9-1.06l11.2 7.2a1.25 1.25 0 0 1 0 2.12l-11.2 7.2A1.25 1.25 0 0 1 6 19.2V4.8Z" />
-));
-
-export const Pause = createIcon('Pause', () => (
-  <>
-    <rect x="6" y="4" width="4.25" height="16" rx="1.75" />
-    <rect x="13.75" y="4" width="4.25" height="16" rx="1.75" />
-  </>
-));
-
-export const Repeat = createIcon('Repeat', () => (
-  <>
-    <path d="m17 3 3.5 3.5L17 10" />
-    <path d="M3.5 11v-1A3.5 3.5 0 0 1 7 6.5h13.5" />
-    <path d="M7 21 3.5 17.5 7 14" />
-    <path d="M20.5 13v1A3.5 3.5 0 0 1 17 17.5H3.5" />
-  </>
-));
-
-export const SkipForward = createIcon('SkipForward', () => (
-  <>
-    <path d="M5.25 5.2a1 1 0 0 1 1.54-.84l9.5 6.8a1 1 0 0 1 0 1.68l-9.5 6.8a1 1 0 0 1-1.54-.84V5.2Z" />
-    <path d="M19 5v14" />
-  </>
-));
-
-export const Radio = createIcon('Radio', () => (
-  <>
-    <circle cx="12" cy="12" r="2.25" />
-    <path d="M8.1 15.9a5.5 5.5 0 0 1 0-7.8" />
-    <path d="M15.9 8.1a5.5 5.5 0 0 1 0 7.8" />
-    <path d="M5.2 18.8a9.6 9.6 0 0 1 0-13.6" />
-    <path d="M18.8 5.2a9.6 9.6 0 0 1 0 13.6" />
-  </>
-));
-
-/* ── 2. Events, Logistics & Stage Timeline ── */
-
-export const Calendar = createIcon('Calendar', () => (
-  <>
-    <rect x="3" y="4" width="18" height="17" rx="3" />
-    <path d="M8 2.5v3" />
-    <path d="M16 2.5v3" />
-    <path d="M3 9.5h18" />
-  </>
-));
-
-export const CalendarPlus = createIcon('CalendarPlus', () => (
-  <>
-    <rect x="3" y="4" width="18" height="17" rx="3" />
-    <path d="M8 2.5v3" />
-    <path d="M16 2.5v3" />
-    <path d="M3 9.5h18" />
-    <path d="M9.5 15.25h5" />
-    <path d="M12 12.75v5" />
-  </>
-));
-
-export const Clock = createIcon('Clock', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M12 6.75V12l3.75 2.25" />
-  </>
-));
-
-export const Timer = createIcon('Timer', () => (
-  <>
-    <path d="M9.5 2.5h5" />
-    <path d="M12 2.5v2" />
-    <circle cx="12" cy="13.5" r="8" />
-    <path d="M12 13.5V9.25" />
-  </>
-));
-
-export const History = createIcon('History', () => (
-  <>
-    <path d="M3.2 12a9 9 0 1 0 2.3-6L3 8.5" />
-    <path d="M3 3.5v5h5" />
-    <path d="M12 7.5V12l3.25 2" />
-  </>
-));
-
-export const MapPin = createIcon('MapPin', () => (
-  <>
-    <path d="M19.5 10c0 5-5.25 9.75-6.9 11.25a.9.9 0 0 1-1.2 0C9.75 19.75 4.5 15 4.5 10a7.5 7.5 0 0 1 15 0Z" />
-    <circle cx="12" cy="10" r="2.75" />
-  </>
-));
-
-export const Truck = createIcon('Truck', () => (
-  <>
-    <path d="M14 17.5V6.5A2.5 2.5 0 0 0 11.5 4h-7A2.5 2.5 0 0 0 2 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5H5" />
-    <path d="M9 17.5h6" />
-    <path d="M19 17.5h1.5A1.5 1.5 0 0 0 22 16v-3.4a1.5 1.5 0 0 0-.35-.96l-2.9-3.5A1.5 1.5 0 0 0 17.6 7.5H14v10" />
-    <circle cx="7" cy="17.5" r="2" />
-    <circle cx="17" cy="17.5" r="2" />
-  </>
-));
-
-export const Briefcase = createIcon('Briefcase', () => (
-  <>
-    <rect x="2.5" y="6.5" width="19" height="14" rx="3" />
-    <path d="M8.5 6.5V4.5A2 2 0 0 1 10.5 2.5h3a2 2 0 0 1 2 2v2" />
-    <path d="M2.5 12h19" />
-  </>
-));
-
-export const Hotel = createIcon('Hotel', () => (
-  <>
-    <rect x="4" y="2.5" width="16" height="19" rx="2.5" />
-    <path d="M8.5 7h2" />
-    <path d="M13.5 7h2" />
-    <path d="M8.5 11.5h2" />
-    <path d="M13.5 11.5h2" />
-    <path d="M10 21.5v-4.5a2 2 0 0 1 4 0v4.5" />
-  </>
-));
-
-export const Plane = createIcon('Plane', () => (
-  <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z" />
-));
-
-export const Utensils = createIcon('Utensils', () => (
-  <>
-    <path d="M4 3v6a3.5 3.5 0 0 0 7 0V3" />
-    <path d="M7.5 3v18" />
-    <path d="M19 3v18" />
-    <path d="M19 3c-2.5 0-4 2.2-4 5.5V12h4" />
-  </>
-));
-
-export const UtensilsCrossed = createIcon('UtensilsCrossed', () => (
-  <>
-    <path d="m16 2.5-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8.5Z" />
-    <path d="M15 15 3.5 3.5a4 4 0 0 0 0 5.7l7.3 7.3a2 2 0 0 0 2.8 0L15 15Zm0 0 6.5 6.5" />
-    <path d="m2.5 21.5 6.2-6.2" />
-    <path d="m19 5.5-6.5 6.5" />
-  </>
-));
-
-export const Wine = createIcon('Wine', () => (
-  <>
-    <path d="M8 21.5h8" />
-    <path d="M12 15v6.5" />
-    <path d="M7.2 9.5h9.6" />
-    <path d="M12 15a5 5 0 0 0 5-5c0-2-.6-4.2-1.8-7.5H8.8C7.6 5.8 7 8 7 10a5 5 0 0 0 5 5Z" />
-  </>
-));
-
-export const Navigation = createIcon('Navigation', () => (
-  <path d="M3.6 10.8 20.2 3.1a.8.8 0 0 1 1.07 1.07L13.6 20.8a.8.8 0 0 1-1.5-.12L10.4 14a1 1 0 0 0-.7-.7l-6.08-1.7a.8.8 0 0 1-.02-1.5Z" />
-));
-
-/* ── 3. Wayfinding, Disclosure & Arrows ── */
-
-export const ArrowLeft = createIcon('ArrowLeft', () => (
-  <>
-    <path d="M19 12H5" />
-    <path d="m11.5 18.5-6.5-6.5 6.5-6.5" />
-  </>
-));
-
-export const ArrowRight = createIcon('ArrowRight', () => (
-  <>
-    <path d="M5 12h14" />
-    <path d="m12.5 5.5 6.5 6.5-6.5 6.5" />
-  </>
-));
-
-export const ArrowUpRight = createIcon('ArrowUpRight', () => (
-  <>
-    <path d="M7 17 17 7" />
-    <path d="M8 7h9v9" />
-  </>
-));
-
-export const ArrowDownLeft = createIcon('ArrowDownLeft', () => (
-  <>
-    <path d="M17 7 7 17" />
-    <path d="M16 17H7V8" />
-  </>
-));
-
-export const ChevronDown = createIcon('ChevronDown', () => (
-  <path d="m6 9 6 6 6-6" />
-));
-
-export const ChevronUp = createIcon('ChevronUp', () => (
-  <path d="m18 15-6-6-6 6" />
-));
-
-export const ChevronLeft = createIcon('ChevronLeft', () => (
-  <path d="m15 18-6-6 6-6" />
-));
-
-export const ChevronRight = createIcon('ChevronRight', () => (
-  <path d="m9 18 6-6-6-6" />
-));
-
-export const Home = createIcon('Home', () => (
-  <>
-    <path d="M3.5 10.2 10.7 3.8a2 2 0 0 1 2.6 0l7.2 6.4a2 2 0 0 1 .68 1.5V19a2.5 2.5 0 0 1-2.5 2.5H5.32A2.5 2.5 0 0 1 2.82 19v-7.3a2 2 0 0 1 .68-1.5Z" />
-    <path d="M9.5 21.5V14a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5v7.5" />
-  </>
-));
-
-export const PanelLeft = createIcon('PanelLeft', () => (
-  <>
-    <rect x="3" y="3" width="18" height="18" rx="3" />
-    <path d="M9 3v18" />
-  </>
-));
-
-/* ── 4. Core Actions, Editing & Controls ── */
-
-export const Plus = createIcon('Plus', () => (
-  <>
-    <path d="M12 5v14" />
-    <path d="M5 12h14" />
-  </>
-));
-
-export const Minus = createIcon('Minus', () => (
-  <path d="M5 12h14" />
-));
-
-export const X = createIcon('X', () => (
-  <>
-    <path d="M18 6 6 18" />
-    <path d="m6 6 12 12" />
-  </>
-));
-
-export const XCircle = createIcon('XCircle', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="m14.75 9.25-5.5 5.5" />
-    <path d="m9.25 9.25 5.5 5.5" />
-  </>
-));
-
-export const Check = createIcon('Check', () => (
-  <path d="M20 6.5 9.25 17.25 4.5 12.5" />
-));
-
-export const CheckCheck = createIcon('CheckCheck', () => (
-  <>
-    <path d="M17.5 6.5 7.25 16.75 2.75 12.25" />
-    <path d="m21.5 9.5-8 8-1.75-1.75" />
-  </>
-));
-
-export const CheckCircle = createIcon('CheckCircle', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="m8.5 12.25 2.35 2.35 4.9-5.1" />
-  </>
-));
-
-export const CheckCircle2 = createIcon('CheckCircle2', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="m8.5 12.25 2.35 2.35 4.9-5.1" />
-  </>
-));
-
-export const CheckSquare = createIcon('CheckSquare', () => (
-  <>
-    <rect x="3" y="3" width="18" height="18" rx="3.5" />
-    <path d="m8.5 12.25 2.35 2.35 4.9-5.1" />
-  </>
-));
-
-export const Circle = createIcon('Circle', () => (
-  <circle cx="12" cy="12" r="9.5" />
-));
-
-export const Square = createIcon('Square', () => (
-  <rect x="3" y="3" width="18" height="18" rx="3.5" />
-));
-
-export const Edit = createIcon('Edit', () => (
-  <>
-    <path d="M11 4H5.5A2.5 2.5 0 0 0 3 6.5v12A2.5 2.5 0 0 0 5.5 21h12a2.5 2.5 0 0 0 2.5-2.5V13" />
-    <path d="M17.8 3.2a2.2 2.2 0 0 1 3.1 3.1L12 15.2l-4 .8.8-4 9-8.8Z" />
-  </>
-));
-
-export const Edit2 = createIcon('Edit2', () => (
-  <>
-    <path d="M16.8 3.4a2.4 2.4 0 0 1 3.4 3.4L7.8 19.2 3 20.5l1.3-4.8L16.8 3.4Z" />
-    <path d="m14.5 5.7 3.4 3.4" />
-  </>
-));
-
-export const Edit3 = createIcon('Edit3', () => (
-  <>
-    <path d="M12.5 20.5h8.5" />
-    <path d="M16.5 3.5a2.25 2.25 0 0 1 3.2 3.2L7.5 18.9l-4.2 1 1-4.2L16.5 3.5Z" />
-  </>
-));
-
-export const Pencil = createIcon('Pencil', () => (
-  <>
-    <path d="M16.8 3.4a2.4 2.4 0 0 1 3.4 3.4L7.8 19.2 3 20.5l1.3-4.8L16.8 3.4Z" />
-    <path d="m14.5 5.7 3.4 3.4" />
-  </>
-));
-
-export const Trash2 = createIcon('Trash2', () => (
-  <>
-    <path d="M3.5 6.5h17" />
-    <path d="M8.5 6.5V4.5A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.5 1.5v2" />
-    <path d="M18.5 6.5v12A2.5 2.5 0 0 1 16 21H8a2.5 2.5 0 0 1-2.5-2.5v-12" />
-    <path d="M10 11v5.5" />
-    <path d="M14 11v5.5" />
-  </>
-));
-
-export const Save = createIcon('Save', () => (
-  <>
-    <path d="M18.5 21h-13A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3h10.1a2.5 2.5 0 0 1 1.77.73l2.9 2.9A2.5 2.5 0 0 1 21 8.4v10.1a2.5 2.5 0 0 1-2.5 2.5Z" />
-    <path d="M7.5 21v-6.5A1.5 1.5 0 0 1 9 13h6a1.5 1.5 0 0 1 1.5 1.5V21" />
-    <path d="M7.5 3v4a1 1 0 0 0 1 1h5.5" />
-  </>
-));
-
-export const Copy = createIcon('Copy', () => (
-  <>
-    <rect x="8.5" y="8.5" width="13" height="13" rx="2.75" />
-    <path d="M4.5 15.5h-.25A1.75 1.75 0 0 1 2.5 13.75v-9.5C2.5 3.28 3.28 2.5 4.25 2.5h9.5c.97 0 1.75.78 1.75 1.75v.25" />
-  </>
-));
-
-export const Download = createIcon('Download', () => (
-  <>
-    <path d="M20.5 15v3a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 18v-3" />
-    <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
-    <path d="M12 15V3.5" />
-  </>
-));
-
-export const Upload = createIcon('Upload', () => (
-  <>
-    <path d="M20.5 15v3a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 18v-3" />
-    <path d="M16.5 8 12 3.5 7.5 8" />
-    <path d="M12 3.5V15" />
-  </>
-));
-
-export const UploadCloud = createIcon('UploadCloud', () => (
-  <>
-    <path d="M4.2 15A6.8 6.8 0 1 1 15.6 8.2h1.65a4.4 4.4 0 0 1 2.35 8.12" />
-    <path d="M12 12.5v8.5" />
-    <path d="m15.5 16-3.5-3.5L8.5 16" />
-  </>
-));
-
-export const RefreshCw = createIcon('RefreshCw', () => (
-  <>
-    <path d="M3.2 12a8.8 8.8 0 0 1 15.1-6.1L20.5 8" />
-    <path d="M20.5 3.5V8H16" />
-    <path d="M20.8 12a8.8 8.8 0 0 1-15.1 6.1L3.5 16" />
-    <path d="M8 16H3.5v4.5" />
-  </>
-));
-
-export const RotateCcw = createIcon('RotateCcw', () => (
-  <>
-    <path d="M3.2 12a9 9 0 1 0 2.35-6L3 8.5" />
-    <path d="M3 3.5v5h5" />
-  </>
-));
-
-export const RotateCw = createIcon('RotateCw', () => (
-  <>
-    <path d="M20.8 12a9 9 0 1 1-2.35-6L21 8.5" />
-    <path d="M21 3.5v5h-5" />
-  </>
-));
-
-export const MoreHorizontal = createIcon('MoreHorizontal', () => (
-  <>
-    <circle cx="5.5" cy="12" r="1.25" fill="currentColor" />
-    <circle cx="12" cy="12" r="1.25" fill="currentColor" />
-    <circle cx="18.5" cy="12" r="1.25" fill="currentColor" />
-  </>
-));
-
-export const GripVertical = createIcon('GripVertical', () => (
-  <>
-    <circle cx="9" cy="5.5" r="1.15" fill="currentColor" />
-    <circle cx="9" cy="12" r="1.15" fill="currentColor" />
-    <circle cx="9" cy="18.5" r="1.15" fill="currentColor" />
-    <circle cx="15" cy="5.5" r="1.15" fill="currentColor" />
-    <circle cx="15" cy="12" r="1.15" fill="currentColor" />
-    <circle cx="15" cy="18.5" r="1.15" fill="currentColor" />
-  </>
-));
-
-export const Eye = createIcon('Eye', () => (
-  <>
-    <path d="M2.2 12S5.5 5.25 12 5.25 21.8 12 21.8 12 18.5 18.75 12 18.75 2.2 12 2.2 12Z" />
-    <circle cx="12" cy="12" r="3" />
-  </>
-));
-
-export const EyeOff = createIcon('EyeOff', () => (
-  <>
-    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-    <path d="M10.7 5.38A9.8 9.8 0 0 1 12 5.25c6.5 0 9.8 6.75 9.8 6.75a14.4 14.4 0 0 1-1.9 2.85" />
-    <path d="M6.5 6.65A14.2 14.2 0 0 0 2.2 12s3.3 6.75 9.8 6.75a9.6 9.6 0 0 0 5.35-1.6" />
-    <path d="m2.5 2.5 19 19" />
-  </>
-));
-
-export const Search = createIcon('Search', () => (
-  <>
-    <circle cx="11" cy="11" r="7.5" />
-    <path d="m20.5 20.5-4.15-4.15" />
-  </>
-));
+/* ── 1. Music & audio ── */
+
+export const Music = dotIcon('Music', {
+  d: 'M8.75 18V8.5M18.75 16V6.5M8.75 5L18.75 3',
+  solid: [
+    [6.5, 18, 2.25],
+    [16.5, 16, 2.25],
+  ],
+});
+
+export const Music2 = dotIcon('Music2', {
+  d: `M11.5 18V4M15 5L18.5 8.5${dot(18.5, 12)}`,
+  solid: [[9, 18, 2.5]],
+});
+
+export const ListMusic = dotIcon('ListMusic', {
+  d: `${dot(3, 6)}M7 6H14${dot(3, 12)}M7 12H12${dot(3, 18)}M7 18H10M17.75 17.5V8${dot(21, 9.25)}`,
+  solid: [[16, 18, 1.75]],
+});
+
+export const FileMusic = dotIcon('FileMusic', {
+  d: `${DOC}M12.25 16.5V10.5${dot(15.5, 12)}`,
+  solid: [[10.5, 16.5, 1.5]],
+});
+
+export const Disc3 = dotIcon('Disc3', {
+  d: ring(12, 12, 9.5, 16) + arc(12, 12, 5.5, 195, 255),
+  solid: [[12, 12, 1.5]],
+});
+
+export const Guitar = dotIcon('Guitar', {
+  d: `${ring(9, 15, 5.5, 10, -27)}M15 9L18.5 5.5${dot(21, 3)}`,
+  solid: [[9, 15, 1.25]],
+});
+
+export const Mic2 = dotIcon('Mic2', {
+  d: 'M10.5 13.5L4.5 19.5',
+  solid: [[15.5, 8.5, 3.25]],
+});
+
+export const Mic = dotIcon('Mic', {
+  d: `${arc(12, 11, 6.5, 0, 180)}M9.5 21H14.5`,
+  bold: 'M12 6V10',
+  boldScale: 3.5,
+});
+
+export const Drum = dotIcon('Drum', {
+  d: `M4 8a8 3 0 1 0 16 0a8 3 0 1 0-16 0M4 12.5V16M20 12.5V16M7 19.6C9.5 20.5 14.5 20.5 17 19.6${dot(8, 14.5, 12, 15.5, 16, 14.5)}`,
+});
+
+export const Sliders = dotIcon('Sliders', {
+  d: `M3 6H8M18 6H21M12 12H21M3 18H11${dot(21, 18)}`,
+  solid: [
+    [13, 6, 1.5],
+    [7, 12, 1.5],
+    [16, 18, 1.5],
+  ],
+});
+
+const SPEAKER = 'M3.5 10V14M7.5 8.5L11.5 5M7.5 15.5L11.5 19M11.5 8.5V15.5';
+
+export const Volume2 = dotIcon('Volume2', {
+  d: SPEAKER + arc(12, 12, 4.5, -40, 40) + arcDots(12, 12, 8.5, -45, 45, 4),
+});
+
+export const VolumeX = dotIcon('VolumeX', {
+  d: SPEAKER + dot(16, 9.5, 21, 9.5, 18.5, 12, 16, 14.5, 21, 14.5),
+});
+
+export const Play = dotIcon('Play', { fill: 'M8 5.5v13l10.5-6.5z', d: 'M8 5.5v13l10.5-6.5z' });
+
+export const Pause = dotIcon('Pause', { bold: 'M8.5 6v12M15.5 6v12', boldScale: 1.75 });
+
+export const Repeat = dotIcon('Repeat', {
+  d: 'M4 11V9.5A3.5 3.5 0 0 1 7.5 6H15M17.5 3L20.5 6L17.5 9M20 13V14.5A3.5 3.5 0 0 1 16.5 18H9M6.5 15L3.5 18L6.5 21',
+});
+
+export const SkipForward = dotIcon('SkipForward', {
+  fill: 'M5 6v12l9-6z',
+  d: 'M5 6v12l9-6zM18.5 6V18',
+});
+
+export const Radio = dotIcon('Radio', {
+  d:
+    arc(12, 12, 5, -40, 40) +
+    arc(12, 12, 5, 140, 220) +
+    arcDots(12, 12, 9, -40, 40, 3) +
+    arcDots(12, 12, 9, 140, 220, 3),
+  solid: [[12, 12, 1.5]],
+});
+
+/* ── 2. Calendar, time & logistics ── */
 
+const CAL = 'M3.5 8V18.5M20.5 8V18.5M7 21.5H17M11 4.5H13M7.5 2.5V6.5M16.5 2.5V6.5';
+
+export const Calendar = dotIcon('Calendar', {
+  d: CAL + dot(8, 11.5, 12, 11.5, 16, 11.5, 8, 16, 12, 16, 16, 16),
+});
+
+export const CalendarPlus = dotIcon('CalendarPlus', { d: `${CAL}M12 11V17M9 14H15` });
+
+export const Clock = dotIcon('Clock', { d: `${ring(12, 12, 9.5, 12)}M12 7.5V12L15 14` });
+
+export const Timer = dotIcon('Timer', { d: `${ring(12, 13.5, 8, 12)}M10 2H14M12 13.5L15 10.5` });
+
+export const History = dotIcon('History', {
+  d: arcDots(12, 12, 9, 275, 485, 7) + arc(12, 12, 9, 245, 205) + head(12, 12, 9, 205, -1) + 'M12 7.5V12L15 14',
+});
+
+export const MapPin = dotIcon('MapPin', {
+  d: `${arc(12, 9.5, 6.5, 145, 395)}M9 16.3L10.4 18.3M15 16.3L13.6 18.3${dot(12, 21.5)}`,
+  solid: [[12, 9.5, 1.75]],
+});
+
+export const Truck = dotIcon('Truck', {
+  d: 'M2.5 6.5V12.5M5.5 3.5H11.5M14.5 6.5V12.5M17.5 8H19L21.5 11V14.5',
+  solid: [
+    [6.5, 18.5, 1.75],
+    [17.5, 18.5, 1.75],
+  ],
+});
+
+export const Briefcase = dotIcon('Briefcase', {
+  d: `M3.5 10.5V18M20.5 10.5V18M6.5 7.5H17.5M6.5 21H17.5M9.5 3.5H14.5${dot(12, 14)}`,
+});
+
+export const Hotel = dotIcon('Hotel', {
+  d: `M3.5 5V19.5M7.5 15.5H20.5${dot(20.5, 19.5)}M13 10.5H18.5`,
+  solid: [[8, 10.5, 1.5]],
+});
+
+export const Plane = dotIcon('Plane', {
+  d: 'M12 2.5V17M3 14.5L12 10L21 14.5M8.5 21L12 19.25L15.5 21',
+  transform: 'rotate(45 12 12)',
+});
+
+const FORK = 'M5 3V7.5M10 3V7.5M5 11a2.5 2.5 0 0 0 5 0M7.5 17V21.5';
+const KNIFE = 'M18 3C15.5 5 14.5 8.5 14.5 12H18V3M18 15.5V21.5';
+
+export const Utensils = dotIcon('Utensils', { d: FORK + KNIFE });
+
+export const UtensilsCrossed = dotIcon('UtensilsCrossed', [
+  { d: 'M10.5 2.5V6.5M13.5 2.5V6.5M10.5 9.5a1.5 1.5 0 0 0 3 0M12 13V21.5', transform: 'rotate(-40 12 12)' },
+  { d: 'M12 2.5C10.2 4 9.5 6.5 9.5 9.5H12V2.5M12 13V21.5', transform: 'rotate(40 12 12)' },
+]);
+
+export const Wine = dotIcon('Wine', {
+  d: `M6.5 3C6.5 8.5 9 11.5 12 11.5S17.5 8.5 17.5 3M12 14.5V18M8.5 21.5H15.5${dot(12, 7.25)}`,
+});
+
+export const Navigation = dotIcon('Navigation', {
+  fill: 'M3.5 11L20.5 3.5L13 20.5L11 13Z',
+  d: 'M3.5 11L20.5 3.5L13 20.5L11 13Z',
+});
+
+/* ── 3. Navigation & directional ── */
+
+export const ArrowLeft = dotIcon('ArrowLeft', { d: 'M20 12H9M10.5 5.5L4 12L10.5 18.5' });
+export const ArrowRight = dotIcon('ArrowRight', { d: 'M4 12H15M13.5 5.5L20 12L13.5 18.5' });
+export const ArrowUpRight = dotIcon('ArrowUpRight', { d: 'M8 5.5H18.5V16M5.5 18.5L14.5 9.5' });
+export const ArrowDownLeft = dotIcon('ArrowDownLeft', { d: 'M16 18.5H5.5V8M18.5 5.5L9.5 14.5' });
+
+export const ChevronDown = dotIcon('ChevronDown', { d: 'M6 9L12 15L18 9' });
+export const ChevronUp = dotIcon('ChevronUp', { d: 'M6 15L12 9L18 15' });
+export const ChevronLeft = dotIcon('ChevronLeft', { d: 'M15 6L9 12L15 18' });
+export const ChevronRight = dotIcon('ChevronRight', { d: 'M9 6L15 12L9 18' });
+
+export const Home = dotIcon('Home', { d: 'M3 10.5L12 3L21 10.5M5.5 14V21M18.5 14V21M12 16.5V21' });
+
+export const PanelLeft = dotIcon('PanelLeft', { d: `${box(3.5, 3.5, 17, 17)}M9.5 8V16` });
+
+/* ── 4. Actions & controls ── */
+
+export const Plus = dotIcon('Plus', { d: `M12 4.5V8.5M12 15.5V19.5M4.5 12H8.5M15.5 12H19.5${dot(12, 12)}` });
+export const Minus = dotIcon('Minus', { d: 'M5 12H19' });
+
+export const X = dotIcon('X', {
+  d: `M6 6L9.5 9.5M14.5 14.5L18 18M18 6L14.5 9.5M9.5 14.5L6 18${dot(12, 12)}`,
+});
+
+const RING = ring(12, 12, 9.5, 16);
+
+export const XCircle = dotIcon('XCircle', { d: `${RING}M9 9L15 15M15 9L9 15` });
+
+export const Check = dotIcon('Check', { d: 'M4.5 12.5L9.5 17.5L19.5 6.5' });
+export const CheckCheck = dotIcon('CheckCheck', { d: 'M2 12.5L6.5 17L15.5 7M13 15.5L14.5 17L22 8.5' });
+
+const SMALL_CHECK = 'M8 12.5L10.75 15.25L16 9.5';
+export const CheckCircle = dotIcon('CheckCircle', { d: RING + SMALL_CHECK });
+export const CheckCircle2 = CheckCircle;
+export const CheckSquare = dotIcon('CheckSquare', { d: box(3, 3, 18, 18) + SMALL_CHECK });
+
+/** Primitive circle: an outline that fills with `fill-current` (radio dots, menu bullets). */
+export const Circle = dotIcon('Circle', { shape: 'M21.5 12A9.5 9.5 0 1 1 2.5 12A9.5 9.5 0 1 1 21.5 12Z' });
+
+/** Primitive square: outline that fills with `fill-current` (media stop). */
+export const Square = dotIcon('Square', {
+  shape: 'M7 3.5H17A3.5 3.5 0 0 1 20.5 7V17A3.5 3.5 0 0 1 17 20.5H7A3.5 3.5 0 0 1 3.5 17V7A3.5 3.5 0 0 1 7 3.5Z',
+});
+
+/** Pencil: tip dot · body · eraser dot. */
+const PENCIL = { d: dot(6.5, 17.5, 19.5, 4.5), bold: 'M10 14L16 8' };
+
+export const Pencil = dotIcon('Pencil', PENCIL);
+export const Edit2 = Pencil;
+export const Edit3 = dotIcon('Edit3', { d: `${dot(4, 18.5, 17, 5.5)}M12 21H20`, bold: 'M7.5 15L13.5 9' });
+export const Edit = dotIcon('Edit', {
+  d: `M3.5 7V17M7 20.5H17M20.5 13.5V17M7 3.5H10.5${dot(9, 15)}`,
+  bold: 'M12.5 11.5L19 5',
+});
+
+export const Trash2 = dotIcon('Trash2', {
+  d: 'M3.5 6.5H20.5M9.5 3H14.5M6 10V18.5M18 10V18.5M9 21.5H15M10 11.5V16.5M14 11.5V16.5',
+});
+
+export const Save = dotIcon('Save', {
+  d:
+    open(
+      [
+        [3.5, 3.5],
+        [16.5, 3.5],
+        [20.5, 7.5],
+        [20.5, 20.5],
+        [3.5, 20.5],
+      ],
+      true,
+      2.75,
+    ) + 'M8.5 7.5H13.5',
+  solid: [[12, 14.5, 2]],
+});
+
+export const Copy = dotIcon('Copy', { d: `M3.5 6.5V13M6.5 3.5H13${box(8, 8, 12.5, 12.5)}` });
+
+const TRAY = 'M3.5 15V17.5M20.5 15V17.5M6.5 20.5H17.5';
+export const Download = dotIcon('Download', { d: `M12 3.5V9.5M7.5 10L12 14.5L16.5 10${TRAY}` });
+export const Upload = dotIcon('Upload', { d: `M7.5 8L12 3.5L16.5 8M12 8.5V14${TRAY}` });
+
+export const UploadCloud = dotIcon('UploadCloud', {
+  d: 'M8 18.9A7 7 0 1 1 15.71 10H17.5A4.5 4.5 0 0 1 19.5 18.5M9 13L12 10L15 13M12 15V21.5',
+});
+
+/* Rotation arrows: a trail of dots that firms up into the arrow (motion). */
+export const RefreshCw = dotIcon('RefreshCw', {
+  d:
+    arcDots(12, 12, 8.5, 190, 235, 2) +
+    arc(12, 12, 8.5, 262, 330) +
+    head(12, 12, 8.5, 330, 1) +
+    arcDots(12, 12, 8.5, 10, 55, 2) +
+    arc(12, 12, 8.5, 82, 150) +
+    head(12, 12, 8.5, 150, 1),
+});
+
+const ROTATE = arcDots(12, 12, 8.5, 60, 240, 6) + arc(12, 12, 8.5, 270, 335) + head(12, 12, 8.5, 335, 1);
+export const RotateCw = dotIcon('RotateCw', { d: ROTATE });
+export const RotateCcw = dotIcon('RotateCcw', { d: ROTATE, transform: 'matrix(-1 0 0 1 24 0)' });
+
+export const MoreHorizontal = dotIcon('MoreHorizontal', { bold: dot(5, 12, 12, 12, 19, 12), boldScale: 1.6 });
+export const GripVertical = dotIcon('GripVertical', {
+  bold: dot(9, 6, 15, 6, 9, 12, 15, 12, 9, 18, 15, 18),
+  boldScale: 1.4,
+});
+
+const EYE = 'M3.5 10C5.5 7 8.5 5.5 12 5.5S18.5 7 20.5 10M3.5 14C5.5 17 8.5 18.5 12 18.5S18.5 17 20.5 14';
+export const Eye = dotIcon('Eye', { d: EYE, solid: [[12, 12, 2]] });
+export const EyeOff = dotIcon('EyeOff', { d: `${EYE}M4.5 4.5L19.5 19.5` });
+
+export const Search = dotIcon('Search', { d: `${ring(10, 10, 6, 10)}M16.7 16.7L21 21` });
+
+/** Spinner: eight dots fading round the ring (use with animate-spin). */
 export const Loader2 = createIcon('Loader2', () => (
-  <path d="M21 12a9 9 0 1 1-6.22-8.56" />
-));
-
-/* ── 5. Communication, Messaging & Collaboration ── */
-
-export const Mail = createIcon('Mail', () => (
   <>
-    <rect x="2.5" y="4.5" width="19" height="15" rx="3" />
-    <path d="m3 7 7.85 5.1a2.1 2.1 0 0 0 2.3 0L21 7" />
+    {Array.from({ length: 8 }, (_, i) => {
+      const a = ((-90 + i * 45) * Math.PI) / 180;
+      return (
+        <path
+          key={i}
+          d={dot(12 + 8.5 * Math.cos(a), 12 + 8.5 * Math.sin(a))}
+          opacity={1 - i * 0.11}
+        />
+      );
+    })}
   </>
 ));
 
-export const MessageCircle = createIcon('MessageCircle', () => (
-  <path d="M20.5 11.5a8.5 8.5 0 0 1-12.5 7.5L3 20.5l1.6-4.8A8.5 8.5 0 1 1 20.5 11.5Z" />
-));
-
-export const MessageSquare = createIcon('MessageSquare', () => (
-  <path d="M20.5 14.5a2.5 2.5 0 0 1-2.5 2.5H7.5L3.5 21V6A2.5 2.5 0 0 1 6 3.5h12A2.5 2.5 0 0 1 20.5 6v8.5Z" />
-));
-
-export const Phone = createIcon('Phone', () => (
-  <path d="M21.5 16.8v2.7a2 2 0 0 1-2.18 2 19.6 19.6 0 0 1-8.55-3.05 19.3 19.3 0 0 1-5.95-5.95A19.6 19.6 0 0 1 1.77 3.92 2 2 0 0 1 3.75 1.75h2.7a2 2 0 0 1 2 1.72c.12.92.35 1.82.68 2.68a2 2 0 0 1-.45 2.1L7.5 9.43a15.8 15.8 0 0 0 5.82 5.82l1.18-1.18a2 2 0 0 1 2.1-.45c.86.33 1.76.56 2.68.68a2 2 0 0 1 1.72 2.5Z" />
-));
-
-export const Send = createIcon('Send', () => (
-  <>
-    <path d="M21.2 2.8 11 13" />
-    <path d="M21.2 2.8 14.8 20.8a.75.75 0 0 1-1.4-.04L11 13l-7.76-2.4a.75.75 0 0 1-.04-1.4L21.2 2.8Z" />
-  </>
-));
-
-export const Reply = createIcon('Reply', () => (
-  <>
-    <path d="m9 16.5-5-4.5 5-4.5" />
-    <path d="M20 18v-1.5A4.5 4.5 0 0 0 15.5 12H4" />
-  </>
-));
-
-export const Share2 = createIcon('Share2', () => (
-  <>
-    <circle cx="18" cy="5" r="2.75" />
-    <circle cx="6" cy="12" r="2.75" />
-    <circle cx="18" cy="19" r="2.75" />
-    <path d="m8.4 13.4 7.2 4.2" />
-    <path d="m15.6 6.4-7.2 4.2" />
-  </>
-));
-
-export const Bell = createIcon('Bell', () => (
-  <>
-    <path d="M6 8.5a6 6 0 0 1 12 0c0 6.5 2.5 8.5 2.5 8.5h-17S6 15 6 8.5" />
-    <path d="M10.25 20.5a2 2 0 0 0 3.5 0" />
-  </>
-));
-
-export const BellOff = createIcon('BellOff', () => (
-  <>
-    <path d="M8.7 3.2A6 6 0 0 1 18 8.5c0 1.9.3 3.4.7 4.5" />
-    <path d="M17 17H3.5S6 15 6 8.5c0-.6.08-1.2.24-1.75" />
-    <path d="M10.25 20.5a2 2 0 0 0 3.5 0" />
-    <path d="m2.5 2.5 19 19" />
-  </>
-));
-
-export const Paperclip = createIcon('Paperclip', () => (
-  <path d="m21.2 11.2-8.9 8.9a5.75 5.75 0 0 1-8.13-8.13l8.6-8.6a3.85 3.85 0 0 1 5.44 5.44l-8.55 8.55a1.92 1.92 0 0 1-2.72-2.72l8.1-8.1" />
-));
-
-export const ThumbsUp = createIcon('ThumbsUp', () => (
-  <>
-    <path d="M7 10.5V21" />
-    <path d="M14.8 5.8 13.8 10h5.4a2 2 0 0 1 1.94 2.48l-2.1 8A2 2 0 0 1 17.1 22H4.5A2 2 0 0 1 2.5 20v-7.5a2 2 0 0 1 2-2H7l3.3-5.8a1.9 1.9 0 0 1 3.5 1.1Z" />
-  </>
-));
-
-export const ThumbsDown = createIcon('ThumbsDown', () => (
-  <>
-    <path d="M17 13.5V3" />
-    <path d="M9.2 18.2 10.2 14H4.8a2 2 0 0 1-1.94-2.48l2.1-8A2 2 0 0 1 6.9 2h12.6a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H17l-3.3 5.8a1.9 1.9 0 0 1-3.5-1.1Z" />
-  </>
-));
-
-/* ── 6. Users, Band Roles & Access Security ── */
-
-export const User = createIcon('User', () => (
-  <>
-    <circle cx="12" cy="7.5" r="4" />
-    <path d="M19.5 20.5v-1.5a4.5 4.5 0 0 0-4.5-4.5H9a4.5 4.5 0 0 0-4.5 4.5v1.5" />
-  </>
-));
-
-export const Users = createIcon('Users', () => (
-  <>
-    <circle cx="9" cy="7.5" r="3.75" />
-    <path d="M16 20.5v-1.5a4.25 4.25 0 0 0-4.25-4.25h-5.5A4.25 4.25 0 0 0 2 19v1.5" />
-    <path d="M15.75 3.85a3.75 3.75 0 0 1 0 7.3" />
-    <path d="M22 20.5V19a4.25 4.25 0 0 0-3-4.05" />
-  </>
-));
-
-export const UserPlus = createIcon('UserPlus', () => (
-  <>
-    <circle cx="9" cy="7.5" r="3.75" />
-    <path d="M16 20.5v-1.5a4.25 4.25 0 0 0-4.25-4.25h-5.5A4.25 4.25 0 0 0 2 19v1.5" />
-    <path d="M19 8v6" />
-    <path d="M16 11h6" />
-  </>
-));
-
-export const UserCheck = createIcon('UserCheck', () => (
-  <>
-    <circle cx="9" cy="7.5" r="3.75" />
-    <path d="M16 20.5v-1.5a4.25 4.25 0 0 0-4.25-4.25h-5.5A4.25 4.25 0 0 0 2 19v1.5" />
-    <path d="m16 11.25 2 2 4-4" />
-  </>
-));
-
-export const UserCog = createIcon('UserCog', () => (
-  <>
-    <circle cx="9" cy="7.5" r="3.75" />
-    <path d="M10.5 14.75H6.25A4.25 4.25 0 0 0 2 19v1.5" />
-    <circle cx="18.5" cy="14.5" r="2.25" />
-    <path d="M18.5 11v1.25" />
-    <path d="M18.5 16.75V18" />
-    <path d="m21.5 12.75-1.1.65" />
-    <path d="m16.6 15.6-1.1.65" />
-    <path d="m21.5 16.25-1.1-.65" />
-    <path d="m16.6 13.4-1.1-.65" />
-  </>
-));
-
-export const Crown = createIcon('Crown', () => (
-  <>
-    <path d="M3.2 6.2a.6.6 0 0 1 1-.52l4 3.52 3.3-4.6a.6.6 0 0 1 1 0l3.3 4.6 4-3.52a.6.6 0 0 1 1 .52L19 16.5H5L3.2 6.2Z" />
-    <path d="M5 20h14" />
-  </>
-));
-
-export const Lock = createIcon('Lock', () => (
-  <>
-    <rect x="3.5" y="10.5" width="17" height="10.5" rx="3" />
-    <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
-  </>
-));
-
-export const Unlock = createIcon('Unlock', () => (
-  <>
-    <rect x="3.5" y="10.5" width="17" height="10.5" rx="3" />
-    <path d="M7.5 10.5V7a4.5 4.5 0 0 1 8.75-1.4" />
-  </>
-));
-
-export const LogOut = createIcon('LogOut', () => (
-  <>
-    <path d="M9.5 20.5H5.5A2.5 2.5 0 0 1 3 18V6a2.5 2.5 0 0 1 2.5-2.5h4" />
-    <path d="m16 17 5-5-5-5" />
-    <path d="M21 12H9" />
-  </>
-));
-
-export const Shield = createIcon('Shield', () => (
-  <path d="M12 21.5s7.5-3.75 7.5-9.75V5.6a1.5 1.5 0 0 0-1.03-1.42l-6-2a1.5 1.5 0 0 0-.94 0l-6 2A1.5 1.5 0 0 0 4.5 5.6v6.15c0 6 7.5 9.75 7.5 9.75Z" />
-));
-
-export const Fingerprint = createIcon('Fingerprint', () => (
-  <>
-    <path d="M4.5 11a7.5 7.5 0 0 1 15 0c0 2.5-.4 5-1.2 7" />
-    <path d="M7.5 11.5a4.5 4.5 0 0 1 9 0c0 3-.7 6.2-2.1 8.5" />
-    <path d="M10.5 12a1.5 1.5 0 0 1 3 0c0 3.2-.9 6.6-2.5 9" />
-    <path d="M7.7 15.5c-.3 1.5-.8 3-1.5 4.2" />
-  </>
-));
-
-export const ScanFace = createIcon('ScanFace', () => (
-  <>
-    <path d="M3.5 7.5V5.5a2 2 0 0 1 2-2h2" />
-    <path d="M16.5 3.5h2a2 2 0 0 1 2 2v2" />
-    <path d="M20.5 16.5v2a2 2 0 0 1-2 2h-2" />
-    <path d="M7.5 20.5h-2a2 2 0 0 1-2-2v-2" />
-    <path d="M8.5 14.5s1.4 1.75 3.5 1.75 3.5-1.75 3.5-1.75" />
-    <path d="M9 9.5v.5" />
-    <path d="M15 9.5v.5" />
-  </>
-));
-
-/* ── 7. Financials, Quotes & Contracts ── */
-
-export const DollarSign = createIcon('DollarSign', () => (
-  <>
-    <path d="M12 2.5v19" />
-    <path d="M16.75 5.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6.5" />
-  </>
-));
-
-export const Euro = createIcon('Euro', () => (
-  <>
-    <path d="M4.5 10h11" />
-    <path d="M4.5 14h8.5" />
-    <path d="M18.8 6.2a7.75 7.75 0 0 0-5.1-1.95A7.75 7.75 0 0 0 6 12a7.75 7.75 0 0 0 7.7 7.75c2 0 3.75-.75 5.1-1.95" />
-  </>
-));
-
-export const Wallet = createIcon('Wallet', () => (
-  <>
-    <path d="M19.5 7V5a2 2 0 0 0-2-2H5.5a2.5 2.5 0 0 0 0 5h14A1.5 1.5 0 0 1 21 9.5v9A2.5 2.5 0 0 1 18.5 21h-13A2.5 2.5 0 0 1 3 18.5v-13" />
-    <path d="M21 12.5h-4a2 2 0 0 0 0 4h4" />
-  </>
-));
-
-export const Receipt = createIcon('Receipt', () => (
-  <>
-    <path d="M5 3.5A1.5 1.5 0 0 1 6.5 2h11A1.5 1.5 0 0 1 19 3.5v17.5l-2.35-1.5L14.3 21 12 19.5 9.7 21l-2.35-1.5L5 21V3.5Z" />
-    <path d="M8.5 7.5h7" />
-    <path d="M8.5 11.5h7" />
-    <path d="M8.5 15.5h4" />
-  </>
-));
-
-export const BarChart3 = createIcon('BarChart3', () => (
-  <>
-    <path d="M3.5 3.5V19a1.5 1.5 0 0 0 1.5 1.5h15.5" />
-    <path d="M8.5 16.5V13" />
-    <path d="M13.25 16.5V6.5" />
-    <path d="M18 16.5v-7" />
-  </>
-));
-
-export const TrendingUp = createIcon('TrendingUp', () => (
-  <>
-    <path d="m21.5 7-8.25 8.25-4.75-4.75L2.5 16.5" />
-    <path d="M15.5 7h6v6" />
-  </>
-));
-
-export const TrendingDown = createIcon('TrendingDown', () => (
-  <>
-    <path d="m21.5 17-8.25-8.25-4.75 4.75-6-6" />
-    <path d="M15.5 17h6v-6" />
-  </>
-));
-
-export const FileSignature = createIcon('FileSignature', () => (
-  <>
-    <path d="M20 11V8.5L14 2.5H6.5A2.5 2.5 0 0 0 4 5v14a2.5 2.5 0 0 0 2.5 2.5H10" />
-    <path d="M13.5 2.5V7a2 2 0 0 0 2 2H20" />
-    <path d="M18.2 15.2a1.85 1.85 0 0 1 2.6 2.6L15.5 23H13v-2.5l5.2-5.3Z" />
-  </>
-));
-
-export const FileText = createIcon('FileText', () => (
-  <>
-    <path d="M14 2.5H6.5A2.5 2.5 0 0 0 4 5v14a2.5 2.5 0 0 0 2.5 2.5h11A2.5 2.5 0 0 0 20 19V8.5L14 2.5Z" />
-    <path d="M13.5 2.5V7a2 2 0 0 0 2 2H20" />
-    <path d="M8 13h8" />
-    <path d="M8 17h5.5" />
-  </>
-));
-
-export const ScrollText = createIcon('ScrollText', () => (
-  <>
-    <path d="M8 21h10.5a2.5 2.5 0 0 0 2.5-2.5V17H10.5v1.5a2.5 2.5 0 0 1-5 0V5.5a2.5 2.5 0 0 0-2.5-2.5 2.5 2.5 0 0 0-2.5 2.5V8H5.5" />
-    <path d="M19 17V5.5A2.5 2.5 0 0 0 16.5 3H3" />
-    <path d="M9.5 8h5.5" />
-    <path d="M9.5 12h5.5" />
-  </>
-));
-
-/* ── 8. Feedback, Status & Intelligence ── */
-
-export const AlertCircle = createIcon('AlertCircle', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M12 8v4.25" />
-    <circle cx="12" cy="16" r="0.6" fill="currentColor" />
-  </>
-));
-
-export const AlertTriangle = createIcon('AlertTriangle', () => (
-  <>
-    <path d="M10.35 3.9a1.9 1.9 0 0 1 3.3 0l7.85 13.75a1.9 1.9 0 0 1-1.65 2.85H4.15a1.9 1.9 0 0 1-1.65-2.85L10.35 3.9Z" />
-    <path d="M12 9.25v4" />
-    <circle cx="12" cy="16.75" r="0.6" fill="currentColor" />
-  </>
-));
-
-export const Info = createIcon('Info', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M12 16v-4.25" />
-    <circle cx="12" cy="8.25" r="0.6" fill="currentColor" />
-  </>
-));
-
-export const HelpCircle = createIcon('HelpCircle', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M9.3 9.2a2.85 2.85 0 0 1 5.5.95c0 1.85-2.8 2.6-2.8 3.6" />
-    <circle cx="12" cy="17" r="0.6" fill="currentColor" />
-  </>
-));
-
-export const Star = createIcon('Star', () => (
-  <path d="M11.48 3.5a.58.58 0 0 1 1.04 0l2.12 4.3a.58.58 0 0 0 .44.32l4.75.69a.58.58 0 0 1 .32.99l-3.44 3.35a.58.58 0 0 0-.16.51l.81 4.73a.58.58 0 0 1-.84.61l-4.25-2.23a.58.58 0 0 0-.54 0l-4.25 2.23a.58.58 0 0 1-.84-.61l.81-4.73a.58.58 0 0 0-.16-.51L2.85 9.8a.58.58 0 0 1 .32-.99l4.75-.69a.58.58 0 0 0 .44-.32l2.12-4.3Z" />
-));
-
-export const Sparkles = createIcon('Sparkles', () => (
-  <>
-    <path d="M11.5 3.2 9.8 8.3a2 2 0 0 1-1.27 1.27L3.4 11.3l5.13 1.73A2 2 0 0 1 9.8 14.3l1.7 5.1 1.7-5.1a2 2 0 0 1 1.27-1.27l5.13-1.73-5.13-1.73A2 2 0 0 1 13.2 8.3l-1.7-5.1Z" />
-    <path d="M19 3v3.5" />
-    <path d="M17.25 4.75h3.5" />
-  </>
-));
-
-export const Heart = createIcon('Heart', () => (
-  <path d="M19 14c1.5-1.45 3-3.2 3-5.5A5.4 5.4 0 0 0 16.6 3c-1.75 0-3 .6-4.6 2.1C10.4 3.6 9.15 3 7.4 3A5.4 5.4 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 6.8 7-6.8Z" />
-));
-
-export const Zap = createIcon('Zap', () => (
-  <path d="M13.15 2.6a.65.65 0 0 1 1.15.5l-.85 7.4h6.15a.65.65 0 0 1 .5 1.07l-9.25 9.83a.65.65 0 0 1-1.15-.5l.85-7.4H4.4a.65.65 0 0 1-.5-1.07l9.25-9.83Z" />
-));
-
-export const Activity = createIcon('Activity', () => (
-  <path d="M21.5 12h-3.75l-2.75 8.5L9 3.5 6.25 12H2.5" />
-));
-
-/* ── 9. Weather Engine ── */
-
-export const Sun = createIcon('Sun', () => (
-  <>
-    <circle cx="12" cy="12" r="5" />
-    <line x1="12" y1="1" x2="12" y2="3" />
-    <line x1="12" y1="21" x2="12" y2="23" />
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-    <line x1="1" y1="12" x2="3" y2="12" />
-    <line x1="21" y1="12" x2="23" y2="12" />
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-  </>
-));
-
-export const Moon = createIcon('Moon', () => (
-  <path d="M12.2 3a6.5 6.5 0 0 0 8.8 8.8A9 9 0 1 1 12.2 3Z" />
-));
-
-export const Cloud = createIcon('Cloud', () => (
-  <path d="M17.5 19H8.8a6.8 6.8 0 1 1 6.6-8.6h2.1a4.3 4.3 0 1 1 0 8.6Z" />
-));
-
-export const Cloudy = createIcon('Cloudy', () => (
-  <>
-    <path d="M17.5 19H8.8a6.8 6.8 0 1 1 6.6-8.6h2.1a4.3 4.3 0 1 1 0 8.6Z" />
-    <path d="M21.8 10.2A3 3 0 0 0 19 7.5h-2.1A5.4 5.4 0 0 0 7.8 6" />
-  </>
-));
-
-export const CloudRain = createIcon('CloudRain', () => (
-  <>
-    <path d="M4.2 14.8A6.8 6.8 0 1 1 15.6 8.2h1.65a4.4 4.4 0 0 1 2.35 8.12" />
-    <path d="M8.5 14.5v5" />
-    <path d="M12 16.5v5" />
-    <path d="M15.5 14.5v5" />
-  </>
-));
-
-export const CloudDrizzle = createIcon('CloudDrizzle', () => (
-  <>
-    <path d="M4.2 14.8A6.8 6.8 0 1 1 15.6 8.2h1.65a4.4 4.4 0 0 1 2.35 8.12" />
-    <path d="M8.5 14.5v1.2" />
-    <path d="M8.5 19v1.2" />
-    <path d="M12 16v1.2" />
-    <path d="M12 20.5v1.2" />
-    <path d="M15.5 14.5v1.2" />
-    <path d="M15.5 19v1.2" />
-  </>
-));
-
-export const CloudSnow = createIcon('CloudSnow', () => (
-  <>
-    <path d="M4.2 14.8A6.8 6.8 0 1 1 15.6 8.2h1.65a4.4 4.4 0 0 1 2.35 8.12" />
-    <circle cx="8.5" cy="15.5" r="0.6" fill="currentColor" />
-    <circle cx="8.5" cy="19.5" r="0.6" fill="currentColor" />
-    <circle cx="12" cy="17.5" r="0.6" fill="currentColor" />
-    <circle cx="12" cy="21" r="0.6" fill="currentColor" />
-    <circle cx="15.5" cy="15.5" r="0.6" fill="currentColor" />
-    <circle cx="15.5" cy="19.5" r="0.6" fill="currentColor" />
-  </>
-));
-
-export const CloudLightning = createIcon('CloudLightning', () => (
-  <>
-    <path d="M5.8 16.2A6.8 6.8 0 1 1 15.6 8.2h1.65a4.4 4.4 0 0 1 .45 8.78" />
-    <path d="m13 12-3 4.8h4l-3 4.8" />
-  </>
-));
-
-export const Droplet = createIcon('Droplet', () => (
-  <path d="M12 21.5a6.8 6.8 0 0 0 6.8-6.8c0-2-1-3.8-2.9-5.4S12.5 5.4 12 3c-.5 2.4-2 4.7-3.9 6.3S5.2 12.7 5.2 14.7a6.8 6.8 0 0 0 6.8 6.8Z" />
-));
-
-export const Wind = createIcon('Wind', () => (
-  <>
-    <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
-    <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
-    <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
-  </>
-));
-
-/* ── 10. Hardware, System & Content ── */
-
-export const Smartphone = createIcon('Smartphone', () => (
-  <>
-    <rect x="5.5" y="2.5" width="13" height="19" rx="3" />
-    <path d="M10.5 18h3" />
-  </>
-));
-
-export const Monitor = createIcon('Monitor', () => (
-  <>
-    <rect x="2.5" y="3.5" width="19" height="13.5" rx="2.75" />
-    <path d="M8.5 20.5h7" />
-    <path d="M12 17v3.5" />
-  </>
-));
-
-export const Globe = createIcon('Globe', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M2.5 12h19" />
-    <path d="M12 2.5a14.8 14.8 0 0 1 3.8 9.5 14.8 14.8 0 0 1-3.8 9.5 14.8 14.8 0 0 1-3.8-9.5A14.8 14.8 0 0 1 12 2.5Z" />
-  </>
-));
-
-export const Box = createIcon('Box', () => (
-  <>
-    <path d="M20.5 8.2a2.2 2.2 0 0 0-1.1-1.9l-6.3-3.6a2.2 2.2 0 0 0-2.2 0L4.6 6.3A2.2 2.2 0 0 0 3.5 8.2v7.6a2.2 2.2 0 0 0 1.1 1.9l6.3 3.6a2.2 2.2 0 0 0 2.2 0l6.3-3.6a2.2 2.2 0 0 0 1.1-1.9V8.2Z" />
-    <path d="M3.8 7.2 12 12l8.2-4.8" />
-    <path d="M12 21.6V12" />
-  </>
-));
-
-export const Package = createIcon('Package', () => (
-  <>
-    <path d="M20.5 8.2a2.2 2.2 0 0 0-1.1-1.9l-6.3-3.6a2.2 2.2 0 0 0-2.2 0L4.6 6.3A2.2 2.2 0 0 0 3.5 8.2v7.6a2.2 2.2 0 0 0 1.1 1.9l6.3 3.6a2.2 2.2 0 0 0 2.2 0l6.3-3.6a2.2 2.2 0 0 0 1.1-1.9V8.2Z" />
-    <path d="m7.75 4.5 8.5 4.9" />
-    <path d="M3.8 7.2 12 12l8.2-4.8" />
-    <path d="M12 21.6V12" />
-  </>
-));
-
-export const Wrench = createIcon('Wrench', () => (
-  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.6-3.6a5.8 5.8 0 0 1-7.7 7.7L6.8 20.2a2.1 2.1 0 0 1-3-3l6.8-6.8a5.8 5.8 0 0 1 7.7-7.7l-3.6 3.6Z" />
-));
-
-export const LayoutGrid = createIcon('LayoutGrid', () => (
-  <>
-    <rect x="3" y="3" width="7.25" height="7.25" rx="2" />
-    <rect x="13.75" y="3" width="7.25" height="7.25" rx="2" />
-    <rect x="13.75" y="13.75" width="7.25" height="7.25" rx="2" />
-    <rect x="3" y="13.75" width="7.25" height="7.25" rx="2" />
-  </>
-));
-
-export const LayoutTemplate = createIcon('LayoutTemplate', () => (
-  <>
-    <rect x="3" y="3" width="18" height="6.5" rx="2" />
-    <rect x="3" y="13" width="5.5" height="8" rx="2" />
-    <rect x="12" y="13" width="9" height="8" rx="2" />
-  </>
-));
-
-export const Layers = createIcon('Layers', () => (
-  <>
-    <path d="M11.2 2.4a1.8 1.8 0 0 1 1.6 0l8.2 4.1a.9.9 0 0 1 0 1.6l-8.2 4.1a1.8 1.8 0 0 1-1.6 0L3 8.1a.9.9 0 0 1 0-1.6l8.2-4.1Z" />
-    <path d="m2.75 12.25 8.45 4.2a1.8 1.8 0 0 0 1.6 0l8.45-4.2" />
-    <path d="m2.75 16.75 8.45 4.2a1.8 1.8 0 0 0 1.6 0l8.45-4.2" />
-  </>
-));
-
-export const Infinity = createIcon('Infinity', () => (
-  <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z" />
-));
-
-export const Link = createIcon('Link', () => (
-  <>
-    <path d="M10 13a4.8 4.8 0 0 0 7.25.52l2.85-2.85a4.8 4.8 0 0 0-6.8-6.8L11.65 5.5" />
-    <path d="M14 11a4.8 4.8 0 0 0-7.25-.52L3.9 13.33a4.8 4.8 0 0 0 6.8 6.8l1.65-1.63" />
-  </>
-));
-
-export const File = createIcon('File', () => (
-  <>
-    <path d="M14 2.5H6.5A2.5 2.5 0 0 0 4 5v14a2.5 2.5 0 0 0 2.5 2.5h11A2.5 2.5 0 0 0 20 19V8.5L14 2.5Z" />
-    <path d="M13.5 2.5V7a2 2 0 0 0 2 2H20" />
-  </>
-));
-
-export const Folder = createIcon('Folder', () => (
-  <path d="M19.5 20H4.5A2.5 2.5 0 0 1 2 17.5V6A2.5 2.5 0 0 1 4.5 3.5h3.4a2 2 0 0 1 1.66.89l.88 1.32A2 2 0 0 0 12.1 6.6h7.4A2.5 2.5 0 0 1 22 9.1v8.4a2.5 2.5 0 0 1-2.5 2.5Z" />
-));
-
-export const FolderOpen = createIcon('FolderOpen', () => (
-  <path d="m5.5 14 1.4-2.8A2 2 0 0 1 8.7 10h11a1.8 1.8 0 0 1 1.72 2.34l-1.5 5A2.2 2.2 0 0 1 17.8 19H4.5A2.5 2.5 0 0 1 2 16.5V6A2.5 2.5 0 0 1 4.5 3.5h3.3a2 2 0 0 1 1.66.89l.84 1.25a2 2 0 0 0 1.66.86H17.5A2.5 2.5 0 0 1 20 9v1" />
-));
-
-export const StickyNote = createIcon('StickyNote', () => (
-  <>
-    <path d="M15 3.5H5.5A2.5 2.5 0 0 0 3 6v12.5A2.5 2.5 0 0 0 5.5 21h12A2.5 2.5 0 0 0 20 18.5V8.5L15 3.5Z" />
-    <path d="M14.5 3.5V7a2 2 0 0 0 2 2H20" />
-  </>
-));
-
-export const BookOpen = createIcon('BookOpen', () => (
-  <>
-    <path d="M2.5 4.5A1.5 1.5 0 0 1 4 3h4.5A3.5 3.5 0 0 1 12 6.5V20a2.75 2.75 0 0 0-2.75-2.75H4A1.5 1.5 0 0 1 2.5 15.75V4.5Z" />
-    <path d="M21.5 4.5A1.5 1.5 0 0 0 20 3h-4.5A3.5 3.5 0 0 0 12 6.5V20a2.75 2.75 0 0 1 2.75-2.75H20a1.5 1.5 0 0 0 1.5-1.5V4.5Z" />
-  </>
-));
-
-export const Camera = createIcon('Camera', () => (
-  <>
-    <path d="M14.5 4h-5L7.3 6.8H4.5A2.5 2.5 0 0 0 2 9.3v8.7A2.5 2.5 0 0 0 4.5 20.5h15A2.5 2.5 0 0 0 22 18V9.3a2.5 2.5 0 0 0-2.5-2.5h-2.8L14.5 4Z" />
-    <circle cx="12" cy="13.25" r="3.25" />
-  </>
-));
-
-export const Image = createIcon('Image', () => (
-  <>
-    <rect x="3" y="3" width="18" height="18" rx="3" />
-    <circle cx="8.75" cy="8.75" r="1.75" />
-    <path d="m21 15.25-3.2-3.2a2 2 0 0 0-2.83 0L6.25 20.8" />
-  </>
-));
+/* ── 5. Communication ── */
+
+export const Mail = dotIcon('Mail', { d: `${box(3, 4.5, 18, 15)}M7 9L12 12.5L17 9` });
+
+const TYPING = dot(8, 11.5, 12, 11.5, 16, 11.5);
+export const MessageCircle = dotIcon('MessageCircle', {
+  d: `${arc(12, 11.5, 8.5, 140, 455)}M7 20L4.5 21.5${TYPING}`,
+});
+
+export const MessageSquare = dotIcon('MessageSquare', {
+  d: `M3.5 6.5V14M20.5 6.5V14.5M6.5 3.5H17.5M10.5 17.5H17.5M6.5 18.5L4 21${dot(8, 10.5, 12, 10.5, 16, 10.5)}`,
+});
+
+export const Phone = dotIcon('Phone', {
+  d: 'M8.5 3.5H6A2.5 2.5 0 0 0 3.5 6C3.5 13.5 10.5 20.5 18 20.5A2.5 2.5 0 0 0 20.5 18V15.5',
+  bold: 'M8.5 3.5L10 7.5M20.5 15.5L16.5 14',
+  boldScale: 1.5,
+});
+
+export const Send = dotIcon('Send', {
+  d:
+    open(
+      [
+        [21, 3],
+        [3, 10.5],
+        [10.5, 13.5],
+        [13.5, 21],
+      ],
+      true,
+      2.5,
+    ) + seg(10.5, 13.5, 21, 3, 3.5),
+});
+
+export const Reply = dotIcon('Reply', { d: 'M9.5 5L4 10.5L9.5 16M9 10.5H14A6.5 6.5 0 0 1 20.5 17V19' });
+
+export const Share2 = dotIcon('Share2', {
+  d: 'M10.3 9.5L13.7 7.5M10.3 14.5L13.7 16.5',
+  solid: [
+    [18, 5, 1.5],
+    [6, 12, 1.5],
+    [18, 19, 1.5],
+  ],
+});
+
+const BELL = `M6 15V10.5A6 6 0 0 1 18 10.5V15M3.5 18.5H20.5${dot(12, 21.75)}`;
+export const Bell = dotIcon('Bell', { d: BELL });
+export const BellOff = dotIcon('BellOff', { d: `${BELL}M3 3L21 21` });
+
+export const Paperclip = dotIcon('Paperclip', {
+  d: 'M20.5 11.5L12 20A5.5 5.5 0 0 1 4 12L12.5 3.5A3.5 3.5 0 0 1 17.5 8.5L9 17A1.5 1.5 0 0 1 7 15L14.5 7.5',
+});
+
+const THUMB = {
+  d: 'M8.5 11L11.5 3.5A2.5 2.5 0 0 1 14.5 6.5L13.5 10H18.5A2 2 0 0 1 20.5 12.5L19 19A2 2 0 0 1 17 20.5H8.5Z',
+  bold: 'M4 11.5V19.5',
+  boldScale: 1.75,
+};
+export const ThumbsUp = dotIcon('ThumbsUp', THUMB);
+export const ThumbsDown = dotIcon('ThumbsDown', { ...THUMB, transform: 'rotate(180 12 12)' });
+
+/* ── 6. People & security ── */
+
+export const User = dotIcon('User', { d: 'M4.5 21A7.5 6.5 0 0 1 19.5 21', solid: [[12, 7.5, 3]] });
+
+export const Users = dotIcon('Users', {
+  d: 'M2.5 21A6.5 6 0 0 1 15.5 21M17.5 13.5A5 5.5 0 0 1 21.5 19',
+  solid: [
+    [9, 8, 2.75],
+    [17, 6.5, 2],
+  ],
+});
+
+const PERSON = { d: 'M2 21A7 6.5 0 0 1 16 21', solid: [[9, 7.5, 3]] as [number, number, number][] };
+export const UserPlus = dotIcon('UserPlus', { ...PERSON, d: `${PERSON.d}M19 6V12M16 9H22` });
+export const UserCheck = dotIcon('UserCheck', { ...PERSON, d: `${PERSON.d}M15.5 9L17.5 11L21.5 6.5` });
+export const UserCog = dotIcon('UserCog', {
+  d: `M2 21A7 6.5 0 0 1 13.5 15.5${ring(18.5, 17, 4, 6, -90)}`,
+  solid: [
+    [9, 7.5, 3],
+    [18.5, 17, 1],
+  ],
+});
+
+export const Crown = dotIcon('Crown', {
+  d: `M5.5 20H18.5M4.5 16.5L3.5 10L8.5 13L12 7L15.5 13L20.5 10L19.5 16.5${dot(3, 6.5, 12, 3.5, 21, 6.5)}`,
+});
+
+const LOCK_BODY = 'M4.5 15.5V18.5M19.5 15.5V18.5M7.5 12H16.5M7.5 21.5H16.5';
+export const Lock = dotIcon('Lock', {
+  d: `M7.5 8.5V7.5A4.5 4.5 0 0 1 16.5 7.5V8.5${LOCK_BODY}`,
+  solid: [[12, 16.75, 1.25]],
+});
+export const Unlock = dotIcon('Unlock', {
+  d: `M7.5 8.5V7.5A4.5 4.5 0 0 1 16 5.5${LOCK_BODY}`,
+  solid: [[12, 16.75, 1.25]],
+});
+
+export const LogOut = dotIcon('LogOut', { d: 'M3.5 6.5V17.5M6.5 3.5H10M6.5 20.5H10M16 7.5L20.5 12L16 16.5M9 12H15.5' });
+
+export const Shield = dotIcon('Shield', {
+  d: 'M10.3 20.6C6.5 18.5 4.5 15.5 4.5 11.5V6.5L10 3.8M13.7 20.6C17.5 18.5 19.5 15.5 19.5 11.5V6.5L14 3.8',
+  solid: [[12, 11.5, 1.5]],
+});
 
+export const Fingerprint = dotIcon('Fingerprint', {
+  d: `M4.5 10A8.5 8.5 0 0 1 19.5 10M6.5 19V13A5.5 5.5 0 0 1 17.5 13V15M9.5 21V13.5A2.5 2.5 0 0 1 14.5 13.5V17.5${dot(17.5, 19, 14.5, 21)}`,
+});
+
+export const ScanFace = dotIcon('ScanFace', {
+  d: `M3.5 8V6A2.5 2.5 0 0 1 6 3.5H8M16 3.5H18A2.5 2.5 0 0 1 20.5 6V8M20.5 16V18A2.5 2.5 0 0 1 18 20.5H16M8 20.5H6A2.5 2.5 0 0 1 3.5 18V16${dot(9, 10, 15, 10)}M9 14.5A4 4 0 0 0 15 14.5`,
+});
+
+/* ── 7. Finance & contracts ── */
+
+export const DollarSign = dotIcon('DollarSign', {
+  d: `${dot(12, 3.5, 12, 20.5)}M16 8.5A3.5 2 0 0 0 12.5 7H11A2.5 2.5 0 0 0 11 12H13A2.5 2.5 0 0 1 13 17H11.5A3.5 2 0 0 1 8 15.5`,
+});
+
+export const Euro = dotIcon('Euro', { d: 'M17.5 6.5A7 7 0 1 0 17.5 17.5M3.5 10H11M3.5 14H11' });
+
+export const PoundSterling = dotIcon('PoundSterling', { d: 'M17 6.5A3.5 3.5 0 0 0 10 7.5V19.5M6 19.5H18M6 12.5H14' });
+
+export const SwissFranc = dotIcon('SwissFranc', { d: 'M17.5 4.5H10V19.5M10 11.5H16M6 15.5H14' });
+
+export const Wallet = dotIcon('Wallet', {
+  d:
+    open(
+      [
+        [3, 6.5],
+        [21, 6.5],
+        [21, 20],
+        [3, 20],
+      ],
+      true,
+      3,
+    ) + 'M6 3.5H15.5',
+  solid: [[16.5, 13.25, 1.5]],
+});
+
+export const Receipt = dotIcon('Receipt', {
+  d: `M5 5.5V18M19 5.5V18M8 2.5H16${dot(5, 21.5, 9.67, 21.5, 14.33, 21.5, 19, 21.5)}M8.5 7H15.5M8.5 11H15.5M8.5 15H12.5`,
+});
+
+export const BarChart3 = dotIcon('BarChart3', {
+  d: `M6 20V15M12 20V9M18 20V13${dot(6, 11.5, 12, 5.5, 18, 9.5)}`,
+});
+
+export const TrendingUp = dotIcon('TrendingUp', { d: 'M3 17.5L8.5 12L12.5 16L17.5 11M15 6.5H21V12.5' });
+export const TrendingDown = dotIcon('TrendingDown', { d: 'M3 6.5L8.5 12L12.5 8L17.5 13M15 17.5H21V11.5' });
+
+export const FileSignature = dotIcon('FileSignature', {
+  d: `${DOC}M8.5 16.5C9.5 14 10.5 14 11 16.5S12.5 19 13.5 16.5${dot(16, 16.5)}`,
+});
+
+export const FileText = dotIcon('FileText', { d: `${DOC}M9 11H15M9 14.5H15M9 18H12` });
+
+export const ScrollText = dotIcon('ScrollText', {
+  d: `${DOC}${dot(9, 10, 9, 13.5, 9, 17)}M12 10H15M12 13.5H15M12 17H14`,
+});
+
+/* ── 8. Status & feedback ── */
+
+export const AlertCircle = dotIcon('AlertCircle', { d: `${RING}M12 7.5V12.5${dot(12, 16.25)}` });
+
+export const AlertTriangle = dotIcon('AlertTriangle', {
+  d:
+    open(
+      [
+        [12, 3],
+        [21.5, 20],
+        [2.5, 20],
+      ],
+      true,
+      2.75,
+    ) + `M12 9.5V13.5${dot(12, 17)}`,
+});
+
+export const Info = dotIcon('Info', { d: `${RING}M12 11V16.5${dot(12, 7.75)}` });
+
+export const HelpCircle = dotIcon('HelpCircle', {
+  d: `${RING}M9.25 9.25A2.75 2.75 0 1 1 13.5 11.6C12.6 12.2 12 12.8 12 13.75${dot(12, 17)}`,
+});
+
+export const Star = dotIcon('Star', { shape: star(12, 12.75, 9.5, 4.25) });
+
+export const Sparkles = dotIcon('Sparkles', {
+  d: `M10 4.5C10.6 9.6 12.4 11.4 17.5 12C12.4 12.6 10.6 14.4 10 19.5C9.4 14.4 7.6 12.6 2.5 12C7.6 11.4 9.4 9.6 10 4.5Z${dot(19, 4.5, 20, 18.5)}`,
+});
+
+export const Heart = dotIcon('Heart', {
+  shape:
+    'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z',
+});
+
+export const Zap = dotIcon('Zap', { shape: 'M13 2.5L4.5 13.5H11.5L10.5 21.5L19.5 10.5H12.5Z' });
+
+export const Activity = dotIcon('Activity', { d: `${dot(2.5, 12, 21.5, 12)}M6 12L9.5 4.5L14.5 19.5L18 12` });
+
+/* ── 9. Weather ── */
+
+export const Sun = dotIcon('Sun', { d: ring(12, 12, 9, 8), solid: [[12, 12, 3]] });
+
+export const Moon = dotIcon('Moon', {
+  d: `M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z${dot(17.5, 3.5, 20.5, 6.5)}`,
+});
+
+export const Cloud = dotIcon('Cloud', { d: CLOUD });
+
+export const Cloudy = dotIcon('Cloudy', [
+  { d: CLOUD, transform: 'translate(0.5 3.5) scale(0.85)', strokeScale: 0.85 },
+  { d: arcDots(17, 6, 3.75, -170, 10, 4) },
+]);
+
+const UP = 'translate(1.8 -2) scale(0.85)';
+const SMALL = { d: CLOUD, transform: UP, strokeScale: 0.85 };
+export const CloudRain = dotIcon('CloudRain', [
+  SMALL,
+  { d: dot(8, 18.5, 16, 18.5, 12, 21.5) },
+]);
+export const CloudDrizzle = dotIcon('CloudDrizzle', [
+  SMALL,
+  { d: dot(8, 18, 12, 18, 16, 18, 10, 21.5, 14, 21.5) },
+]);
+export const CloudSnow = dotIcon('CloudSnow', [
+  SMALL,
+  { d: `M8 17.5V21.5M6 19.5H10M16 17.5V21.5M14 19.5H18${dot(12, 19.5)}` },
+]);
+export const CloudLightning = dotIcon('CloudLightning', [
+  SMALL,
+  { d: 'M12.5 16.5L10.5 19.5H13.5L11.5 22.5' },
+]);
+
+export const Droplet = dotIcon('Droplet', {
+  d: `M12 3C8 8 5.5 11 5.5 14.5A6.5 6.5 0 0 0 18.5 14.5C18.5 11 16 8 12 3Z${dot(9.5, 15)}`,
+});
+
+export const Wind = dotIcon('Wind', {
+  d: `M3 8.5H13.5A2.5 2.5 0 1 0 11 6M3 15.5H16.5A2.5 2.5 0 1 1 14 18${dot(3, 12, 7, 12, 11, 12)}`,
+});
+
+/* ── 10. Devices, files & system ── */
+
+export const Smartphone = dotIcon('Smartphone', {
+  d: `M5.5 5.5V18.5M18.5 5.5V18.5M8.5 2.5H15.5M8.5 21.5H15.5${dot(12, 18)}`,
+});
+
+export const Monitor = dotIcon('Monitor', { d: 'M2.5 6.5V13M21.5 6.5V13M5.5 3.5H18.5M5.5 16H18.5M8 20H16' });
+
+export const Globe = dotIcon('Globe', {
+  d: `${ring(12, 12, 9.5, 16, -78.75)}M12 5.5C9.8 7.5 8.5 9.5 8.5 12S9.8 16.5 12 18.5M12 5.5C14.2 7.5 15.5 9.5 15.5 12S14.2 16.5 12 18.5M5 12H19`,
+});
+
+const CUBE_EDGES: [number, number, number, number][] = [
+  [12, 2.5, 3.5, 7],
+  [12, 2.5, 20.5, 7],
+  [3.5, 7, 12, 11.5],
+  [20.5, 7, 12, 11.5],
+  [3.5, 7, 3.5, 17],
+  [20.5, 7, 20.5, 17],
+  [12, 11.5, 12, 21.5],
+  [3.5, 17, 12, 21.5],
+  [20.5, 17, 12, 21.5],
+];
+const CUBE = CUBE_EDGES.map(([a, b, c, d]) => seg(a, b, c, d, 2)).join('');
+export const Package = dotIcon('Package', { d: CUBE });
+export const Box = Package;
+
+export const Wrench = dotIcon('Wrench', {
+  d: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+});
+
+export const LayoutGrid = dotIcon('LayoutGrid', {
+  solid: [
+    [7, 7, 2.75],
+    [17, 7, 2.75],
+    [7, 17, 2.75],
+    [17, 17, 2.75],
+  ],
+});
+
+export const LayoutTemplate = dotIcon('LayoutTemplate', {
+  d: 'M11 12.5H19M11 18.5H19',
+  bold: 'M5 5.5H19M5 12.5V18.5',
+});
+
+export const Layers = dotIcon('Layers', {
+  d:
+    open(
+      [
+        [12, 2.5],
+        [21.5, 7.5],
+        [12, 12.5],
+        [2.5, 7.5],
+      ],
+      true,
+      2.5,
+    ) + 'M2.5 12L12 17L21.5 12M2.5 16.5L12 21.5L21.5 16.5',
+});
+
+export const Infinity = dotIcon('Infinity', {
+  d: 'M12 12C10.5 9.5 9 8 7 8A4 4 0 0 0 7 16C9 16 10.5 14.5 12 12C13.5 9.5 15 8 17 8A4 4 0 0 1 17 16C15 16 13.5 14.5 12 12Z',
+});
+
+export const Link = dotIcon('Link', {
+  d: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71',
+});
+
+export const File = dotIcon('File', { d: DOC });
+
+const FOLDER_BACK = 'M5.5 4.5H8.5M12 7H18.5';
+export const Folder = dotIcon('Folder', { d: `M2.5 8V16.5${FOLDER_BACK}M21.5 10V16.5M5.5 19.5H18.5` });
+export const FolderOpen = dotIcon('FolderOpen', {
+  d:
+    'M2.5 8V12.5M5.5 4.5H8.5M12 7H17.5' +
+    open(
+      [
+        [3, 19.5],
+        [6.5, 11.5],
+        [21.5, 11.5],
+        [18, 19.5],
+      ],
+      true,
+      2.25,
+    ),
+});
+
+export const StickyNote = dotIcon('StickyNote', {
+  d: 'M3 6.5V17.5M6.5 3H17.5M21 6.5V12M6.5 21H12M15.5 20.5L20.5 15.5',
+});
+
+export const BookOpen = dotIcon('BookOpen', {
+  d: 'M10.25 6.5C8.5 5 6.5 4.5 2.5 4.5V18C6.5 18 8.5 18.5 10.25 20M13.75 6.5C15.5 5 17.5 4.5 21.5 4.5V18C17.5 18 15.5 18.5 13.75 20',
+});
+
+export const Camera = dotIcon('Camera', {
+  d: 'M2.5 9V17.5M21.5 9V17.5M5.5 20.5H18.5M5.5 6H7M17 6H18.5M9.5 3.5H14.5M16 13A4 4 0 1 1 8 13A4 4 0 1 1 16 13Z',
+});
+
+export const Image = dotIcon('Image', {
+  d: `${box(3, 3, 18, 18)}M6.5 17.5L10.5 13.5L14.5 17.5M15 14L17.5 16.5`,
+  solid: [[8.5, 8.5, 1.5]],
+});
+
+/** Brand mark — kept as drawn (third-party logo, outside the dot system). */
 export const Youtube = createIcon('Youtube', () => (
   <>
     <rect x="2.25" y="5" width="19.5" height="14" rx="4" />
@@ -1087,23 +656,18 @@ export const Youtube = createIcon('Youtube', () => (
   </>
 ));
 
-export const Wifi = createIcon('Wifi', () => (
-  <>
-    <path d="M12 20h.01" />
-    <path d="M2 8.82a15 15 0 0 1 20 0" />
-    <path d="M5 12.859a10 10 0 0 1 14 0" />
-    <path d="M8.5 16.429a5 5 0 0 1 7 0" />
-  </>
-));
+const WIFI = `M2.5 9A13.5 13.5 0 0 1 21.5 9M5.5 12.5A9 9 0 0 1 18.5 12.5M8.5 16A4.5 4.5 0 0 1 15.5 16${dot(12, 19.5)}`;
+export const Wifi = dotIcon('Wifi', { d: WIFI });
+export const WifiOff = dotIcon('WifiOff', { d: `${WIFI}M3 3L21 21` });
 
-export const WifiOff = createIcon('WifiOff', () => (
-  <>
-    <line x1="2" x2="22" y1="2" y2="22" />
-    <path d="M12 20h.01" />
-    <path d="M8.5 16.429a5 5 0 0 1 7 0" />
-    <path d="M5 12.859a10 10 0 0 1 5.17-2.69" />
-    <path d="M19 12.859a10 10 0 0 0-2.007-1.523" />
-    <path d="M2 8.82a15 15 0 0 1 4.177-2.643" />
-    <path d="M22 8.82a15 15 0 0 0-11.288-3.764" />
-  </>
-));
+/* Lists, filters and switches (also in Figma › Components › Icons). */
+export const List = dotIcon('List', { d: `${dot(4.5, 6, 4.5, 12, 4.5, 18)}M9 6H20M9 12H20M9 18H20` });
+export const ListChecks = dotIcon('ListChecks', {
+  d: `M3 6L5 8L8.5 4.5M3 12L5 14L8.5 10.5${dot(5.5, 18)}M12 6.5H21M12 12.5H21M12 18H21`,
+});
+export const Filter = dotIcon('Filter', { d: 'M3.5 6H20.5M7 12H17M10.5 18H13.5' });
+export const ArrowLeftRight = dotIcon('ArrowLeftRight', {
+  d: 'M4 8H19M16 5L19 8L16 11M20 16H5M8 13L5 16L8 19',
+});
+/** Poll results: three answers, the leading one marked. */
+export const Poll = dotIcon('Poll', { d: `M3.5 6H15.5M3.5 12H10M3.5 18H13${dot(20, 6)}` });

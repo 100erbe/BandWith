@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   Search,
   Loader2,
-  ArrowRight
+  MessageSquare,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { DotRadio } from '@/app/components/ui/DotRadio';
-import { EmptyState } from '@/app/components/ui/EmptyState';
+import { EventMark, eventKindOf, IconButton, Tag, PillButton } from '@/app/components/bw';
+import { RailSheet } from '@/lib/railActions';
 import { createChat } from '@/lib/services/chats';
 import { getBandMembersForChat, getBands } from '@/lib/services/bands';
 import { getEvents } from '@/lib/services/events';
-import { useBand } from '@/lib/BandContext';
 import { supabase } from '@/lib/supabase';
 import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
@@ -40,7 +39,6 @@ interface EventWithBand extends Event {
 type ChatTypeOption = 'direct' | 'band' | 'event';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreated }) => {
-  const { selectedBand, bands: contextBands } = useBand();
   const [chatType, setChatType] = useState<ChatTypeOption>('direct');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +59,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
       
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        const { data: bandsData, error: bandsError } = await getBands();
+        const { data: bandsData } = await getBands();
         
         if (bandsData) {
           setAllBands(bandsData);
@@ -164,7 +162,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
   const formatEventDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('it-IT', { 
+    return date.toLocaleDateString('en-US', { 
       day: 'numeric', 
       month: 'short',
       year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
@@ -254,6 +252,17 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
     (chatType === 'band' && selectedBandChat) ||
     (chatType === 'event' && selectedEvent);
 
+  const canMessageAnyMember = allBands.some(b => b.user_role === 'admin');
+
+  /** Shared row chrome: 16px-radius row, lime outline when selected. */
+  const rowClass = (isSelected: boolean) => cn(
+    "w-full p-3 rounded-[16px] border-[1.5px] flex items-center gap-3 text-left transition-colors cursor-pointer",
+    isSelected ? "bg-foreground/[0.08] border-accent" : "border-transparent hover:bg-foreground/[0.05]"
+  );
+
+  const avatarClass = "w-11 h-11 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center shrink-0 overflow-hidden";
+  const avatarInitialsClass = "bw-h3";
+
   return (
     <>
       {/* Backdrop */}
@@ -262,355 +271,299 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[90] bg-black/30 backdrop-blur-[10px]"
+        className="bw-rail-sheet fixed inset-0 z-[90] bg-black/50"
         onClick={onClose}
       />
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet (dark) */}
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="fixed bottom-0 left-0 right-0 z-[91] bg-card text-card-foreground border-t border-border rounded-t-3xl px-4 pt-4 shadow-2xl flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-chat-title"
+        className="bw-rail-sheet dark fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] flex flex-col"
         style={{ 
           maxHeight: '85vh',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          paddingBottom: 'calc(var(--safe-bottom) + 16px)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Pill handle */}
-        <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full bg-foreground/20" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-end justify-between mb-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
-              START CHAT
-            </span>
-            <h2 className="text-2xl font-black text-foreground uppercase leading-none">
-              NEW CONVERSATION
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-9 h-9 rounded-full border border-foreground/15 flex items-center justify-center text-foreground hover:bg-foreground/10 active:scale-90 transition-all"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Tab Selector */}
-        <div className="flex gap-2 mb-6">
-          {[
-            { type: 'direct' as const, label: 'DIRECT' },
-            { type: 'band' as const, label: 'BAND' },
-            { type: 'event' as const, label: 'EVENT' },
-          ].map(({ type, label }) => (
-            <button
-              key={type}
-              onClick={() => {
-                setChatType(type);
-                setSelectedMember(null);
-                setSelectedBandChat(null);
-                setSelectedEvent(null);
-                setSearchQuery('');
-              }}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-                chatType === type
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10 hover:text-foreground"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="bg-foreground/5 border border-foreground/10 rounded-xl flex items-center px-3 gap-2 mb-6">
-          <Search className="w-4 h-4 text-foreground/40 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              chatType === 'direct' 
-                ? (allBands.some(b => b.user_role === 'admin') ? 'SEARCH MEMBERS...' : 'SEARCH ADMINS...') 
-                : chatType === 'band' ? 'SEARCH BANDS...' :
-                'SEARCH EVENTS...'
-            }
-            className="w-full h-10 bg-transparent text-xs font-bold text-foreground placeholder:text-foreground/35 uppercase focus:outline-none"
-          />
-        </div>
-
-        {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-4"
-            >
-              <div className="p-3 bg-destructive/10 border-l-2 border-destructive text-destructive text-sm rounded-r-lg">
-                {error}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto min-h-0 pb-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-foreground/30 animate-spin" />
+        {/* Sheet header: grabber, overline, title, close */}
+        <div className="flex flex-col items-center gap-3 px-5 pt-3 pb-2 shrink-0">
+          <div className="w-10 h-[5px] rounded-[3px] bg-foreground/85" aria-hidden="true" />
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              <span className="bw-label-sm text-foreground/85">Start chat</span>
+              <h2 id="new-chat-title" className="bw-h1 text-foreground">New chat</h2>
             </div>
-          ) : (
-            <>
-              {/* DIRECT TAB */}
-              {chatType === 'direct' && (
-                <div className="flex flex-col gap-6">
-                  {allBands.map(band => {
-                    const bandMembers = filteredMembers.filter(m => m.bandId === band.id);
-                    if (bandMembers.length === 0) return null;
-                    
-                    return (
-                      <div key={band.id}>
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="text-[10px] font-bold tracking-[0.15em] text-primary uppercase">
-                            {band.name}
-                          </span>
-                          {band.user_role !== 'admin' && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded-md">
-                              Admins
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-col gap-1.5">
-                          {bandMembers.map(member => {
-                            const isSelected = selectedMember?.id === member.id && selectedMember?.bandId === member.bandId;
-                            return (
-                              <motion.button
-                                key={`${member.id}-${member.bandId}`}
-                                onClick={() => handleSelect('direct', member)}
-                                whileTap={{ scale: 0.98 }}
-                                className={cn(
-                                  "w-full p-3 rounded-xl border flex items-center gap-3 transition-all",
-                                  isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent hover:bg-foreground/5"
-                                )}
-                              >
-                                <div className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden",
-                                  isSelected 
-                                    ? "bg-primary text-primary-foreground" 
-                                    : "bg-foreground/10 text-foreground/70"
-                                )}>
-                                  {member.avatar_url ? (
-                                    <img
-                                      src={member.avatar_url}
-                                      alt={member.full_name || member.email}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  ) : (
-                                    getInitials(member.full_name, member.email)
-                                  )}
-                                </div>
-                                <div className="flex-1 text-left min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className={cn(
-                                      "font-bold text-sm uppercase truncate",
-                                      isSelected ? "text-foreground" : "text-foreground/75"
-                                    )}>
-                                      {member.full_name || member.email}
-                                    </p>
-                                    {member.role === 'admin' && (
-                                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
-                                        Admin
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs uppercase text-foreground/45">
-                                    {member.instrument || member.role || 'Member'}
-                                  </p>
-                                </div>
-                                <DotRadio
-                                  selected={isSelected}
-                                  activeColor="var(--primary)"
-                                  inactiveColor="var(--border)"
-                                />
-                              </motion.button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {filteredMembers.length === 0 && (
-                    <div className="text-center py-12 flex flex-col items-center">
-                      <p className="text-foreground/40 text-xs font-bold uppercase">NO ADMINS AVAILABLE</p>
-                      <p className="text-foreground/30 text-[11px] mt-1 font-medium">Direct messaging is restricted to band admins.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* BAND TAB */}
-              {chatType === 'band' && (
-                <div className="flex flex-col gap-2">
-                  {filteredBands.map(band => {
-                    const isSelected = selectedBandChat?.id === band.id;
-                    const memberCount = band.members?.length || 0;
-                    
-                    return (
-                      <motion.button
-                        key={band.id}
-                        onClick={() => handleSelect('band', band)}
-                        whileTap={{ scale: 0.98 }}
-                        className={cn(
-                          "w-full p-3.5 rounded-xl border flex items-center gap-3.5 transition-all",
-                          isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm",
-                          isSelected 
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-foreground/10 text-foreground/70"
-                        )}>
-                          {getInitials(band.name)}
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className={cn(
-                            "font-bold uppercase",
-                            isSelected ? "text-foreground" : "text-foreground/75"
-                          )}>
-                            {band.name}
-                          </p>
-                          <p className="text-xs uppercase text-foreground/45">
-                            {memberCount} {memberCount === 1 ? 'MEMBER' : 'MEMBERS'}
-                          </p>
-                        </div>
-                        <DotRadio
-                          selected={isSelected}
-                          activeColor="var(--primary)"
-                          inactiveColor="var(--border)"
-                        />
-                      </motion.button>
-                    );
-                  })}
-
-                  {filteredBands.length === 0 && (
-                    <div className="text-center py-12">
-                      <p className="text-foreground/40 text-xs font-bold uppercase">NO BANDS FOUND</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* EVENT TAB */}
-              {chatType === 'event' && (
-                <div className="flex flex-col gap-2">
-                  {filteredEvents.map(event => {
-                    const isSelected = selectedEvent?.id === event.id;
-                    
-                    return (
-                      <motion.button
-                        key={event.id}
-                        onClick={() => handleSelect('event', event)}
-                        whileTap={{ scale: 0.98 }}
-                        className={cn(
-                          "w-full p-3.5 rounded-xl border flex items-center gap-3.5 transition-all text-left",
-                          isSelected ? "bg-background border-primary/40 shadow-xs" : "border-transparent bg-foreground/[0.02] hover:bg-foreground/5"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-11 h-11 rounded-xl flex flex-col items-center justify-center",
-                          isSelected 
-                            ? "bg-primary text-primary-foreground" 
-                            : "bg-foreground/10 text-foreground/70"
-                        )}>
-                          <span className="text-[10px] font-bold uppercase">
-                            {event.event_type === 'rehearsal' ? 'REH' : 'GIG'}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "font-bold truncate uppercase",
-                            isSelected ? "text-foreground" : "text-foreground/75"
-                          )}>
-                            {event.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs uppercase text-foreground/45">
-                              {formatEventDate(event.event_date)}
-                            </span>
-                            <span className="text-xs text-foreground/20">•</span>
-                            <span className="text-xs font-bold text-primary uppercase">
-                              {event.bandName}
-                            </span>
-                          </div>
-                        </div>
-                        <DotRadio
-                          selected={isSelected}
-                          activeColor="var(--primary)"
-                          inactiveColor="var(--border)"
-                        />
-                      </motion.button>
-                    );
-                  })}
-
-                  {filteredEvents.length === 0 && (
-                    <div className="text-center py-12 flex flex-col items-center">
-                      <p className="text-foreground/40 text-xs font-bold uppercase">NO EVENTS FOUND</p>
-                      <p className="text-foreground/30 text-[11px] mt-1 font-medium">You can only chat in events you are participating in.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+            <RailSheet onClose={onClose} />
+            <IconButton label="Close" variant="sheet" size="sm" icon={<X />} onClick={onClose} />
+          </div>
         </div>
 
-        {/* Action Button */}
-        <div className="pt-4 border-t border-foreground/10">
-          <button
-            onClick={handleCreateChat}
-            disabled={!canCreate || creating}
-            className={cn(
-              "w-full h-12 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2.5 transition-all",
-              canCreate
-                ? "bg-primary text-primary-foreground active:scale-[0.98] shadow-xs hover:opacity-95"
-                : "bg-foreground/5 text-foreground/30 cursor-not-allowed"
+        <div className="flex flex-col gap-3 px-5 pt-4 min-h-0 flex-1">
+          {/* Type selector */}
+          <div className="flex gap-2 shrink-0" role="tablist" aria-label="Chat type">
+            {[
+              { type: 'direct' as const, label: 'DIRECT' },
+              { type: 'band' as const, label: 'BAND' },
+              { type: 'event' as const, label: 'EVENT' },
+            ].map(({ type, label }) => (
+              <button
+                key={type}
+                type="button"
+                role="tab"
+                aria-selected={chatType === type}
+                onClick={() => {
+                  setChatType(type);
+                  setSelectedMember(null);
+                  setSelectedBandChat(null);
+                  setSelectedEvent(null);
+                  setSearchQuery('');
+                }}
+                className={cn(
+                  "h-7 px-3 rounded-full bw-label-sm whitespace-nowrap transition-colors cursor-pointer",
+                  chatType === type
+                    ? "bg-accent text-accent-foreground"
+                    : "border border-foreground/85 text-foreground hover:bg-foreground/[0.08]"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="bg-foreground/[0.08] rounded-full flex items-center px-4 gap-2 h-12 shrink-0">
+            <Search className="w-[18px] h-[18px] text-foreground shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search"
+              placeholder={
+                chatType === 'direct' 
+                  ? (canMessageAnyMember ? 'Search members…' : 'Search admins…') 
+                  : chatType === 'band' ? 'Search bands…' :
+                  'Search events…'
+              }
+              className="w-full min-w-0 h-full bg-transparent bw-body-md text-foreground placeholder:text-foreground/70 focus:outline-none"
+            />
+          </div>
+
+          {/* Error */}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="shrink-0"
+              >
+                <div role="alert" className="px-4 py-3 rounded-[16px] bg-destructive-solid text-white bw-body-sm">
+                  {error}
+                </div>
+              </motion.div>
             )}
-          >
-            {creating ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+          </AnimatePresence>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto min-h-0 -mx-5 px-5">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 text-foreground/50 animate-spin" />
+              </div>
             ) : (
               <>
-                <span>
-                  {chatType === 'direct' && selectedMember 
-                    ? `Message ${selectedMember.full_name?.split(' ')[0] || 'User'}`
-                    : chatType === 'band' && selectedBandChat
-                    ? `Open ${selectedBandChat.name} Chat`
-                    : chatType === 'event' && selectedEvent
-                    ? `Open ${selectedEvent.title} Chat`
-                    : 'Select to continue'
-                  }
-                </span>
-                {canCreate && <ArrowRight className="w-4 h-4" />}
+                {/* DIRECT TAB */}
+                {chatType === 'direct' && (
+                  <div className="flex flex-col gap-4">
+                    {allBands.map(band => {
+                      const bandMembers = filteredMembers.filter(m => m.bandId === band.id);
+                      if (bandMembers.length === 0) return null;
+                      
+                      return (
+                        <div key={band.id} className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="bw-label-sm text-foreground/85 truncate">
+                              {band.name}
+                            </span>
+                            {band.user_role !== 'admin' && (
+                              <span className="bw-label-xs text-foreground/85 shrink-0">
+                                Admins
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            {bandMembers.map(member => {
+                              const isSelected = selectedMember?.id === member.id && selectedMember?.bandId === member.bandId;
+                              return (
+                                <motion.button
+                                  key={`${member.id}-${member.bandId}`}
+                                  type="button"
+                                  aria-pressed={isSelected}
+                                  onClick={() => handleSelect('direct', member)}
+                                  whileTap={{ scale: 0.98 }}
+                                  className={rowClass(isSelected)}
+                                >
+                                  <div className={avatarClass}>
+                                    {member.avatar_url ? (
+                                      <img
+                                        src={member.avatar_url}
+                                        alt={member.full_name || member.email}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className={avatarInitialsClass}>{getInitials(member.full_name, member.email)}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                    <p className="bw-label-md text-foreground truncate">
+                                      {member.full_name || member.email}
+                                    </p>
+                                    <p className="bw-body-sm text-foreground/85 truncate">
+                                      {member.instrument || member.role || 'Member'}
+                                    </p>
+                                  </div>
+                                  {member.role === 'admin' && (
+                                    <Tag variant="accent">Admin</Tag>
+                                  )}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {filteredMembers.length === 0 ? (
+                      <div className="text-center py-12 flex flex-col items-center gap-1.5">
+                        <p className="bw-label-md text-foreground/85">NO ADMINS AVAILABLE</p>
+                        <p className="bw-body-sm text-foreground/60">Direct messaging is restricted to band admins.</p>
+                      </div>
+                    ) : !canMessageAnyMember && (
+                      <p className="bw-body-sm text-foreground/85">
+                        Direct messages are limited to band admins.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* BAND TAB */}
+                {chatType === 'band' && (
+                  <div className="flex flex-col gap-2">
+                    {filteredBands.map(band => {
+                      const isSelected = selectedBandChat?.id === band.id;
+                      const memberCount = band.members?.length || 0;
+                      
+                      return (
+                        <motion.button
+                          key={band.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => handleSelect('band', band)}
+                          whileTap={{ scale: 0.98 }}
+                          className={rowClass(isSelected)}
+                        >
+                          <div className={avatarClass}>
+                            <span className={avatarInitialsClass}>{getInitials(band.name)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            <p className="bw-label-md text-foreground truncate">
+                              {band.name}
+                            </p>
+                            <p className="bw-body-sm text-foreground/85">
+                              {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                            </p>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+
+                    {filteredBands.length === 0 && (
+                      <div className="text-center py-12">
+                        <p className="bw-label-md text-foreground/85">NO BANDS FOUND</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* EVENT TAB */}
+                {chatType === 'event' && (
+                  <div className="flex flex-col gap-2">
+                    {filteredEvents.map(event => {
+                      const isSelected = selectedEvent?.id === event.id;
+                      const startOfToday = new Date();
+                      startOfToday.setHours(0, 0, 0, 0);
+                      const kind = eventKindOf(event, new Date(event.event_date) < startOfToday);
+                      
+                      return (
+                        <motion.button
+                          key={event.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => handleSelect('event', event)}
+                          whileTap={{ scale: 0.98 }}
+                          className={rowClass(isSelected)}
+                        >
+                          <span className="w-11 h-11 flex items-center justify-center shrink-0">
+                            <EventMark kind={kind} size={32} />
+                          </span>
+                          <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            <p className="bw-label-md text-foreground truncate">
+                              {event.title}
+                            </p>
+                            <p className="bw-body-sm text-foreground/85 truncate">
+                              {formatEventDate(event.event_date)}
+                              {event.bandName && <> · {event.bandName}</>}
+                            </p>
+                          </div>
+                          <Tag variant="subtle" className="bg-foreground/[0.12]">
+                            {event.event_type === 'rehearsal' ? 'Rehearsal' : 'Gig'}
+                          </Tag>
+                        </motion.button>
+                      );
+                    })}
+
+                    {filteredEvents.length === 0 && (
+                      <div className="text-center py-12 flex flex-col items-center gap-1.5">
+                        <p className="bw-label-md text-foreground/85">NO EVENTS FOUND</p>
+                        <p className="bw-body-sm text-foreground/60">You can only chat in events you are participating in.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
-          </button>
+          </div>
+
+          {/* Action Button */}
+          <div className="pt-1 shrink-0">
+            <PillButton
+              onClick={handleCreateChat}
+              disabled={!canCreate}
+              loading={creating}
+              icon={canCreate ? <MessageSquare className="w-5 h-5 shrink-0" /> : undefined}
+              className="[&>span]:min-w-0 [&>span>span]:truncate"
+            >
+              <span>
+                {chatType === 'direct' && selectedMember
+                  ? `Message ${selectedMember.full_name?.split(' ')[0] || 'User'}`
+                  : chatType === 'band' && selectedBandChat
+                  ? `Open ${selectedBandChat.name} chat`
+                  : chatType === 'event' && selectedEvent
+                  ? `Open ${selectedEvent.title} chat`
+                  : 'Select to continue'}
+              </span>
+            </PillButton>
+          </div>
         </div>
       </motion.div>
     </>

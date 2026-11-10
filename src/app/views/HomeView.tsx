@@ -1,15 +1,8 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
-import { 
-  ArrowUpRight,
-  Loader2,
-  MapPin,
-  Clock,
-  ListMusic,
-  ChevronRight,
-} from '@/app/components/icons';
+import { ArrowUpRight, MapPin } from '@/app/components/icons';
+import { Metric, DotText, SectionHeader, ActionTile, UpcomingRow, eventKindOf, PillButton, Card } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { HomeSkeleton } from '@/app/components/ui/HomeSkeleton';
 import { dashboardContainerVariants, dashboardItemVariants } from '@/styles/motion';
 import { QUICK_ACTIONS } from '@/app/data/metrics';
@@ -20,6 +13,9 @@ import { useBand } from '@/lib/BandContext';
 import { APP_COPY } from '@/app/constants/copy';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
+import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { openMaps } from '@/app/components/ui/MapsLink';
 
 interface DashboardData {
   eventStats: {
@@ -91,14 +87,6 @@ const toTitleCase = (str?: string | null): string => {
     .replace(/(?:^|\s|\/|-|\.)\S/g, (match) => match.toUpperCase());
 };
 
-const formatEventRowDate = (rawDate?: string | null): string => {
-  if (!rawDate) return APP_COPY.home.nextEvents.tbd;
-  const d = new Date(rawDate);
-  if (isNaN(d.getTime())) return APP_COPY.home.nextEvents.tbd;
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const day = d.getDate();
-  return `${month} ${day}`;
-};
 
 /**
  * Logical rule for event location display in Upcoming Shows & Rehearsals:
@@ -187,6 +175,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onShowToast,
   currentUserId,
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   // Use the band context for role, fall back to prop for backwards compatibility
   const { isAdmin: isAdminFromContext } = useBand();
   const isAdmin = isAdminFromContext ?? _isAdminProp;
@@ -215,9 +204,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const formatRevenue = (value: number): string => {
     if (value >= 1000) {
-      return `€${(value / 1000).toFixed(1)}k`;
+      return `${sym()}${(value / 1000).toFixed(1)}k`;
     }
-    return `€${value}`;
+    return `${sym()}${value}`;
   };
 
   const memberStats = dashboardData?.memberStats;
@@ -386,6 +375,49 @@ export const HomeView: React.FC<HomeViewProps> = ({
     );
   }
 
+  // ── Figma "Home" helpers ──────────────────────────────────────────────
+  // Count metrics light one dot per item on the 4×12 meter.
+  const countFill = (n: number) => n / 48;
+  const revenueFill = revenue > 0 ? revenue / Math.max(revenue + quotesPipeline, revenue) : 0;
+  const revenueDots = formatRevenue(revenue).replace('.0k', 'k');
+
+  const gigsThisMonth = (() => {
+    const now = new Date();
+    return (dashboardData?.upcomingEvents || []).filter((e: any) => {
+      const type = (e.event_type || e.eventType || '').toLowerCase();
+      const s = (e.status || '').toLowerCase();
+      if (type === 'rehearsal' || s === 'cancelled') return false;
+      const raw = e.event_date || e.date;
+      if (!raw) return false;
+      const d = parseLocalDate(raw);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  })();
+
+  const QUICK_LABELS: Record<string, string> = {
+    'Setlist & Repertoire': 'Setlist',
+    'Band Members': 'Members',
+    Inventory: 'Gear list',
+    'Task Templates': 'Templates',
+    'Contracts & Riders': 'Contracts',
+  };
+
+  const upcomingValue = (event: any): string | undefined => {
+    const s = (event.status || '').toLowerCase();
+    const type = (event.event_type || event.eventType || '').toLowerCase();
+    const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
+    if (!isRehearsal && isAdmin && event.fee != null && event.fee > 0) return formatRevenue(event.fee).replace('.0k', 'k');
+    const t = event.start_time || event.time;
+    return t ? formatEventTime(t) : undefined;
+  };
+
+  const upcomingMeta = (event: any): string | undefined => {
+    const venue = (event.venue_name || event.venueName || (typeof event.location === 'string' && event.location !== 'TBD' ? event.location.split(',')[0].trim() : '') || '').trim();
+    const where = formatEventLocation(event);
+    const parts = [venue, where && where.toLowerCase() !== venue.toLowerCase() ? where : ''].filter(Boolean);
+    return parts.length ? parts.join(' · ') : undefined;
+  };
+
   return (
     <motion.div
       key={`dashboard-${selectedBand.id}`}
@@ -394,149 +426,64 @@ export const HomeView: React.FC<HomeViewProps> = ({
       animate="show"
       exit="exit"
       className={cn(
-        "flex flex-col gap-8 sm:gap-10 relative z-10",
+        "flex flex-col gap-8 relative z-10 text-foreground",
         isHidden && "opacity-0 pointer-events-none"
       )}
     >
-      {/* ═══ STATS GRID (2×2) — PRIMARY DASHBOARD HERO ═══ */}
-      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3.5 sm:gap-4">
-        {/* Row 1: Confirmed Gigs | Upcoming Rehearsals — visible to all */}
-        <div className="flex gap-3.5 sm:gap-4">
-          {/* CARD: Confirmed Gigs — Red/Vermilion accent */}
-          <div
-            onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
-            className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
-          >
-            <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-gig)' }} />
-            <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                {APP_COPY.home.stats.confirmedGigs}
-              </span>
-              <div className="h-[64px] flex items-center">
-                <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                  {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : confirmedCount}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* CARD: Upcoming Rehearsals — Indigo/Violet accent */}
-          <div
-            onClick={() => onFilterEvents ? onFilterEvents('REHEARSALS') : onViewChange?.('Events')}
-            className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
-          >
-            <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-rehearsal)' }} />
-            <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                {APP_COPY.home.stats.upcomingRehearsals}
-              </span>
-              <div className="h-[64px] flex items-center">
-                <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                  {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : rehearsalCount}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Admin sees full business metrics / Member sees personal earnings */}
-        <div className="flex gap-3.5 sm:gap-4">
-          {isAdmin ? (
-            <>
-              {/* CARD: Active Quotes — Emerald Green accent */}
-              <div
-                onClick={() => onFilterEvents ? onFilterEvents('QUOTES') : onViewChange?.('Events')}
-                className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden cursor-pointer relative"
-              >
-                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
-                <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
-                      {APP_COPY.home.stats.activeQuotes}
-                    </span>
-                    {!dashboardLoading && quotesPipeline > 0 && (
-                      <span
-                        className="px-2 py-0.5 rounded-[6px] text-[10px] font-bold tracking-wider uppercase shrink-0 shadow-2xs"
-                        style={{ backgroundColor: 'var(--accent-quote)', color: 'var(--accent-quote-fg)' }}
-                      >
-                        {formatRevenue(quotesPipeline)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="h-[64px] flex items-center">
-                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block">
-                      {dashboardLoading ? <Skeleton className="h-10 w-16 bg-foreground/10" /> : quotesCount}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* CARD: Revenue — Royal Purple Brand accent */}
-              <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
-                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
-                <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <div className="flex items-center justify-between w-full gap-1">
-                    <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate">
-                      {APP_COPY.home.stats.revenue}
-                    </span>
-                    {!dashboardLoading && revenueChangeText !== '--' && (
-                      <span className="px-1.5 py-0.5 rounded-[5px] text-[10px] font-bold tracking-wider uppercase bg-foreground/8 text-foreground/70 shrink-0">
-                        {revenueChangeText}
-                      </span>
-                    )}
-                  </div>
-                  <div className="h-[64px] flex items-center">
-                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(revenue)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* CARD: Upcoming Pay — Emerald Green accent (member view) */}
-              <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
-                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--accent-quote)' }} />
-                <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    {APP_COPY.home.stats.upcomingPay}
-                  </span>
-                  <div className="h-[64px] flex items-center">
-                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-muted-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(memberStats?.confirmedFee || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* CARD: Total Earned — Royal Purple Brand accent (member view) */}
-              <div className="flex-1 flex rounded-[16px] border border-foreground/12 bg-card shadow-sm hover:shadow-md hover:border-foreground/25 active:scale-[0.99] transition-all overflow-hidden relative">
-                <div className="w-[5px] shrink-0" style={{ backgroundColor: 'var(--primary)' }} />
-                <div className="flex-1 flex flex-col py-4 px-4.5 pl-4 items-start text-left min-w-0">
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase truncate w-full">
-                    {APP_COPY.home.stats.totalEarned}
-                  </span>
-                  <div className="h-[64px] flex items-center">
-                    <span className="text-[48px] sm:text-[54px] font-black leading-none text-foreground tracking-tight block truncate">
-                      {dashboardLoading ? <Skeleton className="h-10 w-24 bg-foreground/10" /> : formatRevenue(memberStats?.totalEarned || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      {/* ═══ METRICS (2×2 dot meters) ═══ */}
+      <motion.div variants={dashboardItemVariants} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8 gap-y-8">
+        <Metric
+          label={APP_COPY.home.stats.confirmedGigs}
+          value={dashboardLoading ? '-' : confirmedCount}
+          fill={countFill(confirmedCount)}
+          onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
+        />
+        <Metric
+          label={APP_COPY.home.stats.upcomingRehearsals}
+          value={dashboardLoading ? '-' : rehearsalCount}
+          fill={countFill(rehearsalCount)}
+          onClick={() => onFilterEvents ? onFilterEvents('REHEARSALS') : onViewChange?.('Events')}
+        />
+        {isAdmin ? (
+          <>
+            <Metric
+              label={APP_COPY.home.stats.activeQuotes}
+              value={dashboardLoading ? '-' : quotesCount}
+              fill={countFill(quotesCount)}
+              onClick={() => setExpandedCard('quotes')}
+            />
+            <Metric
+              label={APP_COPY.home.stats.revenue}
+              value={dashboardLoading ? '-' : revenueDots}
+              fill={revenueFill}
+              onClick={() => setExpandedCard('finance')}
+            />
+          </>
+        ) : (
+          <>
+            <Metric
+              label={APP_COPY.home.stats.upcomingPay}
+              value={dashboardLoading ? '-' : formatRevenue(memberStats?.confirmedFee || 0).replace('.0k', 'k')}
+              fill={(memberStats?.confirmedFee || 0) / Math.max((memberStats?.confirmedFee || 0) + (memberStats?.pendingFee || 0), 1)}
+            />
+            <Metric
+              label={APP_COPY.home.stats.totalEarned}
+              value={dashboardLoading ? '-' : formatRevenue(memberStats?.totalEarned || 0).replace('.0k', 'k')}
+              fill={(memberStats?.totalEarned || 0) > 0 ? 1 : 0}
+            />
+          </>
+        )}
       </motion.div>
 
-      {/* ═══ ACTIVE REHEARSAL POLLS & PROPOSALS WIDGET ═══ */}
+      {/* ═══ ACTION CENTER (rehearsal polls & proposals) ═══ */}
       {activePolls.length > 0 && (
-        <motion.div variants={dashboardItemVariants} className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">
-              Action Center • Rehearsal Scheduling ({activePolls.length})
+        <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+          <h2 className="bw-display-lg max-w-[300px]">Action center</h2>
+          {isAdmin && (
+            <span className="bw-label-md text-muted-foreground">
+              Rehearsal scheduling ({activePolls.length})
             </span>
-          </div>
+          )}
           <div className="flex flex-col gap-3">
             {activePolls.map((poll: RehearsalPoll) => (
               <RehearsalPollCard
@@ -553,246 +500,166 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </motion.div>
       )}
 
-      {/* ═══ UPCOMING GIGS & REHEARSALS CARD ═══ */}
-      <motion.div variants={dashboardItemVariants}>
-        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3.5 shadow-2xs">
-          {/* Card Title inside the card in Title Case + See All link */}
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-              {APP_COPY.home.nextEvents.upcomingSchedule}
-            </span>
-            <button
-              onClick={() => onViewChange?.('Events')}
-              className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 transition-all cursor-pointer"
-            >
-              <span>{APP_COPY.home.nextEvents.seeAll}</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {upcomingGigsAndRehearsals.length === 0 ? (
-            <div className="rounded-[12px] bg-background/50 border border-dashed border-foreground/15 p-5 text-center flex flex-col items-center justify-center gap-1">
-              <span className="text-xs font-semibold text-foreground/70">
-                {APP_COPY.home.nextEvents.noUpcomingEvents}
-              </span>
-              <span className="text-[11px] text-foreground/45">
-                {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
-              </span>
-            </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-foreground/8">
-              {upcomingGigsAndRehearsals.map((event: any, index: number) => {
-                const s = (event.status || '').toLowerCase();
-                const type = (event.event_type || event.eventType || '').toLowerCase();
-                const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
-                const accentColor = isRehearsal ? 'var(--accent-rehearsal)' : 'var(--accent-gig)';
-                const accentFg = isRehearsal ? 'var(--accent-rehearsal-fg)' : 'var(--accent-gig-fg)';
-                const typeLabel = isRehearsal ? APP_COPY.home.nextEvents.typeRehearsal : APP_COPY.home.nextEvents.typeGig;
-                const rawDate = event.event_date || event.date;
-                const dateFormatted = formatEventRowDate(rawDate);
-                const eventTime = event.start_time ? formatEventTime(event.start_time) : (event.time ? formatEventTime(event.time) : null);
-                const locationText = formatEventLocation(event);
-
-                return (
-                  <div
-                    key={event.id || event.eventId || index}
-                    onClick={() => {
-                      if (onSelectEvent && (event.id || event.eventId)) {
-                        onSelectEvent(event.id || event.eventId);
-                      } else {
-                        onViewChange?.('Events');
-                      }
-                    }}
-                    className="group flex items-center justify-between gap-3 py-3 first:pt-1.5 last:pb-1.5 -mx-2 px-2.5 rounded-[12px] hover:bg-foreground/[0.04] active:scale-[0.99] cursor-pointer transition-all"
-                  >
-                    {/* Left Column: Semantic Accent Rail + Fixed-Width Type Badge */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div
-                        className="w-[3.5px] h-[18px] rounded-full shrink-0"
-                        style={{ backgroundColor: accentColor }}
-                      />
-                      <span
-                        className="w-[42px] inline-flex items-center justify-center rounded-[5px] py-0.5 text-[10px] font-bold tracking-wider uppercase shrink-0 leading-tight"
-                        style={{ backgroundColor: accentColor, color: accentFg }}
-                      >
-                        {typeLabel}
-                      </span>
-                    </div>
-
-                    {/* Middle Column: Date + Title + Location + Time (Locked on Baseline) */}
-                    <div className="flex items-baseline gap-3 min-w-0 flex-1">
-                      {/* Fixed-width Date */}
-                      <span className="w-[58px] shrink-0 text-xs font-bold text-foreground/75 uppercase tracking-wide tabular-nums">
-                        {dateFormatted}
-                      </span>
-
-                      {/* Event Title + Location (city / venue in Title Case) */}
-                      <div className="flex items-baseline gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors shrink-0 max-w-[180px] sm:max-w-[260px] capitalize">
-                          {toTitleCase(event.title) || APP_COPY.home.nextEvents.untitledEvent}
-                        </span>
-                        {locationText && (
-                          <span className="text-[11px] font-medium text-foreground/50 truncate flex-1 min-w-0 capitalize">
-                            • {locationText}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Time / Fee */}
-                      <div className="shrink-0 text-right">
-                        {eventTime ? (
-                          <span className="text-xs font-semibold text-foreground/65 tabular-nums">
-                            {eventTime}
-                          </span>
-                        ) : event.fee != null && event.fee > 0 ? (
-                          <span className="text-xs font-bold text-foreground tabular-nums">
-                            {formatRevenue(event.fee)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* Chevron Arrow (Vertically Centered in row) */}
-                    <ChevronRight className="w-3.5 h-3.5 text-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {/* ═══ 3. QUICK ACTIONS CARD (VERTICAL STACK) ═══ */}
-      <motion.div variants={dashboardItemVariants}>
-        <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col gap-3 shadow-2xs">
-          {/* Card Title inside the card in Title Case */}
-          <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-            {APP_COPY.home.quickActions.title}
-          </span>
-
-          {/* Vertical Stack of Options */}
-          <div className="flex flex-col divide-y divide-foreground/8">
-            {filteredQuickActions.map((action) => (
-              <button
-                key={action.id}
-                onClick={() => onQuickAction?.(action.label)}
-                className="flex items-center justify-between py-3 first:pt-1 last:pb-1 group hover:opacity-80 active:scale-[0.99] transition-all cursor-pointer text-left w-full"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-[10px] bg-foreground/6 border border-foreground/8 flex items-center justify-center text-foreground/70 group-hover:bg-foreground/10 group-hover:text-foreground transition-colors shrink-0">
-                    <action.icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-foreground">
-                    {action.label}
-                  </span>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ═══ 4. SECONDARY OPERATIONAL & ANALYTICS CARDS ═══ */}
-      <motion.div variants={dashboardItemVariants}>
-        {isAdmin ? (
-          /* ADMIN: Performance & Analytics Banner */
-          <div className="rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                {APP_COPY.home.operations.monthlyGrowth}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[32px] sm:text-[36px] font-bold leading-none text-foreground">
-                  {dashboardLoading ? <Skeleton className="h-8 w-20 bg-foreground/10" /> : revenueChangeText}
+      {/* ═══ NEXT SOUNDCHECK + MY SETLIST (member) ═══ */}
+      {!isAdmin && !isSolo && (
+        <motion.div variants={dashboardItemVariants} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+          {(() => {
+            const raw = nextMemberGig?.soundcheck_time || nextMemberGig?.load_in_time || '';
+            const m = String(raw).match(/^(\d{1,2}):(\d{2})/);
+            let value = '--';
+            let suffix = '';
+            if (m) {
+              let h = parseInt(m[1], 10);
+              suffix = h >= 12 ? 'PM' : 'AM';
+              h = h % 12 || 12;
+              value = `${h}:${m[2]}`;
+            }
+            const mapQuery = [nextMemberGig?.venue_address, nextMemberGig?.venue_name, nextMemberGig?.venue_city]
+              .filter(Boolean)
+              .join(', ');
+            const openLoadIn = () => {
+              if (mapQuery) {
+                openMaps(mapQuery);
+              } else if (nextMemberGig && onSelectEvent) {
+                onSelectEvent(nextMemberGig.eventId || nextMemberGig.id);
+              } else {
+                onViewChange?.('Events');
+              }
+            };
+            return (
+              <div className="rounded-[24px] p-4 flex flex-col gap-2 min-w-0 bg-accent text-accent-foreground">
+                <span className="bw-label-md truncate">{APP_COPY.home.operations.nextSoundcheck}</span>
+                <span className="flex items-end gap-1.5">
+                  <DotText text={value} size={24} label={`${value}${suffix ? ` ${suffix}` : ''}`} />
+                  {suffix && <span className="bw-body-lg leading-none">{suffix}</span>}
                 </span>
-                <span className="text-[11px] text-foreground/50">
-                  {APP_COPY.home.operations.vsPreviousMonth}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => onQuickAction?.('View Analytics')}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs shrink-0"
-            >
-              <span>{APP_COPY.home.operations.viewAnalytics}</span>
-              <ArrowUpRight className="w-4 h-4 text-foreground/70" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4">
-            {/* MEMBER: Next Soundcheck / Load-In (Dynamic from actual upcoming gig) */}
-            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-foreground/60" />
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    {APP_COPY.home.operations.nextSoundcheck}
-                  </span>
-                </div>
-                {(() => {
-                  const soundcheckDisplay = nextMemberGig?.soundcheck_time
-                    ? formatEventTime(nextMemberGig.soundcheck_time)
-                    : nextMemberGig?.load_in_time
-                    ? formatEventTime(nextMemberGig.load_in_time)
-                    : (confirmedCount > 0 ? APP_COPY.home.nextEvents.timeTbd : '—');
-                  const soundcheckSubtitle = nextMemberGig?.start_time
+                <span className="bw-label-sm truncate">
+                  {nextMemberGig?.start_time
                     ? `${APP_COPY.home.operations.doorsAt} ${formatEventTime(nextMemberGig.start_time)}`
-                    : (confirmedCount > 0 ? APP_COPY.home.operations.checkEventDetails : APP_COPY.home.operations.noUpcomingGigs);
-
-                  return (
-                    <>
-                      <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                        {soundcheckDisplay}
-                      </span>
-                      <span className="text-[11px] text-foreground/50">
-                        {soundcheckSubtitle}
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-              {confirmedCount > 0 && (
-                <button
-                  onClick={() => onQuickAction?.('View Calendar')}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-primary text-primary-foreground w-full active:scale-95 transition-all shadow-xs hover:opacity-95 cursor-pointer font-bold text-xs"
+                    : (confirmedCount > 0 ? APP_COPY.home.operations.checkEventDetails : APP_COPY.home.operations.noUpcomingGigs)}
+                </span>
+                <PillButton
+                  size="sm"
+                  variant="dark"
+                  fullWidth={false}
+                  className="self-start mt-auto"
+                  icon={<MapPin className="w-4 h-4" />}
+                  onClick={openLoadIn}
+                  disabled={!nextMemberGig}
                 >
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {APP_COPY.home.operations.loadInMap}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-primary-foreground" />
-                </button>
-              )}
-            </div>
-
-            {/* MEMBER: My Setlist Snapshot */}
-            <div className="flex-1 rounded-[16px] bg-card border border-foreground/10 p-4 sm:p-5 flex flex-col justify-between gap-4 shadow-2xs">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5">
-                  <ListMusic className="w-3.5 h-3.5 text-foreground/60" />
-                  <span className="text-[11px] font-bold text-foreground/60 tracking-wider">
-                    {APP_COPY.home.operations.mySetlist}
-                  </span>
-                </div>
-                <span className="text-[28px] sm:text-[32px] font-bold leading-tight text-foreground">
-                  {dashboardLoading ? <Skeleton className="h-8 w-12 bg-foreground/10" /> : '—'}
-                </span>
-                <span className="text-[11px] text-foreground/50">
-                  {APP_COPY.home.operations.nextGigSongs}
-                </span>
+                  Load-in map
+                </PillButton>
               </div>
-              <button
-                onClick={() => onQuickAction?.('Setlist & Repertoire')}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-[10px] bg-foreground/8 hover:bg-foreground/12 text-foreground w-full active:scale-95 transition-all border border-foreground/10 cursor-pointer font-bold text-xs"
-              >
-                <span>{APP_COPY.home.operations.viewSetlist}</span>
-                <ChevronRight className="w-4 h-4 text-foreground/70" />
-              </button>
-            </div>
+            );
+          })()}
+          {(() => {
+            const songCount: number | undefined =
+              nextMemberGig?.setlist_song_count ?? nextMemberGig?.song_count ?? (Array.isArray(nextMemberGig?.setlist) ? nextMemberGig.setlist.length : undefined);
+            return (
+              <div className="rounded-[24px] p-4 flex flex-col gap-2 min-w-0 bg-card text-card-foreground">
+                <span className="bw-label-md truncate">My setlist</span>
+                <DotText text={songCount != null ? String(songCount) : '--'} size={24} label={songCount != null ? `${songCount} songs` : 'No song count'} />
+                <span className="bw-label-sm text-muted-foreground truncate">
+                  {songCount != null ? 'Next gig songs' : nextMemberGig?.setlist_id ? 'Setlist linked' : 'No setlist yet'}
+                </span>
+                <PillButton
+                  size="sm"
+                  variant="outline"
+                  fullWidth={false}
+                  className="self-start mt-auto"
+                  onClick={() => onQuickAction?.('Setlist & Repertoire')}
+                >
+                  {APP_COPY.home.operations.viewSetlist}
+                </PillButton>
+              </div>
+            );
+          })()}
+        </motion.div>
+      )}
+
+      {/* ═══ UPCOMING ═══ */}
+      <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+        <SectionHeader title="Upcoming" onSeeAll={() => onViewChange?.('Events')} />
+        {upcomingGigsAndRehearsals.length === 0 ? (
+          <Card className="gap-1">
+            <span className="bw-h3">{APP_COPY.home.nextEvents.noUpcomingEvents}</span>
+            <span className="bw-body-sm text-muted-foreground">
+              {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
+            </span>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {upcomingGigsAndRehearsals.map((event: any, index: number) => {
+              const kind = eventKindOf(event);
+              const rawDate = event.event_date || event.date;
+              const d = rawDate ? parseLocalDate(rawDate) : null;
+              const valid = d && !isNaN(d.getTime());
+              return (
+                <UpcomingRow
+                  key={event.id || event.eventId || index}
+                  kind={kind}
+                  typeLabel={kind === 'rehearsal' ? 'Rehearsal' : kind === 'quote' ? 'Quote' : kind === 'personal' ? 'Personal' : 'Gig'}
+                  title={event.title || APP_COPY.home.nextEvents.untitledEvent}
+                  meta={upcomingMeta(event)}
+                  day={valid ? d!.getDate() : '–'}
+                  month={valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : APP_COPY.home.nextEvents.tbd}
+                  value={upcomingValue(event)}
+                  onClick={() => {
+                    if (onSelectEvent && (event.id || event.eventId)) {
+                      onSelectEvent(event.eventId || event.id);
+                    } else {
+                      onViewChange?.('Events');
+                    }
+                  }}
+                />
+              );
+            })}
           </div>
         )}
       </motion.div>
+
+      {/* ═══ QUICK ACTIONS ═══ */}
+      {filteredQuickActions.length > 0 && (
+        <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+          <SectionHeader title={APP_COPY.home.quickActions.title} />
+          <div
+            className="grid gap-4 gap-y-6"
+            style={{ gridTemplateColumns: `repeat(${Math.min(3, filteredQuickActions.length)}, minmax(0, 1fr))` }}
+          >
+            {filteredQuickActions.map((action) => (
+              <ActionTile
+                key={action.id}
+                label={QUICK_LABELS[action.label] ?? action.label}
+                onClick={() => onQuickAction?.(action.label)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═══ GROWTH + SHORTCUTS (admin) ═══ */}
+      {isAdmin && (
+        <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8">
+            <Metric label="Gigs this month" value={gigsThisMonth} fill={countFill(gigsThisMonth)} />
+            <Metric
+              label="Revenue vs last month"
+              value={revenueChangeText === '--' ? '0%' : revenueChangeText}
+              fill={revenueChange ? Math.min(1, Math.abs(revenueChange) / 100) : 0}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <PillButton size="md" className="flex-1 min-w-0" onClick={() => onQuickAction?.('View Calendar')}>
+              View calendar
+              <ArrowUpRight className="w-4 h-4" />
+            </PillButton>
+            <PillButton size="md" variant="dark" className="flex-1 min-w-0" onClick={() => onQuickAction?.('View Analytics')}>
+              {APP_COPY.home.operations.viewAnalytics}
+            </PillButton>
+          </div>
+        </motion.div>
+      )}
 
       {/* Bottom clearance spacer ensuring last card cleanly clears floating navbar */}
       <div

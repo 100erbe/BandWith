@@ -9,6 +9,7 @@ import {
   Calendar,
 } from '@/app/components/icons';
 import { cn } from './utils';
+import { parseLocalDate } from '@/lib/dates';
 
 export type WeatherCondition = 'sun' | 'cloud' | 'rain';
 
@@ -35,7 +36,7 @@ function parseEventDate(dateStr?: string): { date: Date; isoDate: string } | nul
   if (!dateStr) return null;
   const trimmed = dateStr.trim();
 
-  let d = new Date(trimmed);
+  let d = parseLocalDate(trimmed);
   if (isNaN(d.getTime())) {
     const currentYear = new Date().getFullYear();
     d = new Date(`${trimmed} ${currentYear}`);
@@ -249,105 +250,65 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
     };
   }, [eventDate, location]);
 
+  /** Status line (no forecast): small icon + Label/XS overline + Body/SM text. */
+  const note = (icon: React.ReactNode, text: string, overline?: string) => (
+    <div className="flex items-center gap-2 text-current w-full">
+      <span className="shrink-0 opacity-60 [&_svg]:w-4 [&_svg]:h-4">{icon}</span>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        {overline && <span className="bw-label-xs opacity-70">{overline}</span>}
+        <span className="bw-body-sm leading-tight opacity-80">{text}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={cn(
-        'rounded-[12px] bg-foreground/[0.04] border border-foreground/10 px-[10px] py-[8px] shrink-0 flex items-center justify-center transition-all min-w-[130px] max-w-[155px] font-sans select-none',
+        'rounded-[16px] bg-foreground/[0.08] px-3 py-2 shrink-0 flex items-center justify-center min-w-[130px] max-w-[155px] select-none',
         className
       )}
       style={textColor ? { color: textColor } : undefined}
     >
       {state.status === 'loading' && (
-        <div className="flex items-center gap-[10px] w-full animate-pulse px-[2px] py-[4px]">
-          <div className="w-[36px] h-[36px] rounded-full bg-foreground/10 shrink-0" />
+        <div className="flex items-center gap-2.5 w-full animate-pulse" aria-label="Loading forecast">
+          <div className="w-9 h-9 rounded-full bg-current opacity-10 shrink-0" />
           <div className="flex flex-col gap-1.5 flex-1">
-            <div className="h-4 w-8 bg-foreground/10 rounded" />
-            <div className="h-2.5 w-12 bg-foreground/10 rounded" />
-            <div className="h-2.5 w-10 bg-foreground/10 rounded" />
+            <div className="h-4 w-8 rounded-full bg-current opacity-10" />
+            <div className="h-2.5 w-12 rounded-full bg-current opacity-10" />
           </div>
         </div>
       )}
 
       {state.status === 'available' && (
         <div
-          className="flex items-center gap-[10px] w-full text-current"
+          className="flex items-center gap-2.5 w-full text-current"
           title={state.data.city ? `Forecast for ${state.data.city}` : 'Daily forecast'}
         >
-          {/* Big icon on left - Monochromatic */}
-          <div className="shrink-0 flex items-center justify-center w-[38px] h-[38px]">
-            {state.data.condition === 'sun' && (
-              <Sun className="w-[34px] h-[34px] text-current opacity-90" strokeWidth={1.5} />
-            )}
-            {state.data.condition === 'cloud' && (
-              <Cloud className="w-[34px] h-[34px] text-current opacity-90" strokeWidth={1.5} />
-            )}
-            {state.data.condition === 'rain' && (
-              <CloudRain className="w-[34px] h-[34px] text-current opacity-90" strokeWidth={1.5} />
-            )}
+          <div className="shrink-0 flex items-center justify-center w-9 h-9 [&_svg]:w-8 [&_svg]:h-8">
+            {state.data.condition === 'sun' && <Sun strokeWidth={1.5} />}
+            {state.data.condition === 'cloud' && <Cloud strokeWidth={1.5} />}
+            {state.data.condition === 'rain' && <CloudRain strokeWidth={1.5} />}
           </div>
 
-          {/* Temperature, rain possibility, wind on right - Monochromatic */}
-          <div className="flex flex-col items-start leading-none min-w-0">
-            <span className="text-[18px] font-bold tracking-tight text-current leading-none">
-              {state.data.temp}°
-            </span>
-            <div className="flex items-center gap-1 mt-[4px] text-[11px] font-semibold text-current opacity-70 whitespace-nowrap">
-              <Droplet className="w-[10px] h-[10px] text-current shrink-0" strokeWidth={1.5} />
-              <span>{state.data.precipitationProbability}%</span>
-            </div>
-            <div className="flex items-center gap-1 mt-[3px] text-[10px] font-medium text-current opacity-50 whitespace-nowrap">
-              <Wind className="w-[10px] h-[10px] text-current shrink-0" strokeWidth={1.5} />
-              <span>{state.data.windSpeed} km/h</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {state.status === 'too_early' && (
-        <div className="flex items-center gap-[8px] px-[2px] py-[4px] text-current w-full">
-          <Calendar className="w-[15px] h-[15px] shrink-0 opacity-40" strokeWidth={1.5} />
-          <div className="flex flex-col min-w-0">
-            <span className="text-[9px] uppercase font-bold tracking-wider opacity-40 leading-none">
-              FORECAST
-            </span>
-            <span className="text-[11px] font-medium leading-tight opacity-70 mt-[2px]">
-              Available 7 days prior
+          <div className="flex flex-col items-start gap-1 min-w-0">
+            <span className="bw-num leading-none">{state.data.temp}°</span>
+            <span className="flex items-center gap-1 bw-label-xs opacity-80 whitespace-nowrap">
+              <Droplet className="w-2.5 h-2.5 shrink-0" strokeWidth={1.5} />
+              {state.data.precipitationProbability}%
+              <Wind className="w-2.5 h-2.5 shrink-0 ml-1" strokeWidth={1.5} />
+              {state.data.windSpeed} km/h
             </span>
           </div>
         </div>
       )}
 
-      {state.status === 'missing_location' && (
-        <div className="flex items-center gap-[8px] px-[2px] py-[4px] text-current w-full">
-          <MapPin className="w-[15px] h-[15px] shrink-0 opacity-40" strokeWidth={1.5} />
-          <div className="flex flex-col min-w-0">
-            <span className="text-[9px] uppercase font-bold tracking-wider opacity-40 leading-none">
-              FORECAST
-            </span>
-            <span className="text-[11px] font-medium leading-tight opacity-70 mt-[2px]">
-              Location missing
-            </span>
-          </div>
-        </div>
-      )}
+      {state.status === 'too_early' && note(<Calendar strokeWidth={1.5} />, 'Available 7 days prior', 'Forecast')}
 
-      {state.status === 'past' && (
-        <div className="flex items-center gap-[8px] px-[2px] py-[4px] text-current opacity-50 w-full">
-          <Calendar className="w-[15px] h-[15px] shrink-0 opacity-40" strokeWidth={1.5} />
-          <span className="text-[11px] font-medium leading-tight opacity-70">
-            Past event
-          </span>
-        </div>
-      )}
+      {state.status === 'missing_location' && note(<MapPin strokeWidth={1.5} />, 'Location missing', 'Forecast')}
 
-      {state.status === 'error' && (
-        <div className="flex items-center gap-[8px] px-[2px] py-[4px] text-current opacity-50 w-full">
-          <Cloud className="w-[15px] h-[15px] shrink-0 opacity-40" strokeWidth={1.5} />
-          <span className="text-[11px] font-medium leading-tight opacity-70">
-            {state.message}
-          </span>
-        </div>
-      )}
+      {state.status === 'past' && note(<Calendar strokeWidth={1.5} />, 'Past event')}
+
+      {state.status === 'error' && note(<Cloud strokeWidth={1.5} />, state.message)}
     </div>
   );
 };

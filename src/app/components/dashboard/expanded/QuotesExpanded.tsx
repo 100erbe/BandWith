@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
+import {
   Plus,
-  BarChart3,
   Send,
   Edit3,
   CheckCircle,
@@ -12,22 +10,34 @@ import {
   FileText,
   Loader2
 } from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
-import { ExpandedCardWrapper } from './ExpandedCardWrapper';
+import { Card, IconButton, Tag, type TagStyle } from '@/app/components/bw/Screen';
+import { DotText } from '@/app/components/bw';
+import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { 
   Quote as MockQuote, 
   QuoteStatus,
-  QUOTES_DATA, 
-  getStatusColor, 
   getStatusLabel,
-  duplicateQuote,
-  createQuote
 } from '@/app/data/quotes';
 import type { Quote } from '@/app/data/quotes';
 import { QuoteCreationWizard } from '@/app/components/quotes/QuoteCreationWizard';
 import { QuoteDetailModal } from '@/app/components/quotes/QuoteDetailModal';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 import type { Quote as RealQuote } from '@/lib/services/quotes';
+import {
+  createQuote as createQuoteDB,
+  updateQuote as updateQuoteDB,
+  deleteQuote as deleteQuoteDB,
+  duplicateQuote as duplicateQuoteDB,
+  sendQuote as sendQuoteDB,
+  acceptQuote as acceptQuoteDB,
+  declineQuote as declineQuoteDB,
+  appQuoteToDbRecord,
+  appMusiciansToDb,
+  dbQuoteToAppQuote,
+  isUuid,
+} from '@/lib/services/quotes';
+import { useBand } from '@/lib/BandContext';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface QuotesExpandedProps {
   bandId: string;
@@ -41,6 +51,10 @@ interface QuotesExpandedProps {
     acceptedRevenue: number;
   } | null;
   loading?: boolean;
+  /** Optional app-level toast; when absent an inline banner is shown. */
+  onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  /** Optional: called after a successful create/update/delete so the parent can refetch. */
+  onQuotesChanged?: () => void;
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
@@ -48,70 +62,52 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   onClose,
   realQuotes,
   quoteStats,
-  loading
+  loading,
+  onShowToast,
+  onQuotesChanged,
 }) => {
-  // Convert real quotes to display format
-  const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => {
-    return rq.map(q => ({
-      ...q,
-      id: q.id,
-      bandId: q.band_id,
-      eventId: q.id,
-      eventTitle: q.event_name || 'Untitled Quote',
-      clientName: q.client_name,
-      status: (q.status?.toUpperCase() || 'DRAFT') as QuoteStatus,
-      lineItems: [],
-      customItems: q.custom_items || [],
-      subtotal: q.subtotal || 0,
-      discount: q.discount_value || 0,
-      tax: q.vat_amount || 0,
-      total: q.total || 0,
-      notes: q.client_notes || '',
-      validUntil: q.valid_until || '',
-      createdAt: q.created_at,
-      updatedAt: q.updated_at,
-      quoteNumber: '',
-      clientEmail: '',
-      eventName: '',
-      eventType: 'other' as any,
-      eventDate: '',
-      eventTimeStart: '',
-      venueCity: '',
-      venueCountry: '',
-      performanceType: 'full_band' as any,
-      setDuration: 0,
-      numberOfSets: 0,
-      musicians: [],
-      genres: [],
-      billingCountry: '',
-      vatRate: 0,
-      vatExempt: false,
-      reverseCharge: false,
-      currency: 'EUR',
-      baseFee: 0,
-      lineItemsTotal: 0,
-      grandTotal: 0,
-      depositAmount: 0,
-      paymentTerms: '',
-      cancellationPolicy: '',
-      includeTravel: false,
-      includeAccommodation: false,
-      includeMeals: false,
-      createdBy: '',
-    })) as any;
-  };
+  useCurrency(); // re-render money labels when the band currency changes
+  const { selectedBand } = useBand();
+  // Real band id: BandContext first, then the prop (only if it is a real UUID, never a mock id)
+  const currentBandId: string | null =
+    (selectedBand?.id && isUuid(selectedBand.id) ? selectedBand.id : null) ||
+    (isUuid(bandId) ? bandId : null);
+
+  // Convert real quotes to display format (real quote number, VAT, discount etc. from the DB)
+  const convertRealQuotes = (rq: RealQuote[]): MockQuote[] => rq.map(dbQuoteToAppQuote);
 
   // Quote data state - use real quotes only
   const [quotes, setQuotes] = useState<MockQuote[]>(
     realQuotes && realQuotes.length > 0 ? convertRealQuotes(realQuotes) : []
   );
 
-  // Update quotes when realQuotes changes
+  // Update quotes when realQuotes changes (including when it becomes empty)
   useEffect(() => {
-    if (realQuotes && realQuotes.length > 0) {
+    if (realQuotes) {
       setQuotes(convertRealQuotes(realQuotes));
     }
   }, [realQuotes]);
+
+  // Feedback: app toast if provided, otherwise an inline banner
+  const [inlineMessage, setInlineMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!inlineMessage) return;
+    const t = setTimeout(() => setInlineMessage(null), inlineMessage.type === 'error' ? 6000 : 3500);
+    return () => clearTimeout(t);
+  }, [inlineMessage]);
+
+  const notify = useCallback(
+    (text: string, type: 'success' | 'error' | 'info' = 'info') => {
+      if (onShowToast) onShowToast(text, type);
+      else setInlineMessage({ text, type });
+    },
+    [onShowToast]
+  );
+
+  const errorText = (err: unknown, fallback: string) =>
+    `${fallback}: ${(err as any)?.message || 'Unknown error'}`;
   
   // Modal states
   const [isCreating, setIsCreating] = useState(false);
@@ -129,97 +125,136 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   const activeQuotes = quotes.filter(q => q.status !== 'DECLINED' && q.status !== 'EXPIRED');
 
-  // Handlers
-  const handleCreateQuote = (quoteData: Partial<Quote>) => {
-    const lineItems = quoteData.lineItems || [];
-
-    if (lineItems.length === 0 && quoteData.baseFee) {
-      lineItems.push({
-        id: `li-${Date.now()}`,
-        description: 'Performance Fee',
-        quantity: 1,
-        unitPrice: quoteData.baseFee,
-        total: quoteData.baseFee,
-      });
+  // Handlers (all persist through src/lib/services/quotes.ts; optimistic changes are reverted on failure)
+  const handleCreateQuote = async (quoteData: Partial<Quote>, opts?: { share?: boolean }) => {
+    if (isSaving) return;
+    if (!currentBandId) {
+      notify('No band selected — cannot save the quote', 'error');
+      return;
     }
-    if (quoteData.customItems) {
-      quoteData.customItems.forEach((ci: any) => {
-        if (ci.amount > 0) {
-          lineItems.push({
-            id: ci.id || `li-${Date.now()}-${Math.random()}`,
-            description: ci.name || 'Custom Item',
-            quantity: 1,
-            unitPrice: ci.amount,
-            total: ci.amount,
-          });
+
+    const existing = quoteData.id ? quotes.find(q => q.id === quoteData.id) : undefined;
+    const record = appQuoteToDbRecord(quoteData, currentBandId);
+    setIsSaving(true);
+
+    try {
+      if (existing && isUuid(existing.id)) {
+        // ── Edit an existing quote (optimistic, reverted on failure) ──
+        const previous = quotes;
+        const optimistic = { ...existing, ...quoteData, quoteNumber: existing.quoteNumber } as MockQuote;
+        setQuotes(prev => prev.map(q => (q.id === existing.id ? optimistic : q)));
+
+        const { band_id: _bandId, ...updates } = record;
+        const { data, error } = await updateQuoteDB(existing.id, updates);
+        if (error || !data) {
+          setQuotes(previous);
+          notify(errorText(error, 'Failed to update quote'), 'error');
+          return; // keep the wizard open so nothing is lost
         }
-      });
-    }
 
-    const newQuote = createQuote(
-      'band-1',
-      quoteData.eventId || `event-${Date.now()}`,
-      lineItems.map(li => ({
-        description: li.description,
-        quantity: li.quantity,
-        unitPrice: li.unitPrice,
-      })),
-      {
-        discount: quoteData.discount || (quoteData.discountType !== 'none' ? quoteData.discountValue : undefined),
-        tax: quoteData.tax || quoteData.vatRate,
-        notes: quoteData.notes || quoteData.clientNotes,
-        validUntil: quoteData.validUntil,
-        eventTitle: quoteData.eventTitle || quoteData.eventName,
-        clientName: quoteData.clientName,
+        const saved = { ...quoteData, ...dbQuoteToAppQuote(data), musicians: quoteData.musicians || existing.musicians } as MockQuote;
+        setQuotes(prev => prev.map(q => (q.id === existing.id ? saved : q)));
+        setIsCreating(false);
+        setEditingQuote(null);
+        notify('Quote updated', 'success');
+        onQuotesChanged?.();
+        if (opts?.share) setSharingQuote(saved);
+        return;
       }
-    );
 
-    if (quoteData.status === 'SENT') {
-      newQuote.status = 'SENT';
-    }
+      // ── Create: the DB assigns the quote number; share/PDF only after the insert returns ──
+      const { data, error } = await createQuoteDB(record, appMusiciansToDb(quoteData.musicians));
+      if (error || !data) {
+        notify(errorText(error, 'Failed to create quote'), 'error');
+        return; // keep the wizard open so nothing is lost
+      }
 
-    Object.assign(newQuote, {
-      clientEmail: quoteData.clientEmail,
-      clientPhone: quoteData.clientPhone,
-      clientCompany: quoteData.clientCompany,
-      eventType: quoteData.eventType,
-      eventDate: quoteData.eventDate,
-      venueName: quoteData.venueName,
-      venueCity: quoteData.venueCity,
-      performanceType: quoteData.performanceType,
-      musicians: quoteData.musicians,
-      baseFee: quoteData.baseFee,
-      depositPercentage: quoteData.depositPercentage,
-      depositRequired: quoteData.depositRequired,
-      customItems: quoteData.customItems,
-    });
+      const { id: _localId, ...rest } = quoteData;
+      const saved = {
+        ...rest,
+        ...dbQuoteToAppQuote(data),
+        // keep wizard-only presentation fields (moments, options, musicians) for the share/PDF step
+        musicians: quoteData.musicians || [],
+        selectedMoments: quoteData.selectedMoments,
+        quoteOptions: quoteData.quoteOptions,
+        includeProposalSummary: quoteData.includeProposalSummary,
+      } as MockQuote;
 
-    setQuotes(prev => [newQuote, ...prev]);
-    setIsCreating(false);
-    setEditingQuote(null);
-    if (!quoteData.status || quoteData.status === 'SENT') {
-      setSharingQuote({ ...newQuote, ...quoteData });
+      setQuotes(prev => [saved, ...prev]);
+      setIsCreating(false);
+      setEditingQuote(null);
+      notify(`Quote ${saved.quoteNumber} saved`, 'success');
+      onQuotesChanged?.();
+      if (opts?.share) setSharingQuote(saved);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSendQuote = (quote: Quote) => {
+  const handleSendQuote = async (quote: Quote) => {
+    const previous = quotes;
     setQuotes(prev => prev.map(q => 
       q.id === quote.id 
         ? { ...q, status: 'SENT' as QuoteStatus, updatedAt: new Date().toISOString() }
         : q
     ));
     setSelectedQuote(null);
+
+    const { data, error } = await sendQuoteDB(quote.id);
+    if (error || !data) {
+      setQuotes(previous);
+      notify(errorText(error, 'Failed to mark quote as sent'), 'error');
+      return;
+    }
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
+    onQuotesChanged?.();
   };
 
-  const handleDuplicateQuote = (quote: Quote) => {
-    const duplicated = duplicateQuote(quote);
-    setQuotes(prev => [duplicated, ...prev]);
+  const handleSetOutcome = async (quote: Quote, outcome: 'ACCEPTED' | 'DECLINED') => {
+    const previous = quotes;
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, status: outcome as QuoteStatus } : q)));
     setSelectedQuote(null);
+    const { data, error } = outcome === 'ACCEPTED' ? await acceptQuoteDB(quote.id) : await declineQuoteDB(quote.id);
+    if (error || !data) {
+      setQuotes(previous);
+      notify(errorText(error, 'Could not update the quote'), 'error');
+      return;
+    }
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
+    notify(outcome === 'ACCEPTED' ? 'Quote accepted. The gig is confirmed.' : 'Quote marked as declined', 'success');
+    onQuotesChanged?.();
   };
 
-  const handleDeleteQuote = (quote: Quote) => {
+  const handleDuplicateQuote = async (quote: Quote) => {
+    setSelectedQuote(null);
+    const { data, error } = await duplicateQuoteDB(quote.id);
+    if (error || !data) {
+      notify(errorText(error, 'Failed to duplicate quote'), 'error');
+      return;
+    }
+    setQuotes(prev => [dbQuoteToAppQuote(data), ...prev]);
+    notify(`Quote duplicated as ${data.quote_number}`, 'success');
+    onQuotesChanged?.();
+  };
+
+  const handleDeleteQuote = async (quote: Quote) => {
+    const label = quote.quoteNumber || quote.eventTitle || quote.clientName || 'this quote';
+    if (typeof window !== 'undefined' && !window.confirm(`Delete ${label}? This cannot be undone.`)) {
+      return;
+    }
+
+    const previous = quotes;
     setQuotes(prev => prev.filter(q => q.id !== quote.id));
     setSelectedQuote(null);
+
+    const { error } = await deleteQuoteDB(quote.id);
+    if (error) {
+      setQuotes(previous);
+      notify(errorText(error, 'Failed to delete quote'), 'error');
+      return;
+    }
+    notify('Quote deleted', 'success');
+    onQuotesChanged?.();
   };
 
   const handleEditQuote = (quote: Quote) => {
@@ -231,12 +266,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   const getStatusIcon = (status: QuoteStatus) => {
     switch (status) {
-      case 'DRAFT': return <Edit3 className="w-3 h-3" />;
-      case 'SENT': return <Send className="w-3 h-3" />;
-      case 'ACCEPTED': return <CheckCircle className="w-3 h-3" />;
-      case 'DECLINED': return <XCircle className="w-3 h-3" />;
-      case 'EXPIRED': return <Clock className="w-3 h-3" />;
-      default: return <FileText className="w-3 h-3" />;
+      case 'DRAFT': return <Edit3 />;
+      case 'SENT': return <Send />;
+      case 'ACCEPTED': return <CheckCircle />;
+      case 'DECLINED': return <XCircle />;
+      case 'EXPIRED': return <Clock />;
+      default: return <FileText />;
     }
   };
 
@@ -251,169 +286,189 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     }
   };
 
+  const statusTag = (status: QuoteStatus): TagStyle => {
+    switch (status) {
+      case 'ACCEPTED': return 'solid';
+      case 'SENT':
+      case 'NEGOTIATING': return 'quote';
+      case 'DECLINED':
+      case 'EXPIRED': return 'outline';
+      default: return 'subtle';
+    }
+  };
+
+  const chartQuotes = activeQuotes.slice(0, 7);
+  const chartMax = Math.max(12000, ...chartQuotes.map(q => q.total));
+  const CHART_ROWS = 8;
+
   return (
     <ExpandedCardWrapper
-      backgroundColor="var(--secondary)"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '40%', left: '3%', right: '58%', bottom: '42%' }}
     >
-      {/* Header */}
-      <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--secondary)]/95 backdrop-blur-md" 
-        initial={{ opacity: 0, y: -20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ delay: 0.15, duration: 0.3 }}
-      >
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-foreground hover:bg-white/20 transition-colors backdrop-blur-sm"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="text-2xl font-black tracking-tight text-foreground">Quotes</h2>
-        </div>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="w-10 h-10 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform"
-        >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-        </button>
-      </motion.div>
-      
-      <div 
-        className="px-3 pb-32" 
+      <ExpandedTopBar
+        title="Quotes"
+        onBack={onClose}
+        meta={<span className="bw-label-sm text-muted-foreground">{quotes.length}</span>}
+        actions={<IconButton label="New quote" variant="filled" icon={<Plus />} onClick={() => setIsCreating(true)} />}
+      />
+
+      <div
+        className="flex-1 flex flex-col gap-8 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
         onClick={() => setActiveChartId(null)}
       >
-        {/* Pipeline Card */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }} 
-          animate={{ opacity: 1, scale: 1 }} 
-          transition={{ delay: 0.3 }} 
-          className="mb-8 p-6 bg-[var(--surface-inverse)] rounded-[2.5rem] relative overflow-hidden shadow-2xl" 
+        {/* Pipeline (Figma Fee card, dark) */}
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="dark bg-sheet text-sheet-foreground rounded-[24px] p-5 flex flex-col gap-4"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative z-10 flex flex-col gap-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[var(--secondary)] text-[10px] font-bold uppercase tracking-widest block mb-1">Pipeline Potential</span>
-                <h3 className="text-4xl font-black text-[var(--bg)] tracking-tighter">€{(pipelineTotal / 1000).toFixed(1)}k</h3>
-              </div>
-              <div className="bg-[var(--surface-inverse)] p-2 rounded-full">
-                <BarChart3 className="w-5 h-5 text-accent-quote" />
-              </div>
-            </div>
-            
-            {/* Pipeline Chart */}
-            <div className="h-28 flex items-end justify-between gap-1.5 px-1 pb-2 relative">
-              {activeQuotes.length === 0 ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                  <BarChart3 className="w-8 h-8 text-stone-600 mb-2" />
-                  <p className="text-stone-500 text-xs">No pipeline data</p>
-                </div>
-              ) : activeQuotes.slice(0, 7).map((quote, i) => { 
-                const heightPct = Math.min(100, Math.max(20, (quote.total / 12000) * 100)); 
+          <div className="flex flex-col gap-1">
+            <span className="bw-label-sm">Pipeline potential</span>
+            <DotText text={`${sym()}${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={`Pipeline ${sym()}${pipelineTotal.toLocaleString()}`} />
+          </div>
+
+          {/* One dot column per active quote: height = value, colour = likelihood */}
+          {chartQuotes.length === 0 ? (
+            <p className="bw-body-sm text-sheet-foreground/70 py-6 text-center">No pipeline data</p>
+          ) : (
+            <div className="flex justify-between gap-2 pt-6">
+              {chartQuotes.map((quote, qi) => {
                 const probability = getProbabilityFromStatus(quote.status);
-                let barColor = "bg-[var(--surface-inverse)]"; 
-                if (probability > 40) barColor = "bg-[var(--secondary)]"; 
-                if (probability > 70) barColor = "bg-accent-quote"; 
-                const isActive = activeChartId === quote.id; 
-                
+                const lit = Math.max(2, Math.round(Math.min(1, quote.total / chartMax) * CHART_ROWS));
+                const onColor = probability > 70 ? 'var(--accent)' : probability > 40 ? 'var(--sheet-fg)' : 'color-mix(in srgb, var(--sheet-fg) 45%, transparent)';
+                const isActive = activeChartId === quote.id;
                 return (
-                  <motion.div 
-                    key={quote.id} 
-                    onClick={() => setActiveChartId(isActive ? null : quote.id)} 
-                    initial={{ height: "0%" }} 
-                    animate={{ height: `${heightPct}%` }} 
-                    transition={{ delay: 0.2 + (i * 0.03), type: "tween", duration: 0.3, ease: "easeOut" }} 
-                    className={cn("flex-1 rounded-t-lg relative group min-w-[12px] cursor-pointer", barColor)}
+                  <button
+                    type="button"
+                    key={quote.id}
+                    onClick={() => setActiveChartId(isActive ? null : quote.id)}
+                    aria-label={`${quote.eventTitle || quote.clientName}: ${sym()}${quote.total.toLocaleString()}`}
+                    className="relative flex flex-col gap-1 items-center cursor-pointer group"
                   >
-                    {probability > 70 && (
-                      <motion.div 
-                        animate={{ opacity: [0.5, 1, 0.5] }} 
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} 
-                        className="absolute inset-0 bg-white/20 rounded-t-lg" 
-                      />
-                    )}
-                    <div className={cn(
-                      "absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] font-bold px-1.5 py-0.5 rounded transition-opacity whitespace-nowrap pointer-events-none z-20", 
-                      isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}>
-                      €{(quote.total / 1000).toFixed(1)}k
-                    </div>
-                  </motion.div>
-                ); 
+                    <span
+                      className={
+                        'absolute -top-6 left-1/2 -translate-x-1/2 h-5 px-1.5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-label-xs inline-flex items-center whitespace-nowrap pointer-events-none transition-opacity ' +
+                        (isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
+                      }
+                    >
+                      {sym()}{(quote.total / 1000).toFixed(1)}k
+                    </span>
+                    {Array.from({ length: CHART_ROWS }).map((_, r) => {
+                      const fromBottom = CHART_ROWS - 1 - r;
+                      const on = fromBottom < lit;
+                      return (
+                        <span
+                          key={`${r}-${on ? 'on' : 'off'}`}
+                          className={'w-2.5 h-2.5 rounded-full block' + (on ? ' bw-dot-rise' : '')}
+                          style={{
+                            backgroundColor: on ? onColor : 'color-mix(in srgb, var(--sheet-fg) 12%, transparent)',
+                            ['--d' as string]: `${250 + qi * 60 + fromBottom * 35}ms`,
+                          }}
+                        />
+                      );
+                    })}
+                  </button>
+                );
               })}
             </div>
-            
-            <div className="flex items-center justify-between text-[10px] font-bold text-[var(--muted-fg)] border-t border-white/10 pt-3">
-              <span>Total Deals: {activeQuotes.length}</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-accent-quote" />
-                <span className="text-accent-quote">Accepted</span>
-              </div>
-            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-3 pt-3 border-t border-sheet-foreground/15">
+            <span className="bw-label-sm text-sheet-foreground/70">
+              {activeQuotes.length} {activeQuotes.length === 1 ? 'deal' : 'deals'}
+            </span>
+            <span className="flex items-center gap-1.5 bw-label-sm">
+              <span className="w-2 h-2 rounded-full bg-accent" aria-hidden="true" />
+              Accepted
+            </span>
           </div>
-        </motion.div>
-        
-        {/* Quote List */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-black text-foreground uppercase tracking-wider ml-2 opacity-60 mb-2">All Quotes</h4>
+        </motion.section>
+
+        {/* Quote list */}
+        <section className="flex flex-col gap-4">
+          <h2 className="bw-label-md text-foreground">All quotes</h2>
           {quotes.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.4 }} 
-              className="bg-white/30 p-8 rounded-[2rem] flex flex-col items-center justify-center text-center"
-            >
-              <FileText className="w-12 h-12 text-foreground/40 mb-3" />
-              <p className="text-foreground font-bold mb-1">No quotes yet</p>
-              <p className="text-foreground/60 text-sm">Create your first quote to get started</p>
-            </motion.div>
-          ) : quotes.map((quote, i) => (
-            <motion.div 
-              key={quote.id} 
-              onClick={() => setSelectedQuote(quote)}
-              initial={{ opacity: 0, x: -20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              transition={{ delay: 0.4 + (i * 0.05) }} 
-              className={cn(
-                "p-5 rounded-[2rem] shadow-sm relative overflow-hidden group transition-all cursor-pointer",
-                quote.status === 'ACCEPTED' ? "bg-accent-quote" : "bg-background"
-              )}
-            >
-              <div className="flex justify-between items-start mb-1 relative z-10">
-                <div>
-                  <span className={cn(
-                    "text-[10px] font-bold uppercase tracking-widest block mb-0.5", 
-                    quote.status === 'ACCEPTED' ? "text-foreground/60" : "text-[var(--secondary)]"
-                  )}>
-                    {quote.clientName}
+            <Card className="items-center text-center py-8 gap-1">
+              <h3 className="bw-h3">No quotes yet</h3>
+              <p className="bw-body-sm text-muted-foreground">Create your first quote to get started.</p>
+            </Card>
+          ) : quotes.map((quote, i) => {
+            const accepted = quote.status === 'ACCEPTED';
+            const items = quote.customItems?.length || 0;
+            const created = quote.createdAt ? new Date(quote.createdAt) : null;
+            return (
+              <motion.button
+                type="button"
+                key={quote.id}
+                onClick={() => setSelectedQuote(quote)}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.04 }}
+                className={
+                  'w-full rounded-[24px] p-4 flex flex-col gap-3 text-left active:scale-[0.99] transition-transform ' +
+                  (accepted ? 'bg-accent-quote text-accent-quote-foreground' : 'bg-card text-card-foreground')
+                }
+              >
+                <span className="flex items-start gap-3">
+                  <span className="flex-1 min-w-0 flex flex-col gap-1">
+                    {quote.clientName && (
+                      <span className={'bw-label-sm truncate ' + (accepted ? 'opacity-70' : 'text-muted-foreground')}>{quote.clientName}</span>
+                    )}
+                    <span className="bw-h3 [overflow-wrap:anywhere]">{quote.eventTitle || 'Untitled quote'}</span>
                   </span>
-                  <h4 className="text-lg font-black text-foreground leading-tight">{quote.eventTitle}</h4>
-                </div>
-                <div className={cn(
-                  "px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide flex items-center gap-1",
-                  getStatusColor(quote.status)
-                )}>
-                  {getStatusIcon(quote.status)}
-                  {getStatusLabel(quote.status)}
-                </div>
-              </div>
-              
-              <div className="flex items-end justify-between mt-4 relative z-10">
-                <div className="flex flex-col gap-1 w-1/2">
-                  <div className="flex justify-between text-[10px] font-bold uppercase text-foreground/50">
-                    <span>{(quote.customItems?.length || 0)} items</span>
-                    <span>{new Date(quote.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <span className="text-2xl font-black text-foreground">€{quote.total.toLocaleString()}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                  <Tag variant={statusTag(quote.status)} icon={getStatusIcon(quote.status)}>
+                    {getStatusLabel(quote.status)}
+                  </Tag>
+                </span>
+                <span className="flex items-end justify-between gap-3">
+                  <span className={'bw-label-xs ' + (accepted ? 'opacity-70' : 'text-muted-foreground')}>
+                    {[items > 0 ? `${items} ${items === 1 ? 'item' : 'items'}` : null, created && !isNaN(created.getTime()) ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  <span className="bw-num whitespace-nowrap">{sym()}{quote.total.toLocaleString()}</span>
+                </span>
+              </motion.button>
+            );
+          })}
+        </section>
       </div>
+
+      {/* Inline feedback (used when no app-level toast is provided) */}
+      <AnimatePresence>
+        {inlineMessage && (
+          <motion.div
+            role={inlineMessage.type === 'error' ? 'alert' : 'status'}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onClick={() => setInlineMessage(null)}
+            className={
+              'fixed left-4 right-4 bw-status-clear-inset top-[max(var(--safe-top),16px)] z-[300] mx-auto max-w-md rounded-[16px] px-4 py-3 bw-body-sm font-medium cursor-pointer ' +
+              (inlineMessage.type === 'error'
+                ? 'bg-destructive-solid text-destructive-foreground'
+                : 'bg-surface-inverse text-surface-inverse-foreground')
+            }
+          >
+            {inlineMessage.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isSaving && (
+        <div
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 bottom-[calc(var(--safe-bottom)+24px)] z-[300] flex items-center gap-2 h-9 rounded-full bg-surface-inverse text-surface-inverse-foreground px-4 bw-label-sm"
+        >
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Saving quote…
+        </div>
+      )}
 
       {/* Quote Creation Wizard */}
       <AnimatePresence>
@@ -440,6 +495,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             onSend={handleSendQuote}
             onDuplicate={handleDuplicateQuote}
             onDelete={handleDeleteQuote}
+            onSetOutcome={handleSetOutcome}
+            onSent={(q) => {
+              setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: 'SENT' as QuoteStatus, sentAt: new Date().toISOString() } : x)));
+              setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: 'SENT' as QuoteStatus } : prev));
+              onQuotesChanged?.();
+            }}
           />
         )}
       </AnimatePresence>
@@ -451,8 +512,14 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             isOpen={!!sharingQuote}
             onClose={() => setSharingQuote(null)}
             quote={sharingQuote}
-            bandId={bandId || 'default'}
-            bandName="Band"
+            bandId={currentBandId || bandId || 'default'}
+            bandName={selectedBand?.name || 'Band'}
+            onSent={(id) => {
+              const sentAt = new Date().toISOString();
+              setQuotes(prev => prev.map(q => (q.id === id ? { ...q, status: 'SENT' as QuoteStatus, sentAt } : q)));
+              setSharingQuote(prev => (prev && prev.id === id ? { ...prev, status: 'SENT' as QuoteStatus, sentAt } : prev));
+              onQuotesChanged?.();
+            }}
           />
         )}
       </AnimatePresence>

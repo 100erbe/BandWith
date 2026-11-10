@@ -8,7 +8,7 @@ async function testLogin() {
   console.log("Testing auth login...");
   const { data, error } = await supabase.auth.signInWithPassword({
     email: "admin@bandwith.com",
-    password: "Password123!"
+    password: process.env.DEV_TEST_PASSWORD
   });
 
   if (error) {

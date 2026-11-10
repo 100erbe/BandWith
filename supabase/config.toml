@@ -1,3 +1,20 @@
 project_id = "oakhbfdhesktokscqxqo"
+
+# SECURITY: every function verifies the JWT at the gateway. Note that the anon
+# key is itself a valid JWT, so privileged functions additionally resolve the
+# real user in code (see functions/_shared/auth.ts).
 [functions.send-push]
-verify_jwt = false
+verify_jwt = true
+
+[functions.send-email]
+verify_jwt = true
+
+[functions.invite-member]
+verify_jwt = true
+
+# Called before sign-in with the anon key; exposes only a minimal invite lookup.
+[functions.setup-invite-rls]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true

@@ -1,22 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { uuidToNumericId } from '@/lib/numericId';
 import { motion } from 'motion/react';
-import { 
-  ArrowLeft, 
-  Search,
-  Clock,
-  MapPin,
-  CloudRain,
-  Sun,
-  Phone,
-  Navigation,
-  AlertCircle,
-  Loader2
-} from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
-import { ExpandedCardWrapper } from './ExpandedCardWrapper';
-import { StatusBadge } from '@/app/components/ui/StatusBadge';
-import { PENDING_EVENTS_BY_DATE, EVENT_FILTERS } from '@/app/data/events';
+import { AlertCircle, Loader2, MapPin } from '@/app/components/icons';
+import { Card, SearchField, Tag, type TagStyle } from '@/app/components/bw/Screen';
+import { Selector } from '@/app/components/bw/Form';
+import { EventMark, eventKindOf } from '@/app/components/bw';
+import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
+import { EVENT_FILTERS } from '@/app/data/events';
 import type { Event } from '@/lib/services/events';
+import { parseLocalDate } from '@/lib/dates';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { MapsLink } from '@/app/components/ui/MapsLink';
 
 interface PendingExpandedProps {
   bandId: string;
@@ -34,6 +28,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
   events: realEvents,
   loading
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   // Convert real events to display format and group by date
   const eventsByDate = useMemo(() => {
     if (!realEvents || realEvents.length === 0) {
@@ -48,16 +43,14 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
       if (!groups[dateKey]) groups[dateKey] = [];
       
       groups[dateKey].push({
-        id: parseInt(event.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
+        id: uuidToNumericId(event.id),
         title: event.title,
         status: (event.status || 'draft').toUpperCase(),
         price: event.fee ? Number(event.fee).toLocaleString() : '0',
-        time: event.time || event.start_time || '00:00',
+        time: (event.time || event.start_time || '').slice(0, 5),
         location: event.venue || event.venue_name || 'TBD',
-        weather: 'sun',
-        temp: '20°',
-        travelTime: '30 min',
-        members: [],
+        rawStatus: event.status || '',
+        eventType: (event as any).event_type || '',
         contractSigned: event.contract_signed || false
       });
     });
@@ -65,14 +58,14 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
     return Object.entries(groups)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, events]) => ({
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        date: parseLocalDate(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         label: getDateLabel(date),
         events
       }));
   }, [realEvents]);
 
   function getDateLabel(dateStr: string): string {
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const today = new Date();
     const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -82,163 +75,101 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
     if (diffDays <= 14) return 'Next Week';
     return 'Upcoming';
   }
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const visibleGroups = q
+    ? eventsByDate
+        .map((g) => ({ ...g, events: g.events.filter((e: any) => `${e.title} ${e.location}`.toLowerCase().includes(q)) }))
+        .filter((g) => g.events.length > 0)
+    : eventsByDate;
+
+  const tagFor = (status: string): TagStyle => {
+    if (status === 'CONFIRMED' || status === 'COMPLETED') return 'gig';
+    if (status === 'REHEARSAL') return 'rehearsal';
+    if (status === 'CANCELLED') return 'outline';
+    return 'quote';
+  };
+
   return (
     <ExpandedCardWrapper
-      backgroundColor="var(--surface-alt)"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '12%', left: '61%', right: '3%', bottom: '62%' }}
     >
-      <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--surface-alt)]/95 backdrop-blur-md" 
-        initial={{ opacity: 0, y: -20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ delay: 0.15, duration: 0.3 }}
+      <ExpandedTopBar
+        title="Pending events"
+        onBack={onClose}
+        meta={<span className="bw-label-sm text-muted-foreground">{realEvents?.length || 0}</span>}
+      />
+
+      <div
+        className="flex-1 flex flex-col gap-4 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
       >
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black border border-stone-200 hover:bg-stone-50 transition-colors shadow-sm"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h2 className="text-2xl font-black tracking-tight text-foreground">Events</h2>
-        </div>
-      </motion.div>
-      
-      <div className="px-3 pb-32">
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.3 }} 
-          className="relative mb-6"
-        >
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
-            <Search className="w-5 h-5" />
-          </div>
-          <input 
-            type="text" 
-            placeholder="Search events..." 
-            className="w-full bg-white h-12 pl-12 pr-4 rounded-[1.2rem] text-sm font-medium text-foreground placeholder:text-stone-400 border border-stone-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-accent" 
-          />
-        </motion.div>
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.35 }} 
-          className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide"
-        >
+        <SearchField value={query} onChange={setQuery} label="Search events" placeholder="Search title or venue…" />
+
+        {/* Filter tabs (Figma Selector MD) */}
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
           {EVENT_FILTERS.map((filter) => (
-            <button 
-              key={filter} 
-              onClick={() => setEventFilter(filter)} 
-              className={cn(
-                "px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors", 
-                eventFilter === filter 
-                  ? "bg-black text-white" 
-                  : "bg-white text-black border border-stone-100 shadow-sm hover:bg-stone-50"
-              )}
-            >
+            <Selector key={filter} size="md" selected={eventFilter === filter} onClick={() => setEventFilter(filter)}>
               {filter}
-            </button>
-          ))}
-        </motion.div>
-        
-        <div className="space-y-8">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
-            </div>
-          ) : eventsByDate.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-stone-400">
-              <AlertCircle className="w-12 h-12 mb-4" />
-              <p className="font-bold">No pending events</p>
-            </div>
-          ) : null}
-          {!loading && eventsByDate.map((group, groupIndex) => (
-            <motion.div 
-              key={group.date} 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.4 + (groupIndex * 0.1) }}
-            >
-              <div className="flex items-baseline justify-between mb-3 px-2">
-                <h3 className="text-sm font-black text-foreground uppercase tracking-wider">{group.date}</h3>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{group.label}</span>
-              </div>
-              <div className="space-y-3">
-                {group.events.map((event) => (
-                  <div 
-                    key={event.id} 
-                    className="bg-white rounded-[1.8rem] border border-stone-100 shadow-lg shadow-stone-200/50 relative overflow-hidden group hover:scale-[1.01] transition-all"
-                  >
-                    <div className="p-5 pb-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex flex-col gap-2">
-                          <StatusBadge status={event.status} />
-                          <h4 className="text-xl font-black text-foreground leading-tight mt-1">{event.title}</h4>
-                        </div>
-                        <div className="text-right">
-                          <span className="block text-xl font-black text-foreground">€{event.price}</span>
-                          {!event.contractSigned && (
-                            <div className="flex items-center gap-1 justify-end text-[10px] text-red-500 font-bold mt-1 uppercase">
-                              <AlertCircle className="w-3 h-3" /> No Contract
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-stone-50 rounded-2xl p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-stone-100 text-stone-500">
-                            <Clock className="w-4 h-4" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-stone-400 font-bold uppercase">Time</span>
-                            <span className="text-sm font-bold text-foreground">{event.time}</span>
-                          </div>
-                        </div>
-                        <div className="bg-stone-50 rounded-2xl p-3 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-stone-100 text-stone-500">
-                            {event.weather === 'rain' ? <CloudRain className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-stone-400 font-bold uppercase">Forecast</span>
-                            <span className="text-sm font-bold text-foreground">{event.temp}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-bold text-stone-500 pl-1">
-                        <MapPin className="w-4 h-4 text-foreground/50" />
-                        <span className="uppercase tracking-wide">{event.location}</span>
-                        <span className="w-1 h-1 rounded-full bg-stone-300 mx-1" />
-                        <span>{event.travelTime} drive</span>
-                      </div>
-                    </div>
-                    <div className="bg-[var(--surface-alt)] border-t border-stone-100 p-2 flex items-center justify-between gap-2">
-                      <div className="flex -space-x-2 pl-2">
-                        {event.members.length > 0 ? event.members.map((initial: any, i: number) => (
-                          <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white relative z-10">
-                            {initial}
-                          </div>
-                        )) : (
-                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">No members assigned</span>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="h-9 px-4 rounded-xl bg-white border border-stone-200 flex items-center gap-2 text-xs font-bold text-foreground hover:bg-stone-50 transition-colors">
-                          <Phone className="w-3.5 h-3.5" /> Call
-                        </button>
-                        <button className="h-9 px-4 rounded-xl bg-[var(--surface-inverse)] flex items-center gap-2 text-xs font-bold text-white shadow-lg hover:bg-black transition-colors">
-                          <Navigation className="w-3.5 h-3.5" /> Go
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+            </Selector>
           ))}
         </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : visibleGroups.length === 0 ? (
+          <Card className="items-center text-center py-10">
+            <h2 className="bw-h3">{q ? 'No matching events' : 'No pending events'}</h2>
+            {q && <p className="bw-body-sm text-muted-foreground">Try another title or venue.</p>}
+          </Card>
+        ) : (
+          visibleGroups.map((group, groupIndex) => (
+            <motion.section
+              key={group.date}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + groupIndex * 0.08 }}
+              className="flex flex-col gap-4 pt-4"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="bw-label-md text-foreground">{group.date}</h2>
+                <span className="bw-label-sm text-muted-foreground">{group.label}</span>
+              </div>
+              {group.events.map((event: any) => {
+                const kind = eventKindOf({ event_type: event.eventType, status: event.rawStatus });
+                return (
+                  <Card key={event.id} className="gap-4">
+                    <div className="flex items-start gap-3">
+                      <span className="flex-1 min-w-0 flex flex-col gap-2">
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <EventMark kind={kind} size={20} />
+                          <Tag variant={tagFor(event.status)}>{event.status}</Tag>
+                          {!event.contractSigned && (
+                            <Tag variant="outline" icon={<AlertCircle />} className="text-destructive border-destructive">
+                              No contract
+                            </Tag>
+                          )}
+                        </span>
+                        <h3 className="bw-h3 [overflow-wrap:anywhere]">{event.title}</h3>
+                      </span>
+                      <span className="bw-num shrink-0 whitespace-nowrap">{sym()}{event.price}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <MapsLink pin query={event.location} className="bw-label-md">
+                        {event.location}
+                      </MapsLink>
+                      <span className="bw-label-md shrink-0">{event.time || 'Time TBD'}</span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </motion.section>
+          ))
+        )}
       </div>
     </ExpandedCardWrapper>
   );

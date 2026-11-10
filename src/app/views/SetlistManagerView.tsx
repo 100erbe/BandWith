@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
+import {
   Plus,
   X,
   Music2,
-  Clock,
-  MoreHorizontal,
   Trash2,
   Edit3,
   Loader2,
@@ -14,23 +12,152 @@ import {
   ListMusic,
   GripVertical,
   Check,
-  Disc3,
-  Timer,
-  Zap,
-  ArrowLeft,
   Save,
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  FileText,
+  Upload,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {
   getSongs, createSong, deleteSong,
   getSetlists, getSetlist, createSetlist, updateSetlist, deleteSetlist,
-  replaceSetlistSongs, seedRepertoireSongs
+  replaceSetlistSongs, seedRepertoireSongs, bulkCreateSongs
 } from '@/lib/services/songs';
+import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import type { Song, Setlist } from '@/lib/services/songs';
 import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
+import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
+import { openSongResource } from '@/lib/services/songFiles';
+
+/** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
+const READINESS_COLS = 16;
+const READINESS_MAX = 48;
+
+const ReadinessDots: React.FC<{ ready: number; learning: number; suggested: number; total: number }> = ({ ready, learning, suggested, total }) => {
+  const scale = total > READINESS_MAX ? READINESS_MAX / total : 1;
+  const n = Math.max(0, Math.round(total * scale));
+  const r = Math.round(ready * scale);
+  const l = Math.round(learning * scale);
+  const s = Math.round(suggested * scale);
+  const colors = Array.from({ length: n }).map((_, i) =>
+    i < r ? 'var(--accent)' : i < r + l ? 'currentColor' : i < r + l + s ? 'var(--dot-mid)' : 'color-mix(in srgb, currentColor 18%, transparent)',
+  );
+  return (
+    <div className="grid gap-y-2.5 justify-between" style={{ gridTemplateColumns: `repeat(${READINESS_COLS}, 10px)` }} aria-hidden>
+      {colors.map((c, i) => (
+        <span key={i} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
+      ))}
+    </div>
+  );
+};
+
+/** Popover menu used by song rows (same pattern as Task templates). */
+const RowMenu: React.FC<{ items: { label: string; icon: React.ReactNode; run: () => void; danger?: boolean }[] }> = ({ items }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.95 }}
+    className="absolute right-3 top-full -mt-2 z-20 min-w-[168px] p-1 rounded-[16px] bg-popover text-popover-foreground shadow-lg border border-border origin-top-right"
+    role="menu"
+  >
+    {items.map((item) => (
+      <button
+        key={item.label}
+        type="button"
+        role="menuitem"
+        onClick={item.run}
+        className={cn(
+          'w-full h-11 px-3 flex items-center gap-3 rounded-[12px] bw-body-sm font-medium text-left hover:bg-foreground/[0.06]',
+          item.danger ? 'text-destructive' : 'text-foreground',
+        )}
+      >
+        {item.icon}
+        {item.label}
+      </button>
+    ))}
+  </motion.div>
+);
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** One song in the setlist editor (a song can only appear once, but rows need stable keys). */
+interface EditorItem {
+  key: string;
+  songId: string;
+}
+
+let editorKeySeq = 0;
+const newEditorKey = () => `new-${++editorKeySeq}`;
+
+/** Renumber set numbers to 1, 2, 3… keeping their order (empty sets disappear). */
+const compactSets = (sets: number[]): number[] => {
+  const distinct = Array.from(new Set(sets)).sort((a, b) => a - b);
+  return sets.map((n) => distinct.indexOf(n) + 1);
+};
+
+const errorText = (error: unknown, fallback: string) =>
+  error && typeof error === 'object' && 'message' in error && (error as Error).message
+    ? `${fallback}: ${(error as Error).message}`
+    : `${fallback}. Try again.`;
+
+/**
+ * Setlist row that reorders by dragging its grip (pointer events, so it works
+ * with touch). Only the grip starts a drag, so the list still scrolls.
+ */
+const SetlistOrderRow: React.FC<{
+  item: EditorItem;
+  song: Song;
+  index: number;
+  setLabel?: string;
+  duration: string;
+  onRemove: () => void;
+}> = ({ item, song, index, setLabel, duration, onRemove }) => {
+  const controls = useDragControls();
+  const [dragging, setDragging] = useState(false);
+  return (
+    <Reorder.Item
+      as="li"
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={() => setDragging(false)}
+      whileDrag={{ scale: 1.02 }}
+      className={cn(
+        'relative flex items-center gap-3 p-3 rounded-[16px] bg-card border-[1.5px] transition-[border-color,box-shadow] select-none',
+        dragging ? 'z-10 border-foreground shadow-lg' : 'border-transparent',
+      )}
+    >
+      <span
+        onPointerDown={(e) => {
+          e.preventDefault();
+          controls.start(e);
+        }}
+        className="-my-2 -ml-2 w-9 h-11 flex items-center justify-center shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+        title="Drag to reorder"
+        aria-hidden
+      >
+        <GripVertical className="w-4 h-4" />
+      </span>
+      <span className="w-8 h-8 rounded-full border-[1.5px] border-foreground/30 flex items-center justify-center bw-label-sm shrink-0">
+        {index + 1}
+      </span>
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <p className="bw-label-md truncate flex items-center gap-2 min-w-0">
+          <span className="truncate">{song.title}</span>
+          {setLabel && <Tag variant="accent">{setLabel}</Tag>}
+        </p>
+        <p className="bw-body-sm text-muted-foreground truncate">{song.artist || 'Unknown artist'}</p>
+      </div>
+      <span className="bw-label-sm shrink-0">{duration}</span>
+      <IconButton label={`Remove ${song.title}`} variant="ghost" size="sm" icon={<X />} onClick={onRemove} />
+    </Reorder.Item>
+  );
+};
 
 interface SetlistManagerViewProps {
   onClose: () => void;
@@ -39,7 +166,7 @@ interface SetlistManagerViewProps {
 type ViewMode = 'songs' | 'setlists';
 
 export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose }) => {
-  const { selectedBand } = useBand();
+  const { selectedBand, isAdmin } = useBand();
   const [viewMode, setViewMode] = useState<ViewMode>('songs');
   const [songs, setSongs] = useState<Song[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
@@ -49,6 +176,13 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const [showAddSetlist, setShowAddSetlist] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
+  /** Feedback line above the lists (import results, failed actions). */
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  const [addSetlistError, setAddSetlistError] = useState<string | null>(null);
+  const [addingSetlist, setAddingSetlist] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+  /** The setlist couldn't be read: saving would wipe its songs, so it is blocked. */
+  const [editorLoadFailed, setEditorLoadFailed] = useState(false);
 
   const [newSong, setNewSong] = useState({
     title: '',
@@ -58,20 +192,20 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     duration: ''
   });
   
-  const [, setEditingSong] = useState<Song | null>(null);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [newSetlistName, setNewSetlistName] = useState('');
 
   // Setlist editor state
   const [editingSetlistId, setEditingSetlistId] = useState<string | null>(null);
   const [editingSetlistName, setEditingSetlistName] = useState('');
-  const [editingSetlistSongIds, setEditingSetlistSongIds] = useState<string[]>([]);
+  const [editorItems, setEditorItems] = useState<EditorItem[]>([]);
+  /** Set number for each position in `editorItems` (sets keep their size when songs move). */
+  const [editorSets, setEditorSets] = useState<number[]>([]);
   const [setlistEditorLoading, setSetlistEditorLoading] = useState(false);
   const [setlistEditorSaving, setSetlistEditorSaving] = useState(false);
   const [setlistEditorSearch, setSetlistEditorSearch] = useState(false);
   const [setlistSearchQuery, setSetlistSearchQuery] = useState('');
   const [setlistSelectedToAdd, setSetlistSelectedToAdd] = useState<string[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (selectedBand?.id) {
@@ -90,42 +224,59 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     
     if (songsRes.data) setSongs(songsRes.data);
     if (setlistsRes.data) setSetlists(setlistsRes.data);
+    if (songsRes.error || setlistsRes.error) {
+      setNotice({ text: errorText(songsRes.error || setlistsRes.error, 'Could not load your songs and setlists'), error: true });
+    }
     setLoading(false);
   };
 
   const handleAddSetlist = async () => {
-    if (!selectedBand?.id || !newSetlistName.trim()) return;
-    
-    const { data } = await createSetlist({
+    if (!selectedBand?.id || !newSetlistName.trim() || addingSetlist) return;
+    setAddingSetlist(true);
+    setAddSetlistError(null);
+
+    const { data, error } = await createSetlist({
       band_id: selectedBand.id,
       name: newSetlistName.trim(),
       is_template: false
     });
+    setAddingSetlist(false);
 
-    if (data) {
-      setSetlists(prev => [data, ...prev]);
-      setNewSetlistName('');
-      setShowAddSetlist(false);
+    if (error || !data) {
+      setAddSetlistError(errorText(error, 'Could not create the setlist'));
+      return;
     }
+    setSetlists(prev => [data, ...prev]);
+    setNewSetlistName('');
+    setShowAddSetlist(false);
   };
 
   const handleDeleteSong = async (songId: string) => {
-    const { error } = await deleteSong(songId);
-    if (!error) {
-      setSongs(prev => prev.filter(s => s.id !== songId));
-    }
     setActionMenuId(null);
+    const { error } = await deleteSong(songId);
+    if (error) {
+      setNotice({ text: errorText(error, 'Could not delete the song'), error: true });
+      return;
+    }
+    setSongs(prev => prev.filter(s => s.id !== songId));
   };
 
-  const handlePlaySong = (song: Song) => {
-    if (song.spotify_id) {
-      window.open(`https://open.spotify.com/track/${song.spotify_id}`, '_blank');
-    } else if (song.youtube_url) {
-      window.open(song.youtube_url, '_blank');
-    } else if (song.audio_url) {
-      window.open(song.audio_url, '_blank');
-    }
+  const handlePlaySong = async (song: Song) => {
     setActionMenuId(null);
+    // Recording first, then Spotify, then YouTube (one call keeps the tab
+    // opening inside the tap on the web).
+    const opened = await openSongResource([
+      song.audio_url,
+      song.spotify_id ? `https://open.spotify.com/track/${encodeURIComponent(song.spotify_id)}` : undefined,
+      song.youtube_url,
+    ]);
+    if (!opened) setNotice({ text: 'Could not open this song. Check its recording or links.', error: true });
+  };
+
+  const handleOpenChart = async (song: Song) => {
+    setActionMenuId(null);
+    const opened = await openSongResource(song.chart_url);
+    if (!opened) setNotice({ text: 'Could not open the chart. Try again.', error: true });
   };
 
   const handleEditSong = (song: Song) => {
@@ -141,12 +292,72 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setActionMenuId(null);
   };
 
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const setImportStatus = (text: string, error = false) => setNotice({ text, error });
+
+  // Song list from CSV/TXT (Excel, Numbers, Sheets, Notes) → songs library.
+  const handleImportList = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !selectedBand?.id) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setImportStatus('That file is too large for a song list (max 2 MB).', true);
+      return;
+    }
+    setImporting(true);
+    try {
+      const parsed = parseSongList(await file.text());
+      if (parsed.length === 0) {
+        setImportStatus('No songs found. Use one song per line or a CSV with a “title” column.', true);
+        return;
+      }
+      const known = new Set(songs.map((s) => `${s.title.toLowerCase()}|${(s.artist || '').toLowerCase()}`));
+      const fresh = parsed.filter((p) => !known.has(`${p.title.toLowerCase()}|${(p.artist || '').toLowerCase()}`));
+      if (fresh.length === 0) {
+        setImportStatus(`All ${parsed.length} songs are already in your library.`);
+        return;
+      }
+      const { error } = await bulkCreateSongs(
+        selectedBand.id,
+        fresh.map((p) => ({
+          title: p.title,
+          artist: p.artist,
+          key: p.key,
+          bpm: p.bpm,
+          duration_seconds: p.duration,
+          genre: p.genre,
+          status: 'ready' as const,
+          priority: 'medium' as const,
+        })) as Parameters<typeof bulkCreateSongs>[1],
+      );
+      if (error) {
+        setImportStatus(`Import failed: ${error.message}`, true);
+        return;
+      }
+      setImportStatus(
+        `Imported ${fresh.length} song${fresh.length === 1 ? '' : 's'}` +
+          (fresh.length < parsed.length ? ` (${parsed.length - fresh.length} already in your library).` : '.'),
+      );
+      await fetchData();
+    } catch (err) {
+      setImportStatus(errorText(err, 'Could not read that file'), true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleSeedRepertoire = async () => {
     if (!selectedBand?.id || seeding) return;
     setSeeding(true);
     const { count, error } = await seedRepertoireSongs(selectedBand.id);
-    if (!error && count > 0) {
+    if (error) {
+      setNotice({ text: errorText(error, 'Could not load the repertoire'), error: true });
+    } else if (count > 0) {
+      setNotice({ text: `Added ${plural(count, 'song')} to your library.` });
       await fetchData();
+    } else {
+      setNotice({ text: 'All repertoire songs are already in your library.' });
     }
     setSeeding(false);
   };
@@ -201,16 +412,23 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setSetlistEditorSearch(false);
     setSetlistSearchQuery('');
     setSetlistSelectedToAdd([]);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    setEditorError(null);
+    setEditorLoadFailed(false);
+    setEditorItems([]);
+    setEditorSets([]);
 
-    const { data } = await getSetlist(setlistId);
+    const { data, error } = await getSetlist(setlistId);
     if (data) {
       setEditingSetlistName(data.name);
-      const orderedSongIds = data.songs
-        .sort((a, b) => (a.set_number - b.set_number) || (a.position - b.position))
-        .map(s => s.song_id);
-      setEditingSetlistSongIds(orderedSongIds);
+      const seen = new Set<string>();
+      const ordered = [...data.songs]
+        .sort((a, b) => ((a.set_number ?? 1) - (b.set_number ?? 1)) || (a.position - b.position))
+        .filter((s) => (seen.has(s.song_id) ? false : (seen.add(s.song_id), true)));
+      setEditorItems(ordered.map((s) => ({ key: s.id || newEditorKey(), songId: s.song_id })));
+      setEditorSets(compactSets(ordered.map((s) => s.set_number ?? 1)));
+    } else {
+      setEditorError(errorText(error, 'Could not load this setlist'));
+      setEditorLoadFailed(true);
     }
     setSetlistEditorLoading(false);
   }, []);
@@ -218,40 +436,66 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const closeSetlistEditor = () => {
     setEditingSetlistId(null);
     setSetlistEditorSearch(false);
+    setEditorError(null);
   };
 
   const handleSaveSetlist = useCallback(async () => {
-    if (!editingSetlistId || !editingSetlistName.trim()) return;
+    if (!editingSetlistId || !editingSetlistName.trim() || setlistEditorSaving || editorLoadFailed) return;
     setSetlistEditorSaving(true);
+    setEditorError(null);
+    const name = editingSetlistName.trim();
+    const sets = compactSets(editorSets);
 
-    await updateSetlist(editingSetlistId, { name: editingSetlistName.trim() });
-    await replaceSetlistSongs(editingSetlistId, editingSetlistSongIds);
-
-    setSetlists(prev => prev.map(sl =>
-      sl.id === editingSetlistId
-        ? { ...sl, name: editingSetlistName.trim(), song_count: editingSetlistSongIds.length }
-        : sl
-    ));
-
-    setSetlistEditorSaving(false);
-    closeSetlistEditor();
-  }, [editingSetlistId, editingSetlistName, editingSetlistSongIds]);
+    try {
+      const { error: nameError } = await updateSetlist(editingSetlistId, { name });
+      if (nameError) {
+        setEditorError(errorText(nameError, 'Could not save the setlist'));
+        return;
+      }
+      const { error: songsError } = await replaceSetlistSongs(
+        editingSetlistId,
+        editorItems.map((it, i) => ({ song_id: it.songId, set_number: sets[i] ?? 1 })),
+      );
+      // The name is saved either way; keep the list in step with it.
+      setSetlists(prev => prev.map(sl =>
+        sl.id === editingSetlistId
+          ? { ...sl, name, ...(songsError ? {} : { song_count: editorItems.length }) }
+          : sl
+      ));
+      if (songsError) {
+        setEditorError(errorText(songsError, 'The name was saved, but the song order was not'));
+        return;
+      }
+      closeSetlistEditor();
+    } finally {
+      setSetlistEditorSaving(false);
+    }
+  }, [editingSetlistId, editingSetlistName, editorItems, editorSets, setlistEditorSaving, editorLoadFailed]);
 
   const handleDeleteSetlist = useCallback(async () => {
     if (!editingSetlistId) return;
+    setEditorError(null);
     const { error } = await deleteSetlist(editingSetlistId);
-    if (!error) {
-      setSetlists(prev => prev.filter(sl => sl.id !== editingSetlistId));
-      closeSetlistEditor();
+    if (error) {
+      setEditorError(errorText(error, 'Could not delete the setlist'));
+      return;
     }
+    setSetlists(prev => prev.filter(sl => sl.id !== editingSetlistId));
+    closeSetlistEditor();
   }, [editingSetlistId]);
 
-  const handleEditorRemoveSong = (songId: string) => {
-    setEditingSetlistSongIds(prev => prev.filter(id => id !== songId));
+  const handleEditorRemoveSong = (key: string) => {
+    const index = editorItems.findIndex((it) => it.key === key);
+    if (index < 0) return;
+    setEditorItems(prev => prev.filter((_, i) => i !== index));
+    setEditorSets(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleEditorAddSelected = () => {
-    setEditingSetlistSongIds(prev => [...prev, ...setlistSelectedToAdd]);
+    // New songs go at the end, in the last set.
+    const lastSet = editorSets[editorSets.length - 1] ?? 1;
+    setEditorItems(prev => [...prev, ...setlistSelectedToAdd.map((songId) => ({ key: newEditorKey(), songId }))]);
+    setEditorSets(prev => [...prev, ...setlistSelectedToAdd.map(() => lastSet)]);
     setSetlistSelectedToAdd([]);
     setSetlistSearchQuery('');
     setSetlistEditorSearch(false);
@@ -263,36 +507,34 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     );
   };
 
-  const handleEditorDragStart = (index: number) => setDraggedIndex(index);
+  const songsById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
 
-  const handleEditorDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleEditorDragEnd = () => {
-    if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    setEditingSetlistSongIds(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(draggedIndex, 1);
-      next.splice(dragOverIndex, 0, moved);
-      return next;
-    });
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const editorSongs = useMemo(() =>
-    editingSetlistSongIds.map(id => songs.find(s => s.id === id)).filter(Boolean) as Song[],
-    [editingSetlistSongIds, songs]
+  /** Editor rows whose song is in the library (with their position in `editorItems`). */
+  const editorRows = useMemo(
+    () =>
+      editorItems
+        .map((item, fullIndex) => ({ item, fullIndex, song: songsById.get(item.songId) }))
+        .filter((r): r is { item: EditorItem; fullIndex: number; song: Song } => !!r.song),
+    [editorItems, songsById],
   );
+  const editorSongs = useMemo(() => editorRows.map((r) => r.song), [editorRows]);
+  const editorVisibleItems = useMemo(() => editorRows.map((r) => r.item), [editorRows]);
+  const editorMultiSet = useMemo(() => new Set(editorSets).size > 1, [editorSets]);
+  const editorSetNumbers = useMemo(() => compactSets(editorSets), [editorSets]);
+
+  // Reorder moves songs; set sizes stay put, so a song dragged across a
+  // boundary joins the set it lands in.
+  const handleEditorReorder = (nextVisible: EditorItem[]) => {
+    setEditorItems((prev) => {
+      const visible = new Set(editorVisibleItems);
+      let k = 0;
+      return prev.map((it) => (visible.has(it) ? nextVisible[k++] ?? it : it));
+    });
+  };
 
   const editorFilteredLibrary = useMemo(() => {
-    let result = songs.filter(s => !editingSetlistSongIds.includes(s.id));
+    const inSetlist = new Set(editorItems.map((it) => it.songId));
+    let result = songs.filter(s => !inSetlist.has(s.id));
     if (setlistSearchQuery) {
       const q = setlistSearchQuery.toLowerCase();
       result = result.filter(s =>
@@ -300,9 +542,11 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       );
     }
     return result;
-  }, [songs, editingSetlistSongIds, setlistSearchQuery]);
+  }, [songs, editorItems, setlistSearchQuery]);
 
   // ── Render ──
+
+  const formatClock = (seconds?: number) => (seconds ? formatDuration(seconds) : '—');
 
   return (
     <motion.div
@@ -316,335 +560,252 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
         touchAction: 'pan-y',
       }}
     >
-      {/* ═══ STICKY HEADER ═══ */}
-      <div
-        className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-        style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          paddingBottom: '14px',
-        }}
-      >
-        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              aria-label="Go back"
-              className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                MUSIC & REPERTOIRE
-              </span>
-              <h1 className="text-[22px] font-black uppercase text-foreground leading-none">
-                SETLISTS & SONGS
-              </h1>
-            </div>
-          </div>
+      <ScreenHeader
+        onBack={onClose}
+        backLabel="Go back"
+        overline="Music & repertoire"
+        title="Setlists & songs"
+        actions={
+          <>
+            {viewMode === 'songs' && (
+              <IconButton
+                label="Import song list"
+                icon={<Upload />}
+                disabled={importing}
+                onClick={() => importInputRef.current?.click()}
+              />
+            )}
+            <IconButton
+              label={viewMode === 'songs' ? 'Add song' : 'New setlist'}
+              variant="filled"
+              icon={<Plus />}
+              onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
+            />
+          </>
+        }
+      />
 
-          <button
-            type="button"
-            onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
-            className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs active:scale-95 transition-all shrink-0"
-            aria-label="Add item"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* ═══ MAIN CONTENT ═══ */}
-      <div className="p-4 flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full pb-32">
-        {/* View Toggle */}
+      <input
+        ref={importInputRef}
+        type="file"
+        accept={SONG_LIST_ACCEPT}
+        className="hidden"
+        onChange={handleImportList}
+        aria-hidden
+        tabIndex={-1}
+      />
+      <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+        {notice && (
+          notice.error ? (
+            <FormError>{notice.text}</FormError>
+          ) : (
+            <p role="status" className="px-4 py-3 rounded-[16px] bg-card bw-body-sm">
+              {notice.text}
+            </p>
+          )
+        )}
+        {/* View toggle (Figma Selector MD) */}
         <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode('songs')}
-            className={cn(
-              'flex-1 py-2.5 rounded-[10px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border',
-              viewMode === 'songs'
-                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
-            )}
-          >
-            <Music2 className="w-4 h-4" />
-            Songs ({songs.length})
-          </button>
-          <button
-            onClick={() => setViewMode('setlists')}
-            className={cn(
-              'flex-1 py-2.5 rounded-[10px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border',
-              viewMode === 'setlists'
-                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
-            )}
-          >
-            <ListMusic className="w-4 h-4" />
-            Setlists ({setlists.length})
-          </button>
+          <Selector size="md" selected={viewMode === 'songs'} onClick={() => setViewMode('songs')} count={songs.length}>
+            Songs
+          </Selector>
+          <Selector size="md" selected={viewMode === 'setlists'} onClick={() => setViewMode('setlists')} count={setlists.length}>
+            Setlists
+          </Selector>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={viewMode === 'songs' ? 'Search songs by title or artist...' : 'Search setlists...'}
-            className="w-full px-4 py-2.5 pl-10 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-          />
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-        </div>
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          label={viewMode === 'songs' ? 'Search songs' : 'Search setlists'}
+          placeholder={viewMode === 'songs' ? 'Search songs, artists…' : 'Search setlists…'}
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            {/* Stats Card */}
+            {/* Band repertoire (Figma: inverse card) */}
             {(songs.length > 0 || setlists.length > 0) && (
-              <motion.div
+              <motion.section
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-card rounded-[16px] p-5 border border-foreground/10 shadow-xs flex flex-col gap-4"
+                className="rounded-[24px] p-5 bg-surface-inverse text-surface-inverse-foreground flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                      BAND REPERTOIRE
-                    </span>
-                    <div className="flex items-baseline gap-2 mt-0.5">
-                      <span className="text-3xl font-black text-foreground">{stats.totalSongs}</span>
-                      <span className="text-xs font-semibold text-foreground/50">total songs</span>
+                <h2 className="bw-label-sm">Band repertoire</h2>
+                <dl className="flex flex-wrap gap-x-4 gap-y-3">
+                  {[
+                    { label: 'Songs', value: stats.totalSongs },
+                    { label: 'Duration', value: stats.totalDuration || '0m' },
+                    { label: 'Setlists', value: stats.totalSetlists },
+                    { label: 'Avg BPM', value: stats.avgBpm ?? '—' },
+                  ].map((s) => (
+                    <div key={s.label} className="flex flex-col gap-1">
+                      <dt className="bw-label-xs">{s.label}</dt>
+                      <dd className="bw-h2">{s.value}</dd>
                     </div>
-                  </div>
-                  <div className="w-10 h-10 rounded-[10px] bg-foreground/5 flex items-center justify-center text-foreground/70">
-                    <Disc3 className="w-5 h-5 text-primary" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2.5">
-                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Timer className="w-3.5 h-3.5 text-foreground/50" />
-                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Duration</span>
-                    </div>
-                    <span className="text-base font-bold text-foreground">{stats.totalDuration || '0m'}</span>
-                  </div>
-
-                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <ListMusic className="w-3.5 h-3.5 text-foreground/50" />
-                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Setlists</span>
-                    </div>
-                    <span className="text-base font-bold text-foreground">{stats.totalSetlists}</span>
-                  </div>
-
-                  <div className="bg-foreground/5 rounded-[10px] p-3 border border-foreground/5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Zap className="w-3.5 h-3.5 text-foreground/50" />
-                      <span className="text-[10px] font-bold text-foreground/50 uppercase">Avg BPM</span>
-                    </div>
-                    <span className="text-base font-bold text-foreground">{stats.avgBpm || '-'}</span>
-                  </div>
-                </div>
+                  ))}
+                </dl>
 
                 {stats.totalSongs > 0 && (
-                  <div className="pt-2 border-t border-foreground/10">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-foreground/50 mb-2">
-                      <span>STATUS READINESS</span>
-                      <span>{stats.ready} of {stats.totalSongs} ready</span>
+                  <>
+                    <h3 className="bw-label-xs" aria-label={`Status readiness: ${stats.ready} of ${stats.totalSongs} ready`}>
+                      Status readiness
+                    </h3>
+                    <ReadinessDots ready={stats.ready} learning={stats.learning} suggested={stats.suggested} total={stats.totalSongs} />
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {[
+                        { label: 'Ready', value: stats.ready, color: 'var(--accent)' },
+                        { label: 'Learning', value: stats.learning, color: 'currentColor' },
+                        { label: 'Suggested', value: stats.suggested, color: 'var(--dot-mid)' },
+                      ].map((l) => (
+                        <span key={l.label} className="flex items-center gap-2 bw-label-sm">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} aria-hidden />
+                          {l.label} {l.value}
+                        </span>
+                      ))}
                     </div>
-                    <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden flex">
-                      <div style={{ width: `${(stats.ready / stats.totalSongs) * 100}%` }} className="bg-green-500 h-full" />
-                      <div style={{ width: `${(stats.learning / stats.totalSongs) * 100}%` }} className="bg-amber-500 h-full" />
-                      <div style={{ width: `${(stats.suggested / stats.totalSongs) * 100}%` }} className="bg-foreground/30 h-full" />
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-[10px] font-semibold text-foreground/60">
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /> Ready ({stats.ready})</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Learning ({stats.learning})</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-foreground/30" /> Suggested ({stats.suggested})</span>
-                    </div>
-                  </div>
+                  </>
                 )}
-              </motion.div>
+              </motion.section>
             )}
 
-            {/* List Section */}
+            {/* List */}
             {viewMode === 'songs' ? (
               filteredSongs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-foreground/40 text-center">
-                  <Music2 className="w-12 h-12 mb-3 text-foreground/20" />
-                  <p className="font-bold text-base text-foreground mb-1">No songs in library</p>
-                  <p className="text-xs text-foreground/50 max-w-xs">Add your first song or load the curated repertoire to build your catalog.</p>
-                  <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
-                    <button 
-                      onClick={() => setShowAddSong(true)}
-                      className="px-4 py-2.5 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider shadow-xs hover:opacity-95 transition-opacity"
-                    >
-                      Add First Song
-                    </button>
-                    <button
-                      onClick={handleSeedRepertoire}
-                      disabled={seeding}
-                      className="px-4 py-2.5 bg-foreground/10 hover:bg-foreground/15 text-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50"
-                    >
-                      {seeding ? (
-                        <span className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...</span>
-                      ) : (
-                        'Load 700+ Songs'
-                      )}
-                    </button>
+                <Card className="items-center text-center py-10 gap-4">
+                  <Music2 className="w-10 h-10 text-muted-foreground" />
+                  <div className="flex flex-col gap-1">
+                    <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No songs in library'}</h2>
+                    <p className="bw-body-sm text-muted-foreground max-w-xs">
+                      {searchQuery
+                        ? 'Try another title or artist.'
+                        : 'Add your first song or load the curated repertoire to build your catalogue.'}
+                    </p>
                   </div>
-                </div>
+                  {!searchQuery && (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowAddSong(true)}>
+                        Add first song
+                      </PillButton>
+                      <PillButton size="md" variant="outline" fullWidth={false} loading={importing} onClick={() => importInputRef.current?.click()}>
+                        Import list (CSV/TXT)
+                      </PillButton>
+                      <PillButton size="md" variant="outline" fullWidth={false} loading={seeding} onClick={handleSeedRepertoire}>
+                        Load 700+ songs
+                      </PillButton>
+                    </div>
+                  )}
+                </Card>
               ) : (
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                      ALL SONGS ({filteredSongs.length})
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {filteredSongs.map((song, i) => (
-                      <motion.div
+                <ul className="flex flex-col gap-4" aria-label={`All songs (${filteredSongs.length})`}>
+                  {filteredSongs.map((song, i) => {
+                    const canPlay = !!(song.spotify_id || song.youtube_url || song.audio_url);
+                    const hasChart = !!song.chart_url;
+                    const open = actionMenuId === song.id;
+                    return (
+                      <motion.li
                         key={song.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                        className="bg-card rounded-[14px] p-3.5 border border-foreground/10 shadow-xs flex items-center gap-3 relative hover:border-foreground/20 transition-all"
+                        className="relative"
                       >
-                        <div className="text-foreground/30 cursor-grab shrink-0">
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-sm text-foreground truncate">{song.title}</h3>
-                          <div className="flex items-center gap-2.5 mt-0.5">
-                            {song.artist && <span className="text-xs text-foreground/60 truncate">{song.artist}</span>}
-                            {song.bpm && <span className="text-[11px] text-foreground/40 font-medium">{song.bpm} BPM</span>}
-                            {song.key && (
-                              <span className="text-[10px] bg-foreground/10 text-foreground px-1.5 py-0.5 rounded-[4px] font-semibold">
-                                {song.key}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1 text-foreground/40 shrink-0">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span className="text-xs font-medium">{formatDuration(song.duration_seconds)}</span>
-                        </div>
-
-                        <span className={cn(
-                          'text-[9px] font-bold uppercase px-2 py-0.5 rounded-[6px] shrink-0 border',
-                          song.status === 'ready'
-                            ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
-                            : song.status === 'learning'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                            : 'bg-foreground/5 text-foreground/50 border-foreground/10'
-                        )}>
-                          {song.status}
-                        </span>
-
-                        <div className="relative shrink-0">
-                          <button 
-                            onClick={() => setActionMenuId(actionMenuId === song.id ? null : song.id)}
-                            aria-label="Actions"
-                            className="w-8 h-8 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors"
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-[24px] bg-card text-card-foreground">
+                          <IconButton
+                            label={`Play ${song.title}`}
+                            size="sm"
+                            icon={<Play />}
+                            disabled={!canPlay}
+                            onClick={() => handlePlaySong(song)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setActionMenuId(open ? null : song.id)}
+                            aria-haspopup="menu"
+                            aria-expanded={open}
+                            aria-label={`Actions for ${song.title}`}
+                            className="flex-1 min-w-0 flex items-center gap-3 text-left"
                           >
-                            <MoreHorizontal className="w-4 h-4 text-foreground/50" />
-                          </button>
-                          <AnimatePresence>
-                            {actionMenuId === song.id && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="absolute right-0 top-9 bg-card rounded-[12px] shadow-lg border border-foreground/15 p-1 z-20 min-w-[140px]"
-                              >
-                                <button
-                                  onClick={() => handlePlaySong(song)}
-                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
-                                >
-                                  <Play className="w-3.5 h-3.5 text-foreground/60" /> Play
-                                </button>
-                                <button
-                                  onClick={() => handleEditSong(song)}
-                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-foreground/60" /> Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSong(song.id)}
-                                  className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-destructive/10 rounded-[8px] text-left text-xs font-semibold text-destructive transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                                </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )
-            ) : (
-              filteredSetlists.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-foreground/40 text-center">
-                  <ListMusic className="w-12 h-12 mb-3 text-foreground/20" />
-                  <p className="font-bold text-base text-foreground mb-1">No setlists created</p>
-                  <p className="text-xs text-foreground/50 max-w-xs">Organize your repertoire into performance sets, weddings, or gig playlists.</p>
-                  <button 
-                    onClick={() => setShowAddSetlist(true)}
-                    className="mt-5 px-4 py-2.5 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider shadow-xs hover:opacity-95 transition-opacity"
-                  >
-                    Create First Setlist
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                      ALL SETLISTS ({filteredSetlists.length})
-                    </span>
-                  </div>
-                  {filteredSetlists.map((setlist, i) => (
-                    <motion.div
-                      key={setlist.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                      onClick={() => openSetlistEditor(setlist.id)}
-                      className="bg-card rounded-[16px] p-4 border border-foreground/10 shadow-xs cursor-pointer hover:border-foreground/20 hover:shadow-md transition-all active:scale-[0.99] group"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
-                          {setlist.name}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          {setlist.is_template && (
-                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 bg-primary/10 text-primary rounded-[6px] border border-primary/20">
-                              Template
+                            <span className="flex-1 min-w-0 flex flex-col gap-1">
+                              <span className="bw-label-md truncate">{song.title}</span>
+                              <span className="bw-body-sm text-muted-foreground truncate">
+                                {[song.artist, song.key].filter(Boolean).join(' · ') || 'Unknown artist'}
+                              </span>
                             </span>
-                          )}
-                          <ChevronRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground/70 transition-colors" />
+                            <span className="flex flex-col items-end gap-1 shrink-0">
+                              <span className="bw-label-md">{formatClock(song.duration_seconds)}</span>
+                              {song.bpm ? <span className="bw-label-xs text-muted-foreground">{song.bpm} BPM</span> : null}
+                            </span>
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-foreground/50">
-                        <span className="flex items-center gap-1.5">
-                          <Music2 className="w-3.5 h-3.5 text-foreground/40" />
-                          {setlist.song_count || 0} songs
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-foreground/40" />
-                          {formatDuration(setlist.total_duration_seconds)}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                        <AnimatePresence>
+                          {open && (
+                            <RowMenu
+                              items={[
+                                ...(canPlay ? [{ label: 'Play', icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
+                                ...(hasChart ? [{ label: 'Open chart', icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
+                                { label: 'Edit', icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
+                                ...(isAdmin
+                                  ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true }]
+                                  : []),
+                              ]}
+                            />
+                          )}
+                        </AnimatePresence>
+                      </motion.li>
+                    );
+                  })}
+                </ul>
               )
+            ) : filteredSetlists.length === 0 ? (
+              <Card className="items-center text-center py-10 gap-4">
+                <ListMusic className="w-10 h-10 text-muted-foreground" />
+                <div className="flex flex-col gap-1">
+                  <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No setlists yet'}</h2>
+                  <p className="bw-body-sm text-muted-foreground max-w-xs">
+                    {searchQuery ? 'Try another name.' : 'Organise your repertoire into performance sets, weddings or gig playlists.'}
+                  </p>
+                </div>
+                {!searchQuery && (
+                  <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowAddSetlist(true)}>
+                    Create first setlist
+                  </PillButton>
+                )}
+              </Card>
+            ) : (
+              <ul className="flex flex-col gap-4" aria-label={`All setlists (${filteredSetlists.length})`}>
+                {filteredSetlists.map((setlist, i) => (
+                  <motion.li
+                    key={setlist.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.04, 0.3) }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openSetlistEditor(setlist.id)}
+                      className="w-full flex items-center gap-3 p-4 rounded-[24px] bg-card text-card-foreground text-left active:scale-[0.99] transition-transform"
+                    >
+                      <span className="w-11 h-11 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0">
+                        <ListMusic className="w-5 h-5" />
+                      </span>
+                      <span className="flex-1 min-w-0 flex flex-col gap-1">
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className="bw-h3 truncate">{setlist.name}</span>
+                          {setlist.is_template && <Tag variant="accent">Template</Tag>}
+                        </span>
+                        <span className="bw-body-sm text-muted-foreground">
+                          {plural(setlist.song_count || 0, 'song')} · {formatClock(setlist.total_duration_seconds)}
+                        </span>
+                      </span>
+                      <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
+                    </button>
+                  </motion.li>
+                ))}
+              </ul>
             )}
           </>
         )}
@@ -660,77 +821,40 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             setNewSong({ title: '', artist: '', bpm: '', key: '', duration: '' });
           }}
           bandId={selectedBand.id}
+          song={editingSong}
           onSongAdded={fetchData}
         />
       )}
 
-      {/* Add Setlist Modal */}
-      <AnimatePresence>
-        {showAddSetlist && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-end justify-center"
-            onClick={() => setShowAddSetlist(false)}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="w-full max-w-md bg-card border-t border-foreground/10 rounded-t-[24px] p-6 shadow-2xl"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-5" />
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                    NEW SETLIST
-                  </span>
-                  <h2 className="text-xl font-black text-foreground">Create Setlist</h2>
-                </div>
-                <button
-                  onClick={() => setShowAddSetlist(false)}
-                  className="w-8 h-8 rounded-full border border-foreground/20 bg-foreground/5 flex items-center justify-center text-foreground hover:bg-foreground/10 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* New setlist (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={showAddSetlist}
+        onClose={() => {
+          setShowAddSetlist(false);
+          setAddSetlistError(null);
+        }}
+        overline="New setlist"
+        title="Create setlist"
+        zIndex={80}
+        footer={
+          <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={handleAddSetlist} loading={addingSetlist} disabled={!newSetlistName.trim() || addingSetlist}>
+            Create setlist
+          </PillButton>
+        }
+      >
+        <PillField
+          tone="sheet"
+          label="Setlist name *"
+          value={newSetlistName}
+          onChange={(e) => setNewSetlistName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSetlist())}
+          placeholder="Jazz night 1st set, wedding main set…"
+          autoFocus
+        />
+        {addSetlistError && <FormError className="mt-3">{addSetlistError}</FormError>}
+      </BwSheet>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-2">
-                    Setlist Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newSetlistName}
-                    onChange={(e) => setNewSetlistName(e.target.value)}
-                    placeholder="e.g., Jazz Night 1st Set, Wedding Main Set"
-                    className="w-full h-12 px-4 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-                    autoFocus
-                  />
-                </div>
-                <button
-                  onClick={handleAddSetlist}
-                  disabled={!newSetlistName.trim()}
-                  className={cn(
-                    'w-full h-12 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground shadow-xs active:scale-[0.98]',
-                    !newSetlistName.trim() && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  <Check className="w-4 h-4" />
-                  Create Setlist
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ═══ SETLIST EDITOR OVERLAY ═══ */}
+      {/* ═══ SETLIST EDITOR ═══ */}
       <AnimatePresence>
         {editingSetlistId && (
           <motion.div
@@ -738,7 +862,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-0 z-[80] bg-background text-foreground flex flex-col overflow-y-auto"
+            className="fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
             style={{
               overscrollBehaviorX: 'none',
               touchAction: 'pan-y',
@@ -746,214 +870,160 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           >
             {setlistEditorLoading ? (
               <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <>
-                {/* Editor Sticky Header */}
-                <div
-                  className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-                  style={{
-                    paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-                    paddingBottom: '14px',
-                  }}
-                >
-                  <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-                    <button
-                      onClick={closeSetlistEditor}
-                      className="flex items-center gap-2 text-foreground/70 hover:text-foreground transition-colors font-bold text-xs uppercase tracking-wider"
-                    >
-                      <ArrowLeft className="w-4 h-4" /> Back to Repertoire
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleDeleteSetlist}
-                        aria-label="Delete setlist"
-                        className="w-9 h-9 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={handleSaveSetlist}
-                        disabled={setlistEditorSaving || !editingSetlistName.trim()}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs hover:opacity-95 transition-all disabled:opacity-50"
-                      >
-                        {setlistEditorSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        Save Setlist
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <motion.div layoutScroll className="flex-1 overflow-y-auto">
+                  <ScreenHeader
+                    onBack={closeSetlistEditor}
+                    backLabel="Back to repertoire"
+                    overline={`Setlist · ${plural(editorSongs.length, 'song')}`}
+                    title={editingSetlistName.trim() || 'Setlist'}
+                    titleSize="h1"
+                    actions={<IconButton label="Delete setlist" icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />}
+                  />
 
-                <div className="p-4 flex-1 flex flex-col gap-4 max-w-2xl mx-auto w-full pb-20 relative">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1 block">
-                      SETLIST NAME
-                    </label>
-                    <input
-                      type="text"
+                  <div className="px-4 pt-6 pb-8 flex flex-col gap-6 max-w-2xl mx-auto w-full">
+                    <PillField
+                      label="Setlist name"
                       value={editingSetlistName}
                       onChange={(e) => setEditingSetlistName(e.target.value)}
-                      className="w-full text-2xl font-black bg-transparent border-b border-foreground/15 focus:border-primary outline-none placeholder:text-foreground/20 pb-2 text-foreground transition-colors"
-                      placeholder="Setlist Name"
+                      placeholder="Setlist name"
                     />
-                  </div>
 
-                  {/* Add Songs Trigger */}
-                  {!setlistEditorSearch && (
-                    <button
-                      onClick={() => setSetlistEditorSearch(true)}
-                      className="w-full bg-foreground/5 border border-foreground/10 p-3 rounded-[12px] flex items-center gap-3 hover:bg-foreground/10 transition-colors group"
-                    >
-                      <Search className="w-4 h-4 text-foreground/40" />
-                      <span className="text-xs font-bold text-foreground/50 group-hover:text-foreground/80">
-                        Add songs from library...
-                      </span>
-                      <div className="ml-auto bg-card px-2 py-0.5 rounded-[6px] text-[10px] font-bold text-foreground/60 border border-foreground/10 shadow-xs">
-                        {songs.length} available
-                      </div>
-                    </button>
-                  )}
-
-                  {/* Search Overlay */}
-                  <AnimatePresence>
-                    {setlistEditorSearch && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="bg-card border border-foreground/15 rounded-[16px] overflow-hidden shadow-2xl flex flex-col"
+                    {/* Add songs from the library */}
+                    {!setlistEditorSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => setSetlistEditorSearch(true)}
+                        className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-left"
                       >
-                        <div className="p-3 border-b border-foreground/10 flex items-center gap-3 bg-card shrink-0">
-                          <Search className="w-4 h-4 text-foreground/50" />
-                          <input
-                            autoFocus
-                            placeholder="Search library..."
-                            value={setlistSearchQuery}
-                            onChange={e => setSetlistSearchQuery(e.target.value)}
-                            className="flex-1 text-xs font-bold outline-none bg-transparent text-foreground placeholder:text-foreground/30"
-                          />
-                          <button 
-                            onClick={() => { setSetlistEditorSearch(false); setSetlistSearchQuery(''); setSetlistSelectedToAdd([]); }} 
-                            className="p-1.5 rounded-full hover:bg-foreground/10 text-foreground/60 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="px-3 py-1.5 bg-foreground/5 border-b border-foreground/10 flex items-center justify-between shrink-0">
-                          <span className="text-[10px] font-bold text-foreground/40">{editorFilteredLibrary.length} results</span>
-                          {setlistSelectedToAdd.length > 0 && (
-                            <span className="text-[10px] font-bold text-primary">{setlistSelectedToAdd.length} selected</span>
-                          )}
-                        </div>
-
-                        <div className="max-h-64 overflow-y-auto p-2 space-y-1.5">
-                          {editorFilteredLibrary.length === 0 && (
-                            <div className="p-6 text-center text-foreground/40">
-                              <p className="text-xs font-bold">No matching songs</p>
+                        <Search className="w-5 h-5 shrink-0" aria-hidden />
+                        <span className="flex-1 min-w-0 truncate bw-body-lg text-muted-foreground/60">Add songs from library…</span>
+                        <Tag variant="subtle">{songs.length} available</Tag>
+                      </button>
+                    ) : (
+                      <AnimatePresence>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+                          <Card className="gap-4">
+                            <div className="flex items-center gap-2">
+                              <SearchField
+                                className="flex-1"
+                                value={setlistSearchQuery}
+                                onChange={setSetlistSearchQuery}
+                                label="Search library"
+                                placeholder="Search library…"
+                                autoFocus
+                              />
+                              <IconButton
+                                label="Close library search"
+                                variant="ghost"
+                                icon={<X />}
+                                onClick={() => {
+                                  setSetlistEditorSearch(false);
+                                  setSetlistSearchQuery('');
+                                  setSetlistSelectedToAdd([]);
+                                }}
+                              />
                             </div>
-                          )}
-                          {editorFilteredLibrary.map(song => {
-                            const isSelected = setlistSelectedToAdd.includes(song.id);
+                            <div className="flex items-center justify-between bw-label-sm text-muted-foreground">
+                              <span>{plural(editorFilteredLibrary.length, 'result')}</span>
+                              {setlistSelectedToAdd.length > 0 && <span className="text-foreground">{setlistSelectedToAdd.length} selected</span>}
+                            </div>
+                            <div className="max-h-72 overflow-y-auto -mx-1 px-1 flex flex-col gap-2">
+                              {editorFilteredLibrary.length === 0 && (
+                                <p className="py-6 text-center bw-body-sm text-muted-foreground">No matching songs</p>
+                              )}
+                              {editorFilteredLibrary.map((song) => {
+                                const isSelected = setlistSelectedToAdd.includes(song.id);
+                                return (
+                                  <button
+                                    key={song.id}
+                                    type="button"
+                                    aria-pressed={isSelected}
+                                    onClick={() => handleEditorToggleSelect(song.id)}
+                                    className={cn(
+                                      'w-full flex items-center gap-3 p-3 pl-4 rounded-[16px] text-left transition-colors',
+                                      isSelected ? 'bg-accent text-accent-foreground' : 'bg-field text-foreground',
+                                    )}
+                                  >
+                                    <span className="flex-1 min-w-0 flex flex-col gap-1">
+                                      <span className="bw-label-md truncate">{song.title}</span>
+                                      <span className={cn('bw-body-sm truncate', !isSelected && 'text-muted-foreground')}>
+                                        {song.artist || 'Unknown artist'}
+                                      </span>
+                                    </span>
+                                    <span className="bw-label-sm shrink-0">{formatClock(song.duration_seconds)}</span>
+                                    {isSelected ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <Plus className="w-5 h-5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <PillButton
+                              size="md"
+                              variant="dark"
+                              icon={<Plus className="w-4 h-4" />}
+                              onClick={handleEditorAddSelected}
+                              disabled={setlistSelectedToAdd.length === 0}
+                            >
+                              Add {plural(setlistSelectedToAdd.length, 'song')}
+                            </PillButton>
+                          </Card>
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+
+                    {/* Setlist order */}
+                    <section className="flex flex-col gap-3">
+                      <h2 className="bw-label-sm text-muted-foreground">Setlist order ({plural(editorSongs.length, 'song')})</h2>
+                      {editorSongs.length === 0 ? (
+                        <Card className="items-center text-center py-10 gap-3">
+                          <ListMusic className="w-10 h-10 text-muted-foreground" />
+                          <h3 className="bw-h3">Setlist is empty</h3>
+                          <p className="bw-body-sm text-muted-foreground max-w-[240px]">Tap "Add songs from library" above to build your set.</p>
+                        </Card>
+                      ) : (
+                        <Reorder.Group
+                          as="ol"
+                          axis="y"
+                          values={editorVisibleItems}
+                          onReorder={handleEditorReorder}
+                          className="flex flex-col gap-2"
+                        >
+                          {editorRows.map(({ item, fullIndex, song }, i) => {
+                            const firstOfSet =
+                              editorMultiSet && (fullIndex === 0 || editorSets[fullIndex] !== editorSets[fullIndex - 1]);
                             return (
-                              <button
-                                key={song.id}
-                                onClick={() => handleEditorToggleSelect(song.id)}
-                                className={cn(
-                                  'w-full p-2.5 rounded-[10px] flex items-center justify-between transition-all text-left border',
-                                  isSelected 
-                                    ? 'border-primary bg-primary/10 text-foreground' 
-                                    : 'border-foreground/5 bg-card hover:border-foreground/20 text-foreground'
-                                )}
-                              >
-                                <div className="min-w-0">
-                                  <div className="font-bold text-xs truncate">{song.title}</div>
-                                  <div className="text-[10px] text-foreground/50 uppercase">
-                                    {song.artist || 'Unknown'}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0 ml-2">
-                                  <span className="text-[10px] font-medium text-foreground/40">
-                                    {formatDuration(song.duration_seconds)}
-                                  </span>
-                                  {isSelected ? (
-                                    <CheckCircle2 className="w-4 h-4 text-primary" />
-                                  ) : (
-                                    <Plus className="w-4 h-4 text-foreground/30" />
-                                  )}
-                                </div>
-                              </button>
+                              <SetlistOrderRow
+                                key={item.key}
+                                item={item}
+                                song={song}
+                                index={i}
+                                setLabel={firstOfSet ? `Set ${editorSetNumbers[fullIndex]}` : undefined}
+                                duration={formatClock(song.duration_seconds)}
+                                onRemove={() => handleEditorRemoveSong(item.key)}
+                              />
                             );
                           })}
-                        </div>
-
-                        <div className="p-3 border-t border-foreground/10 bg-card shrink-0">
-                          <button
-                            onClick={handleEditorAddSelected}
-                            disabled={setlistSelectedToAdd.length === 0}
-                            className="w-full py-2.5 bg-primary text-primary-foreground rounded-[10px] text-xs font-bold uppercase tracking-wider shadow-xs hover:opacity-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                          >
-                            Add {setlistSelectedToAdd.length} Songs <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Songs in this Setlist */}
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                      SETLIST ORDER ({editorSongs.length} SONGS)
-                    </span>
+                        </Reorder.Group>
+                      )}
+                    </section>
                   </div>
+                </motion.div>
 
-                  {editorSongs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center py-16 text-foreground/40 border border-dashed border-foreground/15 rounded-[16px] p-6">
-                      <ListMusic className="w-10 h-10 mb-3 text-foreground/20" />
-                      <h4 className="text-sm font-bold text-foreground">Setlist is empty</h4>
-                      <p className="text-xs text-foreground/40 mt-1 max-w-[240px]">
-                        Tap "Add songs from library" above to populate your set.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {editorSongs.map((song, i) => (
-                        <div
-                          key={`${song.id}-${i}`}
-                          draggable
-                          onDragStart={() => handleEditorDragStart(i)}
-                          onDragOver={(e) => handleEditorDragOver(e, i)}
-                          onDragEnd={handleEditorDragEnd}
-                          className={cn(
-                            'bg-card border p-3 rounded-[12px] flex items-center gap-3 shadow-xs transition-all cursor-grab active:cursor-grabbing select-none',
-                            draggedIndex === i && 'opacity-40 scale-95',
-                            dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && 'border-primary ring-2 ring-primary/20',
-                            draggedIndex === null && 'border-foreground/10 hover:border-foreground/20'
-                          )}
-                        >
-                          <GripVertical className="w-4 h-4 text-foreground/30 shrink-0" />
-                          <div className="w-6 h-6 rounded-full bg-foreground/10 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
-                            {i + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-xs truncate text-foreground">{song.title}</div>
-                            <div className="text-[10px] text-foreground/50 uppercase truncate">{song.artist || 'Unknown'}</div>
-                          </div>
-                          <span className="text-[10px] font-medium text-foreground/40 shrink-0">
-                            {formatDuration(song.duration_seconds)}
-                          </span>
-                          <button
-                            onClick={() => handleEditorRemoveSong(song.id)}
-                            className="p-1.5 text-foreground/30 hover:text-destructive hover:bg-destructive/10 rounded-[6px] transition-colors shrink-0"
-                            aria-label="Remove song"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+                  <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
+                    {editorError && <FormError>{editorError}</FormError>}
+                    <PillButton
+                      onClick={handleSaveSetlist}
+                      loading={setlistEditorSaving}
+                      disabled={!editingSetlistName.trim() || editorLoadFailed || setlistEditorSaving}
+                      icon={<Save className="w-[18px] h-[18px]" />}
+                    >
+                      Save setlist
+                    </PillButton>
+                  </div>
                 </div>
               </>
             )}

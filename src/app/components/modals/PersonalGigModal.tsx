@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mic2, Calendar, Clock, MapPin, DollarSign, FileText, Sparkles, Loader2, Lock } from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
+import { X, Calendar, Clock, MapPin, CurrencyIcon, Users, Check } from '@/app/components/icons';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
+import { PillButton, PillField, FormError } from '@/app/components/bw/Form';
 import { DatePicker } from '@/app/components/ui/DatePicker';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
 import { enqueueMutation } from '@/lib/offline/syncQueue';
 import { isOfflineError, reportNetworkStatus, getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
+import { todayLocal } from '../../../lib/dates';
 
 interface PersonalGigModalProps {
   isOpen: boolean;
@@ -24,7 +27,8 @@ interface PersonalGigModalProps {
     notes?: string;
   } | null;
   onSaved?: (event: Event) => void;
-  onOpenUpgradeSheet?: () => void;
+  /** Opens band creation on top of this form (the form stays open). */
+  onCreateBand?: () => void;
 }
 
 export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
@@ -33,7 +37,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
   userId,
   initialData,
   onSaved,
-  onOpenUpgradeSheet,
+  onCreateBand,
 }) => {
   const isEditing = Boolean(initialData?.id);
 
@@ -58,7 +62,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
       setFee(initialData.fee != null ? String(initialData.fee) : '');
       setNotes(initialData.notes || '');
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocal();
       setTitle('');
       setEventDate(today);
       setStartTime('20:00');
@@ -255,236 +259,172 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
 
   if (!isOpen) return null;
 
+  const canSubmit = !!title.trim() && !!eventDate && !!startTime && !!endTime;
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-        />
-
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-lg bg-background border border-foreground/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-foreground/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0">
-                <Mic2 className="w-5 h-5 text-accent-gig" />
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-accent-gig leading-tight">
-                  PERSONAL GIG
-                </div>
-                <h2 className="text-lg font-black text-foreground uppercase tracking-tight leading-tight mt-0.5">
-                  {isEditing ? 'EDIT PERSONAL GIG' : 'LOG PERSONAL GIG'}
-                </h2>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-foreground/15 flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors"
+      {/* Figma: Modal / Log personal gig — full screen, pink header block */}
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="personal-gig-title"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ type: 'tween', duration: 0.25 }}
+        className="bw-pane-detail fixed inset-0 z-[110] flex flex-col bg-background text-foreground"
+      >
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            {/* Header block */}
+            <header
+              className="bg-accent-personal text-accent-personal-foreground px-4 pb-6 flex flex-col gap-3"
+              style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
             >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Form Body */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-            {error && (
-              <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-semibold text-destructive">
-                {error}
+              <div className="max-w-xl mx-auto w-full flex flex-col gap-3">
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <p className="bw-label-sm opacity-80">Personal gig</p>
+                    <h2 id="personal-gig-title" className="bw-display-lg [overflow-wrap:anywhere]">
+                      {isEditing ? 'Edit personal gig' : 'Log personal gig'}
+                    </h2>
+                  </div>
+                  <RailCover pane />
+                  <HeaderAction pane label="Close" variant="event" icon={<X />} onClick={onClose} className="self-start" />
+                </div>
+                <p className="bw-body-md">
+                  Only you can see it. It blocks the date for your bands and syncs to your earnings.
+                </p>
               </div>
-            )}
+            </header>
 
-            {/* Gig Title */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                <Mic2 className="w-3.5 h-3.5 text-accent-gig" />
-                Gig Title <span className="text-accent-gig">*</span>
-              </label>
-              <input
-                type="text"
+            <div className="px-4 pt-6 pb-6 max-w-xl mx-auto w-full flex flex-col gap-5">
+              {error && <FormError>{error}</FormError>}
+
+              <PillField
+                label="Gig title *"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Solo Acoustic Set @ The Blue Room"
-                className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent-gig transition-colors"
+                placeholder="e.g. Solo acoustic set @ The Blue Room"
                 required
                 autoFocus
               />
-            </div>
 
-            {/* Date & Time Group */}
-            <div className="space-y-3">
-              {/* Event Date */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-accent-gig" />
-                  Date <span className="text-accent-gig">*</span>
-                </label>
+              <FieldShell label="Date *" icon={<Calendar className="w-5 h-5" />}>
                 <DatePicker
                   value={eventDate}
                   onChange={setEventDate}
-                  accentColor="var(--accent-gig)"
-                  placeholder="Select event date..."
-                  className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
+                  accentColor="var(--accent-personal)"
+                  placeholder="Select date…"
+                  showIcon={false}
+                  className={PICKER_CLASS}
                 />
-              </div>
+              </FieldShell>
 
-              {/* Start & End Times */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Start Time */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-accent-gig" />
-                    Start <span className="text-accent-gig">*</span>
-                  </label>
+                <FieldShell label="Start *" icon={<Clock className="w-5 h-5" />}>
                   <TimePicker
                     value={startTime}
                     onChange={setStartTime}
-                    accentColor="var(--accent-gig)"
+                    accentColor="var(--accent-personal)"
                     align="start"
-                    textSize="text-sm"
-                    className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
+                    textSize="bw-body-lg"
+                    showIcon={false}
+                    className={PICKER_CLASS}
                   />
-                </div>
-
-                {/* End Time */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-accent-gig" />
-                    End <span className="text-accent-gig">*</span>
-                  </label>
+                </FieldShell>
+                <FieldShell label="End *" icon={<Clock className="w-5 h-5" />}>
                   <TimePicker
                     value={endTime}
                     onChange={setEndTime}
-                    accentColor="var(--accent-gig)"
+                    accentColor="var(--accent-personal)"
                     align="end"
-                    textSize="text-sm"
-                    className="bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-semibold text-foreground hover:border-accent-gig focus:border-accent-gig transition-colors"
+                    textSize="bw-body-lg"
+                    showIcon={false}
+                    className={PICKER_CLASS}
                   />
-                </div>
+                </FieldShell>
               </div>
-            </div>
 
-            {/* Venue / Location Name */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-foreground/50" />
-                Venue / Location Name (Optional)
-              </label>
-              <VenueAutocomplete
-                value={venueName}
-                onChange={setVenueName}
-                onSelect={(place) => setVenueName(place.name)}
-                placeholder="e.g. Dublin Castle, St. Stephen's Green"
-                className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent-gig transition-colors"
-              />
-            </div>
-
-            {/* My Personal Fee */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-accent-gig" />
-                  My Personal Fee (Optional)
-                </label>
-                <span className="text-[10px] font-semibold text-muted-foreground">
-                  Syncs to personal earnings tracker
-                </span>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground font-bold text-sm">
-                  €
-                </div>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={fee}
-                  onChange={(e) => setFee(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full bg-card border border-foreground/15 rounded-xl pl-8 pr-4 py-3 text-sm font-semibold text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent-gig transition-colors"
+              <FieldShell label="Venue / location (optional)" icon={<MapPin className="w-5 h-5" />}>
+                <VenueAutocomplete
+                  value={venueName}
+                  onChange={setVenueName}
+                  onSelect={(place) => setVenueName(place.name)}
+                  placeholder="Search venue…"
+                  className="h-[50px] border-0 pb-0 bw-body-lg normal-case font-medium text-foreground placeholder:text-muted-foreground/60"
                 />
-              </div>
-            </div>
+              </FieldShell>
 
-            {/* Personal Notes */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-foreground/80 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-foreground/50" />
-                Personal Notes (Optional)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Parking instructions, load-in gate, wardrobe, gear checklist..."
-                rows={3}
-                className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent-gig transition-colors resize-none"
+              <PillField
+                label="My personal fee (optional)"
+                icon={<CurrencyIcon className="w-5 h-5" />}
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                placeholder="0.00"
+                hint="Syncs to your personal earnings tracker"
               />
-            </div>
 
-            {/* Subtle Freemium Upsell Banner */}
-            <div className="mt-1 p-3.5 rounded-2xl bg-card border border-foreground/10 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-foreground/5 border border-foreground/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Lock className="w-4 h-4 text-foreground/60" />
-              </div>
-              <div className="flex-1 flex flex-col gap-1">
-                <p className="text-[11px] font-medium text-foreground/75 leading-relaxed">
-                  Want to invite bandmates, split fees, attach setlists, or send client quotes?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenUpgradeSheet?.();
-                    }}
-                    className="font-bold text-accent-gig hover:underline inline-flex items-center gap-1"
-                  >
-                    Upgrade to Band Admin
-                    <Sparkles className="w-3 h-3 text-accent-gig inline" />
+              <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-foreground transition-colors">
+                <span className="bw-label-xs text-muted-foreground">Personal notes (optional)</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Parking, load-in gate, wardrobe, gear checklist…"
+                  rows={2}
+                  className="w-full bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none resize-none"
+                />
+              </label>
+
+              <p className="flex items-center gap-2 bw-body-sm text-muted-foreground">
+                <Users className="w-4 h-4 shrink-0 text-foreground" />
+                <span>
+                  Want to invite bandmates?{' '}
+                  <button type="button" onClick={() => onCreateBand?.()} className="text-foreground underline underline-offset-2">
+                    Create a free band
                   </button>
-                </p>
-              </div>
+                </span>
+              </p>
             </div>
+          </div>
 
-            {/* Submit & Cancel Actions */}
-            <div className="pt-2 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl border border-foreground/15 text-xs font-bold uppercase tracking-wider text-foreground/70 hover:bg-foreground/5 transition-colors"
-              >
+          {/* Actions */}
+          <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+            <div className="max-w-xl mx-auto w-full flex items-center gap-3">
+              <PillButton variant="outline" className="flex-[0_0_36%]" onClick={onClose}>
                 Cancel
-              </button>
-              <button
+              </PillButton>
+              <PillButton
                 type="submit"
-                disabled={isSubmitting || !title.trim() || !eventDate || !startTime || !endTime}
-                style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
-                className="flex-2 py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none"
+                className="flex-1"
+                disabled={!canSubmit}
+                loading={isSubmitting}
+                icon={<Check className="w-[18px] h-[18px]" />}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <span>{isEditing ? 'Save Changes' : 'Create Personal Gig'}</span>
-                )}
-              </button>
+                {isSubmitting ? 'Saving…' : isEditing ? 'Save changes' : 'Create personal gig'}
+              </PillButton>
             </div>
-          </form>
-        </motion.div>
-      </div>
+          </div>
+        </form>
+      </motion.div>
     </AnimatePresence>
   );
 };
+
+/** Picker trigger inside a FieldShell pill: drop the pickers' underline look. */
+const PICKER_CLASS = 'h-[50px] border-0 pb-0 font-medium bw-body-lg text-foreground [&_span]:font-medium';
+
+/** Figma Input chrome (label above a 52pt pill with a leading icon) for non-<input> controls. */
+const FieldShell: React.FC<{ label: string; icon: React.ReactNode; children: React.ReactNode }> = ({ label, icon, children }) => (
+  <div className="flex flex-col gap-2 min-w-0">
+    <span className="bw-label-sm text-muted-foreground">{label}</span>
+    <div className="flex items-center gap-3 h-[52px] pl-4 pr-3 rounded-full bg-field border border-border text-foreground focus-within:border-2 focus-within:border-foreground transition-[border-color]">
+      <span className="shrink-0 flex">{icon}</span>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  </div>
+);

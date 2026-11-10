@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 async function registerTestUser2() {
   // Use a completely random email to avoid rate limits
   const email = `testuser_${Date.now()}@example.com`;
-  const password = "Password123!";
+  const password = process.env.DEV_TEST_PASSWORD;
   
   console.log(`Signing up user: ${email} password: ${password}`);
   

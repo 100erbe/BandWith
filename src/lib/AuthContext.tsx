@@ -6,9 +6,10 @@ import React, {
   ReactNode,
 } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWithOAuth } from './supabase';
+import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWithOAuth, updatePassword, RECOVERY_FLAG } from './supabase';
 import { Capacitor } from '@capacitor/core';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
+import { unregisterPushToken } from './services/pushNotifications';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
 
@@ -51,6 +52,10 @@ interface AuthContextType {
   signInWithApple: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  /** True after the user opened a password-reset link: the app must ask for a new password. */
+  isPasswordRecovery: boolean;
+  completePasswordRecovery: (newPassword: string) => Promise<{ error: AuthError | null }>;
+  dismissPasswordRecovery: () => void;
   refreshProfile: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
 }
@@ -74,6 +79,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get(RECOVERY_FLAG) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const fetchProfile = async (userId: string) => {
     const profileCacheKey = getCacheKey(userId, 'global', 'user_profile');
@@ -199,7 +211,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+      }
 
       setSession(session);
       setUser(session?.user ?? null);
@@ -216,93 +230,66 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    // Listen for deep links in native (Capacitor) environment
-    // This handles the OAuth redirect back to the app from Google/Apple
-    let deepLinkCleanup: (() => void) | undefined;
+    // Native OAuth / magic-link / password-reset redirects come back as deep
+    // links (com.bandwith.app://auth/callback?code=...). With PKCE the code can
+    // only be exchanged by this app instance (it holds the code_verifier), so a
+    // forged link cannot swap the session. Tokens in a URL fragment
+    // (#access_token=...) are no longer accepted.
+    let removeDeepLinkListener: (() => void) | undefined;
+    let disposed = false;
     if (Capacitor.isNativePlatform()) {
+      const handleAuthUrl = async (url: string | undefined) => {
+        if (!url || !url.includes('auth/callback')) return;
+        let parsed: URL;
+        try {
+          parsed = new URL(url);
+        } catch {
+          return;
+        }
+        const code = parsed.searchParams.get('code');
+        if (!code) return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('[DeepLink] Could not complete sign-in:', error.message);
+          return;
+        }
+        if (parsed.searchParams.get(RECOVERY_FLAG) === '1') {
+          setIsPasswordRecovery(true);
+        }
+        try {
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.close();
+        } catch {
+          // In-app browser may already be closed
+        }
+      };
+
       const setupDeepLinkListener = async () => {
         try {
           const { App } = await import('@capacitor/app');
-          
-          App.addListener('appUrlOpen', async (data) => {
-            const url = data.url;
-            console.log('[DeepLink] App opened with URL:', url);
-            
-            // Check if this is an auth callback
-            if (url && url.includes('auth/callback')) {
-              // Extract the hash fragment from the deep link URL
-              const hashIndex = url.indexOf('#');
-              if (hashIndex >= 0) {
-                const hash = url.substring(hashIndex);
-                console.log('[DeepLink] Auth hash found, setting session...');
-                
-                // Parse the hash params and set the session
-                const hashParams = new URLSearchParams(hash.substring(1));
-                const accessToken = hashParams.get('access_token');
-                const refreshToken = hashParams.get('refresh_token');
-                
-                if (accessToken) {
-                  const { data: sessionData, error } = await supabase.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken || '',
-                  });
-                  
-                  if (error) {
-                    console.error('[DeepLink] Error setting session:', error);
-                  } else if (sessionData.session) {
-                    console.log('[DeepLink] Session established successfully');
-                  }
-                }
-              } else if (url.includes('code=')) {
-                // PKCE flow — code is in the query string
-                console.log('[DeepLink] Auth code found, exchanging...');
-                // The onAuthStateChange listener should handle this
-              }
-            }
+          const handle = await App.addListener('appUrlOpen', (data) => {
+            handleAuthUrl(data.url);
           });
-          
-          // Check if the app was opened via a URL while closed
-          const result = await App.getLaunchUrl();
-          if (result?.url && result.url.includes('auth/callback')) {
-            console.log('[DeepLink] Launched with auth URL:', result.url);
-            const url = result.url;
-            const hashIndex = url.indexOf('#');
-            if (hashIndex >= 0) {
-              const hash = url.substring(hashIndex);
-              const hashParams = new URLSearchParams(hash.substring(1));
-              const accessToken = hashParams.get('access_token');
-              const refreshToken = hashParams.get('refresh_token');
-              
-              if (accessToken) {
-                const { data: sessionData, error } = await supabase.auth.setSession({
-                  access_token: accessToken,
-                  refresh_token: refreshToken || '',
-                });
-                
-                if (error) {
-                  console.error('[DeepLink] Error setting session from launch URL:', error);
-                } else if (sessionData.session) {
-                  console.log('[DeepLink] Session established from launch URL');
-                }
-              }
-            }
+          if (disposed) {
+            handle.remove();
+          } else {
+            removeDeepLinkListener = () => handle.remove();
           }
+          // App opened via a URL while it was closed
+          const launch = await App.getLaunchUrl();
+          await handleAuthUrl(launch?.url);
         } catch (err) {
           console.error('[DeepLink] Error setting up deep link listener:', err);
         }
       };
-      
+
       setupDeepLinkListener();
-      
-      deepLinkCleanup = () => {
-        // Capacitor doesn't provide a direct way to remove listeners,
-        // but the component unmount will clean up
-      };
     }
 
     return () => {
+      disposed = true;
       subscription.unsubscribe();
-      if (deepLinkCleanup) deepLinkCleanup();
+      removeDeepLinkListener?.();
     };
   }, []);
 
@@ -331,6 +318,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const handleSignOut = async () => {
+    // Before the session ends: this device must stop receiving this account's pushes.
+    await unregisterPushToken();
     const { error } = await signOut();
     if (!error) {
       setUser(null);
@@ -345,6 +334,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { error } = await resetPassword(email);
     return { error };
   };
+
+  const completePasswordRecovery = async (newPassword: string) => {
+    const { error } = await updatePassword(newPassword);
+    if (!error) {
+      setIsPasswordRecovery(false);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(RECOVERY_FLAG);
+        window.history.replaceState({}, '', url.toString());
+      } catch {
+        // ignore
+      }
+    }
+    return { error };
+  };
+
+  const dismissPasswordRecovery = () => setIsPasswordRecovery(false);
 
   // PLG: Derived user mode from profile
   const userMode: UserMode | null = profile?.user_mode || null;
@@ -377,6 +383,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInWithApple: handleSignInWithApple,
     signOut: handleSignOut,
     resetPassword: handleResetPassword,
+    isPasswordRecovery,
+    completePasswordRecovery,
+    dismissPasswordRecovery,
     refreshProfile,
     updateProfile,
   };

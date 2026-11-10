@@ -20,13 +20,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     transition={{ duration: 0.3 }}
     className="flex flex-col items-center justify-center py-16 px-6 text-center"
   >
-    <div className="w-16 h-16 rounded-2xl bg-foreground/5 border border-foreground/10 flex items-center justify-center mb-4 text-foreground/40">
+    <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4 text-muted-foreground">
       {icon || <Sparkles className="w-8 h-8" />}
     </div>
-    <h4 className="text-base font-bold text-foreground uppercase tracking-wider mb-1">
+    <h4 className="bw-h3 text-foreground mb-1">
       {title}
     </h4>
-    <p className="text-xs text-foreground/50 max-w-xs leading-relaxed">
+    <p className="bw-body-sm text-muted-foreground max-w-xs">
       {description}
     </p>
   </motion.div>

@@ -1,5 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Debug-only native settings. Enable them for local builds with
+//   CAP_DEBUG=true npx cap sync
+// Release builds must NOT allow WebView debugging (anyone with USB access could
+// read the session tokens) or mixed http content.
+const isDebugBuild = process.env.CAP_DEBUG === 'true';
+
 const config: CapacitorConfig = {
   appId: 'com.bandwith.app',
   appName: 'BandWith',
@@ -16,12 +22,22 @@ const config: CapacitorConfig = {
       backgroundColor: '#000000',
       showSpinner: false
     },
+    // Edge-to-edge: the web view draws under transparent system bars and the
+    // app pads its own content with --safe-top / --safe-bottom (theme.css).
     StatusBar: {
-      style: 'Dark',
-      backgroundColor: '#000000'
+      overlaysWebView: true,
+      style: 'DEFAULT'
+    },
+    SystemBars: {
+      // Android: inject correct --safe-area-inset-* CSS variables
+      insetsHandling: 'css',
+      style: 'DEFAULT'
     },
     Keyboard: {
-      resize: 'body',
+      // 'native' shrinks the web view itself, so full-screen `fixed inset-0`
+      // panels (chat composer, wizards) stay above the keyboard. 'body' only
+      // resized <body> and, with contentInset 'never', left inputs hidden.
+      resize: 'native',
       style: 'dark'
     },
     PushNotifications: {
@@ -34,14 +50,14 @@ const config: CapacitorConfig = {
     }
   },
   ios: {
-    contentInset: 'automatic',
+    contentInset: 'never',
     preferredContentMode: 'mobile',
     backgroundColor: '#000000'
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: isDebugBuild,
     captureInput: false,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: isDebugBuild
   }
 };
 

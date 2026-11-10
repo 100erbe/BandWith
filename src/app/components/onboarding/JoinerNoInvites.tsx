@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Mail, MessageCircle, RefreshCw } from '@/app/components/icons';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { Mail, RefreshCw, Users } from '@/app/components/icons';
+import { AuthScreen, BackButton, Kicker, PillButton } from '@/app/components/bw/Form';
 
 interface JoinerNoInvitesProps {
   email: string;
@@ -9,151 +9,64 @@ interface JoinerNoInvitesProps {
   onCreateBand: () => void;
 }
 
+const SUGGESTIONS = [
+  { icon: Mail, label: 'Check your spam folder' },
+  { icon: RefreshCw, label: 'Try another email address' },
+  { icon: Users, label: 'Ask your band admin to resend the invite' },
+];
+
 export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
   email,
   onBack,
   onCreateBand,
 }) => {
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+    <AuthScreen
+      bodyClassName="pt-3 gap-5"
+      top={<BackButton onClick={onBack} />}
+      footer={
+        <>
+          <PillButton variant="ghost" size="sm" onClick={onCreateBand}>
+            Or create your own band →
+          </PillButton>
+          <PillButton variant="dark" onClick={onBack}>
+            Try another email
+          </PillButton>
+        </>
+      }
     >
-      {/* Subtle gradient - warm tone for "not found" */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[60%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(255, 149, 0, 0.03) 0%, transparent 100%)',
-          }}
-        />
-      </div>
-
-      {/* Header */}
-      <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-        >
-          <BrandLogo
-            variant="waveform"
-            lockup="horizontal"
-            className="h-6"
-            textClassName="text-lg"
-          />
-        </motion.div>
-        
-        <div className="w-10" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 pt-16 relative z-10">
-        {/* Editorial headline */}
-        <motion.div
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-        >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
-            No invites
-            <br />
-            <span className="text-muted-foreground/30">found</span>
-          </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
-            We couldn't find pending invitations for
-          </p>
-          <p className="text-foreground font-bold text-[16px] mt-1">
-            {email}
-          </p>
-        </motion.div>
-
-        {/* Suggestions */}
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          <p className="text-muted-foreground/50 text-[12px] font-bold uppercase tracking-[0.15em] mb-3">
-            What to do
-          </p>
-          
-          {/* Suggestion cards */}
-          <div className="space-y-3">
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <Mail className="w-5 h-5 text-accent" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Check spam folder</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
-                  The invite email might be in spam or promotions
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <RefreshCw className="w-5 h-5 text-accent" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Try another email</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
-                  The invite might have been sent to a different address
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-card border border-border">
-              <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-5 h-5 text-accent" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-foreground font-bold text-[15px] mb-0.5">Contact your admin</p>
-                <p className="text-muted-foreground/60 text-[13px] leading-relaxed">
-                  Ask them to resend the invitation
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Footer */}
       <motion.div
-        className="px-6 pb-10 pt-6 relative z-10 space-y-4"
-        initial={{ opacity: 0, y: 20 }}
+        className="flex flex-col gap-5"
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
+        transition={{ duration: 0.35 }}
       >
-        {/* Primary CTA */}
-        <button
-          onClick={onBack}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-card/80 text-foreground hover:bg-white/15 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-        >
-          Try Another Email
-        </button>
+        {/* Empty-state dot cluster: 3 × 3, centre dot lit */}
+        <div className="grid grid-cols-3 gap-2 self-start" aria-hidden>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <span key={i} className={i === 4 ? 'w-2.5 h-2.5 rounded-full bg-dot-mid' : 'w-2.5 h-2.5 rounded-full bg-dot-off'} />
+          ))}
+        </div>
 
-        {/* Secondary action */}
-        <button
-          onClick={onCreateBand}
-          className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
-        >
-          Or <span className="text-accent">create your own band</span> →
-        </button>
+        <Kicker overline="Nothing here yet" title="No invites found" />
+
+        <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px] break-words">
+          We couldn't find pending invitations for <span className="text-foreground font-medium">{email}</span>.
+        </p>
+
+        <div className="bg-card rounded-[24px] p-4 flex flex-col gap-4">
+          <p className="bw-label-md text-foreground">What to do</p>
+          <ul className="flex flex-col gap-4">
+            {SUGGESTIONS.map(({ icon: Icon, label }) => (
+              <li key={label} className="flex items-center gap-3 text-foreground">
+                <Icon className="w-5 h-5 shrink-0" aria-hidden />
+                <span className="text-[16px] leading-[1.45] tracking-[-0.003em]">{label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </motion.div>
-    </div>
+    </AuthScreen>
   );
 };
 

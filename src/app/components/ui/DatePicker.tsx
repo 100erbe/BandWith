@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, ArrowLeft, ArrowRight, ChevronDown } from '@/app/components/icons';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Calendar, ArrowLeft, ArrowRight, Check, X } from '@/app/components/icons';
 import { cn } from './utils';
-import { Popover, PopoverTrigger, PopoverContent } from './popover';
+import { IconButton } from '@/app/components/bw/Screen';
+import { RailSheet } from '@/lib/railActions';
+import { PillButton } from '@/app/components/bw/Form';
 
 export interface DatePickerProps {
   value?: string; // "YYYY-MM-DD" or ""
@@ -57,6 +60,109 @@ export const formatDisplayDate = (dateStr: string): string => {
   }
   return formatted;
 };
+/* ───────────────────────────── Picker sheet ─────────────────────────────
+ * Bottom sheet used by the Date / Time pickers (Figma "Picker / Date" 26:762,
+ * "Picker / Time" 26:930): light Sheet Header (grabber, overline, H1 title,
+ * Outline SM close) over a scrim. Built on Radix Dialog so it portals out of
+ * transformed wizard containers and keeps focus / Escape / outside-click
+ * handling. Exported for TimePicker.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+export interface PickerSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Element that opens the sheet (rendered through Dialog.Trigger asChild). */
+  trigger: React.ReactElement;
+  overline?: React.ReactNode;
+  title: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+  /** Stacking order of the sheet (scrim sits one below). */
+  zIndex?: number;
+  contentStyle?: React.CSSProperties;
+}
+
+export const PickerSheet: React.FC<PickerSheetProps> = ({
+  open,
+  onOpenChange,
+  trigger,
+  overline,
+  title,
+  footer,
+  children,
+  zIndex = 150,
+  contentStyle,
+}) => (
+  <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay
+        className="bw-rail-sheet fixed inset-0 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+        style={{ zIndex: zIndex - 1 }}
+      />
+      <DialogPrimitive.Content
+        aria-describedby={undefined}
+        className={cn(
+          'bw-rail-sheet fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
+          'bg-background text-foreground rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.35)] outline-none select-none',
+          'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom duration-300',
+        )}
+        style={{ zIndex, ...contentStyle }}
+      >
+        {/* Sheet Header (Style=Light) */}
+        <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
+          <span className="mx-auto w-10 h-[5px] rounded-full bg-muted-foreground/55" aria-hidden />
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              {overline && <p className="bw-label-sm text-muted-foreground truncate">{overline}</p>}
+              <DialogPrimitive.Title className="bw-h1 text-foreground [overflow-wrap:anywhere]">{title}</DialogPrimitive.Title>
+            </div>
+            {/* iPhone Duo: an existing rail Back closes the picker first
+                (Figma "Closed · Picker / Date"). */}
+            <RailSheet onClose={() => onOpenChange(false)} />
+            <DialogPrimitive.Close asChild>
+              <IconButton label="Close" icon={<X />} size="sm" variant="outline" />
+            </DialogPrimitive.Close>
+          </div>
+        </div>
+
+        {/* Sheet body */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 flex flex-col gap-3">{children}</div>
+        <div className="shrink-0 px-5 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom, 0px) + 24px)' }}>
+          {footer}
+        </div>
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  </DialogPrimitive.Root>
+);
+
+/** "Select event date…" → "event date" (sheet title); falls back to "Date". */
+const titleFromPlaceholder = (placeholder: string, fallback: string): string => {
+  const m = placeholder.match(/^select\s+(.+?)[\s.…]*$/i);
+  return m ? m[1] : fallback;
+};
+
+/** Figma "Selector" SM, Default / Accent states (time & date shortcuts). */
+export const PickerChip: React.FC<{ selected?: boolean; onClick: () => void; children: React.ReactNode }> = ({
+  selected = false,
+  onClick,
+  children,
+}) => (
+  <button
+    type="button"
+    aria-pressed={selected}
+    onClick={onClick}
+    className={cn(
+      'inline-flex items-center h-7 px-3 rounded-full bw-label-sm whitespace-nowrap shrink-0 transition-[transform,colors] active:scale-[var(--press-scale,0.97)]',
+      selected ? 'bg-accent text-accent-foreground' : 'border border-border text-muted-foreground',
+    )}
+  >
+    {children}
+  </button>
+);
+
+const ymd = (y: number, m: number, d: number) =>
+  `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
 export const DatePicker: React.FC<DatePickerProps> = ({
   value = '',
@@ -70,7 +176,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   accentColor,
 }) => {
   const [open, setOpen] = useState(false);
-  const resolvedAccent = accentColor || 'var(--wizard-accent, #8b5cf6)';
 
   // Month & year view state
   const [calMonth, setCalMonth] = useState(() => {
@@ -123,25 +228,23 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const selectedMonth = dateParts ? dateParts[1] - 1 : null;
   const selectedDay = dateParts ? dateParts[2] : null;
 
-  const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth();
-  const todayDay = today.getDate();
+  const todayStr = getTodayStr();
 
   const firstDayOfMonth = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
   const adjustedFirstDay = (firstDayOfMonth + 6) % 7; // Monday as first day
-  const calDays: (number | null)[] = [];
-  for (let i = 0; i < adjustedFirstDay; i++) calDays.push(null);
-  for (let i = 1; i <= daysInMonth; i++) calDays.push(i);
 
-  const calMonthName = new Date(calYear, calMonth, 1)
-    .toLocaleDateString('en-US', { month: 'long' })
-    .toUpperCase();
+  // Full weeks: leading/trailing days of the neighbouring months are shown muted (Figma Calendar Month).
+  const cells: { day: number; inMonth: boolean }[] = [];
+  for (let i = adjustedFirstDay; i > 0; i--) cells.push({ day: daysInPrevMonth - i + 1, inMonth: false });
+  for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, inMonth: true });
+  for (let i = 1; cells.length % 7 !== 0; i++) cells.push({ day: i, inMonth: false });
+
+  const calMonthName = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long' });
 
   const handleSelectDay = (day: number) => {
-    const selectedDateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    onChange(selectedDateStr);
+    onChange(ymd(calYear, calMonth, day));
     setOpen(false);
   };
 
@@ -150,131 +253,116 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     setOpen(false);
   };
 
+  const selectedLabel = useMemo(() => {
+    if (!value) return '';
+    const d = new Date(value + 'T00:00:00');
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  }, [value]);
+
+  const shortcuts: { label: string; date: string }[] = [
+    { label: 'Today', date: getTodayStr() },
+    { label: 'Tomorrow', date: getTomorrowStr() },
+    { label: 'Weekend', date: getNextWeekendStr() },
+  ];
+
+  const trigger = (
+    <button
+      type="button"
+      id={id}
+      disabled={disabled}
+      style={accentColor ? ({ '--wizard-accent': accentColor } as React.CSSProperties) : undefined}
+      className={cn(
+        'w-full flex items-center gap-3 bw-body-lg text-foreground text-left cursor-pointer focus:outline-none transition-colors',
+        disabled && 'cursor-not-allowed opacity-50',
+        className
+      )}
+    >
+      {showIcon && <Calendar className="w-5 h-5 shrink-0" aria-hidden />}
+      <span className={cn('flex-1 min-w-0 truncate', !value && 'text-muted-foreground/60')}>
+        {value ? formatDisplayDate(value) : placeholder}
+      </span>
+    </button>
+  );
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          id={id}
-          disabled={disabled}
-          style={accentColor ? ({ '--wizard-accent': accentColor } as React.CSSProperties) : undefined}
-          className={cn(
-            'w-full flex items-center justify-between border-b border-border/40 pb-1.5 text-base font-medium text-[var(--fg)] hover:border-[var(--wizard-accent)] focus:outline-none focus:border-[var(--wizard-accent)] transition-colors cursor-pointer group text-left',
-            disabled && 'cursor-not-allowed opacity-50',
-            className
-          )}
-        >
-          <div className="flex items-center gap-2 min-w-0 pr-2">
-            <span className={cn('truncate', !value && 'text-muted-foreground/60 font-normal')}>
-              {value ? formatDisplayDate(value) : placeholder}
-            </span>
-          </div>
-          {showIcon && (
-            <div className="flex items-center gap-1 shrink-0 text-muted-foreground group-hover:text-[var(--wizard-accent)] transition-colors">
-              <Calendar className="w-4 h-4" />
-            </div>
-          )}
-        </button>
-      </PopoverTrigger>
+    <PickerSheet
+      open={open}
+      onOpenChange={setOpen}
+      trigger={trigger}
+      overline="Pick a day"
+      title={titleFromPlaceholder(placeholder, 'Date')}
+      footer={
+        <PillButton icon={<Check className="w-5 h-5" />} disabled={!value} onClick={() => setOpen(false)}>
+          {value ? `Select ${selectedLabel}` : 'Select a day'}
+        </PillButton>
+      }
+    >
+      {/* Quick shortcuts (Figma Selector SM) */}
+      {showShortcuts && (
+        <div className="flex items-center gap-2">
+          {shortcuts.map(s => (
+            <PickerChip key={s.label} selected={value === s.date} onClick={() => handleSelectShortcut(s.date)}>
+              {s.label}
+            </PickerChip>
+          ))}
+        </div>
+      )}
 
-      <PopoverContent
-        align="start"
-        sideOffset={6}
-        style={{
-          '--wizard-accent': resolvedAccent,
-          '--wizard-accent-fg': '#ffffff',
-        } as React.CSSProperties}
-        className="z-[120] w-[290px] p-3 rounded-2xl border border-border/40 bg-card shadow-2xl backdrop-blur-md space-y-2.5"
-      >
-        {/* Quick shortcut pills */}
-        {showShortcuts && (
-          <div className="flex items-center gap-1 pb-1 border-b border-border/30">
-            <button
-              type="button"
-              onClick={() => handleSelectShortcut(getTodayStr())}
-              className="flex-1 py-1 rounded-md text-xs font-semibold bg-muted hover:bg-muted/80 text-[var(--fg)] text-center transition-colors cursor-pointer"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectShortcut(getTomorrowStr())}
-              className="flex-1 py-1 rounded-md text-xs font-semibold bg-muted hover:bg-muted/80 text-[var(--fg)] text-center transition-colors cursor-pointer"
-            >
-              Tomorrow
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectShortcut(getNextWeekendStr())}
-              className="flex-1 py-1 rounded-md text-xs font-semibold bg-muted hover:bg-muted/80 text-[var(--fg)] text-center transition-colors cursor-pointer"
-            >
-              Weekend
-            </button>
-          </div>
-        )}
-
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-xs font-bold uppercase text-[var(--fg)] tracking-wider">
+      {/* Calendar Month */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <IconButton label="Previous month" icon={<ArrowLeft />} size="sm" onClick={prevMonth} />
+          <IconButton label="Next month" icon={<ArrowRight />} size="sm" onClick={nextMonth} />
+          <span className="bw-h3 text-foreground truncate" aria-live="polite">
             {calMonthName} {calYear}
           </span>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={prevMonth}
-              className="w-7 h-7 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center text-[var(--fg)] transition-colors cursor-pointer"
-              aria-label="Previous Month"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={nextMonth}
-              className="w-7 h-7 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center text-[var(--fg)] transition-colors cursor-pointer"
-              aria-label="Next Month"
-            >
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
 
-        {/* Weekday abbreviations */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Weekdays */}
+        <div className="grid grid-cols-7 gap-x-1 py-1 rounded-full bg-foreground/[0.08]" aria-hidden>
           {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-            <div key={i} className="text-center text-xs font-bold text-muted-foreground py-0.5">
+            <span key={i} className="text-center bw-label-xs text-muted-foreground">
               {d}
-            </div>
+            </span>
           ))}
-          {/* Calendar day cells */}
-          {calDays.map((day, i) => {
-            const isSelected =
-              day !== null &&
-              calMonth === selectedMonth &&
-              calYear === selectedYear &&
-              day === selectedDay;
+        </div>
 
-            const isToday =
-              day !== null &&
-              calMonth === todayMonth &&
-              calYear === todayYear &&
-              day === todayDay;
-
+        {/* Calendar Day cells */}
+        <div className="grid grid-cols-7 gap-x-1 gap-y-2">
+          {cells.map(({ day, inMonth }, i) => {
+            if (!inMonth) {
+              return (
+                <span
+                  key={i}
+                  aria-hidden
+                  className="h-6 rounded-full bg-foreground/[0.08] flex items-center justify-center bw-label-md text-muted-foreground"
+                >
+                  {day}
+                </span>
+              );
+            }
+            const isSelected = calMonth === selectedMonth && calYear === selectedYear && day === selectedDay;
+            const isToday = ymd(calYear, calMonth, day) === todayStr;
             return (
               <button
                 key={i}
                 type="button"
-                onClick={() => day && handleSelectDay(day)}
-                disabled={!day}
+                onClick={() => handleSelectDay(day)}
+                aria-pressed={isSelected}
+                aria-current={isToday ? 'date' : undefined}
+                aria-label={new Date(calYear, calMonth, day).toLocaleDateString('en-GB', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
                 className={cn(
-                  'h-8 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center justify-center',
-                  !day && 'invisible',
+                  "relative h-6 rounded-full flex items-center justify-center bw-label-md transition-colors cursor-pointer after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
                   isSelected
-                    ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] shadow-xs font-extrabold'
-                    : isToday
-                      ? 'border border-[var(--wizard-accent)] text-[var(--fg)] font-bold'
-                      : day
-                        ? 'text-muted-foreground hover:bg-muted hover:text-[var(--fg)]'
-                        : ''
+                    ? 'bg-surface-inverse text-surface-inverse-foreground'
+                    : 'bg-foreground/[0.08] text-foreground hover:bg-foreground/[0.14]',
+                  isToday && !isSelected && 'ring-[1.5px] ring-inset ring-foreground'
                 )}
               >
                 {day}
@@ -282,7 +370,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             );
           })}
         </div>
-      </PopoverContent>
-    </Popover>
+      </div>
+    </PickerSheet>
   );
 };

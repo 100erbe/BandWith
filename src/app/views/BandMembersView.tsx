@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
   Mail,
-  Music2,
   Crown,
   MoreHorizontal,
   Trash2,
@@ -11,25 +11,96 @@ import {
   Loader2,
   UserPlus,
   Check,
-  ArrowLeft,
   Send,
-  UserCheck,
+  Search,
   X,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import { useAuth } from '@/lib/AuthContext';
-import { notifyMemberJoined, notifyMemberRemoved } from '@/lib/services/notifications';
 import {
   getBandMembers,
   removeMember,
   updateMemberRole,
-  inviteMember,
   searchUsers,
-  addExistingUserToBand,
 } from '@/lib/services/bands';
+import { inviteToBand } from '@/lib/services/invitations';
 import type { BandMember } from '@/lib/services/bands';
-import { DotRadio } from '@/app/components/ui/DotRadio';
+import { DotText } from '@/app/components/bw';
+import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
+import { PillButton } from '@/app/components/bw/Form';
+
+/** Small stat card (Figma: label + 24pt dot value). */
+const StatCard: React.FC<{ label: string; value: number; delay: number }> = ({ label, value, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+    className="flex-1 min-w-0 flex flex-col gap-1 px-4 py-3 rounded-[24px] bg-card text-card-foreground"
+  >
+    <span className="bw-label-sm truncate">{label}</span>
+    <DotText text={value} size={24} label={`${label}: ${value}`} />
+  </motion.div>
+);
+
+/** Figma "Avatar" 44: photo or initials on a circle. */
+const Avatar: React.FC<{ src?: string | null; alt: string; initials: string; accent?: boolean; className?: string }> = ({
+  src,
+  alt,
+  initials,
+  accent,
+  className,
+}) => (
+  <span
+    className={cn(
+      'w-11 h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden bw-h3',
+      accent ? 'bg-accent text-accent-foreground' : 'bg-white text-black',
+      className,
+    )}
+  >
+    {src ? (
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    ) : (
+      initials
+    )}
+  </span>
+);
+
+/** Row in the member action menu (dark surface). */
+const MenuRow: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  danger?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+}> = ({ icon, label, hint, danger, disabled, onClick }) => (
+  <button
+    type="button"
+    role="menuitem"
+    onClick={onClick}
+    disabled={disabled}
+    aria-disabled={disabled || undefined}
+    className={cn(
+      'w-full min-h-[42px] px-3 py-3 flex items-center gap-3 rounded-[16px] text-left transition-colors hover:bg-sheet-foreground/[0.08]',
+      'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+      danger ? 'text-destructive' : 'text-sheet-foreground',
+    )}
+  >
+    <span className="shrink-0 flex [&_svg]:w-[18px] [&_svg]:h-[18px]">{icon}</span>
+    <span className="flex-1 min-w-0 flex flex-col">
+      <span className="bw-label-md">{label}</span>
+      {hint && <span className="bw-body-sm text-sheet-foreground/80">{hint}</span>}
+    </span>
+  </button>
+);
 
 interface BandMembersViewProps {
   onClose: () => void;
@@ -37,7 +108,9 @@ interface BandMembersViewProps {
 
 interface SearchUser {
   id: string;
+  /** Masked (gi•••@gmail.com) unless the exact address was searched. */
   email: string;
+  email_exact?: boolean;
   full_name?: string;
   avatar_url?: string;
 }
@@ -55,6 +128,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteShare, setInviteShare] = useState<{ code: string; url: string | null; name: string } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteMode, setInviteMode] = useState<'search' | 'email'>('search');
 
@@ -73,34 +148,54 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     setLoading(false);
   };
 
-  const handleRemoveMember = async (member: BandMember) => {
-    const memberName = member.profile?.full_name || member.profile?.email || 'Unknown';
-    const { error } = await removeMember(member.id);
-    if (!error) {
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
-      // Notify the removed member
-      if (selectedBand && currentProfile?.full_name) {
-        notifyMemberRemoved(
-          member.user_id,
-          memberName,
-          selectedBand.id,
-          selectedBand.name,
-          currentProfile.full_name
-        );
-      }
-    }
+  const [pendingRemoval, setPendingRemoval] = useState<BandMember | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [memberNotice, setMemberNotice] = useState<string | null>(null);
+  const flashNotice = (text: string) => {
+    setMemberNotice(text);
+    setTimeout(() => setMemberNotice(null), 5000);
+  };
+  const adminCount = members.filter((m) => m.role === 'admin').length;
+  const isLastAdmin = (member: BandMember) => member.role === 'admin' && adminCount <= 1;
+
+  const handleRemoveMember = (member: BandMember) => {
     setActionMenuId(null);
+    if (isLastAdmin(member)) {
+      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      return;
+    }
+    setPendingRemoval(member);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!pendingRemoval || removing) return;
+    setRemoving(true);
+    const { error } = await removeMember(pendingRemoval.id);
+    setRemoving(false);
+    if (error) {
+      flashNotice(error.message || 'Could not remove the member. Try again.');
+      return;
+    }
+    // The database notifies the removed member and the band (migration 046).
+    setMembers((prev) => prev.filter((m) => m.id !== pendingRemoval.id));
+    setPendingRemoval(null);
   };
 
   const handleToggleRole = async (member: BandMember) => {
-    const newRole = member.role === 'admin' ? 'member' : 'admin';
-    const { error } = await updateMemberRole(member.id, newRole);
-    if (!error) {
-      setMembers((prev) =>
-        prev.map((m) => (m.id === member.id ? { ...m, role: newRole } : m)),
-      );
-    }
     setActionMenuId(null);
+    const newRole = member.role === 'admin' ? 'member' : 'admin';
+    if (newRole === 'member' && isLastAdmin(member)) {
+      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      return;
+    }
+    const { error } = await updateMemberRole(member.id, newRole);
+    if (error) {
+      flashNotice(error.message || 'Could not change the role. Try again.');
+      return;
+    }
+    setMembers((prev) =>
+      prev.map((m) => (m.id === member.id ? { ...m, role: newRole } : m)),
+    );
   };
 
   const handleEmailMember = (email: string) => {
@@ -110,7 +205,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
   const handleSearch = useCallback(
     async (query: string) => {
-      if (!selectedBand?.id || query.length < 2) {
+      if (!selectedBand?.id || query.trim().length < 3) {
         setSearchResults([]);
         return;
       }
@@ -132,76 +227,60 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch, inviteMode]);
 
-  const handleAddUser = async (user: SearchUser) => {
-    if (!selectedBand?.id) return;
+  // Everyone joins by accepting an invitation (no one is added without consent).
+  // Existing users see the invite in the app; new users get an email + link.
+  const sendInvite = async (target: { email?: string; userId?: string }, displayName: string) => {
+    if (!selectedBand?.id) return false;
     setInviting(true);
     setError(null);
-
-    const { error } = await addExistingUserToBand(selectedBand.id, user.id, inviteRole);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setInviteSuccess(`${user.full_name || user.email} added!`);
-      await fetchMembers();
-      // Notify existing band members about the added user
-      const existingMemberIds = members
-        .filter(m => m.user_id !== currentProfile?.id)
-        .map(m => m.user_id);
-      if (existingMemberIds.length > 0 && selectedBand) {
-        notifyMemberJoined(
-          existingMemberIds,
-          selectedBand.id,
-          selectedBand.name,
-          user.full_name || user.email || 'A new member'
+    try {
+      const result = await inviteToBand({
+        bandId: selectedBand.id,
+        ...target,
+        role: inviteRole,
+        inviterName: currentProfile?.full_name ?? undefined,
+      });
+      if (result.kind === 'existing_user') {
+        setInviteSuccess(`Invite sent to ${displayName}. They’ll see it next time they open BandWith.`);
+      } else {
+        // New person: keep the sheet open with the code and a Share button
+        // (copying after an await is blocked on iOS, and there may be no email).
+        setInviteShare({ code: result.token, url: result.inviteUrl, name: displayName });
+        setInviteSuccess(
+          result.emailSent
+            ? `Invite emailed to ${displayName}. You can also share it directly.`
+            : `Invite created for ${displayName}. Share it so they can join.`
         );
+        return true;
       }
       setTimeout(() => {
         setShowInvite(false);
         setSearchQuery('');
         setSearchResults([]);
         setInviteSuccess(null);
-      }, 1500);
+      }, 2500);
+      return true;
+    } catch (e: any) {
+      setError(e?.message || 'We couldn’t send the invite. Try again.');
+      return false;
+    } finally {
+      setInviting(false);
     }
-    setInviting(false);
+  };
+
+  const handleAddUser = async (user: SearchUser) => {
+    // Search results only carry a masked email: invite by id, the server
+    // looks the address up.
+    await sendInvite(
+      user.email_exact ? { email: user.email } : { userId: user.id },
+      user.full_name || user.email
+    );
   };
 
   const handleInviteByEmail = async () => {
     if (!selectedBand?.id || !searchQuery || !searchQuery.includes('@')) return;
-    setInviting(true);
-    setError(null);
-
-    const { data, error } = await inviteMember(selectedBand.id, searchQuery, inviteRole);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      if (data?.invited) {
-        setInviteSuccess('Invitation sent!');
-      } else {
-        setInviteSuccess('Member added!');
-        await fetchMembers();
-        // Notify existing band members about the new member
-        const addedUserName = searchQuery;
-        const existingMemberIds = members
-          .filter(m => m.user_id !== currentProfile?.id)
-          .map(m => m.user_id);
-        if (existingMemberIds.length > 0 && selectedBand && addedUserName) {
-          notifyMemberJoined(
-            existingMemberIds,
-            selectedBand.id,
-            selectedBand.name,
-            addedUserName
-          );
-        }
-      }
-      setTimeout(() => {
-        setShowInvite(false);
-        setSearchQuery('');
-        setInviteSuccess(null);
-      }, 1500);
-    }
-    setInviting(false);
+    const email = searchQuery.trim().toLowerCase();
+    await sendInvite({ email }, email);
   };
 
   const getInitials = (member: BandMember) => {
@@ -231,449 +310,343 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     return { total: members.length, admins, members: regularMembers };
   }, [members]);
 
+  const closeInvite = () => {
+    setShowInvite(false);
+    setInviteShare(null);
+    setInviteSuccess(null);
+    setSearchQuery('');
+    setSearchResults([]);
+    setError(null);
+  };
+
+  const userInitials = (user: SearchUser) =>
+    user.full_name
+      ?.split(' ')
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || user.email.slice(0, 2).toUpperCase();
+
   return (
     <motion.div
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      {/* Header */}
-      <div
-        className="px-4 shrink-0"
-        style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
-      >
-        <div className="flex items-center gap-4 mb-10">
-          <button
-            onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 shrink-0 active:scale-90 transition-all"
-          >
-            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
-          </button>
-          <div className="flex flex-col leading-none flex-1">
-            <span className="text-[32px] font-bold text-foreground leading-none">BAND</span>
-            <span className="text-[32px] font-bold text-foreground leading-none">MEMBERS</span>
-          </div>
-          {isAdmin && (
-            <button
-              onClick={() => setShowInvite(true)}
-              className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-primary text-primary-foreground shrink-0 active:scale-90 transition-transform shadow-xs hover:opacity-95"
-            >
-              <Plus className="w-[20px] h-[20px]" />
-            </button>
-          )}
-        </div>
-      </div>
+      <ScreenHeader
+        onBack={onClose}
+        overline={selectedBand?.name}
+        title={<>Band<br />members</>}
+        actions={
+          isAdmin ? <IconButton label="Invite member" variant="filled" icon={<Plus />} onClick={() => setShowInvite(true)} /> : undefined
+        }
+      />
 
-      {/* Content */}
-      <div className="px-4 pb-32">
+      <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: isAdmin ? 24 : 'calc(var(--safe-bottom) + 40px)' }}>
+        {memberNotice && (
+          <p role="alert" className="bw-body-sm text-destructive">{memberNotice}</p>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : members.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <UserPlus className="w-12 h-12 text-foreground/20 mb-4" />
-            <span className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">
-              No members yet
-            </span>
-            <span className="text-[10px] font-medium text-foreground/40 uppercase mb-6">
-              Invite your bandmates to collaborate
-            </span>
-            {isAdmin && (
-              <button
-                onClick={() => setShowInvite(true)}
-                className="flex items-center justify-between px-5 py-3 rounded-[12px] bg-primary text-primary-foreground active:scale-95 transition-all shadow-xs"
-              >
-                <span className="text-xs font-bold uppercase tracking-wider">INVITE FIRST MEMBER</span>
-              </button>
-            )}
-          </div>
+          <Card className="items-center text-center py-10 gap-4">
+            <UserPlus className="w-10 h-10 text-muted-foreground" />
+            <div className="flex flex-col gap-1">
+              <h2 className="bw-h3">No members yet</h2>
+              <p className="bw-body-sm text-muted-foreground">Invite your bandmates to collaborate.</p>
+            </div>
+          </Card>
         ) : (
-          <div className="flex flex-col gap-10">
-            {/* Stats Row */}
-            <div className="flex gap-5">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="flex-1 flex flex-col gap-2 items-start text-left"
-              >
-                <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">TOTAL</span>
-                <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-foreground block">
-                    {stats.total}
-                  </span>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="flex-1 flex flex-col gap-2 items-start text-left"
-              >
-                <span className="text-xs font-bold text-foreground/70 tracking-wide uppercase">ADMINS</span>
-                <div className="h-[62px] overflow-hidden">
-                  <span className="text-[52px] font-bold leading-none text-foreground block">
-                    {stats.admins}
-                  </span>
-                </div>
-              </motion.div>
+          <>
+            <div className="flex gap-2">
+              <StatCard label="Total" value={stats.total} delay={0.05} />
+              <StatCard label="Admins" value={stats.admins} delay={0.1} />
+              <StatCard label="Members" value={stats.members} delay={0.15} />
             </div>
 
-            {/* Members List */}
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col">
-                <span className="text-[32px] font-bold leading-none text-foreground">ALL</span>
-                <span className="text-[32px] font-bold leading-none text-foreground">MEMBERS</span>
-              </div>
-
-              <div className="flex flex-col gap-0">
-                {members.map((member, i) => (
-                  <motion.div
+            <ul className="flex flex-col gap-4" aria-label="All members">
+              {members.map((member, i) => {
+                const name = member.stage_name || member.profile?.full_name || 'Unknown';
+                const open = actionMenuId === member.id;
+                const roleLabel = member.role === 'admin' ? 'Admin' : member.role === 'member' ? 'Member' : member.role;
+                return (
+                  <motion.li
                     key={member.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.04, 0.3) }}
+                    className="flex flex-col gap-4"
                   >
-                    <div className="flex items-center justify-between py-4 border-b border-foreground/10">
-                      <div className="flex items-center gap-3">
-                        <div className="relative shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold shrink-0 overflow-hidden">
-                            {member.profile?.avatar_url ? (
-                              <img
-                                src={member.profile.avatar_url}
-                                alt={member.profile.full_name || 'Member'}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              getInitials(member)
-                            )}
-                          </div>
-                          {/* Neon Pro indicator dot — bottom-right overlap */}
-                          {isProMember(member) && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[1.5px] border-background bg-primary" />
-                          )}
-                          {member.role === 'admin' && (
-                            <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                              <Crown className="w-2.5 h-2.5 text-primary-foreground" />
-                            </div>
-                          )}
+                    <div
+                      className={cn(
+                        'flex items-center gap-3 p-4 pr-3 rounded-[24px] bg-card text-card-foreground border-[1.5px]',
+                        open ? 'border-foreground' : 'border-transparent',
+                      )}
+                    >
+                      <Avatar
+                        src={member.profile?.avatar_url}
+                        alt={member.profile?.full_name || 'Member'}
+                        initials={getInitials(member)}
+                        accent={member.role === 'admin'}
+                      />
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="bw-label-md truncate">{name}</span>
+                          {isProMember(member) && <Tag variant="solid">Pro</Tag>}
                         </div>
-                        <div className="flex flex-col items-start">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                              {member.stage_name || member.profile?.full_name || 'Unknown'}
-                            </span>
-                            {isProMember(member) && (
-                              <span className="text-[9px] font-bold uppercase leading-none px-1.5 py-0.5 rounded-[4px] bg-primary/15 text-primary border border-primary/25 tracking-wider">
-                                PRO
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
-                            {[member.instrument, member.role].filter(Boolean).join(' · ')}
-                          </span>
-                        </div>
+                        <span className="bw-body-sm text-muted-foreground truncate">
+                          {[member.instrument, roleLabel].filter(Boolean).join(' · ')}
+                        </span>
                       </div>
-
-                      <button
-                        onClick={() =>
-                          setActionMenuId(actionMenuId === member.id ? null : member.id)
-                        }
-                        className="w-8 h-8 rounded-full border border-foreground/10 hover:bg-foreground/5 flex items-center justify-center transition-colors"
-                      >
-                        <MoreHorizontal className="w-4 h-4 text-foreground/70" />
-                      </button>
+                      <IconButton
+                        label={`Actions for ${name}`}
+                        variant="ghost"
+                        size="sm"
+                        icon={<MoreHorizontal />}
+                        aria-expanded={open}
+                        onClick={() => setActionMenuId(open ? null : member.id)}
+                      />
                     </div>
 
-                    {/* Action Menu */}
+                    {/* Member menu (Figma: dark card under the row) */}
                     <AnimatePresence>
-                      {actionMenuId === member.id && (
+                      {open && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden border-b border-foreground/10"
+                          className="overflow-hidden -mt-4"
                         >
-                          <div className="py-2 flex flex-col gap-0">
+                          <div className="dark mt-4 p-2 rounded-[24px] bg-sheet text-sheet-foreground flex flex-col gap-1" role="menu">
                             {member.profile?.email && (
-                              <button
-                                onClick={() => handleEmailMember(member.profile!.email)}
-                                className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                              >
-                                <Mail className="w-4 h-4 text-foreground/40" />
-                                <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                                  EMAIL
-                                </span>
-                              </button>
+                              <MenuRow icon={<Mail />} label="Email" onClick={() => handleEmailMember(member.profile!.email)} />
                             )}
                             {isAdmin && (
                               <>
                                 {member.role === 'admin' ? (
-                                  <button
-                                    onClick={() => handleToggleRole(member)}
-                                    className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                                  >
-                                    <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                                      MAKE MEMBER
-                                    </span>
-                                  </button>
+                                  <MenuRow icon={<UserCog />} label="Make member" onClick={() => handleToggleRole(member)} />
                                 ) : isProMember(member) ? (
-                                  <button
-                                    onClick={() => handleToggleRole(member)}
-                                    className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                                  >
-                                    <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                                      MAKE ADMIN
-                                    </span>
-                                  </button>
+                                  <MenuRow icon={<Crown />} label="Make admin" onClick={() => handleToggleRole(member)} />
                                 ) : (
-                                  <div className="flex items-center gap-3 py-3 px-2 opacity-50 cursor-not-allowed">
-                                    <UserCog className="w-4 h-4 text-foreground/40" />
-                                    <div className="flex flex-col items-start">
-                                      <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                                        MAKE ADMIN
-                                      </span>
-                                      <span className="text-[9px] font-medium text-foreground/40 uppercase">
-                                        Requires a Pro account to co-manage
-                                      </span>
-                                    </div>
-                                  </div>
+                                  <MenuRow icon={<Crown />} label="Make admin" hint="Requires a Pro account to co-manage" disabled />
                                 )}
-                                <button
-                                  onClick={() => handleRemoveMember(member)}
-                                  className="flex items-center gap-3 py-3 px-2 active:opacity-70 transition-opacity"
-                                >
-                                  <Trash2 className="w-4 h-4 text-[var(--destructive)]" />
-                                  <span className="text-xs font-bold text-[var(--destructive)] uppercase tracking-wide">
-                                    REMOVE
-                                  </span>
-                                </button>
+                                <MenuRow icon={<Trash2 />} label="Remove from band" danger onClick={() => handleRemoveMember(member)} />
                               </>
                             )}
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
-      {/* Invite Modal */}
-      <AnimatePresence>
-        {showInvite && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
-          >
-            {/* Header */}
-            <div
-              className="px-4 shrink-0"
-              style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
-            >
-              <div className="flex items-center gap-4 mb-10">
-                <button
-                  onClick={() => {
-                    setShowInvite(false);
-                    setSearchQuery('');
-                    setSearchResults([]);
-                    setError(null);
-                  }}
-                  className="w-[50px] h-[50px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 shrink-0 active:scale-90 transition-all"
-                >
-                  <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
+      {/* Primary CTA (Figma Button, lime) */}
+      {isAdmin && !loading && (
+        <div className="sticky bottom-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+          <div className="max-w-2xl mx-auto w-full">
+            <PillButton icon={<Plus className="w-[18px] h-[18px]" />} onClick={() => setShowInvite(true)}>
+              {members.length === 0 ? 'Invite first member' : 'Invite member'}
+            </PillButton>
+          </div>
+        </div>
+      )}
+
+      {/* Invite member (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={!!pendingRemoval}
+        onClose={() => !removing && setPendingRemoval(null)}
+        overline={selectedBand?.name}
+        title="Remove from band?"
+        zIndex={100}
+        footer={
+          <div className="grid grid-cols-2 gap-2">
+            <PillButton variant="outline" onClick={() => setPendingRemoval(null)} disabled={removing}>
+              Cancel
+            </PillButton>
+            <PillButton variant="danger" loading={removing} icon={<Trash2 className="w-4 h-4" />} onClick={confirmRemoveMember}>
+              Remove
+            </PillButton>
+          </div>
+        }
+      >
+        <p className="bw-body-md text-sheet-foreground/80">
+          {pendingRemoval?.profile?.full_name || 'This member'} loses access to the band's events, chats and repertoire. You can invite them again later.
+        </p>
+      </BwSheet>
+
+      <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title="Invite member" zIndex={100}>
+        <div className="dark flex flex-col gap-3 text-sheet-foreground">
+          {/* Search (white pill) */}
+          <label className="flex items-center gap-3 h-12 px-4 rounded-full bg-white text-black">
+            <span className="sr-only">Search BandWith users</span>
+            <Search className="w-[18px] h-[18px] shrink-0" aria-hidden />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Name or email address…"
+              autoComplete="off"
+              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg placeholder:text-black/40"
+            />
+            {isSearching ? (
+              <Loader2 className="w-[18px] h-[18px] shrink-0 animate-spin text-black/50" />
+            ) : (
+              searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear search" className="-m-2 p-2 shrink-0 text-black/50">
+                  <X className="w-4 h-4" />
                 </button>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[32px] font-bold text-foreground leading-none">INVITE</span>
-                  <span className="text-[32px] font-bold text-foreground leading-none">MEMBER</span>
-                </div>
-              </div>
+              )
+            )}
+          </label>
+
+          {error && (
+            <div role="alert" className="flex items-center gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08] text-destructive">
+              <X className="w-[18px] h-[18px] shrink-0" />
+              <span className="bw-body-sm">{error}</span>
             </div>
+          )}
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-32">
-              {error && (
-                <div className="mb-6 py-3 px-4 border border-[var(--destructive)]/20 rounded-[12px] flex items-center gap-3">
-                  <X className="w-4 h-4 text-[var(--destructive)] shrink-0" />
-                  <span className="text-xs font-bold text-[var(--destructive)] uppercase">{error}</span>
-                </div>
+          {/* Results */}
+          {searchResults.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h3 className="bw-label-sm text-sheet-foreground/70">Found in BandWith</h3>
+              {searchResults.map((user) => (
+                <motion.div
+                  key={user.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 p-3 rounded-[24px] bg-sheet-foreground/[0.08]"
+                >
+                  <Avatar src={user.avatar_url} alt={user.full_name || user.email} initials={userInitials(user)} />
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <span className="bw-label-md truncate">{user.full_name || 'No name'}</span>
+                    <span className="bw-body-sm text-sheet-foreground/70 truncate">{user.email}</span>
+                  </div>
+                  <PillButton size="sm" fullWidth={false} onClick={() => handleAddUser(user)} disabled={inviting} aria-label={`Invite ${user.full_name || user.email}`}>
+                    Invite
+                  </PillButton>
+                </motion.div>
+              ))}
+            </section>
+          )}
+
+          {/* No results: invite by email */}
+          {searchQuery.trim().length >= 3 && searchResults.length === 0 && !isSearching && (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <UserPlus className="w-8 h-8 text-sheet-foreground/50" />
+              <p className="bw-body-sm text-sheet-foreground/70">
+                {searchQuery.includes('@') ? 'User not found. Send them an invitation?' : 'No users found. Enter an email to invite.'}
+              </p>
+              {searchQuery.includes('@') && (
+                <PillButton
+                  size="md"
+                  fullWidth={false}
+                  loading={inviting}
+                  icon={<Send className="w-4 h-4" />}
+                  onClick={handleInviteByEmail}
+                  className="max-w-full [&>span]:min-w-0 [&>span]:truncate"
+                >
+                  Invite {searchQuery}
+                </PillButton>
               )}
+            </div>
+          )}
 
-              {inviteSuccess && (
-                <div className="mb-6 py-3 px-4 border border-[var(--success)]/20 rounded-[12px] flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0" />
-                  <span className="text-xs font-bold text-[var(--success)] uppercase">
-                    {inviteSuccess}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-10">
-                {/* Search Input */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
-                    SEARCH BANDWITH USERS
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Name or email address..."
-                      className="w-full bg-transparent border-b-2 border-foreground/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-foreground transition-colors"
-                    />
-                    {isSearching && (
-                      <Loader2 className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/40 animate-spin" />
+          {/* Role */}
+          <section className="flex flex-col gap-3">
+            <h3 className="bw-label-sm text-sheet-foreground/70">Role</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { value: 'member', label: 'Member', desc: 'Can view band content' },
+                  { value: 'admin', label: 'Admin', desc: 'Manage members, events & settings' },
+                ] as const
+              ).map((role) => {
+                const selected = inviteRole === role.value;
+                return (
+                  <button
+                    key={role.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setInviteRole(role.value)}
+                    className={cn(
+                      'flex flex-col gap-1 p-4 rounded-[24px] text-left active:scale-[0.98] transition-[transform,background-color]',
+                      selected ? 'bg-accent text-accent-foreground' : 'bg-sheet-foreground/[0.08] text-sheet-foreground',
                     )}
-                  </div>
-                </div>
+                  >
+                    <span className="bw-label-md">{role.label}</span>
+                    <span className={cn('bw-body-sm', !selected && 'text-sheet-foreground/80')}>{role.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
-                      FOUND IN BANDWITH
-                    </span>
-                    <div className="flex flex-col gap-0">
-                      {searchResults.map((user) => (
-                        <motion.button
-                          key={user.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          onClick={() => handleAddUser(user)}
-                          disabled={inviting}
-                          className="flex items-center justify-between py-4 border-b border-foreground/10 last:border-0 active:opacity-70 transition-opacity disabled:opacity-50"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center text-foreground text-xs font-bold shrink-0">
-                              {user.full_name
-                                ?.split(' ')
-                                .map((n) => n[0])
-                                .join('')
-                                .slice(0, 2)
-                                .toUpperCase() || user.email.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="flex flex-col items-start">
-                              <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                                {user.full_name || 'No name'}
-                              </span>
-                              <span className="text-[10px] font-medium text-foreground/40 uppercase">
-                                {user.email}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-primary-foreground rounded-[8px] font-bold text-[11px] uppercase shadow-xs">
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>ADD</span>
-                          </div>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* No results - Invite by email */}
-                {searchQuery.length >= 2 &&
-                  searchResults.length === 0 &&
-                  !isSearching && (
-                    <div className="flex flex-col items-center py-8">
-                      <UserPlus className="w-10 h-10 text-foreground/20 mb-3" />
-                      <span className="text-[10px] font-medium text-foreground/40 uppercase mb-4 text-center">
-                        {searchQuery.includes('@')
-                          ? 'User not found. Send them an invitation?'
-                          : 'No users found. Enter an email to invite.'}
-                      </span>
-                      {searchQuery.includes('@') && (
-                        <button
-                          onClick={handleInviteByEmail}
-                          disabled={inviting}
-                          className="flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-[12px] active:scale-95 transition-all shadow-xs disabled:opacity-50"
-                        >
-                          {inviting ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
-                          )}
-                          <span className="text-xs font-bold uppercase tracking-wider">
-                            INVITE {searchQuery}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                {/* Role Selection */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide">
-                    ROLE
-                  </span>
-                  <div className="flex flex-col gap-0">
-                    <button
-                      onClick={() => setInviteRole('member')}
-                      className="flex items-center justify-between w-full py-4 border-b border-foreground/10 active:opacity-70 transition-opacity"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Music2 className="w-4 h-4 text-foreground/40" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                            MEMBER
-                          </span>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
-                            Can view band content
-                          </span>
-                        </div>
-                      </div>
-                      <DotRadio
-                        selected={inviteRole === 'member'}
-                        activeColor={inviteRole === 'member' ? 'var(--fg)' : undefined}
-                        className="!w-[60px] !h-[38px]"
-                      />
-                    </button>
-                    <button
-                      onClick={() => setInviteRole('admin')}
-                      className="flex items-center justify-between w-full py-4 border-b border-foreground/10 active:opacity-70 transition-opacity"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Crown className="w-4 h-4 text-foreground/40" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-xs font-bold text-foreground uppercase tracking-wide">
-                            ADMIN
-                          </span>
-                          <span className="text-[10px] font-medium text-foreground/40 uppercase">
-                            Manage members, events & settings
-                          </span>
-                        </div>
-                      </div>
-                      <DotRadio
-                        selected={inviteRole === 'admin'}
-                        activeColor={inviteRole === 'admin' ? 'var(--fg)' : undefined}
-                        className="!w-[60px] !h-[38px]"
-                      />
-                    </button>
-                  </div>
-                </div>
+          {inviteSuccess && (
+            <div role="status" className="flex items-center gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
+              <Check className="w-[18px] h-[18px] shrink-0 text-success" />
+              <span className="bw-body-sm">{inviteSuccess}</span>
+            </div>
+          )}
+          {inviteShare && (
+            <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
+              <span className="bw-label-sm text-sheet-foreground/70">Invite code</span>
+              <span className="bw-body-sm font-mono select-all [overflow-wrap:anywhere]">{inviteShare.code}</span>
+              <span className="bw-body-sm text-sheet-foreground/70">
+                They install BandWith, sign up and paste this code{inviteShare.url ? ', or open the link' : ''}.
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <PillButton
+                  variant="outline"
+                  icon={codeCopied ? <Check className="w-4 h-4" /> : undefined}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(inviteShare.code).then(
+                      () => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); },
+                      () => setError('Could not copy. Use Share instead.')
+                    );
+                  }}
+                >
+                  {codeCopied ? 'Copied' : 'Copy code'}
+                </PillButton>
+                <PillButton
+                  onClick={async () => {
+                    const text = [
+                      `Join ${selectedBand?.name || 'our band'} on BandWith.`,
+                      inviteShare.url ? inviteShare.url : null,
+                      `Invite code: ${inviteShare.code}`,
+                    ].filter(Boolean).join('\n');
+                    try {
+                      if (Capacitor.isNativePlatform()) {
+                        const { Share } = await import('@capacitor/share');
+                        await Share.share({ title: 'BandWith invite', text });
+                      } else if (navigator.share) {
+                        await navigator.share({ title: 'BandWith invite', text });
+                      } else {
+                        await navigator.clipboard.writeText(text);
+                        setCodeCopied(true);
+                      }
+                    } catch {
+                      // share sheet closed
+                    }
+                  }}
+                >
+                  Share invite
+                </PillButton>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </BwSheet>
     </motion.div>
   );
 };

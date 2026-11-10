@@ -1,4 +1,10 @@
 import { supabase, getSafeUser } from '../supabase';
+import type {
+  Quote as AppQuote,
+  QuoteMusician as AppQuoteMusician,
+  QuoteStatus as AppQuoteStatus,
+} from '@/app/data/quotes';
+import { roundCents, totalsForQuote } from './quoteMath';
 
 // Types
 export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' | 'negotiating' | 'archived';
@@ -94,12 +100,18 @@ export interface Quote {
   
   // Tracking
   sent_at?: string;
+  accepted_at?: string;
   viewed_at?: string;
   responded_at?: string;
   response_type?: 'accepted' | 'declined';
   rejection_reason?: string;
   converted_to_event_id?: string;
-  
+
+  // Wizard extras (migration 051): package options and PDF presentation
+  options?: unknown[] | null;
+  presentation?: Record<string, unknown> | null;
+  deposit_amount?: number;
+
   // Meta
   created_by?: string;
   created_at: string;
@@ -143,7 +155,7 @@ export const getQuotes = async (
   try {
     let query = supabase
       .from('quotes')
-      .select('*')
+      .select('*, musicians:quote_musicians(*)')
       .eq('band_id', bandId)
       .order('created_at', { ascending: false });
 
@@ -214,6 +226,30 @@ export const getQuote = async (quoteId: string): Promise<{ data: QuoteWithMusici
   }
 };
 
+/**
+ * Asks the database for the next per-band quote number (migration 043:
+ * `generate_quote_number(p_band_id uuid)`, SECURITY DEFINER, admin-only, atomic counter).
+ * If the database has not been migrated yet (function signature not found, PostgREST
+ * PGRST202) it falls back to the legacy `generate_quote_number(band_prefix)`.
+ * Never invents a number on the client: the DB number is the single source of truth.
+ */
+export const generateQuoteNumberForBand = async (
+  bandId: string
+): Promise<{ data: string | null; error: Error | null }> => {
+  const { data, error } = await supabase.rpc('generate_quote_number', { p_band_id: bandId });
+  if (!error && typeof data === 'string' && data) return { data, error: null };
+
+  if (error && (error as any).code === 'PGRST202') {
+    const legacy = await supabase.rpc('generate_quote_number', { band_prefix: 'BW' });
+    if (!legacy.error && typeof legacy.data === 'string' && legacy.data) {
+      return { data: legacy.data, error: null };
+    }
+    return { data: null, error: (legacy.error as any) || new Error('Could not generate a quote number') };
+  }
+
+  return { data: null, error: (error as any) || new Error('Could not generate a quote number') };
+};
+
 export const createQuote = async (
   quoteData: Partial<Quote>,
   musicians?: Omit<QuoteMusician, 'id' | 'quote_id' | 'created_at'>[]
@@ -221,24 +257,17 @@ export const createQuote = async (
   try {
     const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
+    if (!quoteData.band_id) throw new Error('A band is required to create a quote');
 
-    // Generate quote number using RPC
-    const { data: quoteNumber, error: rpcError } = await supabase
-      .rpc('generate_quote_number', { band_prefix: 'BW' });
-
-    if (rpcError) {
-      // Fallback to simple generation
-      const year = new Date().getFullYear();
-      const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-      quoteData.quote_number = `BW-${year}-${random}`;
-    } else {
-      quoteData.quote_number = quoteNumber;
-    }
+    // The quote number always comes from the database (any client-side number is replaced)
+    const { data: quoteNumber, error: numberError } = await generateQuoteNumberForBand(quoteData.band_id);
+    if (numberError || !quoteNumber) throw numberError || new Error('Could not generate a quote number');
 
     const { data: quote, error: insertError } = await supabase
       .from('quotes')
       .insert({
         ...quoteData,
+        quote_number: quoteNumber,
         created_by: user.id,
       })
       .select()
@@ -258,7 +287,12 @@ export const createQuote = async (
         );
 
       if (musiciansError) {
-        console.error('Error adding musicians:', musiciansError);
+        // Do not leave a half-written quote behind: remove it and report the failure
+        const { error: cleanupError } = await supabase.from('quotes').delete().eq('id', quote.id);
+        if (cleanupError) {
+          console.error('Error removing quote after musicians insert failed:', cleanupError);
+        }
+        throw new Error(`Could not save the quote musicians: ${musiciansError.message || 'unknown error'}`);
       }
     }
 
@@ -290,12 +324,17 @@ export const updateQuote = async (
 
 export const deleteQuote = async (quoteId: string): Promise<{ error: Error | null }> => {
   try {
-    const { error } = await supabase
+    // Return the deleted id: RLS silently filters rows, so 0 rows means "not allowed / not found"
+    const { data, error } = await supabase
       .from('quotes')
       .delete()
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .select('id');
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Quote not found or you do not have permission to delete it');
+    }
 
     return { error: null };
   } catch (error: any) {
@@ -354,6 +393,7 @@ export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null
       .from('quotes')
       .update({
         status: 'accepted',
+        accepted_at: new Date().toISOString(),
         responded_at: new Date().toISOString(),
         response_type: 'accepted',
       })
@@ -362,6 +402,17 @@ export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null
       .single();
 
     if (error) throw error;
+
+    // The tentative event created with the quote becomes a confirmed gig
+    // (the database trigger notifies the lineup).
+    if (data?.converted_to_event_id) {
+      const { error: evErr } = await supabase
+        .from('events')
+        .update({ status: 'confirmed' })
+        .eq('id', data.converted_to_event_id)
+        .eq('status', 'tentative');
+      if (evErr) console.warn('[quotes] accepted, but the event was not confirmed:', evErr);
+    }
 
     return { data, error: null };
   } catch (error: any) {
@@ -401,7 +452,7 @@ export const duplicateQuote = async (quoteId: string): Promise<{ data: Quote | n
     if (fetchError || !original) throw fetchError || new Error('Quote not found');
 
     // Create new quote without id and with reset status
-    const { id, quote_number, status, sent_at, viewed_at, responded_at, response_type, rejection_reason, created_at, updated_at, musicians, band, ...quoteData } = original;
+    const { id, quote_number, status, sent_at, viewed_at, responded_at, response_type, rejection_reason, converted_to_event_id, created_by, created_at, updated_at, musicians, band, ...quoteData } = original;
 
     const { data, error } = await createQuote(
       {
@@ -510,3 +561,231 @@ export const getQuoteStats = async (
     return { data: null, error };
   }
 };
+
+// ============================================
+// APP <-> DB MAPPING
+// ============================================
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID_RE.test(value);
+
+const DB_STATUSES: QuoteStatus[] = ['draft', 'sent', 'viewed', 'accepted', 'declined', 'expired', 'negotiating', 'archived'];
+
+const textOrUndefined = (v?: string | null): string | undefined => (v && String(v).trim() ? String(v) : undefined);
+const intOrUndefined = (v?: number | null): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : undefined;
+const num = (v?: number | null): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/** Wizard fields with no column of their own, kept in `quotes.presentation` so the PDF can be rebuilt. */
+const PRESENTATION_KEYS = [
+  'musicianCount', 'quoteDescription', 'validityDays', 'customDisclaimer', 'productionTier',
+  'productionBullets', 'travelMode', 'accommodationMode', 'accommodationRooms', 'accommodationNights',
+  'mealsMode', 'showBankDetailsOnPdf', 'paymentTermsText', 'selectedMoments', 'includeProposalSummary',
+] as const;
+
+const pickPresentation = (q: Partial<AppQuote>): Record<string, unknown> | null => {
+  const out: Record<string, unknown> = {};
+  for (const key of PRESENTATION_KEYS) {
+    const v = (q as Record<string, unknown>)[key];
+    if (v !== undefined && v !== null && v !== '') out[key] = v;
+  }
+  return Object.keys(out).length ? out : null;
+};
+
+/** Maps the wizard's camelCase quote to `quotes` table columns (only columns that exist). */
+export const appQuoteToDbRecord = (q: Partial<AppQuote>, bandId: string): Partial<Quote> => {
+  const totals = totalsForQuote(q);
+  const status = String(q.status || 'draft').toLowerCase() as QuoteStatus;
+  const dbStatus: QuoteStatus = DB_STATUSES.includes(status) ? status : 'draft';
+
+  return {
+    band_id: bandId,
+    status: dbStatus,
+    client_name: textOrUndefined(q.clientName) || 'Client',
+    client_email: textOrUndefined(q.clientEmail),
+    client_phone: textOrUndefined(q.clientPhone),
+    client_company: textOrUndefined(q.clientCompany),
+    event_name: textOrUndefined(q.eventName || q.eventTitle),
+    event_type: textOrUndefined(q.eventType),
+    event_date: textOrUndefined(q.eventDate),
+    event_time_start: textOrUndefined(q.eventTimeStart),
+    event_time_end: textOrUndefined(q.eventTimeEnd),
+    guest_count: intOrUndefined(q.guestCount),
+    venue_name: textOrUndefined(q.venueName),
+    venue_address: textOrUndefined(q.venueAddress),
+    venue_city: textOrUndefined(q.venueCity),
+    venue_country: textOrUndefined(q.venueCountry),
+    indoor_outdoor: textOrUndefined(q.indoorOutdoor) as Quote['indoor_outdoor'],
+    performance_type: textOrUndefined(q.performanceType),
+    set_duration_minutes: intOrUndefined(q.setDuration),
+    number_of_sets: intOrUndefined(q.numberOfSets),
+    break_duration_minutes: intOrUndefined(q.breakDuration),
+    genres: q.genres && q.genres.length > 0 ? q.genres : undefined,
+    special_requests: textOrUndefined(q.specialRequests),
+    billing_country: textOrUndefined(q.billingCountry),
+    billing_address: textOrUndefined(q.billingAddress),
+    vat_number: textOrUndefined(q.vatNumber),
+    fiscal_code: textOrUndefined(q.fiscalCode),
+    vat_rate: Math.max(0, num(q.vatRate)),
+    vat_exempt: Boolean(q.vatExempt),
+    reverse_charge: Boolean(q.reverseCharge),
+    currency: textOrUndefined(q.currency) || 'EUR',
+    base_fee: roundCents(num(q.baseFee)),
+    travel_included: q.travelIncluded,
+    travel_fee: roundCents(num(q.travelFee)),
+    travel_distance_km: intOrUndefined(q.travelDistanceKm),
+    accommodation_needed: q.accommodationNeeded,
+    accommodation_fee: roundCents(num(q.accommodationFee)),
+    meals_included: q.mealsIncluded,
+    meals_fee: roundCents(num(q.mealsFee)),
+    sound_included: q.soundIncluded,
+    sound_fee: roundCents(num(q.soundFee)),
+    lights_included: q.lightsIncluded,
+    lights_fee: roundCents(num(q.lightsFee)),
+    backline_included: q.backlineIncluded,
+    backline_fee: roundCents(num(q.backlineFee)),
+    custom_items: (q.customItems || []).map(ci => ({
+      id: ci.id,
+      description: ci.description || ci.name || '',
+      amount: roundCents(num(ci.price ?? ci.amount)),
+      quantity: ci.quantity || 1,
+    })),
+    discount_type: q.discountType || 'none',
+    discount_value: Math.max(0, num(q.discountValue)),
+    discount_reason: textOrUndefined(q.discountReason),
+    subtotal: totals.subtotal,
+    discount_amount: totals.discount,
+    net_amount: totals.net,
+    vat_amount: totals.vat,
+    total: totals.total,
+    valid_until: textOrUndefined(q.validUntil),
+    deposit_required: q.depositRequired,
+    deposit_percentage: intOrUndefined(q.depositPercentage),
+    deposit_due_date: textOrUndefined(q.depositDueDate),
+    balance_due_date: textOrUndefined(q.balanceDueDate),
+    payment_methods: q.paymentMethods && q.paymentMethods.length > 0 ? q.paymentMethods : undefined,
+    cancellation_policy: textOrUndefined(q.cancellationPolicy),
+    cancellation_terms: textOrUndefined(q.cancellationTerms),
+    internal_notes: textOrUndefined(q.internalNotes),
+    client_notes: textOrUndefined(q.clientNotes || q.notes),
+    special_terms: textOrUndefined(q.specialTerms),
+    deposit_amount: q.depositRequired === false
+      ? 0
+      : roundCents(num(q.depositAmount ?? (totals.total * num(q.depositPercentage)) / 100)),
+    options: q.quoteOptions && q.quoteOptions.length > 0 ? (q.quoteOptions as unknown[]) : null,
+    presentation: pickPresentation(q),
+    sent_at: dbStatus === 'sent' ? q.sentAt || new Date().toISOString() : undefined,
+  };
+};
+
+/** Maps the wizard's musicians to `quote_musicians` rows (user_id only when it is a real profile id). */
+export const appMusiciansToDb = (
+  musicians?: AppQuoteMusician[]
+): Omit<QuoteMusician, 'id' | 'quote_id' | 'created_at'>[] =>
+  (musicians || [])
+    .filter(m => m && textOrUndefined(m.name))
+    .map(m => ({
+      user_id: isUuid(m.userId) ? m.userId : undefined,
+      name: m.name,
+      instrument: textOrUndefined(m.instrument),
+      fee: roundCents(num(m.fee)),
+      is_external: Boolean(m.isExternal),
+      is_available: m.isAvailable !== false,
+    }));
+
+/** Maps a `quotes` row to the app's camelCase quote used by the list, detail modal and PDF. */
+export const dbQuoteToAppQuote = (q: Quote & { musicians?: QuoteMusician[] }): AppQuote => ({
+  ...((q.presentation as Partial<AppQuote>) || {}),
+  quoteOptions: Array.isArray(q.options) && q.options.length > 0 ? (q.options as AppQuote['quoteOptions']) : undefined,
+  depositAmount: q.deposit_amount != null ? Number(q.deposit_amount) : undefined,
+  id: q.id,
+  bandId: q.band_id,
+  quoteNumber: q.quote_number || '',
+  status: (q.status?.toUpperCase() || 'DRAFT') as AppQuoteStatus,
+  clientName: q.client_name,
+  clientEmail: q.client_email || '',
+  clientPhone: q.client_phone,
+  clientCompany: q.client_company,
+  eventName: q.event_name || '',
+  eventType: (q.event_type || 'other') as AppQuote['eventType'],
+  eventDate: q.event_date || '',
+  eventTimeStart: q.event_time_start ? q.event_time_start.slice(0, 5) : '',
+  eventTimeEnd: q.event_time_end ? q.event_time_end.slice(0, 5) : undefined,
+  guestCount: q.guest_count,
+  venueName: q.venue_name,
+  venueAddress: q.venue_address,
+  venueCity: q.venue_city || '',
+  venueCountry: q.venue_country || '',
+  indoorOutdoor: q.indoor_outdoor,
+  performanceType: (q.performance_type || 'full_band') as AppQuote['performanceType'],
+  setDuration: q.set_duration_minutes || 0,
+  numberOfSets: q.number_of_sets || 0,
+  breakDuration: q.break_duration_minutes,
+  musicians: (q.musicians || []).map(m => ({
+    id: m.user_id || m.id,
+    userId: m.user_id,
+    name: m.name,
+    instrument: m.instrument || '',
+    fee: Number(m.fee || 0),
+    isExternal: Boolean(m.is_external),
+    isAvailable: m.is_available !== false,
+  })) as AppQuote['musicians'],
+  genres: q.genres || [],
+  specialRequests: q.special_requests,
+  billingCountry: q.billing_country || '',
+  billingAddress: q.billing_address,
+  vatNumber: q.vat_number,
+  fiscalCode: q.fiscal_code,
+  vatRate: Number(q.vat_rate ?? 0),
+  vatExempt: Boolean(q.vat_exempt),
+  reverseCharge: Boolean(q.reverse_charge),
+  currency: q.currency || 'EUR',
+  baseFee: Number(q.base_fee || 0),
+  travelIncluded: q.travel_included ?? true,
+  travelFee: Number(q.travel_fee || 0),
+  travelDistanceKm: q.travel_distance_km,
+  accommodationNeeded: Boolean(q.accommodation_needed),
+  accommodationFee: Number(q.accommodation_fee || 0),
+  mealsIncluded: q.meals_included ?? true,
+  mealsFee: Number(q.meals_fee || 0),
+  soundIncluded: q.sound_included ?? true,
+  soundFee: Number(q.sound_fee || 0),
+  lightsIncluded: q.lights_included ?? true,
+  lightsFee: Number(q.lights_fee || 0),
+  backlineIncluded: q.backline_included ?? true,
+  backlineFee: Number(q.backline_fee || 0),
+  customItems: (q.custom_items || []).map(ci => ({ ...ci, name: ci.description, price: ci.amount })),
+  discountType: (q.discount_type || 'none') as AppQuote['discountType'],
+  discountValue: Number(q.discount_value || 0),
+  discountReason: q.discount_reason,
+  subtotal: Number(q.subtotal || 0),
+  discountAmount: Number(q.discount_amount || 0),
+  netAmount: Number(q.net_amount || 0),
+  vatAmount: Number(q.vat_amount || 0),
+  total: Number(q.total || 0),
+  validUntil: q.valid_until || '',
+  depositRequired: q.deposit_required ?? true,
+  depositPercentage: q.deposit_percentage ?? 30,
+  depositDueDate: q.deposit_due_date,
+  balanceDueDate: q.balance_due_date || '',
+  paymentMethods: (q.payment_methods || []) as AppQuote['paymentMethods'],
+  cancellationPolicy: (q.cancellation_policy || 'moderate') as AppQuote['cancellationPolicy'],
+  cancellationTerms: q.cancellation_terms,
+  internalNotes: q.internal_notes,
+  clientNotes: q.client_notes,
+  specialTerms: q.special_terms,
+  sentAt: q.sent_at,
+  viewedAt: q.viewed_at,
+  respondedAt: q.responded_at,
+  convertedToEventId: q.converted_to_event_id,
+  createdAt: q.created_at,
+  updatedAt: q.updated_at,
+  createdBy: q.created_by || '',
+  // legacy fields used by the list
+  eventId: q.converted_to_event_id,
+  eventTitle: q.event_name || 'Untitled Quote',
+  lineItems: [],
+  discount: Number(q.discount_amount || 0),
+  tax: Number(q.vat_amount || 0),
+  notes: q.client_notes || '',
+});

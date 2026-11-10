@@ -1,9 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Search, X, Calendar, DollarSign, Music, Check, ArrowUpRight } from '@/app/components/icons';
+import { motion } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
 import { APP_COPY } from '@/app/constants/copy';
+import { parseLocalDate } from '@/lib/dates';
+import { Metric } from '@/app/components/bw';
+import { BackButton, Selector } from '@/app/components/bw/Form';
+import { SearchField, Card } from '@/app/components/bw/Screen';
+import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface PastEventsViewProps {
   onClose: () => void;
@@ -18,7 +22,7 @@ const normalizeDateStr = (rawDate: string | undefined): string | null => {
   if (!rawDate) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return rawDate;
   if (rawDate.includes('T')) return rawDate.split('T')[0];
-  const parsed = new Date(rawDate);
+  const parsed = parseLocalDate(rawDate);
   if (!isNaN(parsed.getTime())) {
     const y = parsed.getFullYear();
     const m = String(parsed.getMonth() + 1).padStart(2, '0');
@@ -28,27 +32,12 @@ const normalizeDateStr = (rawDate: string | undefined): string | null => {
   return rawDate;
 };
 
-const formatEventDate = (dateStr: string): string => {
-  if (!dateStr) return 'TBD';
-  const d = new Date(dateStr);
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const day = d.getDate();
-  return `${month} ${day}`;
+const parseFee = (price?: string) => {
+  const n = parseFloat(price?.replace(/[^0-9.]/g, '') || '0');
+  return Number.isFinite(n) ? n : 0;
 };
 
-const formatEventTime = (timeStr: string): string => {
-  if (!timeStr) return '';
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
-  if (match) {
-    let h = parseInt(match[1]);
-    const m = parseInt(match[2]);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    if (h > 12) h -= 12;
-    if (h === 0) h = 12;
-    return m > 0 ? `${h}:${match[2]} ${ampm}` : `${h}${ampm}`;
-  }
-  return timeStr;
-};
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${sym()}${v.toLocaleString('en-US')}`);
 
 const CATEGORIES = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES'] as const;
 type CategoryFilter = (typeof CATEGORIES)[number];
@@ -61,6 +50,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   bands = [],
   userFeeMap = {},
 }) => {
+  useCurrency(); // re-render money labels when the band currency changes
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
@@ -178,11 +168,32 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
 
     const formattedRevenue =
       totalRevenue >= 1000
-        ? `€${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
-        : `€${totalRevenue}`;
+        ? `${sym()}${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
+        : `${sym()}${totalRevenue}`;
 
-    return { gigsCount, rehearsalsCount, formattedRevenue };
+    return { gigsCount, rehearsalsCount, totalRevenue, formattedRevenue };
   }, [rawPastEvents, isAdmin, userFeeMap]);
+
+  // Group the list by month (Figma: "NOVEMBER 2026" headings).
+  const groups = useMemo(() => {
+    const out: { key: string; label: string; events: EventData[] }[] = [];
+    filteredEvents.forEach((event) => {
+      const norm = normalizeDateStr(event.date);
+      const key = norm ? norm.slice(0, 7) : 'tbd';
+      let label = 'Date TBD';
+      if (norm) {
+        const d = parseLocalDate(norm);
+        if (!isNaN(d.getTime())) label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+      const last = out[out.length - 1];
+      if (last && last.key === key) last.events.push(event);
+      else out.push({ key, label, events: [event] });
+    });
+    return out;
+  }, [filteredEvents]);
+
+  const feeFor = (event: EventData) =>
+    !isAdmin && event.eventId && userFeeMap[event.eventId] != null ? userFeeMap[event.eventId] : parseFee(event.price);
 
   return (
     <motion.div
@@ -196,274 +207,117 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         touchAction: 'pan-y',
       }}
     >
-      {/* ═══ STICKY HEADER ═══ */}
-      <div
-        className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-foreground/10 px-[16px]"
-        style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          paddingBottom: '14px',
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-[14px]">
-            <button
-              onClick={onClose}
-              className="w-[44px] h-[44px] rounded-full flex items-center justify-center border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 transition-colors"
-            >
-              <ArrowLeft className="w-[20px] h-[20px] text-foreground" />
-            </button>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50 leading-none">
-                {APP_COPY.events.archive.eyebrow}
-              </span>
-              <div className="flex items-center gap-[8px] mt-[3px]">
-                <h1 className="text-[24px] font-bold uppercase text-foreground leading-none">
-                  {APP_COPY.events.archive.title}
-                </h1>
-                <span className="px-[8px] py-[2px] rounded-full text-[11px] font-bold bg-foreground/10 text-foreground/75 leading-none">
-                  {filteredEvents.length}
-                </span>
-              </div>
-            </div>
-          </div>
+      {/* Figma "Top Bar": back + H2 title on one 56pt row */}
+      <header className="sticky top-0 z-30 bg-background px-4" style={{ paddingTop: 'var(--safe-top)' }}>
+        <div className="h-14 flex items-center gap-3">
+          <BackButton onClick={onClose} />
+          <h1 className="bw-h2 flex-1 min-w-0 truncate">{APP_COPY.events.archive.title}</h1>
+          <span className="bw-label-sm text-muted-foreground shrink-0" aria-label={`${filteredEvents.length} events`}>
+            {filteredEvents.length}
+          </span>
         </div>
-      </div>
+      </header>
 
       <div
-        className="flex-1 flex flex-col gap-[28px] p-[16px] max-w-[700px] w-full mx-auto"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)' }}
+        className="flex-1 flex flex-col gap-4 px-4 pt-2 max-w-[700px] w-full mx-auto"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
       >
-        {/* ═══ METRICS SUMMARY BANNER ═══ */}
-        <div className="grid grid-cols-3 gap-[10px]">
-          <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              {APP_COPY.events.archive.gigsPlayed}
-            </span>
-            <span className="text-[22px] font-black text-foreground leading-none">
-              {metrics.gigsCount}
-            </span>
-          </div>
-          <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              {APP_COPY.events.archive.rehearsals}
-            </span>
-            <span className="text-[22px] font-black text-foreground leading-none">
-              {metrics.rehearsalsCount}
-            </span>
-          </div>
-          <div className="p-[14px] rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-[4px] shadow-2xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-              {isAdmin ? APP_COPY.events.archive.totalEarnings : APP_COPY.events.archive.yourEarnings}
-            </span>
-            <span className="text-[22px] font-black text-foreground leading-none truncate">
-              {metrics.formattedRevenue}
-            </span>
-          </div>
+        {/* Metrics (Figma Metric: label, dot value, 4×12 meter) */}
+        <div className="grid grid-cols-2 gap-8">
+          {/* One dot per gig played */}
+          <Metric label={APP_COPY.events.archive.gigsPlayed} value={metrics.gigsCount} fill={metrics.gigsCount / 48} />
+          {/* One dot per €500 earned */}
+          <Metric
+            label={isAdmin ? APP_COPY.events.archive.totalEarnings : APP_COPY.events.archive.yourEarnings}
+            value={metrics.formattedRevenue}
+            fill={metrics.totalRevenue / (48 * 500)}
+          />
         </div>
 
-        {/* ═══ SEARCH & FILTERS ═══ */}
-        <div className="flex flex-col gap-[12px]">
-          {/* Search bar */}
-          <div className="flex items-center gap-[10px] bg-foreground/5 border border-foreground/10 rounded-[12px] px-[14px] py-[10px]">
-            <Search className="w-[16px] h-[16px] text-foreground/40 shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search past events by title or venue..."
-              className="bg-transparent text-[13px] font-medium text-foreground placeholder:text-foreground/35 focus:outline-none flex-1"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="p-1 text-foreground/40 hover:text-foreground">
-                <X className="w-[14px] h-[14px]" />
-              </button>
-            )}
+        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search past events" placeholder="Search title or venue…" />
+
+        {/* Filter tabs (Figma Selector MD) */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+            {visibleCategories.map((cat) => (
+              <Selector key={cat} size="md" selected={selectedCategory === cat} onClick={() => setSelectedCategory(cat)}>
+                {cat}
+              </Selector>
+            ))}
           </div>
-
-          {/* Category & Year Filter Pills */}
-          <div className="flex items-center justify-between gap-[10px] flex-wrap">
-            {/* Category pills */}
-            <div className="flex items-center gap-[6px] overflow-x-auto pb-1">
-              {visibleCategories.map((cat) => {
-                const isActive = selectedCategory === cat;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={cn(
-                      'px-[12px] py-[6px] rounded-full text-[11px] font-bold uppercase tracking-wider transition-all leading-tight shrink-0',
-                      isActive
-                        ? 'bg-foreground text-background shadow-xs'
-                        : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/60'
-                    )}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Year selector pills */}
-            {availableYears.length > 1 && (
-              <div className="flex items-center gap-[4px] shrink-0">
-                <button
-                  onClick={() => setSelectedYear('ALL')}
-                  className={cn(
-                    'px-[8px] py-[4px] rounded-[8px] text-[10px] font-bold uppercase transition-all',
-                    selectedYear === 'ALL'
-                      ? 'bg-foreground/15 text-foreground font-black'
-                      : 'text-foreground/40 hover:text-foreground/70'
-                  )}
-                >
-                  ALL
-                </button>
-                {availableYears.map((yr) => (
-                  <button
-                    key={yr}
-                    onClick={() => setSelectedYear(yr)}
-                    className={cn(
-                      'px-[8px] py-[4px] rounded-[8px] text-[10px] font-bold uppercase transition-all',
-                      selectedYear === yr
-                        ? 'bg-foreground/15 text-foreground font-black'
-                        : 'text-foreground/40 hover:text-foreground/70'
-                    )}
-                  >
-                    {yr}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ═══ PAST EVENT CARDS LIST ═══ */}
-        <div className="flex flex-col gap-[14px]">
-          {filteredEvents.length > 0 ? (
-            filteredEvents.map((event) => {
-              const status = event.status?.toUpperCase();
-              const isRehearsal = status === 'REHEARSAL';
-              const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
-              const isQuote = status === 'QUOTED' || status === 'QUOTE';
-              const typeLabel = isRehearsal ? 'REHEARSAL' : isGig ? 'GIG' : isQuote ? 'QUOTE' : 'DRAFT';
-              const memberCount = event.members?.length || 0;
-
-              const showTime = event.time ? formatEventTime(event.time) : '';
-
-              return (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => onEventClick(event)}
-                  className="relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 overflow-hidden cursor-pointer shadow-2xs hover:shadow-sm transition-all active:scale-[0.99] group opacity-90 hover:opacity-100"
-                >
-                  {/* Left Slate Accent Rail */}
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-[5px]"
-                    style={{ backgroundColor: 'var(--accent-past)' }}
-                  />
-
-                  <div className="flex flex-col gap-[12px] p-[16px] pl-[20px]">
-                    {/* Header: Tags & Date */}
-                    <div className="flex items-start justify-between gap-[10px]">
-                      <div className="flex items-center gap-[6px] flex-wrap">
-                        {/* Multi-band member name pill */}
-                        {!isAdmin && bands.length > 1 && event.band_name && (
-                          <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[10px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
-                            {event.band_name}
-                          </div>
-                        )}
-                        {/* Primary Tag in Slate */}
-                        <div
-                          className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[10px] font-bold uppercase tracking-wider leading-tight"
-                          style={{ backgroundColor: 'var(--accent-past)', color: 'var(--accent-past-fg)' }}
-                        >
-                          {typeLabel}
-                        </div>
-                        {/* Completed status chip */}
-                        <div className="inline-flex items-center gap-1 rounded-[6px] px-[7px] py-[3px] text-[10px] font-bold uppercase tracking-wider leading-tight bg-foreground/5 text-foreground/60 border border-foreground/10">
-                          <Check className="w-3 h-3 text-foreground/50" />
-                          COMPLETED
-                        </div>
-                      </div>
-
-                      {/* Date Badge */}
-                      <div
-                        className="rounded-[8px] px-[10px] py-[4px] text-[11px] font-bold uppercase tracking-wider whitespace-nowrap shadow-xs"
-                        style={{ backgroundColor: 'var(--accent-past)', color: 'var(--accent-past-fg)' }}
-                      >
-                        {event.date ? formatEventDate(event.date) : 'TBD'}
-                      </div>
-                    </div>
-
-                    {/* Body: Title & Location */}
-                    <div className="flex flex-col gap-[2px]">
-                      <h3 className="text-[18px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
-                        {event.title}
-                      </h3>
-                      <div className="flex items-center gap-[6px] text-[12px] text-foreground/60 font-medium truncate">
-                        <span className="font-semibold text-foreground/80">
-                          {event.location?.split(',')[0] || event.clientName || 'TBD'}
-                        </span>
-                        {event.venueAddress && (
-                          <>
-                            <span className="text-foreground/30">•</span>
-                            <span className="truncate text-foreground/50">{event.venueAddress}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer: Metadata */}
-                    <div className="border-t border-foreground/10 pt-[10px] flex items-center justify-between gap-[10px] text-[12px]">
-                      <div className="flex items-center gap-[12px] text-foreground/60">
-                        {showTime && (
-                          <div className="flex items-center gap-[4px]">
-                            <span className="text-[10px] font-bold uppercase text-foreground/40">TIME</span>
-                            <span className="font-bold text-foreground/80">{showTime}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-[4px]">
-                          <span className="text-[10px] font-bold uppercase text-foreground/40">TEAM</span>
-                          <span className="font-bold text-foreground/80">{memberCount}</span>
-                        </div>
-                      </div>
-
-                      {isGig && (
-                        <div className="flex flex-col items-end shrink-0">
-                          <span className="text-[9px] font-bold uppercase text-foreground/40 leading-none mb-[2px]">
-                            {isAdmin ? 'TOTAL FEE' : 'YOUR FEE'}
-                          </span>
-                          <span className="text-[15px] font-bold text-foreground leading-none">
-                            {isAdmin
-                              ? `€${parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0').toLocaleString()}`
-                              : event.eventId && userFeeMap[event.eventId] != null
-                              ? `€${userFeeMap[event.eventId].toLocaleString()}`
-                              : `€${parseFloat(event.price?.replace(/[^0-9.]/g, '') || '0').toLocaleString()}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })
-          ) : (
-            <div className="rounded-[16px] border border-dashed border-foreground/15 bg-card/40 p-[32px] text-center flex flex-col items-center justify-center gap-[8px]">
-              <p className="text-[13px] font-bold uppercase tracking-wider text-foreground/70">
-                NO PAST EVENTS FOUND
-              </p>
-              <p className="text-[12px] text-foreground/50 max-w-[280px]">
-                {searchQuery || selectedCategory !== 'ALL' || selectedYear !== 'ALL'
-                  ? 'No completed gigs or rehearsals matched your active search or filters.'
-                  : 'No completed gigs or rehearsals recorded yet.'}
-              </p>
+          {availableYears.length > 1 && (
+            <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+              {['ALL', ...availableYears].map((yr) => (
+                <Selector key={yr} selected={selectedYear === yr} onClick={() => setSelectedYear(yr)}>
+                  {yr === 'ALL' ? 'All years' : yr}
+                </Selector>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Bottom clearance spacer */}
-        <div className="h-12 shrink-0 pointer-events-none" aria-hidden="true" />
+        {/* Event rows grouped by month */}
+        {groups.length > 0 ? (
+          groups.map((group) => (
+            <section key={group.key} className="flex flex-col gap-4">
+              <h2 className="bw-label-md text-foreground">{group.label}</h2>
+              {group.events.map((event) => {
+                const status = event.status?.toUpperCase();
+                const isRehearsal = status === 'REHEARSAL';
+                const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
+                const isQuote = status === 'QUOTED' || status === 'QUOTE';
+                const typeLabel = isRehearsal ? 'Rehearsal' : isGig ? 'Played' : isQuote ? 'Quote' : 'Draft';
+                const dotClass = isGig ? 'bg-success' : isQuote ? 'bg-warning' : 'bg-accent-past';
+                const norm = normalizeDateStr(event.date);
+                const d = norm ? parseLocalDate(norm) : null;
+                const valid = d && !isNaN(d.getTime());
+                const day = valid ? String(d!.getDate()).padStart(2, '0') : '--';
+                const mon = valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD';
+                const fee = isGig ? feeFor(event) : 0;
+                const meta = [
+                  !isAdmin && bands.length > 1 ? event.band_name : null,
+                  event.location?.split(',')[0] || event.clientName,
+                  fee > 0 ? shortEuro(fee) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+
+                return (
+                  <motion.button
+                    type="button"
+                    key={event.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => onEventClick(event)}
+                    className="w-full flex items-center gap-4 p-3 pr-4 rounded-[24px] bg-card text-card-foreground text-left active:scale-[0.99] transition-transform"
+                  >
+                    <span className="w-[52px] h-14 rounded-full bg-accent-past text-accent-past-foreground flex flex-col items-center justify-center shrink-0">
+                      <span className="bw-num">{day}</span>
+                      <span className="bw-label-xs">{mon}</span>
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-1">
+                      <span className="bw-h3 line-clamp-2 [overflow-wrap:anywhere]">{event.title}</span>
+                      {meta && <span className="bw-body-sm text-muted-foreground truncate">{meta}</span>}
+                    </span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      <span className={cn('w-2 h-2 rounded-full', dotClass)} aria-hidden />
+                      <span className="bw-label-xs">{typeLabel}</span>
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </section>
+          ))
+        ) : (
+          <Card className="items-center text-center py-10">
+            <h2 className="bw-h3">No past events found</h2>
+            <p className="bw-body-sm text-muted-foreground max-w-[280px]">
+              {searchQuery || selectedCategory !== 'ALL' || selectedYear !== 'ALL'
+                ? 'No completed gigs or rehearsals matched your search or filters.'
+                : 'No completed gigs or rehearsals recorded yet.'}
+            </p>
+          </Card>
+        )}
       </div>
     </motion.div>
   );

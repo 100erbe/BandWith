@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { ListMusic, Clock, Layers, AlertCircle, GripVertical, Trash2, Plus, Check, X } from '@/app/components/icons';
+import React, { useState } from 'react';
+import { ListMusic, Clock, Layers, AlertCircle, GripVertical, Trash2, Check, X } from '@/app/components/icons';
+import { BwSheet, IconButton, PillButton, Tag } from '@/app/components/bw';
 import { RehearsalSetlistSnapshotFinal } from './types';
 import { cn } from '@/app/components/ui/utils';
 
@@ -61,125 +61,118 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
     });
   };
 
+  const hasFooter = !!(onConfirmSetlist || onDeselectSetlist);
+  const footer = hasFooter ? (
+    <div className="dark flex flex-col gap-3">
+      {isConfirmed && (
+        <p className="flex items-center gap-2 bw-label-sm text-success">
+          <Check className="w-4 h-4" /> Setlist confirmed
+        </p>
+      )}
+      <div className="flex gap-3">
+        {onDeselectSetlist && (
+          <PillButton
+            variant="outline"
+            onClick={onDeselectSetlist}
+            icon={isConfirmed ? <X className="w-4 h-4" /> : undefined}
+            className={!isConfirmed && onConfirmSetlist ? 'flex-[2]' : undefined}
+          >
+            Deselect
+          </PillButton>
+        )}
+        {!isConfirmed && onConfirmSetlist && (
+          <PillButton onClick={onConfirmSetlist} icon={<Check className="w-[18px] h-[18px]" />} className="flex-[3]">
+            Confirm setlist
+          </PillButton>
+        )}
+      </div>
+    </div>
+  ) : undefined;
+
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Rehearsal Setlist" icon={ListMusic}>
-        <div className="flex flex-col h-[70vh]">
-             {/* Summary Row */}
-             <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                     <ListMusic className="w-3 h-3" /> Songs: {snapshot.songs.length}
-                 </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                     <Clock className="w-3 h-3" /> Duration: {totalDuration}
-                 </div>
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                     <Layers className="w-3 h-3" /> Sources: {snapshot.sources.length}
-                 </div>
-                 {snapshot.mergeReport.totalDuplicatesSkipped > 0 && (
-                     <div className="px-2 py-1 bg-amber-50 text-amber-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                         <AlertCircle className="w-3 h-3" /> Skipped: {snapshot.mergeReport.totalDuplicatesSkipped}
-                     </div>
-                 )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
-                
-                {/* Sources Info */}
-                <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Built from Templates</h4>
-                    <div className="space-y-2">
-                        {snapshot.sources.map((src, i) => (
-                            <div key={i} className="flex items-center justify-between p-2 bg-[var(--surface-alt)] rounded-lg">
-                                <span className="text-xs font-bold text-foreground">{src.templateName}</span>
-                                <span className="text-[10px] font-mono text-foreground/40">v{src.templateVersion}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Draggable Song List */}
-                <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Final Tracklist</h4>
-                    <p className="text-[10px] text-foreground/30 mb-3">Drag to reorder • Swipe to remove</p>
-                    <div className="bg-[var(--surface-alt)] rounded-2xl p-2 space-y-1">
-                        {snapshot.songs.map((song, i) => (
-                            <div
-                                key={`${song.songId}-${i}`}
-                                draggable
-                                onDragStart={() => handleDragStart(i)}
-                                onDragOver={(e) => handleDragOver(e, i)}
-                                onDragEnd={handleDragEnd}
-                                className={cn(
-                                    "flex items-center gap-2 p-2 bg-white rounded-xl shadow-sm border transition-all cursor-grab active:cursor-grabbing select-none",
-                                    draggedIndex === i && "opacity-40 scale-95",
-                                    dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && "border-accent-rehearsal border-2",
-                                    draggedIndex === null && "border-transparent hover:border-black/10"
-                                )}
-                            >
-                                <GripVertical className="w-4 h-4 text-foreground/20 shrink-0" />
-                                <span className="text-[10px] font-mono font-bold text-foreground/30 w-5 text-center shrink-0">{i+1}</span>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-baseline">
-                                        <div className="text-sm font-bold truncate">{song.titleAtSnapshot}</div>
-                                        <div className="text-[10px] font-medium text-foreground/40 shrink-0 ml-2">{song.durationAtSnapshot}</div>
-                                    </div>
-                                    <div className="text-[10px] text-foreground/50 uppercase truncate">{song.artistAtSnapshot}</div>
-                                </div>
-                                {onUpdateSnapshot && (
-                                    <button
-                                        onClick={() => handleRemoveSong(i)}
-                                        className="p-1.5 text-foreground/20 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Footer: Confirm / Deselect */}
-            {(onConfirmSetlist || onDeselectSetlist) && (
-                <div className="pt-4 mt-4 border-t border-black/10 shrink-0 flex gap-3">
-                    {isConfirmed ? (
-                        <>
-                            <div className="flex-1 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-bold">
-                                <Check className="w-4 h-4" /> Setlist Confirmed
-                            </div>
-                            {onDeselectSetlist && (
-                                <button
-                                    onClick={onDeselectSetlist}
-                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-foreground/60 transition-colors flex items-center gap-2"
-                                >
-                                    <X className="w-4 h-4" /> Deselect
-                                </button>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            {onDeselectSetlist && (
-                                <button
-                                    onClick={onDeselectSetlist}
-                                    className="px-5 py-3 bg-black/5 hover:bg-black/10 rounded-xl text-sm font-bold uppercase tracking-wider text-foreground/60 transition-colors"
-                                >
-                                    Deselect
-                                </button>
-                            )}
-                            {onConfirmSetlist && (
-                                <button
-                                    onClick={onConfirmSetlist}
-                                    className="flex-1 py-3 bg-black text-white rounded-xl text-sm font-black uppercase tracking-wider hover:bg-black/80 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Check className="w-4 h-4" /> Confirm Setlist
-                                </button>
-                            )}
-                        </>
-                    )}
-                </div>
-            )}
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline={`${snapshot.songs.length} ${snapshot.songs.length === 1 ? 'song' : 'songs'} · ${totalDuration}`}
+      title="Rehearsal setlist"
+      footer={footer}
+      zIndex={110}
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Summary */}
+        <div className="flex flex-wrap gap-1.5">
+          <Tag variant="outline" icon={<ListMusic />}>
+            {snapshot.songs.length} {snapshot.songs.length === 1 ? 'song' : 'songs'}
+          </Tag>
+          <Tag variant="outline" icon={<Clock />}>
+            {totalDuration}
+          </Tag>
+          <Tag variant="outline" icon={<Layers />}>
+            {snapshot.sources.length} {snapshot.sources.length === 1 ? 'source' : 'sources'}
+          </Tag>
+          {snapshot.mergeReport.totalDuplicatesSkipped > 0 && (
+            <Tag variant="accent" icon={<AlertCircle />}>
+              {snapshot.mergeReport.totalDuplicatesSkipped} skipped
+            </Tag>
+          )}
         </div>
-    </RehearsalModalWrapper>
+
+        {/* Sources */}
+        {snapshot.sources.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h4 className="bw-label-sm text-sheet-foreground/70">Built from templates</h4>
+            {snapshot.sources.map((src, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 rounded-[16px] bg-white/[0.08]">
+                <span className="bw-body-md truncate">{src.templateName}</span>
+                <span className="bw-label-sm text-sheet-foreground/60 shrink-0">v{src.templateVersion}</span>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Draggable song list */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="bw-label-sm text-sheet-foreground/70">Final tracklist</h4>
+            {onUpdateSnapshot && <span className="bw-label-xs text-sheet-foreground/50">Drag to reorder</span>}
+          </div>
+          <ol className="flex flex-col gap-2">
+            {snapshot.songs.map((song, i) => (
+              <li
+                key={`${song.songId}-${i}`}
+                draggable
+                onDragStart={() => handleDragStart(i)}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'flex items-center gap-3 pl-3 pr-1 py-2 rounded-[16px] bg-white/[0.08] select-none cursor-grab active:cursor-grabbing transition-[opacity,transform,box-shadow]',
+                  draggedIndex === i && 'opacity-40 scale-[0.97]',
+                  dragOverIndex === i && draggedIndex !== null && draggedIndex !== i && 'ring-2 ring-accent'
+                )}
+              >
+                <GripVertical className="w-4 h-4 text-sheet-foreground/40 shrink-0" />
+                <span className="w-7 h-7 rounded-full border border-sheet-foreground/40 bw-label-sm flex items-center justify-center shrink-0">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="bw-label-md truncate">{song.titleAtSnapshot}</span>
+                  <span className="bw-body-sm text-sheet-foreground/60 truncate">{song.artistAtSnapshot}</span>
+                </div>
+                <span className="bw-label-md shrink-0">{song.durationAtSnapshot}</span>
+                {onUpdateSnapshot && (
+                  <IconButton
+                    label={`Remove ${song.titleAtSnapshot}`}
+                    icon={<Trash2 />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveSong(i)}
+                  />
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+    </BwSheet>
   );
 };

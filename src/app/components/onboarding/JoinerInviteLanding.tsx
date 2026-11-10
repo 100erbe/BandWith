@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Users, Calendar, ArrowLeft, CheckCircle } from '@/app/components/icons';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { ArrowUpRight, Calendar, MessageSquare, Music } from '@/app/components/icons';
+import { AuthScreen, BackButton, PillButton, Selector } from '@/app/components/bw/Form';
+import { DotMeter } from '@/app/components/bw/Metric';
+import { DotText } from '@/app/components/bw/DotText';
+import { setStatusBarTone } from '@/lib/systemBars';
+import { parseLocalDate } from '@/lib/dates';
+import { FIT, FitText } from '@/app/components/bw/FitText';
 
 export interface InviteData {
   id: string;
@@ -31,6 +36,16 @@ interface JoinerInviteLandingProps {
   onBack?: () => void;
 }
 
+/** Figma metric meter: 2 × 11 dots, one dot per unit. */
+const METER_ROWS = 2;
+const METER_COLS = 11;
+
+const PERKS = [
+  { icon: Calendar, label: 'Band events & shared calendar' },
+  { icon: Music, label: 'Shared setlists & song library' },
+  { icon: MessageSquare, label: 'Team chat & notifications' },
+];
+
 export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
   inviteData,
   onAccept,
@@ -46,6 +61,9 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
   const memberRole = inviteData?.role === 'admin' ? 'Admin' : 'Member';
   const memberCount = inviteData?.member_count || 0;
 
+  // The invite landing is a dark screen (Figma frame in Dark mode): light status bar icons.
+  useEffect(() => setStatusBarTone('dark'), []);
+
   // Get initials for avatar
   const getInitials = (name: string) => {
     return name
@@ -58,178 +76,94 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
 
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+    <AuthScreen
+      className="dark bg-sheet"
+      bodyClassName="pt-3 gap-5"
+      top={onBack ? <BackButton onClick={onBack} /> : undefined}
+      footer={
+        <>
+          <PillButton variant="danger" size="sm" onClick={onDecline}>
+            Decline invitation
+          </PillButton>
+          <PillButton onClick={onAccept} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
+            Accept &amp; continue
+          </PillButton>
+        </>
+      }
     >
-      {/* Subtle gradient */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[60%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(0, 71, 255, 0.03) 0%, transparent 100%)',
-          }}
-        />
-      </div>
+      <motion.div
+        className="flex flex-col gap-5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <Selector className="self-start bg-accent text-accent-foreground">You're invited</Selector>
 
-      {/* Header */}
-      <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
-          >
-            <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-          </button>
-        ) : (
-          <div className="w-10" />
-        )}
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-        >
-          <BrandLogo
-            variant="waveform"
-            lockup="horizontal"
-            className="h-6"
-            textClassName="text-lg"
-          />
-        </motion.div>
-        
-        <div className="w-10" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 pt-12 relative z-10">
-        {/* Editorial headline */}
-        <motion.div
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-        >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
-            You're
-            <br />
-            <span className="text-[var(--accent-rehearsal)]">invited</span>
-          </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
-            {inviterName} invited you to join as <span className="text-accent font-bold">{memberRole}</span>
-          </p>
-        </motion.div>
-
-        {/* Band Card - Editorial style */}
-        <motion.div
-          className="rounded-3xl bg-card border border-border p-5 mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          <div className="flex items-center gap-4">
-            {/* Band Avatar */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--accent-rehearsal)] to-[var(--accent-rehearsal)] flex items-center justify-center overflow-hidden flex-shrink-0">
-              {bandLogo ? (
-                <img
-                  src={bandLogo}
-                  alt={bandName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-2xl font-black text-foreground">
-                  {getInitials(bandName)}
-                </span>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="text-foreground font-bold text-[20px] leading-tight truncate">
-                {bandName}
-              </h2>
-              {inviteData?.band?.description && (
-                <p className="text-muted-foreground/50 text-[13px] line-clamp-1 mt-0.5">
-                  {inviteData.band.description}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="flex gap-6 mt-5 pt-4 border-t border-border">
-            <div className="flex items-center gap-2 text-muted-foreground/60">
-              <Users className="w-4 h-4" strokeWidth={1.5} />
-              <span className="text-[13px] font-medium">
-                {memberCount} {memberCount === 1 ? 'member' : 'members'}
+        {/* Band */}
+        <div className="flex items-center gap-4">
+          <div className="w-24 h-24 rounded-full bg-accent text-accent-foreground flex items-center justify-center overflow-hidden shrink-0">
+            {bandLogo ? (
+              <img src={bandLogo} alt={bandName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="bw-h1" aria-hidden>
+                {getInitials(bandName)}
               </span>
-            </div>
-            {inviteData?.created_at && (
-              <div className="flex items-center gap-2 text-muted-foreground/60">
-                <Calendar className="w-4 h-4" strokeWidth={1.5} />
-                <span className="text-[13px] font-medium">
-                  Sent {formatDate(inviteData.created_at)}
-                </span>
-              </div>
             )}
           </div>
-        </motion.div>
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <FitText as="h1" text={bandName} sizes={FIT.h1} maxLines={2} className="bw-h1 text-foreground" />
+            {inviteData?.band?.description && (
+              <p className="bw-body-sm text-muted-foreground line-clamp-2">{inviteData.band.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Metrics: card layout (dots → label → dot-matrix value) */}
+        <div className="flex items-center gap-8">
+          <div className="flex-1 min-w-0 flex flex-col gap-2 text-foreground">
+            <DotMeter
+              value={Math.min(memberCount, METER_ROWS * METER_COLS) / (METER_ROWS * METER_COLS)}
+              rows={METER_ROWS}
+              cols={METER_COLS}
+            />
+            <span className="bw-label-md">{memberCount === 1 ? 'Member' : 'Members'}</span>
+            <DotText text={memberCount} size={30} label={`${memberCount} ${memberCount === 1 ? 'member' : 'members'}`} />
+          </div>
+          <div className="flex-1" aria-hidden />
+        </div>
+
+        {/* Inviter */}
+        <div className="bg-card rounded-[24px] p-4 flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center shrink-0">
+            <span className="bw-label-sm" aria-hidden>
+              {getInitials(inviterName)}
+            </span>
+          </div>
+          <p className="bw-body-sm text-muted-foreground min-w-0">
+            {inviterName} invited you as <span className="text-foreground font-medium">{memberRole}</span>
+            {inviteData?.created_at && <> · Sent {formatDate(inviteData.created_at)}</>}
+          </p>
+        </div>
 
         {/* What you'll get */}
-        <motion.div
-          className="space-y-3"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <p className="text-muted-foreground/30 text-[11px] font-bold uppercase tracking-[0.15em] mb-3">
-            What you'll get
-          </p>
-          
-          {[
-            'Access to band events & calendar',
-            'Shared setlists & song library',
-            'Team chat & notifications',
-          ].map((item, index) => (
-            <div key={index} className="flex items-center gap-3 text-muted-foreground/80">
-              <CheckCircle className="w-4 h-4 text-accent" strokeWidth={1.5} />
-              <span className="text-[14px] font-medium">{item}</span>
-            </div>
+        <p className="bw-label-sm text-muted-foreground">What you'll get</p>
+        <ul className="flex flex-col gap-3">
+          {PERKS.map(({ icon: Icon, label }) => (
+            <li key={label} className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-full bg-muted text-foreground flex items-center justify-center shrink-0">
+                <Icon className="w-[18px] h-[18px]" aria-hidden />
+              </span>
+              <span className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] text-foreground">{label}</span>
+            </li>
           ))}
-        </motion.div>
-      </div>
-
-      {/* Footer */}
-      <motion.div
-        className="px-6 pb-10 pt-6 relative z-10 space-y-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-      >
-        {/* Primary CTA */}
-        <button
-          onClick={onAccept}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-        >
-          Accept & Continue
-          <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-        </button>
-
-        {/* Decline */}
-        <button
-          onClick={onDecline}
-          className="w-full text-center py-3 text-muted-foreground/50 text-[14px] font-medium hover:text-muted-foreground/80 transition-colors"
-        >
-          Decline invitation
-        </button>
+        </ul>
       </motion.div>
-    </div>
+    </AuthScreen>
   );
 };
 

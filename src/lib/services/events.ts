@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '../supabase';
+import { todayLocal, toLocalDateString } from '../dates';
 
 // Types
 export type EventType = 'gig' | 'rehearsal' | 'wedding' | 'corporate' | 'private' | 'festival' | 'other';
@@ -249,7 +250,7 @@ export const getUpcomingEvents = async (
   limit: number = 10
 ): Promise<{ data: Event[] | null; error: Error | null }> => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
     
     let query = supabase
       .from('events')
@@ -296,11 +297,13 @@ export const createEvent = async (
 
     // Sanitize and prepare the event payload to match DB schema
     const sanitizedPayload = {
+      // Client-generated UUID (offline queue) makes retried creates idempotent.
+      ...(typeof eventData.id === 'string' && /^[0-9a-f-]{36}$/i.test(eventData.id) ? { id: eventData.id } : {}),
       band_id: eventData.band_id,
       title: eventData.title || 'Untitled Event',
       event_type: eventData.event_type || 'gig',
       status: eventData.status || 'confirmed',
-      event_date: eventData.event_date || new Date().toISOString().split('T')[0],
+      event_date: eventData.event_date || todayLocal(),
       start_time: eventData.start_time || null,
       end_time: eventData.end_time || null,
       load_in_time: eventData.load_in_time || null,
@@ -413,6 +416,8 @@ export const deleteEvent = async (eventId: string): Promise<{ error: Error | nul
 // ============================================
 
 export interface CreatePersonalGigInput {
+  /** Optional client-generated UUID so retried offline creates are idempotent. */
+  id?: string;
   userId: string;
   title: string;
   eventDate: string;
@@ -451,6 +456,7 @@ export const createPersonalGig = async (
 
     // 1. Insert into public.events
     const eventPayload = {
+      ...(input.id && /^[0-9a-f-]{36}$/i.test(input.id) ? { id: input.id } : {}),
       band_id: null,
       created_by: effectiveUserId,
       event_type: 'gig' as const,
@@ -705,15 +711,15 @@ export const getEventStats = async (
     const currentYear = year || new Date().getFullYear();
     const startOfYear = `${currentYear}-01-01`;
     const endOfYear = `${currentYear}-12-31`;
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
     
     const now = new Date();
     const currentMonth = now.getMonth();
-    const currentMonthStart = new Date(now.getFullYear(), currentMonth, 1).toISOString().split('T')[0];
-    const currentMonthEnd = new Date(now.getFullYear(), currentMonth + 1, 0).toISOString().split('T')[0];
+    const currentMonthStart = toLocalDateString(new Date(now.getFullYear(), currentMonth, 1));
+    const currentMonthEnd = toLocalDateString(new Date(now.getFullYear(), currentMonth + 1, 0));
     
-    const prevMonthStart = new Date(now.getFullYear(), currentMonth - 1, 1).toISOString().split('T')[0];
-    const prevMonthEnd = new Date(now.getFullYear(), currentMonth, 0).toISOString().split('T')[0];
+    const prevMonthStart = toLocalDateString(new Date(now.getFullYear(), currentMonth - 1, 1));
+    const prevMonthEnd = toLocalDateString(new Date(now.getFullYear(), currentMonth, 0));
 
     const { data: events, error } = await supabase
       .from('events')
@@ -783,10 +789,10 @@ export const getMemberPersonalStats = async (
     const endOfYear = `${currentYear}-12-31`;
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const curStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+    const curStart = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+    const curEnd = toLocalDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const prevStart = toLocalDateString(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    const prevEnd = toLocalDateString(new Date(now.getFullYear(), now.getMonth(), 0));
 
     // Query user's event_memberships
     let query = supabase

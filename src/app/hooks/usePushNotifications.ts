@@ -157,37 +157,34 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     const chatId = data.chatId || data.chat_id;
     const eventId = data.eventId || data.event_id;
 
-    // Navigate based on notification type
-    switch (data.type) {
-      case 'chat_message':
-        console.log('[usePush] Navigating to chat:', chatId);
-        window.dispatchEvent(new CustomEvent('push-navigate', { 
-          detail: { screen: 'chat', chatId } 
-        }));
-        break;
-      case 'event_reminder':
-      case 'event_invite':
-        console.log('[usePush] Navigating to event:', eventId);
-        window.dispatchEvent(new CustomEvent('push-navigate', { 
-          detail: { screen: 'event', eventId } 
-        }));
-        break;
-      case 'quote_update':
-        window.dispatchEvent(new CustomEvent('push-navigate', { 
-          detail: { screen: 'quotes' } 
-        }));
-        break;
-      case 'band_invite':
-      case 'member_joined':
-        window.dispatchEvent(new CustomEvent('push-navigate', { 
-          detail: { screen: 'bandMembers' } 
-        }));
-        break;
-      default:
-        console.log('[usePush] Unknown type, navigating to home');
-        window.dispatchEvent(new CustomEvent('push-navigate', { 
-          detail: { screen: 'home' } 
-        }));
+    // Navigate based on notification type (types sent by the database
+    // dispatcher, migration 048, plus the legacy client ones).
+    const go = (detail: Record<string, unknown>) =>
+      window.dispatchEvent(new CustomEvent('push-navigate', { detail }));
+    const type = String(data.type || '');
+
+    if (type === 'chat_message' || type === 'chat_mention') {
+      go({ screen: 'chat', chatId });
+    } else if (
+      type.startsWith('event_') ||
+      type === 'member_dropped_out' ||
+      type === 'setlist_updated' ||
+      type === 'rehearsal_reminder' ||
+      type === 'rehearsal_poll_finalized'
+    ) {
+      go({ screen: 'event', eventId });
+    } else if (type === 'rehearsal_poll' || type === 'rehearsal_proposal') {
+      go({ screen: 'event' });
+    } else if (type === 'quote_update' || type === 'quote_accepted') {
+      go({ screen: 'quotes' });
+    } else if (type.startsWith('payment_')) {
+      go({ screen: 'finance' });
+    } else if (type === 'invite_received' || type === 'band_invite') {
+      go({ screen: 'invites' });
+    } else if (type === 'member_joined' || type === 'member_left') {
+      go({ screen: 'bandMembers' });
+    } else {
+      go({ screen: 'home' });
     }
   };
 

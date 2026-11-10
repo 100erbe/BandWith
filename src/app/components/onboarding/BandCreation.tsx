@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ArrowRight, Camera, Sparkles, Loader2 } from '@/app/components/icons';
+import { ArrowUpRight, Camera, Sparkles } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
+import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
+import { WizardTop, wizardStep } from './OnboardingChrome';
 
 interface BandCreationProps {
   onBack: () => void;
@@ -12,7 +14,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
   onBack,
   onComplete,
 }) => {
-  const { setBandData, bandData } = useOnboarding();
+  const { setBandData, bandData, path } = useOnboarding();
   const [bandName, setBandName] = useState(bandData?.name || '');
   const [avatarUrl, setAvatarUrl] = useState(bandData?.avatarUrl || '');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -65,41 +67,44 @@ export const BandCreation: React.FC<BandCreationProps> = ({
     onComplete();
   };
 
-  return (
-    <div 
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{ 
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[50%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(200, 67, 26, 0.04) 0%, transparent 100%)',
-          }}
-        />
-      </div>
+  const { step, total } = wizardStep(path, 'band');
+  const avatarSrc = avatarPreview || avatarUrl;
 
+  return (
+    <AuthScreen
+      className="relative overflow-hidden"
+      top={<WizardTop onBack={onBack} step={step} total={total} />}
+      bodyClassName="pt-2 gap-5"
+      footer={
+        <PillButton
+          onClick={handleSubmit}
+          disabled={!isValid || isSubmitting}
+          loading={isSubmitting}
+          trailingIcon={<ArrowUpRight className="w-5 h-5" />}
+        >
+          Continue
+        </PillButton>
+      }
+    >
       {/* Celebration Overlay */}
       <AnimatePresence>
         {showCelebration && (
           <motion.div
-            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm"
+            className="absolute inset-0 z-50 flex flex-col items-start justify-center px-4 bg-background"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="status"
+            aria-live="polite"
           >
             <motion.div
-              initial={{ scale: 0, rotate: -180 }}
+              initial={{ scale: 0, rotate: -90 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', damping: 15, stiffness: 200 }}
-              className="mb-8"
+              className="mb-6"
             >
-              <div className="w-24 h-24 rounded-[2rem] bg-accent flex items-center justify-center">
-                <Sparkles className="w-12 h-12 text-accent-foreground" />
+              <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center">
+                <Sparkles className="w-11 h-11 text-accent-foreground" />
               </div>
             </motion.div>
 
@@ -107,21 +112,21 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-center"
+              className="w-full"
             >
-              <h2 className="text-3xl font-black text-foreground mb-2">
-                "{bandName}"
+              <h2 className="font-[family-name:var(--font-display)] font-bold uppercase text-foreground text-[44px] leading-[0.9] tracking-[-0.03em] break-words">
+                {bandName}
               </h2>
-              <p className="text-accent text-xl font-bold">is born!</p>
+              <p className="bw-h2 text-accent-ink mt-3">is born!</p>
             </motion.div>
 
             {/* Confetti particles */}
             {[...Array(20)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-3 h-3 rounded-full"
+                className="absolute w-2.5 h-2.5 rounded-full"
                 style={{
-                  background: ['var(--accent)', 'var(--accent-rehearsal)', 'var(--destructive)', 'var(--secondary)'][i % 4],
+                  background: ['var(--accent)', 'var(--dot-on)', 'var(--accent-ink)', 'var(--dot-mid)'][i % 4],
                   left: `${Math.random() * 100}%`,
                   top: '50%',
                 }}
@@ -143,186 +148,88 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <div className="px-6 pt-14 pb-4 relative z-10">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-[15px] font-medium">Back</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-[13px] font-medium">Step 1/4</span>
-          </div>
-        </div>
+      <Kicker overline="Your band" title="Name your band" />
+      <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px] -mt-1">
+        This is how your band appears to members and clients.
+      </p>
 
-        {/* Progress bar */}
-        <div className="mt-4 h-1 bg-card/80 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-accent rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: '25%' }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-      </div>
+      {/* Band Name Input */}
+      <PillField
+        label="Band name *"
+        type="text"
+        value={bandName}
+        onChange={(e) => setBandName(e.target.value)}
+        placeholder="The Groovemasters"
+        maxLength={50}
+        autoFocus
+        autoCapitalize="words"
+        enterKeyHint="done"
+        hint={
+          <span className="flex justify-between gap-3">
+            <span>{bandName.length < 2 ? 'At least 2 characters' : ''}</span>
+            <span className="tabular-nums">{bandName.length}/50</span>
+          </span>
+        }
+      />
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 py-8 relative z-10">
-        {/* Title */}
-        <motion.div
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+      {/* Avatar Upload */}
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          aria-label={avatarSrc ? 'Change band avatar' : 'Add band avatar photo'}
+          className="w-24 h-24 shrink-0 rounded-[24px] border-[1.5px] border-dashed border-foreground text-foreground flex flex-col items-center justify-center gap-2 overflow-hidden active:scale-[var(--press-scale,0.97)] transition-transform"
         >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
-            Name your band
-          </h1>
-          <p className="text-muted-foreground text-[16px]">
-            This is how your band will appear to members and clients.
-          </p>
-        </motion.div>
-
-        {/* Band Name Input */}
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-        >
-          <label className="text-muted-foreground text-[13px] font-medium mb-2 block">
-            BAND NAME *
-          </label>
-          <input
-            type="text"
-            value={bandName}
-            onChange={(e) => setBandName(e.target.value)}
-            placeholder="The Groovemasters"
-            className="w-full bg-transparent border-b-2 border-border pb-3 text-foreground text-[28px] font-bold placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
-            maxLength={50}
-            autoFocus
-          />
-          <div className="flex justify-between mt-2">
-            <p className="text-muted-foreground/60 text-[12px]">
-              {bandName.length < 2 ? 'At least 2 characters' : ''}
-            </p>
-            <p className="text-muted-foreground/60 text-[12px]">{bandName.length}/50</p>
-          </div>
-        </motion.div>
-
-        {/* Avatar Upload */}
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-        >
-          <label className="text-muted-foreground text-[13px] font-medium mb-4 block">
-            BAND AVATAR
-          </label>
-          
-          <div className="flex items-center gap-6">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-28 h-28 rounded-[1.5rem] bg-card border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-accent/50 transition-colors overflow-hidden group"
-            >
-              {avatarPreview || avatarUrl ? (
-                <img
-                  src={avatarPreview || avatarUrl}
-                  alt="Band avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : bandName.length >= 2 ? (
-                <div className="w-full h-full bg-gradient-to-br from-accent to-[var(--accent)] flex items-center justify-center">
-                  <span className="text-3xl font-black text-foreground">
-                    {getInitials(bandName)}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <Camera className="w-8 h-8 text-muted-foreground/60 mb-2 group-hover:text-accent transition-colors" />
-                  <span className="text-muted-foreground/60 text-[11px] font-medium group-hover:text-accent">
-                    Add photo
-                  </span>
-                </>
-              )}
-            </button>
-            
-            <div className="flex-1">
-              <p className="text-muted-foreground/70 text-[14px] mb-1">
-                {avatarPreview ? 'Looking good!' : 'Tap to add a photo'}
-              </p>
-              <p className="text-muted-foreground/60 text-[12px]">
-                Skip for now, add later
-              </p>
-            </div>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="hidden"
-          />
-        </motion.div>
-
-        {/* Preview Card */}
-        {bandName.length >= 2 && (
-          <motion.div
-            className="mt-auto mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <p className="text-muted-foreground/60 text-[11px] font-medium mb-3 uppercase tracking-wider">
-              Preview
-            </p>
-            <div className="bg-card rounded-[1.5rem] p-4 flex items-center gap-4 border border-border">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-[var(--accent)] flex items-center justify-center overflow-hidden flex-shrink-0">
-                {avatarPreview || avatarUrl ? (
-                  <img
-                    src={avatarPreview || avatarUrl}
-                    alt="Band avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xl font-black text-foreground">
-                    {getInitials(bandName)}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h3 className="text-foreground font-bold text-[18px]">{bandName}</h3>
-                <p className="text-muted-foreground text-[13px]">1 member • New band</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 pb-10 pt-4 relative z-10">
-        <motion.button
-          onClick={handleSubmit}
-          disabled={!isValid || isSubmitting}
-          className="w-full h-14 rounded-full text-sm font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
-          whileTap={{ scale: 0.98 }}
-        >
-          {isSubmitting ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+          {avatarSrc ? (
+            <img src={avatarSrc} alt="Band avatar" className="w-full h-full object-cover" />
           ) : (
             <>
-              Continue
-              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
+              <Camera className="w-6 h-6" />
+              <span className="bw-label-sm">Add photo</span>
             </>
           )}
-        </motion.button>
+        </button>
+
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="bw-label-md text-foreground">Band avatar</p>
+          <p className="bw-body-sm text-muted-foreground max-w-[200px]">
+            {avatarPreview ? 'Looking good! Tap to change it.' : 'Tap to add a photo or skip for now.'}
+          </p>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarChange}
+          className="hidden"
+        />
       </div>
-    </div>
+
+      {/* Preview Card */}
+      {bandName.length >= 2 && (
+        <motion.div
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <p className="bw-label-sm text-muted-foreground">Preview</p>
+          <div className="dark bg-sheet text-foreground rounded-[24px] p-4 flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center overflow-hidden shrink-0">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="bw-h2">{getInitials(bandName)}</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <h3 className="bw-h2 truncate">{bandName}</h3>
+              <p className="bw-label-sm">1 member · New band</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AuthScreen>
   );
 };
 

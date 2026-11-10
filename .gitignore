@@ -29,4 +29,6 @@ coverage/
 
 # Capacitor
 android/
-ios/
+
+# Supabase CLI cache
+supabase/.temp/

@@ -11,6 +11,7 @@ import {
   enqueueMutation,
   getPendingMutations,
   removeMutation,
+  setOfflineQueueUser,
 } from '../syncQueue';
 import { isOfflineError } from '../useNetworkStatus';
 
@@ -54,11 +55,22 @@ describe('Offline Storage Engine', () => {
     expect(await getOfflineItem('bw:user2:data')).toBeNull();
     expect(localStorage.getItem('other_key')).toBe('"keep_me"');
   });
+
+  it('default logout clear also removes offline queues, including the legacy key', async () => {
+    await setOfflineItem('bw:offline_queue:user_a', [{ id: 'm1' }]);
+    await setOfflineItem('bw_offline_mutation_queue', [{ id: 'm2' }]);
+
+    await clearOfflineCache();
+
+    expect(await getOfflineItem('bw:offline_queue:user_a')).toBeNull();
+    expect(await getOfflineItem('bw_offline_mutation_queue')).toBeNull();
+  });
 });
 
 describe('Offline Mutation Queue', () => {
   beforeEach(async () => {
     localStorage.clear();
+    setOfflineQueueUser('user_test');
   });
 
   it('enqueues mutations and assigns temp IDs', async () => {

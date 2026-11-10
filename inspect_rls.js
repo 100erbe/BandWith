@@ -10,7 +10,7 @@ async function signInAndInspect() {
   console.log("Signing in...");
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: "bandwith@example.com",
-    password: "Password123!"
+    password: process.env.DEV_TEST_PASSWORD
   });
 
   if (authError || !authData.user) {

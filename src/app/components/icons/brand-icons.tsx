@@ -1,253 +1,86 @@
 import React from 'react';
-import { createIcon, IconProps } from './IconBase';
+import { IconProps } from './IconBase';
+import { box, dot, dotIcon, ring } from './dots';
+import { CheckCheck, Drum, Guitar, Mic2, Music, Plus, MessageCircle, X, Calendar, Home } from './custom-icons';
 
-/* ── BandWith Stage Audio Jacks (Connection Status) ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BandWith Dot Icons — app chrome, status & instruments.
+   Third-party marks (Google, Apple, Spotify, Apple Music) at the bottom of
+   this file stay exactly as their owners draw them.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-export const PlugsConnectedIcon = createIcon(
-  'PlugsConnectedIcon',
-  () => (
-    <>
-      <path d="M14.106 7.76854L7.76881 14.1058C6.74369 15.1309 6.74369 16.7929 7.76881 17.8181L10.1818 20.2311C11.2069 21.2562 12.869 21.2562 13.8941 20.2311L20.2314 13.8938C21.2565 12.8687 21.2565 11.2067 20.2314 10.1815L17.8183 7.76854C16.7932 6.74341 15.1312 6.74341 14.106 7.76854Z" />
-      <path d="M9.625 9.625L18.375 18.375" />
-      <path d="M25.3752 2.625L19.0248 8.97531" />
-      <path d="M8.97531 19.0244L2.625 25.3747" />
-      <path d="M10.5 3.5L11.375 5.6875" />
-      <path d="M3.5 10.5L5.6875 11.375" />
-      <path d="M22.3125 16.625L24.5 17.5" />
-      <path d="M16.625 22.3125L17.5 24.5" />
-    </>
-  ),
-  '0 0 28 28',
-  1.85
+/* ── Connection status: two jacks, plugged / unplugged ── */
+
+const PLUG = `M9 2V5.5M15 2V5.5M6 9H18V11.5A6 6 0 0 1 6 11.5Z${dot(12, 21)}`;
+
+/** Live connection: a plugged power jack. */
+export const PlugsConnectedIcon = dotIcon('PlugsConnectedIcon', { d: PLUG });
+
+/** Offline: the same jack, struck through. */
+export const PlugsDisconnectedIcon = dotIcon('PlugsDisconnectedIcon', { d: `${PLUG}M3 3L21 21` });
+
+/** Delivered/read ticks, drawn in the success colour. */
+export const ChecksIcon: React.FC<IconProps> = ({ style, ...props }) => (
+  <CheckCheck {...props} style={{ color: 'var(--success, currentColor)', ...style }} />
 );
 
-export const PlugsDisconnectedIcon = createIcon(
-  'PlugsDisconnectedIcon',
-  () => (
-    <>
-      <path d="M15.75 15.75L13.125 18.375" />
-      <path d="M12.25 12.25L9.625 14.875" />
-      <path d="M7 12.25L15.75 21" />
-      <path d="M6.35031 21.6494L2.625 25.3747" />
-      <path d="M14.4375 19.6875L11.2656 22.8594C10.7734 23.3516 10.1057 23.6282 9.40955 23.6282C8.71339 23.6282 8.04574 23.3516 7.55346 22.8594L5.14065 20.4433C4.64941 19.9511 4.3735 19.2842 4.3735 18.5888C4.3735 17.8935 4.64941 17.2265 5.14065 16.7344L8.31252 13.5625" />
-      <path d="M12.25 7L21 15.75" />
-      <path d="M21.6496 6.35031L25.3749 2.625" />
-      <path d="M19.6875 14.4373L22.8594 11.2654C23.3516 10.7732 23.6282 10.1055 23.6282 9.40934C23.6282 8.71318 23.3516 8.04553 22.8594 7.55325L20.4433 5.14044C19.9511 4.64919 19.2842 4.37329 18.5888 4.37329C17.8935 4.37329 17.2265 4.64919 16.7344 5.14044L13.5625 8.31231" />
-    </>
-  ),
-  '0 0 28 28',
-  1.85
-);
+/* ── Bottom navigation ── */
 
-export const ChecksIcon = createIcon(
-  'ChecksIcon',
-  () => (
-    <>
-      <path d="M3 24.4294L10.2 31.5L27 15" stroke="var(--success, currentColor)" />
-      <path d="M23.6177 27L28.2002 31.5L45.0002 15" stroke="var(--success, currentColor)" />
-    </>
-  ),
-  '0 0 48 48',
-  3
-);
+export const IconHome = Home;
+export const IconCalendar = Calendar;
+export const IconMusic = Music;
+export const IconPlus = Plus;
+export const IconChat = MessageCircle;
+export const IconClose = X;
 
-/* ── Primary Bottom Navigation Dock Icons (Architectural 2.65px–2.85px Suite) ── */
+export const IconSettings = dotIcon('IconSettings', {
+  d: `M4 8H7.5M18.5 8H20${dot(4, 16)}M15 16H20`,
+  solid: [
+    [13, 8, 2],
+    [10, 16, 2],
+  ],
+});
 
-export const IconHome = createIcon(
-  'IconHome',
-  () => (
-    <path d="M4 10.8V18.5A2 2 0 0 0 6 20.5h12a2 2 0 0 0 2-2v-7.7a2 2 0 0 0-.72-1.54l-6-5a2 2 0 0 0-2.56 0l-6 5A2 2 0 0 0 4 10.8Z" />
-  ),
-  '0 0 24 24',
-  2.65
-);
+export const IconMenu = dotIcon('IconMenu', { d: `M4 6H20M4 12H20M4 18H13${dot(17, 18)}` });
 
-export const IconCalendar = createIcon(
-  'IconCalendar',
-  () => (
-    <>
-      <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
-      <path d="M8 2.75v3" />
-      <path d="M16 2.75v3" />
-      <path d="M3.5 9.75h17" />
-    </>
-  ),
-  '0 0 24 24',
-  2.65
-);
+/* ── Instruments ── */
 
-export const IconMusic = createIcon(
-  'IconMusic',
-  () => (
-    <>
-      <circle cx="6.25" cy="18" r="2.75" />
-      <circle cx="17.25" cy="15.75" r="2.75" />
-      <path d="M9 18V5.5l11-2.25v12.5" />
-      <path d="M9 9.5l11-2.25" />
-    </>
-  ),
-  '0 0 24 24',
-  2.65
-);
+export const InstrumentGuitar = Guitar;
 
-export const IconPlus = createIcon(
-  'IconPlus',
-  () => (
-    <>
-      <path d="M4.25 12h15.5" />
-      <path d="M12 4.25v15.5" />
-    </>
-  ),
-  '0 0 24 24',
-  2.85
-);
+export const InstrumentBass = dotIcon('InstrumentBass', {
+  d: `${ring(8, 16, 4.5, 9, -25)}M13.3 10.7L19 5${dot(21.5, 2.5)}`,
+  solid: [[8, 16, 1]],
+});
 
-export const IconChat = createIcon(
-  'IconChat',
-  () => (
-    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8.5a2.5 2.5 0 0 1-2.5 2.5H8.2L4.6 20.6A.5.5 0 0 1 4 20.2V6.5Z" />
-  ),
-  '0 0 24 24',
-  2.65
-);
+export const InstrumentDrums = Drum;
+export const InstrumentVocals = Mic2;
 
-export const IconSettings = createIcon(
-  'IconSettings',
-  () => (
-    <>
-      <line x1="4" y1="8" x2="10" y2="8" />
-      <line x1="16" y1="8" x2="20" y2="8" />
-      <circle cx="13" cy="8" r="3" />
-      <line x1="4" y1="16" x2="8" y2="16" />
-      <line x1="14" y1="16" x2="20" y2="16" />
-      <circle cx="11" cy="16" r="3" />
-    </>
-  ),
-  '0 0 24 24',
-  2
-);
+export const InstrumentKeys = dotIcon('InstrumentKeys', {
+  d: box(2.5, 4.5, 19, 15) + dot(7.5, 16, 12, 16, 16.5, 16),
+  bold: 'M7.5 8.5V10.5M12 8.5V10.5M16.5 8.5V10.5',
+  boldScale: 1.6,
+});
 
-export const IconMenu = createIcon(
-  'IconMenu',
-  () => (
-    <>
-      <path d="M4 6.5h16" />
-      <path d="M4 12h16" />
-      <path d="M4 17.5h16" />
-    </>
-  ),
-  '0 0 24 24',
-  2.65
-);
+export const InstrumentSax = dotIcon('InstrumentSax', {
+  d: `M5.5 3L9 5V15A4 4 0 0 0 17 15V10.5M14.5 7H19.5${dot(5.5, 9.5, 5.5, 13)}`,
+});
 
-export const IconClose = createIcon(
-  'IconClose',
-  () => (
-    <>
-      <path d="M5.25 5.25l13.5 13.5" />
-      <path d="M18.75 5.25l-13.5 13.5" />
-    </>
-  ),
-  '0 0 24 24',
-  2.65
-);
+export const InstrumentTrumpet = dotIcon('InstrumentTrumpet', {
+  d: `${dot(2.5, 13)}M6 13H14.5M17 9.5L21.5 7V19L17 16.5M7.5 8.5V10M10.5 8.5V10M13.5 8.5V10`,
+});
 
-/* ── Bespoke Musical Instrument Vector Suite (24×24 Studio Proportions) ── */
+export const InstrumentViolin = dotIcon('InstrumentViolin', {
+  d: `M12 9.5C9 9.5 8 11 9 13S7 16 7 18A4 4 0 0 0 17 18C17 16 14 15 15 13S15 9.5 12 9.5ZM12 2.5V7${dot(10.5, 17, 13.5, 17)}`,
+});
 
-export const InstrumentGuitar = createIcon('InstrumentGuitar', () => (
-  <>
-    <path d="M11.6 12.4c-2.1-.9-4.6-.4-6.2 1.2a4.4 4.4 0 0 0 6.2 6.2c1.6-1.6 2.1-4.1 1.2-6.2" />
-    <circle cx="9.2" cy="14.8" r="1.2" />
-    <path d="M12.4 11.6 18.5 5.5" />
-    <path d="M17.5 3.5l3 3" />
-  </>
-));
+export const InstrumentDJ = dotIcon('InstrumentDJ', {
+  d: `${box(2.5, 4, 19, 16)}${ring(10, 12, 4.5, 8)}M17.5 8.5V15.5`,
+  solid: [[10, 12, 1]],
+});
 
-export const InstrumentBass = createIcon('InstrumentBass', () => (
-  <>
-    <path d="M10.8 13.2c-2-.8-4.3-.3-5.8 1.2a4.1 4.1 0 0 0 5.8 5.8c1.5-1.5 2-3.8 1.2-5.8" />
-    <path d="M8 14.6l1.4 1.4" />
-    <path d="M11.6 12.4 19.2 4.8" />
-    <path d="M18.4 2.8 21.2 5.6l-1.3 1.3" />
-  </>
-));
-
-export const InstrumentDrums = createIcon('InstrumentDrums', () => (
-  <>
-    <ellipse cx="12" cy="11.5" rx="8" ry="2.8" />
-    <path d="M4 11.5v5c0 1.55 3.58 2.8 8 2.8s8-1.25 8-2.8v-5" />
-    <path d="M8.5 14.1v4.9" />
-    <path d="M15.5 14.1v4.9" />
-    <path d="M5.5 3.5 11.5 8" />
-    <path d="M18.5 3.5 12.5 8" />
-  </>
-));
-
-export const InstrumentVocals = createIcon('InstrumentVocals', () => (
-  <>
-    <circle cx="16.5" cy="7.5" r="4" />
-    <path d="M13.7 4.7l5.6 5.6" />
-    <path d="M13.3 8 4.7 16.6a2.1 2.1 0 0 0 2.7 2.7L16 10.7" />
-    <path d="M3 21l2-2" />
-  </>
-));
-
-export const InstrumentKeys = createIcon('InstrumentKeys', () => (
-  <>
-    <rect x="2.5" y="5" width="19" height="14" rx="3" />
-    <path d="M7 5v7" />
-    <path d="M11 5v7" />
-    <path d="M16.5 5v7" />
-    <path d="M2.5 12h19" />
-    <path d="M9 12v7" />
-    <path d="M14 12v7" />
-  </>
-));
-
-export const InstrumentSax = createIcon('InstrumentSax', () => (
-  <>
-    <path d="M6.5 3.5H9l1.5 2V15a2.75 2.75 0 0 0 5.5 0v-2.5" />
-    <path d="M13.5 12.5h5" />
-    <path d="M10.5 8.5h2" />
-    <path d="M10.5 11.5h2" />
-  </>
-));
-
-export const InstrumentTrumpet = createIcon('InstrumentTrumpet', () => (
-  <>
-    <path d="M3 11h12c2.2 0 4.2-1.2 5.5-3v8c-1.3-1.8-3.3-3-5.5-3H7a2 2 0 0 1 0-4" />
-    <path d="M3 9.5v3" />
-    <path d="M8.5 8v3" />
-    <path d="M11 8v3" />
-    <path d="M13.5 8v3" />
-  </>
-));
-
-export const InstrumentViolin = createIcon('InstrumentViolin', () => (
-  <>
-    <path d="M11.6 12.4c-2.1-.9-4.5-.4-6.1 1.2a4.3 4.3 0 0 0 6.1 6.1c1.6-1.6 2.1-4 1.2-6.1" />
-    <path d="M8.2 14.4l2.4 2.4" />
-    <path d="M12.4 11.6 19 5a1.4 1.4 0 1 1 1.8 1.8" />
-    <path d="M15.5 4.5l4 4" />
-  </>
-));
-
-export const InstrumentDJ = createIcon('InstrumentDJ', () => (
-  <>
-    <rect x="2.5" y="4" width="19" height="16" rx="3" />
-    <circle cx="10.25" cy="12" r="4.75" />
-    <circle cx="10.25" cy="12" r="1.25" />
-    <path d="M18.25 7.5v5l-1.75 2.25" />
-  </>
-));
-
-export const InstrumentOther = createIcon('InstrumentOther', () => (
-  <>
-    <circle cx="12" cy="12" r="9.5" />
-    <path d="M8.5 12h7" />
-    <path d="M12 8.5v7" />
-  </>
-));
+export const InstrumentOther = dotIcon('InstrumentOther', {
+  d: ring(12, 12, 9.5, 16) + dot(8, 12, 12, 12, 16, 12),
+});
 
 export const InstrumentIcon: React.FC<IconProps & { instrumentId: string }> = ({
   instrumentId,

@@ -1,130 +1,121 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Music, Clock, Users, ArrowRight, Share2, Calendar } from '@/app/components/icons';
+import { CheckCircle2, Calendar, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { Card, IconButton, PillButton, ScreenHeader, Tag } from '@/app/components/bw';
 
 interface Props {
   onClose: () => void;
 }
 
+const FEEDBACK = [
+  { song: "Sweet Child O' Mine", verdict: 'Nailed it', note: 'Intro solo was perfect today', tone: 'good' },
+  { song: 'Bohemian Rhapsody', verdict: 'Needs work', note: 'Timing issue in the bridge', tone: 'work' },
+  { song: 'Hotel California', verdict: 'Problems', note: 'Wrong key - need to transpose', tone: 'problem' },
+] as const;
+
+const ATTENDANCE = [
+  { id: '1', name: 'Gianluca', status: 'ok', time: '21:00' },
+  { id: '2', name: 'Centerbe', status: 'ok', time: '21:05' },
+  { id: '3', name: 'Marco', status: 'ok', time: '21:02' },
+  { id: '4', name: 'Luca', status: 'late', time: '21:20' },
+];
+
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
   return (
-    <div 
-      className="fixed inset-0 z-[200] bg-[var(--surface-alt)] text-foreground flex flex-col font-sans overflow-y-auto"
-      style={{ 
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-        <div className="p-6 pb-32 max-w-md mx-auto w-full">
-            
-            {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-green-600">Rehearsal Completed</span>
-                </div>
-                <h1 className="text-3xl font-black leading-none mb-1">Weekly Band Practice</h1>
-                <p className="text-sm font-bold text-stone-500">Monday, Jan 27, 2026 • 2h 15m</p>
-            </div>
+    <div className="fixed inset-0 z-[185] bg-background text-foreground flex flex-col overflow-y-auto">
+      <ScreenHeader
+        actions={<IconButton label="Close summary" icon={<X />} variant="ghost" onClick={onClose} />}
+        overline={
+          <span className="inline-flex items-center gap-1.5 text-success">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Rehearsal completed
+          </span>
+        }
+        title="Weekly band practice"
+      >
+        <p className="bw-body-sm text-muted-foreground">Monday, Jan 27, 2026 · 2h 15m</p>
+      </ScreenHeader>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 mb-8">
-                <div className="bg-white p-4 rounded-2xl shadow-sm text-center">
-                    <span className="block text-2xl font-black">4</span>
-                    <span className="text-[9px] font-bold uppercase text-stone-400">Songs Played</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm text-center">
-                    <span className="block text-2xl font-black text-orange-500">2</span>
-                    <span className="text-[9px] font-bold uppercase text-stone-400">Need Work</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm text-center">
-                    <span className="block text-2xl font-black text-red-500">1</span>
-                    <span className="text-[9px] font-bold uppercase text-stone-400">Problem</span>
-                </div>
-            </div>
-
-            {/* Feedback List */}
-            <div className="space-y-4 mb-8">
-                <h3 className="text-xs font-bold uppercase text-stone-400 tracking-widest">Feedback Summary</h3>
-                
-                <div className="bg-white p-4 rounded-2xl border-l-4 border-green-500 shadow-sm">
-                    <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-black text-sm">Sweet Child O' Mine</h4>
-                        <span className="text-[9px] font-bold uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Nailed It</span>
-                    </div>
-                    <p className="text-xs text-stone-600 font-medium">"Intro solo was perfect today"</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border-l-4 border-orange-500 shadow-sm">
-                    <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-black text-sm">Bohemian Rhapsody</h4>
-                        <span className="text-[9px] font-bold uppercase bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Needs Work</span>
-                    </div>
-                    <p className="text-xs text-stone-600 font-medium">"Timing issue in the bridge"</p>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl border-l-4 border-red-500 shadow-sm">
-                    <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-black text-sm">Hotel California</h4>
-                        <span className="text-[9px] font-bold uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Problems</span>
-                    </div>
-                    <p className="text-xs text-stone-600 font-medium">"Wrong key - need to transpose"</p>
-                </div>
-            </div>
-
-            {/* Attendance */}
-             <div className="mb-8">
-                <h3 className="text-xs font-bold uppercase text-stone-400 tracking-widest mb-3">Attendance</h3>
-                <div className="bg-white rounded-2xl overflow-hidden divide-y divide-stone-100 border border-stone-100">
-                    {[
-                        { id: '1', name: 'Gianluca', status: 'ok', time: '21:00' },
-                        { id: '2', name: 'Centerbe', status: 'ok', time: '21:05' },
-                        { id: '3', name: 'Marco', status: 'ok', time: '21:02' },
-                        { id: '4', name: 'Luca', status: 'late', time: '21:20' },
-                    ].map(m => (
-                         <div key={m.id} className="p-3 flex items-center justify-between">
-                             <div className="flex items-center gap-3">
-                                 <CheckCircle2 className={cn("w-4 h-4", m.status === 'late' ? "text-orange-500" : "text-green-500")} />
-                                 <span className="text-sm font-bold">{m.name}</span>
-                             </div>
-                             <div className="text-right">
-                                 <div className="text-xs font-mono text-stone-500">Arrived {m.time}</div>
-                                 {m.status === 'late' && <div className="text-[9px] font-bold uppercase text-orange-500">Late</div>}
-                             </div>
-                         </div>
-                    ))}
-                </div>
-             </div>
-
-            {/* Next Rehearsal Suggestion */}
-            <div className="bg-[var(--surface-inverse)] text-white p-6 rounded-[2rem] relative overflow-hidden shadow-xl">
-                 <div className="relative z-10">
-                     <div className="flex items-center gap-2 mb-4 opacity-60">
-                         <Calendar className="w-4 h-4" />
-                         <span className="text-[10px] font-bold uppercase tracking-widest">Next Session</span>
-                     </div>
-                     <h3 className="text-2xl font-black mb-1">Monday, Feb 3</h3>
-                     <p className="text-sm font-bold text-stone-400 mb-6">Rehearsal Studios XYZ • 21:00</p>
-                     
-                     <div className="space-y-3 mb-6">
-                         <p className="text-[10px] font-bold uppercase text-stone-500">Suggested Focus:</p>
-                         <ul className="space-y-2 text-xs font-bold">
-                             <li className="flex gap-2"><span className="text-accent">•</span> Bohemian Rhapsody (Bridge)</li>
-                             <li className="flex gap-2"><span className="text-accent">•</span> Purple Rain (Modulation)</li>
-                             <li className="flex gap-2"><span className="text-accent">•</span> Superstition (New!)</li>
-                         </ul>
-                     </div>
-
-                     <button onClick={onClose} className="w-full py-3 bg-accent text-accent-foreground rounded-xl font-black uppercase text-xs hover:scale-[1.02] transition-transform">
-                         Schedule Next
-                     </button>
-                 </div>
-            </div>
-
-            <button onClick={onClose} className="w-full mt-6 py-4 text-stone-400 font-bold uppercase text-xs hover:text-foreground">
-                Close Summary
-            </button>
+      <div
+        className="w-full max-w-md mx-auto px-4 pt-6 flex flex-col gap-6"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 32px)' }}
+      >
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: 4, label: 'Songs played', cls: '' },
+            { value: 2, label: 'Need work', cls: 'text-warning' },
+            { value: 1, label: 'Problem', cls: 'text-destructive' },
+          ].map((s) => (
+            <Card key={s.label} className="gap-2 p-4">
+              <span className={cn('bw-value-lg', s.cls)}>{s.value}</span>
+              <span className="bw-label-xs text-muted-foreground">{s.label}</span>
+            </Card>
+          ))}
         </div>
+
+        {/* Feedback */}
+        <section className="flex flex-col gap-3">
+          <h3 className="bw-label-sm text-muted-foreground">Feedback summary</h3>
+          {FEEDBACK.map((f) => (
+            <Card key={f.song} className="gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <h4 className="bw-h3">{f.song}</h4>
+                <Tag
+                  variant={f.tone === 'good' ? 'accent' : f.tone === 'work' ? 'outline' : 'solid'}
+                  className={f.tone === 'problem' ? 'bg-destructive-solid text-white' : undefined}
+                >
+                  {f.verdict}
+                </Tag>
+              </div>
+              <p className="bw-body-sm text-muted-foreground">“{f.note}”</p>
+            </Card>
+          ))}
+        </section>
+
+        {/* Attendance */}
+        <section className="flex flex-col gap-3">
+          <h3 className="bw-label-sm text-muted-foreground">Attendance</h3>
+          <Card className="gap-0 py-2">
+            {ATTENDANCE.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 py-2">
+                <CheckCircle2 className={cn('w-5 h-5 shrink-0', m.status === 'late' ? 'text-warning' : 'text-success')} />
+                <span className="flex-1 min-w-0 bw-body-lg truncate">{m.name}</span>
+                {m.status === 'late' && <Tag variant="outline">Late</Tag>}
+                <span className="bw-label-sm text-muted-foreground shrink-0">Arrived {m.time}</span>
+              </div>
+            ))}
+          </Card>
+        </section>
+
+        {/* Next Rehearsal Suggestion */}
+        <div className="rounded-[24px] p-5 flex flex-col gap-4 bg-surface-inverse text-surface-inverse-foreground">
+          <p className="flex items-center gap-2 bw-label-sm opacity-70">
+            <Calendar className="w-4 h-4" />
+            Next session
+          </p>
+          <div className="flex flex-col gap-1">
+            <h3 className="bw-h2">Monday, Feb 3</h3>
+            <p className="bw-body-sm opacity-70">Rehearsal Studios XYZ · 21:00</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="bw-label-sm opacity-70">Suggested focus</p>
+            <ul className="flex flex-col gap-2 bw-body-md">
+              {['Bohemian Rhapsody (bridge)', 'Purple Rain (modulation)', 'Superstition (new!)'].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <PillButton onClick={onClose}>Schedule next</PillButton>
+        </div>
+
+        <PillButton variant="ghost" onClick={onClose}>
+          Close summary
+        </PillButton>
+      </div>
     </div>
   );
 };

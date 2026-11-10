@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  Mail,
-  ArrowRight,
-  ArrowLeft,
-  AlertCircle,
-  Loader2,
-  CheckCircle,
-} from '@/app/components/icons';
+import { Mail, Send } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { AuthScreen, BackButton, FormError, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -28,10 +21,15 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError('Enter a valid email address.');
+      return;
+    }
     setLoading(true);
 
     try {
-      const { error } = await resetPassword(email);
+      const { error } = await resetPassword(trimmed);
       if (error) {
         setError(error.message);
         setLoading(false);
@@ -46,185 +44,77 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   };
 
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Header */}
-      <div className="px-5 pt-5 flex items-center justify-between relative z-10">
-        <button
-          onClick={onBack}
-          className="w-11 h-11 rounded-full border border-border flex items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-card transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-        <BrandLogo
-          variant="waveform"
-          lockup="horizontal"
-          className="h-6 opacity-60"
-          textClassName="text-lg"
-        />
-        <div className="w-11" />
-      </div>
-
-      {/* Content */}
-      <motion.div
-        className="flex-1 flex flex-col px-5 pt-10 relative z-10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.4 }}
-      >
-        {/* Title */}
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5 }}
-        >
-          <p className="text-accent text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
-            Account Recovery
-          </p>
-          <h1 className="text-[40px] font-black text-foreground tracking-tight uppercase leading-[0.95]">
-            Reset
-            <br />
-            <span className="text-muted-foreground/30">Password</span>
-          </h1>
-        </motion.div>
-
-        <AnimatePresence mode="wait">
-          {success ? (
+    <AuthScreen top={<BackButton onClick={onBack} />}>
+      <AnimatePresence mode="wait">
+        {success ? (
+          <motion.div
+            key="success"
+            className="flex-1 flex flex-col gap-5 pt-6"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
             <motion.div
-              key="success"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="flex-1 flex flex-col"
+              className="w-24 h-24 rounded-[24px] bg-accent text-accent-foreground flex items-center justify-center"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
             >
-              <div className="flex flex-col items-center justify-center flex-1 text-center px-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 200,
-                    damping: 15,
-                    delay: 0.2,
-                  }}
-                  className="w-20 h-20 rounded-full bg-accent/15 flex items-center justify-center mb-6"
-                >
-                  <CheckCircle className="w-10 h-10 text-accent" strokeWidth={2} />
-                </motion.div>
-
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-2xl font-black text-foreground uppercase tracking-tight mb-3"
-                >
-                  Check Your Email
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-muted-foreground/60 text-[14px] leading-relaxed max-w-xs"
-                >
-                  We've sent a password reset link to{' '}
-                  <span className="text-foreground font-bold">{email}</span>.
-                  <br /><br />
-                  Check your inbox and follow the link to create a new password.
-                </motion.p>
-              </div>
-
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                onClick={onBack}
-                className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mb-8"
-              >
-                Back to Sign In
-                <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-              </motion.button>
+              <Mail className="w-10 h-10" strokeWidth={1.75} />
             </motion.div>
-          ) : (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col"
+            <Kicker overline="Link sent" title="Check your email" size="xl" />
+            <p className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] text-muted-foreground max-w-[340px]">
+              We sent a link to <span className="text-foreground">{email}</span>. Follow it to create a new
+              password. The link expires in 1 hour.
+            </p>
+            <div className="flex-1" />
+            <PillButton variant="dark" onClick={onBack}>
+              Back to sign in
+            </PillButton>
+          </motion.div>
+        ) : (
+          <motion.form
+            key="form"
+            onSubmit={handleSubmit}
+            noValidate
+            className="flex-1 flex flex-col gap-5"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <Kicker overline="Account recovery" title="Reset password" />
+            <p className="text-[16px] leading-[1.45] text-muted-foreground max-w-[340px]">
+              Enter the email you signed up with. We&apos;ll send you a link to choose a new password.
+            </p>
+            {error && <FormError>{error}</FormError>}
+            <PillField
+              label="Email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@yourband.com"
+              icon={<Mail className="w-5 h-5" strokeWidth={1.75} />}
+              required
+              autoFocus
+            />
+            <div className="flex-1" />
+            <PillButton
+              type="submit"
+              variant="dark"
+              loading={loading}
+              disabled={!email}
+              trailingIcon={<Send className="w-5 h-5" />}
             >
-              <motion.p
-                className="text-muted-foreground/55 text-[14px] leading-relaxed mb-8"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-              >
-                Enter the email address associated with your account and we'll send you a link to reset your password.
-              </motion.p>
-
-              <motion.form
-                onSubmit={handleSubmit}
-                className="space-y-5 flex-1 flex flex-col"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.5 }}
-              >
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/10"
-                    >
-                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                      <p className="text-red-400 text-[13px] font-medium">{error}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email address"
-                    className="w-full h-[52px] pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[15px] placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent/40 focus:bg-card/80 transition-all"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div className="flex-1" />
-
-                <motion.button
-                  type="submit"
-                  disabled={loading || !email}
-                  className="w-full h-14 rounded-full text-[14px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 mb-8"
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      Send Reset Link
-                      <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-                    </>
-                  )}
-                </motion.button>
-              </motion.form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </div>
+              Send reset link
+            </PillButton>
+          </motion.form>
+        )}
+      </AnimatePresence>
+    </AuthScreen>
   );
 };
 

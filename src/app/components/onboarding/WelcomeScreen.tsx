@@ -1,36 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { ArrowRight, CheckCircle2, Loader2 } from '@/app/components/icons';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowUpRight, Link, Loader2, X } from '@/app/components/icons';
+import { BrandLockup } from '@/app/components/bw/BrandMark';
+import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
+import { isDemoMode, signIn } from '@/lib/supabase';
+import { setStatusBarTone } from '@/lib/systemBars';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
   onSignIn: () => void;
   onInviteCodeSubmit: (code: string) => void;
+  /** "No code? Find my invite by email" */
+  onFindInviteByEmail?: () => void;
   inviteCodeLoading: boolean;
   inviteCodeError: string | null;
   closeInviteInputRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
+/** Figma "Dot hero": two rows of pills (52) and dots (10), gap 8 / 6. */
+const DOT_HERO: number[][] = [
+  [52, 52, 10, 52, 10, 10],
+  [10, 52, 52, 10, 52, 10],
+];
+
+const FEATURES = ['Shared calendars', 'Automated quotes', 'Rehearsal costs', 'Setlist builder'];
+
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onGetStarted,
   onSignIn,
   onInviteCodeSubmit,
+  onFindInviteByEmail,
   inviteCodeLoading,
   inviteCodeError,
   closeInviteInputRef,
 }) => {
-  const [showInviteInput, setShowInviteInput] = useState(false);
+  // Open the sheet straight away when we arrive with an error (e.g. a dead invite link).
+  const [showInviteInput, setShowInviteInput] = useState(!!inviteCodeError);
   const [inviteCode, setInviteCode] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const closeSheet = () => {
+    setShowInviteInput(false);
+    setInviteCode('');
+    setSubmitted(false);
+  };
 
   useEffect(() => {
     if (closeInviteInputRef) {
       closeInviteInputRef.current = () => {
         if (showInviteInput) {
-          setShowInviteInput(false);
-          setInviteCode('');
-          setSubmitted(false);
+          closeSheet();
           return true;
         }
         return false;
@@ -41,8 +61,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     };
   }, [showInviteInput, closeInviteInputRef]);
 
+  // Lime surface → dark status-bar icons in both themes; the sheet's scrim is dark.
+  useEffect(() => setStatusBarTone(showInviteInput ? 'dark' : 'light'), [showInviteInput]);
+
   const handleInviteSubmit = () => {
-    if (inviteCode.trim().length < 2) return;
+    if (inviteCode.trim().length < 2 || inviteCodeLoading) return;
     setSubmitted(true);
     onInviteCodeSubmit(inviteCode.trim());
   };
@@ -50,178 +73,196 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   if (submitted && inviteCodeLoading) {
     return (
       <div
-        className="min-h-screen bg-background flex flex-col items-center justify-center px-5"
-        style={{
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
+        className="min-h-[100dvh] bg-accent text-accent-foreground flex flex-col items-center justify-center px-5 gap-4"
+        style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
       >
-        <Loader2 className="w-8 h-8 text-accent animate-spin mb-4" />
-        <p className="text-muted-foreground text-[15px] font-medium">
-          Checking invite code…
-        </p>
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <p className="bw-label-sm">Checking invite code…</p>
       </div>
     );
   }
 
   return (
     <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      className="min-h-[100dvh] bg-accent text-accent-foreground flex flex-col relative"
+      style={{ paddingTop: 'var(--safe-top)' }}
     >
-      {/* Subtle brand gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute -top-40 -right-40 w-80 h-80 rounded-full"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(213, 251, 70, 0.06) 0%, transparent 70%)',
-          }}
-        />
+      <div
+        className="flex-1 flex flex-col gap-6 px-4 pt-4"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
+      >
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <BrandLockup size={18} monochrome />
+        </motion.div>
+
+        <motion.div
+          aria-hidden
+          className="flex flex-col gap-1.5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+        >
+          {DOT_HERO.map((row, r) => (
+            <div key={r} className="flex items-center gap-2">
+              {row.map((w, i) => (
+                <motion.span
+                  key={i}
+                  className="h-2.5 rounded-full bg-current"
+                  style={{ width: w }}
+                  initial={{ scaleX: 0, originX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 0.2 + (r * 6 + i) * 0.03, duration: 0.25 }}
+                />
+              ))}
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          className="flex flex-col gap-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <h1 className="font-[family-name:var(--font-display)] font-bold uppercase text-[56px] leading-[0.88] tracking-[-0.03em]">
+            Your music, your schedule, your way.
+          </h1>
+          <p className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] max-w-[340px]">
+            Manage gigs, rehearsals and sync your band — or just keep your own calendar in tune.
+          </p>
+          <ul className="flex flex-wrap gap-x-2 gap-y-1.5" aria-label="Features">
+            {FEATURES.map((f) => (
+              <li key={f}>
+                <Selector>{f}</Selector>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+
+        <motion.div
+          className="mt-auto flex flex-col gap-3"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.5 }}
+        >
+          <PillButton variant="dark" onClick={onGetStarted} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
+            Get started
+          </PillButton>
+          <PillButton variant="outline" onClick={onSignIn} className="border-accent-foreground text-accent-foreground">
+            Sign in
+          </PillButton>
+          <PillButton
+            variant="ghost"
+            size="md"
+            onClick={() => setShowInviteInput(true)}
+            icon={<Link className="w-[18px] h-[18px]" />}
+            className="text-accent-foreground"
+          >
+            I have an invite code
+          </PillButton>
+          {/* Demo access (development builds only) */}
+          {isDemoMode && (
+            <PillButton
+              variant="ghost"
+              size="sm"
+              loading={demoLoading}
+              onClick={() => {
+                setDemoLoading(true);
+                signIn('demo@bandwith.app', 'demo').finally(() => setDemoLoading(false));
+              }}
+              className="text-accent-foreground underline underline-offset-4"
+            >
+              Enter demo
+            </PillButton>
+          )}
+        </motion.div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-5 pt-12 pb-6 relative z-10">
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <BrandLogo variant="waveform" lockup="horizontal" className="h-8" />
-        </motion.div>
-
-        {/* Main value prop area */}
-        <div className="flex-1 flex flex-col justify-center -mt-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-          >
-            <h1 className="text-[40px] font-black text-foreground leading-[1.05] tracking-tight mb-4">
-              Your music,
-              <br />
-              your schedule,
-              <br />
-              <span className="text-accent">your way.</span>
-            </h1>
-            <p className="text-muted-foreground text-[15px] font-medium leading-relaxed max-w-[280px]">
-              Manage gigs, rehearsals, and sync your band — or just keep your own calendar in tune.
-            </p>
-        </motion.div>
-
-          {/* Feature pips */}
-          <motion.div
-            className="flex flex-wrap gap-x-5 gap-y-2.5 mt-8"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5 }}
-          >
-            {[
-              'Shared calendars',
-              'Automated quotes',
-              'Rehearsal costs',
-              'Setlist builder',
-            ].map((feature) => (
-              <div key={feature} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                <span className="text-[13px] text-muted-foreground/70 font-medium">
-                  {feature}
-                </span>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* CTA Section */}
-        <motion.div
-          className="space-y-3"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          {/* Primary CTA */}
-          <button
-            onClick={onGetStarted}
-            className="w-full h-14 rounded-full text-[13px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-          >
-            Get Started
-            <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-          </button>
-
-          {/* Invite code section */}
-          {showInviteInput ? (
+      {/* Invite code sheet (Figma: Auth / Welcome – Invite code) */}
+      <AnimatePresence>
+        {showInviteInput && (
+          <>
             <motion.div
-              className="space-y-2"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              transition={{ duration: 0.25 }}
+              key="scrim"
+              className="fixed inset-0 z-40 bg-black/60"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeSheet}
+            />
+            <motion.div
+              key="sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="invite-sheet-title"
+              className="fixed inset-x-0 bottom-0 z-50 bg-sheet text-sheet-foreground rounded-t-[24px] px-5 pt-2"
+              style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
             >
-              <div className="flex items-center gap-2">
-                <input
+              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/40" aria-hidden />
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div className="flex flex-col gap-1">
+                  <p className="bw-label-sm text-white/70">Invite code</p>
+                  <h2 id="invite-sheet-title" className="bw-h2 text-[28px]">Join a band</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeSheet}
+                  aria-label="Close"
+                  className="w-9 h-9 rounded-full border-[1.5px] border-white flex items-center justify-center active:scale-[var(--press-scale)] transition-transform"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-3">
+                <PillField
+                  tone="sheet"
+                  label="Invite code or link"
+                  id="invite-code"
                   type="text"
+                  inputMode="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={inviteCode}
+                  error={inviteCodeError}
                   onChange={(e) => {
                     setInviteCode(e.target.value);
                     setSubmitted(false);
                   }}
-                  placeholder="Enter invite code"
-                  className="flex-1 h-12 rounded-xl bg-card border border-border px-4 text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none focus:border-accent transition-colors"
+                  placeholder="Paste invite code or link"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleInviteSubmit();
                   }}
                 />
-                <button
+                <PillButton
                   onClick={handleInviteSubmit}
                   disabled={inviteCode.trim().length < 2}
-                  className="h-12 px-5 rounded-xl bg-accent text-accent-foreground text-[13px] font-black uppercase tracking-wider disabled:opacity-40 transition-opacity"
+                  loading={inviteCodeLoading}
                 >
                   Join
-                </button>
+                </PillButton>
+                <div className="flex items-center justify-between">
+                  {onFindInviteByEmail ? (
+                    <PillButton variant="ghost" size="sm" fullWidth={false} onClick={onFindInviteByEmail} className="text-accent -ml-3">
+                      No code? Find my invite by email
+                    </PillButton>
+                  ) : (
+                    <span />
+                  )}
+                  <PillButton variant="ghost" size="sm" fullWidth={false} onClick={closeSheet} className="text-white -mr-3">
+                    Cancel
+                  </PillButton>
+                </div>
               </div>
-              {inviteCodeError && (
-                <p className="text-red-400 text-[13px] font-medium px-1">
-                  {inviteCodeError}
-                </p>
-              )}
-              <button
-                onClick={() => {
-                  setShowInviteInput(false);
-                  setInviteCode('');
-                  setSubmitted(false);
-                }}
-                className="text-muted-foreground/40 text-[12px] font-semibold hover:text-muted-foreground/70 transition-colors"
-              >
-                Cancel
-              </button>
             </motion.div>
-          ) : (
-            <button
-              onClick={() => setShowInviteInput(true)}
-              className="w-full h-14 rounded-full text-[13px] font-bold uppercase tracking-[0.1em] text-muted-foreground/55 hover:text-muted-foreground/90 hover:bg-card active:scale-[0.98] transition-all flex items-center justify-center border border-border"
-            >
-              I have an invite code
-            </button>
-          )}
-
-          {/* Sign in link */}
-          <div className="text-center pt-3">
-            <button
-              onClick={onSignIn}
-              className="text-muted-foreground/40 text-[13px] font-semibold hover:text-muted-foreground/80 transition-colors"
-            >
-              Already have an account?{' '}
-              <span className="text-muted-foreground/60 underline underline-offset-4 decoration-border">
-                Sign In
-              </span>
-            </button>
-          </div>
-        </motion.div>
-      </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

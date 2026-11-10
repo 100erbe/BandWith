@@ -12,6 +12,15 @@ import {
   updateOnboardingProgress,
   createOnboardingProgress,
 } from './supabase';
+import {
+  acceptInvitation,
+  InviteError,
+  inviteErrorMessage,
+  inviteToBand,
+  parseInviteCode,
+  previewInvitation,
+} from './services/invitations';
+import type { InviteData } from '@/app/components/onboarding/JoinerInviteLanding';
 
 // Onboarding step definitions
 export type OnboardingPath = 'solo' | 'creator' | 'joiner';
@@ -84,9 +93,12 @@ interface OnboardingState {
   startedAt: Date | null;
 
   // Invite token / code logic
+  /** Token from an invite link / pasted code (preferred way to accept). */
   inviteToken: string | null;
-  inviteData: any | null;
-  pendingBandId: string | null; // Added to handle the 6-digit bypass code
+  /** Band preview shown on the invite landing screen. */
+  inviteData: InviteData | null;
+  /** Invitation picked from the email lookup (accepted by id + email match). */
+  pendingInvitationId: string | null;
 
   // Collected data
   accountData: {
@@ -128,8 +140,9 @@ interface OnboardingContextType extends OnboardingState {
   setAccountData: (data: OnboardingState['accountData']) => void;
   setBandData: (data: OnboardingState['bandData']) => void;
   setProfileData: (data: OnboardingState['profileData']) => void;
-  setPendingBandId: (id: string | null) => void;
-  acceptInviteCode: (code: string) => Promise<boolean>;
+  setPendingInvitationId: (id: string | null) => void;
+  /** Validates a pasted invite code or link and loads its band preview. */
+  acceptInviteCode: (code: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   addInvite: (invite: MemberInvite) => void;
   removeInvite: (email: string) => void;
   addSong: (song: OnboardingSong) => void;
@@ -176,7 +189,7 @@ const initialState: OnboardingState = {
   startedAt: null,
   inviteToken: null,
   inviteData: null,
-  pendingBandId: null,
+  pendingInvitationId: null,
   accountData: null,
   bandData: null,
   profileData: null,
@@ -267,10 +280,12 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       : 0;
 
     // ═══════════════════════════════════════════════════════════════
-    // 1) The Invite Code Bypass (Hired Musician Path)
+    // 1) Joiner path — accept the invitation on the server
+    //    (bw_accept_invitation checks the email and adds the membership;
+    //    the client can't insert itself into band_members).
+    //    Throws InviteError so the UI can tell the user what went wrong.
     // ═══════════════════════════════════════════════════════════════
-    if (state.pendingBandId) {
-      // Set user mode explicitly to 'member'
+    if (state.path === 'joiner' && (state.inviteToken || state.pendingInvitationId)) {
       if (state.profileData) {
         await supabase
           .from('profiles')
@@ -278,23 +293,15 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
             full_name: state.profileData.fullName,
             instrument: state.profileData.instruments?.join(', '),
             phone: state.profileData.phone,
-            user_mode: 'member',
           })
           .eq('id', user.id);
       }
 
-      // Automatically insert them into the shared band roster
-      await supabase
-        .from('band_members')
-        .upsert(
-          {
-            band_id: state.pendingBandId,
-            user_id: user.id,
-            role: 'member',
-            instrument: state.profileData?.instruments?.join(', '),
-          },
-          { onConflict: 'band_id,user_id' }
-        );
+      await acceptInvitation(
+        state.inviteToken
+          ? { token: state.inviteToken }
+          : { invitationId: state.pendingInvitationId! }
+      );
 
       await updateOnboardingProgress(user.id, {
         completed_at: new Date().toISOString(),
@@ -302,9 +309,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
       });
 
       setState((prev) => ({ ...prev, isComplete: true }));
-      return; // Exit immediately, bypassing all creation logic!
+      return;
     }
-
 
     // Determine whether the user is going solo (no band created) or creating a band
     const isGoingSolo = state.path !== 'creator' || !state.bandData;
@@ -436,18 +442,19 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
 
       if (memberError) console.error('Member Upsert Error:', memberError);
 
-      if (state.invites.length > 0) {
-        const invitesToInsert = state.invites.map((invite) => ({
-          band_id: band.id,
-          email: invite.email,
-          role: invite.permission || 'member',
-        }));
-
-        const { error: inviteError } = await supabase
-          .from('invitations')
-          .insert(invitesToInsert);
-
-        if (inviteError) console.error('Failed to save invitations:', inviteError);
+      // Invitations go through the invite-member edge function (admin check,
+      // band_invitations row, email with the invite link for new users).
+      for (const invite of state.invites) {
+        try {
+          await inviteToBand({
+            bandId: band.id,
+            email: invite.email,
+            role: invite.permission === 'admin' ? 'admin' : 'member',
+            inviterName: state.profileData?.fullName,
+          });
+        } catch (inviteError) {
+          console.error('Failed to send invitation to', invite.email, inviteError);
+        }
       }
 
       for (const song of state.songs) {
@@ -493,35 +500,34 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     []
   );
 
-  const setPendingBandId = useCallback((id: string | null) => {
-    setState((prev) => ({ ...prev, pendingBandId: id }));
+  const setPendingInvitationId = useCallback((id: string | null) => {
+    setState((prev) => ({ ...prev, pendingInvitationId: id }));
   }, []);
 
-  // Accept a 6-digit invite code — validates it against invitations table
-  const acceptInviteCode = useCallback(async (code: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('id, band_id, band:bands(id, name, logo_url)')
-        .eq('token', code)
-        .eq('status', 'pending')
-        .single();
-
-      if (error || !data) {
-        console.warn('Invite code not found or already used:', code);
-        return false;
+  // Validate a pasted invite code / link and load the band preview.
+  // Joining happens at the end of the joiner flow (completeOnboarding).
+  const acceptInviteCode = useCallback(
+    async (code: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const token = parseInviteCode(code);
+      if (!token) return { ok: false, error: inviteErrorMessage('invalid_code') };
+      try {
+        const data = await previewInvitation(token);
+        setState((prev) => ({
+          ...prev,
+          inviteToken: token,
+          inviteData: data,
+          pendingInvitationId: null,
+        }));
+        return { ok: true };
+      } catch (err) {
+        return {
+          ok: false,
+          error: err instanceof InviteError ? err.message : inviteErrorMessage('network'),
+        };
       }
-
-      setState((prev) => ({
-        ...prev,
-        pendingBandId: data.band_id,
-      }));
-      return true;
-    } catch (err) {
-      console.error('Error validating invite code:', err);
-      return false;
-    }
-  }, []);
+    },
+    []
+  );
 
   const addInvite = useCallback((invite: MemberInvite) => {
     setState((prev) => ({
@@ -564,30 +570,17 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
   }, []);
 
   const loadInviteData = useCallback(async (token: string): Promise<boolean> => {
+    const parsed = parseInviteCode(token);
+    if (!parsed) return false;
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select(
-          `
-          *,
-          band:bands(id, name, logo_url, description)
-        `
-        )
-        .eq('token', token)
-        .eq('status', 'pending')
-        .single();
-
-      if (error || !data) {
-        return false;
-      }
-
+      const data = await previewInvitation(parsed);
       setState((prev) => ({
         ...prev,
-        inviteToken: token,
+        inviteToken: parsed,
         inviteData: data,
+        pendingInvitationId: null,
         path: 'joiner',
       }));
-
       return true;
     } catch {
       return false;
@@ -638,7 +631,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
     setAccountData,
     setBandData,
     setProfileData,
-    setPendingBandId,
+    setPendingInvitationId,
     acceptInviteCode,
     addInvite,
     removeInvite,

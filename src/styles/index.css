@@ -1,3 +1,176 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* Reduced motion: keep state changes, drop the movement. Motion-driven
+   animations are handled by <MotionConfig reducedMotion="user"> in main.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── iPhone Duo: system status column ───────────────────────────────────────
+   On iPhone Duo the clock, battery and Wi-Fi sit in a column at the top-right
+   of the display. The native shell (ios/App/App/BandWithBridgeViewController)
+   measures it and sets `data-bw-status-column` on <html> plus
+   `--bw-status-clear-x` (its width from the trailing edge). The app stays full
+   screen; only top-bar controls step left of that column. Elsewhere none of
+   this applies.
+   - <header> top bars and `.bw-status-clear` rows pad their trailing side
+     (they are px-4 rows, so 1rem is the normal value).
+   - `.bw-status-clear-shift` nudges an element already pinned to the trailing
+     edge of a padded row (margin, so its own position rules stay intact).
+   - `.bw-status-clear-inset` is for fixed/absolute cards using right-4. */
+[data-bw-status-column] header,
+[data-bw-status-column] .bw-status-clear {
+  padding-inline-end: max(1rem, var(--bw-status-clear-x));
+}
+[data-bw-status-column] .bw-status-clear-shift {
+  margin-inline-end: max(0px, calc(var(--bw-status-clear-x) - 1rem));
+}
+[data-bw-status-column] .bw-status-clear-inset {
+  right: max(1rem, var(--bw-status-clear-x));
+}
+
+/* ── iPhone Duo layout (see src/lib/deviceRegions.ts) ─────────────────────
+   Closed and open: the system column is a rail holding the vertical nav, and
+   app content stops just before it. Open: lists on the leading pane, details
+   on the trailing pane, matching the Figma "Duo" frames. */
+[data-bw-rail] .bw-pane-main {
+  padding-right: calc(var(--bw-rail-w) + 10px) !important;
+}
+[data-bw-rail] .bw-pane-main header {
+  padding-inline-end: 1rem;
+}
+[data-bw-two-pane] .bw-pane-main {
+  max-width: var(--bw-pane-leading-w) !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 16px !important;
+}
+[data-bw-two-pane] .bw-pane-detail {
+  /* The trailing pane runs to the screen edge; its content stops before the
+     rail, where the nav floats over the pane's own background (Figma "Open"). */
+  left: var(--bw-pane-trailing-x) !important;
+  right: 0 !important;
+  width: auto !important;
+  padding-right: var(--bw-rail-w) !important;
+}
+[data-bw-two-pane] .bw-pane-detail header,
+[data-bw-two-pane] .bw-pane-detail .bw-status-clear {
+  padding-inline-end: 1rem;
+}
+[data-bw-two-pane] .bw-pane-backdrop {
+  display: none;
+}
+.bw-pane-placeholder {
+  display: none;
+}
+[data-bw-two-pane] .bw-pane-placeholder {
+  display: flex;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--bw-pane-trailing-x);
+  right: 0;
+  padding-right: calc(var(--bw-rail-w) + 1.5rem);
+  z-index: 5;
+}
+[data-bw-two-pane] body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--bw-pane-leading-w);
+  width: 1px;
+  background: var(--border);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Duo side rail (Figma "Duo/Side Tab Bar" + "Duo/Side Actions"): it floats
+   over everything below z-190, so full-screen layers and bottom sheets keep
+   their content out of the rail column. Two-pane detail rules above win. */
+[data-bw-rail-host] .fixed.inset-0:not(.bw-pane-detail):not(.z-\[9999\]) {
+  padding-right: var(--bw-rail-w);
+}
+[data-bw-rail-host]:not([data-bw-two-pane]) .bw-pane-detail {
+  padding-right: var(--bw-rail-w) !important;
+}
+/* Bottom sheets and their scrims stop at the rail (Figma "Home / Create
+   menu"); on the open display they sit on the trailing pane and never cross
+   the fold. Other fixed bars only stop at the rail. */
+[data-bw-rail-host] .bw-rail-sheet,
+[data-bw-rail-host] .bw-rail-clear {
+  right: var(--bw-rail-w) !important;
+}
+[data-bw-rail-host][data-bw-two-pane] .bw-rail-sheet {
+  left: var(--bw-pane-trailing-x) !important;
+}
+/* With the rail mounted every layer already stops before the system column,
+   so the status-column clearances above would double it. */
+[data-bw-rail-host] header,
+[data-bw-rail-host] .bw-status-clear {
+  padding-inline-end: 1rem;
+}
+[data-bw-rail-host] .bw-status-clear-shift {
+  margin-inline-end: 0;
+}
+[data-bw-rail-host] .bw-status-clear-inset {
+  right: calc(var(--bw-rail-w) + 1rem);
+}
+
+/* Glass surface for the app navbar (Figma bg/nav-glass, border/nav-glass,
+   background blur 24, shadow 0 6 20 / 12%). */
+.bw-glass {
+  background: var(--nav-glass);
+  border: 1px solid var(--nav-glass-border);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Dot micro-motion ───────────────────────────────────────────────────────
+   Dot-matrix numbers light up in a left → right sweep (like an LED board
+   refreshing); meters fill dot by dot and the peak dot gives one soft pop;
+   dot columns rise from the bottom. Each element sets its own --d delay. */
+@keyframes bw-dot-in {
+  from { opacity: 0; transform: scale(0.35); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bw-dot-rise {
+  from { opacity: 0.15; transform: scale(0.55); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bw-dot-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  50%  { opacity: 1; transform: scale(1.38); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.bw-dot-in,
+.bw-dot-rise,
+.bw-dot-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-delay: var(--d, 0ms);
+}
+.bw-dot-in   { animation: bw-dot-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-rise { animation: bw-dot-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-pop  { animation: bw-dot-pop 520ms cubic-bezier(0.3, 1.5, 0.5, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-cell {
+  transition: background-color 240ms ease-out;
+  transition-delay: var(--d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bw-dot-in, .bw-dot-rise, .bw-dot-pop, .bw-dot-cell {
+    animation: none !important;
+    transition: none !important;
+  }
+}

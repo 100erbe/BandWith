@@ -11,7 +11,7 @@ async function signInAndCreate() {
   console.log("Signing in...");
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: "admin@bandwith.com",
-    password: "Password123!"
+    password: process.env.DEV_TEST_PASSWORD
   });
 
   if (authError || !authData.user) {

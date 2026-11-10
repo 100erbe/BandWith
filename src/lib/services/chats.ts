@@ -29,6 +29,7 @@ export interface ChatParticipant {
   chat_id: string;
   user_id: string;
   last_read_at?: string;
+  last_delivered_at?: string;
   cleared_at?: string;
   muted: boolean;
   joined_at: string;
@@ -60,6 +61,49 @@ export interface Message {
     avatar_url?: string;
   };
 }
+
+// ============================================
+// RECEIPTS (WhatsApp-style ticks)
+// ============================================
+
+/** sending → clock · sent → ✓ · delivered → ✓✓ · read → ✓✓ coloured */
+export type ReceiptStatus = 'sending' | 'sent' | 'delivered' | 'read';
+
+const atOrAfter = (mark: string | null | undefined, createdAt: number) =>
+  !!mark && new Date(mark).getTime() >= createdAt;
+
+/**
+ * Status of one of my messages given the OTHER participants of the chat.
+ * Like WhatsApp groups: delivered/read only once everyone got/read it.
+ */
+export const receiptFor = (
+  createdAt: string,
+  others: Pick<ChatParticipant, 'last_read_at' | 'last_delivered_at' | 'joined_at'>[]
+): ReceiptStatus => {
+  const t = new Date(createdAt).getTime();
+  // People who joined after the message was sent never "received" it.
+  const audience = others.filter((p) => !p.joined_at || new Date(p.joined_at).getTime() <= t);
+  if (audience.length === 0) return 'sent';
+  if (audience.every((p) => atOrAfter(p.last_read_at, t))) return 'read';
+  if (audience.every((p) => atOrAfter(p.last_delivered_at, t) || atOrAfter(p.last_read_at, t))) {
+    return 'delivered';
+  }
+  return 'sent';
+};
+
+let lastDeliveredMark = 0;
+
+/** Tell senders that this device has received their messages (server time). */
+export const markChatsDelivered = async (force = false): Promise<void> => {
+  const now = Date.now();
+  if (!force && now - lastDeliveredMark < 4000) return;
+  lastDeliveredMark = now;
+  try {
+    await supabase.rpc('bw_mark_chats_delivered');
+  } catch {
+    // Non-critical: ticks just stay at "sent".
+  }
+};
 
 // ============================================
 // CHATS CRUD
@@ -289,6 +333,8 @@ export const getChats = async (
     );
 
     const validChats = chatsWithDetails.filter(Boolean) as ChatWithDetails[];
+    // This device now has these messages: let the senders see ✓✓.
+    void markChatsDelivered();
     return { data: validChats, error: null };
   } catch (error: any) {
     return { data: null, error };
@@ -678,9 +724,24 @@ export const getMessages = async (
     }
 
     console.log('[getMessages] Found', data?.length || 0, 'messages');
-    
+
+    // Attach sender profiles in one batch: the chat UI shows `sender.full_name`
+    // above each message in group chats, and falls back to "Member" without it.
+    const rows = data || [];
+    const senderIds = [...new Set(rows.map((m: any) => m.sender_id).filter(Boolean))];
+    if (senderIds.length > 0) {
+      const { data: senders } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', senderIds);
+      const byId = new Map((senders || []).map((p: any) => [p.id, p]));
+      for (const m of rows as any[]) {
+        if (!m.sender && byId.has(m.sender_id)) m.sender = byId.get(m.sender_id);
+      }
+    }
+
     // Return in ascending order for display
-    return { data: (data || []).reverse(), error: null };
+    return { data: rows.reverse(), error: null };
   } catch (error: any) {
     console.error('[getMessages] Exception:', error);
     return { data: null, error };
@@ -932,28 +993,21 @@ export const markChatAsRead = async (
   chatId: string
 ): Promise<{ error: Error | null }> => {
   try {
-    const { data: { user } } = await getSafeUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Best-effort: RLS or column issues shouldn't break the chat
-    const { error } = await supabase
-      .from('chat_participants')
-      .update({ last_read_at: new Date().toISOString() } as any)
-      .eq('chat_id', chatId)
-      .eq('user_id', user.id);
-
+    // Server time, and only when there is something unread (no realtime churn).
+    const { error } = await supabase.rpc('bw_mark_chat_read', { p_chat_id: chatId });
     if (error) {
-      console.warn('[markChatAsRead] Non-critical error:', {
-        message: error.message,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        code: (error as any).code,
-      });
-      // Return success anyway — read receipts are non-critical
+      // Older database without migration 049: fall back to a direct update.
+      const { data: { user } } = await getSafeUser();
+      if (!user) throw new Error('Not authenticated');
+      await supabase
+        .from('chat_participants')
+        .update({ last_read_at: new Date().toISOString() } as any)
+        .eq('chat_id', chatId)
+        .eq('user_id', user.id);
     }
-
     return { error: null };
   } catch (error: any) {
+    // Read receipts are non-critical.
     console.warn('[markChatAsRead] Non-critical exception:', error);
     return { error: null };
   }
@@ -1082,16 +1136,18 @@ export const subscribeToChat = (
     });
 
   return () => {
-    console.log('[subscribeToChat] Unsubscribing from chat:', chatId);
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
   };
 };
 
 export const subscribeToNewMessages = (
   onMessage: (message: Message & { chat_id: string }) => void
 ) => {
+  // Realtime postgres_changes respects RLS, so only messages from chats the
+  // user participates in are delivered (requires RLS enabled on messages —
+  // see migration 042). Unique channel name avoids collisions on remount.
   const channel = supabase
-    .channel('new-messages')
+    .channel(`new-messages-${Math.random().toString(36).slice(2, 10)}`)
     .on(
       'postgres_changes',
       {
@@ -1104,9 +1160,11 @@ export const subscribeToNewMessages = (
           .from('messages')
           .select('*')
           .eq('id', payload.new.id)
-          .single();
+          .maybeSingle();
 
         if (data) {
+          // Received while the app is open → delivered right away.
+          void markChatsDelivered(true);
           onMessage(data as Message & { chat_id: string });
         }
       }
@@ -1114,7 +1172,29 @@ export const subscribeToNewMessages = (
     .subscribe();
 
   return () => {
-    channel.unsubscribe();
+    supabase.removeChannel(channel);
+  };
+};
+
+/**
+ * Fires when someone in one of my chats receives or reads messages
+ * (chat_participants updates, filtered by RLS to my chats).
+ */
+export const subscribeToReceipts = (onChange: (chatId: string) => void) => {
+  const channel = supabase
+    .channel(`receipts-${Math.random().toString(36).slice(2, 10)}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'chat_participants' },
+      (payload) => {
+        const chatId = (payload.new as { chat_id?: string })?.chat_id;
+        if (chatId) onChange(chatId);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
   };
 };
 

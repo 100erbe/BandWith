@@ -1,3 +1,5 @@
+@layer theme, base, components, utilities;
+
 /* Neue Haas Grotesk Display Pro - loaded via Adobe Typekit */
 /* Kit: https://use.typekit.net/mzr4hzv.css */
 
@@ -7,24 +9,7 @@
   --font-text: 'neue-haas-grotesk-text', -apple-system, BlinkMacSystemFont, 
                'SF Pro Text', 'Helvetica Neue', 'Arial', sans-serif;
   --font-sans: var(--font-display);
-  --font-mono: 'SF Mono', 'Roboto Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  
-  /* Safe area defaults (overridden by JS on Android) */
-  --safe-area-top: env(safe-area-inset-top, 0px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-left: env(safe-area-inset-left, 0px);
-  --safe-area-right: env(safe-area-inset-right, 0px);
-  
-  --safe-padding-top: max(env(safe-area-inset-top, 0px), 12px);
-  --safe-padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
-}
-
-/* Android platform class - set by JS */
-html.platform-android {
-  --safe-area-top: 48px;
-  --safe-area-bottom: 24px;
-  --safe-padding-top: 56px;
-  --safe-padding-bottom: 24px;
+  --font-mono: 'Geist Mono', 'SF Mono', 'Roboto Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
 }
 
 /* Apply font globally - base weight is 400 (55 Roman) */
@@ -36,6 +21,60 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-*, *::before, *::after {
-  font-family: inherit;
+/* Layered so Tailwind's font-* utilities (font-mono, …) can still override it. */
+@layer base {
+  *, *::before, *::after {
+    font-family: inherit;
+  }
+}
+
+/* ═══ BandWith type scale (Figma: Label / Numeric / Heading / Display) ═══ */
+@layer components {
+  .bw-label-xs, .bw-label-sm, .bw-label-md {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .bw-label-xs { font-size: 10px; letter-spacing: 0.02em; }
+  .bw-label-sm { font-size: 11px; letter-spacing: 0.02em; }
+  .bw-label-md { font-size: 12px; letter-spacing: 0.02em; }
+
+  .bw-num {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bw-h1, .bw-h2, .bw-h3, .bw-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .bw-h1 { font-size: 32px; line-height: 0.92; letter-spacing: -0.02em; }
+  .bw-h2 { font-size: 24px; line-height: 0.95; letter-spacing: -0.015em; }
+  .bw-h3 { font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
+  .bw-display { font-size: 36px; line-height: 0.92; letter-spacing: -0.03em; }
+  /* Figma Display/LG 44 · Display/XL 56 */
+  .bw-display-lg, .bw-display-xl { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: -0.03em; }
+  .bw-display-lg { font-size: 44px; line-height: 0.9; }
+  .bw-display-xl { font-size: 56px; line-height: 0.88; }
+
+  /* Figma Value/* — big numbers in the display face, mixed case */
+  .bw-value-xl, .bw-value-lg, .bw-value-md { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bw-value-xl { font-size: 56px; line-height: 0.9; letter-spacing: -0.04em; }
+  .bw-value-lg { font-size: 32px; line-height: 0.95; letter-spacing: -0.03em; }
+  .bw-value-md { font-size: 24px; line-height: 1; letter-spacing: -0.02em; }
+
+  /* Figma Body/LG 18 medium · Body/MD 16 · Body/SM 14 */
+  .bw-body-lg { font-size: 18px; font-weight: 500; line-height: 1.35; letter-spacing: -0.005em; }
+  .bw-body-md { font-size: 16px; line-height: 1.45; letter-spacing: -0.003em; }
+  .bw-body-sm { font-size: 14px; line-height: 1.4; }
+
+  /* Figma Button/MD 14 · Button/SM 12 */
+  .bw-button-md { font-size: 14px; font-weight: 600; line-height: 1; text-transform: uppercase; }
+  .bw-button-sm { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
 }

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useAuth } from './AuthContext';
 import { getBands, getBand, BandWithMembers } from './services/bands';
 import { getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
+import { getBandPricing } from './services/pricing';
+import { setActiveCurrency } from './currency';
 
 export type MemberRole = 'admin' | 'member';
 
@@ -161,6 +163,14 @@ export const BandProvider: React.FC<BandProviderProps> = ({ children }) => {
       setLoading(false);
     }
   }, [isAuthenticated, user?.id]);
+
+  // Keep the app-wide money labels in the selected band's currency.
+  const selectedBandId = selectedBand?.id ?? null;
+  useEffect(() => {
+    setActiveCurrency((selectedBand as { pricing_currency?: string } | null)?.pricing_currency, selectedBandId, true);
+    if (!selectedBandId) return;
+    getBandPricing(selectedBandId).catch(() => {});
+  }, [selectedBandId]);
 
   // Select a specific band
   const selectBand = useCallback(async (bandId: string) => {

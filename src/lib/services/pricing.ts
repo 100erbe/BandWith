@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { setActiveCurrency } from '@/lib/currency';
 import type { PerformanceType } from '@/app/data/quotes';
 
 export type PricingMode = 'per_musician' | 'flat_packages';
@@ -34,6 +35,8 @@ export interface CustomService {
 export interface BandPricingSettings {
   band_id: string;
   currency: 'EUR' | 'USD' | 'GBP' | 'CHF' | string;
+  /** ISO country code the band invoices from (drives the default currency + VAT preset). */
+  country?: string;
 
   // ── 1. Universal Lineup & Base Pricing ────────────────────────
   pricing_mode: PricingMode;
@@ -670,6 +673,7 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
       if (!error && data?.pricing_settings) {
         const normalized = normalizeBandPricingSettings(data.pricing_settings, effectiveId);
         localStorage.setItem(localKey, JSON.stringify(normalized));
+        setActiveCurrency(normalized.currency, effectiveId);
         return normalized;
       }
     }
@@ -680,7 +684,9 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
   try {
     const cached = localStorage.getItem(localKey);
     if (cached) {
-      return normalizeBandPricingSettings(JSON.parse(cached), effectiveId);
+      const normalized = normalizeBandPricingSettings(JSON.parse(cached), effectiveId);
+      setActiveCurrency(normalized.currency, effectiveId);
+      return normalized;
     }
   } catch {
     // Ignore JSON parse errors
@@ -695,6 +701,7 @@ export async function saveBandPricing(
   const effectiveId = settings.band_id || 'default';
   const normalized = normalizeBandPricingSettings(settings, effectiveId);
   const localKey = `${STORAGE_KEY_PREFIX}${effectiveId}`;
+  setActiveCurrency(normalized.currency, effectiveId);
 
   try {
     localStorage.setItem(localKey, JSON.stringify(normalized));
@@ -716,30 +723,72 @@ export async function saveBandPricing(
   return normalized;
 }
 
+const BRANDING_MAX_EDGE = 1200;
+const BRANDING_MAX_BYTES = 3 * 1024 * 1024;
+
+/**
+ * Re-encode a picked image as PNG (or JPEG if still too big), max 1200px.
+ * Handles HEIC from the iPhone camera roll and keeps quote PDFs light.
+ */
+async function normalizeBrandingImage(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Unsupported image'));
+      el.src = url;
+    });
+    const scale = Math.min(1, BRANDING_MAX_EDGE / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const toBlob = (type: string, q?: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, q));
+    const png = await toBlob('image/png');
+    if (png && png.size <= BRANDING_MAX_BYTES) return png;
+    const jpeg = await toBlob('image/jpeg', 0.85);
+    if (jpeg && jpeg.size <= BRANDING_MAX_BYTES) return jpeg;
+    throw new Error('Image too large');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const blobToDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(blob);
+  });
+
 export async function uploadBandBrandingAsset(
   bandId: string,
   file: File,
   assetType: 'logo' | 'signature'
 ): Promise<string> {
-  try {
-    const ext = file.name.split('.').pop() || 'png';
-    const path = `${bandId || 'default'}/${assetType}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from('band-branding')
-      .upload(path, file, { upsert: true });
+  const image = await normalizeBrandingImage(file);
+  const ext = image.type === 'image/jpeg' ? 'jpg' : 'png';
 
-    if (!error) {
-      const { data } = supabase.storage.from('band-branding').getPublicUrl(path);
-      if (data?.publicUrl) return data.publicUrl;
+  if (bandId && bandId !== 'default') {
+    try {
+      const path = `${bandId}/${assetType}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('band-branding')
+        .upload(path, image, { upsert: true, contentType: image.type });
+      if (!error) {
+        const { data } = supabase.storage.from('band-branding').getPublicUrl(path);
+        if (data?.publicUrl) return data.publicUrl;
+      } else {
+        console.warn('[pricing] Branding upload failed, keeping it inline:', error.message);
+      }
+    } catch (err) {
+      console.warn('[pricing] Branding upload failed, keeping it inline:', err);
     }
-  } catch {
-    // Fallback to Data URL if storage bucket is not configured
   }
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = err => reject(err);
-    reader.readAsDataURL(file);
-  });
+  // Offline / demo / bucket missing: keep the (already downscaled) image inline.
+  return blobToDataUrl(image);
 }

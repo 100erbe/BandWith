@@ -6,7 +6,7 @@ export const EventsSkeleton: React.FC = () => {
     <div className="flex flex-col gap-6 relative z-10 animate-fade-in" aria-busy="true" aria-label="Loading events">
       {/* Search & Filter Bar Skeleton */}
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-10 w-full rounded-[14px] bg-foreground/10" />
+        <Skeleton className="h-10 w-full rounded-full bg-foreground/10" />
         <div className="flex items-center gap-2 overflow-hidden">
           {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-8 w-20 rounded-[10px] bg-foreground/10 shrink-0" />

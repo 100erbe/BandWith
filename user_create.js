@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function registerTestUser() {
   const email = "bandwith@example.com";
-  const password = "Password123!";
+  const password = process.env.DEV_TEST_PASSWORD;
   
   console.log(`Signing up user: ${email}`);
   

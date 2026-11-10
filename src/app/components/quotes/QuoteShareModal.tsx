@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -8,9 +9,7 @@ import {
   MessageCircle,
   Copy,
   Check,
-  FileText,
   IconSettings,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -28,6 +27,13 @@ import {
   QuotePdfGenerationResult,
   uploadQuotePdfForSharing,
 } from '@/lib/services/quotePdf';
+import { parseLocalDate } from '@/lib/dates';
+import { currencySymbol } from '@/lib/currency';
+import { isUuid, sendQuote } from '@/lib/services/quotes';
+import { shareFile, downloadBlobOnWeb, openExternal } from '@/lib/nativeFiles';
+import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
+import { RailCover } from '@/lib/railActions';
+import { PillButton, Selector } from '@/app/components/bw/Form';
 
 export interface QuoteShareModalProps {
   isOpen: boolean;
@@ -36,6 +42,8 @@ export interface QuoteShareModalProps {
   bandName?: string;
   onClose: () => void;
   onOpenBandSettings?: () => void;
+  /** Called after a draft quote is marked as sent (a share channel completed). */
+  onSent?: (quoteId: string) => void;
 }
 
 export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
@@ -45,88 +53,98 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   bandName = 'Band',
   onClose,
   onOpenBandSettings,
+  onSent,
 }) => {
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [pdfResult, setPdfResult] = useState<QuotePdfGenerationResult | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(true);
+  const [generateError, setGenerateError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
-  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const sentRef = useRef(false);
 
-  const sym =
-    quote.currency === 'USD'
-      ? '$'
-      : quote.currency === 'GBP'
-        ? '£'
-        : quote.currency === 'CHF'
-          ? 'CHF '
-          : '€';
+  const sym = currencySymbol(quote.currency || 'EUR');
+  const quoteRef = useRef(quote);
+  quoteRef.current = quote;
+  const quoteKey = useMemo(() => {
+    try { return JSON.stringify(quote); } catch { return String(quote.id || ''); }
+  }, [quote]);
+  const canUpload = isUuid(bandId);
+
+  const flash = (text: string, tone: 'ok' | 'error' = 'ok') => {
+    setShareFeedback({ text, tone });
+    setTimeout(() => setShareFeedback(null), tone === 'error' ? 5000 : 3000);
+  };
 
   const loadAndGenerate = useCallback(async () => {
     setIsGenerating(true);
+    setGenerateError(false);
     try {
       let loadedSettings = DEFAULT_BAND_PRICING;
       if (bandId) {
         loadedSettings = await getBandPricing(bandId);
       }
       setSettings(loadedSettings);
-      const generated = await generateQuotePdf(quote, bandName, loadedSettings);
+      const generated = await generateQuotePdf(quoteRef.current, bandName, loadedSettings);
       setPdfResult(generated);
       setActivePageIndex(0);
     } catch (err) {
       console.error('[QuoteShareModal] Failed to generate PDF:', err);
+      setPdfResult(null);
+      setGenerateError(true);
     } finally {
       setIsGenerating(false);
     }
-  }, [bandId, bandName, quote]);
+    // Regenerate when the quote's content changes, not on every parent
+    // render (callers often pass an inline object).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandId, bandName, quoteKey]);
 
   useEffect(() => {
     if (isOpen) {
       setUploadedUrl(null);
+      sentRef.current = false;
       loadAndGenerate();
     }
   }, [isOpen, loadAndGenerate]);
 
+  // Upload as soon as the PDF exists, so WhatsApp / copy / email can run
+  // synchronously inside the tap (iOS blocks clipboard and popups after an await).
+  useEffect(() => {
+    if (!isOpen || !pdfResult || !canUpload || uploadedUrl) return;
+    let cancelled = false;
+    setIsUploading(true);
+    uploadQuotePdfForSharing(String(bandId), quote.quoteNumber || 'DRAFT', pdfResult.pdfBlob, pdfResult.fileName)
+      .then((url) => { if (!cancelled && url) setUploadedUrl(url); })
+      .finally(() => { if (!cancelled) setIsUploading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, pdfResult, canUpload, bandId, quote.quoteNumber, uploadedUrl]);
+
   if (!isOpen) return null;
 
-  const ensurePublicPdfUrl = async (): Promise<string | null> => {
-    if (uploadedUrl) return uploadedUrl;
-    if (!pdfResult || !bandId) return null;
-    setIsUploading(true);
-    try {
-      const url = await uploadQuotePdfForSharing(
-        bandId,
-        quote.quoteNumber || 'DRAFT',
-        pdfResult.pdfBlob,
-        pdfResult.fileName
-      );
-      if (url) setUploadedUrl(url);
-      return url;
-    } finally {
-      setIsUploading(false);
+  /** A draft becomes SENT only once it actually left through a channel. */
+  const markSent = async () => {
+    if (sentRef.current) return;
+    const id = quote.id;
+    const status = String(quote.status || '').toUpperCase();
+    if (!isUuid(id) || (status && status !== 'DRAFT')) return;
+    sentRef.current = true;
+    const { error } = await sendQuote(id);
+    if (error) {
+      sentRef.current = false;
+      console.warn('[QuoteShareModal] Could not mark the quote as sent:', error);
+      return;
     }
-  };
-
-  const triggerDownload = () => {
-    if (!pdfResult) return;
-    const url = URL.createObjectURL(pdfResult.pdfBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = pdfResult.fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    setShareFeedback('PDF downloaded');
-    setTimeout(() => setShareFeedback(null), 3000);
+    onSent?.(id);
   };
 
   const buildShareText = (pdfUrl?: string | null) => {
     const eventLabel = getEventTypeLabel((quote.eventType as any) || 'wedding');
     const eventDateStr = quote.eventDate
-      ? new Date(quote.eventDate).toLocaleDateString('en-GB', {
+      ? parseLocalDate(quote.eventDate).toLocaleDateString('en-GB', {
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -134,7 +152,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       : 'TBD';
     const total = Math.round(quote.total || 0).toLocaleString();
     const validUntilStr = quote.validUntil
-      ? new Date(quote.validUntil).toLocaleDateString('en-GB', {
+      ? parseLocalDate(quote.validUntil).toLocaleDateString('en-GB', {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
@@ -171,201 +189,233 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     return lines.join('\n');
   };
 
-  const handleNativeShare = async () => {
+  const shareTitle = `${bandName} — Quote ${quote.quoteNumber || ''}`.trim();
+
+  /** System share sheet with the PDF attached (Mail, WhatsApp, Files, AirDrop…). */
+  const sharePdf = async (opts: { markAsSent: boolean; withText: boolean }) => {
     if (!pdfResult) return;
     try {
-      const nav = navigator as any;
-      if (
-        nav.share &&
-        nav.canShare &&
-        nav.canShare({ files: [pdfResult.pdfFile] })
-      ) {
-        await nav.share({
-          title: `${bandName} — Quote ${quote.quoteNumber || ''}`,
-          text: buildShareText(uploadedUrl),
-          files: [pdfResult.pdfFile],
-        });
-        setShareFeedback('Quote shared successfully');
-        setTimeout(() => setShareFeedback(null), 3000);
-        return;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
-      console.warn('[QuoteShareModal] Native share fallback:', err);
+      const result = await shareFile(pdfResult.pdfBlob, pdfResult.fileName, {
+        title: shareTitle,
+        text: opts.withText ? buildShareText(uploadedUrl) : undefined,
+      });
+      if (result === 'cancelled') return;
+      if (result === 'downloaded') flash('PDF downloaded');
+      else flash(opts.markAsSent ? 'Quote shared' : 'PDF ready');
+      if (opts.markAsSent) void markSent();
+    } catch (err) {
+      console.error('[QuoteShareModal] Share failed:', err);
+      flash('Could not share the PDF. Try again.', 'error');
     }
-    triggerDownload();
   };
 
-  const handleWhatsAppShare = async () => {
+  const handleNativeShare = () => sharePdf({ markAsSent: true, withText: true });
+
+  const handleDownload = () => {
     if (!pdfResult) return;
-    const publicUrl = await ensurePublicPdfUrl();
-    if (!publicUrl) {
-      triggerDownload();
+    if (Capacitor.isNativePlatform()) {
+      // "Save to Files" lives in the system sheet on iOS and Android.
+      void sharePdf({ markAsSent: false, withText: false });
+      return;
     }
-    const text = buildShareText(publicUrl);
+    downloadBlobOnWeb(pdfResult.pdfBlob, pdfResult.fileName);
+    flash('PDF downloaded');
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!pdfResult) return;
+    if (!uploadedUrl) {
+      // No public link: send the file itself, WhatsApp is in the sheet.
+      void sharePdf({ markAsSent: true, withText: true });
+      return;
+    }
+    const text = buildShareText(uploadedUrl);
     const cleanPhone = (quote.clientPhone || '').replace(/[^0-9+]/g, '').replace(/^\+/, '');
     const waUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    void openExternal(waUrl);
+    void markSent();
   };
 
-  const handleEmailShare = async () => {
+  const handleEmailShare = () => {
     if (!pdfResult) return;
-    const publicUrl = await ensurePublicPdfUrl();
-    triggerDownload();
-
+    if (!uploadedUrl) {
+      // No link to put in the mail: share the PDF as an attachment instead.
+      void sharePdf({ markAsSent: true, withText: true });
+      return;
+    }
     const subject = `${bandName.toUpperCase()} — Event Quote ${quote.quoteNumber || ''} (${quote.eventName || quote.eventTitle || 'Proposal'})`;
-    const body = buildShareText(publicUrl);
+    const body = buildShareText(uploadedUrl);
     const mailto = `mailto:${encodeURIComponent(quote.clientEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+    void openExternal(mailto);
+    void markSent();
   };
 
-  const handleCopySummary = async () => {
-    const publicUrl = await ensurePublicPdfUrl();
-    const text = buildShareText(publicUrl);
-    try {
-      await navigator.clipboard.writeText(text);
+  const handleCopySummary = () => {
+    const text = buildShareText(uploadedUrl);
+    const done = () => {
       setCopiedSummary(true);
       setTimeout(() => setCopiedSummary(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy quote summary:', err);
+      void markSent();
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, () => flash('Could not copy. Use Share PDF instead.', 'error'));
+    } catch {
+      flash('Could not copy. Use Share PDF instead.', 'error');
     }
   };
 
   const missingBranding = !settings.band_logo_url || !settings.bank_iban;
+  const pageCount = pdfResult?.pageDataUrls.length ?? 0;
+
+  const shareChannels: {
+    key: string;
+    title: string;
+    subtitle: string;
+    icon: React.ReactNode;
+    onClick: () => void;
+    disabled: boolean;
+  }[] = [
+    {
+      key: 'native',
+      title: 'Share PDF document',
+      subtitle: 'Mail, Messages, Files, AirDrop…',
+      icon: <Share2 />,
+      onClick: handleNativeShare,
+      disabled: isGenerating || !pdfResult,
+    },
+    {
+      key: 'whatsapp',
+      title: 'WhatsApp',
+      subtitle: uploadedUrl ? 'Pre-filled message + PDF link' : 'Send the PDF file',
+      icon: isUploading ? <Loader2 className="animate-spin" /> : <MessageCircle />,
+      onClick: handleWhatsAppShare,
+      disabled: isGenerating || isUploading || !pdfResult,
+    },
+    {
+      key: 'email',
+      title: 'Email client',
+      subtitle: uploadedUrl ? 'Formal proposal + PDF link' : 'PDF as attachment',
+      icon: isUploading ? <Loader2 className="animate-spin" /> : <Mail />,
+      onClick: handleEmailShare,
+      disabled: isGenerating || isUploading || !pdfResult,
+    },
+    {
+      key: 'download',
+      title: 'Download PDF',
+      subtitle: 'Save to Files',
+      icon: <Download />,
+      onClick: handleDownload,
+      disabled: isGenerating || !pdfResult,
+    },
+    {
+      key: 'copy',
+      title: copiedSummary ? 'Copied!' : 'Copy text & link',
+      subtitle: 'Paste anywhere',
+      icon: copiedSummary ? <Check className="text-success" /> : <Copy />,
+      onClick: handleCopySummary,
+      disabled: isGenerating || isUploading || !pdfResult,
+    },
+  ];
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 overflow-hidden"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 24 }}
+      transition={{ type: 'tween', duration: 0.25 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Quote PDF ready"
+      className="bw-pane-detail dark fixed inset-0 z-[120] flex flex-col bg-background text-foreground"
     >
-      <motion.div
-        initial={{ scale: 0.96, y: 16 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 16 }}
-        className="w-full max-w-5xl bg-[#F7F7F5] rounded-[2rem] shadow-2xl border border-black/10 flex flex-col max-h-[94vh] overflow-hidden"
-      >
-        {/* Top Bar */}
-        <div className="px-5 sm:px-8 py-4 sm:py-5 bg-white border-b border-black/5 flex items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#D5FB46] flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-black" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-black/40">
-                  OFFICIAL QUOTE PDF READY
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold">
-                  {quote.quoteNumber || 'DRAFT'}
-                </span>
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div
+          className="max-w-xl mx-auto w-full px-4 flex flex-col gap-4"
+          style={{ paddingTop: 'calc(var(--safe-top) + 16px)', paddingBottom: 24 }}
+        >
+          {/* Header: kicker + close, then branding / regenerate */}
+          <header className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <p className="bw-label-sm text-muted-foreground truncate">
+                  {quote.quoteNumber || 'Draft'} · Official quote
+                </p>
+                <h1 className="bw-display-lg">PDF ready</h1>
               </div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-black truncate">
-                {quote.eventName || quote.eventTitle || quote.clientName || 'Event Proposal'}
-              </h2>
+              <RailCover pane />
+              <HeaderAction pane label="Close" variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {onOpenBandSettings && (
-              <button
-                onClick={onOpenBandSettings}
-                className="px-3.5 py-2 rounded-full bg-[#F2F2F0] hover:bg-black hover:text-white text-black text-[11px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5"
-                title="Configure Band Logo, Signature & Payment Details"
-              >
-                <IconSettings className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Branding & Payment</span>
-              </button>
-            )}
-            <button
-              onClick={loadAndGenerate}
-              disabled={isGenerating}
-              className="w-9 h-9 rounded-full bg-[#F2F2F0] hover:bg-black/10 flex items-center justify-center text-black transition-colors"
-              title="Regenerate PDF Preview"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`}
+            <div className="flex items-center gap-2">
+              {onOpenBandSettings && (
+                <PillButton
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  icon={<IconSettings className="w-3.5 h-3.5" />}
+                  onClick={onOpenBandSettings}
+                  title="Configure band logo, signature & payment details"
+                >
+                  Branding & payment
+                </PillButton>
+              )}
+              <IconButton
+                label="Regenerate PDF preview"
+                size="sm"
+                icon={<RefreshCw className={isGenerating ? 'animate-spin' : undefined} />}
+                onClick={loadAndGenerate}
+                disabled={isGenerating}
               />
-            </button>
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full bg-[#F2F2F0] hover:bg-black hover:text-white flex items-center justify-center text-black transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+            </div>
+          </header>
 
-        {/* Body: Left A4 Preview + Right Sharing Controls */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 min-h-0">
-          {/* Left Column: High-DPI A4 Document Preview */}
-          <div className="lg:col-span-7 bg-[#E6E5E1] p-4 sm:p-6 flex flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-black/10 min-h-[380px]">
-            {/* Page Switcher Header */}
-            <div className="w-full flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {pdfResult &&
-                  pdfResult.pageDataUrls.map((_, idx) => {
-                    const isSummaryPage =
-                      idx === pdfResult.pageDataUrls.length - 1 &&
-                      pdfResult.pageDataUrls.length > 1 &&
-                      quote.includeProposalSummary;
+          {/* A4 preview */}
+          <section className="bg-card rounded-[24px] p-4 flex flex-col items-center gap-3">
+            {pageCount > 1 && pdfResult && (
+              <div className="w-full flex items-center gap-2">
+                <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                  {pdfResult.pageDataUrls.map((_, idx) => {
+                    const isSummaryPage = idx === pageCount - 1 && pageCount > 1 && quote.includeProposalSummary;
                     return (
-                      <button
-                        key={idx}
-                        onClick={() => setActivePageIndex(idx)}
-                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
-                          activePageIndex === idx
-                            ? 'bg-black text-white shadow-sm'
-                            : 'bg-white/70 text-black/60 hover:bg-white'
-                        }`}
-                      >
-                        {isSummaryPage
-                          ? `Page ${idx + 1} · Summary`
-                          : `Page ${idx + 1}`}
-                      </button>
+                      <Selector key={idx} selected={activePageIndex === idx} onClick={() => setActivePageIndex(idx)}>
+                        {isSummaryPage ? `Page ${idx + 1} · Summary` : `Page ${idx + 1}`}
+                      </Selector>
                     );
                   })}
-              </div>
-
-              {pdfResult && pdfResult.pageDataUrls.length > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() =>
-                      setActivePageIndex((p) => Math.max(0, p - 1))
-                    }
-                    disabled={activePageIndex === 0}
-                    className="w-7 h-7 rounded-full bg-white/80 disabled:opacity-40 flex items-center justify-center text-black"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() =>
-                      setActivePageIndex((p) =>
-                        Math.min(pdfResult.pageDataUrls.length - 1, p + 1)
-                      )
-                    }
-                    disabled={
-                      activePageIndex === pdfResult.pageDataUrls.length - 1
-                    }
-                    className="w-7 h-7 rounded-full bg-white/80 disabled:opacity-40 flex items-center justify-center text-black"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
-              )}
-            </div>
+                <IconButton
+                  label="Previous page"
+                  size="sm"
+                  variant="ghost"
+                  icon={<ChevronLeft />}
+                  onClick={() => setActivePageIndex((p) => Math.max(0, p - 1))}
+                  disabled={activePageIndex === 0}
+                />
+                <IconButton
+                  label="Next page"
+                  size="sm"
+                  variant="ghost"
+                  icon={<ChevronRight />}
+                  onClick={() => setActivePageIndex((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={activePageIndex === pageCount - 1}
+                />
+              </div>
+            )}
 
-            {/* A4 Sheet Container */}
-            <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden my-1">
-              {isGenerating || !pdfResult ? (
-                <div className="w-full max-w-[420px] aspect-[1/1.414] bg-white rounded-xl shadow-lg flex flex-col items-center justify-center gap-3 p-8">
-                  <Loader2 className="w-8 h-8 text-black animate-spin" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-black/50">
-                    Rendering High-Resolution A4 PDF...
-                  </p>
+            <div className="relative w-full flex items-center justify-center overflow-hidden">
+              {generateError && !isGenerating ? (
+                <div className="w-full max-w-[260px] aspect-[1/1.414] bg-card rounded-[16px] flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <AlertCircle className="w-7 h-7 text-destructive" />
+                  <p className="bw-body-sm">The PDF could not be created.</p>
+                  <PillButton variant="outline" size="sm" fullWidth={false} icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadAndGenerate}>
+                    Try again
+                  </PillButton>
+                </div>
+              ) : isGenerating || !pdfResult ? (
+                <div className="w-full max-w-[260px] aspect-[1/1.414] bg-white text-black rounded-[16px] flex flex-col items-center justify-center gap-3 p-6">
+                  <Loader2 className="w-7 h-7 animate-spin" />
+                  <p className="bw-label-xs text-black/60 text-center">Rendering A4 PDF…</p>
                 </div>
               ) : (
                 <AnimatePresence mode="wait">
@@ -376,222 +426,87 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.18 }}
                     src={pdfResult.pageDataUrls[activePageIndex]}
-                    alt={`Quote PDF Page ${activePageIndex + 1}`}
-                    className="max-h-[58vh] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-black/10 bg-white"
+                    alt={`Quote PDF page ${activePageIndex + 1}`}
+                    className="max-h-[52vh] w-auto max-w-full object-contain rounded-[16px] bg-white"
                   />
                 </AnimatePresence>
               )}
             </div>
 
-            <div className="w-full flex items-center justify-between text-[11px] font-bold text-black/50 mt-3 pt-2 border-t border-black/10">
-              <span>Format: A4 Portrait (210 × 297 mm)</span>
-              <span>
-                {pdfResult
-                  ? `${pdfResult.pageDataUrls.length} ${
-                      pdfResult.pageDataUrls.length === 1 ? 'Page' : 'Pages'
-                    } · ${(pdfResult.pdfBlob.size / 1024).toFixed(0)} KB`
-                  : 'Preparing...'}
-              </span>
-            </div>
-          </div>
+            <p className="bw-label-xs text-muted-foreground text-center">
+              {pdfResult
+                ? `A4 portrait · Page ${activePageIndex + 1} of ${pageCount} · ${(pdfResult.pdfBlob.size / 1024).toFixed(0)} KB`
+                : 'A4 portrait · Preparing…'}
+            </p>
+          </section>
 
-          {/* Right Column: Share Channels & Actions */}
-          <div className="lg:col-span-5 p-5 sm:p-7 flex flex-col justify-between gap-6 bg-[#F7F7F5]">
-            <div className="flex flex-col gap-5">
-              {/* Missing Branding Tip */}
-              {missingBranding && onOpenBandSettings && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-black uppercase tracking-wider text-amber-900">
-                      Complete Your Band Branding
-                    </div>
-                    <p className="text-xs text-amber-800/80 mt-0.5 leading-relaxed">
-                      {!settings.band_logo_url && !settings.bank_iban
-                        ? 'Upload your Band Logo, Signature, and IBAN/Bank details in Band Settings to include them automatically on your PDF.'
-                        : !settings.band_logo_url
-                          ? 'Upload your Band Logo in Band Settings to brand the header of your quote PDF.'
-                          : 'Add your IBAN / Payment Details in Band Settings to display bank transfer info on the quote.'}
-                    </p>
-                    <button
-                      onClick={onOpenBandSettings}
-                      className="mt-2.5 px-3 py-1.5 rounded-lg bg-amber-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-colors"
-                    >
-                      Open Band Settings
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Quote Quick Recap Card */}
-              <div className="bg-white rounded-2xl p-4 border border-black/5 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-black/40">
-                    CLIENT RECIPIENT
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    Valid {quote.validityDays || settings.default_validity_days || 30} Days
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <div>
-                    <div className="text-base font-black text-black">
-                      {quote.clientName || 'Client'}
-                    </div>
-                    {quote.clientCompany && (
-                      <div className="text-xs font-bold text-black/50">
-                        {quote.clientCompany}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-black text-black">
-                      {sym}
-                      {Math.round(quote.total || 0).toLocaleString()}
-                    </div>
-                    <div className="text-[10px] font-bold uppercase text-black/40">
-                      {quote.vatExempt
-                        ? 'VAT Exempt'
-                        : `Incl. ${quote.vatRate ?? settings.default_vat_rate ?? 22}% VAT`}
-                    </div>
-                  </div>
-                </div>
-                {(quote.clientEmail || quote.clientPhone) && (
-                  <div className="pt-2 border-t border-black/5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-black/60">
-                    {quote.clientEmail && <span>✉️ {quote.clientEmail}</span>}
-                    {quote.clientPhone && <span>📱 {quote.clientPhone}</span>}
-                  </div>
-                )}
-              </div>
-
-              {/* Primary Share Actions */}
-              <div className="flex flex-col gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-black/40">
-                  SHARE QUOTE VIA
+          {/* Missing branding tip */}
+          {missingBranding && onOpenBandSettings && (
+            <button
+              type="button"
+              onClick={onOpenBandSettings}
+              className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-card text-left active:scale-[0.99] transition-transform"
+            >
+              <AlertCircle className="w-5 h-5 shrink-0 text-warning" />
+              <span className="flex-1 min-w-0 flex flex-col gap-1">
+                <span className="bw-label-sm text-foreground">Complete your band branding</span>
+                <span className="bw-body-sm text-muted-foreground">
+                  {!settings.band_logo_url && !settings.bank_iban
+                    ? 'Add logo, signature and IBAN in Band settings to include them on the PDF.'
+                    : !settings.band_logo_url
+                      ? 'Upload your band logo to brand the header of the PDF.'
+                      : 'Add your IBAN / payment details to show bank transfer info on the quote.'}
                 </span>
-
-                {/* Native OS Share / Attach PDF */}
-                <button
-                  onClick={handleNativeShare}
-                  disabled={isGenerating || !pdfResult}
-                  className="w-full py-4 px-5 rounded-2xl bg-black text-white hover:bg-black/90 disabled:opacity-40 transition-all flex items-center justify-between group shadow-lg shadow-black/10"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-[#D5FB46] text-black flex items-center justify-center shrink-0">
-                      <Share2 className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-black uppercase tracking-wider">
-                        Share PDF Document
-                      </div>
-                      <div className="text-[11px] text-white/60 font-medium">
-                        Send PDF file directly via WhatsApp, Mail, AirDrop...
-                      </div>
-                    </div>
-                  </div>
-                  <Sparkles className="w-4 h-4 text-[#D5FB46] shrink-0" />
-                </button>
-
-                {/* WhatsApp & Email Row */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={handleWhatsAppShare}
-                    disabled={isGenerating || isUploading || !pdfResult}
-                    className="p-4 rounded-2xl bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-black transition-all flex flex-col gap-2 text-left"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-[#25D366] text-white flex items-center justify-center">
-                      {isUploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <MessageCircle className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-xs font-black uppercase tracking-wider">
-                        WhatsApp
-                      </div>
-                      <div className="text-[10px] font-bold text-black/50 mt-0.5">
-                        Pre-filled message + PDF link
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={handleEmailShare}
-                    disabled={isGenerating || isUploading || !pdfResult}
-                    className="p-4 rounded-2xl bg-white hover:bg-black/5 border border-black/10 text-black transition-all flex flex-col gap-2 text-left"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center">
-                      {isUploading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Mail className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-xs font-black uppercase tracking-wider">
-                        Email Client
-                      </div>
-                      <div className="text-[10px] font-bold text-black/50 mt-0.5">
-                        Formal proposal + PDF download
-                      </div>
-                    </div>
-                  </button>
-                </div>
-
-                {/* Download PDF & Copy Summary Row */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={triggerDownload}
-                    disabled={isGenerating || !pdfResult}
-                    className="py-3.5 px-4 rounded-xl bg-white hover:bg-black hover:text-white border border-black/10 text-black text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download PDF
-                  </button>
-
-                  <button
-                    onClick={handleCopySummary}
-                    disabled={isGenerating || isUploading || !pdfResult}
-                    className="py-3.5 px-4 rounded-xl bg-white hover:bg-black hover:text-white border border-black/10 text-black text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                  >
-                    {copiedSummary ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-500" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy Text & Link
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {shareFeedback && (
-                <div className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold text-center">
-                  {shareFeedback}
-                </div>
-              )}
-            </div>
-
-            {/* Done Button */}
-            <div className="pt-3 border-t border-black/10 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-black/40">
-                Ready to send to {quote.clientName || 'client'}
               </span>
+              <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
+            </button>
+          )}
+
+          {/* Share channels */}
+          <section className="flex flex-col gap-2">
+            <h2 className="bw-label-sm text-muted-foreground pt-2">Share quote via</h2>
+            {shareChannels.map((ch) => (
               <button
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-full bg-black/10 hover:bg-black hover:text-white text-black text-xs font-black uppercase tracking-widest transition-colors"
+                key={ch.key}
+                type="button"
+                onClick={ch.onClick}
+                disabled={ch.disabled}
+                className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-sheet text-sheet-foreground text-left active:scale-[0.99] transition-transform disabled:opacity-40"
               >
-                Done
+                <span className="w-10 h-10 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">
+                  {ch.icon}
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="bw-body-lg truncate">{ch.title}</span>
+                  <span className="bw-body-sm text-muted-foreground truncate">{ch.subtitle}</span>
+                </span>
+                <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
               </button>
-            </div>
-          </div>
+            ))}
+          </section>
+
+          {shareFeedback && (
+            <p
+              role="status"
+              className={`self-center inline-flex items-center gap-2 min-h-9 px-4 py-2 rounded-full bw-button-sm ${
+                shareFeedback.tone === 'ok' ? 'bg-success text-success-foreground' : 'bg-destructive-solid text-white'
+              }`}
+            >
+              {shareFeedback.tone === 'ok' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+              {shareFeedback.text}
+            </p>
+          )}
         </div>
-      </motion.div>
+      </div>
+
+      {/* Done */}
+      <div className="shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        <div className="max-w-xl mx-auto w-full">
+          <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={onClose}>
+            Done
+          </PillButton>
+        </div>
+      </div>
     </motion.div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { MapPin, Loader2, X, Check } from '@/app/components/icons';
+import { MapPin, Loader2 } from '@/app/components/icons';
 import { cn } from './utils';
 import { searchVenues, getGooglePlaceDetails, type VenuePlace } from '@/lib/services/location';
 
@@ -19,7 +19,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
   value,
   onChange,
   onSelect,
-  placeholder = 'VENUE NAME',
+  placeholder = 'Venue name',
   className,
   containerClassName,
   disabled = false,
@@ -164,7 +164,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
           aria-expanded={isOpen}
           aria-controls={isOpen ? listboxId : undefined}
           className={cn(
-            'w-full bg-transparent border-b pb-2 text-[22px] font-bold uppercase focus:outline-none placeholder:text-foreground/30 focus:border-foreground transition-colors pr-8',
+            'w-full bg-transparent bw-body-lg text-foreground focus:outline-none placeholder:text-muted-foreground/60 transition-colors pr-8',
             className
           )}
         />
@@ -172,23 +172,25 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
         {/* Loading or Clear action indicator */}
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
           {isLoading && (
-            <Loader2 className="w-4 h-4 text-foreground/40 animate-spin" />
+            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" aria-label="Searching" />
           )}
         </div>
       </div>
 
-      {/* Floating Suggestions Dropdown */}
+      {/* Suggestions: dark sheet list (Figma Picker sheets: bg/sheet, radius 24, pill rows) */}
       {isOpen && suggestions.length > 0 && (
         <div
           id={listboxId}
           role="listbox"
-          className="absolute z-50 left-0 right-0 top-full mt-2 bg-card border border-foreground/15 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150 max-h-72 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 top-full mt-2 p-2 bg-sheet text-sheet-foreground rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)] max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          <div className="p-1.5">
-            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground/40 flex items-center justify-between">
-              <span>Suggested Venues & Locations</span>
-              <span className="text-[9px] lowercase opacity-60">powered by {suggestions[0]?.provider === 'google' ? 'google places' : 'openstreetmap'}</span>
-            </div>
+          <div className="px-3 pt-2 pb-2 flex items-center justify-between gap-3">
+            <span className="bw-label-sm text-sheet-foreground/85">Suggested venues</span>
+            <span className="bw-label-xs text-sheet-foreground/60">
+              {suggestions[0]?.provider === 'google' ? 'Google Places' : 'OpenStreetMap'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
             {suggestions.map((item, idx) => {
               const isSelected = idx === highlightedIndex;
               const subtext = [item.address, item.city, item.country].filter(Boolean).join(', ');
@@ -202,28 +204,18 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   onClick={() => handleSelectPlace(item)}
                   className={cn(
-                    'w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors',
-                    isSelected ? 'bg-foreground/15 text-foreground' : 'text-foreground/90 hover:bg-foreground/10'
+                    'w-full text-left p-3 rounded-full flex items-center gap-3 transition-colors',
+                    isSelected ? 'bg-sheet-foreground/[0.08]' : 'hover:bg-sheet-foreground/[0.08]'
                   )}
                 >
-                  <div className="p-1.5 rounded-md bg-foreground/10 text-foreground shrink-0 mt-0.5">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold uppercase tracking-wide truncate block">
-                        {item.name}
-                      </span>
-                      <span className="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-foreground/10 text-foreground/50 shrink-0">
-                        {item.provider === 'google' ? 'Google' : 'Map'}
-                      </span>
-                    </div>
-                    {subtext && (
-                      <span className="text-xs text-foreground/60 truncate block mt-0.5">
-                        {subtext}
-                      </span>
-                    )}
-                  </div>
+                  <MapPin className="w-5 h-5 shrink-0 text-sheet-foreground/85" aria-hidden />
+                  <span className="flex-1 min-w-0 flex flex-col">
+                    <span className="bw-label-md text-sheet-foreground truncate">{item.name}</span>
+                    {subtext && <span className="bw-body-sm text-sheet-foreground/70 truncate">{subtext}</span>}
+                  </span>
+                  <span className="bw-label-xs text-sheet-foreground/60 shrink-0">
+                    {item.provider === 'google' ? 'Google' : 'Map'}
+                  </span>
                 </button>
               );
             })}
