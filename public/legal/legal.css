@@ -16,5 +16,4 @@ a { color: inherit; text-underline-offset: 3px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid var(--line); }
 th { font: 600 11px/1.2 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.todo { background: var(--accent); color: #111; padding: 0 4px; border-radius: 4px; }
 nav { display: flex; gap: 16px; margin-top: 8px; font-size: 14px; }
