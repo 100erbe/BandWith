@@ -19,6 +19,8 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 npm run build
 npx cap sync android
+# Finder/iCloud can leave copies like "config 2.xml"; Android rejects spaces in resource names.
+find android/app/src/main/res -name '* [0-9]*.xml' -delete
 (cd android && ./gradlew assembleDebug)
 cp android/app/build/outputs/apk/debug/app-debug.apk BandWith-android-debug.apk
 echo "APK: $(pwd)/BandWith-android-debug.apk"
