@@ -8,7 +8,6 @@ import {
   Plus,
   Search,
   X,
-  ChevronDown,
   ChevronRight,
   History,
   RefreshCw,
@@ -27,6 +26,7 @@ import { parseLocalDate } from '@/lib/dates';
 import { DotMeter, DotText, EventMark, SectionHeader, type EventKind } from '@/app/components/bw';
 import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { PlannerMode, type PlannerEvent } from '@/app/components/duo';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -41,6 +41,8 @@ interface EventsViewProps {
   onEventClick: (event: EventData) => void;
   onCreateEvent?: (type: 'gig' | 'rehearsal' | 'quote', date?: string) => void;
   onOpenPastEvents?: () => void;
+  /** Members: open the "Propose rehearsal" flow (empty-schedule hero). */
+  onProposeRehearsal?: () => void;
   isAdmin?: boolean;
   onDayPickerOpen?: (open: boolean) => void;
   userFeeMap?: Record<string, number>;
@@ -52,9 +54,17 @@ interface EventsViewProps {
   onPollUpdated?: () => void;
   onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   currentUserId?: string;
+  /**
+   * "YYYY-MM": show this month (month grid and Laptop pose planner), e.g. from
+   * Analytics' month bars on the iPhone Duo book layout. Applied when it changes.
+   */
+  focusMonth?: string | null;
 }
 
 const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
+
+/** Figma "Calendar": link to the past-events archive. */
+const PAST_ARCHIVE_LABEL = 'Past events archive';
 
 
 const getRehearsalCadence = (event: EventData): string => {
@@ -207,6 +217,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onEventClick,
   onCreateEvent,
   onOpenPastEvents,
+  onProposeRehearsal,
   isAdmin = true,
   userFeeMap = {},
   bands = [],
@@ -215,6 +226,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onPollUpdated,
   onShowToast,
   currentUserId,
+  focusMonth,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const getDisplayFee = (event: EventData): string => {
@@ -286,7 +298,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
   }, [warningPopoverId, suggestionPopoverId]);
   const [dayPickerEvents, setDayPickerEvents] = useState<EventData[] | null>(null);
-  const [showPastEvents, setShowPastEvents] = useState(false);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -332,7 +343,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
       if (seen.has(key)) return;
 
       const titleMatch = (e.title || '').toLowerCase().includes(query);
-      const locMatch = (e.location || '').toLowerCase().includes(query);
+      const locMatch = [e.location, e.venueName, e.venueAddress, e.venueCity]
+        .some((v) => (v || '').toLowerCase().includes(query));
       const clientMatch = (e.clientName || '').toLowerCase().includes(query);
       const notesMatch = (e.notes || '').toLowerCase().includes(query);
 
@@ -525,6 +537,54 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const [carouselWidth, setCarouselWidth] = useState<number>(0);
   const x = useMotionValue(0);
   const isAnimatingRef = useRef(false);
+
+  // ── iPhone Duo · Laptop pose: Planner (renders nothing in other postures) ──
+  // Same events as the month grid (current filter, recurring rehearsals expanded).
+  const { plannerEvents, plannerSource } = useMemo(() => {
+    const list: PlannerEvent[] = [];
+    const source = new Map<string, EventData>();
+    Object.values(eventDatesMap).forEach((dayEvents) => {
+      dayEvents.forEach((ev) => {
+        const date = normalizeDateStr(ev.date);
+        if (!date) return;
+        const id = String(ev.id);
+        if (source.has(id)) return;
+        source.set(id, ev);
+        const fee = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, ''));
+        list.push({
+          id,
+          title: ev.title || 'Untitled event',
+          date,
+          kind: calendarKind(ev),
+          time: ev.time || null,
+          venue: ev.venueName || (ev.location && ev.location !== 'TBD' ? ev.location : null),
+          fee: Number.isFinite(fee) && fee > 0 ? fee : null,
+        });
+      });
+    });
+    return { plannerEvents: list, plannerSource: source };
+  }, [eventDatesMap]);
+  const [plannerDate, setPlannerDate] = useState(todayStr);
+  const selectPlannerDate = (date: string) => {
+    setPlannerDate(date);
+    setSelectedEmptyDate(null);
+    // Keep the month grid underneath on the same month.
+    const d = parseLocalDate(date);
+    if (isNaN(d.getTime())) return;
+    const base = baseDateRef.current;
+    const offset = (d.getFullYear() - base.getFullYear()) * 12 + (d.getMonth() - base.getMonth());
+    if (offset !== monthOffsetRef.current) {
+      x.set(-offset * (carouselContainerRef.current?.offsetWidth || carouselWidth || 0));
+      setMonthOffset(offset);
+    }
+  };
+  const selectPlannerDateRef = useRef(selectPlannerDate);
+  selectPlannerDateRef.current = selectPlannerDate;
+  useEffect(() => {
+    if (!focusMonth || !/^\d{4}-\d{2}$/.test(focusMonth)) return;
+    selectPlannerDateRef.current(`${focusMonth}-01`);
+  }, [focusMonth]);
+
 
   useEffect(() => {
     if (!carouselContainerRef.current) return;
@@ -1161,7 +1221,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             {eyebrowLabel !== 'SCHEDULE' && (
               <span className="bw-label-sm text-muted-foreground">{eyebrowLabel}</span>
             )}
-            <SectionHeader title="Upcoming" />
+            <SectionHeader title="Upcoming" onSeeAll={onOpenPastEvents} />
           </div>
 
           {/* ═══ UPCOMING EVENT CARDS ═══ */}
@@ -1171,26 +1231,40 @@ export const EventsView: React.FC<EventsViewProps> = ({
             ) : upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => renderEventCard(event, false))
             ) : (
-              <Card className="items-center text-center py-8 gap-3">
-                <p className="bw-h3">
-                  No upcoming {eyebrowLabel === 'SCHEDULE' ? 'events' : eyebrowLabel.toLowerCase()}
-                </p>
-                <p className="bw-body-sm text-muted-foreground max-w-[280px]">
+              // Figma "Calendar / Empty": "Nothing scheduled" hero with quick-create actions.
+              <Card className="items-center text-center py-10 px-6 gap-3">
+                <h3 className="bw-h2">Nothing scheduled</h3>
+                <p className="bw-body-md text-muted-foreground max-w-[280px]">
                   {eventFilter !== 'All' && eventFilter !== 'ALL'
-                    ? `No upcoming ${eventFilter.toLowerCase()} scheduled.`
-                    : pastEvents.length > 0
-                    ? `All ${pastEvents.length} scheduled event${pastEvents.length > 1 ? 's are' : ' is'} in the past. Check the past events section below.`
-                    : 'No events have been scheduled yet.'}
+                    ? `No upcoming ${eyebrowLabel.toLowerCase()}.`
+                    : isAdmin
+                    ? 'Add your next gig or rehearsal.'
+                    : onProposeRehearsal
+                    ? 'Propose a rehearsal to the band.'
+                    : 'New gigs and rehearsals will show up here.'}
                 </p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
+                <div className="flex items-center gap-2 mt-2 flex-wrap justify-center">
                   {eventFilter !== 'All' && eventFilter !== 'ALL' && (
                     <PillButton size="sm" variant="outline" fullWidth={false} onClick={() => setEventFilter('ALL')}>
                       {APP_COPY.events.emptyState.showAllEvents}
                     </PillButton>
                   )}
                   {isAdmin && onCreateEvent && (
-                    <PillButton size="sm" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('gig')}>
-                      {APP_COPY.events.emptyState.createEvent}
+                    <>
+                      <PillButton size="sm" variant="dark" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('gig')}>
+                        Gig
+                      </PillButton>
+                      <PillButton size="sm" variant="outline" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('rehearsal')}>
+                        Rehearsal
+                      </PillButton>
+                      <PillButton size="sm" variant="outline" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('quote')}>
+                        Quote
+                      </PillButton>
+                    </>
+                  )}
+                  {!isAdmin && onProposeRehearsal && (
+                    <PillButton size="sm" variant="dark" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={onProposeRehearsal}>
+                      Propose rehearsal
                     </PillButton>
                   )}
                 </div>
@@ -1198,45 +1272,22 @@ export const EventsView: React.FC<EventsViewProps> = ({
             )}
           </div>
 
-          {/* ═══ PAST EVENTS ARCHIVE QUICK ACCESS & COLLAPSIBLE ═══ */}
+          {/* ═══ PAST EVENTS: count + archive link (Figma) ═══ */}
           {pastEvents.length > 0 && (
-            <div className="flex flex-col gap-3">
-              {/* Figma: "N past events" + archive link, then an inline peek toggle */}
-              <div className="flex items-center justify-between gap-3 py-2">
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="bw-body-md text-muted-foreground">
+                {pastEvents.length} past event{pastEvents.length === 1 ? '' : 's'}
+              </span>
+              {onOpenPastEvents && (
                 <button
                   type="button"
-                  onClick={() => setShowPastEvents((prev) => !prev)}
-                  aria-expanded={showPastEvents}
-                  className="flex items-center gap-1.5 bw-body-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  onClick={onOpenPastEvents}
+                  className="h-9 flex items-center gap-2 bw-button-sm text-foreground cursor-pointer"
                 >
-                  {pastEvents.length} past event{pastEvents.length === 1 ? '' : 's'}
-                  <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', showPastEvents && 'rotate-180')} />
+                  <History className="w-3.5 h-3.5" />
+                  {PAST_ARCHIVE_LABEL}
                 </button>
-                {onOpenPastEvents && (
-                  <button
-                    type="button"
-                    onClick={onOpenPastEvents}
-                    className="h-9 flex items-center gap-2 bw-button-sm text-foreground cursor-pointer"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    {APP_COPY.events.archive.viewFullArchive}
-                  </button>
-                )}
-              </div>
-
-              <AnimatePresence>
-                {showPastEvents && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex flex-col gap-4 overflow-hidden"
-                  >
-                    {pastEvents.map((event) => renderEventCard(event, true))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              )}
             </div>
           )}
 
@@ -1272,7 +1323,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 role="dialog"
                 aria-modal="true"
                 aria-label="Search events"
-                className="fixed inset-0 z-[81] bg-background text-foreground flex flex-col"
+                // iPhone Duo open: search stays on the leading page, the event
+                // you pick opens on the trailing page (Figma "Calendar search").
+                className="bw-pane-hub fixed inset-0 z-[81] bg-background text-foreground flex flex-col"
                 style={{ paddingTop: 'var(--safe-top)' }}
               >
                 {/* Top Bar */}
@@ -1288,7 +1341,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       value={eventSearch}
                       onChange={setEventSearch}
                       label="Search events"
-                      placeholder="Title, venue, client…"
+                      placeholder="Title, venue, city, client…"
                       autoFocus
                       onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
                     />
@@ -1322,7 +1375,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           const valid = d && !isNaN(d.getTime());
                           const badge = getPrimaryBadge(ev);
                           const typeWord = badge === 'GIG' && !ev.band_id ? 'Personal' : badge.charAt(0) + badge.slice(1).toLowerCase();
-                          const sub = badge === 'QUOTE' ? ev.quoteStatus : evPast ? (ev as any).payment_status || (ev as any).paymentStatus : undefined;
+                          const sub = badge === 'QUOTE' ? ev.quoteStatus : evPast && badge === 'GIG' ? ev.paymentStatus : undefined;
                           const over = [evPast ? 'Past' : typeWord, sub ? String(sub).charAt(0).toUpperCase() + String(sub).slice(1) : null].filter(Boolean).join(' · ');
                           const meta = [ev.location?.split(',')[0] || ev.clientName, ev.time ? formatEventTime(ev.time) : null].filter(Boolean).join(' · ');
                           const feeNum = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, '')) || 0;
@@ -1365,7 +1418,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       )}
                     </>
                   ) : (
-                    <p className="bw-body-sm text-muted-foreground">Search by title, venue, client or notes.</p>
+                    <p className="bw-body-sm text-muted-foreground">Search by title, venue, city, client or notes.</p>
                   )}
                 </div>
               </motion.div>
@@ -1373,6 +1426,21 @@ export const EventsView: React.FC<EventsViewProps> = ({
           })()}
         </AnimatePresence>,
         document.body,
+      )}
+
+      {!searchOpen && (
+        <PlannerMode
+          events={plannerEvents}
+          isAdmin={isAdmin}
+          selectedDate={plannerDate}
+          onSelectDate={selectPlannerDate}
+          onOpenEvent={(id) => {
+            const ev = plannerSource.get(id);
+            if (ev) onEventClick(ev);
+          }}
+          onAddGig={isAdmin && onCreateEvent ? (date) => onCreateEvent('gig', date) : undefined}
+          onAddRehearsal={isAdmin && onCreateEvent ? (date) => onCreateEvent('rehearsal', date) : undefined}
+        />
       )}
 
       {/* Bottom clearance spacer ensuring last card cleanly clears floating navbar */}

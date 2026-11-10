@@ -18,6 +18,12 @@ interface AnalyticsViewProps {
    */
   dashboardData?: ReturnType<typeof useDashboardData>['data'];
   isAdmin?: boolean;
+  /**
+   * iPhone Duo book layout (Figma "Analytics → Calendar"): tapping a month bar
+   * opens that month in the calendar on the other page. When passed, the bars
+   * are buttons; the value is "YYYY-MM".
+   */
+  onSelectMonth?: (yyyyMm: string) => void;
 }
 
 /** Months shown in the breakdown, oldest first, current month last. */
@@ -60,7 +66,7 @@ const StatCard: React.FC<{ label: string; value: string | number; accent?: boole
   </motion.div>
 );
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboardData: sharedData, isAdmin = true }) => {
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboardData: sharedData, isAdmin = true, onSelectMonth }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand } = useBand();
   // Skip the query when Home's numbers were handed in.
@@ -117,9 +123,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   const maxFee = Math.max(0, ...fees);
   const monthly = fees.map((fee, i) => {
     const offset = MONTH_SPAN - 1 - i;
-    const m = (now.getMonth() - offset + 12) % 12;
+    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
     const lit = fee > 0 && maxFee > 0 ? Math.max(1, Math.round((fee / maxFee) * LED_ROWS)) : 0;
-    return { month: MONTHS[m], fee, lit, current: offset === 0 };
+    return {
+      month: MONTHS[d.getMonth()],
+      yyyyMm: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      longLabel: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      fee,
+      lit,
+      current: offset === 0,
+    };
   });
 
   const overline = [selectedBand?.name, now.getFullYear()].filter(Boolean).join(' · ');
@@ -130,7 +143,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
+      className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <ScreenHeader sticky onBack={onClose} overline={overline} title={<>Data<br />insights</>} />
@@ -163,23 +176,45 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
             {/* Monthly breakdown */}
             <Card className="p-5 gap-4">
               <h2 className="bw-label-md">Monthly breakdown</h2>
-              <div className="flex items-end justify-between" role="img" aria-label={`Monthly revenue, last six months: ${monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ')}`}>
-                {monthly.map(({ month, fee, lit, current }, i) => (
-                  <motion.div
-                    key={month}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 + i * 0.04 }}
-                    className="flex flex-col items-center gap-2"
-                    title={`${month}: ${sym()}${fee.toLocaleString('en-US')}`}
-                  >
-                    <span className="flex gap-1">
-                      <LedColumn lit={lit} current={current} index={i * 2} />
-                      <LedColumn lit={lit} current={current} index={i * 2 + 1} />
-                    </span>
-                    <span className={cn('bw-label-sm', current ? 'text-foreground' : 'text-muted-foreground')}>{month}</span>
-                  </motion.div>
-                ))}
+              <div
+                className="flex items-end justify-between"
+                {...(onSelectMonth
+                  ? { role: 'group', 'aria-label': 'Monthly revenue, last six months. Choose a month to open it in the calendar.' }
+                  : { role: 'img', 'aria-label': `Monthly revenue, last six months: ${monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ')}` })}
+              >
+                {monthly.map(({ month, yyyyMm, longLabel, fee, lit, current }, i) => {
+                  const bar = (
+                    <>
+                      <span className="flex gap-1">
+                        <LedColumn lit={lit} current={current} index={i * 2} />
+                        <LedColumn lit={lit} current={current} index={i * 2 + 1} />
+                      </span>
+                      <span className={cn('bw-label-sm', current ? 'text-foreground' : 'text-muted-foreground')}>{month}</span>
+                    </>
+                  );
+                  const motionProps = {
+                    initial: { opacity: 0, y: 6 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { delay: 0.25 + i * 0.04 },
+                    title: `${month}: ${sym()}${fee.toLocaleString('en-US')}`,
+                  };
+                  return onSelectMonth ? (
+                    <motion.button
+                      key={yyyyMm}
+                      type="button"
+                      {...motionProps}
+                      onClick={() => onSelectMonth(yyyyMm)}
+                      aria-label={`${longLabel}: ${sym()}${fee.toLocaleString('en-US')}. Open in calendar`}
+                      className="flex flex-col items-center gap-2 rounded-[12px] p-1 -m-1 cursor-pointer active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                    >
+                      {bar}
+                    </motion.button>
+                  ) : (
+                    <motion.div key={yyyyMm} {...motionProps} className="flex flex-col items-center gap-2">
+                      {bar}
+                    </motion.div>
+                  );
+                })}
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="bw-body-lg text-muted-foreground">Total earnings {now.getFullYear()}</span>

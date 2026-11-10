@@ -45,7 +45,9 @@ export const ExpandedCardWrapper: React.FC<ExpandedCardWrapperProps> = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] overflow-hidden"
+      // iPhone Duo open: an expanded card is a hub on the leading page; what
+      // it opens goes to the trailing page (Figma "Duo · 06 Quotes").
+      className="bw-pane-hub fixed inset-0 z-[100] overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

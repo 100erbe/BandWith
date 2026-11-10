@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronRight, Search, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -177,6 +178,11 @@ export interface ScreenHeaderProps {
   children?: React.ReactNode;
   /** Stick the control row to the top while the page scrolls. */
   sticky?: boolean;
+  /**
+   * iPhone Duo open: the screen is on the trailing page (`bw-pane-detail`),
+   * so its Back and actions leave the leading page's entries in the rail.
+   */
+  pane?: boolean;
   className?: string;
 }
 
@@ -194,10 +200,11 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   titleSize = 'lg',
   children,
   sticky = false,
+  pane = false,
   className,
 }) => {
   // iPhone Duo: Back lives in the side rail, so the row only remains for actions.
-  const backInRail = useRailBack(onBack, backLabel);
+  const backInRail = useRailBack(onBack, backLabel, true, pane);
   const showBack = !!onBack && !backInRail;
   // ...and the actions (IconButtons) join it too, so the row goes away.
   const railOwns = useRailOwnsChrome();
@@ -214,7 +221,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {actionsInRow && <div className="flex items-center gap-2">{actions}</div>}
       </div>
     )}
-    {actions && railOwns && <RailHeaderActions>{actions}</RailHeaderActions>}
+    {actions && railOwns && <RailHeaderActions pane={pane}>{actions}</RailHeaderActions>}
     {(overline || title) && (
       <div className="flex flex-col gap-1 min-w-0">
         {overline && <p className="bw-label-sm text-muted-foreground">{overline}</p>}
@@ -345,6 +352,23 @@ export interface BwSheetProps {
   children?: React.ReactNode;
   closeLabel?: string;
   zIndex?: number;
+  /**
+   * iPhone Duo open: the sheet belongs to the leading page instead of the
+   * trailing one (Figma "Open · Home / Switch band | Band / Create band").
+   */
+  leading?: boolean;
+  /**
+   * Render at the top of the document. For sheets declared inside the home
+   * scroller (dashboard cards): iOS WebKit keeps fixed layers there on the
+   * leading page, so they could not reach the trailing page.
+   */
+  portal?: boolean;
+  /**
+   * A picker (songs, dates…): on the iPhone Duo open, the form that opened it
+   * moves to the leading page while it is open, the picker takes the
+   * trailing page (Figma "Open · New gig / 2 | Picker / Date").
+   */
+  picker?: boolean;
 }
 
 /**
@@ -361,6 +385,9 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   children,
   closeLabel = 'Close',
   zIndex = 90,
+  leading = false,
+  portal = false,
+  picker = false,
 }) => {
   const dark = tone === 'dark';
   // iPhone Duo (Figma "Home / Create menu", "Event / Fee & payouts sheet"):
@@ -374,7 +401,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  return (
+  const sheet = (
     <AnimatePresence>
       {open && (
         <>
@@ -383,7 +410,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bw-rail-sheet fixed inset-0 bg-black/60"
+            className={cn('bw-rail-sheet fixed inset-0 bg-black/60', leading && 'bw-leading-sheet')}
             style={{ zIndex: zIndex - 1 }}
             onClick={onClose}
           />
@@ -397,8 +424,11 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             className={cn(
               'bw-rail-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
+              leading && 'bw-leading-sheet',
+              picker && 'bw-picker',
               dark ? 'bg-sheet text-sheet-foreground' : 'bg-background text-foreground',
             )}
+            data-state="open"
             style={{ zIndex }}
           >
             <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
@@ -423,4 +453,5 @@ export const BwSheet: React.FC<BwSheetProps> = ({
       )}
     </AnimatePresence>
   );
+  return portal && typeof document !== 'undefined' ? createPortal(sheet, document.body) : sheet;
 };

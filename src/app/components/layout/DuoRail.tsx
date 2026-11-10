@@ -12,6 +12,8 @@ import { cn } from '@/app/components/ui/utils';
 import { haptic } from '@/lib/haptics';
 import { useAuth } from '@/lib/AuthContext';
 import { useRailHost, useRailSnapshot } from '@/lib/railActions';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { usePosture } from '@/lib/posture';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * iPhone Duo side rail, 1:1 with Figma "11 · Foldables":
@@ -24,6 +26,10 @@ import { useRailHost, useRailSnapshot } from '@/lib/railActions';
  * Both containers sit in the system column under the clock and battery and
  * are centred together in the space left below it. Nothing of the app's
  * chrome stays in the screen's top bar.
+ *
+ * The rail follows the column: on the right normally, on the left when the
+ * column is on the leading edge (Split View, left window). In Laptop pose it
+ * moves down onto the Deck (the flat bottom half), below the fold.
  * ───────────────────────────────────────────────────────────────────────── */
 
 export interface RailTab {
@@ -89,16 +95,24 @@ const Cell: React.FC<{
   </button>
 );
 
-const containerMotion = {
-  initial: { x: 96, opacity: 0 },
-  animate: { x: 0, opacity: 1 },
-  exit: { x: 96, opacity: 0 },
-  transition: { duration: 0.25, ease: [0.32, 0.72, 0, 1] as const },
+const motionFrom = (edge: 'left' | 'right') => {
+  const off = edge === 'left' ? -96 : 96;
+  return {
+    initial: { x: off, opacity: 0 },
+    animate: { x: 0, opacity: 1 },
+    exit: { x: off, opacity: 0 },
+    transition: { duration: 0.25, ease: [0.32, 0.72, 0, 1] as const },
+  };
 };
 
 export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, isProfileOpen, onProfile, profileLocked = false, showTabs }) => {
   useRailHost();
   const { actions, back, search, fullScreen, tone } = useRailSnapshot();
+  const { railEdge } = useRailLayout();
+  const onLeft = railEdge === 'left';
+  const containerMotion = motionFrom(railEdge);
+  // Laptop pose: navigation lives on the Deck, never across the fold.
+  const onDeck = usePosture().posture === 'tabletop';
   // Tabs show on the main screens, sheets and the profile, not over full-screen layers.
   const tabsVisible = showTabs && !fullScreen;
   const { profile } = useAuth();
@@ -144,7 +158,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
       window.removeEventListener('resize', place);
       window.removeEventListener('bwlayout', place);
     };
-  }, [fieldOpen, tabsVisible, !!back]);
+  }, [fieldOpen, tabsVisible, !!back, onDeck, railEdge]);
 
   useEffect(() => {
     if (fieldOpen) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
@@ -175,13 +189,20 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
         // below the rail group, so the bottom actions stay reachable; safe
         // centring keeps the top reachable too once it overflows.
         className={cn(
-          'fixed right-0 z-[190] flex flex-col items-center justify-center-safe gap-2 pointer-events-none',
+          'fixed z-[190] flex flex-col items-center justify-center-safe gap-2 pointer-events-none',
           'overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           tone === 'dark' && 'dark',
         )}
         // Figma "Duo" frames centre the rail group 20pt below the display's
         // middle (y 359 of 678 closed, 355 of 669 open), clear of the clock.
-        style={{ top: 0, bottom: 0, paddingTop: 40, width: 'var(--bw-rail-w)' }}
+        // On the Deck the group centres in the bottom half instead.
+        style={{
+          top: onDeck ? 'var(--bw-deck-top, 0px)' : 0,
+          bottom: 0,
+          paddingTop: onDeck ? 8 : 40,
+          width: 'var(--bw-rail-w)',
+          ...(onLeft ? { left: 0 } : { right: 0 }),
+        }}
         // Any other rail button closes the search field.
         onPointerDownCapture={(e) => {
           if (fieldOpen && !searchBtnRef.current?.contains(e.target as Node)) setFieldOpen(false);
@@ -301,16 +322,19 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
       <motion.label
         aria-hidden={!fieldVisible}
         initial={false}
-        animate={fieldVisible ? { opacity: 1, x: 0, scaleX: 1 } : { opacity: 0, x: 24, scaleX: 0.92 }}
+        animate={fieldVisible ? { opacity: 1, x: 0, scaleX: 1 } : { opacity: 0, x: onLeft ? -24 : 24, scaleX: 0.92 }}
         transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
         className={cn(
           tone === 'dark' && 'dark',
-          'bw-glass fixed z-[191] h-[52px] rounded-full px-4 flex items-center gap-3 text-foreground origin-right',
+          'bw-glass fixed z-[191] h-[52px] rounded-full px-4 flex items-center gap-3 text-foreground',
+          onLeft ? 'origin-left' : 'origin-right',
           !fieldVisible && 'pointer-events-none',
         )}
         style={{
           top: fieldTop,
-          right: 'calc(var(--bw-rail-w) / 2 + 24px + 8px)',
+          ...(onLeft
+            ? { left: 'calc(var(--bw-rail-w) / 2 + 24px + 8px)' }
+            : { right: 'calc(var(--bw-rail-w) / 2 + 24px + 8px)' }),
           width: 'min(399px, calc(100vw - var(--bw-rail-w) - 36px))',
         }}
       >

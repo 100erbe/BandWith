@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
+import { readLocalPref, loadNotificationPrefs, saveNotificationPrefs } from '@/lib/services/notificationPrefs';
+import { exportMyData } from '@/lib/services/dataExport';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { HEADER_SPRING } from '@/styles/motion';
@@ -14,10 +15,7 @@ import {
   CheckSquare,
   CurrencyIcon,
   Users,
-  Bell,
   Mail,
-  Play,
-  ChevronDown,
   ChevronRight,
   Download,
   IconSettings,
@@ -37,7 +35,6 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
-import { todayLocal } from '../../../lib/dates';
 
 interface NotificationGroup {
   type: string;
@@ -133,7 +130,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     }
   };
 
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isEditingBandDetails, setIsEditingBandDetails] = useState(false);
   const [editBandName, setEditBandName] = useState('');
   const [editBandDescription, setEditBandDescription] = useState('');
@@ -217,14 +213,40 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     return () => { cancelled = true; };
   }, []);
 
-  const handleTogglePush = (val: boolean) => {
+  // Figma "Who you are": one master toggle that switches push and email together.
+  const alertsOn = pushEnabled || emailEnabled;
+  const [savingAlerts, setSavingAlerts] = useState(false);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const handleToggleAlerts = (val: boolean) => {
+    if (savingAlerts) return;
+    const prev = { push: pushEnabled, email: emailEnabled };
     setPushEnabled(val);
-    saveNotificationPref('push', val).then(({ error }) => { if (error) setPushEnabled(!val); });
+    setEmailEnabled(val);
+    setAlertsError(null);
+    setSavingAlerts(true);
+    saveNotificationPrefs({ push: val, email: val }).then(({ error }) => {
+      setSavingAlerts(false);
+      if (error) {
+        setPushEnabled(prev.push);
+        setEmailEnabled(prev.email);
+        setAlertsError(`Couldn’t save notifications: ${error.message}`);
+      }
+    });
   };
 
-  const handleToggleEmail = (val: boolean) => {
-    setEmailEnabled(val);
-    saveNotificationPref('email', val).then(({ error }) => { if (error) setEmailEnabled(!val); });
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportMyData();
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Couldn’t export your data.');
+    } finally {
+      setExporting(false);
+    }
   };
 
 
@@ -240,16 +262,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     }
   };
 
-  const notificationStatus = (() => {
-    const on = [
-      pushEnabled && 'Push',
-      emailEnabled && 'email',
-    ].filter(Boolean) as string[];
-    if (on.length === 0) return 'Alerts paused';
-    const list =
-      on.length === 1 ? on[0] : `${on.slice(0, -1).join(', ')} & ${on[on.length - 1]}`;
-    return `${list.charAt(0).toUpperCase()}${list.slice(1)} alerts enabled`;
-  })();
+  const notificationStatus =
+    pushEnabled && emailEnabled
+      ? 'Push & email alerts enabled'
+      : pushEnabled
+        ? 'Push alerts enabled'
+        : emailEnabled
+          ? 'Email alerts enabled'
+          : 'Alerts off';
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const displayEmail = user?.email || 'No email attached';
@@ -269,9 +289,17 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   const lineupCount =
     selectedBand.members || activeBandDetails?.member_count || rosterMembers.length || 1;
   const myBandMember = rosterMembers.find((m) => m.user_id === user?.id);
-  const myInstrument = myBandMember?.instrument
-    ? myBandMember.instrument.charAt(0).toUpperCase() + myBandMember.instrument.slice(1)
-    : null;
+  // Role tag under the name: profile instrument first, then this band's lineup entry.
+  // Onboarding stores lowercase ids ("guitar, keys"), so title-case each part.
+  const formatInstrument = (raw?: string | null) => {
+    const parts = (raw || '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => (p.length <= 2 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1)));
+    return parts.length ? parts.join(', ') : null;
+  };
+  const myInstrument = formatInstrument(profile?.instrument) || formatInstrument(myBandMember?.instrument);
   const bandInitials =
     selectedBand.initials ||
     selectedBand.name
@@ -323,7 +351,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           exit={{ y: '100%' }}
           transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
           onScroll={handleContainerScroll}
-          className="fixed inset-0 z-[60] bg-background text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
+          className="bw-pane-hub fixed inset-0 z-[60] bg-background text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
@@ -414,8 +442,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   <h2 className="bw-h2 text-foreground line-clamp-2 break-words">{displayName}</h2>
                   <span className="bw-body-sm text-muted-foreground truncate">{displayEmail}</span>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Tag variant={isAdmin ? 'accent' : 'subtle'}>{roleLabel}</Tag>
-                    {myInstrument && <Tag>{myInstrument}</Tag>}
+                    <Tag variant={isAdmin ? 'accent' : 'subtle'}>{myInstrument || roleLabel}</Tag>
                   </div>
                 </div>
                 <button
@@ -837,84 +864,24 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 })}
               </div>
 
-              {/* Notifications (accordion with inline toggles) */}
-              <div className="flex flex-col">
-                <button
-                  type="button"
-                  aria-expanded={isNotificationsOpen}
-                  onClick={() => setIsNotificationsOpen((prev) => !prev)}
-                  className="w-full p-4 rounded-[16px] flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="flex flex-col gap-1 min-w-0 flex-1">
-                    <span className="bw-body-lg">Notifications</span>
-                    <span className="bw-body-sm text-muted-foreground">{notificationStatus}</span>
-                  </span>
-                  <span className="bw-label-xs text-muted-foreground shrink-0">
-                    {isNotificationsOpen ? 'Hide' : 'Configure'}
-                  </span>
-                  <ChevronDown
-                    aria-hidden
-                    className={cn(
-                      'w-5 h-5 text-foreground transition-transform duration-200 shrink-0',
-                      isNotificationsOpen && 'rotate-180'
-                    )}
-                  />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {isNotificationsOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex flex-col gap-2 pt-1">
-                        {[
-                          {
-                            key: 'push',
-                            icon: <Bell />,
-                            title: 'Push notifications',
-                            sub: 'Gig, rehearsal & poll alerts on this device',
-                            checked: pushEnabled,
-                            onChange: handleTogglePush,
-                          },
-                          {
-                            key: 'email',
-                            icon: <Mail />,
-                            title: 'Email notifications',
-                            sub: 'Schedule digests & event updates',
-                            checked: emailEnabled,
-                            onChange: handleToggleEmail,
-                          },
-                        ].map((row) => (
-                          <div
-                            key={row.key}
-                            className="p-3 rounded-[16px] bg-foreground/[0.08] flex items-center gap-3"
-                          >
-                            <span
-                              aria-hidden
-                              className="size-8 rounded-full bg-foreground/[0.08] flex items-center justify-center text-foreground shrink-0 [&>svg]:size-4"
-                            >
-                              {row.icon}
-                            </span>
-                            <span className="flex flex-col gap-0.5 min-w-0 flex-1">
-                              <span className="bw-body-md font-medium">{row.title}</span>
-                              <span className="bw-body-sm text-muted-foreground">{row.sub}</span>
-                            </span>
-                            <Toggle
-                              checked={row.checked}
-                              onCheckedChange={row.onChange}
-                              aria-label={row.title}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              {/* Notifications (Figma: one row, one master toggle) */}
+              <div className="p-4 rounded-[16px] flex items-center gap-3">
+                <span className="flex flex-col gap-1 min-w-0 flex-1">
+                  <span className="bw-body-lg">Notifications</span>
+                  <span className="bw-body-sm text-muted-foreground">{notificationStatus}</span>
+                </span>
+                <Toggle
+                  checked={alertsOn}
+                  onCheckedChange={handleToggleAlerts}
+                  disabled={savingAlerts}
+                  aria-label="Notifications"
+                />
               </div>
+              {alertsError && (
+                <p role="alert" className="bw-body-sm text-destructive">
+                  {alertsError}
+                </p>
+              )}
             </div>
 
             {/* Settings & account (notifications, theme, language, delete account) */}
@@ -944,30 +911,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               className="dark:bg-sheet"
               icon={<Download />}
               title="Export my data"
-              subtitle="Download a JSON copy"
-              onClick={() => {
-                const exportData = {
-                  exportedAt: new Date().toISOString(),
-                  user: user?.email,
-                  band: selectedBand.name,
-                  preferences: {
-                    theme: mode,
-                    pushNotifications: pushEnabled,
-                    emailNotifications: emailEnabled,
-                  },
-                  message: 'BandWith user data export',
-                };
-                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `bandwith-export-${todayLocal()}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-              }}
+              subtitle={exporting ? 'Preparing your file…' : 'Download a JSON copy'}
+              onClick={handleExport}
             />
+            {exportError && (
+              <p role="alert" className="bw-body-sm text-destructive">
+                {exportError}
+              </p>
+            )}
 
             {/* Sign Out */}
             <PillButton

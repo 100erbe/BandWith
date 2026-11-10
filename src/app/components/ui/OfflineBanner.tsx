@@ -74,7 +74,8 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
           aria-live="polite"
           className={cn(
             // Figma "State / Offline + toast" → Offline banner: full-width strip under the status bar.
-            'bw-rail-clear fixed inset-x-0 top-0 z-[120] flex items-center gap-3 px-4 pb-3 bw-status-clear',
+            // iPhone Duo open: only on the trailing page (bw-pane-trailing-bar).
+            'bw-rail-clear bw-pane-trailing-bar fixed inset-x-0 top-0 z-[120] flex items-center gap-3 px-4 pb-3 bw-status-clear',
             !isOnline ? 'bg-warning text-warning-foreground' : 'bg-success text-success-foreground'
           )}
           style={{ paddingTop: 'calc(var(--safe-top-inset, 0px) + 12px)' }}

@@ -30,7 +30,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
     invite.inviter?.full_name || invite.inviter?.email?.split('@')[0];
 
   return (
-    <AuthScreen bodyClassName="pt-3 gap-4" top={<BackButton onClick={onBack} />}>
+    <AuthScreen bodyClassName="pt-3 gap-4" top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>
       <Kicker
         overline={`${invites.length} ${invites.length === 1 ? 'invitation' : 'invitations'}`}
         title="Choose your band"

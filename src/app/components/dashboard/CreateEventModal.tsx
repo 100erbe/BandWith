@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { currencySymbol as symbolFor } from '@/lib/currency';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import {
   X,
   Plus,
@@ -21,9 +21,9 @@ import {
   Edit3,
   Layers,
   User,
-  Lock,
-  Send,
   ArrowUpRight,
+  GripVertical,
+  LayoutTemplate,
 } from '@/app/components/icons';
 import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
 import { RailCover, useRailAction } from '@/lib/railActions';
@@ -35,13 +35,16 @@ import { getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
-import { DatePicker } from '@/app/components/ui/DatePicker';
+import { DatePicker, toDatePickerEvents } from '@/app/components/ui/DatePicker';
+import type { EventData } from '@/app/components/dashboard/EventCard';
 import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCreationWizard';
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 import { todayLocal } from '../../../lib/dates';
+import { useLeadingCompanion } from '@/app/components/duo';
+import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
 
 export interface BandMember {
   id: string;
@@ -59,7 +62,10 @@ interface TaskTemplate {
   tasks: { id: string; title: string; dueOffset: number; required: boolean }[];
 }
 
-type EventType = 'gig' | 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'other' | 'rehearsal';
+// 'pub' splits the legacy "Club / pub" chip (Figma). events.event_type is a
+// VARCHAR (see supabase/FIX_add_missing_event_columns.sql), so both values
+// persist as-is and existing 'club' events keep selecting the "Club" chip.
+type EventType = 'gig' | 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'pub' | 'other' | 'rehearsal';
 type PerformanceType = 'full_band' | 'duo' | 'trio' | 'solo' | 'dj_set' | 'acoustic' | 'karaoke';
 type SettingType = 'indoor' | 'outdoor';
 
@@ -73,7 +79,8 @@ const EVENT_TYPE_OPTIONS: {
   { value: 'corporate', label: 'Corporate', subtitle: 'Company events', icon: Briefcase },
   { value: 'private', label: 'Private party', subtitle: 'Birthdays, anniversaries', icon: Users },
   { value: 'festival', label: 'Festival', subtitle: 'Outdoor stages', icon: Music },
-  { value: 'club', label: 'Club / pub', subtitle: 'Night sets & small venues', icon: Mic2 },
+  { value: 'club', label: 'Club', subtitle: 'Night sets', icon: Mic2 },
+  { value: 'pub', label: 'Pub', subtitle: 'Small venues', icon: Mic2 },
   { value: 'other', label: 'Other', subtitle: 'Custom lineup', icon: Sliders },
 ];
 
@@ -104,6 +111,10 @@ interface CreateEventModalProps {
   currentUserId?: string;
   onOpenPollBuilder?: () => void;
   onOpenProposeRehearsal?: () => void;
+  /** Band calendar, so the date picker can mark busy days and suggest a free one. */
+  existingEvents?: EventData[];
+  /** Tasks preloaded from a task template ("Use this template"). */
+  initialTasks?: { title: string; templateId?: string }[];
   editingEvent?: {
     id: number;
     eventId?: string;
@@ -267,6 +278,116 @@ const PICKER_FIELD =
 const capitalize = (s?: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** One setlist song with a drag handle (Figma: reorder by grip). */
+const SortableSongRow: React.FC<{ song: any; index: number; onRemove: () => void }> = ({ song, index, onRemove }) => {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={song}
+      dragListener={false}
+      dragControls={controls}
+      whileDrag={{ scale: 1.02 }}
+      className="relative flex items-center gap-2 min-w-0 rounded-[12px]"
+    >
+      <button
+        type="button"
+        aria-label={`Reorder ${song.title || 'song'}`}
+        onPointerDown={e => controls.start(e)}
+        className="w-6 h-8 -ml-1 flex items-center justify-center shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      <span className="bw-label-sm text-muted-foreground w-4 shrink-0">{index + 1}</span>
+      <div className="flex-1 min-w-0">
+        <span className="bw-body-md text-foreground truncate block">{song.title || 'Untitled song'}</span>
+        {song.artist && <span className="bw-body-sm text-muted-foreground truncate block">{song.artist}</span>}
+      </div>
+      <IconButton
+        label="Remove song"
+        variant="ghost"
+        size="sm"
+        icon={<X />}
+        className="w-8 h-8 -my-1 -mr-1"
+        onClick={onRemove}
+      />
+    </Reorder.Item>
+  );
+};
+
+/* ── Forecast row (step 2) ───────────────────────────────────────────────
+ * Same Open-Meteo source and 7-day window as WeatherWidget (whose fetchers
+ * are module-private), plus sunset. Returns null outside the window or on
+ * any failure, so the row is simply omitted.
+ * ─────────────────────────────────────────────────────────────────────── */
+const FORECAST_WINDOW_DAYS = 7;
+type GigForecast = { temp: number; sky: string; sunset: string | null };
+const forecastCache = new Map<string, GigForecast | null>();
+
+const skyFromWmo = (code: number): string => {
+  if (code === 0) return 'clear';
+  if (code === 1 || code === 2) return 'partly cloudy';
+  if (code === 3) return 'overcast';
+  if (code === 45 || code === 48) return 'fog';
+  if (code >= 51 && code <= 57) return 'drizzle';
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+  if (code >= 95) return 'storms';
+  return 'cloudy';
+};
+
+function useGigForecast(date?: string, city?: string): GigForecast | null {
+  const [forecast, setForecast] = useState<GigForecast | null>(null);
+  useEffect(() => {
+    setForecast(null);
+    const place = (city || '').trim();
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !place) return;
+    const target = new Date(date + 'T00:00:00');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+    if (isNaN(diffDays) || diffDays < 0 || diffDays > FORECAST_WINDOW_DAYS) return;
+
+    const key = `${place.toLowerCase()}_${date}`;
+    if (forecastCache.has(key)) {
+      setForecast(forecastCache.get(key) ?? null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const geo = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=en&format=json`
+        ).then(r => (r.ok ? r.json() : null));
+        const hit = geo?.results?.[0];
+        if (!hit || typeof hit.latitude !== 'number' || typeof hit.longitude !== 'number') {
+          forecastCache.set(key, null);
+          return;
+        }
+        const wx = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${hit.latitude}&longitude=${hit.longitude}&daily=weather_code,temperature_2m_max,sunset&timezone=auto&start_date=${date}&end_date=${date}`
+        ).then(r => (r.ok ? r.json() : null));
+        const temp = wx?.daily?.temperature_2m_max?.[0];
+        const code = wx?.daily?.weather_code?.[0];
+        if (typeof temp !== 'number' || typeof code !== 'number') {
+          forecastCache.set(key, null);
+          return;
+        }
+        const sunsetRaw: unknown = wx?.daily?.sunset?.[0];
+        const sunset = typeof sunsetRaw === 'string' && sunsetRaw.includes('T') ? sunsetRaw.split('T')[1].slice(0, 5) : null;
+        const result = { temp: Math.round(temp), sky: skyFromWmo(code), sunset };
+        forecastCache.set(key, result);
+        if (!cancelled) setForecast(result);
+      } catch {
+        // Offline or blocked: no forecast row.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [date, city]);
+  return forecast;
+}
+
 export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onClose,
   onCreate,
@@ -277,6 +398,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   editingEvent,
   onOpenPollBuilder,
   onOpenProposeRehearsal,
+  existingEvents,
+  initialTasks,
 }) => {
   const isEditing = !!editingEvent;
   const { selectedBand, isAdmin } = useBand();
@@ -303,8 +426,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [isReviewLogisticsExpanded, setIsReviewLogisticsExpanded] = useState(false);
   const [isReviewTasksExpanded, setIsReviewTasksExpanded] = useState(false);
 
-  // Lineup bar expansion in Step 1
-  const [isRosterExpanded, setIsRosterExpanded] = useState(false);
+  // Lineup bar expansion in Step 1 (Figma: open by default)
+  const [isRosterExpanded, setIsRosterExpanded] = useState(true);
+  // Setlist accordion: show the saved-setlist chips even when sets exist
+  const [showSetlistTemplates, setShowSetlistTemplates] = useState(false);
 
   // Accordion state for Edit mode
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
@@ -330,6 +455,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const [savedSetlists, setSavedSetlists] = useState<Setlist[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedBand?.id) return;
@@ -344,6 +470,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       ]);
       if (setlistsRes.data) setSavedSetlists(setlistsRes.data);
       if (taskTplRes.data) setTaskTemplates(taskTplRes.data);
+      const err = setlistsRes.error || taskTplRes.error;
+      setLibraryError(err ? `Couldn't load saved templates: ${err.message}` : null);
     };
     fetchLibrary();
   }, [selectedBand?.id]);
@@ -372,6 +500,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       onClose();
     }
   }, [isAdmin, modalCategory, onClose]);
+
+  // Members never schedule rehearsals here: AuthenticatedApp routes them to
+  // ProposeRehearsalModal. Defensive redirect in case one gets through.
+  useEffect(() => {
+    if (!isAdmin && modalCategory === 'rehearsal') {
+      onClose();
+      onOpenProposeRehearsal?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, modalCategory]);
 
   if (!isAdmin && modalCategory === 'quote') {
     return null;
@@ -447,6 +585,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     pay: editingEvent?.price || '',
   });
   const [titleManuallyEdited, setTitleManuallyEdited] = useState(!!editingEvent);
+  const forecast = useGigForecast(details.date, details.city);
+  const pickerEvents = useMemo(
+    () => toDatePickerEvents(existingEvents, editingEvent?.eventId),
+    [existingEvents, editingEvent?.eventId]
+  );
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(() => {
     if (editingEvent?.memberUserIds?.length) {
@@ -522,7 +665,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   }, [selectedBand?.id, isEditing, currentUserMemberId, MEMBERS, selectedMembers]);
 
   const [setlist, setSetlist] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>(() =>
+    (initialTasks || []).map((t, i) => ({
+      uid: `t-init-${i}-${Math.random().toString(36).slice(2)}`,
+      title: t.title,
+      completed: false,
+      templateId: t.templateId,
+    })),
+  );
   const [newTaskText, setNewTaskText] = useState('');
   const [notes, setNotes] = useState(editingEvent?.notes || '');
   const [extraBandFee, setExtraBandFee] = useState('');
@@ -678,58 +828,41 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     onCreate(eventData);
   };
 
+  // iPhone Duo book layout (Figma "Duo · 04"): on step 1 the leading page
+  // shows the gig as it will be saved, filling in as the user types. Steps
+  // 2–3 leave the leading page alone (the calendar shows underneath).
+  // Called before the rehearsal passthrough so the hook order never changes.
+  useLeadingCompanion(
+    <LiveGigPreview
+      kindLabel={modalCategory === 'quote' ? 'Quote' : 'Gig'}
+      typeLabel={eventType ? EVENT_TYPE_OPTIONS.find(o => o.value === eventType)?.label ?? eventType : null}
+      settingLabel={setting}
+      title={getEffectiveTitle()}
+      dateLabel={details.date ? formattedDateStr : null}
+      timeLabel={details.startTime ? `${details.startTime}${details.endTime ? ` – ${details.endTime}` : ''}` : null}
+      venue={details.venue}
+      city={details.city}
+      lineupCount={selectedMembers.length}
+      lineupNames={selectedMembers
+        .map(id => MEMBERS.find(m => m.id === id || m.user_id === id)?.name)
+        .filter((n): n is string => !!n)}
+      fee={isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString('en-US')}` : null}
+      accent={activeAccentColor}
+      accentFg={activeAccentFg}
+    />,
+    !isEditing && step === 0 && eventType !== 'rehearsal'
+  );
+
   // --- Rehearsal passthrough ---
   if (eventType === 'rehearsal') {
-    if (!isAdmin) {
-      return (
-        <div
-          className="bw-pane-detail fixed inset-0 z-[100]"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="member-restriction-title"
-        >
-          {/* iPhone Duo: trailing pane when open, scrim stops at the rail
-              (Figma "Modal / Member restriction"). */}
-          <RailCover pane />
-          <div className="relative h-full flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/65" aria-hidden />
-          <div className="relative w-full max-w-[342px] rounded-[24px] bg-background text-foreground p-6 flex flex-col gap-4">
-            <span className="w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center">
-              <Lock className="w-6 h-6" />
-            </span>
-            <p className="bw-label-sm text-muted-foreground">Admins only</p>
-            <h2 id="member-restriction-title" className="bw-h1">
-              Ask your admin
-            </h2>
-            <p className="bw-body-md text-muted-foreground">
-              Only band admins can schedule rehearsals on the band calendar. You can propose one instead: the
-              admin gets your topic and preferred days and can turn it into a poll.
-            </p>
-            <PillButton
-              variant="primary"
-              size="lg"
-              icon={<Send className="w-5 h-5" />}
-              onClick={() => {
-                onClose();
-                onOpenProposeRehearsal?.();
-              }}
-            >
-              Propose rehearsal instead
-            </PillButton>
-            <PillButton variant="outline" size="lg" onClick={onClose}>
-              Cancel
-            </PillButton>
-          </div>
-          </div>
-        </div>
-      );
-    }
+    if (!isAdmin) return null; // redirected to ProposeRehearsalModal (effect above)
     return (
       <RehearsalCreationWizard
         onClose={onClose}
         onCreate={onCreate}
         editingEvent={editingEvent}
         onOpenPollBuilder={onOpenPollBuilder}
+        existingEvents={existingEvents}
       />
     );
   }
@@ -822,7 +955,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const loadSavedSetlist = async (sl: Setlist) => {
-    const { data } = await getSetlist(sl.id);
+    const { data, error } = await getSetlist(sl.id);
+    if (error) {
+      setLibraryError(`Couldn't load "${sl.name}": ${error.message}`);
+      return;
+    }
+    setLibraryError(null);
     if (!data?.songs?.length) return;
 
     const groupedBySet = new Map<number, { title: string; artist: string; songId: string; uid: string }[]>();
@@ -1142,9 +1280,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         accentColor={activeAccentColor}
         placeholder="Select event date"
         className={PICKER_FIELD}
+        events={pickerEvents}
       />
     </div>
   );
+
+  // Figma "Picker / Time" overline: "Gig · Sat 12 Dec".
+  const timeOverline = (() => {
+    const kindLabel = modalCategory === 'quote' ? 'Quote' : 'Gig';
+    const d = details.date ? new Date(details.date + 'T00:00:00') : null;
+    if (!d || isNaN(d.getTime())) return kindLabel;
+    return `${kindLabel} · ${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+  })();
 
   const renderTimeFields = () => (
     <div className="grid grid-cols-2 gap-3">
@@ -1158,6 +1305,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           textSize="text-lg"
           showIcon
           className={PICKER_FIELD}
+          overline={timeOverline}
         />
       </div>
       <div className="flex flex-col gap-2 min-w-0">
@@ -1173,6 +1321,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           textSize="text-lg"
           showIcon
           className={PICKER_FIELD}
+          overline={timeOverline}
         />
       </div>
     </div>
@@ -1372,6 +1521,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       {renderDateField()}
       {renderTimeFields()}
+      {forecast && (
+        <p className="bw-body-sm text-muted-foreground -mt-1" aria-live="polite">
+          Forecast: {forecast.temp}° {forecast.sky}
+          {forecast.sunset ? ` · sunset ${forecast.sunset}` : ''}
+        </p>
+      )}
     </div>
   );
 
@@ -1380,8 +1535,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     totalSongCount === 0 && setlist.length === 0
       ? 'Optional · No setlist'
       : `Optional · ${plural(setlist.length, 'set')}, ${plural(totalSongCount, 'song')}`;
-  const logisticsSummary = `Optional · ${capitalize(setting)} · ${plural(details.guests || 0, 'guest')} · ${formatDurationOption(details.duration)}`;
-  const tasksSummary = `Optional · ${plural(tasks.length, 'task')} · ${notes ? 'Notes added' : 'No notes'}`;
+  const logisticsSummary = ['Optional', capitalize(setting), details.guests > 0 ? `~${details.guests} guests` : null]
+    .filter(Boolean)
+    .join(' · ');
+  const tasksSummary = `Optional · ${plural(tasks.length, 'task')}`;
+  const lineupLabel = (() => {
+    const n = selectedMembers.length;
+    if (n > 1 && n === MEMBERS.length) return 'Full band';
+    if (n === 1) return 'Solo';
+    if (n === 2) return 'Duo';
+    if (n === 3) return 'Trio';
+    return 'Custom lineup';
+  })();
+  const lineupSummary = [
+    lineupLabel,
+    plural(selectedMembers.length, 'musician'),
+    isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString('en-US')}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const renderStep3 = () => (
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1396,13 +1568,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <span className="bw-label-xs opacity-70">{setting}</span>
         </div>
         <h3 className="bw-display-lg [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
-        {details.clientName && <p className="bw-body-md opacity-70 -mt-1">Client: {details.clientName}</p>}
 
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 shrink-0 mt-[3px]" />
           <span className="bw-body-md">
-            {details.date ? formattedDateStr : 'Date TBD'} · {details.startTime || '20:00'} – {details.endTime || '23:30'} (
-            {calculatedDurationBadge})
+            {details.date ? formattedDateStr : 'Date TBD'} · {details.startTime || '20:00'} – {details.endTime || '23:30'}
           </span>
         </div>
         <div className="flex items-start gap-2 min-w-0">
@@ -1414,10 +1584,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         </div>
         <div className="flex items-start gap-2">
           <Users className="w-4 h-4 shrink-0 mt-[3px]" />
-          <span className="bw-body-md">
-            {selectedMembers.length} of {plural(MEMBERS.length, 'musician')}
-            {isAdmin && grandTotalFee > 0 ? ` · ${currencySymbol}${grandTotalFee}` : ''}
-          </span>
+          <span className="bw-body-md">{lineupSummary}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2 pt-1">
@@ -1437,12 +1604,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         title="Setlist & songs"
         summary={setlistSummary}
       >
-        {savedSetlists.length > 0 && setlist.length === 0 && (
+        {libraryError && (
+          <p role="alert" className="bw-body-sm text-destructive [overflow-wrap:anywhere]">
+            {libraryError}
+          </p>
+        )}
+        {savedSetlists.length > 0 && (setlist.length === 0 || showSetlistTemplates) && (
           <div className="flex flex-col gap-2">
-            <FieldLabel>Load from templates</FieldLabel>
+            <FieldLabel>{setlist.length > 0 ? 'Replace with a template' : 'Load from templates'}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {savedSetlists.map(sl => (
-                <Selector key={sl.id} size="sm" selected={false} onClick={() => loadSavedSetlist(sl)}>
+                <Selector
+                  key={sl.id}
+                  size="sm"
+                  selected={false}
+                  onClick={() => {
+                    loadSavedSetlist(sl);
+                    setShowSetlistTemplates(false);
+                  }}
+                >
                   <Folder className="w-3.5 h-3.5" />
                   {sl.name}
                   {sl.song_count != null && <span className="opacity-60">({sl.song_count})</span>}
@@ -1471,23 +1651,25 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </PillButton>
               </div>
 
-              {(item.songs || []).map((song: any, si: number) => (
-                <div key={song.uid || si} className="flex items-center gap-3 min-w-0">
-                  <span className="bw-label-sm text-muted-foreground w-4 shrink-0">{si + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="bw-body-md text-foreground truncate block">{song.title || 'Untitled song'}</span>
-                    {song.artist && <span className="bw-body-sm text-muted-foreground truncate block">{song.artist}</span>}
-                  </div>
-                  <IconButton
-                    label="Remove song"
-                    variant="ghost"
-                    size="sm"
-                    icon={<X />}
-                    className="w-8 h-8 -my-1 -mr-1"
-                    onClick={() => removeSongFromSet(item.uid, song.uid)}
-                  />
-                </div>
-              ))}
+              {(item.songs || []).length > 0 && (
+                <Reorder.Group
+                  axis="y"
+                  values={item.songs}
+                  onReorder={(songs: any[]) =>
+                    setSetlist(prev => prev.map(s => (s.uid === item.uid ? { ...s, songs } : s)))
+                  }
+                  className="flex flex-col gap-1"
+                >
+                  {(item.songs || []).map((song: any, si: number) => (
+                    <SortableSongRow
+                      key={song.uid || si}
+                      song={song}
+                      index={si}
+                      onRemove={() => removeSongFromSet(item.uid, song.uid)}
+                    />
+                  ))}
+                </Reorder.Group>
+              )}
               {(item.songs || []).length === 0 && (
                 <p className="bw-body-sm text-muted-foreground">No songs in this set.</p>
               )}
@@ -1535,6 +1717,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <PillButton variant="outline" size="sm" fullWidth={false} icon={<Layers className="w-4 h-4" />} onClick={addSet}>
             Add set
           </PillButton>
+          {savedSetlists.length > 0 && setlist.length > 0 && (
+            <PillButton
+              variant={showSetlistTemplates ? 'dark' : 'outline'}
+              size="sm"
+              fullWidth={false}
+              icon={<LayoutTemplate className="w-4 h-4" />}
+              aria-expanded={showSetlistTemplates}
+              onClick={() => setShowSetlistTemplates(v => !v)}
+            >
+              Templates
+            </PillButton>
+          )}
         </div>
       </EditAccordionCard>
 
@@ -1727,6 +1921,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     </div>
   );
 
+  // SongPicker overline: the set the songs land in (e.g. "Set 1 · Dinner").
+  const songPickerOverline = (() => {
+    const target = setlist.find((s: any) => s.uid === songPickerTargetSet) || setlist[0];
+    return (target?.title || '').trim() || 'Set 1';
+  })();
+
   const isLastStep = step === STEPS.length - 1;
   const isFirstStep = step === 0;
 
@@ -1831,6 +2031,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId)
               )}
               theme="lime"
+              overline={songPickerOverline}
             />
           )}
         </AnimatePresence>
@@ -1927,6 +2128,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               (s.songs || []).filter((sg: any) => sg.songId).map((sg: any) => sg.songId)
             )}
             theme="lime"
+            overline={songPickerOverline}
           />
         )}
       </AnimatePresence>

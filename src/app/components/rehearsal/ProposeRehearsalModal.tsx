@@ -248,7 +248,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
               <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
                 <Mail className="w-5 h-5 shrink-0" />
                 <p className="bw-body-sm">
-                  Your proposal goes straight to the band admin, who can turn it into an availability poll. 1 proposal per week.
+                  Your proposal goes straight to the band admin. 1 proposal per week.
                 </p>
               </div>
 

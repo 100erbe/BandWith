@@ -23,7 +23,7 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
   return (
     <AuthScreen
       bodyClassName="pt-3 gap-5"
-      top={<BackButton onClick={onBack} />}
+      top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}
       footer={
         <>
           <PillButton variant="ghost" size="sm" onClick={onCreateBand}>

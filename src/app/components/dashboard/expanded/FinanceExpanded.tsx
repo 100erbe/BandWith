@@ -184,6 +184,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
       {/* Add transaction (Figma Sheet, Style=Dark) */}
       <BwSheet
+        portal
         open={showAddTransaction}
         onClose={() => setShowAddTransaction(false)}
         overline="Money flow"

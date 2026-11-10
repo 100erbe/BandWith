@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X } from '@/app/components/icons';
+import { ArrowUpRight, X } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw/Form';
 import type { Notification } from '@/lib/services/notifications';
 import { springs } from '@/styles/motion';
@@ -59,7 +59,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       onClick={onDismiss}
-      className="fixed inset-0 z-[182] bg-black/80"
+      className="bw-pane-dialog fixed inset-0 z-[182] bg-black/80"
     />
     <motion.div
       role="alert"
@@ -68,7 +68,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       exit={{ opacity: 0, y: -24, scale: 0.97 }}
       transition={springs.snappy}
       // Figma: Notifications / Urgent popup — lime card docked under the status bar.
-      className="bg-accent text-accent-foreground fixed left-4 right-4 bw-status-clear-inset mx-auto max-w-[420px] z-[183] rounded-[24px] p-5 flex flex-col gap-3 select-none"
+      className="bw-pane-float bg-accent text-accent-foreground fixed left-4 right-4 bw-status-clear-inset mx-auto max-w-[420px] z-[183] rounded-[24px] p-5 flex flex-col gap-3 select-none"
       style={{ top: 'calc(var(--safe-top) + 4px)' }}
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -103,7 +103,13 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
         <span className="bw-body-md truncate">{subtitle}</span>
       </div>
 
-      <PillButton variant="white" size="md" onClick={onOpen} className="mt-1">
+      <PillButton
+        variant="white"
+        size="md"
+        onClick={onOpen}
+        className="mt-1"
+        trailingIcon={<ArrowUpRight className="w-[18px] h-[18px]" />}
+      >
         {actionLabel}
       </PillButton>
     </motion.div>

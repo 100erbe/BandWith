@@ -13,7 +13,7 @@ import { useRailAction } from '@/lib/railActions';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
-import { DatePicker } from '@/app/components/ui/DatePicker';
+import { DatePicker, toDatePickerEvents } from '@/app/components/ui/DatePicker';
 import {
   RehearsalState,
   RehearsalType,
@@ -88,7 +88,7 @@ const TYPE_OPTIONS: {
 }[] = [
   { value: 'full_band', label: 'Full Band', subtitle: 'Everyone, full set', icon: Users },
   { value: 'vocals', label: 'Vocals', subtitle: 'Harmonies & leads', icon: Mic },
-  { value: 'rhythm', label: 'Rhythm', subtitle: 'Drums & bass', icon: Drum },
+  { value: 'rhythm', label: 'Rhythm', subtitle: 'Drums, bass, keys', icon: Drum },
   { value: 'acoustic', label: 'Acoustic', subtitle: 'Unplugged set', icon: Guitar },
   { value: 'custom', label: 'Other', subtitle: 'Custom lineup', icon: Sliders },
 ];
@@ -116,7 +116,11 @@ interface Props {
   onCreate: (data: any) => void;
   editingEvent?: EditingEvent | null;
   onOpenPollBuilder?: () => void;
+  /** Band calendar, so the date picker can mark busy days and suggest a free one. */
+  existingEvents?: PickerSourceEvents;
 }
+
+type PickerSourceEvents = Parameters<typeof toDatePickerEvents>[0];
 
 // ── Local building blocks (Figma "Rehearsal / New" frames) ──────────────
 
@@ -315,7 +319,11 @@ const RehearsalAccordionCard: React.FC<{
   </div>
 );
 
-export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder }) => {
+export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder, existingEvents }) => {
+  const pickerEvents = useMemo(
+    () => toDatePickerEvents(existingEvents, editingEvent?.eventId),
+    [existingEvents, editingEvent?.eventId]
+  );
   useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand, isAdmin } = useBand();
   const isEditing = !!editingEvent;
@@ -895,6 +903,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           accentColor={activeAccentColor}
           placeholder="Select rehearsal date…"
           showIcon={false}
+          events={pickerEvents}
           className="h-full border-0 pb-0 text-lg font-medium hover:border-0"
         />
       </PillShell>
@@ -1002,7 +1011,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           label="Rehearsal title (optional)"
           value={data.title}
           onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-          placeholder={getEffectiveTitle()}
+          placeholder="e.g. New setlist run-through"
         />
 
         {renderTypeTiles()}

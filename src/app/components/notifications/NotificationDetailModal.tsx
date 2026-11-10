@@ -16,6 +16,7 @@ import {
   UserPlus,
   Trash2,
   AlertTriangle,
+  CheckCircle2,
   Poll,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -25,8 +26,20 @@ import { durations, easings } from '@/styles/motion';
 import { parseLocalDate } from '@/lib/dates';
 import { HeaderAction, IconButton, NavBackButton, Card, Tag } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
+import { useRailLayout } from '@/lib/deviceRegions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { findCalendarEvent, findEventConflicts, type CalendarEventLike } from '@/lib/eventConflicts';
+
+/** Calendar item fields the gig-invitation page reads (subset of EventItem). */
+export interface NotificationCalendarEvent extends CalendarEventLike {
+  loadInTime?: string;
+  soundcheckTime?: string;
+  venueName?: string;
+  venueAddress?: string;
+  distance?: string;
+  venueCoordinates?: { lat: number; lng: number };
+}
 
 export interface NotificationData {
   id: string;
@@ -50,6 +63,11 @@ interface NotificationDetailModalProps {
   onAction?: (action: string, notificationId?: string) => void;
   onOpenRSVP?: (notification: NotificationData) => void;
   onOpenPoll?: (notification: NotificationData) => void;
+  /**
+   * The user's calendar (same list EventRSVPSheet gets). Enables timings and the
+   * schedule-conflict card on gig invitations; when absent the card is hidden.
+   */
+  calendarEvents?: NotificationCalendarEvent[];
 }
 
 const formatTime = (dateStr: string): string => {
@@ -184,6 +202,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onAction,
   onOpenRSVP,
   onOpenPoll,
+  calendarEvents,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
@@ -204,6 +223,13 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     notifications.length > 0 ? notifications : notification ? [notification] : [];
   const isListView = viewingIndex === null && !notification;
 
+  // iPhone Duo open (Figma "Open · Notifications / Activity | Notifications /
+  // Gig invitation"): the activity list on the leading page and the selected
+  // item, answered, on the trailing page. The first item that has a detail
+  // page is shown until you pick another.
+  const { twoPane } = useRailLayout();
+  const split = twoPane && !notification;
+
   // Filtered notifications
   const displayedNotifications = filter === 'unread'
     ? allNotifications.filter(n => !n.read)
@@ -211,17 +237,24 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
   const unreadCount = allNotifications.filter(n => !n.read).length;
 
+  const isPollNotif = (n: NotificationData) => n.type === 'rehearsal_poll' || n.type === 'rehearsal_proposal';
+  const firstDetail = displayedNotifications.find((n) => !(isPollNotif(n) && onOpenPoll));
+  const autoIndex = split && viewingIndex === null && firstDetail ? allNotifications.indexOf(firstDetail) : null;
+
   // Determine which notification to show in detail view
   const detailNotif = viewingIndex !== null
     ? allNotifications[viewingIndex]
-    : notification;
+    : autoIndex !== null
+      ? allNotifications[autoIndex]
+      : notification;
 
-  // Auto-mark notification as read when viewed in detail
+  // Auto-mark notification as read when viewed in detail (not the one the
+  // open display shows by itself next to the list).
   useEffect(() => {
-    if (isOpen && detailNotif && !detailNotif.read && onMarkAsRead) {
+    if (isOpen && autoIndex === null && detailNotif && !detailNotif.read && onMarkAsRead) {
       onMarkAsRead(detailNotif.id);
     }
-  }, [isOpen, detailNotif?.id, detailNotif?.read, onMarkAsRead]);
+  }, [isOpen, autoIndex, detailNotif?.id, detailNotif?.read, onMarkAsRead]);
 
   const handleClose = () => {
     setViewingIndex(null);
@@ -252,35 +285,31 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
   const isPollType = detailNotif?.type === 'rehearsal_poll' || detailNotif?.type === 'rehearsal_proposal';
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 12 }}
-          transition={{ duration: durations.normal, ease: easings.smooth }}
-          className="bw-pane-detail fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
-          style={{ overscrollBehaviorX: 'none' }}
-        >
-          {/* ═══ HEADER ═══ */}
-          {isListView ? (
-            /* Figma: Kicker (Activity & updates / Inbox) + Outline close */
+  const renderListHeader = () => (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
               <div className="max-w-xl mx-auto w-full flex items-end gap-3">
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <p className="bw-label-sm text-muted-foreground">Activity &amp; updates</p>
                   <h1 className="bw-display-lg text-foreground truncate">Inbox</h1>
                 </div>
-                <RailCover pane />
-                <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
+                {split ? (
+                  <>
+                    <NavBackButton label="Close notifications" onClick={handleClose} />
+                    <HeaderAction label="Close notifications" icon={<X />} onClick={handleClose} />
+                  </>
+                ) : (
+                  <>
+                    <RailCover pane />
+                    <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
+                  </>
+                )}
               </div>
             </header>
-          ) : (
-            /* Figma: back · NOTIFICATION DETAIL · delete */
+  );
+  const renderDetailHeader = () => (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
               <div className="max-w-xl mx-auto w-full h-11 flex items-center gap-3">
-                {viewingIndex !== null ? (
+                {split ? null : viewingIndex !== null ? (
                   <NavBackButton pane label="Back to notification list" onClick={backToList} />
                 ) : (
                   <>
@@ -288,17 +317,13 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
                   </>
                 )}
-                <p className="flex-1 min-w-0 text-center bw-label-sm text-muted-foreground truncate">Notification detail</p>
+                <p className={cn('flex-1 min-w-0 bw-label-sm text-muted-foreground truncate', split ? 'text-left' : 'text-center')}>Notification detail</p>
                 <HeaderAction pane label="Delete notification" variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
               </div>
             </header>
-          )}
-
-          {/* ═══ SCROLLABLE BODY ═══ */}
-          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
-            <div className="max-w-xl mx-auto w-full flex flex-col gap-4">
-              {isListView ? (
-                /* ═══ LIST VIEW ═══ */
+  );
+  const renderList = () => (
+    <>
                 <>
                   {allNotifications.length > 0 && (
                     <div className="flex items-center gap-2">
@@ -327,17 +352,26 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   )}
 
                   {displayedNotifications.length === 0 ? (
-                    <Card className="items-center text-center py-10 gap-4">
-                      <BellOff className="w-10 h-10 text-muted-foreground" />
-                      <div className="flex flex-col gap-1">
-                        <h3 className="bw-h3">{filter === 'unread' ? 'No unread notifications' : 'All caught up'}</h3>
+                    /* Figma: Inbox empty — centred icon tile, no card */
+                    <div className="flex flex-col items-center text-center gap-4 py-16">
+                      <span className="w-14 h-14 rounded-[16px] bg-card text-foreground flex items-center justify-center">
+                        {filter === 'unread' || allNotifications.length > 0 ? (
+                          <Check className="w-6 h-6" />
+                        ) : (
+                          <BellOff className="w-6 h-6" />
+                        )}
+                      </span>
+                      <div className="flex flex-col gap-1 items-center">
+                        <h3 className="bw-h3">
+                          {filter === 'unread' || allNotifications.length > 0 ? 'All caught up' : 'No notifications yet'}
+                        </h3>
                         <p className="bw-body-sm text-muted-foreground max-w-xs">
                           {filter === 'unread'
-                            ? 'All notifications have been reviewed.'
-                            : 'There are no active alerts or gig updates at the moment.'}
+                            ? "No unread notifications. We'll ping you for invites, polls and payments."
+                            : "We'll ping you for invites, polls and payments."}
                         </p>
                       </div>
-                    </Card>
+                    </div>
                   ) : (
                     <ul className="flex flex-col gap-3">
                       {displayedNotifications.map((notif, i) => {
@@ -354,10 +388,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             <button
                               type="button"
                               onClick={() => {
-                                if (notif.type === 'event_invite' && onOpenRSVP) {
-                                  onOpenRSVP(notif);
-                                  return;
-                                }
+                                // Gig invitations open their detail page first; its
+                                // primary CTA hands off to the RSVP sheet.
                                 if ((notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') && onOpenPoll) {
                                   onOpenPoll(notif);
                                   return;
@@ -390,8 +422,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     </ul>
                   )}
                 </>
-              ) : detailNotif ? (
-                /* ═══ DETAIL VIEW (Figma: Notifications / Gig invitation) ═══ */
+    </>
+  );
+  const renderDetail = () =>
+    detailNotif ? (
                 <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-200">
                   {(() => {
                     const meta = getNotificationMeta(detailNotif.type, detailNotif.data);
@@ -422,6 +456,39 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
                     if (!hasEventData && !hasGenericFields) return null;
 
+                    const isInvite = detailNotif.type === 'event_invite';
+                    const eventId = d.event_id ? String(d.event_id) : null;
+                    const calEvent = hasEventData ? findCalendarEvent(calendarEvents, eventId) : null;
+
+                    // Figma "Timings": load-in · soundcheck · start, only the ones we have.
+                    const loadIn = (d.load_in_time as string | undefined) || calEvent?.loadInTime;
+                    const soundcheck = (d.soundcheck_time as string | undefined) || calEvent?.soundcheckTime;
+                    const start = d.event_time ? String(d.event_time) : undefined;
+                    const timings = [
+                      loadIn && `Load-in ${loadIn}`,
+                      soundcheck && `Soundcheck ${soundcheck}`,
+                      start && `Start ${start}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+
+                    const venue = (d.venue as string | undefined) || calEvent?.venueName;
+                    const venueAddress = (d.venue_address as string | undefined) || calEvent?.venueAddress;
+                    // Distance only when the event has real coordinates and a computed distance.
+                    const distance = calEvent?.venueCoordinates && calEvent?.distance ? String(calEvent.distance) : null;
+
+                    // "Event" KV only when it adds something beyond the hero title.
+                    const eventTitle = d.event_title ? String(d.event_title) : '';
+                    const showEventKV =
+                      !!eventTitle &&
+                      eventTitle.trim().toLowerCase() !== cleanNotificationTitle(detailNotif.title).trim().toLowerCase();
+
+                    // Conflicts: only when we actually have the user's calendar.
+                    const canCheckConflicts = isInvite && hasEventData && Array.isArray(calendarEvents);
+                    const conflicts = canCheckConflicts
+                      ? findEventConflicts(calendarEvents, { eventId, date: String(d.event_date) })
+                      : [];
+
                     return (
                       <>
                         <h3 className="bw-label-sm text-muted-foreground">
@@ -430,15 +497,23 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         <Card className="gap-4">
                           {hasEventData && (
                             <>
-                              {d.event_title && <KV k="Event" v={String(d.event_title)} />}
-                              <KV
-                                k="Date & time"
-                                v={[formatEventDate(String(d.event_date)), d.event_time ? String(d.event_time) : null]
-                                  .filter(Boolean)
-                                  .join(' · ')}
-                              />
-                              {d.venue && <KV k="Venue" v={String(d.venue)} />}
-                              {(d.member_fee || d.fee) && (
+                              {showEventKV && <KV k="Event" v={eventTitle} />}
+                              <KV k="Date" v={formatEventDate(String(d.event_date))} />
+                              {timings && <KV k="Timings" v={timings} />}
+                              {venue && (
+                                <KV
+                                  k="Venue"
+                                  v={
+                                    <span className="flex flex-col items-end gap-0.5">
+                                      <span>{[venue, distance ? (distance.startsWith('~') ? distance : `~${distance}`) : null].filter(Boolean).join(' · ')}</span>
+                                      {venueAddress && venueAddress !== venue && (
+                                        <span className="bw-body-sm text-muted-foreground">{venueAddress}</span>
+                                      )}
+                                    </span>
+                                  }
+                                />
+                              )}
+                              {Boolean(d.member_fee || d.fee) && (
                                 <KV
                                   k={d.member_fee ? 'Allocated fee' : 'Total fee'}
                                   v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString()}`}
@@ -450,6 +525,29 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           {d.inviter_name && <KV k="Invited by" v={String(d.inviter_name)} />}
                           {d.member_name && <KV k="Member" v={String(d.member_name)} />}
                         </Card>
+
+                        {canCheckConflicts &&
+                          (conflicts.length > 0 ? (
+                            <div role="status" className="flex items-start gap-3 p-4 rounded-[24px] border border-warning">
+                              <AlertTriangle className="w-5 h-5 shrink-0 text-warning" />
+                              <div className="flex flex-col gap-1 min-w-0">
+                                <span className="bw-label-md text-foreground">
+                                  {conflicts.length === 1 ? 'Schedule conflict' : `${conflicts.length} schedule conflicts`}
+                                </span>
+                                {conflicts.map((c, idx) => (
+                                  <span key={String(c.eventId ?? c.id ?? idx)} className="bw-body-sm text-muted-foreground [overflow-wrap:anywhere]">
+                                    {c.title || 'Event'}
+                                    {c.time ? ` · ${c.time}` : ' · same day'}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <Card className="flex-row items-center gap-3">
+                              <CheckCircle2 className="w-5 h-5 shrink-0 text-success" />
+                              <span className="bw-body-sm text-foreground">No schedule conflicts in your calendar</span>
+                            </Card>
+                          ))}
 
                         {hasEventData && (
                           <PillButton
@@ -466,7 +564,63 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     );
                   })()}
                 </div>
-              ) : null}
+    ) : null;
+  const renderDetailCta = () =>
+    detailNotif?.type === 'event_invite' ? (
+                <div className="flex items-center gap-3">
+                  <PillButton variant="outline" className="flex-[0_0_36%]" onClick={() => handleAction('decline_event')}>
+                    Decline
+                  </PillButton>
+                  <PillButton
+                    className="flex-1"
+                    icon={<Check className="w-[18px] h-[18px]" />}
+                    onClick={() => {
+                      // Primary CTA hands off to the RSVP sheet (accept/decline + conflicts);
+                      // falls back to the direct action when no sheet is wired.
+                      if (onOpenRSVP && detailNotif) onOpenRSVP(detailNotif);
+                      else handleAction('accept_event');
+                    }}
+                  >
+                    Accept event
+                  </PillButton>
+                </div>
+              ) : isPollType ? (
+                <div className="flex items-center gap-3">
+                  <PillButton
+                    variant="outline"
+                    className="flex-[0_0_36%]"
+                    onClick={viewingIndex !== null && !split ? backToList : handleClose}
+                  >
+                    {viewingIndex !== null && !split ? 'Back' : 'Close'}
+                  </PillButton>
+                  <PillButton className="flex-1" icon={<Calendar className="w-[18px] h-[18px]" />} onClick={() => detailNotif && onOpenPoll?.(detailNotif)}>
+                    {detailNotif?.type === 'rehearsal_poll' ? 'Vote on dates' : 'View proposal'}
+                  </PillButton>
+                </div>
+              ) : (
+                <PillButton variant="dark" onClick={viewingIndex !== null && !split ? backToList : handleClose}>
+                  {viewingIndex !== null && !split ? 'Back to list' : 'Close'}
+                </PillButton>
+              );
+
+  return (
+    <AnimatePresence>
+      {isOpen && !split && (
+        <motion.div
+          key={"notifications"}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 12 }}
+          transition={{ duration: durations.normal, ease: easings.smooth }}
+          className="bw-pane-detail fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
+          style={{ overscrollBehaviorX: 'none' }}
+        >
+          {/* ═══ HEADER ═══ */}
+          {isListView ? renderListHeader() : renderDetailHeader()}
+          {/* ═══ SCROLLABLE BODY ═══ */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+            <div className="max-w-xl mx-auto w-full flex flex-col gap-4">
+              {isListView ? renderList() : renderDetail()}
             </div>
           </div>
 
@@ -477,33 +631,56 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 <PillButton variant="dark" onClick={handleClose}>
                   Close notifications
                 </PillButton>
-              ) : detailNotif?.type === 'event_invite' ? (
-                <div className="flex items-center gap-3">
-                  <PillButton variant="outline" className="flex-[0_0_36%]" onClick={() => handleAction('decline_event')}>
-                    Decline
-                  </PillButton>
-                  <PillButton className="flex-1" icon={<Check className="w-[18px] h-[18px]" />} onClick={() => handleAction('accept_event')}>
-                    Accept event
-                  </PillButton>
-                </div>
-              ) : isPollType ? (
-                <div className="flex items-center gap-3">
-                  <PillButton
-                    variant="outline"
-                    className="flex-[0_0_36%]"
-                    onClick={viewingIndex !== null ? backToList : handleClose}
-                  >
-                    {viewingIndex !== null ? 'Back' : 'Close'}
-                  </PillButton>
-                  <PillButton className="flex-1" icon={<Calendar className="w-[18px] h-[18px]" />} onClick={() => detailNotif && onOpenPoll?.(detailNotif)}>
-                    {detailNotif?.type === 'rehearsal_poll' ? 'Vote on dates' : 'View proposal'}
-                  </PillButton>
-                </div>
               ) : (
-                <PillButton variant="dark" onClick={viewingIndex !== null ? backToList : handleClose}>
-                  {viewingIndex !== null ? 'Back to list' : 'Close'}
-                </PillButton>
+                renderDetailCta()
               )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+      {isOpen && split && (
+        <motion.div
+          key={"notifications-list"}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 12 }}
+          transition={{ duration: durations.normal, ease: easings.smooth }}
+          className="bw-pane-hub fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
+          style={{ overscrollBehaviorX: 'none' }}
+        >
+          {/* ═══ HEADER ═══ */}
+          {renderListHeader()}
+          {/* ═══ SCROLLABLE BODY ═══ */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+            <div className="max-w-xl mx-auto w-full flex flex-col gap-4">
+              {renderList()}
+            </div>
+          </div>
+        </motion.div>
+      )}
+      {isOpen && split && detailNotif && (
+        <motion.div
+          key={"notifications-detail"}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 12 }}
+          transition={{ duration: durations.normal, ease: easings.smooth }}
+          className="bw-pane-detail fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
+          style={{ overscrollBehaviorX: 'none' }}
+        >
+          {/* ═══ HEADER ═══ */}
+          {renderDetailHeader()}
+          {/* ═══ SCROLLABLE BODY ═══ */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
+            <div className="max-w-xl mx-auto w-full flex flex-col gap-4">
+              {renderDetail()}
+            </div>
+          </div>
+
+          {/* ═══ CTA BAR ═══ */}
+          <div className="shrink-0 bg-background px-4 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+            <div className="max-w-xl mx-auto w-full">
+              {renderDetailCta()}
             </div>
           </div>
         </motion.div>

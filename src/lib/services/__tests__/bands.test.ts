@@ -91,6 +91,37 @@ describe('Band Service', () => {
       expect(result.data?.name).toBe('Test Band');
     });
 
+    it('inserts genre and website when given', async () => {
+      mockFrom.mockReset();
+      const insert = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { id: 'b1', name: 'Wed Band' }, error: null }),
+        }),
+      });
+      mockFrom.mockReturnValueOnce({ insert });
+
+      const result = await createBand({ name: 'Wed Band', genre: 'Wedding band', website: ' https://wed.band ' });
+
+      expect(result.error).toBeNull();
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Wed Band', genre: 'Wedding band', website: 'https://wed.band', created_by: 'test-user-id' })
+      );
+    });
+
+    it('stores null genre/website when omitted', async () => {
+      mockFrom.mockReset();
+      const insert = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { id: 'b2', name: 'Plain' }, error: null }),
+        }),
+      });
+      mockFrom.mockReturnValueOnce({ insert });
+
+      await createBand({ name: 'Plain' });
+
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ genre: null, website: null }));
+    });
+
     it('should fail without a name', async () => {
       const result = await createBand({
         name: '',

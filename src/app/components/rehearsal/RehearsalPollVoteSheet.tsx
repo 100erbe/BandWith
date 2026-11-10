@@ -22,6 +22,8 @@ import {
 } from '@/lib/services/rehearsalPolls';
 import { markAsRead, type Notification } from '@/lib/services/notifications';
 import { haptic } from '@/lib/haptics';
+import { ErrorState } from '@/app/components/ui/ErrorState';
+import { FindADateMode } from '@/app/components/duo';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -53,6 +55,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   const [isClearing, setIsClearing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // "None work" for this session. There is no per-user response row in the
+  // schema (votes are per option), so this is not persisted: it clears the
+  // user's votes and shows their answer until the sheet closes.
+  const [declinedAll, setDeclinedAll] = useState(false);
 
   const effectivePollId = useMemo(() => {
     return pollId || (notification?.data as any)?.poll_id || '';
@@ -65,9 +72,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
       return;
     }
     setLoading(true);
-    const { data } = await getRehearsalPoll(effectivePollId, currentUserId);
+    setLoadError(null);
+    const { data, error } = await getRehearsalPoll(effectivePollId, currentUserId);
     if (data) {
       setPoll(data);
+    } else if (error && !/not found|PGRST116/i.test(`${error.message} ${(error as any).code || ''}`)) {
+      setLoadError(error.message || 'Check your connection and try again.');
     }
     setLoading(false);
   }, [effectivePollId, currentUserId]);
@@ -81,6 +91,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     if (!poll || votingOptionId) return;
     haptic.selection();
     setVotingOptionId(optionId);
+    setDeclinedAll(false);
 
     // Optimistic local state update
     setPoll((prev) => {
@@ -117,6 +128,13 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   // Handle "None of these work for me"
   const handleNoneWork = async () => {
     if (!poll || isClearing) return;
+    haptic.selection();
+    if (!hasUserVotedAny) {
+      // Nothing to clear: record the answer for this session only.
+      setDeclinedAll(true);
+      onShowToast?.('Marked unavailable for all dates.', 'info');
+      return;
+    }
     setIsClearing(true);
 
     setPoll((prev) => {
@@ -133,10 +151,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setIsClearing(false);
 
     if (error) {
-      onShowToast?.('Failed to clear votes.', 'error');
+      onShowToast?.(`Couldn't clear your votes: ${error.message || 'please try again.'}`, 'error');
       loadPoll();
     } else {
-      onShowToast?.('Marked unavailable for candidate dates.', 'info');
+      setDeclinedAll(true);
+      onShowToast?.('Marked unavailable for all dates.', 'info');
       if (notification?.id) {
         markAsRead(notification.id).catch(() => {});
       }
@@ -217,6 +236,15 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
 
   const totalMembers = poll?.total_members_count || 1;
 
+  // rehearsal_polls.vote_by (migration 058); absent on older databases.
+  const voteByLabel = useMemo(() => {
+    const raw = (poll as (RehearsalPoll & { vote_by?: string | null }) | null)?.vote_by;
+    if (!raw) return null;
+    const d = new Date(String(raw).slice(0, 10) + 'T12:00:00');
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  }, [poll]);
+
   const handleDone = () => {
     if (notification?.id) {
       markAsRead(notification.id).catch(() => {});
@@ -266,7 +294,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-        className="bw-rail-sheet dark fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] max-h-[88vh] flex flex-col sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[32px] sm:max-h-[82vh]"
+        data-state="open"
+        // iPhone Duo open: a rehearsal detail on the trailing page moves to the
+        // leading page while you vote (Figma "Open · Event detail / Rehearsal |
+        // Rehearsal / Poll vote sheet").
+        className="bw-rail-sheet bw-picker dark fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] max-h-[88vh] flex flex-col sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[32px] sm:max-h-[82vh]"
       >
         {/* Sheet Header */}
         <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
@@ -292,6 +324,14 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
               <Loader2 className="w-7 h-7 animate-spin text-sheet-foreground/70" />
               <span className="bw-label-sm text-sheet-foreground/70">Loading poll details…</span>
             </div>
+          ) : !poll && loadError ? (
+            <ErrorState
+              className="py-6 px-0"
+              title="Couldn't load this poll"
+              body={loadError}
+              onRetry={loadPoll}
+              onBack={onClose}
+            />
           ) : !poll ? (
             <div className="flex flex-col gap-4">
               <p className="bw-body-md text-sheet-foreground/80">
@@ -361,8 +401,9 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
             <div className="flex flex-col gap-4">
               {/* Status & Summary */}
               <div className="flex items-center gap-2 flex-wrap">
-                <Tag variant="accent">{hasUserVotedAny ? 'Voted' : 'Active'}</Tag>
+                <Tag variant="accent">{hasUserVotedAny ? 'Voted' : declinedAll ? 'None work' : 'Active'}</Tag>
                 <span className="bw-body-sm text-sheet-foreground/85">
+                  {voteByLabel ? `Vote by ${voteByLabel} · ` : ''}
                   {uniqueVoterCount} of {totalMembers} voted
                 </span>
               </div>
@@ -559,7 +600,13 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
             className="shrink-0 px-5 pt-2 grid grid-cols-[2fr_3fr] gap-3"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
           >
-            <PillButton variant="outline" loading={isClearing} disabled={!hasUserVotedAny} onClick={handleNoneWork}>
+            <PillButton
+              variant="outline"
+              loading={isClearing}
+              aria-pressed={declinedAll}
+              className={declinedAll ? 'bg-sheet-foreground/[0.12]' : undefined}
+              onClick={handleNoneWork}
+            >
               None work
             </PillButton>
             <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={handleDone}>
@@ -568,6 +615,22 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
           </div>
         )}
       </motion.div>
+
+      {/* Laptop pose (Figma "Duo · 11"): members × days on the Display, your
+          day pads and Lock / Done on the Deck. Renders nothing otherwise. */}
+      {(loading || isActivePoll) && (
+        <FindADateMode
+          poll={isActivePoll ? poll : null}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          loading={loading}
+          votingOptionId={votingOptionId}
+          onToggleVote={handleToggleVote}
+          onLock={isAdmin ? handleFinalize : undefined}
+          locking={isFinalizing}
+          onDone={handleDone}
+        />
+      )}
     </>
   );
 };

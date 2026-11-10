@@ -57,6 +57,16 @@ export const checkPushPermissions = async (): Promise<'granted' | 'denied' | 'pr
 };
 
 // Subscribe to push notifications
+/**
+ * iOS uses APNs directly. Android goes through Firebase Cloud Messaging and
+ * is enabled only for builds made with VITE_ANDROID_PUSH=true (i.e. when
+ * android/app/google-services.json is present).
+ */
+export const isRemotePushConfigured = (): boolean => {
+  if (Capacitor.getPlatform() !== 'android') return true;
+  return import.meta.env.VITE_ANDROID_PUSH === 'true';
+};
+
 export const subscribeToPush = async (userId: string): Promise<{ success: boolean; error: Error | null }> => {
   if (!userId) {
     return { success: false, error: new Error('User ID required') };
@@ -65,6 +75,14 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
   if (!isNative()) {
     console.log('[Push] Not on native platform');
     return { success: false, error: new Error('Not on native platform') };
+  }
+
+  if (!isRemotePushConfigured()) {
+    // Android remote push needs Firebase (google-services.json). Without it
+    // PushNotifications.register() crashes natively, so skip it; local
+    // notifications keep working.
+    console.log('[Push] Remote push not configured on this platform');
+    return { success: false, error: new Error('Push not configured') };
   }
 
   try {

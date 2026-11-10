@@ -1,0 +1,204 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from '@/app/components/icons';
+import { cn } from '@/app/components/ui/utils';
+import { haptic } from '@/lib/haptics';
+import { useKeepAwake } from '@/lib/posture';
+import { FoldSplit } from '../FoldSplit';
+import { DeckButton, clock, durationSeconds } from './shared';
+
+/**
+ * Floor wedge (Stage mode in Laptop pose): the phone stands on the stage
+ * floor like a wedge monitor. Display (OLED black, largest type): song
+ * counter, title, key, BPM, next song and elapsed time. Deck: big PREV /
+ * NEXT pads and the set's progress. The screen stays awake while mounted,
+ * so mount it only alongside Stage mode.
+ *
+ * Songs use Stage mode's shape (src/app/components/dashboard/StageMode.tsx
+ * `StageSong`), plus an optional BPM. Arrow keys, Page Up/Down and Space
+ * also step, so Bluetooth page-turner pedals work.
+ */
+
+export interface WedgeSong {
+  title: string;
+  artist?: string;
+  key?: string | null;
+  bpm?: number | null;
+  /** "3:45" or seconds. */
+  duration?: string | number | null;
+}
+
+export interface FloorWedgeModeProps {
+  songs: WedgeSong[];
+  /** Gig title shown above the counter. */
+  title?: string;
+  /** e.g. "Set 1". */
+  setLabel?: string;
+  songsLoading?: boolean;
+  initialIndex?: number;
+  onIndexChange?: (index: number) => void;
+  /** When the set started (elapsed time); defaults to when the mode mounted. */
+  startedAt?: Date | number;
+  /** See FoldSplit. Default 125 (above Stage mode). */
+  zIndex?: number;
+}
+
+export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
+  songs,
+  title,
+  setLabel,
+  songsLoading,
+  initialIndex = 0,
+  onIndexChange,
+  startedAt,
+  zIndex,
+}) => {
+  useKeepAwake(true);
+  const count = songs.length;
+  const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, count - 1)));
+  const [mountedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // A shorter setlist (reload) must not leave the counter past its end.
+  useEffect(() => {
+    if (count > 0 && index > count - 1) setIndex(count - 1);
+  }, [count, index]);
+
+  const go = useCallback(
+    (delta: number) => {
+      const next = Math.min(Math.max(0, index + delta), Math.max(0, count - 1));
+      if (next === index) return;
+      haptic.tap();
+      setIndex(next);
+      onIndexChange?.(next);
+    },
+    [index, count, onIndexChange],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) {
+        e.preventDefault();
+        go(1);
+      } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
+        e.preventDefault();
+        go(-1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [go]);
+
+  const song = count > 0 ? songs[index] : null;
+  const next = index + 1 < count ? songs[index + 1] : null;
+  const start = startedAt !== undefined ? new Date(startedAt).getTime() : mountedAt;
+  const elapsed = clock(Math.max(0, (now - start) / 1000));
+
+  // Time left in the set, when every remaining song has a duration.
+  const remaining = songs.slice(index).map((s) => durationSeconds(s.duration ?? null));
+  const left = remaining.length > 0 && remaining.every((s) => s !== null)
+    ? remaining.reduce<number>((sum, s) => sum + (s ?? 0), 0)
+    : null;
+
+  const display = (
+    <div className="bw-fold-pad min-h-full flex flex-col gap-3 pt-3 pb-4 bg-black text-white select-none">
+      <div className="flex items-baseline justify-between gap-4 bw-label-md uppercase text-white/60">
+        <span className="truncate">{[setLabel, title].filter(Boolean).join(' · ') || 'Stage'}</span>
+        <span className="shrink-0 tabular-nums" aria-label={`Elapsed ${elapsed}`}>{elapsed}</span>
+      </div>
+      {!song ? (
+        <p className="bw-display-lg text-white/70">{songsLoading ? 'Loading setlist…' : 'No setlist'}</p>
+      ) : (
+        <>
+          <p className="bw-value-lg tabular-nums" aria-live="polite">
+            {index + 1}
+            <span className="text-white/40"> / {count}</span>
+          </p>
+          <h1 className="bw-display-xl line-clamp-2 [overflow-wrap:anywhere]" style={{ fontSize: 'clamp(44px, 9vw, 88px)' }}>
+            {song.title}
+          </h1>
+          {(song.key || song.bpm) && (
+            <dl className="flex gap-8">
+              {song.key && (
+                <div>
+                  <dt className="bw-label-sm uppercase text-white/50">Key</dt>
+                  <dd className="bw-value-lg">{song.key}</dd>
+                </div>
+              )}
+              {song.bpm ? (
+                <div>
+                  <dt className="bw-label-sm uppercase text-white/50">BPM</dt>
+                  <dd className="bw-value-lg tabular-nums">{song.bpm}</dd>
+                </div>
+              ) : null}
+            </dl>
+          )}
+          <p className="mt-auto bw-h3 text-white/70 truncate">
+            {next ? (
+              <>
+                <span className="bw-label-sm uppercase text-white/45 mr-2">Next</span>
+                {next.title}
+                {next.key ? ` · ${next.key}` : ''}
+              </>
+            ) : (
+              <span className="bw-label-sm uppercase text-white/45">Last song</span>
+            )}
+          </p>
+        </>
+      )}
+    </div>
+  );
+
+  const deck = (
+    <div className="min-h-full flex flex-col gap-3 px-4 pt-3 pb-3 text-white">
+      <div className="grid grid-cols-2 gap-3 flex-1 min-h-[88px]">
+        <DeckButton
+          size="pad"
+          tone="muted"
+          className="h-full bg-white/10 text-white"
+          disabled={!song || index === 0}
+          onClick={() => go(-1)}
+          aria-label="Previous song"
+        >
+          <ChevronLeft className="w-7 h-7" /> Prev
+        </DeckButton>
+        <DeckButton
+          size="pad"
+          tone="accent"
+          className="h-full"
+          disabled={!song || index >= count - 1}
+          onClick={() => go(1)}
+          aria-label="Next song"
+        >
+          Next <ChevronRight className="w-7 h-7" />
+        </DeckButton>
+      </div>
+      {count > 0 && (
+        <div className="flex flex-col gap-1.5" aria-label={`Song ${index + 1} of ${count}`}>
+          <div className="flex gap-1" aria-hidden>
+            {songs.map((_, i) => (
+              <span
+                key={i}
+                className={cn('h-1.5 flex-1 rounded-full', i < index ? 'bg-white/60' : i === index ? 'bg-accent' : 'bg-white/15')}
+              />
+            ))}
+          </div>
+          <p className="bw-label-md uppercase text-white/60 flex justify-between">
+            <span>Song {index + 1} of {count}</span>
+            {left !== null && <span className="tabular-nums">{clock(left)} left</span>}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  return <FoldSplit zIndex={zIndex} variant="stage" displayLabel="Now playing" deckLabel="Song controls" display={display} deck={deck} />;
+};
+
+export default FloorWedgeMode;

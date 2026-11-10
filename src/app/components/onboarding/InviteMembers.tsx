@@ -58,6 +58,34 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
     onComplete();
   };
 
+  // Skip means "invite nobody now": drop anything queued so completing
+  // onboarding doesn't send it anyway.
+  const handleSkip = () => {
+    invites.forEach((i) => removeInvite(i.email));
+    onComplete();
+  };
+
+  // Contact Picker API (Android Chrome / WebView). Hidden where unsupported
+  // (iOS WebView), so the button never does nothing.
+  type PickedContact = { name?: string[]; email?: string[] };
+  const contactsApi = (navigator as Navigator & {
+    contacts?: { select: (props: string[], opts: { multiple: boolean }) => Promise<PickedContact[]> };
+  }).contacts;
+  const canPickContacts = typeof window !== 'undefined' && 'ContactsManager' in window && !!contactsApi;
+  const handleImportContacts = async () => {
+    if (!contactsApi) return;
+    try {
+      const picked = await contactsApi.select(['name', 'email'], { multiple: true });
+      for (const c of picked) {
+        const email = c.email?.[0]?.toLowerCase().trim();
+        if (!email || !isValidEmail(email) || invites.some((i) => i.email === email)) continue;
+        addInvite({ email, name: c.name?.[0], permission: 'member' });
+      }
+    } catch {
+      // Picker dismissed.
+    }
+  };
+
   const { step, total } = wizardStep(path, 'invite');
 
   const initialsFor = (invite: MemberInvite) => {
@@ -78,11 +106,9 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
       bodyClassName="pt-2 gap-4"
       footer={
         <>
-          {invites.length === 0 && (
-            <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSubmit} disabled={isSubmitting}>
-              Skip for now
-            </PillButton>
-          )}
+          <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSkip} disabled={isSubmitting}>
+            Skip for now
+          </PillButton>
           <PillButton
             onClick={handleSubmit}
             disabled={invites.length === 0 || isSubmitting}
@@ -176,9 +202,11 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
       )}
 
       {/* Import from Contacts */}
-      <PillButton variant="outline" size="md" icon={<Users className="w-[18px] h-[18px]" />}>
-        Import from contacts
-      </PillButton>
+      {canPickContacts && (
+        <PillButton variant="outline" size="md" icon={<Users className="w-[18px] h-[18px]" />} onClick={handleImportContacts}>
+          Import from contacts
+        </PillButton>
+      )}
 
       <p className="bw-body-sm text-muted-foreground">You can invite more members later from Band members.</p>
 

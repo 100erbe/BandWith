@@ -75,7 +75,7 @@ serve(async (req) => {
     // Only the fields the joiner UI needs. Never return the invite token.
     const { data: invites, error } = await supabaseAdmin
       .from("band_invitations")
-      .select("id, band_id, role, expires_at, bands:band_id(id, name, logo_url)")
+      .select("id, band_id, role, created_at, expires_at, invited_by, bands:band_id(id, name, logo_url, description)")
       .eq("email", normalizedEmail)
       .eq("status", "pending")
       .gt("expires_at", new Date().toISOString());
@@ -84,18 +84,36 @@ serve(async (req) => {
 
     const result = await Promise.all(
       (invites || []).map(async (invite: any) => {
-        const { count } = await supabaseAdmin
-          .from("band_members")
-          .select("id", { count: "exact", head: true })
-          .eq("band_id", invite.band_id)
-          .eq("is_active", true);
+        const yearStart = `${new Date().getFullYear()}-01-01`;
+        const [{ count }, { count: gigs }, inviter] = await Promise.all([
+          supabaseAdmin
+            .from("band_members")
+            .select("id", { count: "exact", head: true })
+            .eq("band_id", invite.band_id)
+            .eq("is_active", true),
+          supabaseAdmin
+            .from("events")
+            .select("id", { count: "exact", head: true })
+            .eq("band_id", invite.band_id)
+            .neq("event_type", "rehearsal")
+            .in("status", ["confirmed", "completed"])
+            .gte("event_date", yearStart),
+          invite.invited_by
+            ? supabaseAdmin.from("profiles").select("full_name").eq("id", invite.invited_by).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+        // First name only: this endpoint answers anyone who knows the email.
+        const inviterFirst = (inviter?.data?.full_name || "").trim().split(/\s+/)[0] || null;
         return {
           id: invite.id,
           band_id: invite.band_id,
           role: invite.role,
+          created_at: invite.created_at,
           expires_at: invite.expires_at,
           band: invite.bands,
           member_count: count || 0,
+          gigs_this_year: gigs || 0,
+          inviter: inviterFirst ? { full_name: inviterFirst } : null,
         };
       }),
     );

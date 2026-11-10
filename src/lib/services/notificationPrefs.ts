@@ -4,6 +4,8 @@ import { getSafeUser } from '@/lib/supabase';
 /**
  * Server-side notification preferences (profiles.notification_preferences).
  * The push dispatcher (migration 048) skips push when `push` is false.
+ * `email` is stored but no server code reads it yet: the only emails sent
+ * today are band invites an admin explicitly sends (send-email).
  */
 export type NotificationPrefKey = 'push' | 'email';
 
@@ -48,21 +50,35 @@ export const loadNotificationPrefs = async (): Promise<Partial<Record<Notificati
   return out;
 };
 
-export const saveNotificationPref = async (key: NotificationPrefKey, value: boolean): Promise<{ error: Error | null }> => {
-  writeLocalPref(key, value);
+/**
+ * Saves one or more preferences in a single profile update (so a master
+ * toggle can't leave push and email half-saved). The local cache is only
+ * updated once the server accepted the change.
+ */
+export const saveNotificationPrefs = async (
+  values: Partial<Record<NotificationPrefKey, boolean>>
+): Promise<{ error: Error | null }> => {
   try {
     const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not signed in');
-    const { data: current } = await supabase
+    const { data: current, error: readError } = await supabase
       .from('profiles')
       .select('notification_preferences')
       .eq('id', user.id)
       .maybeSingle();
-    const merged = { ...((current?.notification_preferences as Record<string, unknown>) || {}), [key]: value };
+    if (readError) throw readError;
+    const merged = { ...((current?.notification_preferences as Record<string, unknown>) || {}), ...values };
     const { error } = await supabase.from('profiles').update({ notification_preferences: merged }).eq('id', user.id);
     if (error) throw error;
+    (Object.keys(values) as NotificationPrefKey[]).forEach((k) => {
+      const v = values[k];
+      if (typeof v === 'boolean') writeLocalPref(k, v);
+    });
     return { error: null };
   } catch (error: any) {
-    return { error };
+    return { error: error instanceof Error ? error : new Error(error?.message || 'Could not save notification settings') };
   }
 };
+
+export const saveNotificationPref = (key: NotificationPrefKey, value: boolean): Promise<{ error: Error | null }> =>
+  saveNotificationPrefs({ [key]: value });

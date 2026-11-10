@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   X,
-  Check,
   MapPin,
   Clock,
   Calendar,
@@ -12,116 +11,172 @@ import {
 } from '@/app/components/icons';
 import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
-import { PillButton } from '@/app/components/bw/Form';
+import { PillButton, PillField, FormError } from '@/app/components/bw/Form';
 import { usePeekingScroll } from '@/app/components/ui/PeekingScrollContainer';
 import type { Notification } from '@/lib/services/notifications';
-import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { MapsLink } from '@/app/components/ui/MapsLink';
+import { supabase } from '@/lib/supabase';
+import { findCalendarEvent, findEventConflicts } from '@/lib/eventConflicts';
+import { cn } from '@/app/components/ui/utils';
+import { formatDayShort, formatTime12, parseAmount } from '@/app/components/event/format';
 
-interface EventRSVPSheetProps {
+export type RsvpStatus = 'confirmed' | 'maybe' | 'declined';
+
+export interface EventRSVPSheetProps {
   notification: Notification;
-  onAccept: () => Promise<void>;
-  onDecline: () => Promise<void>;
+  /** GOING. The optional note is also saved by the sheet itself (event_members.notes). */
+  onAccept: (note?: string) => Promise<void>;
+  /** CAN'T MAKE IT. */
+  onDecline: (note?: string) => Promise<void>;
+  /**
+   * Optional single handler for all three answers. When given it is used
+   * instead of onAccept / onDecline, and it is the only way "maybe" reaches
+   * the parent. Without it the sheet records "maybe" itself.
+   */
+  onRespond?: (status: RsvpStatus, note?: string) => Promise<void>;
   onClose: () => void;
   calendarEvents?: any[];
   currentUserId?: string;
+  /** Answer to preselect (e.g. the member's current status). */
+  initialStatus?: RsvpStatus;
 }
 
-const formatDate = (dateStr: string): string => {
-  try {
-    const d = parseLocalDate(dateStr);
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      day: 'numeric', 
-      month: 'short',
-      year: 'numeric'
-    }).toUpperCase();
-  } catch { 
-    return dateStr; 
-  }
+const CHOICES: { value: RsvpStatus; label: string }[] = [
+  { value: 'confirmed', label: 'GOING' },
+  { value: 'maybe', label: "MAYBE — I'LL CONFIRM LATER" },
+  { value: 'declined', label: "CAN'T MAKE IT" },
+];
+
+const kindOf = (e: any): 'personal gig' | 'rehearsal' | 'gig' => {
+  if (!e?.band_id) return 'personal gig';
+  return String(e.status || '').toUpperCase() === 'REHEARSAL' ? 'rehearsal' : 'gig';
 };
 
-const formatTime = (time: string): string => {
-  if (!time) return '';
-  const [h, m] = time.split(':');
-  const hour = parseInt(h);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const h12 = hour % 12 || 12;
-  return `${h12}:${m || '00'} ${ampm}`;
-};
-
+/** Figma "Event / RSVP – conflict" (23:1213): dark sheet, three answers, optional note. */
 export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   notification,
   onAccept,
   onDecline,
+  onRespond,
   onClose,
   calendarEvents = [],
   currentUserId,
+  initialStatus,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [choice, setChoice] = useState<RsvpStatus | null>(initialStatus ?? null);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
 
   const data = notification.data || {};
-  const eventId = data.event_id as string;
-  const matchedEvent = useMemo(() => {
-    if (!eventId || !calendarEvents.length) return null;
-    return calendarEvents.find((e: any) => String(e.id) === String(eventId));
-  }, [eventId, calendarEvents]);
+  const eventId = data.event_id as string | undefined;
+  // Calendar items keep a numeric `id` and the UUID in `eventId`.
+  const matchedEvent = useMemo<any>(() => findCalendarEvent(calendarEvents, eventId), [calendarEvents, eventId]);
 
-  const eventType = (data.event_type as string) || matchedEvent?.type || 'gig';
+  const matchedStatus = String(matchedEvent?.status || '').toUpperCase();
+  const eventType =
+    (data.event_type as string) ||
+    (matchedStatus === 'REHEARSAL' ? 'rehearsal' : matchedStatus === 'QUOTE' || matchedStatus === 'QUOTED' ? 'quote' : 'gig');
   const eventTitle = (data.event_title as string) || matchedEvent?.title || notification.title;
   const eventDate = (data.event_date as string) || matchedEvent?.date;
   const eventTime = (data.event_time as string) || matchedEvent?.time;
   const venue = (data.venue as string) || matchedEvent?.location;
   const venueAddress = (data.venue_address as string) || matchedEvent?.venueAddress;
-  
-  const memberFee = (data.member_fee as number) || matchedEvent?.fee;
-  const totalFee = (data.fee as number) || matchedEvent?.fee;
+
+  const memberFee = Number(data.member_fee) || 0;
+  const totalFee = Number(data.fee) || parseAmount(matchedEvent?.price);
   const displayFee = memberFee || totalFee;
-  const feeLabel = memberFee ? 'YOUR FEE' : 'FEE';
   const creatorName = (data.creator_name as string) || (data.creator_id ? 'Band Admin' : null);
 
-  const loadInTime = matchedEvent?.loadInTime;
-  const soundCheckTime = matchedEvent?.soundCheckTime;
-  const showTime = matchedEvent?.showTime;
+  const loadInTime = matchedEvent?.loadInTime as string | undefined;
+  const soundcheckTime = matchedEvent?.soundcheckTime as string | undefined;
+  const showTime = matchedEvent?.time as string | undefined;
 
-  // Calendar conflict detection
-  const conflictEvent = useMemo(() => {
-    if (!eventDate || !calendarEvents.length) return null;
-    return calendarEvents.find((e: any) => {
-      const isDifferentEvent = String(e.id) !== String(eventId);
-      const isSameDate = e.date === eventDate;
-      const isNotDeclined = e.status !== 'declined' && e.status !== 'cancelled';
-      return isDifferentEvent && isSameDate && isNotDeclined;
-    });
-  }, [calendarEvents, eventDate, eventId]);
+  // Calendar conflict: another active event on the same date.
+  const conflictEvent = useMemo<any>(
+    () => findEventConflicts(calendarEvents, { eventId, date: eventDate })[0] ?? null,
+    [calendarEvents, eventDate, eventId],
+  );
 
   const isRehearsal = eventType === 'rehearsal';
   const isQuote = eventType === 'quote';
-  const label = isRehearsal ? 'REHEARSAL' : isQuote ? 'QUOTE' : 'GIG';
+  const label = isRehearsal ? 'Rehearsal' : isQuote ? 'Quote' : 'Gig';
 
-  const handleAction = async (action: 'accept' | 'decline') => {
-    if (isSubmitting) return;
+  const dayLabel = formatDayShort(eventDate);
+  const dateLabel = dayLabel || 'Date TBD';
+  const timeLabel = eventTime ? formatTime12(eventTime) : 'TBD';
+  const schedule = [
+    loadInTime && `Load ${formatTime12(loadInTime)}`,
+    soundcheckTime && `Sound ${formatTime12(soundcheckTime)}`,
+    showTime && `Show ${formatTime12(showTime)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const conflictLine = conflictEvent
+    ? (() => {
+        const start = formatTime12(conflictEvent.time);
+        const end = formatTime12(conflictEvent.endTime);
+        const when = start ? (end ? `${start} – ${end}` : start) : 'same day';
+        return `${conflictEvent.title || 'Event'} · ${when} (${kindOf(conflictEvent)})`;
+      })()
+    : '';
+
+  /** Writes the answer (maybe without a parent handler) and/or the note on the member's own row. */
+  const saveOwnRow = async (patch: Record<string, unknown>): Promise<string | null> => {
+    if (!eventId || !currentUserId) return 'Could not find your invitation for this event.';
+    const { data: rows, error: upErr } = await supabase
+      .from('event_members')
+      .update(patch)
+      .eq('event_id', eventId)
+      .eq('user_id', currentUserId)
+      .select('id');
+    if (upErr) return upErr.message;
+    if (!rows || rows.length === 0) return 'Could not find your invitation for this event.';
+    return null;
+  };
+
+  const handleSend = async () => {
+    if (isSubmitting || !choice) return;
     setIsSubmitting(true);
+    setError(null);
+    const trimmed = note.trim();
     try {
-      if (action === 'accept') await onAccept();
-      else await onDecline();
-    } catch (err) {
+      if (choice === 'maybe' && !onRespond) {
+        // No parent handler for "maybe": record it here, then close.
+        const err = await saveOwnRow({
+          status: 'maybe',
+          responded_at: new Date().toISOString(),
+          ...(trimmed ? { notes: trimmed } : {}),
+        });
+        if (err) {
+          setError(err);
+          return;
+        }
+        onClose();
+        return;
+      }
+      // Save the note first: the parent closes the sheet once it has the answer.
+      if (trimmed) {
+        const err = await saveOwnRow({ notes: trimmed });
+        if (err) {
+          setError(`Your note was not saved: ${err}`);
+          return;
+        }
+      }
+      if (onRespond) await onRespond(choice, trimmed || undefined);
+      else if (choice === 'confirmed') await onAccept(trimmed || undefined);
+      else await onDecline(trimmed || undefined);
+    } catch (err: any) {
       console.error('RSVP action error:', err);
+      setError(err?.message || 'Could not send your RSVP. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const dateLabel = eventDate ? formatDate(eventDate) : 'Date TBD';
-  const timeLabel = eventTime ? formatTime(eventTime) : 'TBD';
-  const schedule = [
-    loadInTime && `Load ${loadInTime}`,
-    soundCheckTime && `Sound ${soundCheckTime}`,
-    showTime && `Show ${showTime}`,
-  ].filter(Boolean).join(' · ');
 
   return (
     <>
@@ -155,10 +210,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-              <p className="bw-label-sm text-sheet-foreground/85">
-                {label} invitation · {dateLabel}
-              </p>
-              <h2 className="bw-h1 [overflow-wrap:anywhere]">{eventTitle}</h2>
+              <p className="bw-label-sm text-sheet-foreground/85">RSVP{dayLabel ? ` · ${dayLabel}` : ''}</p>
+              <h2 className="bw-h1 [overflow-wrap:anywhere]">Can you make it?</h2>
               {creatorName && (
                 <p className="bw-body-sm text-sheet-foreground/70 mt-1">Scheduled by {creatorName}</p>
               )}
@@ -170,6 +223,10 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 
         {/* Event details */}
         <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="bw-label-xs text-sheet-foreground/70">{label}</span>
+            <span className="bw-label-md [overflow-wrap:anywhere]">{eventTitle}</span>
+          </div>
           <SheetKV icon={<Calendar className="w-4 h-4" />} k="Date" v={dateLabel} />
           <SheetKV icon={<Clock className="w-4 h-4" />} k="Time" v={timeLabel} />
           {schedule && <SheetKV k="Timings" v={schedule} />}
@@ -190,8 +247,12 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
               </span>
             }
           />
-          {displayFee != null && displayFee > 0 && (
-            <SheetKV icon={<CurrencyIcon className="w-4 h-4" />} k={memberFee ? 'Your fee' : 'Fee'} v={`${sym()}${displayFee.toLocaleString()}`} />
+          {displayFee > 0 && (
+            <SheetKV
+              icon={<CurrencyIcon className="w-4 h-4" />}
+              k={memberFee ? 'Your fee' : 'Fee'}
+              v={`${sym()}${displayFee.toLocaleString()}`}
+            />
           )}
         </div>
 
@@ -201,10 +262,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             <AlertTriangle className="w-5 h-5 shrink-0 text-warning" />
             <div className="flex flex-col gap-1 min-w-0">
               <span className="bw-label-md">You&apos;re already booked</span>
-              <span className="bw-body-sm text-sheet-foreground/80">
-                {conflictEvent.title}
-                {conflictEvent.time ? ` · ${conflictEvent.time}` : ' · same day'}
-              </span>
+              <span className="bw-body-sm text-sheet-foreground/80 [overflow-wrap:anywhere]">{conflictLine}</span>
             </div>
           </div>
         ) : (
@@ -214,24 +272,53 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-3 pt-2">
-          <PillButton
-            variant="outline"
-            className="flex-[0_0_38%] border-sheet-foreground text-sheet-foreground"
-            onClick={() => handleAction('decline')}
-            disabled={isSubmitting}
-            icon={<X className="w-[18px] h-[18px]" />}
-          >
-            Decline
-          </PillButton>
-          <PillButton
-            className="flex-1"
-            onClick={() => handleAction('accept')}
-            loading={isSubmitting}
-            icon={<Check className="w-[18px] h-[18px]" />}
-          >
-            {isSubmitting ? 'Saving…' : 'Accept'}
+        {/* Answers */}
+        <div role="radiogroup" aria-label="Your answer" className="flex flex-col gap-2">
+          {CHOICES.map((c) => {
+            const on = choice === c.value;
+            return (
+              <button
+                key={c.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={isSubmitting}
+                onClick={() => setChoice(c.value)}
+                className={cn(
+                  'flex items-center gap-3 min-h-14 px-4 rounded-[16px] text-left transition-colors cursor-pointer',
+                  'active:scale-[var(--press-scale,0.97)] disabled:opacity-60',
+                  on ? 'bg-accent text-accent-foreground' : 'bg-sheet-foreground/[0.08]',
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'w-5 h-5 rounded-full border-[1.5px] shrink-0 flex items-center justify-center',
+                    on ? 'border-current' : 'border-sheet-foreground/60',
+                  )}
+                >
+                  {on && <span className="w-2.5 h-2.5 rounded-full bg-current" />}
+                </span>
+                <span className="bw-label-md">{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <PillField
+          tone="sheet"
+          label="Note for the band (optional)"
+          value={note}
+          maxLength={280}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={isSubmitting}
+        />
+
+        {error && <FormError>{error}</FormError>}
+
+        <div className="pt-1">
+          <PillButton onClick={handleSend} loading={isSubmitting} disabled={!choice}>
+            {isSubmitting ? 'Sending…' : 'Send RSVP'}
           </PillButton>
         </div>
       </motion.div>

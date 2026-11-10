@@ -222,7 +222,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const BiometryIcon = biometricStatus?.biometryType === 'faceId' ? ScanFace : Fingerprint;
 
   return (
-    <AuthScreen top={<BackButton onClick={onBack} />}>
+    <AuthScreen top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>
       <motion.form
         className="flex flex-col gap-5"
         onSubmit={handleSubmit}

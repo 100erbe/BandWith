@@ -37,6 +37,16 @@ export interface EventData {
   recurrence_rule?: { freq?: string; frequency?: string; interval?: number; until?: string; count?: number };
   memberUserIds?: string[];
   memberFeeMap?: Record<string, string>;
+  /** DB financial/contact fields (events table) */
+  paymentStatus?: 'pending' | 'partial' | 'paid';
+  depositAmount?: number;
+  depositPaid?: boolean;
+  dressCode?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientCompany?: string;
+  venueName?: string;
+  venueCoordinates?: { lat: number; lng: number };
   _isPendingSync?: boolean;
 }
 

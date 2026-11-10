@@ -1,10 +1,58 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Calendar, ArrowLeft, ArrowRight, Check, X } from '@/app/components/icons';
+import { Calendar, ArrowLeft, ArrowRight, Check, X, AlertTriangle } from '@/app/components/icons';
 import { cn } from './utils';
 import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
+
+export type DatePickerEventKind = 'gig' | 'rehearsal' | 'personal' | 'quote';
+
+/** An existing event shown on the calendar (dot on the day + conflict hint). */
+export interface DatePickerEvent {
+  /** "YYYY-MM-DD" (a longer ISO string is truncated to the day). */
+  date: string;
+  kind: DatePickerEventKind;
+}
+
+/** Minimal event shape (structurally compatible with EventCard's EventData). */
+interface PickerSourceEvent {
+  eventId?: string;
+  date?: string;
+  status?: string;
+  eventType?: string;
+  band_id?: string;
+}
+
+/**
+ * Maps app events to DatePicker events. Same kind rules as the calendar
+ * (EventsView `calendarKind`). `excludeEventId` drops the event being edited.
+ */
+export const toDatePickerEvents = (
+  list: PickerSourceEvent[] | undefined,
+  excludeEventId?: string,
+): DatePickerEvent[] =>
+  (list || [])
+    .filter(e => !!e.date && (!excludeEventId || e.eventId !== excludeEventId))
+    .map(e => {
+      const s = (e.status || '').toUpperCase();
+      const kind: DatePickerEventKind =
+        s === 'REHEARSAL' || e.eventType === 'rehearsal'
+          ? 'rehearsal'
+          : s === 'QUOTE' || s === 'QUOTED' || e.eventType === 'quote'
+            ? 'quote'
+            : !e.band_id
+              ? 'personal'
+              : 'gig';
+      return { date: String(e.date).slice(0, 10), kind };
+    });
+
+const KIND_NOUN: Record<DatePickerEventKind, string> = {
+  gig: 'gig',
+  rehearsal: 'rehearsal',
+  quote: 'quote',
+  personal: 'personal event',
+};
 
 export interface DatePickerProps {
   value?: string; // "YYYY-MM-DD" or ""
@@ -16,6 +64,8 @@ export interface DatePickerProps {
   showIcon?: boolean;
   showShortcuts?: boolean;
   accentColor?: string;
+  /** Existing events: each day gets a small kind dot, and a busy day shows a hint above the CTA. */
+  events?: DatePickerEvent[];
 }
 
 export const getTodayStr = (): string => {
@@ -103,7 +153,9 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
       <DialogPrimitive.Content
         aria-describedby={undefined}
         className={cn(
-          'bw-rail-sheet fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
+          // bw-picker: on the iPhone Duo open the form that asked moves to the
+          // leading page while the picker is open (src/styles/duo-panes.css).
+          'bw-rail-sheet bw-picker fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
           'bg-background text-foreground rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.35)] outline-none select-none',
           'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom duration-300',
         )}
@@ -174,8 +226,23 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   showIcon = true,
   showShortcuts = true,
   accentColor,
+  events,
 }) => {
   const [open, setOpen] = useState(false);
+
+  // "YYYY-MM-DD" → kinds on that day (first one wins for the dot colour).
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, DatePickerEventKind[]>();
+    (events || []).forEach(ev => {
+      const key = (ev.date || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+      const list = map.get(key);
+      if (list) {
+        if (!list.includes(ev.kind)) list.push(ev.kind);
+      } else map.set(key, [ev.kind]);
+    });
+    return map;
+  }, [events]);
 
   // Month & year view state
   const [calMonth, setCalMonth] = useState(() => {
@@ -243,15 +310,39 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const calMonthName = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long' });
 
+  // A busy day keeps the sheet open so the conflict hint is visible.
   const handleSelectDay = (day: number) => {
-    onChange(ymd(calYear, calMonth, day));
-    setOpen(false);
+    const key = ymd(calYear, calMonth, day);
+    onChange(key);
+    if (!eventsByDay.has(key)) setOpen(false);
   };
 
   const handleSelectShortcut = (dateStr: string) => {
     onChange(dateStr);
-    setOpen(false);
+    if (!eventsByDay.has(dateStr)) setOpen(false);
   };
+
+  // Hint: "⚠ Dec 12 has a gig — Dec 13 is free."
+  const conflict = useMemo(() => {
+    if (!value) return null;
+    const kinds = eventsByDay.get(value);
+    if (!kinds?.length) return null;
+    const d = new Date(value + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    let nextFree: string | null = null;
+    const cursor = new Date(d);
+    for (let i = 0; i < 366; i++) {
+      cursor.setDate(cursor.getDate() + 1);
+      const key = ymd(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+      if (!eventsByDay.has(key)) {
+        nextFree = key;
+        break;
+      }
+    }
+    const short = (key: string) =>
+      new Date(key + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return { day: short(value), kind: kinds[0], nextFree, nextFreeLabel: nextFree ? short(nextFree) : null };
+  }, [value, eventsByDay]);
 
   const selectedLabel = useMemo(() => {
     if (!value) return '';
@@ -293,9 +384,33 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       overline="Pick a day"
       title={titleFromPlaceholder(placeholder, 'Date')}
       footer={
-        <PillButton icon={<Check className="w-5 h-5" />} disabled={!value} onClick={() => setOpen(false)}>
-          {value ? `Select ${selectedLabel}` : 'Select a day'}
-        </PillButton>
+        <div className="flex flex-col gap-3">
+          {conflict && (
+            <p role="status" className="flex items-start gap-2 bw-body-sm text-foreground">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px text-warning" aria-hidden />
+              <span>
+                {conflict.day} has a {KIND_NOUN[conflict.kind]}
+                {conflict.nextFree && conflict.nextFreeLabel && (
+                  <>
+                    {' — '}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectShortcut(conflict.nextFree!)}
+                      className="underline underline-offset-2 cursor-pointer"
+                    >
+                      {conflict.nextFreeLabel}
+                    </button>{' '}
+                    is free.
+                  </>
+                )}
+                {!conflict.nextFree && '.'}
+              </span>
+            </p>
+          )}
+          <PillButton icon={<Check className="w-5 h-5" />} disabled={!value} onClick={() => setOpen(false)}>
+            {value ? `Select ${selectedLabel}` : 'Select a day'}
+          </PillButton>
+        </div>
       }
     >
       {/* Quick shortcuts (Figma Selector SM) */}
@@ -343,7 +458,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               );
             }
             const isSelected = calMonth === selectedMonth && calYear === selectedYear && day === selectedDay;
-            const isToday = ymd(calYear, calMonth, day) === todayStr;
+            const dayKey = ymd(calYear, calMonth, day);
+            const isToday = dayKey === todayStr;
+            const dayKinds = eventsByDay.get(dayKey);
             return (
               <button
                 key={i}
@@ -351,12 +468,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 onClick={() => handleSelectDay(day)}
                 aria-pressed={isSelected}
                 aria-current={isToday ? 'date' : undefined}
-                aria-label={new Date(calYear, calMonth, day).toLocaleDateString('en-GB', {
+                aria-label={`${new Date(calYear, calMonth, day).toLocaleDateString('en-GB', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
-                })}
+                })}${dayKinds ? `, has ${dayKinds.map(k => KIND_NOUN[k]).join(' and ')}` : ''}`}
                 className={cn(
                   "relative h-6 rounded-full flex items-center justify-center bw-label-md transition-colors cursor-pointer after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
                   isSelected
@@ -366,6 +483,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 )}
               >
                 {day}
+                {dayKinds && (
+                  <span
+                    aria-hidden
+                    className="absolute -top-0.5 right-0.5 w-2 h-2 rounded-full ring-[1.5px] ring-background"
+                    style={{ backgroundColor: `var(--accent-${dayKinds[0]})` }}
+                  />
+                )}
               </button>
             );
           })}

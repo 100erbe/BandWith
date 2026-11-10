@@ -26,6 +26,8 @@ export interface StageSong {
 interface StageModeProps {
   title: string;
   venue?: string;
+  /** Venue city, shown after the venue ("Venue · City"). */
+  city?: string;
   dateLabel: string;
   /** ISO date of the event, used with each step's time to find the next step. */
   date?: string;
@@ -39,6 +41,12 @@ interface StageModeProps {
 // fonts.css forces `font-family: inherit` on every element, which beats the
 // Tailwind mono utility class, so the mono face is set inline.
 const MONO: React.CSSProperties = { fontFamily: 'var(--font-mono)' };
+
+/** Stage mode reads times in 24h ("19:30"). */
+const to24h = (time?: string): string => {
+  const m = time?.match(/^(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
+};
 
 const toDate = (date?: string, time?: string): Date | null => {
   if (!date || !time) return null;
@@ -58,6 +66,7 @@ const toDate = (date?: string, time?: string): Date | null => {
 export const StageMode: React.FC<StageModeProps> = ({
   title,
   venue,
+  city,
   dateLabel,
   date,
   steps,
@@ -127,8 +136,10 @@ export const StageMode: React.FC<StageModeProps> = ({
               Stage mode · {dateLabel}
             </span>
             <FitText as="h1" text={title} sizes={FIT.stage} maxLines={2} className="bw-display-lg text-white" />
-            {venue && (
-              <span className="bw-label-md text-white truncate">{venue}</span>
+            {(venue || city) && (
+              <span className="bw-label-md text-white truncate">
+                {[venue, city && city !== venue ? city : ''].filter(Boolean).join(' · ')}
+              </span>
             )}
           </div>
           <RailCover pane />
@@ -156,7 +167,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                   className="bw-num text-[clamp(22px,7vw,32px)] leading-[1.1] whitespace-nowrap"
                   style={{ ...MONO, color: next ? accentColor : '#fff' }}
                 >
-                  {s.display || 'TBD'}
+                  {to24h(s.time) || s.display || 'TBD'}
                 </span>
               </li>
             );

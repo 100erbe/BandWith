@@ -34,6 +34,15 @@ export interface EventItem {
   quoteId?: string;
   is_recurring?: boolean;
   recurrence_rule?: any;
+  paymentStatus?: 'pending' | 'partial' | 'paid';
+  depositAmount?: number;
+  depositPaid?: boolean;
+  dressCode?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientCompany?: string;
+  venueCoordinates?: { lat: number; lng: number };
+  indoorOutdoor?: 'indoor' | 'outdoor' | 'hybrid';
   _isPendingSync?: boolean;
 }
 

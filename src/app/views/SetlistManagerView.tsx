@@ -554,7 +554,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
+      className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
@@ -862,7 +862,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
+            className="bw-pane-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
             style={{
               overscrollBehaviorX: 'none',
               touchAction: 'pan-y',
@@ -876,6 +876,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
               <>
                 <motion.div layoutScroll className="flex-1 overflow-y-auto">
                   <ScreenHeader
+                pane
                     onBack={closeSetlistEditor}
                     backLabel="Back to repertoire"
                     overline={`Setlist · ${plural(editorSongs.length, 'song')}`}
