@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "android:apk": "bash scripts/build-android-apk.sh",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p .",
     "dev": "vite",
