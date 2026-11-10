@@ -9,6 +9,7 @@ import {
   BiometryType,
   type CheckBiometryResult 
 } from '@aparajita/capacitor-biometric-auth';
+import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage';
 
 const CREDENTIALS_KEY = 'bandwith_auth_credentials';
 const WEB_TEST_KEY = 'bandwith_auth_biometric_web_test';
@@ -35,6 +36,53 @@ function deobfuscate(encoded: string): string {
   }
   return result;
 }
+
+/**
+ * Native: credentials live in the iOS Keychain / Android Keystore, readable
+ * only while the device is unlocked and never synced to iCloud. Web (dev
+ * test only): obfuscated localStorage. Older builds kept the native copy in
+ * localStorage too; it is moved to secure storage on first read.
+ */
+const readStoredCredentials = async (): Promise<string | null> => {
+  if (!Capacitor.isNativePlatform()) return localStorage.getItem(CREDENTIALS_KEY);
+  const legacy = localStorage.getItem(CREDENTIALS_KEY);
+  if (legacy) {
+    try {
+      await SecureStorage.set(CREDENTIALS_KEY, legacy, false, false, KeychainAccess.whenUnlockedThisDeviceOnly);
+      localStorage.removeItem(CREDENTIALS_KEY);
+    } catch (err) {
+      console.warn('[Biometric] Could not migrate stored credentials:', err);
+      return legacy;
+    }
+  }
+  try {
+    const value = await SecureStorage.get(CREDENTIALS_KEY);
+    return typeof value === 'string' ? value : null;
+  } catch (err) {
+    console.warn('[Biometric] Secure storage read failed:', err);
+    return null;
+  }
+};
+
+const writeStoredCredentials = async (value: string): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) {
+    localStorage.setItem(CREDENTIALS_KEY, value);
+    return;
+  }
+  await SecureStorage.set(CREDENTIALS_KEY, value, false, false, KeychainAccess.whenUnlockedThisDeviceOnly);
+  localStorage.removeItem(CREDENTIALS_KEY);
+};
+
+const removeStoredCredentials = async (): Promise<void> => {
+  localStorage.removeItem(CREDENTIALS_KEY);
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await SecureStorage.remove(CREDENTIALS_KEY);
+    } catch {
+      // nothing stored
+    }
+  }
+};
 
 export interface BiometricCredentials {
   email: string;
@@ -113,7 +161,7 @@ export const checkBiometricAvailability = async (
     }
 
     // Check if we have stored credentials
-    const hasCredentials = !!localStorage.getItem(CREDENTIALS_KEY);
+    const hasCredentials = !!(await readStoredCredentials());
 
     // BUG FIX: If credentials exist but biometric says unavailable, log warning
     if (hasCredentials && !isAvailable) {
@@ -174,14 +222,14 @@ export const saveCredentialsForBiometric = async (
     // Verify biometric first before saving (native only)
     if (isNative) {
       await BiometricAuth.authenticate({
-        reason: "Conferma la tua identità per abilitare l'accesso biometrico",
+        reason: 'Confirm it’s you to turn on quick sign-in',
         allowDeviceCredential: true,
       });
     }
 
     // Store obfuscated credentials
     const credentials = obfuscate(JSON.stringify({ email, password }));
-    localStorage.setItem(CREDENTIALS_KEY, credentials);
+    await writeStoredCredentials(credentials);
 
     console.log('[Biometric] Credentials saved successfully');
     return true;
@@ -211,13 +259,13 @@ export const getCredentialsWithBiometric = async (
     // Verify with biometric (native only)
     if (isNative) {
       await BiometricAuth.authenticate({
-        reason: reason || 'Accedi con biometria',
+        reason: reason || 'Sign in to BandWith',
         allowDeviceCredential: true,
       });
     }
 
     // Get stored credentials
-    const stored = localStorage.getItem(CREDENTIALS_KEY);
+    const stored = await readStoredCredentials();
     if (!stored) {
       console.log('[Biometric] No stored credentials found');
       return null;
@@ -232,7 +280,7 @@ export const getCredentialsWithBiometric = async (
     } catch (parseError) {
       console.error('[Biometric] Failed to decode stored credentials:', parseError);
       // Corrupt storage — clean up
-      localStorage.removeItem(CREDENTIALS_KEY);
+      await removeStoredCredentials();
       return null;
     }
   } catch (error: any) {
@@ -246,7 +294,7 @@ export const getCredentialsWithBiometric = async (
  */
 export const deleteBiometricCredentials = async (): Promise<boolean> => {
   try {
-    localStorage.removeItem(CREDENTIALS_KEY);
+    await removeStoredCredentials();
     console.log('[Biometric] Credentials deleted successfully');
     return true;
   } catch (error) {

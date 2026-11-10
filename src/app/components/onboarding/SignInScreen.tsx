@@ -89,6 +89,17 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         const { error } = await signIn(credentials.email, credentials.password);
         if (!mountedRef.current) return;
         if (error) {
+          // Saved password no longer valid (changed or reset): forget it so the
+          // next Face ID / fingerprint attempt doesn't keep failing.
+          if (/invalid login credentials/i.test(error.message)) {
+            await bioModule.deleteBiometricCredentials();
+            if (mountedRef.current) {
+              setBiometricStatus((prev) => (prev ? { ...prev, hasCredentials: false } : prev));
+              setError('Your password changed. Sign in with it once to turn quick sign-in back on.');
+              setLoading(false);
+            }
+            return;
+          }
           setError(error.message);
           setLoading(false);
           return;
@@ -108,15 +119,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const handleBiometricPromptDecision = async (save: boolean) => {
     setShowBiometricPrompt(false);
 
-    if (save && pendingCredentials && biometricModuleRef.current) {
-      await biometricModuleRef.current.saveCredentialsForBiometric(
-        pendingCredentials.email,
-        pendingCredentials.password,
-        { allowWebTest: import.meta.env.DEV }
-      );
-    }
-
-    // Now actually sign in
     if (!pendingCredentials) return;
     setLoading(true);
     setError(null);
@@ -128,6 +130,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setError(error.message);
         setLoading(false);
         return;
+      }
+      // Store for Face ID / fingerprint only once the password is proven right.
+      if (save && biometricModuleRef.current) {
+        await biometricModuleRef.current.saveCredentialsForBiometric(
+          pendingCredentials.email,
+          pendingCredentials.password,
+          { allowWebTest: import.meta.env.DEV }
+        );
       }
       onSuccess();
     } catch (err: any) {

@@ -14,6 +14,9 @@ importers:
       '@aparajita/capacitor-biometric-auth':
         specifier: ^9.1.2
         version: 9.1.2
+      '@aparajita/capacitor-secure-storage':
+        specifier: ^8.0.1
+        version: 8.0.1
       '@capacitor/android':
         specifier: ^8.0.1
         version: 8.4.0(@capacitor/core@8.4.0)
@@ -278,6 +281,10 @@ packages:
 
   '@aparajita/capacitor-biometric-auth@9.1.2':
     resolution: {integrity: sha512-cDcTFOQW4iI1+/AwkA0hRfiP53BuCSWvoxxkyp2NC7Hf0tNSg5fZ4zmXI/PcpLKUR7cd91TxnAxWYAAGJKOBig==}
+    engines: {node: '>=20.0.0'}
+
+  '@aparajita/capacitor-secure-storage@8.0.1':
+    resolution: {integrity: sha512-NSYIQtH6TyBgL3myumQGcCE3iecq2PtGNFlGxl1fJKEU37Dv5DudzDlwg42cgbVxCm1ay72g4X7rTSAvKULsVg==}
     engines: {node: '>=20.0.0'}
 
   '@asamuzakjp/css-color@4.1.2':
@@ -3406,6 +3413,14 @@ snapshots:
       '@capacitor/app': 7.1.2(@capacitor/core@7.6.6)
       '@capacitor/core': 7.6.6
       '@capacitor/ios': 7.6.6(@capacitor/core@7.6.6)
+
+  '@aparajita/capacitor-secure-storage@8.0.1':
+    dependencies:
+      '@capacitor/android': 8.4.0(@capacitor/core@8.4.0)
+      '@capacitor/app': 8.1.0(@capacitor/core@8.4.0)
+      '@capacitor/core': 8.4.0
+      '@capacitor/ios': 8.4.0(@capacitor/core@8.4.0)
+      '@capacitor/keyboard': 8.0.3(@capacitor/core@8.4.0)
 
   '@asamuzakjp/css-color@4.1.2':
     dependencies:

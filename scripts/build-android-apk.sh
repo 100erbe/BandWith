@@ -19,8 +19,14 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 npm run build
 npx cap sync android
-# Finder/iCloud can leave copies like "config 2.xml"; Android rejects spaces in resource names.
-find android/app/src/main/res -name '* [0-9]*.xml' -delete
-(cd android && ./gradlew assembleDebug)
-cp android/app/build/outputs/apk/debug/app-debug.apk BandWith-android-debug.apk
+# The project folder can live in iCloud Drive, which drops "file 2.xml"-style
+# copies into res/ and Gradle's build dirs (Android rejects spaces in resource
+# names). Build from a mirror outside iCloud and copy only the APK back.
+BUILD_ROOT="${BANDWITH_ANDROID_BUILD_DIR:-$HOME/Library/Caches/bandwith-android-build}"
+mkdir -p "$BUILD_ROOT"
+rsync -a --delete --exclude '/app/build/' --exclude '/build/' --exclude '/.gradle/' \
+  --exclude '* [0-9].*' --exclude '* [0-9][0-9].*' android/ "$BUILD_ROOT/android/"
+ln -sfn "$(pwd)/node_modules" "$BUILD_ROOT/node_modules"
+(cd "$BUILD_ROOT/android" && ./gradlew assembleDebug)
+cp "$BUILD_ROOT/android/app/build/outputs/apk/debug/app-debug.apk" BandWith-android-debug.apk
 echo "APK: $(pwd)/BandWith-android-debug.apk"
