@@ -1,0 +1,76 @@
+PODS:
+  - AparajitaCapacitorBiometricAuth (9.1.2):
+    - Capacitor
+  - Capacitor (8.1.0):
+    - CapacitorCordova
+  - CapacitorApp (8.0.1):
+    - Capacitor
+  - CapacitorBrowser (8.0.1):
+    - Capacitor
+  - CapacitorCordova (8.1.0)
+  - CapacitorHaptics (8.0.2):
+    - Capacitor
+  - CapacitorKeyboard (8.0.0):
+    - Capacitor
+  - CapacitorLocalNotifications (8.0.1):
+    - Capacitor
+  - CapacitorPushNotifications (8.0.1):
+    - Capacitor
+  - CapacitorSplashScreen (8.0.1):
+    - Capacitor
+  - CapacitorStatusBar (8.0.1):
+    - Capacitor
+
+DEPENDENCIES:
+  - "AparajitaCapacitorBiometricAuth (from `../../node_modules/@aparajita/capacitor-biometric-auth`)"
+  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
+  - "CapacitorBrowser (from `../../node_modules/@capacitor/browser`)"
+  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
+  - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
+  - "CapacitorLocalNotifications (from `../../node_modules/@capacitor/local-notifications`)"
+  - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
+  - "CapacitorSplashScreen (from `../../node_modules/@capacitor/splash-screen`)"
+  - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
+
+EXTERNAL SOURCES:
+  AparajitaCapacitorBiometricAuth:
+    :path: "../../node_modules/@aparajita/capacitor-biometric-auth"
+  Capacitor:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorApp:
+    :path: "../../node_modules/@capacitor/app"
+  CapacitorBrowser:
+    :path: "../../node_modules/@capacitor/browser"
+  CapacitorCordova:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorHaptics:
+    :path: "../../node_modules/@capacitor/haptics"
+  CapacitorKeyboard:
+    :path: "../../node_modules/@capacitor/keyboard"
+  CapacitorLocalNotifications:
+    :path: "../../node_modules/@capacitor/local-notifications"
+  CapacitorPushNotifications:
+    :path: "../../node_modules/@capacitor/push-notifications"
+  CapacitorSplashScreen:
+    :path: "../../node_modules/@capacitor/splash-screen"
+  CapacitorStatusBar:
+    :path: "../../node_modules/@capacitor/status-bar"
+
+SPEC CHECKSUMS:
+  AparajitaCapacitorBiometricAuth: c7edb43d80486150b81224d3ff7e950b37a3c2f1
+  Capacitor: 47b825120c6b8b6d6f9f053e9350a8960d436710
+  CapacitorApp: 942306cd1acf7774a00e89a3986af3a67c8cad7a
+  CapacitorBrowser: e72e572d5dbdbb854fda5950586a2451e981f2d6
+  CapacitorCordova: e8b76fd95fc1e157775abc484c59cc0de464095d
+  CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
+  CapacitorKeyboard: d7868c079a4d5277a3deca27a10a488fcbbb8b69
+  CapacitorLocalNotifications: bc5325611c92ac302732413bc69244575cd4eaaf
+  CapacitorPushNotifications: 99644101c6a82036e459929b6d897ee1cb27d97f
+  CapacitorSplashScreen: 4b46c72298db552b3c57ce021ef028b6dc7f1fa7
+  CapacitorStatusBar: 32206abd53b14f339763da26f71286deaa891e16
+
+PODFILE CHECKSUM: 7f0c4a5c86fb34f09eacc7254ed753b9b1aa70e9
+
+COCOAPODS: 1.16.2
