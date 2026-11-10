@@ -1,23 +1,21 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
-  ChevronDown,
-  Music,
-  Activity,
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
-  Calendar as CalendarIcon,
-  RotateCw,
-  Play,
-  ListMusic,
-  CheckCircle2,
   Mic2,
+  Play,
   Radio,
   X
 } from '@/app/components/icons';
+import { Card, IconButton, Tag } from '@/app/components/bw/Screen';
+import { PillButton } from '@/app/components/bw/Form';
+import { DotText, EventMark, Metric } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
-import { ExpandedCardWrapper } from './ExpandedCardWrapper';
+import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { EventItem } from '@/app/data/events';
 import { RehearsalViewMode } from '@/app/types';
 
@@ -40,6 +38,22 @@ interface RehearsalExpandedProps {
   onDecline: () => void;
 }
 
+/** Member initials disc (Figma Event detail lineup avatar, small). */
+const Initials: React.FC<{ value: string }> = ({ value }) => (
+  <span className="w-8 h-8 rounded-full bg-white text-black border-[1.5px] border-black/15 flex items-center justify-center bw-label-sm shrink-0">
+    {value}
+  </span>
+);
+
+const VIEW_TITLE: Partial<Record<RehearsalViewMode, string>> = {
+  index: 'Rehearsals',
+  overview: 'Rehearsal',
+  setlist: 'Setlist',
+  tasks: 'Tasks',
+  live: 'Live',
+  post: 'Summary',
+};
+
 export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
   upcomingRehearsals,
   currentRehearsal,
@@ -52,8 +66,8 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
   onClose,
   onDecline
 }) => {
-  const handleBack = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleBack = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (rehearsalViewMode === 'index') {
       onClose();
     } else if (rehearsalViewMode === 'overview') {
@@ -67,63 +81,49 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
     }
   };
 
+  const pendingTasks = currentDetails?.tasks?.filter((t: any) => !(t.done || t.completed)).length || 0;
+  const songCount = currentDetails?.setlist?.length || 0;
+
   return (
     <ExpandedCardWrapper
-      backgroundColor="var(--accent-rehearsal)"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '30%', left: '3%', right: '3%', bottom: '52%' }}
     >
-      {/* Header */}
-      <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-[var(--accent-rehearsal)]/95 backdrop-blur-md"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.3 }}
-      >
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={handleBack} 
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/20 hover:bg-white/20 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          {rehearsalViewMode !== 'overview' && rehearsalViewMode !== 'index' && (
-            <span className="text-xl font-black text-white uppercase tracking-tight">
-              {rehearsalViewMode === 'post' ? 'Summary' : rehearsalViewMode}
+      {/* Header (Figma Top Bar) */}
+      <ExpandedTopBar
+        title={VIEW_TITLE[rehearsalViewMode] ?? String(rehearsalViewMode)}
+        onBack={() => handleBack()}
+        meta={
+          rehearsalViewMode === 'overview' && upcomingRehearsals.length > 1 ? (
+            <span className="flex items-center gap-1">
+              <IconButton
+                label="Previous rehearsal"
+                size="sm"
+                variant="ghost"
+                icon={<ChevronLeft />}
+                onClick={() => setRehearsalIndex(prev => prev > 0 ? prev - 1 : upcomingRehearsals.length - 1)}
+              />
+              <span className="bw-label-sm tabular-nums">{rehearsalIndex + 1}/{upcomingRehearsals.length}</span>
+              <IconButton
+                label="Next rehearsal"
+                size="sm"
+                variant="ghost"
+                icon={<ChevronRight />}
+                onClick={() => setRehearsalIndex(prev => prev < upcomingRehearsals.length - 1 ? prev + 1 : 0)}
+              />
             </span>
-          )}
-          {rehearsalViewMode === 'index' && (
-            <span className="text-xl font-black text-white uppercase tracking-tight">Rehearsals</span>
-          )}
-        </div>
-        
-        {rehearsalViewMode === 'overview' && (
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] font-bold tracking-[0.2em] text-white/60 uppercase">Rehearsal</span>
-            {upcomingRehearsals.length > 1 && (
-              <div className="flex items-center gap-2 mt-1">
-                <button 
-                  onClick={() => setRehearsalIndex(prev => prev > 0 ? prev - 1 : upcomingRehearsals.length - 1)} 
-                  className="p-1 hover:bg-white/10 rounded"
-                >
-                  <ChevronDown className="w-3 h-3 rotate-90 text-white" />
-                </button>
-                <span className="text-xs font-bold text-white tabular-nums">{rehearsalIndex + 1}/{upcomingRehearsals.length}</span>
-                <button 
-                  onClick={() => setRehearsalIndex(prev => prev < upcomingRehearsals.length - 1 ? prev + 1 : 0)} 
-                  className="p-1 hover:bg-white/10 rounded"
-                >
-                  <ChevronDown className="w-3 h-3 -rotate-90 text-white" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="w-10" />
-      </motion.div>
+          ) : rehearsalViewMode === 'index' ? (
+            <span className="bw-label-sm text-muted-foreground">{upcomingRehearsals.length}</span>
+          ) : undefined
+        }
+      />
 
-      {/* Content Container */}
-      <div className="flex-1 px-3 pb-32 max-w-md mx-auto w-full text-white relative">
+      {/* Content */}
+      <div
+        className="flex-1 flex flex-col px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        style={{ paddingBottom: rehearsalViewMode === 'overview' ? 'calc(var(--safe-bottom) + 112px)' : 'calc(var(--safe-bottom) + 40px)' }}
+      >
         <AnimatePresence mode="wait">
           {/* INDEX VIEW */}
           {rehearsalViewMode === 'index' && (
@@ -132,92 +132,47 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-3 pb-24"
+              className="flex flex-col gap-8"
             >
-              {/* Hero Section */}
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                transition={{ delay: 0.3 }} 
-                className="bg-white/10 rounded-[2.5rem] p-6 mb-6 border border-white/10 relative overflow-hidden"
-              >
-                <div className="absolute -right-4 -top-4 w-32 h-32 bg-accent-rehearsal rounded-full blur-[50px] opacity-20" />
-                
-                <div className="relative z-10 flex justify-between items-end">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/60 mb-1 block">Overview</span>
-                    <h2 className="text-3xl font-black text-white leading-none mb-4">Rehearsal<br/>Schedule</h2>
-                    <div className="flex gap-4">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase text-white/40">Total</span>
-                        <span className="text-xl font-bold text-white">{upcomingRehearsals.length}</span>
-                      </div>
-                      <div className="w-px h-8 bg-white/20" />
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase text-white/40">Next</span>
-                        <span className="text-xl font-bold text-accent-rehearsal">{upcomingRehearsals[0]?.time}</span>
-                      </div>
-                      <div className="w-px h-8 bg-white/20" />
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase text-white/40">Focus</span>
-                        <span className="text-xl font-bold text-white">Jazz</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center animate-spin-slow">
-                    <RotateCw className="w-6 h-6 text-white/40" />
-                  </div>
-                </div>
-              </motion.div>
+              {/* Metrics */}
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
+                <Metric label="Sessions" value={upcomingRehearsals.length} fill={upcomingRehearsals.length / 48} />
+                <Metric label="Next" value={upcomingRehearsals[0]?.time || '--'} fill={upcomingRehearsals.length > 0 ? 1 / 48 : 0} />
+              </div>
 
-              <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-4 px-2">Upcoming Sessions</h2>
-              {upcomingRehearsals.map((rehearsal, i) => (
-                <motion.div
-                  key={rehearsal.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => {
-                    setRehearsalIndex(i);
-                    setRehearsalViewMode('overview');
-                  }}
-                  className="bg-white rounded-[2rem] p-5 relative overflow-hidden cursor-pointer group hover:scale-[0.98] transition-transform shadow-lg"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      {i === 0 && <span className="w-2 h-2 rounded-full bg-[var(--accent-rehearsal)] animate-pulse" />}
-                      <span className="text-[10px] font-bold uppercase text-[var(--accent-rehearsal)] tracking-widest">
-                        {i === 0 ? 'Next Up' : 'Scheduled'}
+              <section className="flex flex-col gap-4">
+                <h2 className="bw-label-md text-foreground">Upcoming sessions</h2>
+                {upcomingRehearsals.length === 0 ? (
+                  <Card className="items-center text-center py-8">
+                    <h3 className="bw-h3">No rehearsals scheduled</h3>
+                  </Card>
+                ) : (
+                  upcomingRehearsals.map((rehearsal, i) => (
+                    <motion.button
+                      type="button"
+                      key={rehearsal.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => {
+                        setRehearsalIndex(i);
+                        setRehearsalViewMode('overview');
+                      }}
+                      className="w-full flex items-center gap-4 p-3 pr-4 rounded-[24px] bg-card text-card-foreground text-left active:scale-[0.99] transition-transform"
+                    >
+                      <EventMark kind="rehearsal" size={32} />
+                      <span className="flex-1 min-w-0 flex flex-col gap-1">
+                        {i === 0 && <Tag variant="rehearsal" className="self-start">Next up</Tag>}
+                        <span className="bw-h3 truncate">{rehearsal.title}</span>
+                        <span className="bw-body-sm text-muted-foreground truncate">
+                          {[rehearsal.date, rehearsal.location].filter(Boolean).join(' · ')}
+                        </span>
                       </span>
-                    </div>
-                    <span className="text-sm font-black text-black tabular-nums bg-stone-100 px-2 py-0.5 rounded-lg">
-                      {rehearsal.time}
-                    </span>
-                  </div>
-                  
-                  <h3 className="text-2xl font-black text-black uppercase leading-none mb-4 truncate">{rehearsal.title}</h3>
-                  
-                  <div className="flex items-center gap-3 text-stone-500">
-                    <div className="flex items-center gap-1.5">
-                      <CalendarIcon className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase">{rehearsal.date}</span>
-                    </div>
-                    <div className="w-[1px] h-3 bg-stone-300" />
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span className="text-[11px] font-bold uppercase truncate max-w-[120px]">{rehearsal.location}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="absolute bottom-5 right-5 flex -space-x-2">
-                    {rehearsal.members.map((m: string, idx: number) => (
-                      <div key={idx} className="w-6 h-6 rounded-full bg-stone-100 border border-white flex items-center justify-center text-[8px] font-bold text-black shadow-sm">
-                        {m}
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
+                      {rehearsal.time && <span className="bw-label-md shrink-0 whitespace-nowrap">{rehearsal.time}</span>}
+                    </motion.button>
+                  ))
+                )}
+              </section>
             </motion.div>
           )}
 
@@ -229,245 +184,216 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="space-y-3"
+              className="flex flex-col gap-4"
             >
-              {/* Swiss Hero Detail */}
-              <div className="bg-white rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-[0.03] transform rotate-12 group-hover:rotate-0 transition-transform duration-700">
-                  <Music className="w-40 h-40 text-black" />
+              {/* Hero (event colour, Figma Event detail header) */}
+              <div className="rounded-[24px] p-5 flex flex-col gap-4 bg-accent-rehearsal text-accent-rehearsal-foreground">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <EventMark kind="rehearsal" size={20} bare />
+                    <span className="bw-label-xs">Rehearsal</span>
+                    {currentRehearsal.status && (
+                      <span
+                        className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center"
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--accent-rehearsal-fg) 12%, transparent)' }}
+                      >
+                        {currentRehearsal.status}
+                      </span>
+                    )}
+                  </span>
+                  {currentRehearsal.time && <span className="bw-num shrink-0">{currentRehearsal.time}</span>}
                 </div>
-
-                <div className="flex justify-between items-start mb-6 relative z-10">
-                  <div className="flex flex-col gap-1">
-                    <span className="inline-flex items-center gap-1.5 bg-[var(--accent-rehearsal)]/10 text-[var(--accent-rehearsal)] px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide w-fit">
-                      <Activity className="w-3 h-3" /> {currentRehearsal.status}
+                <h2 className="bw-h1 [overflow-wrap:anywhere]">{currentRehearsal.title}</h2>
+                <div className="flex items-end justify-between gap-3">
+                  <span className="flex flex-col gap-1 min-w-0">
+                    {currentRehearsal.location && (
+                      <span className="bw-label-md flex items-center gap-1.5 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{currentRehearsal.location}</span>
+                      </span>
+                    )}
+                    {currentRehearsal.date && <span className="bw-label-xs opacity-70">{currentRehearsal.date}</span>}
+                  </span>
+                  {currentRehearsal.members?.length > 0 && (
+                    <span className="flex -space-x-2 shrink-0">
+                      {currentRehearsal.members.map((m: string, i: number) => (
+                        <Initials key={i} value={m} />
+                      ))}
                     </span>
-                    <span className="text-[10px] font-bold uppercase text-stone-400 tracking-widest pl-1">{currentRehearsal.date}</span>
-                  </div>
-                  <div className="bg-black text-white px-3 py-1.5 rounded-xl">
-                    <span className="text-lg font-black tracking-tight">{currentRehearsal.time}</span>
-                  </div>
-                </div>
-
-                <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-[0.85] mb-6 relative z-10 max-w-[280px]">
-                  {currentRehearsal.title}
-                </h2>
-
-                <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100 flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 flex items-center justify-center shadow-sm text-black">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-[9px] font-bold uppercase text-stone-400 block leading-none mb-0.5">Location</span>
-                      <span className="text-xs font-bold text-black uppercase">{currentRehearsal.location}</span>
-                    </div>
-                  </div>
-                  <div className="flex -space-x-2">
-                    {currentRehearsal.members.map((m: string, i: number) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-white border-2 border-stone-50 flex items-center justify-center text-[9px] font-bold text-black shadow-sm">
-                        {m}
-                      </div>
-                    ))}
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Timeline Strip */}
-              {currentDetails?.timeline && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  transition={{ delay: 0.1 }} 
-                  className="bg-white/10 rounded-[2rem] p-5 border border-white/10 backdrop-blur-md"
-                >
-                  <div className="flex justify-between items-center relative">
-                    <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-white/20 -translate-y-1/2" />
+              {/* Timeline strip */}
+              {currentDetails?.timeline && currentDetails.timeline.length > 0 && (
+                <Card>
+                  <span className="bw-label-sm text-muted-foreground">Timeline</span>
+                  <div className="relative flex justify-between items-start">
+                    <span className="absolute top-[5px] left-1 right-1 h-px bg-border" aria-hidden="true" />
                     {currentDetails.timeline.map((step: any, i: number) => (
-                      <div key={i} className="relative z-10 flex flex-col items-center gap-2 group cursor-pointer">
-                        <div className={cn(
-                          "w-2.5 h-2.5 rounded-full border-2 transition-all duration-300", 
-                          step.active 
-                            ? "bg-accent-rehearsal border-accent-rehearsal scale-125 shadow-[0_0_10px_var(--accent-rehearsal)]" 
-                            : "bg-[var(--accent-rehearsal)] border-white/40 group-hover:border-white"
-                        )} />
-                        <span className={cn(
-                          "text-[9px] font-bold tabular-nums", 
-                          step.active ? "text-white" : "text-white/40"
-                        )}>{step.time}</span>
-                      </div>
+                      <span key={i} className="relative flex flex-col items-center gap-2 min-w-0">
+                        <span
+                          className={cn('w-2.5 h-2.5 rounded-full', step.active ? 'bg-accent-rehearsal' : 'bg-foreground/25')}
+                          aria-hidden="true"
+                        />
+                        <span className={cn('bw-label-xs tabular-nums', !step.active && 'text-muted-foreground')}>{step.time}</span>
+                      </span>
                     ))}
                   </div>
-                </motion.div>
+                </Card>
               )}
 
-              <motion.button
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+              <PillButton
+                variant="dark"
+                icon={<Play className="w-[18px] h-[18px]" />}
                 onClick={() => setRehearsalViewMode('live')}
-                className="w-full py-4 bg-accent-rehearsal text-accent-rehearsal-foreground rounded-[2rem] font-black uppercase text-sm tracking-wider hover:scale-[1.02] transition-transform shadow-lg flex items-center justify-center gap-2 relative overflow-hidden"
               >
-                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]" />
-                <Play className="w-5 h-5 fill-current relative z-10" /> 
-                <span className="relative z-10">Enter Live Mode</span>
-              </motion.button>
+                Enter live mode
+              </PillButton>
 
-              {/* Action Grid */}
-              <div className="grid grid-cols-2 gap-4 mb-24">
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  transition={{ delay: 0.5 }}
+              {/* Setlist / tasks tiles */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
                   onClick={() => setRehearsalViewMode('setlist')}
-                  className="bg-white/10 p-6 rounded-[2rem] border border-white/20 hover:bg-white/20 transition-colors cursor-pointer group"
+                  className="rounded-[24px] p-4 flex flex-col gap-2 bg-card text-card-foreground text-left active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                    <ListMusic className="w-5 h-5" />
-                  </div>
-                  <span className="text-3xl font-black text-white block mb-1">{currentDetails?.setlist?.length || 0}</span>
-                  <span className="text-[10px] font-bold uppercase text-white/60">Songs to Play</span>
-                </motion.div>
-                
-                <motion.div 
-                  initial={{ opacity: 0, x: 10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  transition={{ delay: 0.5 }}
-                  onClick={() => setRehearsalViewMode('tasks')}
-                  className="bg-white/10 p-6 rounded-[2rem] border border-white/20 hover:bg-white/20 transition-colors cursor-pointer group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <span className="text-3xl font-black text-white block mb-1">
-                    {currentDetails?.tasks?.filter((t: any) => !(t.done || t.completed)).length || 0}
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="bw-label-md">Songs to play</span>
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
                   </span>
-                  <span className="text-[10px] font-bold uppercase text-white/60">Pending Tasks</span>
-                </motion.div>
+                  <DotText text={songCount} size={24} label={`${songCount} songs`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRehearsalViewMode('tasks')}
+                  className="rounded-[24px] p-4 flex flex-col gap-2 bg-card text-card-foreground text-left active:scale-[0.98] transition-transform"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="bw-label-md">Pending tasks</span>
+                    <ArrowUpRight className="w-4 h-4 shrink-0" />
+                  </span>
+                  <DotText text={pendingTasks} size={24} label={`${pendingTasks} pending tasks`} />
+                </button>
               </div>
             </motion.div>
           )}
 
           {/* SETLIST VIEW */}
           {rehearsalViewMode === 'setlist' && (
-            <motion.div 
-              key="setlist" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -20 }} 
-              className="space-y-4"
+            <motion.div
+              key="setlist"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col gap-4"
             >
-              <div className="bg-white/10 rounded-[2rem] p-6 border border-white/20">
-                <h3 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-                  <ListMusic className="w-5 h-5" /> Setlist
-                </h3>
-                <div className="space-y-2">
-                  {currentDetails?.setlist?.map((song: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-black/20 rounded-xl hover:bg-black/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-white/40 w-4">{i + 1}</span>
-                        <div>
-                          <span className="text-sm font-bold text-white block">{song.title}</span>
-                          <span className="text-[10px] font-bold text-white/50 uppercase">
-                            {song.key || '-'} • {song.bpm || '-'} BPM
-                          </span>
-                        </div>
+              <span className="bw-label-sm text-muted-foreground">
+                {songCount} {songCount === 1 ? 'song' : 'songs'}
+              </span>
+              {songCount === 0 ? (
+                <Card className="items-center text-center py-8">
+                  <h3 className="bw-h3">No setlist yet</h3>
+                </Card>
+              ) : (
+                <Card className="gap-0 py-2">
+                  {currentDetails!.setlist.map((song: any, i: number) => {
+                    const meta = [song.key, song.bpm ? `${song.bpm} BPM` : null].filter(Boolean).join(' · ');
+                    return (
+                      <div key={i} className={cn('flex items-center gap-3 py-3', i > 0 && 'border-t border-border')}>
+                        <span className="bw-label-sm text-muted-foreground w-6 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
+                        <span className="flex-1 min-w-0 flex flex-col gap-1">
+                          <span className="bw-body-lg truncate">{song.title}</span>
+                          {meta && <span className="bw-label-xs text-muted-foreground">{meta}</span>}
+                        </span>
+                        {song.duration && <span className="bw-label-md shrink-0">{song.duration}</span>}
                       </div>
-                      <span className="text-xs font-bold text-white/60">{song.duration || '-'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    );
+                  })}
+                </Card>
+              )}
             </motion.div>
           )}
 
           {/* TASKS VIEW */}
           {rehearsalViewMode === 'tasks' && (
-            <motion.div 
-              key="tasks" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -20 }} 
-              className="space-y-4"
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col gap-4"
             >
-              <div className="bg-white/10 rounded-[2rem] p-6 border border-white/20">
-                <h3 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> Tasks
-                </h3>
-                <div className="space-y-3">
-                  {currentDetails?.tasks?.map((task: any, i: number) => {
+              <span className="bw-label-sm text-muted-foreground">{pendingTasks} pending</span>
+              {(currentDetails?.tasks?.length || 0) === 0 ? (
+                <Card className="items-center text-center py-8">
+                  <h3 className="bw-h3">No tasks</h3>
+                </Card>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {currentDetails!.tasks.map((task: any, i: number) => {
                     const isDone = task.done || task.completed;
+                    const who = task.assigned || task.assignee;
                     return (
-                      <div key={i} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl">
-                        <DotCheckbox
-                          checked={isDone}
-                          activeColor="var(--accent-rehearsal)"
-                          inactiveColor="rgba(255,255,255,0.15)"
-                        />
-                        <div className="flex-1">
-                          <span className={cn(
-                            "text-sm font-bold block", 
-                            isDone ? "text-white/40 line-through" : "text-white"
-                          )}>
+                      <div key={i} className="flex items-center gap-3 p-4 rounded-[16px] bg-card text-card-foreground">
+                        <DotCheckbox checked={isDone} activeColor="var(--accent-rehearsal)" inactiveColor="var(--border)" />
+                        <span className="flex-1 min-w-0 flex flex-col gap-1">
+                          <span className={cn('bw-body-lg [overflow-wrap:anywhere]', isDone && 'text-muted-foreground line-through')}>
                             {task.label || task.text}
                           </span>
-                          <span className="text-[10px] font-bold text-white/40 uppercase">
-                            Assigned to: {task.assigned || task.assignee}
-                          </span>
-                        </div>
+                          {who && <span className="bw-body-sm text-muted-foreground truncate">Assigned to {who}</span>}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
 
           {/* LIVE VIEW (Placeholder) */}
           {rehearsalViewMode === 'live' && (
-            <motion.div 
-              key="live" 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              className="h-full flex flex-col items-center justify-center text-center"
+            <motion.div
+              key="live"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex-1 flex flex-col items-center justify-center text-center gap-6 py-10"
             >
-              <div className="w-32 h-32 rounded-full border-4 border-accent flex items-center justify-center animate-pulse mb-8 relative">
-                <div className="absolute inset-0 bg-accent-rehearsal/20 rounded-full animate-ping" />
-                <Mic2 className="w-12 h-12 text-accent-rehearsal" />
+              <span className="relative w-28 h-28 rounded-full bg-accent-rehearsal text-accent-rehearsal-foreground flex items-center justify-center">
+                <span className="absolute inset-0 rounded-full bg-accent-rehearsal/30 animate-ping" aria-hidden="true" />
+                <Mic2 className="relative w-10 h-10" />
+              </span>
+              <div className="flex flex-col gap-2">
+                <h2 className="bw-display-lg">Live session</h2>
+                <p className="bw-label-sm text-muted-foreground">Recording &amp; tracking time</p>
               </div>
-              <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-2">Live Session</h2>
-              <p className="text-white/60 font-bold uppercase tracking-widest text-sm mb-12">Recording & Tracking Time</p>
-              <div className="text-6xl font-black text-white tabular-nums tracking-tighter mb-8">00:00:00</div>
-              <button 
-                onClick={() => setRehearsalViewMode('overview')} 
-                className="px-8 py-3 bg-red-500 rounded-full font-black uppercase text-white shadow-xl hover:scale-105 transition-transform"
-              >
-                End Session
-              </button>
+              <DotText text="00:00:00" size={34} label="Elapsed 00:00:00" />
+              <PillButton variant="outline" fullWidth={false} className="text-destructive border-destructive" onClick={() => setRehearsalViewMode('overview')}>
+                End session
+              </PillButton>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Footer Actions */}
+      {/* Footer actions */}
       {rehearsalViewMode === 'overview' && (
-        <motion.div 
+        <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 p-6 bg-[var(--accent-rehearsal)]/95 backdrop-blur-md border-t border-white/10 z-50 flex gap-4 max-w-md mx-auto"
+          className="fixed bottom-0 left-0 right-0 z-50 bg-background px-4 pt-3"
+          style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
         >
-          <button 
-            onClick={() => setRehearsalViewMode('live')}
-            className="flex-1 h-14 bg-accent-rehearsal rounded-full flex items-center justify-center gap-2 text-accent-rehearsal-foreground font-black uppercase tracking-wide text-sm hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,85,225,0.3)]"
-          >
-            <Radio className="w-5 h-5 animate-pulse" /> Check In / Live
-          </button>
-          <button 
-            onClick={onDecline}
-            className="h-14 w-14 rounded-full border border-white/30 flex items-center justify-center text-white/70 hover:text-white hover:border-white transition-colors bg-black/20"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3 max-w-[700px] mx-auto">
+            <PillButton
+              className="flex-1 min-w-0"
+              icon={<Radio className="w-[18px] h-[18px]" />}
+              onClick={() => setRehearsalViewMode('live')}
+            >
+              Check in / live
+            </PillButton>
+            <IconButton label="Decline rehearsal" icon={<X />} onClick={onDecline} className="w-14 h-14" />
+          </div>
         </motion.div>
       )}
     </ExpandedCardWrapper>

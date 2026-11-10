@@ -2,25 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
-  Music2,
-  Upload,
   Smartphone,
   Cloud,
   Droplet,
   FileText,
   Plus,
   Check,
-  Loader2,
   ArrowLeft,
-  ArrowRight,
+  ArrowUpRight,
   Youtube,
   FileMusic,
   StickyNote,
   Link as LinkIcon,
   Disc3,
-  FolderOpen,
-  ChevronDown
 } from '@/app/components/icons';
+import { IconButton, PillButton, PillField, Selector, FormError } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
 import { createSong } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
@@ -225,40 +221,48 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   if (!isOpen) return null;
 
   const stepInfo = getStepInfo();
+  const STEP_ORDER: StepType[] = ['source', 'details', 'extras'];
+  const stepIndex = STEP_ORDER.indexOf(step);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background"
-      style={{ 
-        paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-song-title"
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
     >
-      {/* Header */}
-      <div className="px-6 pt-3 pb-4 flex justify-between items-start shrink-0 max-w-4xl mx-auto w-full">
-        <div>
-          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
-            Step {stepInfo.num}
-          </span>
-          <h2 className="text-4xl font-black text-foreground tracking-tighter uppercase leading-none">
-            {stepInfo.title}
+      {/* Header: Top Bar + wizard steps */}
+      <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+        <div className="flex items-center gap-3 min-h-11">
+          <IconButton label={step === 'source' ? 'Cancel' : 'Back'} icon={<ArrowLeft />} onClick={prevStep} />
+          <h2 id="add-song-title" className="flex-1 min-w-0 bw-h1 truncate">
+            Add song
           </h2>
-          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">{stepInfo.subtitle}</p>
+          <IconButton label="Close" icon={<X />} variant="ghost" onClick={handleClose} />
         </div>
-        
-        <button 
-          onClick={handleClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all hover:rotate-90"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            {STEP_ORDER.map((s, i) => (
+              <span
+                key={s}
+                className={cn('h-1.5 flex-1 rounded-full transition-colors', i <= stepIndex ? 'bg-foreground' : 'bg-foreground/15')}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="bw-label-sm text-muted-foreground">
+              Step {stepIndex + 1} of {STEP_ORDER.length}
+            </span>
+            <span className="bw-label-sm">{stepInfo.title}</span>
+          </div>
+        </div>
+      </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-32 max-w-4xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-8 max-w-2xl mx-auto w-full">
         <AnimatePresence mode="wait">
           {step === 'source' && (
             <motion.div
@@ -266,78 +270,59 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="flex flex-col gap-5"
             >
+              <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
+
               {/* Source Selection */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Select Source</label>
-                <div className="grid grid-cols-3 gap-3">
+              <fieldset className="flex flex-col gap-2">
+                <legend className="bw-label-sm text-muted-foreground mb-2">Select source</legend>
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'local', icon: Smartphone, label: 'Local Device' },
+                    { id: 'local', icon: Smartphone, label: 'Local device' },
                     { id: 'google', icon: Cloud, label: 'Google Drive' },
                     { id: 'dropbox', icon: Droplet, label: 'Dropbox' },
                   ].map(({ id, icon: Icon, label }) => (
                     <button
                       key={id}
+                      type="button"
+                      aria-pressed={source === id}
                       onClick={() => setSource(id as SourceType)}
                       className={cn(
-                        "flex flex-col items-center gap-3 py-6 rounded-3xl border-2 transition-all",
-                        source === id
-                          ? "bg-black border-black text-white"
-                          : "bg-white/50 border-stone-200 text-foreground/50 hover:bg-card"
+                        'flex flex-col items-center gap-2 py-5 px-2 rounded-[16px] transition-colors cursor-pointer',
+                        source === id ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-card text-foreground'
                       )}
                     >
-                      <Icon className="w-8 h-8" />
-                      <span className="text-xs font-bold uppercase tracking-tight">{label}</span>
+                      <Icon className="w-7 h-7" />
+                      <span className="bw-label-xs text-center">{label}</span>
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div className="h-[1px] bg-black/10" />
+              </fieldset>
 
               {/* File Upload */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
-                <div 
-                  className={cn(
-                    "border-2 border-dashed rounded-3xl p-8 text-center transition-all",
-                    file ? "border-black bg-black/5" : "border-black/20 hover:border-black/40"
-                  )}
-                >
-                  {file ? (
-                    <div className="flex items-center justify-center gap-4">
-                      <FileText className="w-10 h-10 text-foreground" />
-                      <div className="text-left">
-                        <p className="font-black text-foreground truncate max-w-[200px]">{file.name}</p>
-                        <p className="text-sm text-foreground/50">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                      <button 
-                        onClick={() => setFile(null)}
-                        className="p-2 hover:bg-black/10 rounded-full"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+              <div className="flex flex-col gap-2">
+                <span className="bw-label-sm text-muted-foreground">Upload file</span>
+                {file ? (
+                  <div className="flex items-center gap-3 pl-4 pr-1 py-3 rounded-[16px] bg-card">
+                    <FileText className="w-6 h-6 shrink-0" />
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-body-lg truncate">{file.name}</span>
+                      <span className="bw-body-sm text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
-                  ) : (
-                    <>
-                      <FileMusic className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
-                      <p className="font-black text-foreground text-xl mb-1">Drag & Drop or Click</p>
-                      <p className="text-sm text-foreground/50 uppercase tracking-wide mb-6">Supports PDF, MP3, WAV</p>
-                      <label className="inline-block">
-                        <input
-                          type="file"
-                          accept=".pdf,.mp3,.wav,.m4a"
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                        <span className="px-8 py-3 bg-black text-white rounded-full font-bold text-sm cursor-pointer hover:scale-105 transition-transform inline-block">
-                          CHOOSE FILE
-                        </span>
-                      </label>
-                    </>
-                  )}
-                </div>
+                    <IconButton label="Remove file" icon={<X />} variant="ghost" size="sm" onClick={() => setFile(null)} />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 p-8 rounded-[24px] border-[1.5px] border-dashed border-foreground/25 text-center">
+                    <FileMusic className="w-10 h-10 text-muted-foreground" />
+                    <p className="bw-h3">Drag &amp; drop or choose</p>
+                    <p className="bw-label-sm text-muted-foreground">Supports PDF, MP3, WAV</p>
+                    <label className="mt-3 inline-flex items-center h-11 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
+                      <input type="file" accept=".pdf,.mp3,.wav,.m4a" onChange={handleFileChange} className="hidden" />
+                      Choose file
+                    </label>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -348,119 +333,54 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="flex flex-col gap-4"
             >
-              {/* Title */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">
-                  Song Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Superstition"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-3xl font-black text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                />
+              <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
+              <PillField label="Song title *" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Superstition" />
+              <PillField label="Original artist" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="e.g. Stevie Wonder" />
+
+              <div className="grid grid-cols-3 gap-3">
+                <PillField label="BPM" type="number" inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="120" />
+                <PillField label="Key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="C maj" />
+                <PillField label="Min" type="number" inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="4" />
               </div>
-
-              {/* Artist */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Original Artist</label>
-                <input
-                  type="text"
-                  value={artist}
-                  onChange={(e) => setArtist(e.target.value)}
-                  placeholder="e.g. Stevie Wonder"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                />
-              </div>
-
-              <div className="h-[1px] bg-black/10" />
-
-              {/* Details Grid */}
-              <div className="grid grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">BPM</label>
-                  <input
-                    type="number"
-                    value={bpm}
-                    onChange={(e) => setBpm(e.target.value)}
-                    placeholder="120"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Key</label>
-                  <input
-                    type="text"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value)}
-                    placeholder="C major"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Duration (min)</label>
-                  <input
-                    type="number"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    placeholder="4"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="h-[1px] bg-black/10" />
 
               {/* Folder */}
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder / Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {folders.map(folder => (
-                    <button
+              <fieldset className="flex flex-col gap-2 pt-2">
+                <legend className="bw-label-sm text-muted-foreground mb-2">Folder / category</legend>
+                <div className="flex flex-wrap items-center gap-2">
+                  {folders.map((folder) => (
+                    <Selector
                       key={folder.id}
+                      size="md"
+                      selected={selectedFolder === folder.id}
                       onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
-                      className={cn(
-                        "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
-                        selectedFolder === folder.id
-                          ? "bg-black text-white"
-                          : "bg-white/50 text-foreground/60 hover:bg-card"
-                      )}
                     >
                       {folder.name}
-                    </button>
+                    </Selector>
                   ))}
-                  {showNewFolder ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                        placeholder="Folder name"
-                        className="w-28 bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                        autoFocus
-                      />
-                      <button
-                        onClick={handleCreateFolder}
-                        className="w-8 h-8 bg-black rounded-full flex items-center justify-center"
-                      >
-                        <Check className="w-4 h-4 text-white" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowNewFolder(true)}
-                      className="px-4 py-2 rounded-full border-2 border-dashed border-black/20 text-sm font-bold text-foreground/50 flex items-center gap-1 hover:border-black/40 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      NEW
-                    </button>
+                  {!showNewFolder && (
+                    <Selector size="md" selected={false} onClick={() => setShowNewFolder(true)} className="border-dashed">
+                      <Plus className="w-3.5 h-3.5" />
+                      New
+                    </Selector>
                   )}
                 </div>
-              </div>
+                {showNewFolder && (
+                  <div className="flex items-end gap-2">
+                    <PillField
+                      label="New folder"
+                      hideLabel
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                      placeholder="Folder name"
+                      autoFocus
+                    />
+                    <IconButton label="Create folder" icon={<Check />} variant="filled" className="mb-1" onClick={handleCreateFolder} />
+                  </div>
+                )}
+              </fieldset>
             </motion.div>
           )}
 
@@ -470,135 +390,78 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="flex flex-col gap-4"
             >
-              {/* YouTube Link */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
-                  <Youtube className="w-4 h-4" />
-                  YouTube Video
-                </label>
-                <input
-                  type="url"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://youtube.com/watch?v=..."
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                />
-              </div>
+              <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
+              <PillField
+                type="url"
+                label="YouTube video"
+                icon={<Youtube className="w-5 h-5" />}
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=…"
+              />
+              <PillField
+                type="url"
+                label="Sheet music"
+                icon={<FileMusic className="w-5 h-5" />}
+                value={chartUrl}
+                onChange={(e) => setChartUrl(e.target.value)}
+                placeholder="URL to PDF or sheet music…"
+              />
+              <PillField
+                type="url"
+                label="Chords"
+                icon={<LinkIcon className="w-5 h-5" />}
+                value={chordsUrl}
+                onChange={(e) => setChordsUrl(e.target.value)}
+                placeholder="Link to chords (Ultimate Guitar, etc.)"
+              />
 
-              {/* Chart/Sheet Music URL */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
-                  <FileMusic className="w-4 h-4" />
-                  Sheet Music / Spartiti
-                </label>
-                <input
-                  type="url"
-                  value={chartUrl}
-                  onChange={(e) => setChartUrl(e.target.value)}
-                  placeholder="URL to PDF or sheet music..."
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                />
-              </div>
-
-              {/* Chords URL */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4" />
-                  Chords / Accordi
-                </label>
-                <input
-                  type="url"
-                  value={chordsUrl}
-                  onChange={(e) => setChordsUrl(e.target.value)}
-                  placeholder="Link to chords (Ultimate Guitar, etc.)"
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                />
-              </div>
-
-              <div className="h-[1px] bg-black/10" />
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 flex items-center gap-2">
+              <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
+                <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
                   <StickyNote className="w-4 h-4" />
                   Notes
-                </label>
+                </span>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes, arrangement ideas, key changes..."
+                  placeholder="Arrangement ideas, key changes…"
                   rows={4}
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[120px] resize-none"
+                  className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[96px] resize-none"
                 />
-              </div>
+              </label>
 
-              {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
-                  {error}
-                </div>
-              )}
+              {error && <FormError>{error}</FormError>}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Footer Navigation */}
-      <div className="fixed bottom-0 inset-x-0 bg-background border-t border-stone-200 px-6 py-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <button
-            onClick={prevStep}
-            className="flex items-center gap-2 text-foreground/50 hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-bold text-sm uppercase">{step === 'source' ? 'Cancel' : 'Back'}</span>
-          </button>
-
-          {/* Progress Dots */}
-          <div className="flex gap-2">
-            {['source', 'details', 'extras'].map((s, i) => (
-              <div
-                key={s}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  s === step ? "bg-black w-6" : "bg-black/20"
-                )}
-              />
-            ))}
-          </div>
-
-          <button
+      {/* CTA bar */}
+      <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        <div className="max-w-2xl mx-auto grid grid-cols-[2fr_3fr] gap-3">
+          <PillButton variant="outline" onClick={prevStep}>
+            {step === 'source' ? 'Cancel' : 'Back'}
+          </PillButton>
+          <PillButton
             onClick={nextStep}
             disabled={!canProceed() || saving}
-            className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm uppercase transition-all",
-              success
-                ? "bg-green-500 text-white"
-                : canProceed() && !saving
-                  ? "bg-black text-white hover:scale-105"
-                  : "bg-black/20 text-foreground/40 cursor-not-allowed"
-            )}
+            loading={saving}
+            className={success ? 'bg-success text-success-foreground' : undefined}
+            icon={success ? <Check className="w-[18px] h-[18px]" /> : step === 'extras' ? <Disc3 className="w-[18px] h-[18px]" /> : undefined}
           >
-            {saving ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : success ? (
-              <>
-                <Check className="w-5 h-5" />
-                Added!
-              </>
+            {success ? (
+              'Added!'
             ) : step === 'extras' ? (
-              <>
-                <Disc3 className="w-5 h-5" />
-                Add Song
-              </>
+              'Add song'
             ) : (
               <>
                 Next
-                <ArrowRight className="w-5 h-5" />
+                <ArrowUpRight className="w-5 h-5" />
               </>
             )}
-          </button>
+          </PillButton>
         </div>
       </div>
     </motion.div>

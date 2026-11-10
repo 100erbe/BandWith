@@ -1,23 +1,13 @@
 import React, { useState, useMemo } from 'react';
+import { uuidToNumericId } from '@/lib/numericId';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
-  Plus,
-  MapPin,
-  Users,
-  Mic2,
-  FileText,
-  Truck,
-  Volume2,
-  Play,
-  Copy,
-  AlertCircle,
-  Loader2
-} from '@/app/components/icons';
+import { Copy, Loader2 } from '@/app/components/icons';
+import { Card, IconButton } from '@/app/components/bw/Screen';
+import { DateTile, EventMark, Metric } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
-import { ExpandedCardWrapper } from './ExpandedCardWrapper';
-import { CONFIRMED_GIGS } from '@/app/data/events';
+import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import type { Event } from '@/lib/services/events';
+import { parseLocalDate } from '@/lib/dates';
 
 interface ConfirmedExpandedProps {
   bandId: string;
@@ -25,6 +15,19 @@ interface ConfirmedExpandedProps {
   events?: Event[];
   loading?: boolean;
 }
+
+/** "17:00:00" → "17:00"; empty → "--". */
+const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--');
+
+const shortEuro = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1).replace('.0', '')}k` : `€${v}`);
+
+/** Event-detail "Time Tile" (Figma 22:674): label XS + numeric value on a 16-radius tile. */
+const TimeTile: React.FC<{ label: string; value: string; className?: string }> = ({ label, value, className }) => (
+  <div className={cn('rounded-[16px] p-4 flex flex-col gap-1 min-w-0', className)}>
+    <span className="bw-label-xs opacity-70 truncate">{label}</span>
+    <span className="bw-num truncate">{value}</span>
+  </div>
+);
 
 export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
   onClose,
@@ -41,23 +44,23 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
 
     return realEvents.map(event => {
       const eventDate = event.date || event.event_date;
-      const formattedDate = eventDate 
-        ? new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        : 'TBD';
+      const parsed = eventDate ? parseLocalDate(eventDate) : null;
+      const valid = !!parsed && !isNaN(parsed.getTime());
       return {
-        id: parseInt(event.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
+        id: uuidToNumericId(event.id),
         title: event.title || 'Untitled Event',
-        date: formattedDate,
+        day: valid ? String(parsed!.getDate()).padStart(2, '0') : '--',
+        month: valid ? parsed!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD',
         venue: event.venue || event.venue_name || 'TBD',
         address: event.address || event.venue_address || '',
+        fee: event.fee ? Number(event.fee) : 0,
         amount: event.fee ? Number(event.fee).toLocaleString() : '0',
-        team: [],
-        dress: event.dress_code || 'TBD',
-        contactName: event.client_name || 'N/A',
+        dress: event.dress_code || '',
+        contactName: event.client_name || '',
         timeline: {
-          loadIn: event.load_in_time || '17:00',
-          soundcheck: event.soundcheck_time || '18:00',
-          show: event.time || event.start_time || '20:00'
+          loadIn: hhmm(event.load_in_time),
+          soundcheck: hhmm(event.soundcheck_time),
+          show: hhmm(event.time || event.start_time),
         },
         notes: event.notes || ''
       };
@@ -65,217 +68,168 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
   }, [realEvents]);
 
   const nextGig = gigs[0];
+  const totalFee = gigs.reduce((sum, g) => sum + g.fee, 0);
+
+  const copyAddress = (address: string) => {
+    try {
+      void navigator.clipboard?.writeText(address);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
 
   return (
     <ExpandedCardWrapper
-      backgroundColor="var(--accent-gig)"
+      backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '40%', left: '44%', right: '3%', bottom: '42%' }}
     >
-      <motion.div 
-        className="sticky top-0 z-50 p-6 flex items-center justify-between bg-accent-gig/95 backdrop-blur-md" 
-        initial={{ opacity: 0, y: -20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ delay: 0.15, duration: 0.3 }}
+      <ExpandedTopBar
+        title="Confirmed gigs"
+        onBack={onClose}
+        meta={<span className="bw-label-sm text-muted-foreground">{gigs.length}</span>}
+      />
+
+      <div
+        className="flex-1 flex flex-col gap-8 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
+        onClick={() => setExpandedGigId(null)}
       >
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center text-black hover:bg-black/20 transition-colors backdrop-blur-sm"
-          >
-            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-          </button>
-          <h2 className="text-2xl font-black tracking-tight text-black">Schedule</h2>
+        {/* Metrics (Figma Metric: one dot per gig / per €500 booked) */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
+          <Metric label="Confirmed" value={loading ? '-' : gigs.length} fill={gigs.length / 48} />
+          <Metric label="Booked" value={loading ? '-' : shortEuro(totalFee)} fill={totalFee / (48 * 500)} />
         </div>
-        <button className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-accent-gig shadow-lg hover:scale-105 transition-transform">
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-        </button>
-      </motion.div>
-      
-      <div className="px-3 pb-32" onClick={() => setExpandedGigId(null)}>
-        {/* Next Gig Hero */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }} 
-          animate={{ opacity: 1, scale: 1 }} 
-          transition={{ delay: 0.3 }} 
-          className="mb-8 p-6 bg-[var(--bg)] rounded-[2.5rem] relative overflow-hidden shadow-2xl text-white" 
+
+        {/* Next gig (Figma Event Card, event colour) */}
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative z-10">
-            {nextGig ? (
-              <>
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-accent-gig animate-pulse" />
-                      <span className="text-accent-gig text-[10px] font-bold uppercase tracking-widest">Next Operation</span>
-                    </div>
-                    <h3 className="text-3xl font-black text-white tracking-tighter leading-none mb-1">
-                      {nextGig.title}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-stone-500">
-                      <MapPin className="w-3 h-3" />
-                      <span className="text-xs font-bold uppercase">{nextGig.venue}</span>
-                    </div>
-                  </div>
-                  <div className="bg-[var(--surface-inverse)] px-3 py-1.5 rounded-full border border-white/10 text-center">
-                    <span className="text-white font-black text-lg block leading-none">{nextGig.date?.split(' ')[1] || '--'}</span>
-                    <span className="text-[9px] font-bold text-stone-500 uppercase">{nextGig.date?.split(' ')[0] || 'TBD'}</span>
-                  </div>
+          {nextGig ? (
+            <div className="rounded-[24px] p-5 flex flex-col gap-4 bg-accent-gig text-accent-gig-foreground">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <EventMark kind="gig" size={20} bare />
+                    <span className="bw-label-xs">Next gig</span>
+                  </span>
+                  <h2 className="bw-h1 [overflow-wrap:anywhere]">{nextGig.title}</h2>
                 </div>
-                
-                {/* Timeline */}
-                <div className="relative pt-6 pb-2">
-                  <div className="absolute top-[34px] left-0 w-full h-0.5 bg-white/10" />
-                  <div className="flex justify-between relative z-10">
-                    {[
-                      { time: nextGig.timeline?.loadIn || "17:00", label: "Load In", icon: Truck }, 
-                      { time: nextGig.timeline?.soundcheck || "18:30", label: "Soundcheck", icon: Volume2 }, 
-                      { time: nextGig.timeline?.show || "21:00", label: "Show", icon: Play, active: true }
-                    ].map((step, i) => (
-                      <div key={i} className="flex flex-col items-center gap-3">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center border-2", 
-                          step.active 
-                            ? "bg-accent-gig border-accent-gig text-accent-gig-foreground" 
-                            : "bg-[var(--surface-inverse)] border-white/20 text-stone-500"
-                        )}>
-                          <step.icon className="w-3.5 h-3.5 fill-current" />
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span className={cn(
-                            "text-xs font-bold", 
-                            step.active ? "text-white" : "text-stone-500"
-                          )}>{step.time}</span>
-                          <span className="text-[9px] font-bold uppercase text-stone-600 tracking-wide">{step.label}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {(nextGig.team && nextGig.team.length > 0 ? nextGig.team : ["—"]).map((initial: string, i: number) => (
-                      <div key={i} className="w-7 h-7 rounded-full bg-white text-black text-[9px] font-bold flex items-center justify-center border-2 border-black">
-                        {initial}
-                      </div>
-                    ))}
-                  </div>
-                  <button className="h-8 px-3 rounded-full bg-[var(--surface-inverse)] border border-white/10 flex items-center gap-2 text-[10px] font-bold text-white hover:bg-[var(--surface-inverse)]">
-                    <FileText className="w-3 h-3 text-accent-gig" /> View Call Sheet
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <AlertCircle className="w-12 h-12 text-stone-600 mb-3" />
-                <h3 className="text-xl font-black text-white mb-1">No upcoming gigs</h3>
-                <p className="text-stone-500 text-sm">Book a gig to see it here</p>
+                <span className="flex flex-col items-end shrink-0">
+                  <span className="bw-num">{nextGig.day}</span>
+                  <span className="bw-label-xs">{nextGig.month}</span>
+                </span>
               </div>
-            )}
-          </div>
-        </motion.div>
-        
-        {/* Gig List */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-black text-black uppercase tracking-wider ml-2 opacity-60 mb-2">Upcoming Gigs</h4>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-foreground/40" />
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="bw-label-md truncate">{nextGig.venue}</span>
+                {nextGig.address && <span className="bw-label-xs opacity-70 truncate">{nextGig.address}</span>}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <TimeTile label="Load in" value={nextGig.timeline.loadIn} className="bg-card text-card-foreground" />
+                <TimeTile label="Soundcheck" value={nextGig.timeline.soundcheck} className="bg-card text-card-foreground" />
+                <TimeTile label="Show" value={nextGig.timeline.show} className="bg-surface-inverse text-surface-inverse-foreground" />
+              </div>
             </div>
-          ) : gigs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-foreground/40">
-              <AlertCircle className="w-12 h-12 mb-4" />
-              <p className="font-bold">No confirmed gigs</p>
-            </div>
+          ) : !loading ? (
+            <Card className="items-center text-center py-8">
+              <h2 className="bw-h3">No upcoming gigs</h2>
+              <p className="bw-body-sm text-muted-foreground">Book a gig to see it here.</p>
+            </Card>
           ) : null}
-          {!loading && gigs.slice(1).map((gig, i) => { 
-            const isExpanded = expandedGigId === gig.id; 
-            
-            return (
-              <motion.div 
-                key={gig.id} 
-                layout 
-                onClick={(e) => { e.stopPropagation(); setExpandedGigId(isExpanded ? null : gig.id); }} 
-                initial={{ opacity: 0, x: -20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                transition={{ delay: 0.2 + (i * 0.05), type: "tween", duration: 0.25, ease: "easeOut" }} 
-                className={cn(
-                  "rounded-[2rem] relative overflow-hidden transition-colors cursor-pointer border border-black/5", 
-                  isExpanded ? "bg-black/10" : "bg-black/5 hover:bg-black/10"
-                )}
-              >
-                <motion.div layout className="p-5">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <motion.h4 layout className="text-xl font-black text-black leading-tight">{gig.title}</motion.h4>
-                      <motion.div layout className="flex items-center gap-1.5 text-foreground/60 mt-0.5">
-                        <MapPin className="w-3 h-3" />
-                        <span className="text-xs font-bold uppercase">{gig.venue}</span>
-                      </motion.div>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-2xl font-black text-black">€{gig.amount}</span>
-                      <span className="text-[10px] font-bold uppercase bg-black/10 px-1.5 py-0.5 rounded text-foreground/60">{gig.date}</span>
-                    </div>
-                  </div>
-                  {!isExpanded && (
-                    <motion.div 
-                      layout 
-                      initial={{ opacity: 0 }} 
-                      animate={{ opacity: 1 }} 
-                      className="flex items-center gap-4 text-xs font-bold text-foreground/70 mt-3"
+        </motion.section>
+
+        {/* Gig list */}
+        {(loading || gigs.length > 1) && (
+          <section className="flex flex-col gap-4">
+            <h2 className="bw-label-md text-foreground">Upcoming gigs</h2>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              gigs.slice(1).map((gig, i) => {
+                const isExpanded = expandedGigId === gig.id;
+                const meta = [gig.venue, gig.timeline.show !== '--' ? gig.timeline.show : null].filter(Boolean).join(' · ');
+                return (
+                  <motion.div
+                    key={gig.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + i * 0.05, type: 'tween', duration: 0.25, ease: 'easeOut' }}
+                    className="rounded-[24px] bg-card text-card-foreground overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedGigId(isExpanded ? null : gig.id);
+                      }}
+                      className="w-full flex items-center gap-4 p-3 pr-4 text-left active:scale-[0.99] transition-transform"
                     >
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" /> {gig.team.length} Team
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Mic2 className="w-3.5 h-3.5" /> {gig.dress}
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.div>
-                
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }} 
-                      animate={{ opacity: 1, height: "auto" }} 
-                      exit={{ opacity: 0, height: 0 }} 
-                      className="px-5 pb-5 pt-0"
-                    >
-                      <div className="h-px w-full bg-black/10 mb-4" />
-                      <div className="bg-white/50 rounded-xl p-3 mb-3 flex items-start justify-between">
-                        <div>
-                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Address</span>
-                          <p className="text-xs font-bold text-black">{gig.address}</p>
-                        </div>
-                        <button className="p-1.5 bg-white rounded-lg shadow-sm hover:scale-105 transition-transform">
-                          <Copy className="w-3 h-3 text-black" />
-                        </button>
-                      </div>
-                      <div className="flex gap-3 mb-3">
-                        <div className="flex-1 bg-white/50 rounded-xl p-3">
-                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Contact</span>
-                          <p className="text-xs font-bold text-black">{gig.contactName}</p>
-                        </div>
-                        <div className="flex-1 bg-white/50 rounded-xl p-3">
-                          <span className="text-[9px] font-bold uppercase text-foreground/50 block mb-0.5">Timeline</span>
-                          <p className="text-xs font-bold text-black">{gig.timeline?.show} Show</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-start text-[10px] font-bold text-foreground/70 bg-black/5 p-2 rounded-lg">
-                        <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
-                        {gig.notes}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ); 
-          })}
-        </div>
+                      <DateTile day={gig.day} month={gig.month} kind="gig" />
+                      <span className="flex-1 min-w-0 flex flex-col gap-1">
+                        <span className="bw-h3 line-clamp-2 [overflow-wrap:anywhere]">{gig.title}</span>
+                        <span className="bw-body-sm text-muted-foreground truncate">{meta}</span>
+                      </span>
+                      <span className="bw-label-md shrink-0 whitespace-nowrap">{gig.fee > 0 ? `€${gig.amount}` : '--'}</span>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="px-4 pb-4 flex flex-col gap-3">
+                            <div className="h-px bg-border" />
+                            {gig.address && (
+                              <div className="flex items-center gap-3">
+                                <span className="flex-1 min-w-0 flex flex-col gap-1">
+                                  <span className="bw-label-xs text-muted-foreground">Address</span>
+                                  <span className="bw-body-sm [overflow-wrap:anywhere]">{gig.address}</span>
+                                </span>
+                                <IconButton label="Copy address" size="sm" variant="ghost" icon={<Copy />} onClick={() => copyAddress(gig.address)} />
+                              </div>
+                            )}
+                            <div className="grid grid-cols-3 gap-2">
+                              <TimeTile label="Load in" value={gig.timeline.loadIn} className="bg-foreground/[0.08]" />
+                              <TimeTile label="Soundcheck" value={gig.timeline.soundcheck} className="bg-foreground/[0.08]" />
+                              <TimeTile label="Show" value={gig.timeline.show} className="bg-foreground/[0.08]" />
+                            </div>
+                            {(gig.contactName || gig.dress) && (
+                              <div className="flex flex-col gap-2">
+                                {gig.contactName && (
+                                  <span className="flex items-baseline justify-between gap-3">
+                                    <span className="bw-body-md text-muted-foreground">Contact</span>
+                                    <span className="bw-label-md text-right truncate">{gig.contactName}</span>
+                                  </span>
+                                )}
+                                {gig.dress && (
+                                  <span className="flex items-baseline justify-between gap-3">
+                                    <span className="bw-body-md text-muted-foreground">Dress code</span>
+                                    <span className="bw-label-md text-right truncate">{gig.dress}</span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {gig.notes && <p className="bw-body-sm text-muted-foreground [overflow-wrap:anywhere]">{gig.notes}</p>}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })
+            )}
+          </section>
+        )}
       </div>
     </ExpandedCardWrapper>
   );

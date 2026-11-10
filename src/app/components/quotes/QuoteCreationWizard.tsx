@@ -3,35 +3,36 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
   Plus,
+  Minus,
   Trash2,
   Mail,
   Phone,
   MapPin,
   ChevronDown,
   ArrowLeft,
-  ArrowRight,
+  ArrowUpRight,
   Sparkles,
   Check,
   AlertCircle,
   Briefcase,
   Users,
+  User,
   Mic2,
   Sliders,
   Music,
-  Calendar,
   Edit3,
-  Layers,
-  Euro,
   Share2,
-  Truck,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
-import { WizardAccentRail, getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker } from '@/app/components/ui/DatePicker';
+import { DotText, Toggle } from '@/app/components/bw';
+import { IconButton, Tag } from '@/app/components/bw/Screen';
+import { PillButton, PillField } from '@/app/components/bw/Form';
 import {
   Quote,
   QuoteEventType,
@@ -126,7 +127,136 @@ const calcMusicianAutoFee = (
   return settings.base_musician_rate || settings.core_member_rate || 250;
 };
 
-// --- Interactive Step Indicator ---
+/* ─────────────────────────────────────────────────────────────────────────
+ * Local building blocks for the Figma "Quote / New" frames (28:2, 28:166,
+ * 28:299). Labels are Label/SM, inputs are 52pt pills on bg/field, choice
+ * chips are fully rounded, cards are bg/card r24 p16.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+const FieldLabel: React.FC<{ children: React.ReactNode; className?: string; htmlFor?: string }> = ({ children, className, htmlFor }) => (
+  <label htmlFor={htmlFor} className={cn('bw-label-sm text-muted-foreground', className)}>
+    {children}
+  </label>
+);
+
+/** Classes that turn the shared Date/Time pickers' trigger into a Figma Input pill. */
+const PICKER_PILL =
+  'h-[52px] px-4 pb-0 gap-3 rounded-full bg-field border border-border text-lg font-medium text-foreground hover:border-foreground focus:border-foreground';
+
+/** Pill wrapper for inputs that are not PillFields (venue search, inline numbers). */
+const PILL_WRAP =
+  'flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-foreground focus-within:border-2 focus-within:border-foreground transition-[border-color]';
+
+/** Compact numeric pill (44 / 36pt) used inside cards. */
+const MiniNumber: React.FC<
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, 'prefix' | 'size'> & {
+    label: string;
+    prefix?: React.ReactNode;
+    suffix?: React.ReactNode;
+    size?: 'md' | 'sm';
+  }
+> = ({ label, prefix, suffix, size = 'md', className, ...rest }) => (
+  <label
+    className={cn(
+      'flex items-center gap-1 rounded-full bg-field border border-border px-3 text-foreground focus-within:border-foreground',
+      size === 'md' ? 'h-11' : 'h-9',
+      className,
+    )}
+  >
+    <span className="sr-only">{label}</span>
+    {prefix != null && <span className="bw-body-sm text-muted-foreground shrink-0">{prefix}</span>}
+    <input
+      type="number"
+      className={cn('flex-1 min-w-0 w-full bg-transparent outline-none text-right tabular-nums', size === 'md' ? 'bw-body-lg' : 'bw-body-sm font-medium')}
+      {...rest}
+    />
+    {suffix != null && <span className="bw-label-sm text-muted-foreground shrink-0">{suffix}</span>}
+  </label>
+);
+
+/** Choice chip (Figma Selector). `tone="accent"` uses the quote colour for the selected state. */
+const Chip: React.FC<{
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  size?: 'sm' | 'md';
+  tone?: 'inverse' | 'accent';
+  className?: string;
+  title?: string;
+}> = ({ selected, onClick, children, size = 'sm', tone = 'inverse', className, title }) => (
+  <button
+    type="button"
+    aria-pressed={selected}
+    onClick={onClick}
+    title={title}
+    className={cn(
+      'inline-flex items-center gap-1.5 rounded-full bw-label-sm whitespace-nowrap shrink-0 transition-colors active:scale-[var(--press-scale,0.97)]',
+      size === 'sm' ? 'h-7 px-3' : 'h-9 px-4',
+      selected
+        ? tone === 'accent'
+          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
+          : 'bg-surface-inverse text-surface-inverse-foreground'
+        : 'border border-foreground/25 text-foreground',
+      className,
+    )}
+  >
+    {children}
+  </button>
+);
+
+/** Segmented control: pill track, selected option in inverse. */
+const Segmented = <T extends string>({
+  options,
+  value,
+  onSelect,
+  label,
+  track = 'card',
+}: {
+  options: readonly { id: T; label: string }[];
+  value: T;
+  onSelect: (id: T) => void;
+  label: string;
+  track?: 'card' | 'field';
+}) => (
+  <div role="radiogroup" aria-label={label} className={cn('flex gap-1 p-1 rounded-full', track === 'card' ? 'bg-card' : 'bg-field')}>
+    {options.map(opt => (
+      <button
+        key={opt.id}
+        type="button"
+        role="radio"
+        aria-checked={value === opt.id}
+        onClick={() => onSelect(opt.id)}
+        className={cn(
+          'flex-1 min-w-0 min-h-10 px-2 py-1.5 rounded-full bw-button-sm leading-tight text-center transition-colors',
+          value === opt.id ? 'bg-surface-inverse text-surface-inverse-foreground' : 'text-foreground',
+        )}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
+
+/** Figma stepper card (Number of sets / Mins per set): Label/SM, − dot value +. */
+const StepperCard: React.FC<{ label: string; value: number; onDec: () => void; onInc: () => void; decDisabled?: boolean; incDisabled?: boolean }> = ({
+  label,
+  value,
+  onDec,
+  onInc,
+  decDisabled,
+  incDisabled,
+}) => (
+  <div className="flex flex-col gap-3 p-4 rounded-[24px] bg-card min-w-0">
+    <span className="bw-label-sm text-muted-foreground truncate">{label}</span>
+    <div className="flex items-center justify-between gap-2">
+      <IconButton size="sm" label={`Decrease ${label.toLowerCase()}`} icon={<Minus />} onClick={onDec} disabled={decDisabled} />
+      <DotText text={value} size={28} label={`${label}: ${value}`} />
+      <IconButton size="sm" variant="filled" label={`Increase ${label.toLowerCase()}`} icon={<Plus />} onClick={onInc} disabled={incDisabled} />
+    </div>
+  </div>
+);
+
+// --- Interactive Step Indicator (Figma: 3 bars + "STEP 1 OF 3 · TITLE") ---
 const InteractiveQuoteStepIndicator: React.FC<{
   current: number;
   total: number;
@@ -135,50 +265,36 @@ const InteractiveQuoteStepIndicator: React.FC<{
   onSelectStep: (step: number) => void;
   activeColor?: string;
   inactiveColor?: string;
-}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => (
-  <div className="flex items-center gap-1.5 w-full">
-    {Array.from({ length: total }).map((_, i) => {
-      const isCurrent = i === current;
-      const isAccessible = i <= maxAccessibleStep;
-      return (
-        <button
-          key={i}
-          type="button"
-          onClick={() => isAccessible && onSelectStep(i)}
-          disabled={!isAccessible}
-          aria-label={`Step ${i + 1}: ${steps[i]?.title || ''}`}
-          className={cn(
-            'group flex-1 py-1 flex flex-col items-center justify-center transition-all',
-            isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-35'
-          )}
-        >
-          <div
-            className={cn(
-              'h-1.5 w-full rounded-full transition-all duration-300',
-              isCurrent ? 'h-2' : 'group-hover:opacity-80'
-            )}
-            style={{
-              backgroundColor: isCurrent
-                ? activeColor || 'var(--wizard-accent)'
-                : isAccessible
-                  ? activeColor || 'var(--wizard-accent)'
-                  : inactiveColor || 'var(--border)',
-              opacity: isCurrent ? 1 : isAccessible ? 0.4 : 0.15,
-            }}
-          />
-          <div className="flex items-center gap-1 mt-1">
+}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor }) => (
+  <div className="flex flex-col gap-2 w-full">
+    <div className="flex items-center gap-1.5 w-full">
+      {Array.from({ length: total }).map((_, i) => {
+        const isAccessible = i <= maxAccessibleStep;
+        const isFilled = i <= current;
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => isAccessible && onSelectStep(i)}
+            disabled={!isAccessible}
+            aria-label={`Step ${i + 1}: ${steps[i]?.title || ''}`}
+            aria-current={i === current ? 'step' : undefined}
+            className={cn('flex-1 py-2 -my-2', isAccessible ? 'cursor-pointer' : 'cursor-not-allowed')}
+          >
             <span
-              className={cn(
-                'text-xs font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
-                isCurrent ? 'text-[var(--fg)]' : 'text-muted-foreground group-hover:text-[var(--fg)]'
-              )}
-            >
-              STEP 0{i + 1}
-            </span>
-          </div>
-        </button>
-      );
-    })}
+              className={cn('block h-1 w-full rounded-full transition-colors', !isFilled && 'bg-foreground/15')}
+              style={isFilled ? { backgroundColor: activeColor || 'var(--wizard-accent)' } : undefined}
+            />
+          </button>
+        );
+      })}
+    </div>
+    <div className="flex items-center justify-between gap-3">
+      <span className="bw-label-xs text-muted-foreground">
+        Step {current + 1} of {total}
+      </span>
+      <span className="bw-label-xs text-foreground truncate">{steps[current]?.title}</span>
+    </div>
   </div>
 );
 
@@ -192,56 +308,28 @@ const QuoteAccordionCard: React.FC<{
   hasWarning?: boolean;
   warningLabel?: string;
   children: React.ReactNode;
-}> = ({
-  isOpen,
-  onToggle,
-  stepNumber,
-  title,
-  summary,
-  hasWarning,
-  warningLabel = 'NEEDS ATTENTION',
-  children,
-}) => {
+}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'Needs attention', children }) => {
   return (
-    <div
-      className={cn(
-        'rounded-2xl border transition-all overflow-hidden',
-        hasWarning
-          ? 'border-[var(--warning)]/50 bg-[var(--warning)]/5'
-          : isOpen
-            ? 'border-border/60 bg-card/60'
-            : 'border-border/40 bg-card hover:border-border/60'
-      )}
-    >
+    <div className={cn('rounded-[24px] bg-card overflow-hidden', hasWarning && 'ring-2 ring-warning')}>
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between text-left transition-colors cursor-pointer"
+        aria-expanded={isOpen}
+        className="w-full p-4 flex items-center justify-between gap-3 text-left cursor-pointer"
       >
-        <div className="flex flex-col gap-1 min-w-0 pr-3">
+        <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {stepNumber}
-            </span>
-            <span className="text-base font-bold uppercase text-[var(--fg)]">{title}</span>
+            <span className="bw-label-sm text-muted-foreground">{stepNumber}</span>
+            <span className="bw-label-sm text-foreground">{title}</span>
             {hasWarning && (
-              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-[var(--warning)]/15 text-[var(--warning)] flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
+              <Tag variant="outline" icon={<AlertCircle />} className="text-warning border-warning">
                 {warningLabel}
-              </span>
+              </Tag>
             )}
           </div>
-          <span className="text-xs font-semibold uppercase text-muted-foreground truncate">
-            {summary}
-          </span>
+          <span className="bw-body-sm text-muted-foreground truncate">{summary}</span>
         </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="shrink-0 w-8 h-8 rounded-full border border-border/40 flex items-center justify-center text-muted-foreground"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </motion.div>
+        <ChevronDown className={cn('w-5 h-5 shrink-0 transition-transform', !isOpen && '-rotate-90')} />
       </button>
 
       <AnimatePresence initial={false}>
@@ -253,15 +341,21 @@ const QuoteAccordionCard: React.FC<{
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 pt-2 border-t border-border/30 flex flex-col gap-5">
-              {children}
-            </div>
+            <div className="px-4 pb-4 pt-1 flex flex-col gap-5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 };
+
+/** Review breakdown row: Body/MD label, Label/MD value. */
+const LedgerRow: React.FC<{ label: string; value: string; tone?: 'success' }> = ({ label, value, tone }) => (
+  <div className="flex items-baseline justify-between gap-3">
+    <span className="bw-body-md text-muted-foreground min-w-0">{label}</span>
+    <span className={cn('bw-label-md shrink-0', tone === 'success' ? 'text-success' : 'text-foreground')}>{value}</span>
+  </div>
+);
 
 interface QuoteCreationWizardProps {
   onClose: () => void;
@@ -1413,303 +1507,172 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   // Shared Lineup + Extra Sets UI block (used in Step 1 and Edit Accordion 03)
+  const lineupCount = selectedMusicians.length;
   const renderLineupAndExtraSetsSection = () => (
-    <div className="space-y-4">
-      {/* Lineup Section: Adapts to pricingSettings.pricing_mode */}
-      {pricingSettings.pricing_mode === 'flat_packages' ? (
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              LINEUP FORMATION PACKAGE
+    <div className="flex flex-col gap-4">
+      {/* Lineup: adapts to pricingSettings.pricing_mode */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel>{pricingSettings.pricing_mode === 'flat_packages' ? 'Lineup formation package' : 'Lineup formation'}</FieldLabel>
+          {pricingSettings.pricing_mode === 'per_musician' && (
+            <span className="bw-label-xs text-muted-foreground">
+              {lineupCount} of {availableMusicians.length} selected
             </span>
-            <span className="text-xs font-bold text-[var(--wizard-accent)]">
-              {currencySymbol}
-              {lineupBaseAmount.toLocaleString()} base
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {activePackages.map(pkg => {
-              const isSelected =
-                selectedPackageId === pkg.id ||
-                (!selectedPackageId && performanceType === pkg.performanceType);
-              return (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  onClick={() => selectFlatPackage(pkg)}
-                  className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1',
-                    isSelected
-                      ? 'bg-[var(--wizard-accent)]/12 border-[var(--wizard-accent)] shadow-2xs'
-                      : 'bg-card border-border/40 hover:border-border'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold uppercase text-[var(--fg)] truncate">
-                      {pkg.name}
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                      {pkg.musiciansCount}p
-                    </span>
-                  </div>
-                  <span className="text-sm font-black text-[var(--wizard-accent)] tabular-nums">
-                    {currencySymbol}
-                    {pkg.flatPrice.toLocaleString()}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Compact Roster Selector Bar for Flat Package */}
-          {availableMusicians.length > 0 && (
-            <div className="bg-card border border-border/40 rounded-xl px-3 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex -space-x-1.5 overflow-hidden shrink-0">
-                  {selectedMusicians.slice(0, 5).map(m => (
-                    <div
-                      key={m.id}
-                      className="w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-card bg-foreground text-background"
-                      title={m.name}
-                    >
-                      {m.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  ))}
-                </div>
-                <span className="text-xs font-semibold text-muted-foreground truncate">
-                  {selectedMusicians.length} roster members assigned
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRosterExpanded(!isRosterExpanded)}
-                className="text-xs font-bold text-[var(--wizard-accent)] flex items-center gap-1 shrink-0 cursor-pointer"
-              >
-                <span>{isRosterExpanded ? 'Done' : 'Members'}</span>
-                <ChevronDown
-                  className={cn(
-                    'w-3.5 h-3.5 transition-transform',
-                    isRosterExpanded && 'rotate-180'
-                  )}
-                />
-              </button>
-            </div>
           )}
         </div>
-      ) : (
-        <div className="space-y-2.5">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                LINEUP PRESETS
-              </span>
-              <span className="text-xs font-semibold text-muted-foreground">
-                {selectedMusicians.length} of {availableMusicians.length} selected
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { label: 'SOLO', type: 'solo' as PerformanceType },
-                { label: 'DUO', type: 'duo' as PerformanceType },
-                { label: 'TRIO', type: 'trio' as PerformanceType },
-                { label: 'FULL BAND', type: 'full_band' as PerformanceType },
-              ].map(preset => {
-                const isPresetActive = performanceType === preset.type;
+        <div className="flex flex-wrap gap-2">
+          {pricingSettings.pricing_mode === 'flat_packages'
+            ? activePackages.map(pkg => {
+                const isSelected =
+                  selectedPackageId === pkg.id || (!selectedPackageId && performanceType === pkg.performanceType);
                 return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => selectPresetLineup(preset.type)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                      isPresetActive
-                        ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                        : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                    )}
-                  >
-                    {preset.label}
-                  </button>
+                  <Chip key={pkg.id} size="md" selected={isSelected} onClick={() => selectFlatPackage(pkg)} title={`${pkg.musiciansCount} musicians`}>
+                    {pkg.name}
+                    <span className="opacity-60">
+                      {currencySymbol}
+                      {pkg.flatPrice.toLocaleString()}
+                    </span>
+                  </Chip>
                 );
-              })}
-            </div>
-          </div>
+              })
+            : [
+                { label: 'Solo', type: 'solo' as PerformanceType },
+                { label: 'Duo', type: 'duo' as PerformanceType },
+                { label: 'Trio', type: 'trio' as PerformanceType },
+                { label: 'Full band', type: 'full_band' as PerformanceType },
+              ].map(preset => (
+                <Chip key={preset.label} size="md" selected={performanceType === preset.type} onClick={() => selectPresetLineup(preset.type)}>
+                  {preset.label}
+                </Chip>
+              ))}
+        </div>
+      </div>
 
-          {/* Compact Interactive Summary Card */}
-          <div className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex -space-x-1.5 overflow-hidden shrink-0">
-                {selectedMusicians.slice(0, 5).map(m => (
-                  <div
-                    key={m.id}
-                    className="w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center border-2 border-card bg-foreground text-background"
-                    title={m.name}
-                  >
-                    {m.name.slice(0, 2).toUpperCase()}
-                  </div>
-                ))}
-                {selectedMusicians.length > 5 && (
-                  <div className="w-7 h-7 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center border-2 border-card">
-                    +{selectedMusicians.length - 5}
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex flex-col">
-                <span className="text-sm font-semibold text-[var(--fg)] truncate">
-                  {selectedMusicians.length} of {availableMusicians.length} Musicians
-                </span>
-                <span className="text-xs font-bold text-[var(--wizard-accent)] truncate">
-                  {currencySymbol}
-                  {lineupBaseAmount.toLocaleString()} lineup base
-                  {pricingSettings.band_markup_type !== 'none' &&
-                  pricingSettings.band_markup_value > 0
-                    ? pricingSettings.band_markup_type === 'percent'
-                      ? ` (incl. +${pricingSettings.band_markup_value}% fund)`
-                      : ` (incl. +${currencySymbol}${pricingSettings.band_markup_value} fund)`
-                    : ''}
-                </span>
-              </div>
-            </div>
-
+      {/* Lineup card: count + customise, avatars, fee */}
+      <div className="flex flex-col gap-4 p-4 rounded-[24px] bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <span className="bw-label-sm text-foreground">
+            {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
+          </span>
+          {availableMusicians.length > 0 && (
             <button
               type="button"
               onClick={() => setIsRosterExpanded(!isRosterExpanded)}
-              className="text-xs font-bold text-[var(--wizard-accent)] hover:opacity-80 flex items-center gap-1 shrink-0 ml-2 cursor-pointer"
+              aria-expanded={isRosterExpanded}
+              className="-my-2 py-2 inline-flex items-center gap-1.5 bw-label-sm text-foreground cursor-pointer"
             >
-              <span>{isRosterExpanded ? 'Done' : 'Customize'}</span>
-              <ChevronDown
-                className={cn(
-                  'w-3.5 h-3.5 transition-transform',
-                  isRosterExpanded && 'rotate-180'
-                )}
-              />
+              {isRosterExpanded ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
+              {isRosterExpanded ? 'Done' : 'Customize'}
             </button>
-          </div>
+          )}
         </div>
-      )}
 
-      {/* Collapsible 1-Column Member Fee Checklist */}
-      <AnimatePresence>
-        {isRosterExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden space-y-2"
-          >
-            <div className="divide-y divide-border/30 border-y border-border/30">
+        {lineupCount > 0 && (
+          <div className="flex items-center -space-x-1.5">
+            {selectedMusicians.slice(0, 6).map(m => (
+              <span
+                key={m.id}
+                title={m.name}
+                className="w-11 h-11 rounded-full border-[1.5px] border-foreground bg-field text-foreground bw-label-md flex items-center justify-center shrink-0"
+              >
+                {m.name.slice(0, 2).toUpperCase()}
+              </span>
+            ))}
+            {lineupCount > 6 && (
+              <span className="w-11 h-11 rounded-full border-[1.5px] border-foreground bg-surface-inverse text-surface-inverse-foreground bw-label-md flex items-center justify-center shrink-0">
+                +{lineupCount - 6}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Collapsible member fee checklist */}
+        <AnimatePresence>
+          {isRosterExpanded && (
+            <motion.ul
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden flex flex-col divide-y divide-border border-y border-border"
+            >
               {availableMusicians.map(musician => {
                 const isSelected = selectedMusicians.some(m => m.id === musician.id);
                 const currentMusician = selectedMusicians.find(m => m.id === musician.id);
-
                 return (
-                  <div
-                    key={musician.id}
-                    className="flex items-center justify-between py-2 px-2 hover:bg-card/60 transition-colors rounded-lg"
-                  >
-                    <div
+                  <li key={musician.id} className="flex items-center justify-between gap-3 py-3">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSelected}
                       onClick={() => toggleMusician(musician)}
-                      className="flex items-center gap-3 min-w-0 flex-1 pr-3 cursor-pointer"
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
                     >
-                      <DotCheckbox
-                        checked={isSelected}
-                        activeColor="var(--wizard-accent)"
-                        inactiveColor="var(--border)"
-                      />
-                      <div className="min-w-0">
-                        <span
-                          className={cn(
-                            'text-sm font-medium truncate block leading-normal',
-                            isSelected
-                              ? 'text-[var(--fg)] font-semibold'
-                              : 'text-muted-foreground'
-                          )}
-                        >
-                          {musician.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground uppercase tracking-wider block leading-normal">
-                          {musician.instrument || 'Musician'}
-                        </span>
-                      </div>
-                    </div>
-
+                      <DotCheckbox checked={isSelected} activeColor="var(--surface-inverse)" inactiveColor="var(--border)" />
+                      <span className="min-w-0 flex flex-col">
+                        <span className={cn('bw-body-md font-medium truncate', !isSelected && 'text-muted-foreground')}>{musician.name}</span>
+                        <span className="bw-label-xs text-muted-foreground truncate">{musician.instrument || 'Musician'}</span>
+                      </span>
+                    </button>
                     {isSelected && pricingSettings.pricing_mode === 'per_musician' && (
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span className="text-xs font-bold text-muted-foreground">
-                          {currencySymbol}
-                        </span>
-                        <input
-                          type="number"
-                          value={currentMusician?.fee || ''}
-                          onChange={e =>
-                            updateMusicianFee(musician.id, parseFloat(e.target.value) || 0)
-                          }
-                          placeholder="0"
-                          className="w-20 bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-lg px-2 py-1 text-right text-xs font-bold text-[var(--fg)] placeholder:text-muted-foreground/40 focus:outline-none"
-                        />
-                      </div>
+                      <MiniNumber
+                        size="sm"
+                        label={`Fee for ${musician.name}`}
+                        prefix={currencySymbol}
+                        className="w-28 shrink-0"
+                        value={currentMusician?.fee || ''}
+                        onChange={e => updateMusicianFee(musician.id, parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                      />
                     )}
-                  </div>
+                  </li>
                 );
               })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.ul>
+          )}
+        </AnimatePresence>
 
-      {/* Unified Extra Sets & Add-Ons 1-Tap Chips */}
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="bw-body-md text-muted-foreground min-w-0">
+            {pricingSettings.pricing_mode === 'flat_packages' ? 'Package fee' : 'Musician fees'}
+            {pricingSettings.band_markup_type !== 'none' && pricingSettings.band_markup_value > 0
+              ? pricingSettings.band_markup_type === 'percent'
+                ? ` · incl. +${pricingSettings.band_markup_value}% fund`
+                : ` · incl. +${currencySymbol}${pricingSettings.band_markup_value} fund`
+              : ''}
+          </span>
+          <span className="bw-label-md text-foreground shrink-0">
+            {currencySymbol}
+            {lineupBaseAmount.toLocaleString()}
+          </span>
+        </div>
+      </div>
+
+      {/* Extra sets & add-ons: 1-tap chips */}
       {activeCatalogServices.length > 0 && (
-        <div className="pt-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              EXTRA SETS & ADD-ONS{' '}
-              <span className="text-[10px] font-normal lowercase opacity-60">(optional)</span>
-            </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <FieldLabel>Extra sets &amp; add-ons (optional)</FieldLabel>
             {customItemsTotal > 0 && (
-              <span className="text-xs font-bold text-[var(--wizard-accent)]">
+              <span className="bw-label-sm text-foreground">
                 +{currencySymbol}
                 {customItemsTotal.toLocaleString()}
               </span>
             )}
           </div>
-
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {activeCatalogServices.map(srv => {
-              const isAdded = customItems.some(
-                it => it.id === srv.id || it.name === srv.name
-              );
+              const isAdded = customItems.some(it => it.id === srv.id || it.name === srv.name);
               const qty = getServiceAutoQty(srv);
               const lineTotal = srv.price * qty;
-
               return (
-                <button
-                  key={srv.id}
-                  type="button"
-                  onClick={() => toggleBandCustomService(srv)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                    isAdded
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-2xs'
-                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)] hover:border-border'
-                  )}
-                >
-                  {isAdded ? (
-                    <Check className="w-3.5 h-3.5 shrink-0" />
-                  ) : (
-                    <Plus className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                  )}
+                <Chip key={srv.id} selected={isAdded} onClick={() => toggleBandCustomService(srv)}>
+                  {isAdded ? <Check className="w-3 h-3 shrink-0" /> : <Plus className="w-3 h-3 shrink-0" />}
                   <span className="truncate max-w-[180px]">{srv.name}</span>
-                  <span
-                    className={cn(
-                      'text-[11px] font-black tabular-nums ml-0.5',
-                      isAdded ? 'opacity-90' : 'text-[var(--fg)]/70'
-                    )}
-                  >
-                    +{currencySymbol}
+                  <span className={cn(!isAdded && 'opacity-70')}>
+                    · {currencySymbol}
                     {lineTotal.toLocaleString()}
                   </span>
-                </button>
+                </Chip>
               );
             })}
           </div>
@@ -1718,7 +1681,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     </div>
   );
 
-  // Inline Travel Pill Bar (rendered beneath VenueAutocomplete when venue or distance is set)
+  // Inline Travel Pill (rendered beneath the venue input when venue or distance is set)
   const showInlineTravelPill =
     (Boolean(venueName.trim()) && venueName.trim().toUpperCase() !== 'TBD') ||
     (travelDistanceKm != null && travelDistanceKm > 0);
@@ -1726,61 +1689,63 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const renderInlineTravelPill = () => {
     if (!showInlineTravelPill) return null;
     const freeRadius = pricingSettings.free_travel_radius_km || 0;
-    const billableKm =
-      travelDistanceKm != null ? Math.max(0, travelDistanceKm - freeRadius) : 0;
+    const billableKm = travelDistanceKm != null ? Math.max(0, travelDistanceKm - freeRadius) : 0;
+    const modeLabel =
+      travelMode === 'included'
+        ? 'Included'
+        : travelMode === 'separate'
+          ? `+${currencySymbol}${travelFee}`
+          : 'Client';
 
     return (
-      <div className="mt-2.5 p-2.5 rounded-xl bg-card border border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <Truck className="w-3.5 h-3.5 text-[var(--wizard-accent)] shrink-0" />
-          {isCalculatingDistance ? (
-            <span className="text-xs font-semibold text-muted-foreground">
-              Calculating travel distance...
-            </span>
-          ) : travelDistanceKm != null && travelDistanceKm > 0 ? (
-            <span className="text-xs font-bold text-[var(--fg)] truncate">
-              {travelDistanceKm} km one-way{' '}
-              <span className="font-normal text-muted-foreground">
-                ({billableKm === 0 ? `≤${freeRadius}km free local` : `${billableKm}km billable`})
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 min-h-11 px-4 py-2 rounded-full bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]">
+          <MapPin className="w-4 h-4 shrink-0" />
+          <div className="flex-1 min-w-0">
+            {isCalculatingDistance ? (
+              <span className="bw-label-sm">Calculating travel distance…</span>
+            ) : travelDistanceKm != null && travelDistanceKm > 0 ? (
+              <span className="bw-label-sm block truncate">
+                Travel: {travelDistanceKm} km from band HQ
+                <span className="opacity-70">
+                  {' · '}
+                  {billableKm === 0 ? `≤${freeRadius} km free` : `${billableKm} km billable`}
+                </span>
               </span>
-            </span>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">Travel:</span>
-              <input
-                type="number"
-                min="0"
-                value={travelDistanceKm ?? ''}
-                onChange={e =>
-                  handleManualDistanceChange(
-                    e.target.value ? Math.max(0, parseFloat(e.target.value)) : undefined
-                  )
-                }
-                placeholder="Dist. km"
-                className="w-20 bg-background border border-border/40 rounded-md px-2 py-0.5 text-xs font-bold text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-              />
-            </div>
-          )}
+            ) : (
+              <label className="flex items-center gap-2">
+                <span className="bw-label-sm">Travel</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={travelDistanceKm ?? ''}
+                  onChange={e =>
+                    handleManualDistanceChange(e.target.value ? Math.max(0, parseFloat(e.target.value)) : undefined)
+                  }
+                  placeholder="km"
+                  aria-label="One-way travel distance in km"
+                  className="w-20 h-7 px-3 rounded-full bg-[var(--wizard-accent-fg)]/10 bw-body-sm font-medium outline-none placeholder:opacity-60"
+                />
+              </label>
+            )}
+          </div>
+          <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap shrink-0 bg-[var(--wizard-accent-fg)] text-[var(--wizard-accent)]">
+            {modeLabel}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-background border border-border/40 rounded-lg p-0.5 shrink-0">
-          <button
-            type="button"
+        <div className="flex flex-wrap gap-2">
+          <Chip
+            selected={travelMode === 'included'}
             onClick={() => {
               setTravelMode('included');
               setTravelIncluded(true);
             }}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-all cursor-pointer',
-              travelMode === 'included'
-                ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                : 'text-muted-foreground hover:text-[var(--fg)]'
-            )}
           >
             Included
-          </button>
-          <button
-            type="button"
+          </Chip>
+          <Chip
+            selected={travelMode === 'separate'}
             onClick={() => {
               setTravelMode('separate');
               setTravelIncluded(false);
@@ -1788,30 +1753,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 setTravelFee(computeTravelFeeForDistance(travelDistanceKm));
               }
             }}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-all cursor-pointer',
-              travelMode === 'separate'
-                ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                : 'text-muted-foreground hover:text-[var(--fg)]'
-            )}
           >
             Separate{travelFee > 0 ? ` (+${currencySymbol}${travelFee})` : ''}
-          </button>
-          <button
-            type="button"
+          </Chip>
+          <Chip
+            selected={travelMode === 'client_provided'}
             onClick={() => {
               setTravelMode('client_provided');
               setTravelIncluded(true);
             }}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-all cursor-pointer',
-              travelMode === 'client_provided'
-                ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                : 'text-muted-foreground hover:text-[var(--fg)]'
-            )}
           >
-            Client Arranged
-          </button>
+            Client arranged
+          </Chip>
         </div>
       </div>
     );
@@ -1819,540 +1772,383 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // ── STEP 01: EVENT, LINEUP & EXTRA SETS ─────────────────────
   const renderStep1 = () => (
-    <div className="space-y-3.5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-      {/* Client & Occasion Inputs (Always 2-Column so Lineup peeks at 90% viewport) */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1 truncate">
-            EVENT TITLE{' '}
-            <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">
-              (opt.)
-            </span>
-          </label>
-          <input
-            type="text"
-            value={eventName}
-            onChange={e => {
-              setEventName(e.target.value);
-              setTitleManuallyEdited(true);
-            }}
-            placeholder={getEffectiveTitle()}
-            className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm sm:text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
-          />
-        </div>
-        <div>
-          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1 truncate">
-            CLIENT NAME{' '}
-            <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">
-              (opt.)
-            </span>
-          </label>
-          <input
-            type="text"
-            value={clientName}
-            onChange={e => {
-              const val = e.target.value;
-              setClientName(val);
-              if (!titleManuallyEdited) {
-                const typeLabel = eventType
-                  ? eventType.charAt(0).toUpperCase() + eventType.slice(1)
-                  : 'Wedding';
-                setEventName(val ? `${typeLabel} - ${val}` : '');
-              }
-            }}
-            placeholder="e.g. Paolo Rossi"
-            className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm sm:text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
-          />
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
+      <PillField
+        label="Client name"
+        icon={<User className="w-5 h-5" />}
+        value={clientName}
+        onChange={e => {
+          const val = e.target.value;
+          setClientName(val);
+          if (!titleManuallyEdited) {
+            const typeLabel = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : 'Wedding';
+            setEventName(val ? `${typeLabel} - ${val}` : '');
+          }
+        }}
+        placeholder="Paolo Rossi"
+        autoComplete="off"
+      />
+      <PillField
+        label="Event title"
+        value={eventName}
+        onChange={e => {
+          setEventName(e.target.value);
+          setTitleManuallyEdited(true);
+        }}
+        placeholder={getEffectiveTitle()}
+        autoComplete="off"
+      />
+
+      {/* Event type */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Event type</FieldLabel>
+        <div className="flex flex-wrap gap-2">
+          {EVENT_TYPE_OPTIONS.map(opt => (
+            <Chip
+              key={opt.value}
+              tone="accent"
+              selected={eventType === opt.value}
+              title={opt.subtitle}
+              onClick={() => {
+                setEventType(opt.value);
+                if (!titleManuallyEdited) {
+                  const typeLabel = opt.value.charAt(0).toUpperCase() + opt.value.slice(1);
+                  setEventName(clientName ? `${typeLabel} - ${clientName}` : '');
+                }
+              }}
+            >
+              {opt.label}
+            </Chip>
+          ))}
         </div>
       </div>
 
-      {/* Event Type Grid (Compact 2/3-Column) */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-          EVENT TYPE
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {EVENT_TYPE_OPTIONS.map(opt => {
-            const isSelected = eventType === opt.value;
-            const Icon = opt.icon;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  setEventType(opt.value);
-                  if (!titleManuallyEdited) {
-                    const typeLabel = opt.value.charAt(0).toUpperCase() + opt.value.slice(1);
-                    setEventName(clientName ? `${typeLabel} - ${clientName}` : '');
-                  }
-                }}
-                className={cn(
-                  'py-1.5 px-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2',
-                  isSelected
-                    ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)] shadow-xs'
-                    : 'bg-card/60 border-border/40 hover:border-border hover:bg-card'
-                )}
-              >
-                <div
-                  className={cn(
-                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-                    isSelected
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                      : 'bg-muted/60 text-muted-foreground'
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-bold text-[var(--fg)] leading-tight truncate">
-                    {opt.label}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate leading-snug">
-                    {opt.subtitle}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Lineup & Unified Extra Sets Chips (Placed directly below Event Type so sections peek at 90% viewport) */}
       {renderLineupAndExtraSetsSection()}
 
-      {/* Contact Details (Always 2-Column) */}
-      <div className="grid grid-cols-2 gap-3 pt-0.5">
-        <div>
-          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1 truncate">
-            CLIENT EMAIL{' '}
-            <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">
-              (opt.)
-            </span>
-          </label>
-          <div className="relative">
-            <input
-              type="email"
-              value={clientEmail}
-              onChange={e => setClientEmail(e.target.value)}
-              placeholder="client@example.com"
-              className="w-full bg-transparent border-b border-border/40 pb-1.5 pl-5 text-xs sm:text-sm font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
-            />
-            <Mail className="w-3.5 h-3.5 text-muted-foreground absolute left-0 bottom-2" />
-          </div>
-        </div>
-        <div>
-          <label className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1 truncate">
-            CLIENT PHONE{' '}
-            <span className="text-[10px] font-normal text-muted-foreground/60 lowercase">
-              (opt.)
-            </span>
-          </label>
-          <div className="relative">
-            <input
-              type="tel"
-              value={clientPhone}
-              onChange={e => setClientPhone(e.target.value)}
-              placeholder="+39 333 1234567"
-              className="w-full bg-transparent border-b border-border/40 pb-1.5 pl-5 text-xs sm:text-sm font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
-            />
-            <Phone className="w-3.5 h-3.5 text-muted-foreground absolute left-0 bottom-2" />
-          </div>
-        </div>
+      {/* Contact details */}
+      <div className="grid grid-cols-2 gap-3">
+        <PillField
+          label="Client email"
+          type="email"
+          icon={<Mail className="w-5 h-5" />}
+          value={clientEmail}
+          onChange={e => setClientEmail(e.target.value)}
+          placeholder="client@example.com"
+          className="min-w-0"
+        />
+        <PillField
+          label="Client phone"
+          type="tel"
+          icon={<Phone className="w-5 h-5" />}
+          value={clientPhone}
+          onChange={e => setClientPhone(e.target.value)}
+          placeholder="+39 333 1234567"
+          className="min-w-0"
+        />
       </div>
     </div>
   );
 
   // ── STEP 02: DATE, VENUE & AUTO-TRAVEL ──────────────────────
+  const seasonLabel =
+    pricingSettings.seasonal_pricing_enabled && eventDate
+      ? pricingSettings.peak_months?.includes(getEventMonthFromDate(eventDate) || 0)
+        ? 'Peak season rate'
+        : pricingSettings.off_peak_months?.includes(getEventMonthFromDate(eventDate) || 0)
+          ? 'Off-peak rate'
+          : 'Standard season'
+      : null;
+  const setDurationIdx = MOMENT_DURATION_OPTIONS.indexOf(setDuration);
+
   const renderStep2 = () => (
-    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-      {/* Unified Venue Input + Inline Travel Pill */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-          VENUE / LOCATION
-        </label>
-        <div className="relative">
-          <VenueAutocomplete
-            value={venueName}
-            onChange={val => setVenueName(val)}
-            onSelect={place => {
-              setVenueName(place.name);
-              if (place.address) setVenueAddress(place.address);
-              if (place.city) setVenueCity(place.city);
-              if (place.country) setVenueCountry(place.country);
-              handleCalculateDistance(
-                place.fullAddress || place.address || place.name || place.city || ''
-              );
-            }}
-            placeholder="Search venue or location..."
-            className="w-full bg-transparent border-b border-border/40 focus:border-[var(--wizard-accent)] pb-2 text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:outline-none transition-colors pl-7"
-          />
-          <MapPin className="w-4 h-4 text-muted-foreground absolute left-0 bottom-3" />
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
+      {/* Venue + inline travel pill */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Venue / location</FieldLabel>
+        <div className={PILL_WRAP}>
+          <MapPin className="w-5 h-5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <VenueAutocomplete
+              value={venueName}
+              onChange={val => setVenueName(val)}
+              onSelect={place => {
+                setVenueName(place.name);
+                if (place.address) setVenueAddress(place.address);
+                if (place.city) setVenueCity(place.city);
+                if (place.country) setVenueCountry(place.country);
+                handleCalculateDistance(place.fullAddress || place.address || place.name || place.city || '');
+              }}
+              placeholder="Search venue or location…"
+              className="border-0 pb-0 text-lg font-medium normal-case text-foreground placeholder:text-muted-foreground/60"
+            />
+          </div>
         </div>
-
-        {/* Inline Travel Pill directly beneath VenueAutocomplete */}
-        {renderInlineTravelPill()}
-
-        {/* Quick-select chips */}
-        <div className="flex flex-wrap gap-1.5 mt-2.5">
+        <div className="flex flex-wrap gap-2">
           {['TBD', 'Main Stage', 'Private Venue'].map(loc => (
-            <button
+            <Chip
               key={loc}
-              type="button"
+              tone="accent"
+              selected={venueName === loc}
               onClick={() => {
                 setVenueName(loc);
                 if (loc !== 'TBD') handleCalculateDistance(loc);
               }}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer border',
-                venueName === loc
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
             >
               {loc}
-            </button>
+            </Chip>
           ))}
         </div>
       </div>
 
-      {/* Date & Time Group */}
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
-              EVENT DATE
-            </label>
-            {pricingSettings.seasonal_pricing_enabled && eventDate && (
-              <span className="text-[11px] font-bold text-[var(--wizard-accent)]">
-                {pricingSettings.peak_months?.includes(getEventMonthFromDate(eventDate) || 0)
-                  ? 'Peak Season Rate Applied'
-                  : pricingSettings.off_peak_months?.includes(
-                        getEventMonthFromDate(eventDate) || 0
-                      )
-                    ? 'Off-Peak Rate Applied'
-                    : 'Standard Season'}
-              </span>
-            )}
-          </div>
-          <DatePicker
-            value={eventDate}
-            onChange={d => setEventDate(d)}
+      {renderInlineTravelPill()}
+
+      {/* Date */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel>Event date</FieldLabel>
+          {seasonLabel && <Tag variant="quote">{seasonLabel}</Tag>}
+        </div>
+        <DatePicker
+          value={eventDate}
+          onChange={d => setEventDate(d)}
+          accentColor={activeAccentColor}
+          placeholder="Select event date…"
+          className={PICKER_PILL}
+        />
+      </div>
+
+      {/* Start / end */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel>Start</FieldLabel>
+          <TimePicker
+            value={eventTimeStart}
+            onChange={val => setEventTimeStart(val)}
             accentColor={activeAccentColor}
-            placeholder="Select event date..."
+            textSize="text-lg"
+            showIcon
+            className={PICKER_PILL}
           />
         </div>
-
-        {/* 2-Column Start Time and End Time */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-              START TIME
-            </label>
-            <TimePicker
-              value={eventTimeStart}
-              onChange={val => setEventTimeStart(val)}
-              accentColor={activeAccentColor}
-              textSize="text-base"
-              showIcon
-              className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-            />
+        <div className="flex flex-col gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel>End</FieldLabel>
+            {calculatedDurationBadge && <span className="bw-label-xs text-muted-foreground truncate">{calculatedDurationBadge}</span>}
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                END TIME
-              </label>
-              <span className="text-xs font-bold text-[var(--wizard-accent)]">
-                {calculatedDurationBadge}
-              </span>
-            </div>
-            <TimePicker
-              value={eventTimeEnd}
-              onChange={val => setEventTimeEnd(val)}
-              accentColor={activeAccentColor}
-              align="end"
-              textSize="text-base"
-              showIcon
-              className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-            />
-          </div>
-        </div>
-
-        {/* Performance Sets, Set Duration & Guest Count */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-              NUMBER OF SETS
-            </label>
-            <div className="flex gap-1.5">
-              {[1, 2, 3, 4].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setNumberOfSets(n)}
-                  className={cn(
-                    'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
-                    numberOfSets === n
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                  )}
-                >
-                  {n} {n === 1 ? 'Set' : 'Sets'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-              MINS PER SET
-            </label>
-            <div className="flex gap-1.5">
-              {[45, 60, 90, 120].map(mins => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => setSetDuration(mins)}
-                  className={cn(
-                    'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
-                    setDuration === mins
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                  )}
-                >
-                  {mins}m
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-              GUEST COUNT{' '}
-              <span className="text-[10px] font-normal lowercase opacity-60">(optional)</span>
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={guestCount ?? ''}
-              onChange={e =>
-                setGuestCount(e.target.value ? Math.max(0, parseInt(e.target.value)) : undefined)
-              }
-              placeholder="e.g. 150"
-              className="w-full bg-card border border-border/40 rounded-lg px-3 py-1.5 text-xs font-bold text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-            />
-          </div>
+          <TimePicker
+            value={eventTimeEnd}
+            onChange={val => setEventTimeEnd(val)}
+            accentColor={activeAccentColor}
+            align="end"
+            textSize="text-lg"
+            showIcon
+            className={PICKER_PILL}
+          />
         </div>
       </div>
+
+      {/* Sets & set length */}
+      <div className="grid grid-cols-2 gap-3">
+        <StepperCard
+          label="Number of sets"
+          value={numberOfSets}
+          onDec={() => setNumberOfSets(Math.max(1, numberOfSets - 1))}
+          onInc={() => setNumberOfSets(Math.min(8, numberOfSets + 1))}
+          decDisabled={numberOfSets <= 1}
+          incDisabled={numberOfSets >= 8}
+        />
+        <StepperCard
+          label="Mins per set"
+          value={setDuration}
+          onDec={() => {
+            const prev = [...MOMENT_DURATION_OPTIONS].reverse().find(m => m < setDuration);
+            if (prev != null) setSetDuration(prev);
+          }}
+          onInc={() => {
+            const next = MOMENT_DURATION_OPTIONS.find(m => m > setDuration);
+            if (next != null) setSetDuration(next);
+          }}
+          decDisabled={setDuration <= MOMENT_DURATION_OPTIONS[0]}
+          incDisabled={setDurationIdx === MOMENT_DURATION_OPTIONS.length - 1 || setDuration >= MOMENT_DURATION_OPTIONS[MOMENT_DURATION_OPTIONS.length - 1]}
+        />
+      </div>
+
+      <PillField
+        label="Guest count (optional)"
+        type="number"
+        min="0"
+        inputMode="numeric"
+        icon={<Users className="w-5 h-5" />}
+        value={guestCount ?? ''}
+        onChange={e => setGuestCount(e.target.value ? Math.max(0, parseInt(e.target.value)) : undefined)}
+        placeholder="150"
+      />
     </div>
   );
 
   // Shared Inner Controls for Drawer 1: Billing, Discounts, VAT & Deposit
+  const maskedIban = (() => {
+    const iban = (pricingSettings.bank_iban || '').replace(/\s+/g, '');
+    if (!iban) return null;
+    return iban.length > 8 ? `${iban.slice(0, 4)} ${iban.slice(4, 8)} •••• ${iban.slice(-4)}` : iban;
+  })();
+
   const renderBillingControls = () => (
-    <div className="space-y-4">
-      {/* Base Fee Override */}
-      <div className="flex items-center justify-between">
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-            BASE FEE OVERRIDE
-          </label>
-          <span className="text-xs text-muted-foreground">
+    <div className="flex flex-col gap-4">
+      {/* Base fee override */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="bw-label-sm text-foreground">Base fee override</span>
+          <span className="bw-body-sm text-muted-foreground">
             {pricingSettings.pricing_mode === 'flat_packages'
               ? 'Package lineup fee'
               : `Musicians sum: ${currencySymbol}${musiciansTotal.toLocaleString()}`}
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-muted-foreground">{currencySymbol}</span>
-          <input
-            type="number"
-            value={baseFee || ''}
-            onChange={e => {
-              setBaseFeeManuallyEdited(true);
-              setBaseFee(parseFloat(e.target.value) || 0);
-            }}
-            placeholder="0"
-            className="w-28 bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-lg px-2.5 py-1.5 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-          />
-        </div>
+        <MiniNumber
+          label="Base fee override"
+          prefix={currencySymbol}
+          className="w-32 shrink-0"
+          value={baseFee || ''}
+          onChange={e => {
+            setBaseFeeManuallyEdited(true);
+            setBaseFee(parseFloat(e.target.value) || 0);
+          }}
+          placeholder="0"
+        />
       </div>
 
-      {/* Package Discount */}
-      <div className="space-y-2 pt-2 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            PACKAGE DISCOUNT
-          </label>
-          <div className="flex gap-1">
-            {(
-              [
-                { id: 'none', label: 'None' },
-                { id: 'percentage', label: '% Off' },
-                { id: 'fixed', label: `${currencySymbol.trim()} Off` },
-              ] as const
-            ).map(d => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => {
-                  setDiscountType(d.id);
-                  if (d.id === 'none') setDiscountValue(0);
-                  else if (d.id === 'percentage' && discountValue === 0) setDiscountValue(10);
-                }}
-                className={cn(
-                  'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
-                  discountType === d.id
-                    ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                    : 'bg-card text-muted-foreground border-border/40'
-                )}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      {/* Package discount */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Package discount</FieldLabel>
+        <Segmented
+          label="Package discount"
+          track="field"
+          value={discountType}
+          options={[
+            { id: 'none', label: 'None' },
+            { id: 'percentage', label: '% off' },
+            { id: 'fixed', label: `${currencySymbol.trim()} off` },
+          ]}
+          onSelect={id => {
+            setDiscountType(id);
+            if (id === 'none') setDiscountValue(0);
+            else if (id === 'percentage' && discountValue === 0) setDiscountValue(10);
+          }}
+        />
         {discountType !== 'none' && (
           <div className="flex items-center justify-between gap-3 pt-1">
             {discountType === 'percentage' && (
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {[5, 10, 15, 20].map(pct => (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => setDiscountValue(pct)}
-                    className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer',
-                      discountValue === pct
-                        ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                        : 'bg-card text-muted-foreground border-border/40'
-                    )}
-                  >
+                  <Chip key={pct} selected={discountValue === pct} onClick={() => setDiscountValue(pct)}>
                     {pct}%
-                  </button>
+                  </Chip>
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-1 ml-auto">
-              <input
-                type="number"
-                min="0"
-                max={discountType === 'percentage' ? 100 : undefined}
-                value={discountValue || ''}
-                onChange={e => {
-                  const v = Math.max(0, parseFloat(e.target.value) || 0);
-                  setDiscountValue(discountType === 'percentage' ? Math.min(100, v) : v);
-                }}
-                className="w-20 bg-card border border-border/40 rounded-lg px-2.5 py-1 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-              <span className="text-xs font-bold text-muted-foreground">
-                {discountType === 'percentage' ? '%' : currencySymbol}
-              </span>
-            </div>
+            <MiniNumber
+              label="Discount value"
+              className="w-28 ml-auto shrink-0"
+              min="0"
+              max={discountType === 'percentage' ? 100 : undefined}
+              suffix={discountType === 'percentage' ? '%' : currencySymbol.trim()}
+              value={discountValue || ''}
+              onChange={e => {
+                const v = Math.max(0, parseFloat(e.target.value) || 0);
+                setDiscountValue(discountType === 'percentage' ? Math.min(100, v) : v);
+              }}
+            />
           </div>
         )}
       </div>
 
-      {/* VAT Rate & Exempt */}
-      <div className="space-y-2 pt-2 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            TAX / VAT RATE
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setVatExempt(!vatExempt)}
-              className={cn(
-                'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
-                vatExempt
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40'
-              )}
-            >
-              VAT Exempt (0%)
-            </button>
-            {!vatExempt && (
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={vatRate}
-                  onChange={e => setCustomVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-16 bg-card border border-border/40 rounded-lg px-2 py-1 text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-                />
-                <span className="text-xs font-bold text-muted-foreground">%</span>
-              </div>
-            )}
-          </div>
+      {/* VAT · deposit · validity */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel>VAT rate</FieldLabel>
+          {vatExempt ? (
+            <span className="h-11 px-3 rounded-full bg-field border border-border bw-body-lg flex items-center text-muted-foreground">0%</span>
+          ) : (
+            <MiniNumber
+              label="VAT rate"
+              suffix="%"
+              min="0"
+              max="50"
+              value={vatRate}
+              onChange={e => setCustomVatRate(Math.max(0, parseFloat(e.target.value) || 0))}
+            />
+          )}
         </div>
-      </div>
-
-      {/* Deposit Percentage Pills */}
-      <div className="pt-2 border-t border-border/30">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-          BOOKING DEPOSIT REQUIRED
-        </label>
-        <div className="flex gap-2">
-          {[0, 20, 30, 50].map(pct => (
-            <button
-              key={pct}
-              type="button"
-              onClick={() => {
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel>Deposit</FieldLabel>
+          <div className="relative">
+            <select
+              aria-label="Booking deposit"
+              value={depositPercentage}
+              onChange={e => {
+                const pct = parseInt(e.target.value) || 0;
                 setDepositPercentage(pct);
                 setDepositRequired(pct > 0);
               }}
-              className={cn(
-                'flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center',
-                depositPercentage === pct
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
+              className="w-full h-11 pl-3 pr-7 rounded-full bg-field border border-border bw-body-lg text-foreground outline-none focus:border-foreground appearance-none cursor-pointer"
             >
-              {pct === 0 ? 'None' : `${pct}%`}
-            </button>
-          ))}
+              {Array.from(new Set([0, 20, 30, 50, depositPercentage])).sort((a, b) => a - b).map(pct => (
+                <option key={pct} value={pct}>
+                  {pct === 0 ? 'None' : `${pct}%`}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel>Validity</FieldLabel>
+          <div className="relative">
+            <select
+              aria-label={`Quote validity (until ${validUntilDate})`}
+              value={validityDays}
+              onChange={e => setValidityDays(parseInt(e.target.value) || 30)}
+              className="w-full h-11 pl-3 pr-7 rounded-full bg-field border border-border bw-body-lg text-foreground outline-none focus:border-foreground appearance-none cursor-pointer"
+            >
+              {[7, 14, 30, 60, 90].map(days => (
+                <option key={days} value={days}>
+                  {days} days
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          </div>
         </div>
       </div>
+      <span className="bw-body-sm text-muted-foreground -mt-2">Valid until {validUntilDate}</span>
 
-      {/* Validity Days & Show IBAN */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/30">
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-            QUOTE VALIDITY
-          </label>
-          <select
-            value={validityDays}
-            onChange={e => setValidityDays(parseInt(e.target.value) || 30)}
-            className="w-full bg-card border border-border/40 rounded-xl px-3 py-2 text-xs font-bold text-[var(--fg)] focus:outline-none cursor-pointer"
-          >
-            {[7, 14, 30, 60, 90].map(days => (
-              <option key={days} value={days} className="bg-card text-[var(--fg)]">
-                {days} Days (until {validUntilDate})
-              </option>
-            ))}
-          </select>
+      {/* VAT exempt + show IBAN */}
+      <div className="flex flex-col gap-2">
+        <div
+          onClick={() => setVatExempt(!vatExempt)}
+          className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
+        >
+          <span className="flex flex-col gap-1 min-w-0">
+            <span className="bw-body-lg">VAT exempt</span>
+            <span className="bw-body-sm text-muted-foreground">Quote at 0% VAT</span>
+          </span>
+          <Toggle checked={vatExempt} onCheckedChange={() => setVatExempt(!vatExempt)} onClick={e => e.stopPropagation()} aria-label="VAT exempt" />
         </div>
-
-        <div className="flex flex-col justify-end">
-          <button
-            type="button"
-            onClick={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
-            className={cn(
-              'w-full py-2 px-3 rounded-xl border text-xs font-bold uppercase flex items-center justify-between transition-all cursor-pointer',
-              showBankDetailsOnPdf
-                ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)] text-[var(--fg)]'
-                : 'bg-card border-border/40 text-muted-foreground'
-            )}
-          >
-            <span>Show IBAN on PDF</span>
-            <DotCheckbox
-              checked={showBankDetailsOnPdf}
-              activeColor="var(--wizard-accent)"
-              inactiveColor="var(--border)"
-            />
-          </button>
+        <div
+          onClick={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
+          className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
+        >
+          <span className="flex flex-col gap-1 min-w-0">
+            <span className="bw-body-lg">Show IBAN on PDF</span>
+            <span className="bw-body-sm text-muted-foreground truncate">{maskedIban || 'Add your IBAN in pricing settings'}</span>
+          </span>
+          <Toggle
+            checked={showBankDetailsOnPdf}
+            onCheckedChange={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
+            onClick={e => e.stopPropagation()}
+            aria-label="Show IBAN on PDF"
+          />
         </div>
       </div>
     </div>
@@ -2360,16 +2156,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // Shared Inner Controls for Drawer 2: Production, Travel, Hotel & Custom Items
   const renderLogisticsAndCustomItemsControls = () => (
-    <div className="space-y-4">
-      {/* Sound & Lighting Tier */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            SOUND & LIGHTING PRODUCTION
-          </label>
+    <div className="flex flex-col gap-5">
+      {/* Sound & lighting tier */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel>Sound &amp; lighting production</FieldLabel>
           {productionTier !== 'none' && (
-            <button
-              type="button"
+            <Chip
+              selected={soundIncluded}
               onClick={() => {
                 const nextIncluded = !soundIncluded;
                 setSoundIncluded(nextIncluded);
@@ -2381,208 +2175,142 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   );
                 }
               }}
-              className={cn(
-                'px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border transition-all cursor-pointer',
-                soundIncluded
-                  ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30'
-                  : 'bg-[var(--wizard-accent)]/15 text-[var(--wizard-accent)] border-[var(--wizard-accent)]/30'
-              )}
             >
-              {soundIncluded ? 'Included in Base' : 'Separate Fee'}
-            </button>
+              {soundIncluded ? 'Included in base' : 'Separate fee'}
+            </Chip>
           )}
         </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { id: 'standard', label: 'Standard PA' },
-              { id: 'pro', label: 'Pro PA' },
-              { id: 'none', label: 'Client PA' },
-            ] as const
-          ).map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setProductionTier(t.id);
-                if (t.id === 'none') {
-                  setSoundFee(0);
-                } else if (!soundIncluded) {
-                  setSoundFee(
-                    t.id === 'pro'
-                      ? pricingSettings.production_pro_fee || 600
-                      : pricingSettings.production_standard_fee || 300
-                  );
-                }
-              }}
-              className={cn(
-                'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                productionTier === t.id
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
+        <Segmented
+          label="Sound & lighting production"
+          track="field"
+          value={productionTier as 'standard' | 'pro' | 'none'}
+          options={[
+            { id: 'standard', label: 'Standard PA' },
+            { id: 'pro', label: 'Pro PA' },
+            { id: 'none', label: 'Client PA' },
+          ]}
+          onSelect={id => {
+            setProductionTier(id);
+            if (id === 'none') {
+              setSoundFee(0);
+            } else if (!soundIncluded) {
+              setSoundFee(id === 'pro' ? pricingSettings.production_pro_fee || 600 : pricingSettings.production_standard_fee || 300);
+            }
+          }}
+        />
         {!soundIncluded && productionTier !== 'none' && (
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-muted-foreground">Production Fee</span>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-muted-foreground">{currencySymbol}</span>
-              <input
-                type="number"
-                value={soundFee || ''}
-                onChange={e => setSoundFee(parseFloat(e.target.value) || 0)}
-                className="w-24 bg-card border border-border/40 rounded-lg px-2.5 py-1 text-right text-xs font-bold text-[var(--fg)]"
-              />
-            </div>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <span className="bw-body-md text-muted-foreground">Production fee</span>
+            <MiniNumber
+              label="Production fee"
+              prefix={currencySymbol}
+              className="w-32"
+              value={soundFee || ''}
+              onChange={e => setSoundFee(parseFloat(e.target.value) || 0)}
+            />
           </div>
         )}
       </div>
 
-      {/* Travel Override */}
-      <div className="space-y-2 pt-2 border-t border-border/30">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-          TRAVEL & TRANSPORT
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { id: 'included', label: 'Included' },
-              { id: 'separate', label: 'Separate Fee' },
-              { id: 'client_provided', label: 'Client Arranged' },
-            ] as const
-          ).map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => {
-                setTravelMode(opt.id);
-                setTravelIncluded(opt.id !== 'separate');
-              }}
-              className={cn(
-                'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                travelMode === opt.id
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
+      {/* Travel */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Travel &amp; transport</FieldLabel>
+        <Segmented
+          label="Travel & transport"
+          track="field"
+          value={travelMode as 'included' | 'separate' | 'client_provided'}
+          options={[
+            { id: 'included', label: 'Included' },
+            { id: 'separate', label: 'Separate fee' },
+            { id: 'client_provided', label: 'Client arranged' },
+          ]}
+          onSelect={id => {
+            setTravelMode(id);
+            setTravelIncluded(id !== 'separate');
+          }}
+        />
         {travelMode === 'separate' && (
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-muted-foreground">One-way (km)</span>
-              <input
-                type="number"
-                value={travelDistanceKm ?? ''}
-                onChange={e =>
-                  handleManualDistanceChange(
-                    e.target.value ? parseFloat(e.target.value) : undefined
-                  )
-                }
-                placeholder="0"
-                className="w-16 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-            </div>
-            <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-muted-foreground">Fee ({currencySymbol})</span>
-              <input
-                type="number"
-                value={travelFee || ''}
-                onChange={e => setTravelFee(parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                className="w-20 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <MiniNumber
+              label="One-way distance in km"
+              suffix="km"
+              value={travelDistanceKm ?? ''}
+              onChange={e => handleManualDistanceChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="0"
+            />
+            <MiniNumber
+              label="Travel fee"
+              prefix={currencySymbol}
+              value={travelFee || ''}
+              onChange={e => setTravelFee(parseFloat(e.target.value) || 0)}
+              placeholder="0"
+            />
           </div>
         )}
       </div>
 
-      {/* Hotel / Accommodation Override */}
-      <div className="space-y-2 pt-2 border-t border-border/30">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-          HOTEL & ACCOMMODATION
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Hotel / accommodation */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Hotel &amp; accommodation</FieldLabel>
+        <div className="flex flex-wrap gap-2">
           {(
             [
               { id: 'included', label: 'Included' },
-              { id: 'separate', label: 'Separate Fee' },
-              { id: 'client_provided', label: 'Client Hotel' },
-              { id: 'none', label: 'Not Needed' },
+              { id: 'separate', label: 'Separate fee' },
+              { id: 'client_provided', label: 'Client hotel' },
+              { id: 'none', label: 'Not needed' },
             ] as const
           ).map(opt => (
-            <button
+            <Chip
               key={opt.id}
-              type="button"
+              size="md"
+              selected={accommodationMode === opt.id}
               onClick={() => {
                 setAccommodationMode(opt.id);
                 setAccommodationNeeded(opt.id === 'separate');
               }}
-              className={cn(
-                'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                accommodationMode === opt.id
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
             >
               {opt.label}
-            </button>
+            </Chip>
           ))}
         </div>
-
         {accommodationMode === 'separate' && (
           <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
-              <span className="text-[11px] text-muted-foreground">Rooms</span>
-              <input
-                type="number"
-                min="1"
-                value={accommodationRooms}
-                onChange={e => setAccommodationRooms(parseInt(e.target.value) || 1)}
-                className="w-10 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-            </div>
-            <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
-              <span className="text-[11px] text-muted-foreground">Nights</span>
-              <input
-                type="number"
-                min="1"
-                value={accommodationNights}
-                onChange={e => setAccommodationNights(parseInt(e.target.value) || 1)}
-                className="w-10 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-            </div>
-            <div className="flex items-center justify-between bg-card border border-border/40 rounded-lg px-2.5 py-1.5">
-              <span className="text-[11px] text-muted-foreground">{currencySymbol}</span>
-              <input
-                type="number"
-                value={accommodationFee || ''}
-                onChange={e => setAccommodationFee(parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                className="w-16 bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-              />
-            </div>
+            <MiniNumber
+              label="Rooms"
+              suffix="rooms"
+              min="1"
+              value={accommodationRooms}
+              onChange={e => setAccommodationRooms(parseInt(e.target.value) || 1)}
+            />
+            <MiniNumber
+              label="Nights"
+              suffix="nts"
+              min="1"
+              value={accommodationNights}
+              onChange={e => setAccommodationNights(parseInt(e.target.value) || 1)}
+            />
+            <MiniNumber
+              label="Accommodation fee"
+              prefix={currencySymbol}
+              value={accommodationFee || ''}
+              onChange={e => setAccommodationFee(parseFloat(e.target.value) || 0)}
+              placeholder="0"
+            />
           </div>
         )}
       </div>
 
-      {/* Selected Sets & One-Off Custom Line Items */}
-      <div className="space-y-2.5 pt-2 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            SELECTED SETS & CUSTOM ITEMS
-          </span>
-          <button
-            type="button"
+      {/* Selected sets & one-off custom line items */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel>Selected sets &amp; custom items</FieldLabel>
+          <PillButton
+            size="sm"
+            variant="ghost"
+            fullWidth={false}
+            className="-mr-3"
+            icon={<Plus className="w-3.5 h-3.5" />}
             onClick={() =>
               setCustomItems(prev => [
                 ...prev,
@@ -2596,73 +2324,58 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 },
               ])
             }
-            className="text-xs font-bold text-[var(--wizard-accent)] hover:underline flex items-center gap-1 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Custom Line Item</span>
-          </button>
+            Add item
+          </PillButton>
         </div>
 
         {customItems.length === 0 ? (
-          <span className="text-xs text-muted-foreground block">
-            No extra sets or custom line items added.
-          </span>
+          <span className="bw-body-sm text-muted-foreground">No extra sets or custom line items added.</span>
         ) : (
-          <div className="space-y-2">
+          <ul className="flex flex-col gap-2">
             {customItems.map((item, idx) => (
-              <div key={item.id || idx} className="flex items-center gap-2 text-xs">
+              <li key={item.id || idx} className="flex items-center gap-2">
                 <input
                   type="text"
+                  aria-label="Item name"
                   value={item.name || item.description || ''}
                   onChange={e =>
-                    setCustomItems(prev =>
-                      prev.map((it, i) => (i === idx ? { ...it, name: e.target.value } : it))
-                    )
+                    setCustomItems(prev => prev.map((it, i) => (i === idx ? { ...it, name: e.target.value } : it)))
                   }
-                  className="flex-1 min-w-0 bg-card border border-border/40 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--fg)] focus:outline-none"
-                  placeholder="Item name..."
+                  className="flex-1 min-w-0 h-11 px-4 rounded-full bg-field border border-border bw-body-sm font-medium text-foreground outline-none focus:border-foreground"
+                  placeholder="Item name…"
                 />
-                <div className="flex items-center gap-1 bg-card border border-border/40 rounded-lg px-2 py-1.5 w-16 shrink-0">
-                  <span className="text-[10px] text-muted-foreground">×</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity || 1}
-                    onChange={e => {
-                      const q = Math.max(1, parseInt(e.target.value) || 1);
-                      setCustomItems(prev =>
-                        prev.map((it, i) => (i === idx ? { ...it, quantity: q } : it))
-                      );
-                    }}
-                    className="w-full bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-                  />
-                </div>
-                <div className="flex items-center gap-1 bg-card border border-border/40 rounded-lg px-2 py-1.5 w-24 shrink-0">
-                  <span className="text-muted-foreground font-bold">{currencySymbol}</span>
-                  <input
-                    type="number"
-                    value={item.price ?? item.amount ?? 0}
-                    onChange={e => {
-                      const val = parseFloat(e.target.value) || 0;
-                      setCustomItems(prev =>
-                        prev.map((it, i) =>
-                          i === idx ? { ...it, price: val, amount: val } : it
-                        )
-                      );
-                    }}
-                    className="w-full bg-transparent text-right text-xs font-bold text-[var(--fg)] focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="button"
+                <MiniNumber
+                  label="Quantity"
+                  prefix="×"
+                  min="1"
+                  className="w-16 shrink-0 px-2.5"
+                  value={item.quantity || 1}
+                  onChange={e => {
+                    const q = Math.max(1, parseInt(e.target.value) || 1);
+                    setCustomItems(prev => prev.map((it, i) => (i === idx ? { ...it, quantity: q } : it)));
+                  }}
+                />
+                <MiniNumber
+                  label="Price"
+                  prefix={currencySymbol}
+                  className="w-24 shrink-0"
+                  value={item.price ?? item.amount ?? 0}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setCustomItems(prev => prev.map((it, i) => (i === idx ? { ...it, price: val, amount: val } : it)));
+                  }}
+                />
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  label="Remove item"
+                  icon={<X />}
                   onClick={() => setCustomItems(prev => prev.filter((_, i) => i !== idx))}
-                  className="p-1 text-muted-foreground hover:text-[var(--danger)] shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>
@@ -2670,104 +2383,70 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // Shared Inner Controls for Drawer 3: Multi-Option Proposal & Contract Terms
   const renderProposalAndTermsControls = () => (
-    <div className="space-y-4">
-      {/* Multi-Option Tier Comparison Toggle */}
-      <div className="space-y-3">
+    <div className="flex flex-col gap-5">
+      {/* Multi-option tier comparison */}
+      <div className="flex flex-col gap-3">
         <div
           onClick={() => handleToggleProposalSummary(!includeProposalSummary)}
-          className={cn(
-            'p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all',
-            includeProposalSummary
-              ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)]'
-              : 'bg-card border-border/40'
-          )}
+          className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
         >
-          <div className="pr-3">
-            <span className="text-xs font-bold uppercase block text-[var(--fg)]">
-              Multi-Option Proposal Comparison Table
-            </span>
-            <span className="text-[11px] text-muted-foreground block mt-0.5">
-              Compare multiple lineup sizes/packages side-by-side in the exported PDF.
-            </span>
-          </div>
-          <DotCheckbox
+          <span className="flex flex-col gap-1 min-w-0">
+            <span className="bw-body-lg">Multi-option comparison</span>
+            <span className="bw-body-sm text-muted-foreground">Compare lineup sizes or packages side by side in the PDF.</span>
+          </span>
+          <Toggle
             checked={includeProposalSummary}
-            activeColor="var(--wizard-accent)"
-            inactiveColor="var(--border)"
+            onCheckedChange={() => handleToggleProposalSummary(!includeProposalSummary)}
+            onClick={e => e.stopPropagation()}
+            aria-label="Multi-option proposal comparison table"
           />
         </div>
 
         {includeProposalSummary && (
-          <div className="space-y-2.5">
+          <div className="flex flex-col gap-2">
             {quoteOptions.map((opt, idx) => (
-              <div
-                key={opt.id}
-                className="p-3 rounded-xl bg-background border border-border/40 space-y-2.5"
-              >
+              <div key={opt.id} className="p-4 rounded-[16px] bg-background flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[var(--wizard-accent)]">
-                    OPTION 0{idx + 1} • INCL. VAT: {formatQuoteMoney(opt.totalWithVat, currencySymbol)}
+                  <span className="bw-label-sm text-foreground">
+                    Option {String(idx + 1).padStart(2, '0')} · incl. VAT {formatQuoteMoney(opt.totalWithVat, currencySymbol)}
                   </span>
                   {quoteOptions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePackageOption(opt.id)}
-                      className="text-muted-foreground hover:text-[var(--danger)] p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <IconButton size="sm" variant="ghost" label={`Remove option ${idx + 1}`} icon={<Trash2 />} onClick={() => removePackageOption(opt.id)} />
                   )}
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
-                      Tier Name
-                    </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1.5 col-span-2">
+                    <span className="bw-label-xs text-muted-foreground">Tier name</span>
                     <input
                       type="text"
                       value={opt.name}
                       onChange={e => updatePackageOption(opt.id, { name: e.target.value })}
-                      className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                      className="h-11 px-4 rounded-full bg-field border border-border bw-body-sm font-medium text-foreground outline-none focus:border-foreground"
                     />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
-                      Musicians
-                    </label>
-                    <input
-                      type="number"
+                  </label>
+                  <label className="flex flex-col gap-1.5 min-w-0">
+                    <span className="bw-label-xs text-muted-foreground">Musicians</span>
+                    <MiniNumber
+                      label="Musicians"
                       min="1"
                       value={opt.musiciansCount}
-                      onChange={e =>
-                        updatePackageOption(opt.id, {
-                          musiciansCount: Math.max(1, parseInt(e.target.value) || 1),
-                        })
-                      }
-                      className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                      onChange={e => updatePackageOption(opt.id, { musiciansCount: Math.max(1, parseInt(e.target.value) || 1) })}
                     />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
-                      Gross Fee ({currencySymbol})
-                    </label>
-                    <input
-                      type="number"
+                  </label>
+                  <label className="flex flex-col gap-1.5 min-w-0">
+                    <span className="bw-label-xs text-muted-foreground">Gross fee</span>
+                    <MiniNumber
+                      label="Gross fee"
+                      prefix={currencySymbol}
                       value={opt.grossFee}
-                      onChange={e =>
-                        updatePackageOption(opt.id, {
-                          grossFee: Math.max(0, parseFloat(e.target.value) || 0),
-                        })
-                      }
-                      className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
+                      onChange={e => updatePackageOption(opt.id, { grossFee: Math.max(0, parseFloat(e.target.value) || 0) })}
                     />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
-                      Discount %
-                    </label>
-                    <input
-                      type="number"
+                  </label>
+                  <label className="flex flex-col gap-1.5 min-w-0">
+                    <span className="bw-label-xs text-muted-foreground">Discount</span>
+                    <MiniNumber
+                      label="Discount percentage"
+                      suffix="%"
                       min="0"
                       max="90"
                       value={opt.discountPercent}
@@ -2776,71 +2455,50 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                           discountPercent: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)),
                         })
                       }
-                      className="w-full bg-card border border-border/40 rounded-lg px-2 py-1 text-xs font-bold text-[var(--fg)]"
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">
-                    Lineup / Instrumentation Description
                   </label>
-                  <input
-                    type="text"
-                    value={opt.instrumentsText}
-                    onChange={e =>
-                      updatePackageOption(opt.id, { instrumentsText: e.target.value })
-                    }
-                    className="w-full bg-card border border-border/40 rounded-lg px-2.5 py-1 text-xs text-[var(--fg)]"
-                  />
+                  <label className="flex flex-col gap-1.5 col-span-2">
+                    <span className="bw-label-xs text-muted-foreground">Lineup / instrumentation</span>
+                    <input
+                      type="text"
+                      value={opt.instrumentsText}
+                      onChange={e => updatePackageOption(opt.id, { instrumentsText: e.target.value })}
+                      className="h-11 px-4 rounded-full bg-field border border-border bw-body-sm text-foreground outline-none focus:border-foreground"
+                    />
+                  </label>
                 </div>
               </div>
             ))}
-
-            <button
-              type="button"
-              onClick={addPackageOption}
-              className="w-full py-2 rounded-xl border border-dashed border-border hover:border-[var(--wizard-accent)] text-xs font-bold uppercase text-[var(--wizard-accent)] flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Lineup Option Tier</span>
-            </button>
+            <PillButton size="md" variant="outline" icon={<Plus className="w-4 h-4" />} onClick={addPackageOption}>
+              Add option tier
+            </PillButton>
           </div>
         )}
       </div>
 
-      {/* Quote Subtitle */}
-      <div className="pt-2 border-t border-border/30">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-          QUOTE SUBTITLE / DESCRIPTION{' '}
-          <span className="text-[10px] font-normal lowercase opacity-60">(optional)</span>
-        </label>
-        <input
-          type="text"
-          value={quoteDescription}
-          onChange={e => setQuoteDescription(e.target.value)}
-          placeholder={`Formal quote for an event in ${venueName || venueCity || 'Venue'}`}
-          className="w-full bg-background border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl px-3 py-2 text-xs text-[var(--fg)] focus:outline-none"
-        />
-      </div>
+      <PillField
+        label="Quote subtitle (optional)"
+        value={quoteDescription}
+        onChange={e => setQuoteDescription(e.target.value)}
+        placeholder={`Formal quote for an event in ${venueName || venueCity || 'Venue'}`}
+      />
 
-      {/* Payment Methods */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-          PAYMENT METHODS
-        </label>
+      {/* Payment methods */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Payment methods</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {[
-            { id: 'bank_transfer', label: 'Bank Transfer' },
-            { id: 'credit_card', label: 'Credit Card' },
+            { id: 'bank_transfer', label: 'Bank transfer' },
+            { id: 'credit_card', label: 'Credit card' },
             { id: 'cash', label: 'Cash' },
             { id: 'paypal', label: 'PayPal' },
           ].map(m => {
             const isChecked = paymentMethods.includes(m.id as PaymentMethod);
             return (
-              <button
+              <Chip
                 key={m.id}
-                type="button"
+                size="md"
+                selected={isChecked}
                 onClick={() => {
                   if (isChecked) {
                     setPaymentMethods(paymentMethods.filter(p => p !== m.id));
@@ -2848,403 +2506,234 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     setPaymentMethods([...paymentMethods, m.id as PaymentMethod]);
                   }
                 }}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                  isChecked
-                    ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                    : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                )}
               >
                 {m.label}
-              </button>
+              </Chip>
             );
           })}
         </div>
       </div>
 
-      {/* Cancellation Policy */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-          CANCELLATION POLICY
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {(['flexible', 'moderate', 'strict'] as CancellationPolicy[]).map(pol => (
-            <button
-              key={pol}
-              type="button"
-              onClick={() => setCancellationPolicy(pol)}
-              className={cn(
-                'py-1.5 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer text-center',
-                cancellationPolicy === pol
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
-            >
-              {pol}
-            </button>
-          ))}
-        </div>
+      {/* Cancellation policy */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Cancellation policy</FieldLabel>
+        <Segmented
+          label="Cancellation policy"
+          track="field"
+          value={cancellationPolicy as CancellationPolicy}
+          options={(['flexible', 'moderate', 'strict'] as CancellationPolicy[]).map(pol => ({
+            id: pol,
+            label: pol.charAt(0).toUpperCase() + pol.slice(1),
+          }))}
+          onSelect={id => setCancellationPolicy(id)}
+        />
       </div>
 
-      {/* Client Notes */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">
-          CLIENT MESSAGE / NOTES
-        </label>
+      {/* Client notes */}
+      <div className="flex flex-col gap-2">
+        <FieldLabel htmlFor="quote-client-notes">Client message / notes</FieldLabel>
         <textarea
+          id="quote-client-notes"
           value={clientNotes}
           onChange={e => setClientNotes(e.target.value)}
-          placeholder="Notes or conditions visible on the quote document..."
+          placeholder="Notes or conditions shown on the quote document…"
           rows={3}
-          className="w-full bg-background border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl p-3 text-sm text-[var(--fg)] placeholder:text-muted-foreground focus:outline-none resize-none transition-colors"
+          className="w-full rounded-[24px] bg-field border border-border p-4 bw-body-md text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-foreground resize-none"
         />
       </div>
     </div>
   );
 
   // ── STEP 03: CONSOLIDATED REVIEW & 3 DRAWERS ────────────────
+  const PERFORMANCE_LABEL: Record<string, string> = {
+    solo: 'Solo',
+    duo: 'Duo',
+    trio: 'Trio',
+    full_band: 'Full band',
+    dj_set: 'DJ set',
+    acoustic: 'Acoustic',
+  };
+  const heroChipStyle: React.CSSProperties = { backgroundColor: 'var(--wizard-accent-fg)', color: 'var(--wizard-accent)' };
+  const heroTintStyle: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)' };
+  const extrasNames = customItems.map(it => it.name || it.description).filter(Boolean) as string[];
+
+  const billingSummary = [
+    vatExempt || reverseCharge ? 'VAT exempt' : `${vatRate}% VAT`,
+    depositRequired && depositPercentage > 0 ? `${depositPercentage}% deposit` : 'No deposit',
+    `valid ${validityDays} days`,
+    totals.discountAmount > 0 ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const logisticsSummary = [
+    productionTier === 'pro' ? 'Pro PA' : productionTier === 'none' ? 'Client PA' : productionTier === 'custom' ? 'Custom PA' : 'Standard PA',
+    travelMode === 'included' ? 'travel included' : travelMode === 'separate' ? `travel ${currencySymbol}${travelFee}` : 'travel by client',
+    `${customItems.length} custom ${customItems.length === 1 ? 'item' : 'items'}`,
+  ].join(' · ');
+  const proposalSummary = [
+    includeProposalSummary ? `${quoteOptions.length} option tiers` : 'Single option',
+    paymentMethods.length > 0 ? paymentMethods.map(p => p.replace(/_/g, ' ')).join(', ') : 'No payment method',
+    `${cancellationPolicy} cancellation`,
+    clientNotes ? 'notes added' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // Not a component: a render helper, so the drawer's inputs keep focus across renders.
+  const renderReviewDrawer = (
+    id: 'billing' | 'logistics' | 'proposal_terms',
+    title: string,
+    summary: string,
+    content: React.ReactNode
+  ) => {
+    const open = openReviewDrawer === id;
+    return (
+      <div className="rounded-[24px] bg-card overflow-hidden">
+        <button
+          type="button"
+          onClick={() => toggleReviewDrawer(id)}
+          aria-expanded={open}
+          className="w-full p-4 flex items-center justify-between gap-3 text-left cursor-pointer"
+        >
+          <span className="flex flex-col gap-1 min-w-0">
+            <span className="bw-label-sm text-foreground">{title}</span>
+            <span className="bw-body-sm text-muted-foreground truncate first-letter:uppercase">{summary}</span>
+          </span>
+          <ChevronDown className={cn('w-5 h-5 shrink-0 transition-transform', !open && '-rotate-90')} />
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 pb-4 pt-1">{content}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
   const renderStep3 = () => (
-    <div className="space-y-3.5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-      {/* Unified Summary Card + Mini Financial Ledger */}
-      <div className="bg-card rounded-2xl p-4 sm:p-5 border border-border/40 space-y-3.5 shadow-2xs">
-        {/* Badges & Title */}
+    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
+      {/* Summary hero (quote colour) */}
+      <section className="rounded-[24px] p-5 flex flex-col gap-4 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[var(--wizard-accent)]/15 text-[var(--wizard-accent)]">
-                QUOTE
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground">
-                {eventType.toUpperCase()}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground">
-                {selectedMusicians.length || pricingSettings.core_members_count} MUSICIANS
-              </span>
-            </div>
-            <h3 className="text-lg sm:text-xl font-bold text-[var(--fg)] tracking-tight truncate">
-              {getEffectiveTitle()}
-            </h3>
-            <span className="text-xs text-muted-foreground font-semibold block mt-0.5 uppercase truncate">
-              Client: {clientName.trim() || 'Client TBD'}
-              {clientEmail ? ` • ${clientEmail}` : ''}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={heroChipStyle}>
+              Quote
+            </span>
+            <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={heroTintStyle}>
+              {eventType}
             </span>
           </div>
-
-          <div className="flex flex-col items-end gap-1.5 shrink-0 text-xs font-bold text-[var(--wizard-accent)]">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="hover:underline flex items-center gap-1 cursor-pointer"
-            >
+          <div className="flex items-center gap-3 shrink-0 -my-2">
+            <button type="button" onClick={() => setStep(0)} className="py-2 inline-flex items-center gap-1 bw-label-xs cursor-pointer">
               <Edit3 className="w-3 h-3" />
-              <span>Lineup</span>
+              Lineup
             </button>
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="hover:underline flex items-center gap-1 cursor-pointer"
-            >
+            <button type="button" onClick={() => setStep(1)} className="py-2 inline-flex items-center gap-1 bw-label-xs cursor-pointer">
               <Edit3 className="w-3 h-3" />
-              <span>Venue</span>
+              Venue
             </button>
           </div>
         </div>
-
-        {/* Date & Venue Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border/30 text-xs text-[var(--fg)]">
-          <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-3.5 h-3.5 text-[var(--wizard-accent)] shrink-0" />
-            <span className="font-semibold truncate">
-              {eventDate ? formattedDateStr : 'Date TBD'} · {eventTimeStart}–{eventTimeEnd}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin className="w-3.5 h-3.5 text-[var(--wizard-accent)] shrink-0" />
-            <span className="font-semibold truncate">
-              {venueName || 'Venue TBD'}
-              {venueCity ? `, ${venueCity}` : ''}
-            </span>
-          </div>
+        <h2 className="bw-display [overflow-wrap:anywhere]">{getEffectiveTitle()}</h2>
+        <div className="flex flex-col gap-3 bw-body-md">
+          <p className="[overflow-wrap:anywhere]">
+            Client: {clientName.trim() || 'Client TBD'}
+            {clientEmail ? ` · ${clientEmail}` : ''}
+          </p>
+          <p>
+            {eventDate ? formattedDateStr : 'Date TBD'} · {eventTimeStart} – {eventTimeEnd} · {venueName || 'Venue TBD'}
+            {venueCity ? `, ${venueCity}` : ''}
+          </p>
+          <p>
+            {PERFORMANCE_LABEL[performanceType] || 'Lineup'} ({selectedMusicians.length || pricingSettings.core_members_count}) · {numberOfSets} ×{' '}
+            {setDuration} min
+            {extrasNames.length > 0 ? ` · ${extrasNames.join(' · ')}` : ''}
+          </p>
         </div>
+      </section>
 
-        {/* Mini Financial Ledger */}
-        <div className="rounded-xl bg-background/70 border border-border/40 p-3 space-y-1.5 text-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Lineup Base ({numberOfSets}×{setDuration}m)</span>
-            <span className="font-bold text-[var(--fg)] tabular-nums">
-              {currencySymbol}
-              {Math.round(lineupBaseAmount).toLocaleString()}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>
-              Selected Sets & Extras
-              {customItems.length > 0 ? ` (${customItems.length})` : ''}
-            </span>
-            <span className="font-bold text-[var(--fg)] tabular-nums">
-              {setsAndExtrasAmount > 0
-                ? `${currencySymbol}${Math.round(setsAndExtrasAmount).toLocaleString()}`
-                : `${currencySymbol}0`}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Travel & Production</span>
-            <span className="font-bold text-[var(--fg)] tabular-nums">
-              {travelAndProductionAmount > 0
-                ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString()}`
-                : 'Included'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Discount</span>
-            <span
-              className={cn(
-                'font-bold tabular-nums',
-                totals.discountAmount > 0 ? 'text-emerald-600' : 'text-[var(--fg)]'
-              )}
-            >
-              {totals.discountAmount > 0
-                ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`
-                : `${currencySymbol}0`}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>VAT ({vatExempt || reverseCharge ? '0% Exempt' : `${vatRate}%`})</span>
-            <span className="font-bold text-[var(--fg)] tabular-nums">
-              {formatQuoteMoney(totals.vatAmount, currencySymbol)}
-            </span>
-          </div>
-          <div className="pt-2 mt-1 border-t border-border/40 flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-[var(--fg)]">
-              Total{depositRequired && depositPercentage > 0 ? ` (${depositPercentage}% Deposit)` : ''}
-            </span>
-            <span className="text-base font-black text-[var(--wizard-accent)] tabular-nums">
-              {formatQuoteMoney(totals.total, currencySymbol)}
-            </span>
-          </div>
+      {/* Breakdown */}
+      <section className="rounded-[24px] bg-card p-4 flex flex-col gap-3">
+        <span className="bw-label-sm text-muted-foreground">Breakdown</span>
+        <LedgerRow
+          label={`Lineup base (${numberOfSets} × ${setDuration} min)`}
+          value={`${currencySymbol}${Math.round(lineupBaseAmount).toLocaleString()}`}
+        />
+        <LedgerRow
+          label={`Sets & extras${customItems.length > 0 ? ` (${customItems.length})` : ''}`}
+          value={`${currencySymbol}${Math.round(setsAndExtrasAmount).toLocaleString()}`}
+        />
+        <LedgerRow
+          label="Travel & production"
+          value={travelAndProductionAmount > 0 ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString()}` : 'Included'}
+        />
+        {totals.discountAmount > 0 && (
+          <LedgerRow label="Discount" value={`−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`} tone="success" />
+        )}
+        <LedgerRow
+          label={`VAT ${vatExempt || reverseCharge ? '0% (exempt)' : `${vatRate}%`}`}
+          value={formatQuoteMoney(totals.vatAmount, currencySymbol)}
+        />
+        <hr className="border-0 h-px bg-border" />
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="bw-label-sm text-foreground">
+            Total{depositRequired && depositPercentage > 0 ? ` · ${depositPercentage}% deposit` : ''}
+          </span>
+          <span className="bw-value-md text-foreground shrink-0">{formatQuoteMoney(totals.total, currencySymbol)}</span>
         </div>
-      </div>
+      </section>
 
-      {/* Drawer 1: Billing, Discounts, VAT & Deposit */}
-      <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
-        <button
-          type="button"
-          onClick={() => toggleReviewDrawer('billing')}
-          className="w-full p-3.5 sm:p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
-              <Euro className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-sm font-bold text-[var(--fg)] block truncate">
-                Billing, Discounts, VAT & Deposit
-              </span>
-              <span className="text-xs text-muted-foreground block truncate">
-                Net: {formatQuoteMoney(totals.netAmount, currencySymbol)}
-                {totals.discountAmount > 0
-                  ? ` (−${formatQuoteMoney(totals.discountAmount, currencySymbol)})`
-                  : ''}{' '}
-                • VAT: {vatRate}% • Deposit: {depositRequired ? `${depositPercentage}%` : 'None'}
-              </span>
-            </div>
-          </div>
-          <ChevronDown
-            className={cn(
-              'w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2',
-              openReviewDrawer === 'billing' && 'rotate-180'
-            )}
-          />
-        </button>
-
-        <AnimatePresence>
-          {openReviewDrawer === 'billing' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-4 pb-4 border-t border-border/30 pt-3 overflow-hidden"
-            >
-              {renderBillingControls()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Drawer 2: Production, Travel, Hotel & Custom Items */}
-      <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
-        <button
-          type="button"
-          onClick={() => toggleReviewDrawer('logistics')}
-          className="w-full p-3.5 sm:p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
-              <Truck className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-sm font-bold text-[var(--fg)] block truncate">
-                Production, Travel, Hotel & Custom Items
-              </span>
-              <span className="text-xs text-muted-foreground block truncate">
-                PA: {productionTier.toUpperCase()} • Travel:{' '}
-                {travelMode === 'included'
-                  ? 'Included'
-                  : travelMode === 'separate'
-                    ? `${currencySymbol}${travelFee}`
-                    : 'Client'}{' '}
-                • {customItems.length} {customItems.length === 1 ? 'Extra' : 'Extras'}
-              </span>
-            </div>
-          </div>
-          <ChevronDown
-            className={cn(
-              'w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2',
-              openReviewDrawer === 'logistics' && 'rotate-180'
-            )}
-          />
-        </button>
-
-        <AnimatePresence>
-          {openReviewDrawer === 'logistics' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-4 pb-4 border-t border-border/30 pt-3 overflow-hidden"
-            >
-              {renderLogisticsAndCustomItemsControls()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Drawer 3: Multi-Option Proposal & Contract Terms */}
-      <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
-        <button
-          type="button"
-          onClick={() => toggleReviewDrawer('proposal_terms')}
-          className="w-full p-3.5 sm:p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
-              <Layers className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-sm font-bold text-[var(--fg)] block truncate">
-                Multi-Option Proposal & Contract Terms
-              </span>
-              <span className="text-xs text-muted-foreground block truncate">
-                {includeProposalSummary
-                  ? `${quoteOptions.length} Option Tiers`
-                  : 'Single-Option Quote'}{' '}
-                • {cancellationPolicy.toUpperCase()} • {clientNotes ? 'Notes added' : 'Standard terms'}
-              </span>
-            </div>
-          </div>
-          <ChevronDown
-            className={cn(
-              'w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2',
-              openReviewDrawer === 'proposal_terms' && 'rotate-180'
-            )}
-          />
-        </button>
-
-        <AnimatePresence>
-          {openReviewDrawer === 'proposal_terms' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-4 pb-4 border-t border-border/30 pt-3 overflow-hidden"
-            >
-              {renderProposalAndTermsControls()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {renderReviewDrawer('billing', 'Billing, discounts, VAT & deposit', billingSummary, renderBillingControls())}
+      {renderReviewDrawer('logistics', 'Production & travel', logisticsSummary, renderLogisticsAndCustomItemsControls())}
+      {renderReviewDrawer('proposal_terms', 'Multi-option proposal & terms', proposalSummary, renderProposalAndTermsControls())}
     </div>
   );
 
   // ── ACCORDION EDIT VIEW (ALL 5 SECTIONS FOR isEditing === true) ──
   const renderEditAccordionView = () => (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* 01: Client & Occasion */}
       <QuoteAccordionCard
         isOpen={Boolean(expandedEditSections.client_event)}
         onToggle={() => toggleEditSection('client_event')}
         stepNumber="01"
-        title="CLIENT & OCCASION"
-        summary={`${clientName || 'NO CLIENT'} • ${(eventType || 'wedding').toUpperCase()} • ${indoorOutdoor.toUpperCase()}`}
+        title="Client & occasion"
+        summary={`${clientName || 'No client'} · ${eventType || 'wedding'} · ${indoorOutdoor}`}
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {EVENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setEventType(value)}
-                className={cn(
-                  'p-2.5 rounded-xl border text-xs font-bold uppercase flex items-center gap-2 transition-all cursor-pointer',
-                  eventType === value
-                    ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                    : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{label}</span>
-              </button>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {EVENT_TYPE_OPTIONS.map(({ value, label }) => (
+              <Chip key={value} tone="accent" selected={eventType === value} onClick={() => setEventType(value)}>
+                {label}
+              </Chip>
             ))}
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                CLIENT NAME
-              </label>
-              <input
-                type="text"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-                className="w-full bg-transparent border-b border-border/40 pb-1.5 text-base font-bold text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                EVENT TITLE
-              </label>
-              <input
-                type="text"
-                value={eventName}
-                onChange={e => setEventName(e.target.value)}
-                placeholder={getEffectiveTitle()}
-                className="w-full bg-transparent border-b border-border/40 pb-1.5 text-base font-bold text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                CLIENT EMAIL
-              </label>
-              <input
-                type="email"
-                value={clientEmail}
-                onChange={e => setClientEmail(e.target.value)}
-                placeholder="client@example.com"
-                className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm font-medium text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground block mb-1">
-                CLIENT PHONE
-              </label>
-              <input
-                type="tel"
-                value={clientPhone}
-                onChange={e => setClientPhone(e.target.value)}
-                placeholder="+39 333 1234567"
-                className="w-full bg-transparent border-b border-border/40 pb-1.5 text-sm font-medium text-[var(--fg)] focus:outline-none focus:border-[var(--wizard-accent)]"
-              />
-            </div>
+            <PillField label="Client name" icon={<User className="w-5 h-5" />} value={clientName} onChange={e => setClientName(e.target.value)} />
+            <PillField label="Event title" value={eventName} onChange={e => setEventName(e.target.value)} placeholder={getEffectiveTitle()} />
+            <PillField
+              label="Client email"
+              type="email"
+              icon={<Mail className="w-5 h-5" />}
+              value={clientEmail}
+              onChange={e => setClientEmail(e.target.value)}
+              placeholder="client@example.com"
+            />
+            <PillField
+              label="Client phone"
+              type="tel"
+              icon={<Phone className="w-5 h-5" />}
+              value={clientPhone}
+              onChange={e => setClientPhone(e.target.value)}
+              placeholder="+39 333 1234567"
+            />
           </div>
         </div>
       </QuoteAccordionCard>
@@ -3254,8 +2743,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.date_venue)}
         onToggle={() => toggleEditSection('date_venue')}
         stepNumber="02"
-        title="DATE & VENUE"
-        summary={`${formattedDateStr} @ ${eventTimeStart} - ${eventTimeEnd} • ${venueName || 'VENUE TBD'}`}
+        title="Date & venue"
+        summary={`${formattedDateStr} · ${eventTimeStart} – ${eventTimeEnd} · ${venueName || 'Venue TBD'}`}
       >
         {renderStep2()}
       </QuoteAccordionCard>
@@ -3265,8 +2754,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.lineup_moments)}
         onToggle={() => toggleEditSection('lineup_moments')}
         stepNumber="03"
-        title="LINEUP & EXTRA SETS"
-        summary={`${selectedMusicians.length} MUSICIANS • ${customItems.length} EXTRAS • ${currencySymbol}${(lineupBaseAmount + setsAndExtrasAmount).toLocaleString()}`}
+        title="Lineup & extra sets"
+        summary={`${selectedMusicians.length} ${selectedMusicians.length === 1 ? 'musician' : 'musicians'} · ${customItems.length} ${
+          customItems.length === 1 ? 'extra' : 'extras'
+        } · ${currencySymbol}${(lineupBaseAmount + setsAndExtrasAmount).toLocaleString()}`}
       >
         {renderLineupAndExtraSetsSection()}
       </QuoteAccordionCard>
@@ -3276,15 +2767,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.pricing_billing)}
         onToggle={() => toggleEditSection('pricing_billing')}
         stepNumber="04"
-        title="PRICING, LOGISTICS & BILLING"
-        summary={`NET ${formatQuoteMoney(totals.netAmount, currencySymbol)} • VAT ${vatRate}% • TOTAL ${formatQuoteMoney(totals.total, currencySymbol)}`}
+        title="Pricing, logistics & billing"
+        summary={`Net ${formatQuoteMoney(totals.netAmount, currencySymbol)} · VAT ${vatRate}% · total ${formatQuoteMoney(totals.total, currencySymbol)}`}
       >
-        <div className="space-y-5">
-          {renderBillingControls()}
-          <div className="pt-3 border-t border-border/40">
-            {renderLogisticsAndCustomItemsControls()}
-          </div>
-        </div>
+        {renderBillingControls()}
+        <hr className="border-0 h-px bg-border" />
+        {renderLogisticsAndCustomItemsControls()}
       </QuoteAccordionCard>
 
       {/* 05: Multi-Option Proposal & Terms */}
@@ -3292,36 +2780,48 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.terms_notes)}
         onToggle={() => toggleEditSection('terms_notes')}
         stepNumber="05"
-        title="PROPOSAL OPTIONS & TERMS"
-        summary={`${includeProposalSummary ? `${quoteOptions.length} OPTIONS` : 'SINGLE QUOTE'} • ${cancellationPolicy.toUpperCase()} • ${paymentMethods.join(', ').toUpperCase()}`}
+        title="Proposal options & terms"
+        summary={proposalSummary}
       >
         {renderProposalAndTermsControls()}
       </QuoteAccordionCard>
     </div>
   );
 
-  // Compact Live Quote Estimate Bar (used in Footer across all steps)
+  // Live quote estimate strip (Figma: black "Total estimate" bar above the actions)
+  const estimateSubtitle =
+    !isEditing && step === 0
+      ? `${lineupCount} ${lineupCount === 1 ? 'musician' : 'musicians'}${
+          customItems.length > 0 ? ` + ${customItems.length} ${customItems.length === 1 ? 'add-on' : 'add-ons'}` : ''
+        }`
+      : !isEditing && step === 1
+        ? `${travelMode === 'included' ? 'Incl. travel' : travelMode === 'separate' ? `Travel +${currencySymbol}${travelFee}` : 'Travel by client'} · ${numberOfSets} × ${setDuration} min`
+        : `Net ${formatQuoteMoney(totals.netAmount, currencySymbol)} · ${
+            vatExempt || reverseCharge ? 'VAT exempt' : `VAT ${vatRate}% ${formatQuoteMoney(totals.vatAmount, currencySymbol)}`
+          }`;
+  const totalLabel = formatQuoteMoney(totals.total, currencySymbol);
+
   const renderLiveEstimateBar = () => (
-    <div className="flex items-baseline justify-between mb-2.5 px-1 gap-2">
-      <div className="flex flex-col min-w-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          TOTAL ESTIMATE
-        </span>
-        <span className="text-[11px] text-muted-foreground truncate">
-          Net {formatQuoteMoney(totals.netAmount, currencySymbol)} ·{' '}
-          {vatExempt || reverseCharge
-            ? 'VAT Exempt'
-            : `+${vatRate}% VAT (${formatQuoteMoney(totals.vatAmount, currencySymbol)})`}
-        </span>
+    <div className="bg-surface-inverse text-surface-inverse-foreground px-4 py-3">
+      <div className="max-w-xl mx-auto w-full flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="bw-label-sm">Total estimate</span>
+          <span className="bw-body-sm truncate opacity-80">{estimateSubtitle}</span>
+        </div>
+        <div
+          className="shrink-0 max-w-[55%]"
+          style={{ '--dot-off': 'color-mix(in srgb, currentColor 18%, transparent)' } as React.CSSProperties}
+        >
+          <DotText text={totalLabel} size={28} showGrid label={`Total estimate ${totalLabel}`} />
+        </div>
       </div>
-      <span className="text-xl font-black text-[var(--fg)] tabular-nums shrink-0">
-        {formatQuoteMoney(totals.total, currencySymbol)}
-      </span>
     </div>
   );
 
   const isLastStep = step === STEPS.length - 1;
   const isFirstStep = step === 0;
+  const headerPadTop = { paddingTop: 'var(--wizard-header-pt, calc(var(--safe-top) + 8px))' };
+  const footerPadBottom = { paddingBottom: 'calc(var(--safe-bottom) + 16px)' };
 
   // ── EDIT MODE RENDER ────────────────────────────────────────
   if (isEditing) {
@@ -3333,79 +2833,45 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
         style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-        className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col h-full overflow-hidden"
+        className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
       >
-        <WizardAccentRail color={activeAccentColor} />
-
-        {/* Top Header Zone */}
-        <div
-          className="px-6 pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between"
-          style={{
-            paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          }}
-        >
-          <div className="flex flex-col gap-1 min-w-0 pr-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] shadow-xs">
-                EDITING
-              </span>
-              <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-muted text-muted-foreground">
-                {initialData?.quoteNumber || 'QUOTE'}
-              </span>
-              <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-muted text-muted-foreground">
-                {(eventType || 'wedding').toUpperCase()}
+        <header className="shrink-0 px-4 pb-4 bg-background" style={headerPadTop}>
+          <div className="max-w-xl mx-auto w-full flex items-start gap-3">
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]">
+                  Editing
+                </span>
+                <Tag variant="subtle">{initialData?.quoteNumber || 'Quote'}</Tag>
+                <Tag variant="subtle">{eventType || 'wedding'}</Tag>
+              </div>
+              <h1 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h1>
+              <span className="bw-body-sm text-muted-foreground">
+                {formattedDateStr} · {eventTimeStart} – {eventTimeEnd} · {venueName || 'Venue TBD'}
               </span>
             </div>
-            <h1 className="text-2xl font-bold uppercase leading-tight text-[var(--fg)] truncate mt-1">
-              {getEffectiveTitle()}
-            </h1>
-            <span className="text-xs font-semibold uppercase text-muted-foreground">
-              {formattedDateStr} @ {eventTimeStart} – {eventTimeEnd} • {venueName || 'VENUE TBD'}
-            </span>
+            <IconButton label="Close edit quote modal" icon={<X />} onClick={onClose} />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close edit quote modal"
-            className="w-11 h-11 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5 text-[var(--fg)]" />
-          </button>
-        </div>
+        </header>
 
-        {/* Scrollable Body Zone */}
-        <PeekingScrollContainer className="flex-1 px-6 py-4 min-h-0">
-          {renderEditAccordionView()}
+        <PeekingScrollContainer className="flex-1 px-4 pt-2 pb-6 min-h-0">
+          <div className="max-w-xl mx-auto w-full">{renderEditAccordionView()}</div>
         </PeekingScrollContainer>
 
-        {/* Bottom Action Bar */}
-        <div className="px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3.5 shrink-0 border-t border-border/40 bg-[var(--bg)]/95 backdrop-blur-md">
+        <div className="shrink-0">
           {renderLiveEstimateBar()}
-          <div className="grid grid-cols-3 gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <X className="w-4 h-4 text-[var(--fg)]" />
-              CANCEL
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCreate(false)}
-              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Check className="w-4 h-4" />
-              SAVE DRAFT
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCreate(true)}
-              className="rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer"
-            >
-              <Share2 className="w-4 h-4" />
-              SHARE QUOTE
-            </button>
+          <div className="px-4 pt-4 bg-background" style={footerPadBottom}>
+            <div className="max-w-xl mx-auto w-full flex gap-2">
+              <PillButton variant="outline" fullWidth={false} className="px-4" onClick={onClose}>
+                Cancel
+              </PillButton>
+              <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
+                Save draft
+              </PillButton>
+              <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
+                Share
+              </PillButton>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -3421,18 +2887,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-      className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col h-full overflow-hidden"
+      className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
     >
-      <WizardAccentRail color={activeAccentColor} />
-
-      {/* Top Header Zone */}
-      <div
-        className="shrink-0 px-6 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3"
-        style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-        }}
-      >
-        <div className="pt-1">
+      {/* Header: back · title · close, then step bars */}
+      <header className="shrink-0 px-4 pb-3 bg-background" style={headerPadTop}>
+        <div className="max-w-xl mx-auto w-full flex flex-col gap-3">
+          <div className="flex items-center gap-3 min-h-11">
+            <IconButton
+              label={isFirstStep ? 'Close quote wizard' : 'Previous step'}
+              icon={<ArrowLeft />}
+              onClick={isFirstStep ? onClose : handleBack}
+            />
+            <h1 className="flex-1 min-w-0 bw-h2 truncate">New quote</h1>
+            <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={onClose} />
+          </div>
           <InteractiveQuoteStepIndicator
             current={step}
             total={STEPS.length}
@@ -3440,105 +2908,49 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             maxAccessibleStep={maxAccessibleStep}
             onSelectStep={s => setStep(s)}
             activeColor="var(--wizard-accent)"
-            inactiveColor="var(--border)"
           />
         </div>
+      </header>
 
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              NEW QUOTE
-            </span>
-            <h2 className="text-2xl font-bold tracking-tight leading-tight text-[var(--fg)] mt-0.5 truncate">
-              {STEPS[step].title}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close quote wizard"
-            className="w-10 h-10 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5 text-[var(--fg)]" />
-          </button>
+      {/* Scrollable body */}
+      <PeekingScrollContainer className="flex-1 px-4 pt-2 pb-6 min-h-0">
+        <div className="max-w-xl mx-auto w-full">
+          {step === 0 && renderStep1()}
+          {step === 1 && renderStep2()}
+          {step === 2 && renderStep3()}
         </div>
-      </div>
-
-      {/* Scrollable Body Zone */}
-      <PeekingScrollContainer className="flex-1 px-6 py-4 space-y-5 min-h-0">
-        {step === 0 && renderStep1()}
-        {step === 1 && renderStep2()}
-        {step === 2 && renderStep3()}
       </PeekingScrollContainer>
 
-      {/* Bottom Action Bar (with Live Quote Estimate on ALL steps) */}
-      <div className="shrink-0 border-t border-border/40 px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-3.5 bg-[var(--bg)]/95 backdrop-blur-md">
+      {/* Footer: live estimate + actions */}
+      <div className="shrink-0">
         {renderLiveEstimateBar()}
-
-        {isLastStep ? (
-          <div className="grid grid-cols-3 gap-2.5">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4 text-[var(--fg)]" />
-              BACK
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCreate(false)}
-              className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Check className="w-4 h-4 text-[var(--fg)]" />
-              SAVE DRAFT
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCreate(true)}
-              className="rounded-xl py-3.5 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer"
-            >
-              <Share2 className="w-4 h-4" />
-              SHARE QUOTE
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {isFirstStep ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4 text-[var(--fg)]" />
-                CANCEL
-              </button>
+        <div className="px-4 pt-4 bg-background" style={footerPadBottom}>
+          <div className="max-w-xl mx-auto w-full">
+            {isLastStep ? (
+              <div className="flex gap-2">
+                <PillButton variant="outline" fullWidth={false} className="px-4" onClick={handleBack}>
+                  Back
+                </PillButton>
+                <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
+                  Save draft
+                </PillButton>
+                <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
+                  Share
+                </PillButton>
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4 text-[var(--fg)]" />
-                BACK
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <PillButton variant="outline" onClick={isFirstStep ? onClose : handleBack}>
+                  {isFirstStep ? 'Cancel' : 'Back'}
+                </PillButton>
+                <PillButton onClick={handleNext} disabled={!canProceed}>
+                  Next
+                  <ArrowUpRight className="w-[18px] h-[18px]" />
+                </PillButton>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={!canProceed}
-              className={cn(
-                'rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2',
-                !canProceed
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer'
-              )}
-            >
-              <span>NEXT</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
-        )}
+        </div>
       </div>
     </motion.div>
   );

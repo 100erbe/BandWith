@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
 import { FileText, Link, Paperclip, X, Plus, Save, Clock, User, CheckCircle2, ArrowLeft, Image as ImageIcon, Music, File } from '@/app/components/icons';
 import { SongProposal, ProposalAttachment } from './types';
-import { cn } from '@/app/components/ui/utils';
+import { BwSheet, IconButton, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
 
 interface Props {
   isOpen: boolean;
@@ -92,173 +91,167 @@ export const RehearsalEditProposalModal: React.FC<Props> = ({ isOpen, onClose, p
 
   if (!proposal) return null;
 
-  // --- SUB-VIEW: ADD ATTACHMENT ---
-  if (view === 'add_attachment') {
-      return (
-        <RehearsalModalWrapper isOpen={isOpen} onClose={() => setView('edit')} title="Add Attachment" icon={Paperclip}>
-            <div className="flex flex-col h-[60vh]">
-                <button onClick={() => setView('edit')} className="flex items-center gap-2 text-xs font-bold uppercase text-foreground/40 mb-4 hover:text-foreground">
-                    <ArrowLeft className="w-4 h-4" /> Back to Proposal
-                </button>
+  const isAdding = view === 'add_attachment';
 
-                <div className="flex-1 space-y-6">
-                    {/* Type Selection */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Attachment Type</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {(['link', 'pdf', 'image', 'audio'] as const).map(t => (
-                                <button 
-                                    key={t}
-                                    onClick={() => setAttType(t)}
-                                    className={cn(
-                                        "p-3 rounded-[10px] border flex items-center justify-center gap-2 text-xs font-bold uppercase transition-all",
-                                        attType === t ? "bg-black text-white border-black shadow-md" : "bg-white border-black/10 text-foreground/60 hover:border-black/30"
-                                    )}
-                                >
-                                    {getIconForType(t)} {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {attType && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                            {/* URL Input for Links */}
-                            {attType === 'link' && (
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">URL Link</label>
-                                    <input 
-                                        value={attUrl}
-                                        onChange={e => setAttUrl(e.target.value)}
-                                        placeholder="https://..."
-                                        className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                                    />
-                                </div>
-                            )}
-
-                            {/* File Upload Mock */}
-                            {attType !== 'link' && (
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Upload File</label>
-                                    <div className="border-2 border-dashed border-black/10 rounded-[10px] p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-black/5 transition-colors">
-                                        <div className="w-10 h-10 bg-black/5 rounded-full flex items-center justify-center mb-2 text-foreground/40">
-                                            {getIconForType(attType)}
-                                        </div>
-                                        <span className="text-xs font-bold text-foreground/60">Tap to upload {attType}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Label Input */}
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Label (Required)</label>
-                                <input 
-                                    value={attLabel}
-                                    onChange={e => setAttLabel(e.target.value)}
-                                    placeholder={attType === 'link' ? "e.g. Live Version 2024" : "e.g. Chart PDF"}
-                                    className="w-full bg-[var(--surface-alt)] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-1 focus:ring-black"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-black/10">
-                                    <button 
-                                        onClick={handleSaveAttachment}
-                                        disabled={!attType || !attLabel || (attType === 'link' && !attUrl)}
-                                        className="w-full py-3 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Add Attachment
-                    </button>
-                </div>
-            </div>
-        </RehearsalModalWrapper>
-      );
-  }
-
-  // --- MAIN VIEW: EDIT ---
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Edit Proposal Details" icon={FileText}>
-      <div className="flex flex-col h-[70vh] md:h-auto">
-        
-        {/* Swiss Summary Row */}
-        <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-             <div className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1", proposal.status === 'approved' ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")}>
-                 {proposal.status === 'approved' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                 {proposal.status}
-             </div>
-             <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                 <User className="w-3 h-3" /> By {proposal.proposer}
-             </div>
-             <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                 <Paperclip className="w-3 h-3" /> {attachments.length} Attachments
-             </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-           
-           {/* Header Info (Read Only) */}
-           <div>
-              <h3 className="font-black text-xl text-foreground leading-none">{proposal.title}</h3>
-              <p className="text-xs font-bold uppercase text-foreground/50 mt-1">{proposal.artist}</p>
-           </div>
-
-           {/* Reason */}
-           <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-1 block">Reason for proposal</label>
-              <textarea 
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
-                placeholder="Why should we play this?"
-              />
-           </div>
-
-           {/* Attachments */}
-           <div>
-              <div className="flex justify-between items-end mb-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Attachments</label>
-                  <button onClick={() => setView('add_attachment')} className="text-[10px] font-bold uppercase text-foreground hover:underline flex items-center gap-1">
-                      <Plus className="w-3 h-3" /> Add Attachment
-                  </button>
-              </div>
-
-              <div className="space-y-2">
-                  {attachments.length === 0 && (
-                          <div className="text-center p-4 border-2 border-dashed border-black/5 rounded-[10px] text-xs text-foreground/30">
-                          No attachments yet
-                      </div>
-                  )}
-                  {attachments.map((att, i) => (
-                      <div key={att.id} className="flex items-center justify-between p-3 bg-white border border-black/5 rounded-[10px] group">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                              <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-foreground/50 shrink-0">
-                                  {getIconForType(att.type)}
-                              </div>
-                              <div className="truncate">
-                                  <div className="text-xs font-bold truncate">{att.label}</div>
-                                  <div className="text-[9px] text-foreground/40 truncate">{att.url || att.fileMeta?.name || att.type}</div>
-                              </div>
-                          </div>
-                                    <button onClick={() => handleRemoveAttachment(i)} className="p-2 text-foreground/20 hover:text-red-500 transition-colors shrink-0">
-                              <X className="w-4 h-4" />
-                          </button>
-                      </div>
-                  ))}
-              </div>
-           </div>
-        </div>
-
-        <div className="pt-4 mt-4 border-t border-black/10 shrink-0">
-                <button 
-                    onClick={handleSave}
-                    className="w-full py-3 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+    <BwSheet
+      open={isOpen}
+      onClose={isAdding ? () => setView('edit') : onClose}
+      closeLabel={isAdding ? 'Back to proposal' : 'Close'}
+      overline={isAdding ? proposal.title : `Song proposal · By ${proposal.proposer}`}
+      title={isAdding ? 'Add attachment' : proposal.title}
+      zIndex={110}
+      footer={
+        <div className="dark">
+          {isAdding ? (
+            <PillButton
+              onClick={handleSaveAttachment}
+              disabled={!attType || !attLabel || (attType === 'link' && !attUrl)}
+              icon={<Paperclip className="w-[18px] h-[18px]" />}
             >
-                <Save className="w-4 h-4" /> Save Changes
-            </button>
+              Add attachment
+            </PillButton>
+          ) : (
+            <PillButton onClick={handleSave} icon={<Save className="w-[18px] h-[18px]" />}>
+              Save changes
+            </PillButton>
+          )}
         </div>
-      </div>
-    </RehearsalModalWrapper>
+      }
+    >
+      {isAdding ? (
+        /* --- SUB-VIEW: ADD ATTACHMENT --- */
+        <div className="dark flex flex-col gap-5">
+          <PillButton
+            variant="ghost"
+            size="sm"
+            fullWidth={false}
+            className="self-start -ml-3"
+            icon={<ArrowLeft className="w-4 h-4" />}
+            onClick={() => setView('edit')}
+          >
+            Back to proposal
+          </PillButton>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Attachment type</legend>
+            <div className="flex flex-wrap gap-2">
+              {(['link', 'pdf', 'image', 'audio'] as const).map((t) => (
+                <Selector key={t} size="md" selected={attType === t} onClick={() => setAttType(t)}>
+                  {getIconForType(t)}
+                  {t}
+                </Selector>
+              ))}
+            </div>
+          </fieldset>
+
+          {attType && (
+            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4">
+              {attType === 'link' ? (
+                <PillField
+                  tone="sheet"
+                  type="url"
+                  label="URL"
+                  icon={<Link className="w-5 h-5" />}
+                  value={attUrl}
+                  onChange={(e) => setAttUrl(e.target.value)}
+                  placeholder="https://…"
+                />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <span className="bw-label-sm text-sheet-foreground/70">Upload file</span>
+                  <div className="flex flex-col items-center justify-center gap-2 p-8 rounded-[24px] border-[1.5px] border-dashed border-sheet-foreground/30 text-center">
+                    <span className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center">
+                      {getIconForType(attType)}
+                    </span>
+                    <span className="bw-body-sm text-sheet-foreground/70">Tap to upload {attType}</span>
+                  </div>
+                </div>
+              )}
+
+              <PillField
+                tone="sheet"
+                label="Label (required)"
+                value={attLabel}
+                onChange={(e) => setAttLabel(e.target.value)}
+                placeholder={attType === 'link' ? 'e.g. Live version 2024' : 'e.g. Chart PDF'}
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* --- MAIN VIEW: EDIT --- */
+        <div className="dark flex flex-col gap-5">
+          <div className="flex flex-wrap gap-1.5">
+            <Tag
+              variant={proposal.status === 'approved' ? 'accent' : 'outline'}
+              icon={proposal.status === 'approved' ? <CheckCircle2 /> : <Clock />}
+            >
+              {proposal.status}
+            </Tag>
+            <Tag variant="outline" icon={<User />}>
+              By {proposal.proposer}
+            </Tag>
+            <Tag variant="outline" icon={<Paperclip />}>
+              {attachments.length} {attachments.length === 1 ? 'attachment' : 'attachments'}
+            </Tag>
+          </div>
+
+          {proposal.artist && <p className="bw-body-md text-sheet-foreground/70">{proposal.artist}</p>}
+
+          {/* Reason */}
+          <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-white/10 border border-white/20 focus-within:border-2 focus-within:border-white transition-[border-color]">
+            <span className="bw-label-sm text-white/70">Reason for proposal</span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full bg-transparent outline-none bw-body-lg text-white placeholder:text-white/40 min-h-[96px] resize-none"
+              placeholder="Why should we play this?"
+            />
+          </label>
+
+          {/* Attachments */}
+          <section className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="bw-label-sm text-sheet-foreground/70">Attachments</h3>
+              <PillButton
+                variant="ghost"
+                size="sm"
+                fullWidth={false}
+                className="-mr-3"
+                icon={<Plus className="w-4 h-4" />}
+                onClick={() => setView('add_attachment')}
+              >
+                Add
+              </PillButton>
+            </div>
+
+            {attachments.length === 0 && (
+              <p className="p-4 rounded-[16px] border-[1.5px] border-dashed border-sheet-foreground/25 bw-body-sm text-sheet-foreground/60 text-center">
+                No attachments yet
+              </p>
+            )}
+            {attachments.map((att, i) => (
+              <div key={att.id} className="flex items-center gap-3 pl-3 pr-1 py-2 rounded-[16px] bg-white/[0.08]">
+                <span className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
+                  {getIconForType(att.type)}
+                </span>
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="bw-body-lg truncate">{att.label}</span>
+                  <span className="bw-body-sm text-sheet-foreground/60 truncate">{att.url || att.fileMeta?.name || att.type}</span>
+                </div>
+                <IconButton
+                  label={`Remove ${att.label}`}
+                  icon={<X />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveAttachment(i)}
+                />
+              </div>
+            ))}
+          </section>
+        </div>
+      )}
+    </BwSheet>
   );
 };

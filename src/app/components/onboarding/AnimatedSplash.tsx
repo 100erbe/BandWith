@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { BrandMark, BrandWordmark } from '@/app/components/bw/BrandMark';
 
 interface AnimatedSplashProps {
   onComplete: () => void;
@@ -29,25 +29,21 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <BrandLogo variant="waveform" lockup="icon-only" className="w-20 h-20" />
-          </motion.div>
+          <BrandMark size={88} animated title="" className="text-foreground" />
 
           <motion.div
-            className="mt-8 flex items-baseline"
+            role="img"
+            aria-label="BandWith"
+            className="mt-8 flex text-foreground"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <BrandLogo variant="waveform" lockup="wordmark-only" textClassName="text-[34px] font-black" />
+            <BrandWordmark height={26} accent="var(--accent-ink)" />
           </motion.div>
 
           <motion.p
-            className="mt-3 text-[11px] font-medium tracking-[0.2em] uppercase text-muted-foreground/40"
+            className="mt-3 bw-label-sm text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.5 }}

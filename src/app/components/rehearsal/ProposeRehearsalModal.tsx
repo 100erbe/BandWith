@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Clock, Calendar, Music, Sparkles, Loader2, ArrowRight } from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
+import { X, Clock, Mail, Send, Loader2 } from '@/app/components/icons';
+import { IconButton, PillButton, PillField, Selector, Tag, Card, FormError } from '@/app/components/bw';
 import {
   checkMemberProposalEligibility,
   createMemberRehearsalProposal,
@@ -125,209 +125,144 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-        />
-
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-lg bg-background border border-foreground/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      <motion.div
+        key="propose-rehearsal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="propose-rehearsal-title"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ type: 'tween', duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+        className="fixed inset-0 z-[120] bg-background text-foreground flex flex-col overflow-y-auto"
+      >
+        {/* Figma "Rehearsal / Propose – member": rehearsal-blue header */}
+        <header
+          className="shrink-0 bg-accent-rehearsal text-accent-rehearsal-foreground px-4 pb-5 flex flex-col gap-2"
+          style={{ paddingTop: 'calc(var(--safe-top) + 16px)' }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-foreground/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[var(--accent-rehearsal)]/15 border border-[var(--accent-rehearsal)]/30 flex items-center justify-center shrink-0">
-                <Music className="w-5 h-5 text-[var(--accent-rehearsal)]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-foreground uppercase tracking-tight leading-tight">
-                  Propose Rehearsal
-                </h2>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  {bandName ? `FOR ${bandName}` : 'Member Request'}
-                </p>
-              </div>
+          <div className="flex items-center gap-3 min-h-11">
+            <p className="flex-1 min-w-0 bw-label-sm truncate">{bandName ? `For ${bandName}` : 'Member request'}</p>
+            <IconButton label="Close" icon={<X />} variant="sheet" onClick={onClose} />
+          </div>
+          <h1 id="propose-rehearsal-title" className="bw-display-lg [overflow-wrap:anywhere]">
+            Propose rehearsal
+          </h1>
+        </header>
+
+        <div
+          className="flex-1 w-full max-w-xl mx-auto px-4 pt-5 flex flex-col gap-4"
+          style={{ paddingBottom: 'calc(var(--safe-bottom) + 24px)' }}
+        >
+          {loadingEligibility ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <p className="bw-label-sm text-muted-foreground">Checking weekly proposal quota…</p>
             </div>
-
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-foreground/10 hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Body Content */}
-          <div className="p-6 overflow-y-auto flex-1">
-            {loadingEligibility ? (
-              <div className="py-16 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-rehearsal)]" />
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Checking weekly proposal quota...
-                </p>
-              </div>
-            ) : !eligibility.canPropose ? (
-              // LOCKED STATE: 1 per 7 days reached
-              <div className="py-6 flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--accent-rehearsal)]/15 border border-[var(--accent-rehearsal)]/25 flex items-center justify-center mb-4 text-[var(--accent-rehearsal)]">
-                  <Clock className="w-8 h-8" />
+          ) : !eligibility.canPropose ? (
+            // LOCKED STATE: 1 per 7 days reached
+            <div className="flex flex-col gap-4">
+              <Card className="items-start gap-4">
+                <span className="w-14 h-14 rounded-full bg-accent-rehearsal text-accent-rehearsal-foreground flex items-center justify-center">
+                  <Clock className="w-6 h-6" />
+                </span>
+                <div className="flex flex-col gap-2">
+                  <h2 className="bw-h1">Weekly limit reached</h2>
+                  <p className="bw-body-md text-muted-foreground">
+                    Band members can send one rehearsal proposal every 7 days, to keep band scheduling focused.
+                  </p>
                 </div>
+              </Card>
 
-                <h3 className="text-xl font-black text-foreground uppercase tracking-tight mb-2">
-                  Weekly Proposal Limit Reached
-                </h3>
-
-                <p className="text-sm font-medium text-muted-foreground max-w-sm mb-6 leading-relaxed">
-                  Band members can submit at most 1 rehearsal proposal every 7 days to keep band scheduling focused and orderly.
-                </p>
-
-                {eligibility.nextAvailableDate && (
-                  <div className="w-full bg-card border border-foreground/10 rounded-2xl p-4 mb-6 text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
-                      Next available proposal
+              {eligibility.nextAvailableDate && (
+                <Card>
+                  <p className="bw-label-sm text-muted-foreground">Next available proposal</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="bw-h3">
+                      {eligibility.nextAvailableDate.toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </span>
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-black text-foreground">
-                        {eligibility.nextAvailableDate.toLocaleDateString(undefined, {
-                          weekday: 'long',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/30">
+                    {eligibility.daysRemaining != null && (
+                      <Tag variant="rehearsal">
                         In {eligibility.daysRemaining} {eligibility.daysRemaining === 1 ? 'day' : 'days'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="w-full py-3.5 rounded-xl bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold text-xs uppercase tracking-wider transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            ) : (
-              // PROPOSAL FORM
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                {error && (
-                  <div className="p-3.5 rounded-xl bg-[var(--destructive)]/10 border border-[var(--destructive)]/25 text-[var(--destructive)] text-xs font-bold">
-                    {error}
-                  </div>
-                )}
-
-                {/* Topic / Purpose */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Rehearsal Focus / Goal <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Practice new setlist transitions & vocal harmonies"
-                    className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-bold text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-[var(--accent-rehearsal)] transition-colors"
-                    maxLength={100}
-                    autoFocus
-                  />
-                </div>
-
-                {/* Preferred Days of the Week */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Preferred Days of the Week
-                    </label>
-                    <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase">
-                      Optional
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {DAYS_OF_WEEK.map((d) => {
-                      const isSelected = selectedDays.includes(d.key);
-                      return (
-                        <button
-                          key={d.key}
-                          type="button"
-                          onClick={() => toggleDay(d.key)}
-                          className={cn(
-                            'py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center border',
-                            isSelected
-                              ? 'bg-[var(--accent-rehearsal)] text-white border-[var(--accent-rehearsal)] shadow-xs'
-                              : 'bg-card text-foreground/70 border-foreground/10 hover:border-foreground/25 hover:bg-foreground/5'
-                          )}
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Optional Notes */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Additional Notes or Songs
-                    </label>
-                    <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase">
-                      Optional
-                    </span>
-                  </div>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="e.g. Can we run through the bridge on song 3? I have availability after 19:30."
-                    className="w-full bg-card border border-foreground/15 rounded-xl p-4 text-sm font-medium text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-[var(--accent-rehearsal)] transition-colors min-h-[90px] resize-none"
-                    maxLength={400}
-                  />
-                </div>
-
-                {/* Notice Box */}
-                <div className="p-3.5 rounded-xl bg-card border border-foreground/10 flex items-start gap-3 text-xs text-muted-foreground leading-relaxed">
-                  <Sparkles className="w-4 h-4 text-[var(--accent-rehearsal)] shrink-0 mt-0.5" />
-                  <span>
-                    Your proposal will be sent directly to the band admin. They can review it and launch an availability poll for the whole band.
-                  </span>
-                </div>
-
-                {/* Submit button */}
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-4 rounded-xl bg-[var(--accent-rehearsal)] hover:opacity-95 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Submitting Proposal...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Submit Proposal to Admin</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
+                      </Tag>
                     )}
-                  </button>
+                  </div>
+                </Card>
+              )}
+
+              <PillButton variant="outline" onClick={onClose} className="mt-2">
+                Close
+              </PillButton>
+            </div>
+          ) : (
+            // PROPOSAL FORM
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {error && <FormError>{error}</FormError>}
+
+              {/* Topic / Purpose */}
+              <PillField
+                label="Topic"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Practice new setlist transitions"
+                maxLength={100}
+                autoFocus
+              />
+
+              {/* Preferred Days of the Week */}
+              <fieldset className="flex flex-col gap-2">
+                <legend className="bw-label-sm text-muted-foreground mb-2">Preferred days (optional)</legend>
+                <div className="flex gap-1.5">
+                  {DAYS_OF_WEEK.map((d) => (
+                    <Selector
+                      key={d.key}
+                      selected={selectedDays.includes(d.key)}
+                      onClick={() => toggleDay(d.key)}
+                      className="flex-1 min-w-0 justify-center px-0"
+                    >
+                      {d.label}
+                    </Selector>
+                  ))}
                 </div>
-              </form>
-            )}
-          </div>
-        </motion.div>
-      </div>
+              </fieldset>
+
+              {/* Optional Notes */}
+              <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
+                <span className="bw-label-sm text-muted-foreground">Notes or songs (optional)</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g. Volare → September segue, and the new medley ending."
+                  className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[72px] resize-none"
+                  maxLength={400}
+                />
+              </label>
+
+              {/* Notice */}
+              <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
+                <Mail className="w-5 h-5 shrink-0" />
+                <p className="bw-body-sm">
+                  Your proposal goes straight to the band admin, who can turn it into an availability poll. 1 proposal per week.
+                </p>
+              </div>
+
+              {/* Submit */}
+              <PillButton
+                type="submit"
+                loading={submitting}
+                icon={<Send className="w-[18px] h-[18px]" />}
+                className="mt-5"
+              >
+                {submitting ? 'Submitting…' : 'Submit to admin'}
+              </PillButton>
+            </form>
+          )}
+        </div>
+      </motion.div>
     </AnimatePresence>
   );
 };

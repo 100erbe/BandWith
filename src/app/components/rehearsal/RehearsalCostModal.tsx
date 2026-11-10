@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { DollarSign, CheckCircle2, Users } from '@/app/components/icons';
-import { RehearsalState, RehearsalMember } from './types';
+import { Check } from '@/app/components/icons';
+import { RehearsalState } from './types';
+import { BwSheet, PillButton } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 
@@ -47,107 +47,97 @@ export const RehearsalCostModal: React.FC<Props> = ({ isOpen, onClose, data, onU
     setCustomFees(prev => ({ ...prev, [id]: val }));
   };
 
+  const memberCount = Math.max(data.members.length, 1);
+  const equalShare = (parseFloat(totalCost || '0') / memberCount).toFixed(0);
+
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Room Cost & Split" icon={DollarSign}>
-        <div className="space-y-8">
-            
-            {/* Total Cost Input */}
-            <div>
-               <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Total Room Cost</label>
-               <div className="flex items-center gap-2 border-b-2 border-black/10 py-2">
-                  <span className="text-3xl font-black text-foreground">€</span>
-                  <input 
-                    type="number" 
-                    value={totalCost}
-                    onChange={e => setTotalCost(e.target.value)}
-                    className="w-full bg-transparent text-3xl font-black text-foreground focus:outline-none"
-                    placeholder="0"
-                  />
-               </div>
-            </div>
-
-            {/* Split Method */}
-            {isAdmin && (
-              <div>
-                 <label className="text-xs font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Split Method</label>
-                 <div className="grid grid-cols-3 gap-3">
-                    <button 
-                      onClick={() => setSplitMethod('equal')}
-                      className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'equal' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
-                      )}
-                    >
-                       <Users className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Split Equally</span>
-                    </button>
-                    <button 
-                      onClick={() => setSplitMethod('custom')}
-                      className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'custom' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
-                      )}
-                    >
-                       <CheckCircle2 className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Custom Split</span>
-                    </button>
-                    <button 
-                      onClick={() => setSplitMethod('admin')}
-                      className={cn(
-                          "p-4 rounded-[10px] border-2 flex flex-col items-center gap-2 transition-all",
-                          splitMethod === 'admin' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
-                      )}
-                    >
-                       <DollarSign className="w-6 h-6" />
-                       <span className="text-[10px] font-bold uppercase">Admin / Band</span>
-                    </button>
-                 </div>
-              </div>
-            )}
-
-            {/* Breakdown */}
-            {isAdmin && (
-              <div className="bg-black/5 rounded-[10px] p-4">
-                 <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-3 block">Breakdown</label>
-                 <div className="space-y-3">
-                    {data.members.map(member => (
-                       <div key={member.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
-                                {member.initials}
-                             </div>
-                             <span className="text-sm font-bold text-foreground">{member.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                             <span className="text-sm font-bold text-foreground/40">€</span>
-                             {splitMethod === 'custom' ? (
-                                <input 
-                                  type="number"
-                                  value={customFees[member.id] || ''}
-                                  onChange={e => handleCustomFeeChange(member.id, e.target.value)}
-                                  className="w-16 bg-transparent border-b border-black/20 text-right font-bold focus:outline-none"
-                                />
-                             ) : (
-                                <span className="font-black text-foreground">
-                                   {splitMethod === 'equal' 
-                                      ? (parseFloat(totalCost || '0') / data.members.length).toFixed(0) 
-                                      : '0'}
-                                </span>
-                             )}
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-            )}
-
-            <button 
-               onClick={handleApply}
-               className="w-full py-4 bg-black text-white rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg"
-            >
-               Save & Apply
-            </button>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline="Studio cost"
+      title="Room cost & split"
+      zIndex={110}
+      footer={
+        <div className="dark">
+          <PillButton onClick={handleApply} icon={<Check className="w-[18px] h-[18px]" />}>
+            Save &amp; apply
+          </PillButton>
         </div>
-    </RehearsalModalWrapper>
+      }
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Total cost */}
+        <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-white/[0.08]">
+          <span className="bw-label-sm text-sheet-foreground/70">Total room cost</span>
+          <span className="flex items-baseline gap-2">
+            <span className="bw-value-lg">€</span>
+            <input
+              type="number"
+              value={totalCost}
+              onChange={(e) => setTotalCost(e.target.value)}
+              className="w-full min-w-0 bg-transparent outline-none bw-value-lg text-sheet-foreground placeholder:text-sheet-foreground/30"
+              placeholder="0"
+            />
+          </span>
+        </label>
+
+        {/* Split method */}
+        {isAdmin && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Split method</legend>
+            <div role="tablist" aria-label="Split method" className="flex p-1 gap-1 rounded-full bg-white/[0.08]">
+              {([
+                ['equal', 'Equally'],
+                ['custom', 'Custom'],
+                ['admin', 'Band pays'],
+              ] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={splitMethod === m}
+                  onClick={() => setSplitMethod(m)}
+                  className={cn(
+                    'flex-1 h-9 px-2 rounded-full bw-button-sm transition-colors',
+                    splitMethod === m ? 'bg-accent text-accent-foreground' : 'text-sheet-foreground/70'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
+        {/* Breakdown */}
+        {isAdmin && (
+          <section className="flex flex-col gap-2">
+            <h3 className="bw-label-sm text-sheet-foreground/70">Breakdown</h3>
+            {data.members.map((member) => (
+              <div key={member.id} className="flex items-center gap-3 px-4 py-3 rounded-[16px] bg-white/[0.08]">
+                <span className="w-8 h-8 rounded-full border border-sheet-foreground/40 bw-label-xs flex items-center justify-center shrink-0">
+                  {member.initials}
+                </span>
+                <span className="flex-1 min-w-0 bw-body-lg truncate">{member.name}</span>
+                <span className="flex items-baseline gap-1 shrink-0">
+                  <span className="bw-body-sm text-sheet-foreground/60">€</span>
+                  {splitMethod === 'custom' ? (
+                    <input
+                      type="number"
+                      aria-label={`Fee for ${member.name}`}
+                      value={customFees[member.id] || ''}
+                      onChange={(e) => handleCustomFeeChange(member.id, e.target.value)}
+                      className="w-16 bg-transparent border-b border-sheet-foreground/40 focus:border-sheet-foreground text-right bw-label-md outline-none"
+                    />
+                  ) : (
+                    <span className="bw-label-md">{splitMethod === 'equal' ? equalShare : '0'}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </section>
+        )}
+      </div>
+    </BwSheet>
   );
 };

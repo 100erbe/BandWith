@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import {
-  X,
-  Music2,
-  Users,
-  Globe,
-  Loader2,
-  Check,
-  Plus,
-  Sparkles
-} from '@/app/components/icons';
+import { X, Users, Link, Check, Plus } from '@/app/components/icons';
+import { IconButton } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { createBand } from '@/lib/services/bands';
@@ -28,8 +21,8 @@ const GENRES = [
 ];
 
 const PLANS = [
-  { id: 'free', name: 'Free', description: 'Basic features', price: '$0' },
-  { id: 'pro', name: 'Pro', description: 'Advanced features', price: '$9.99/mo' },
+  { id: 'free', name: 'Free', description: '1 band', price: '€0' },
+  { id: 'pro', name: 'Pro', description: 'coming soon', price: '€9.99/mo' },
 ];
 
 export const CreateBandModal: React.FC<CreateBandModalProps> = ({
@@ -96,227 +89,133 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
   if (!isOpen) return null;
 
+  const initials = name?.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??';
+  const planName = PLANS.find((p) => p.id === plan)?.name ?? 'Free';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[115] flex flex-col overflow-hidden bg-background"
-      style={{
-        paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+      className="fixed inset-0 z-[115] flex flex-col overflow-hidden bg-background text-foreground"
     >
-      {/* Header */}
-      <div className="px-6 pt-3 pb-4 flex justify-between items-start shrink-0">
-        <div>
-          <span className="text-foreground/40 text-xs font-black uppercase tracking-[0.3em] mb-2 block">
-            New Entity
-          </span>
-          <h2 className="text-4xl font-black text-black tracking-tighter uppercase leading-none">
-            CREATE
-          </h2>
-          <p className="text-foreground/50 font-bold text-sm mt-1 tracking-tight">Start a new band or project</p>
-        </div>
-        
-        <button 
-          onClick={onClose}
-          className="w-12 h-12 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-foreground/50 hover:text-black transition-all hover:rotate-90"
-        >
-          <X className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Content with 90% Viewport Peeking Affordance */}
-      <PeekingScrollContainer className="flex-1 px-6 pb-32">
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-sm font-medium">
-            {error}
+      {/* Header (Figma: Band / Create band — Kicker + Outline close) */}
+      <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+        <div className="max-w-xl mx-auto w-full flex items-end gap-3">
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <p className="bw-label-sm text-muted-foreground">New entity · Start a band or project</p>
+            <h2 className="bw-display-lg text-foreground">Create</h2>
           </div>
-        )}
+          <IconButton label="Close" icon={<X />} onClick={onClose} />
+        </div>
+      </header>
 
-        <div className="space-y-6">
-          {/* Band Name */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
-              <Music2 className="w-4 h-4" />
-              Band Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., The Jazz Collective"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-2xl font-black text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-            />
-          </motion.div>
+      <PeekingScrollContainer className="flex-1">
+        <div className="px-4 pt-4 pb-6 max-w-xl mx-auto w-full flex flex-col gap-6">
+          {/* Preview card */}
+          <div className="p-5 rounded-[24px] bg-surface-inverse text-surface-inverse-foreground flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center bw-h2 shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0 flex flex-col gap-1">
+              <h3 className="bw-h2 [overflow-wrap:anywhere]">{name || 'Band name'}</h3>
+              <p className="bw-body-sm opacity-70 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                {[genre, '1 member', planName].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+          </div>
+
+          {error && <FormError>{error}</FormError>}
+
+          <PillField
+            label="Band name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. The Jazz Collective"
+          />
 
           {/* Genre */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3">
-              Genre
-            </label>
-            <div className="flex flex-wrap gap-2">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-muted-foreground mb-2">Genre</legend>
+            <div className="grid grid-cols-3 gap-2">
               {GENRES.map((g) => (
-                <button
+                <Selector
                   key={g}
+                  selected={genre === g}
                   onClick={() => setGenre(genre === g ? '' : g)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-bold uppercase transition-all",
-                    genre === g
-                      ? "bg-black text-white"
-                      : "bg-white/50 text-foreground/60 hover:bg-white"
-                  )}
+                  className={cn('justify-center', genre === g && 'bg-accent text-accent-foreground')}
                 >
                   {g}
-                </button>
+                </Selector>
               ))}
             </div>
-          </motion.div>
+          </fieldset>
 
           {/* Description */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2">
-              Description
-            </label>
+          <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-foreground transition-colors">
+            <span className="bw-label-xs text-muted-foreground">Description</span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell us about your band..."
-              rows={3}
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-base font-medium text-black placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[96px] resize-none"
+              placeholder="Tell us about your band…"
+              rows={2}
+              className="w-full bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none resize-none"
             />
-          </motion.div>
+          </label>
 
-          {/* Website */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.25 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-2 flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              Website
-            </label>
-            <input
-              type="url"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://yourband.com"
-              className="w-full bg-transparent border-b-2 border-black/10 py-3 text-lg font-medium text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-            />
-          </motion.div>
+          <PillField
+            label="Website (optional)"
+            type="url"
+            icon={<Link className="w-5 h-5" />}
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://"
+          />
 
-          {/* Plan Selection */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 block mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              Plan
-            </label>
+          {/* Plan */}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-muted-foreground mb-2">Plan</legend>
             <div className="grid grid-cols-2 gap-3">
-              {PLANS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setPlan(p.id)}
-                  className={cn(
-                    "p-4 rounded-2xl border-2 transition-all text-left",
-                    plan === p.id
-                      ? "border-black bg-black text-white"
-                      : "border-black/10 bg-white/50 text-black hover:border-black/30"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-black text-lg">{p.name}</span>
-                    <span className={cn(
-                      "text-sm font-bold",
-                      plan === p.id ? "text-accent" : "text-foreground/50"
-                    )}>{p.price}</span>
-                  </div>
-                  <p className={cn(
-                    "text-sm",
-                    plan === p.id ? "text-white/70" : "text-foreground/50"
-                  )}>{p.description}</p>
-                </button>
-              ))}
+              {PLANS.map((p) => {
+                const selected = plan === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setPlan(p.id)}
+                    className={cn(
+                      'p-4 rounded-[24px] text-left flex flex-col gap-2 active:scale-[0.98] transition-transform',
+                      selected ? 'bg-accent text-accent-foreground' : 'bg-card border border-border text-foreground',
+                    )}
+                  >
+                    <span className="bw-label-md">{p.name}</span>
+                    <span className={cn('bw-body-sm', !selected && 'text-muted-foreground')}>
+                      {p.price} · {p.description}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </motion.div>
-
-          {/* Preview Card */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.35 }}
-            className="p-6 bg-[var(--surface-inverse)] rounded-[2rem] text-white"
-          >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-accent mb-3">Preview</p>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-black text-xl">
-                {name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'}
-              </div>
-              <div>
-                <h3 className="font-black text-xl">{name || 'Band Name'}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  {genre && (
-                    <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">{genre}</span>
-                  )}
-                  <span className="text-xs text-stone-500 flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    1 member
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          </fieldset>
         </div>
       </PeekingScrollContainer>
 
       {/* Footer */}
-      <div
-        className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
-      >
-        <button
-          onClick={handleCreate}
-          disabled={!name.trim() || saving}
-          className={cn(
-            "w-full h-14 rounded-full font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
-            success
-              ? "bg-green-500 text-white"
-              : name.trim()
-                ? "bg-black text-white hover:scale-[1.02]"
-                : "bg-black/20 text-foreground/40 cursor-not-allowed"
-          )}
-        >
-          {saving ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : success ? (
-            <>
-              <Check className="w-5 h-5" />
-              Created!
-            </>
-          ) : (
-            <>
-              <Plus className="w-5 h-5" />
-              Create Band
-            </>
-          )}
-        </button>
+      <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        <div className="max-w-xl mx-auto w-full">
+          <PillButton
+            onClick={handleCreate}
+            disabled={!name.trim()}
+            loading={saving}
+            variant={success ? 'dark' : 'primary'}
+            icon={success ? <Check className="w-[18px] h-[18px]" /> : <Plus className="w-[18px] h-[18px]" />}
+          >
+            {success ? 'Created' : 'Create band'}
+          </PillButton>
+        </div>
       </div>
     </motion.div>
   );

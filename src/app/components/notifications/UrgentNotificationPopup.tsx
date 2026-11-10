@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Mic2, X, ArrowRight, Sparkles } from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
+import { X } from '@/app/components/icons';
+import { PillButton } from '@/app/components/bw/Form';
 import type { Notification } from '@/lib/services/notifications';
 import { springs } from '@/styles/motion';
 
@@ -24,21 +24,6 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
 
   const eventType = (data.event_type as string) || 'gig';
   const isRehearsalInvite = isEventInvite && eventType === 'rehearsal';
-
-  // Semantic styles
-  const isPollOrProposal = isRehearsalPoll || isRehearsalProposal;
-  const accentColor = isPollOrProposal || isRehearsalInvite
-    ? 'var(--accent-rehearsal)'
-    : 'var(--accent-gig)';
-  const accentFgColor = isPollOrProposal || isRehearsalInvite
-    ? 'var(--accent-rehearsal-fg)'
-    : 'var(--accent-gig-fg)';
-
-  const IconComponent = isRehearsalProposal
-    ? Sparkles
-    : isPollOrProposal || isRehearsalInvite
-    ? Calendar
-    : Mic2;
 
   const eyebrowLabel = isRehearsalPoll
     ? 'REHEARSAL POLL'
@@ -65,92 +50,63 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
     : 'Urgent response needed';
 
   return (
+    <>
+    {/* Figma: the screen behind the urgent card is dimmed; tapping it dismisses. */}
     <motion.div
-      initial={{ opacity: 0, y: -24, scale: 0.95 }}
+      aria-hidden
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onDismiss}
+      className="fixed inset-0 z-[81] bg-black/80"
+    />
+    <motion.div
+      role="alert"
+      initial={{ opacity: 0, y: -24, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -24, scale: 0.95 }}
+      exit={{ opacity: 0, y: -24, scale: 0.97 }}
       transition={springs.snappy}
-      className="fixed top-3 sm:top-5 left-3 right-3 sm:left-auto sm:right-6 sm:w-[420px] z-[98] bg-card border border-foreground/15 rounded-2xl shadow-2xl overflow-hidden select-none"
+      // Figma: Notifications / Urgent popup — lime card docked under the status bar.
+      className="bg-accent text-accent-foreground fixed left-4 right-4 mx-auto max-w-[420px] z-[82] rounded-[24px] p-5 flex flex-col gap-3 select-none"
+      style={{ top: 'calc(var(--safe-top) + 4px)' }}
     >
-      {/* Top semantic accent strip */}
-      <div className="h-1 w-full" style={{ backgroundColor: accentColor }} />
-
-      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
-        {/* Left: Icon & Clickable summary */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={onOpen}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onOpen();
-            }
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="inline-flex items-center h-4 px-1.5 rounded-full bg-destructive-solid text-white bw-label-xs shrink-0">Urgent</span>
+        <span className="flex-1 min-w-0 bw-label-xs truncate">{eyebrowLabel}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss();
           }}
-          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+          aria-label="Dismiss alert"
+          className="-m-3 w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
         >
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)`,
-              borderColor: `color-mix(in srgb, ${accentColor} 30%, transparent)`,
-              color: accentColor,
-            }}
-          >
-            <IconComponent className="w-5 h-5" />
-          </div>
-
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] font-black uppercase tracking-wider leading-none"
-                style={{ color: accentColor }}
-              >
-                {eyebrowLabel}
-              </span>
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-foreground/10 text-foreground/70 uppercase">
-                Urgent
-              </span>
-            </div>
-
-            <h4 className="text-sm font-black uppercase text-foreground truncate mt-1 leading-tight">
-              {title}
-            </h4>
-
-            <p className="text-[11px] font-medium text-muted-foreground truncate mt-0.5 leading-tight">
-              {subtitle}
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Action Button & Close */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1 shadow-xs hover:opacity-95 active:scale-95 transition-all"
-            style={{
-              backgroundColor: accentColor,
-              color: accentFgColor,
-            }}
-          >
-            <span>{actionLabel}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDismiss();
-            }}
-            aria-label="Dismiss alert"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/5 active:scale-90 transition-all"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+          <X className="w-5 h-5" />
+        </button>
       </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        className="flex flex-col gap-2 min-w-0 cursor-pointer"
+      >
+        <span className="bw-h3 [overflow-wrap:anywhere] line-clamp-2">{title}</span>
+        <span className="bw-body-md truncate">{subtitle}</span>
+      </div>
+
+      <PillButton variant="white" size="md" onClick={onOpen} className="mt-1">
+        {actionLabel}
+      </PillButton>
     </motion.div>
+    </>
   );
 };

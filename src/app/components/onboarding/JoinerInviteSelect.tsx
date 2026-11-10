@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Users } from '@/app/components/icons';
+import { ChevronRight } from '@/app/components/icons';
 import { InviteData } from './JoinerInviteLanding';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { AuthScreen, BackButton, Kicker } from '@/app/components/bw/Form';
+import { cn } from '@/app/components/ui/utils';
 
 interface JoinerInviteSelectProps {
   invites: InviteData[];
@@ -25,134 +26,72 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
       .slice(0, 2);
   };
 
+  const inviterOf = (invite: InviteData) =>
+    invite.inviter?.full_name || invite.inviter?.email?.split('@')[0];
+
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Subtle gradient */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[60%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(0, 71, 255, 0.03) 0%, transparent 100%)',
-          }}
-        />
-      </div>
+    <AuthScreen bodyClassName="pt-3 gap-4" top={<BackButton onClick={onBack} />}>
+      <Kicker
+        overline={`${invites.length} ${invites.length === 1 ? 'invitation' : 'invitations'}`}
+        title="Choose your band"
+      />
 
-      {/* Header */}
-      <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-        >
-          <BrandLogo
-            variant="waveform"
-            lockup="horizontal"
-            className="h-6"
-            textClassName="text-lg"
-          />
-        </motion.div>
-        
-        <div className="w-10" />
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 pt-12 relative z-10">
-        {/* Editorial headline */}
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-        >
-          <h1 className="text-[44px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
-            Choose
-            <br />
-            <span className="text-[var(--accent-rehearsal)]">your band</span>
-          </h1>
-          <p className="text-muted-foreground/60 text-[16px] font-medium leading-relaxed">
-            You have {invites.length} pending invitations
-          </p>
-        </motion.div>
-
-        {/* Band list */}
-        <motion.div
-          className="space-y-3 flex-1 overflow-y-auto pb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          {invites.map((invite, index) => (
+      {/* Band list — the first invite is featured on the dark surface (Figma) */}
+      <div className="flex flex-col gap-4">
+        {invites.map((invite, index) => {
+          const featured = index === 0;
+          const name = invite.band?.name || 'Unknown Band';
+          const count = invite.member_count || 0;
+          const inviter = inviterOf(invite);
+          const role = invite.role === 'admin' ? 'Admin' : 'Member';
+          return (
             <motion.button
               key={invite.id}
+              type="button"
               onClick={() => onSelect(invite)}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border hover:bg-card/80 hover:border-border transition-all text-left group"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
+              aria-label={`${name}, ${count} ${count === 1 ? 'member' : 'members'}, invited as ${role}${inviter ? ` by ${inviter}` : ''}`}
+              className={cn(
+                'w-full flex items-center gap-4 p-4 rounded-[24px] text-left',
+                'active:scale-[var(--press-scale,0.97)] transition-transform',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground',
+                featured ? 'dark bg-sheet text-sheet-foreground' : 'bg-card text-foreground border border-border',
+              )}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.06, duration: 0.35 }}
             >
               {/* Band avatar */}
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent-rehearsal)] to-[var(--accent-rehearsal)] flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div
+                className={cn(
+                  'w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden',
+                  featured ? 'bg-accent text-accent-foreground' : 'bg-white text-black border-[1.5px] border-border',
+                )}
+              >
                 {invite.band?.logo_url ? (
-                  <img
-                    src={invite.band.logo_url}
-                    alt={invite.band.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={invite.band.logo_url} alt={name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xl font-black text-foreground">
+                  <span className="bw-h2" aria-hidden>
                     {getInitials(invite.band?.name || 'B')}
                   </span>
                 )}
               </div>
 
               {/* Band info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-foreground font-bold text-[17px] truncate">
-                  {invite.band?.name || 'Unknown Band'}
-                </h3>
-                <div className="flex items-center gap-3 text-muted-foreground/60 text-[13px] mt-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />
-                    {invite.member_count || 0} members
-                  </span>
-                  <span className="text-muted-foreground/30">·</span>
-                  <span className="capitalize">{invite.role}</span>
-                </div>
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <h3 className="bw-h3 truncate">{name}</h3>
+                <p className={cn('bw-body-sm truncate', !featured && 'text-muted-foreground')}>
+                  {count} {count === 1 ? 'member' : 'members'} · {inviter ? `invited by ${inviter}` : role}
+                </p>
               </div>
 
-              {/* Arrow */}
-              <div className="w-10 h-10 rounded-full bg-accent/0 group-hover:bg-accent/10 flex items-center justify-center transition-all">
-                <ArrowRight className="w-5 h-5 text-accent opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
-              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
             </motion.button>
-          ))}
-        </motion.div>
+          );
+        })}
       </div>
 
-      {/* Footer hint */}
-      <motion.div
-        className="px-6 pb-10 pt-4 relative z-10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-      >
-        <p className="text-center text-muted-foreground/30 text-[13px] font-medium">
-          Tap a band to view invitation details
-        </p>
-      </motion.div>
-    </div>
+      <p className="bw-body-sm text-muted-foreground">Tap a band to view invitation details.</p>
+    </AuthScreen>
   );
 };
 

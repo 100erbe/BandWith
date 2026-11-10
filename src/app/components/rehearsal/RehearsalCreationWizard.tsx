@@ -1,15 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Calendar, MapPin, ArrowRight, ArrowLeft, Plus, AlertCircle,
-  ChevronDown, X, Layers, Euro, Home, Guitar, Check, Loader2,
+import {
+  Calendar, Clock, MapPin, ArrowLeft, ArrowUpRight, Plus, AlertCircle,
+  ChevronDown, X, Layers, Euro, Guitar, Check,
   Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Sparkles, Users
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
-import { DotRadio } from '@/app/components/ui/DotRadio';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
-import { WizardAccentRail, getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { getRehearsalAccentColor } from '@/app/components/ui/WizardAccentRail';
+import { Card, IconButton, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { TimePicker } from '@/app/components/ui/TimePicker';
@@ -85,11 +84,11 @@ const TYPE_OPTIONS: {
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { value: 'full_band', label: 'Full Band', subtitle: 'All members (4–8)', icon: Users },
-  { value: 'vocals', label: 'Vocals', subtitle: 'Singers & harmonies', icon: Mic },
-  { value: 'rhythm', label: 'Rhythm', subtitle: 'Drums & bass section', icon: Drum },
-  { value: 'acoustic', label: 'Acoustic', subtitle: 'Unplugged & strings', icon: Guitar },
-  { value: 'custom', label: 'Other', subtitle: 'Custom musician lineup', icon: Sliders },
+  { value: 'full_band', label: 'Full Band', subtitle: 'Everyone, full set', icon: Users },
+  { value: 'vocals', label: 'Vocals', subtitle: 'Harmonies & leads', icon: Mic },
+  { value: 'rhythm', label: 'Rhythm', subtitle: 'Drums & bass', icon: Drum },
+  { value: 'acoustic', label: 'Acoustic', subtitle: 'Unplugged set', icon: Guitar },
+  { value: 'custom', label: 'Other', subtitle: 'Custom lineup', icon: Sliders },
 ];
 
 interface EditingEvent {
@@ -117,129 +116,202 @@ interface Props {
   onOpenPollBuilder?: () => void;
 }
 
-// --- Interactive Step Indicator for Rehearsal ---
-const InteractiveRehearsalStepIndicator: React.FC<{
+// ── Local building blocks (Figma "Rehearsal / New" frames) ──────────────
+
+/** Wizard steps: three 6pt segments + "Step n of 3" / step name (Label/SM). */
+const WizardSteps: React.FC<{
   current: number;
-  total: number;
-  steps: { id?: string; title: string; subtitle?: string; skippable?: boolean }[];
+  steps: { title: string }[];
   maxAccessibleStep: number;
   onSelectStep: (step: number) => void;
-  activeColor?: string;
-  inactiveColor?: string;
-}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => (
-  <div className="flex items-center gap-1.5 w-full">
-    {Array.from({ length: total }).map((_, i) => {
-      const isCurrent = i === current;
-      const isAccessible = i <= maxAccessibleStep;
-      return (
+}> = ({ current, steps, maxAccessibleStep, onSelectStep }) => (
+  <div className="flex flex-col gap-2">
+    <div className="flex gap-2">
+      {steps.map((s, i) => (
         <button
           key={i}
           type="button"
-          onClick={() => isAccessible && onSelectStep(i)}
-          disabled={!isAccessible}
-          aria-label={`Step ${i + 1}: ${steps[i]?.title?.replace('\n', ' ') || ''}`}
-          className={cn(
-            'group flex-1 py-1 flex flex-col items-center justify-center transition-all',
-            isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-35'
-          )}
+          onClick={() => i <= maxAccessibleStep && onSelectStep(i)}
+          disabled={i > maxAccessibleStep}
+          aria-label={`Step ${i + 1}: ${s.title}`}
+          aria-current={i === current ? 'step' : undefined}
+          className="flex-1 py-1 -my-1 cursor-pointer disabled:cursor-not-allowed"
         >
-          <div
+          <span
             className={cn(
-              'h-1.5 w-full rounded-full transition-all duration-300',
-              isCurrent ? 'h-2' : 'group-hover:opacity-80'
+              'block h-1.5 rounded-full transition-colors duration-300',
+              i <= current ? 'bg-accent-rehearsal' : 'bg-foreground/15'
             )}
-            style={{
-              backgroundColor: isCurrent
-                ? (activeColor || 'var(--wizard-accent)')
-                : isAccessible
-                  ? (activeColor || 'var(--wizard-accent)')
-                  : (inactiveColor || 'var(--border)'),
-              opacity: isCurrent ? 1 : isAccessible ? 0.4 : 0.15,
-            }}
           />
-          <div className="flex items-center gap-1 mt-1">
-            <span
-              className={cn(
-                'text-xs font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
-                isCurrent ? 'text-[var(--fg)]' : 'text-muted-foreground group-hover:text-[var(--fg)]'
-              )}
-            >
-              STEP 0{i + 1}
-            </span>
-          </div>
         </button>
-      );
-    })}
+      ))}
+    </div>
+    <div className="flex items-center justify-between gap-3">
+      <span className="bw-label-sm text-muted-foreground">
+        Step {current + 1} of {steps.length}
+      </span>
+      <span className="bw-label-sm text-foreground">{steps[current]?.title}</span>
+    </div>
   </div>
 );
 
-// --- Accordion Card for Editing Rehearsal ---
+/** Figma "Segmented": card pill track, rehearsal-blue selected segment. */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex p-1 gap-1 rounded-full bg-card">
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              'flex-1 min-w-0 h-9 px-2 rounded-full bw-button-sm whitespace-nowrap transition-colors cursor-pointer',
+              selected
+                ? 'bg-accent-rehearsal text-accent-rehearsal-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Figma "Input" shell hosting a picker (date, time, venue search). */
+const PillShell: React.FC<{
+  label: string;
+  htmlFor?: string;
+  icon: React.ReactNode;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ label, htmlFor, icon, aside, children, className }) => (
+  <div className={cn('flex flex-col gap-2 min-w-0', className)}>
+    <div className="flex items-center justify-between gap-2">
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className="bw-label-sm text-muted-foreground">
+          {label}
+        </label>
+      ) : (
+        <span className="bw-label-sm text-muted-foreground">{label}</span>
+      )}
+      {aside}
+    </div>
+    <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-foreground focus-within:border-2 focus-within:border-foreground transition-[border-color]">
+      <span className="shrink-0 flex [&_svg]:w-5 [&_svg]:h-5">{icon}</span>
+      <div className="flex-1 min-w-0 h-full flex items-center">{children}</div>
+    </div>
+  </div>
+);
+
+/** Figma "Control": 24pt dot-grid check — solid dots on, a dotted outline off. */
+const DotCheck: React.FC<{ checked: boolean; className?: string }> = ({ checked, className }) => (
+  <span aria-hidden className={cn('grid grid-cols-4 gap-[2.67px] w-6 h-6 shrink-0', className)}>
+    {Array.from({ length: 16 }).map((_, i) => {
+      const r = Math.floor(i / 4);
+      const c = i % 4;
+      const edge = r === 0 || r === 3 || c === 0 || c === 3;
+      return (
+        <span
+          key={i}
+          className={cn('w-1 h-1 rounded-full bg-current transition-opacity', !checked && (edge ? 'opacity-35' : 'opacity-0'))}
+        />
+      );
+    })}
+  </span>
+);
+
+/** Figma "Avatar" (28pt, initials). */
+const Initials: React.FC<{ initials: string; title?: string; className?: string }> = ({ initials, title, className }) => (
+  <span
+    title={title}
+    className={cn(
+      'w-7 h-7 rounded-full bg-field border border-foreground/20 text-foreground bw-label-xs flex items-center justify-center shrink-0',
+      className
+    )}
+  >
+    {initials}
+  </span>
+);
+
+/** Collapsible card used for the optional review sections and the edit accordion. */
 const RehearsalAccordionCard: React.FC<{
   isOpen: boolean;
   onToggle: () => void;
-  stepNumber: string;
+  stepNumber?: string;
+  icon?: React.ReactNode;
   title: string;
   summary: string;
+  optional?: boolean;
   hasWarning?: boolean;
   warningLabel?: string;
   children: React.ReactNode;
-}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'NEEDS ATTENTION', children }) => {
-  return (
-    <div className={cn(
-      'rounded-2xl border transition-all overflow-hidden',
-      hasWarning
-        ? 'border-[var(--warning)]/50 bg-[var(--warning)]/5'
-        : isOpen
-          ? 'border-border/60 bg-card/60'
-          : 'border-border/40 bg-card hover:border-border/60'
-    )}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between text-left transition-colors cursor-pointer"
+}> = ({ isOpen, onToggle, stepNumber, icon, title, summary, optional, hasWarning, warningLabel = 'Needs attention', children }) => (
+  <div className="rounded-[24px] bg-card text-card-foreground overflow-hidden">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="w-full p-4 flex items-center gap-3 text-left cursor-pointer"
+    >
+      {icon && (
+        <span className="w-10 h-10 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0 [&_svg]:w-5 [&_svg]:h-5">
+          {icon}
+        </span>
+      )}
+      <span className="flex-1 min-w-0 flex flex-col gap-1">
+        <span className="flex items-center gap-2 flex-wrap">
+          {stepNumber && <span className="bw-label-sm text-muted-foreground">{stepNumber}</span>}
+          <span className="bw-h3">{title}</span>
+          {optional && <Tag variant="outline">Optional</Tag>}
+          {hasWarning && (
+            <Tag className="bg-warning text-warning-foreground" icon={<AlertCircle />}>
+              {warningLabel}
+            </Tag>
+          )}
+        </span>
+        <span className="bw-body-sm text-muted-foreground truncate">{summary}</span>
+      </span>
+      <motion.span
+        animate={{ rotate: isOpen ? 180 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="w-9 h-9 rounded-full border-[1.5px] border-foreground flex items-center justify-center shrink-0"
       >
-        <div className="flex flex-col gap-1 min-w-0 pr-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{stepNumber}</span>
-            <span className="text-base font-bold uppercase text-[var(--fg)]">{title}</span>
-            {hasWarning && (
-              <span className="px-2 py-0.5 rounded text-xs font-bold uppercase bg-[var(--warning)]/15 text-[var(--warning)] flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                {warningLabel}
-              </span>
-            )}
-          </div>
-          <span className="text-xs font-medium uppercase text-muted-foreground truncate">
-            {summary}
-          </span>
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="shrink-0 w-8 h-8 rounded-full border border-border/40 flex items-center justify-center text-muted-foreground"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </motion.div>
-      </button>
+        <ChevronDown className="w-4 h-4" />
+      </motion.span>
+    </button>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 pt-2 border-t border-border/40 flex flex-col gap-5">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+    <AnimatePresence initial={false}>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+          <div className="px-4 pb-4 flex flex-col gap-4">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+);
 
 export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder }) => {
   const { selectedBand, isAdmin } = useBand();
@@ -714,226 +786,267 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     setData(prev => ({ ...prev, tasks: [...prev.tasks, ...loaded] }));
   };
 
+  // ── Shared field groups ───────────────────────────────────
+
+  const recurrenceOptions: { value: RecurrenceType; label: string }[] = [
+    { value: 'once', label: 'One time' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'biweekly', label: 'Biweekly' },
+    { value: 'monthly', label: 'Monthly' },
+  ];
+
+  const audienceCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
+  const costNumber = parseFloat(data.totalCost || '0') || 0;
+  const perPerson = costNumber / Math.max(audienceCount, 1);
+  const perPersonLabel = `€ ${Number.isInteger(perPerson) ? perPerson : perPerson.toFixed(2)}`;
+
+  const renderTypeTiles = () => (
+    <div className="flex flex-col gap-2">
+      <span id="session-type-label" className="bw-label-sm text-muted-foreground">
+        Session type
+      </span>
+      <div role="radiogroup" aria-labelledby="session-type-label" className="grid grid-cols-2 gap-3">
+        {TYPE_OPTIONS.map((opt, idx) => {
+          const isSelected = data.type === opt.value;
+          const isLastOdd = idx === TYPE_OPTIONS.length - 1 && TYPE_OPTIONS.length % 2 !== 0;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => {
+                handleTypeChange(opt.value);
+                if (opt.value === 'custom') {
+                  setIsRosterExpanded(true);
+                }
+              }}
+              className={cn(
+                'min-w-0 flex flex-col gap-1 p-4 rounded-[20px] border text-left transition-colors cursor-pointer active:scale-[0.98]',
+                isLastOdd && 'col-span-2',
+                isSelected
+                  ? 'bg-accent-rehearsal text-accent-rehearsal-foreground border-accent-rehearsal'
+                  : 'bg-card text-foreground border-border'
+              )}
+            >
+              <span className="bw-label-md">{opt.label}</span>
+              <span className={cn('bw-body-sm truncate', isSelected ? 'opacity-85' : 'text-muted-foreground')}>
+                {opt.subtitle}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderMemberRow = (member: RehearsalMember) => {
+    const isSelected = data.audienceIds.length === 0 || data.audienceIds.includes(member.id);
+    return (
+      <li key={member.id}>
+        <button
+          type="button"
+          aria-pressed={isSelected}
+          onClick={() => toggleAudienceMember(member.id)}
+          className="w-full flex items-center gap-3 py-2 text-left cursor-pointer"
+        >
+          <DotCheck checked={isSelected} className={isSelected ? 'text-foreground' : 'text-muted-foreground'} />
+          <Initials initials={member.initials} title={member.name} />
+          <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <span className={cn('bw-label-md truncate', !isSelected && 'text-muted-foreground')}>
+              {member.id === currentUserId ? 'You' : member.name}
+            </span>
+            <span className="bw-body-sm text-muted-foreground truncate">{member.role || 'Member'}</span>
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  const renderLocationField = (placeholder: string) => (
+    <PillShell label="Location / studio" icon={<MapPin />}>
+      <VenueAutocomplete
+        value={data.location}
+        onChange={val => setData(prev => ({ ...prev, location: val }))}
+        onSelect={place => {
+          const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
+          setData(prev => ({
+            ...prev,
+            location: place.name,
+            ...(formatted ? { address: formatted } : {}),
+          }));
+        }}
+        placeholder={placeholder}
+        className="border-0 pb-0 h-11 text-lg font-medium normal-case tracking-normal text-foreground placeholder:text-muted-foreground/60"
+      />
+    </PillShell>
+  );
+
+  const renderDateTimeFields = () => (
+    <>
+      <PillShell label="Rehearsal date" htmlFor="rehearsal-date" icon={<Calendar />}>
+        <DatePicker
+          id="rehearsal-date"
+          value={data.date}
+          onChange={d => setData(prev => ({ ...prev, date: d }))}
+          accentColor={activeAccentColor}
+          placeholder="Select rehearsal date…"
+          showIcon={false}
+          className="h-full border-0 pb-0 text-lg font-medium hover:border-0"
+        />
+      </PillShell>
+
+      <div className="grid grid-cols-2 gap-3">
+        <PillShell label="Start time" htmlFor="rehearsal-start" icon={<Clock />}>
+          <TimePicker
+            id="rehearsal-start"
+            value={data.time}
+            onChange={val => setData(prev => ({ ...prev, time: val }))}
+            accentColor={activeAccentColor}
+            textSize="bw-body-lg"
+            showIcon={false}
+            className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+          />
+        </PillShell>
+        <PillShell
+          label="End time"
+          htmlFor="rehearsal-end"
+          icon={<Clock />}
+          aside={<span className="bw-label-sm text-foreground">{data.duration}</span>}
+        >
+          <TimePicker
+            id="rehearsal-end"
+            value={endTime}
+            onChange={val => setEndTime(val)}
+            accentColor={activeAccentColor}
+            align="end"
+            textSize="bw-body-lg"
+            showIcon={false}
+            className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+          />
+        </PillShell>
+      </div>
+    </>
+  );
+
+  const renderCostCard = (withSplit: boolean) => (
+    <Card className="gap-4">
+      <div className="flex items-end justify-between gap-3">
+        <label className="flex flex-col gap-2 min-w-0">
+          <span className="bw-label-sm text-muted-foreground">Total studio cost</span>
+          <span className="flex items-baseline gap-2">
+            <span className="bw-value-lg">€</span>
+            <input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              value={data.totalCost}
+              onChange={e => setData(prev => ({ ...prev, totalCost: e.target.value }))}
+              className="w-28 min-w-0 bg-transparent outline-none bw-value-lg text-foreground placeholder:text-muted-foreground/40"
+              placeholder="0"
+            />
+          </span>
+        </label>
+        <div className="flex flex-col gap-2 items-end text-right shrink-0">
+          <span className="bw-label-sm text-muted-foreground">Per person</span>
+          <span className="bw-value-md">{perPersonLabel}</span>
+        </div>
+      </div>
+      {withSplit && (
+        <div className="flex gap-2">
+          <Selector selected={data.splitMethod === 'equal'} onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}>
+            Equal split
+          </Selector>
+          <Selector selected={data.splitMethod === 'custom'} onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}>
+            Custom
+          </Selector>
+        </div>
+      )}
+    </Card>
+  );
+
+  const songRowCls = 'flex items-center gap-3 pl-4 pr-1 py-2 rounded-[16px] bg-background';
+
   // ── STEP 0: SESSION & ROSTER ──────────────────────────────
 
   const renderSessionRosterStep = () => {
-    const selectedCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
+    const selectedCount = audienceCount;
     const totalAvailable = data.members.length;
+    const visibleMembers = isRosterExpanded ? data.members : data.members.slice(0, 4);
+    const hiddenCount = data.members.length - visibleMembers.length;
 
     return (
-      <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-        {/* Scheduling Mode Toggle */}
+      <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+        {/* Scheduling Mode */}
         {!isEditing && onOpenPollBuilder && isAdmin && (
-          <div className="flex rounded-xl bg-card border border-border/40 p-1 gap-1 shadow-2xs">
-            <button
-              type="button"
-              className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-[var(--wizard-accent)] text-white shadow-xs transition-colors cursor-pointer"
-            >
-              Schedule Directly
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+          <Segmented
+            label="Scheduling mode"
+            value="direct"
+            options={[
+              { value: 'direct', label: 'Schedule directly' },
+              { value: 'poll', label: 'Poll availability' },
+            ]}
+            onChange={(v) => {
+              if (v === 'poll') {
                 onClose();
                 onOpenPollBuilder();
-              }}
-              className="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-[var(--fg)] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Calendar className="w-3.5 h-3.5 text-[var(--wizard-accent)]" />
-              <span>Poll Band Availability</span>
-            </button>
-          </div>
+              }
+            }}
+          />
         )}
 
-        {/* Rehearsal Title */}
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-            REHEARSAL TITLE <span className="text-xs font-normal text-muted-foreground/60 lowercase">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={data.title}
-            onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-            placeholder={getEffectiveTitle()}
-            className="w-full bg-transparent border-b border-border/40 pb-2 text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:border-[var(--wizard-accent)] focus:outline-none transition-colors"
-          />
-        </div>
+        <PillField
+          label="Rehearsal title (optional)"
+          value={data.title}
+          onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder={getEffectiveTitle()}
+        />
 
-        {/* Compact Session Type 2-Column Grid */}
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2.5">
-            SESSION TYPE
-          </span>
-          <div className="grid grid-cols-2 gap-2.5">
-            {TYPE_OPTIONS.map((opt, idx) => {
-              const isSelected = data.type === opt.value;
-              const Icon = opt.icon;
-              const isLastOdd = idx === TYPE_OPTIONS.length - 1 && TYPE_OPTIONS.length % 2 !== 0;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    handleTypeChange(opt.value);
-                    if (opt.value === 'custom') {
-                      setIsRosterExpanded(true);
-                    }
-                  }}
-                  className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2',
-                    isLastOdd && 'col-span-2 p-3',
-                    isSelected
-                      ? 'bg-[var(--wizard-accent)]/10 border-[var(--wizard-accent)] shadow-xs'
-                      : 'bg-card/60 border-border/40 hover:border-border hover:bg-card'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className={cn(
-                      'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-                      isSelected ? 'bg-[var(--wizard-accent)] text-white' : 'bg-muted/60 text-muted-foreground'
-                    )}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold text-[var(--fg)] leading-tight">{opt.label}</div>
-                      <div className="text-xs text-muted-foreground truncate leading-snug mt-0.5">{opt.subtitle}</div>
-                    </div>
-                  </div>
-                  {isLastOdd && (
-                    <DotRadio
-                      selected={isSelected}
-                      activeColor="var(--wizard-accent)"
-                      inactiveColor="var(--border)"
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {renderTypeTiles()}
 
-        {/* Collapsible Roster Summary */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              BAND ROSTER
-            </span>
-            {isRosterExpanded && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}
-                  className="text-xs font-bold text-[var(--wizard-accent)] hover:underline cursor-pointer"
-                >
-                  Select All
-                </button>
-                <span className="text-muted-foreground text-xs">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (data.audienceIds.length === 0) {
-                      setData(prev => ({ ...prev, audienceIds: prev.members.map(m => m.id) }));
-                    }
-                  }}
-                  className="text-xs font-bold text-muted-foreground hover:text-[var(--fg)] cursor-pointer"
-                >
-                  Custom
-                </button>
-              </div>
-            )}
+        {/* Band roster */}
+        <Card className="gap-1">
+          <div className="flex items-center justify-between gap-3 min-h-9">
+            <h3 className="bw-label-md">
+              Band roster · {selectedCount} of {totalAvailable}
+            </h3>
+            <PillButton
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              className="-mr-3"
+              icon={<Check className="w-4 h-4" />}
+              onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}
+            >
+              Select all
+            </PillButton>
           </div>
 
-          {/* Compact Interactive Bar */}
-          <div className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex -space-x-1.5 overflow-hidden shrink-0">
-                {data.members.slice(0, 5).map(m => {
-                  const isSelected = data.audienceIds.length === 0 || data.audienceIds.includes(m.id);
-                  return (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        'w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center border-2 border-card transition-opacity',
-                        isSelected
-                          ? 'bg-foreground text-background'
-                          : 'bg-muted text-muted-foreground opacity-40'
-                      )}
-                      title={m.name}
-                    >
-                      {m.initials}
-                    </div>
-                  );
-                })}
-                {data.members.length > 5 && (
-                  <div className="w-7 h-7 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center border-2 border-card">
-                    +{data.members.length - 5}
-                  </div>
-                )}
-              </div>
+          {data.members.length === 0 ? (
+            <p className="bw-body-sm text-muted-foreground py-2">No band members yet.</p>
+          ) : (
+            <ul className="flex flex-col">{visibleMembers.map(renderMemberRow)}</ul>
+          )}
 
-              <span className="text-sm font-semibold text-[var(--fg)] truncate">
-                {selectedCount} of {totalAvailable} Members Selected
-              </span>
-            </div>
-
+          {hiddenCount > 0 && (
             <button
               type="button"
-              onClick={() => setIsRosterExpanded(!isRosterExpanded)}
-              className="text-xs font-bold text-[var(--wizard-accent)] hover:opacity-80 flex items-center gap-1 shrink-0 ml-2 cursor-pointer"
+              onClick={() => setIsRosterExpanded(true)}
+              className="self-start py-2 bw-label-sm text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <span>{isRosterExpanded ? 'Collapse' : 'Customize'}</span>
-              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', isRosterExpanded && 'rotate-180')} />
+              + {hiddenCount} more
             </button>
-          </div>
-
-          {/* Expanded 1-Column Member List */}
-          <AnimatePresence>
-            {isRosterExpanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden space-y-1 pt-1"
-              >
-                <div className="divide-y divide-border/30 border-y border-border/30">
-                  {data.members.map(member => {
-                    const isSelected = data.audienceIds.length === 0 || data.audienceIds.includes(member.id);
-                    return (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => toggleAudienceMember(member.id)}
-                        className="w-full flex items-center justify-between py-2.5 px-2 hover:bg-card/60 transition-colors text-left rounded-lg cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 pr-3">
-                          <DotCheckbox
-                            checked={isSelected}
-                            activeColor="var(--wizard-accent)"
-                            inactiveColor="var(--border)"
-                          />
-                          <div className="min-w-0">
-                            <span className={cn(
-                              'text-sm font-medium truncate block leading-normal',
-                              isSelected ? 'text-[var(--fg)] font-semibold' : 'text-muted-foreground'
-                            )}>
-                              {member.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground uppercase tracking-wider block leading-normal">
-                              {member.role || 'Member'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-7 h-7 rounded-full bg-muted/60 text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0">
-                          {member.initials}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          )}
+          {isRosterExpanded && data.members.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setIsRosterExpanded(false)}
+              className="self-start py-2 bw-label-sm text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Show less
+            </button>
+          )}
+        </Card>
       </div>
     );
   };
@@ -941,182 +1054,54 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   // ── STEP 1: DATE & LOCATION ───────────────────────────────
 
   const renderDateLocationStep = () => (
-    <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-      {/* Unified Location Input */}
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-          LOCATION / STUDIO
-        </label>
-        <div className="relative">
-          <VenueAutocomplete
-            value={data.location}
-            onChange={val => setData(prev => ({ ...prev, location: val }))}
-            onSelect={place => {
-              const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
-              setData(prev => ({
-                ...prev,
-                location: place.name,
-                ...(formatted ? { address: formatted } : {}),
-              }));
-            }}
-            placeholder="Search venue or studio..."
-            className="w-full bg-transparent border-b border-border/40 focus:border-[var(--wizard-accent)] pb-2 text-base font-medium text-[var(--fg)] placeholder:text-muted-foreground/60 focus:outline-none transition-colors pl-7"
-          />
-          <MapPin className="w-4 h-4 text-muted-foreground absolute left-0 bottom-3" />
-        </div>
+    <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+      {renderLocationField('Search venue or studio…')}
 
-        {/* Quick-select chips */}
-        <div className="flex flex-wrap gap-1.5 mt-2.5">
-          {['Band HQ', 'Studio A', 'Home Studio', 'TBD'].map((loc) => (
-            <button
-              key={loc}
-              type="button"
-              onClick={() => setData(prev => ({ ...prev, location: loc }))}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer border',
-                data.location === loc
-                  ? 'bg-[var(--wizard-accent)] text-white border-[var(--wizard-accent)]'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
-            >
-              {loc}
-            </button>
-          ))}
-        </div>
+      {/* Quick-select chips */}
+      <div className="flex flex-wrap gap-2 -mt-1">
+        {['Band HQ', 'Studio A', 'Home Studio', 'TBD'].map((loc) => (
+          <Selector key={loc} selected={data.location === loc} onClick={() => setData(prev => ({ ...prev, location: loc }))}>
+            {loc}
+          </Selector>
+        ))}
       </div>
 
-      {/* Date & Time Group */}
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-            REHEARSAL DATE
-          </label>
-          <DatePicker
-            value={data.date}
-            onChange={d => setData(prev => ({ ...prev, date: d }))}
-            accentColor={activeAccentColor}
-            placeholder="Select rehearsal date..."
-          />
-        </div>
+      {renderDateTimeFields()}
 
-        {/* 2-Column Start Time and End Time */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-              START TIME
-            </label>
-            <TimePicker
-              value={data.time}
-              onChange={val => setData(prev => ({ ...prev, time: val }))}
-              accentColor={activeAccentColor}
-              textSize="text-base"
-              showIcon
-              className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                END TIME
-              </label>
-              <span className="text-xs font-bold text-[var(--wizard-accent)]">
-                {data.duration}
-              </span>
-            </div>
-            <TimePicker
-              value={endTime}
-              onChange={val => setEndTime(val)}
-              accentColor={activeAccentColor}
-              align="end"
-              textSize="text-base"
-              showIcon
-              className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-            />
-          </div>
-        </div>
+      <div className="flex flex-col gap-2">
+        <span className="bw-label-sm text-muted-foreground">Recurrence</span>
+        <Segmented
+          label="Recurrence"
+          value={data.recurrence}
+          options={recurrenceOptions}
+          onChange={(freq) => setData(prev => ({ ...prev, recurrence: freq }))}
+        />
       </div>
 
-      {/* Single-Row 4-Column Recurrence */}
-      <div>
-        <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-2">
-          RECURRENCE
-        </label>
-        <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
-          {(['once', 'weekly', 'biweekly', 'monthly'] as const).map(freq => (
-            <button
-              key={freq}
-              type="button"
-              onClick={() => setData(prev => ({ ...prev, recurrence: freq }))}
-              className={cn(
-                'py-2 rounded-xl border transition-all text-center cursor-pointer',
-                data.recurrence === freq
-                  ? 'bg-[var(--wizard-accent)] text-white border-[var(--wizard-accent)] shadow-xs'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)] hover:border-border'
-              )}
-            >
-              {freq === 'once' ? 'One Time' : freq.charAt(0).toUpperCase() + freq.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Venue Cost: 2-Column Toggle & Smooth Inline Input (Admin Only) */}
+      {/* Venue cost (admin only) */}
       {isAdmin && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
-              VENUE COST
-            </label>
-            <div className="flex p-0.5 bg-card rounded-lg border border-border/40">
-              <button
-                type="button"
-                onClick={() => setData(prev => ({ ...prev, venueType: 'free', totalCost: '0' }))}
-                className={cn(
-                  'px-3 py-1 rounded-md text-xs font-bold uppercase transition-all cursor-pointer',
-                  data.venueType === 'free'
-                    ? 'bg-[var(--wizard-accent)] text-white shadow-xs'
-                    : 'text-muted-foreground hover:text-[var(--fg)]'
-                )}
-              >
-                Free
-              </button>
-              <button
-                type="button"
-                onClick={() => setData(prev => ({ ...prev, venueType: 'paid' }))}
-                className={cn(
-                  'px-3 py-1 rounded-md text-xs font-bold uppercase transition-all cursor-pointer',
-                  data.venueType === 'paid'
-                    ? 'bg-[var(--wizard-accent)] text-white shadow-xs'
-                    : 'text-muted-foreground hover:text-[var(--fg)]'
-                )}
-              >
-                Paid
-              </button>
-            </div>
-          </div>
-
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-sm text-muted-foreground">Venue cost</span>
+          <Segmented
+            label="Venue cost"
+            value={data.venueType}
+            options={[
+              { value: 'free', label: 'Free' },
+              { value: 'paid', label: 'Paid' },
+            ]}
+            onChange={(v) =>
+              setData(prev => (v === 'free' ? { ...prev, venueType: 'free', totalCost: '0' } : { ...prev, venueType: 'paid' }))
+            }
+          />
           <AnimatePresence>
             {data.venueType === 'paid' && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
+                className="overflow-hidden pt-2"
               >
-                <div className="bg-card rounded-xl border border-border/40 p-3 flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold uppercase text-muted-foreground">Total Studio Cost</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-muted-foreground">€</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={data.totalCost}
-                      onChange={e => setData(prev => ({ ...prev, totalCost: e.target.value }))}
-                      className="w-24 bg-transparent border-b border-border/40 focus:border-[var(--wizard-accent)] pb-1 text-base font-bold text-[var(--fg)] text-right focus:outline-none"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
+                {renderCostCard(false)}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1127,376 +1112,235 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   // ── STEP 2: REVIEW & CONFIRM ──────────────────────────────
 
+  const renderSongLists = () => (
+    <>
+      {data.setlist.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-sm text-muted-foreground">Selected songs · {data.setlist.length}</span>
+          <ol className="flex flex-col gap-2">
+            {data.setlist.map((song, idx) => (
+              <li key={`${song.id}-${idx}`} className={songRowCls}>
+                <span className="bw-label-sm text-muted-foreground w-5 shrink-0">{idx + 1}</span>
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="bw-body-md truncate">{song.title}</span>
+                  {song.artist && <span className="bw-body-sm text-muted-foreground truncate">{song.artist}</span>}
+                </div>
+                <span className="bw-label-sm text-muted-foreground shrink-0">{song.duration}</span>
+                <IconButton
+                  label={`Remove ${song.title}`}
+                  icon={<X />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setData(prev => ({ ...prev, setlist: prev.setlist.filter((_, i) => i !== idx) }))}
+                />
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {data.proposals.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-sm text-muted-foreground">Proposed songs · {data.proposals.length}</span>
+          <ul className="flex flex-col gap-2">
+            {data.proposals.map((prop, idx) => (
+              <li key={`${prop.id}-${idx}`} className={songRowCls}>
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="bw-body-md truncate">{prop.title}</span>
+                  <span className="bw-body-sm text-muted-foreground truncate">
+                    {prop.artist} · By {prop.proposer}
+                  </span>
+                </div>
+                <IconButton
+                  label={`Remove proposal ${prop.title}`}
+                  icon={<X />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setData(prev => ({ ...prev, proposals: prev.proposals.filter(p => p.id !== prop.id) }))}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+
   const renderReviewExtrasStep = () => {
-    const selectedCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
+    const selectedCount = audienceCount;
     const totalAvailable = data.members.length;
     const recurrenceLabel = data.recurrence === 'once' ? 'One-time' : data.recurrence.charAt(0).toUpperCase() + data.recurrence.slice(1);
     const typeLabel = TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band';
+    const isPaid = isAdmin && data.venueType === 'paid' && costNumber > 0;
+    const songCount = data.setlist.length;
 
     return (
-      <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
-        {/* Complete Logistics Summary Card */}
-        <div className="bg-card rounded-2xl p-4 sm:p-5 border border-border/40 space-y-4 shadow-2xs">
-          {/* Title & Badges */}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[var(--wizard-accent)]/15 text-[var(--wizard-accent)]">
-                {typeLabel}
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted text-muted-foreground">
-                {recurrenceLabel}
-              </span>
-              {isAdmin && data.venueType === 'paid' && parseFloat(data.totalCost || '0') > 0 ? (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground flex items-center gap-1">
-                  <Euro className="w-3 h-3" />
-                  {data.totalCost}
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
-                  Free Studio
-                </span>
-              )}
+      <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+        {/* Summary */}
+        <Card className="gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Tag variant="rehearsal">{typeLabel}</Tag>
+              <Tag variant="subtle">{recurrenceLabel}</Tag>
+              <Tag variant="subtle" icon={isPaid ? <Euro /> : undefined}>
+                {isPaid ? data.totalCost : 'Free studio'}
+              </Tag>
             </div>
-            <h3 className="text-xl font-bold text-[var(--fg)] tracking-tight">
-              {getEffectiveTitle()}
-            </h3>
+            <h3 className="bw-h2 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
           </div>
 
-          {/* Date, Time, Duration */}
-          <div className="flex items-start gap-3 text-sm text-[var(--fg)]">
-            <Calendar className="w-4 h-4 text-[var(--wizard-accent)] shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <span className="font-semibold block leading-normal">
-                {data.date ? formatDate(data.date) : 'Date TBD'}
-              </span>
-              <span className="text-xs text-muted-foreground font-medium block leading-normal">
-                {data.time || '19:00'} – {endTime || '21:00'} ({data.duration || '2h'})
+          <div className="flex items-start gap-3">
+            <Calendar className="w-5 h-5 shrink-0" />
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <span className="bw-body-lg">{data.date ? formatDate(data.date) : 'Date TBD'}</span>
+              <span className="bw-body-sm text-muted-foreground">
+                {data.time || '19:00'} – {endTime || '21:00'} · {data.duration || '2h'}
               </span>
             </div>
           </div>
 
-          {/* Studio / Location */}
-          <div className="flex items-start gap-3 text-sm text-[var(--fg)]">
-            <MapPin className="w-4 h-4 text-[var(--wizard-accent)] shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <span className="font-semibold block truncate leading-normal">
-                {data.location || 'Studio TBD'}
-              </span>
+          <div className="flex items-start gap-3">
+            <MapPin className="w-5 h-5 shrink-0" />
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <span className="bw-body-lg truncate">{data.location || 'Studio TBD'}</span>
+              {data.address && <span className="bw-body-sm text-muted-foreground truncate">{data.address}</span>}
             </div>
           </div>
 
-          {/* Members Roster */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Users className="w-4 h-4 text-[var(--wizard-accent)] shrink-0" />
-              <span className="text-sm font-semibold text-[var(--fg)] truncate">
-                {selectedCount} of {totalAvailable} Members Confirmed
-              </span>
-            </div>
-            <div className="flex -space-x-1.5 overflow-hidden shrink-0 ml-2">
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 shrink-0" />
+            <span className="flex-1 min-w-0 bw-body-lg truncate">
+              {selectedCount} of {totalAvailable} members
+            </span>
+            <div className="flex -space-x-1.5 shrink-0">
               {data.members
                 .filter(m => data.audienceIds.length === 0 || data.audienceIds.includes(m.id))
-                .slice(0, 6)
+                .slice(0, 5)
                 .map(m => (
-                  <div
-                    key={m.id}
-                    className="w-6 h-6 rounded-full bg-muted border-2 border-card text-xs font-bold flex items-center justify-center text-muted-foreground"
-                    title={m.name}
-                  >
-                    {m.initials}
-                  </div>
+                  <Initials key={m.id} initials={m.initials} title={m.name} />
                 ))}
-              {selectedCount > 6 && (
-                <div className="w-6 h-6 rounded-full bg-muted border-2 border-card text-xs font-bold flex items-center justify-center text-muted-foreground">
-                  +{selectedCount - 6}
-                </div>
-              )}
+              {selectedCount > 5 && <Initials initials={`+${selectedCount - 5}`} />}
             </div>
           </div>
 
-          {/* Edit Jump Actions */}
-          <div className="pt-3 border-t border-border/30 flex items-center justify-between text-xs font-bold text-[var(--wizard-accent)]">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="hover:underline flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Session & Roster</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="hover:underline flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Date & Studio</span>
-            </button>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Edit3 className="w-4 h-4" />} onClick={() => setStep(0)}>
+              Session &amp; roster
+            </PillButton>
+            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Edit3 className="w-4 h-4" />} onClick={() => setStep(1)}>
+              Date &amp; studio
+            </PillButton>
           </div>
-        </div>
+        </Card>
 
-        {/* Optional Collapsible Section: Setlist & Song Proposals */}
-        <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setIsSetlistExpanded(!isSetlistExpanded)}
-            className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
-                <Music2 className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[var(--fg)]">Setlist & Song Proposals</span>
-                  <span className="text-xs uppercase font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
-                </div>
-                <span className="text-xs text-muted-foreground block truncate mt-0.5">
-                  {data.setlist.length + data.proposals.length === 0
-                    ? '0 Songs / No Setlist'
-                    : `${data.setlist.length} song${data.setlist.length === 1 ? '' : 's'}${data.proposals.length > 0 ? `, ${data.proposals.length} proposed` : ''}`}
-                </span>
-              </div>
+        {/* Setlist & Song Proposals (optional) */}
+        <RehearsalAccordionCard
+          isOpen={isSetlistExpanded}
+          onToggle={() => setIsSetlistExpanded(!isSetlistExpanded)}
+          icon={<Music2 />}
+          title="Setlist & proposals"
+          optional
+          summary={
+            songCount + data.proposals.length === 0
+              ? 'No songs yet'
+              : `${songCount} ${songCount === 1 ? 'song' : 'songs'}${data.proposals.length > 0 ? ` · ${data.proposals.length} proposed` : ''}`
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setSongPickerOpen(true)}>
+              Add songs
+            </PillButton>
+            <PillButton
+              variant="outline"
+              size="sm"
+              fullWidth={false}
+              icon={<Layers className="w-4 h-4" />}
+              onClick={() => {
+                if (data.setlistSnapshotFinal) {
+                  setIsReviewSetlistOpen(true);
+                } else {
+                  openSetlistEditor(null);
+                }
+              }}
+            >
+              Setlist template
+            </PillButton>
+            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
+              Propose song
+            </PillButton>
+          </div>
+
+          {renderSongLists()}
+
+          {data.setlist.length === 0 && data.proposals.length === 0 && (
+            <p className="bw-body-sm text-muted-foreground">
+              Add songs from your catalog or propose new tracks to rehearse.
+            </p>
+          )}
+        </RehearsalAccordionCard>
+
+        {/* Band Preparation Tasks (optional) */}
+        <RehearsalAccordionCard
+          isOpen={isTasksExpanded}
+          onToggle={() => setIsTasksExpanded(!isTasksExpanded)}
+          icon={<CheckSquare />}
+          title="Prep tasks"
+          optional
+          summary={data.tasks.length === 0 ? 'No tasks yet' : `${data.tasks.length} ${data.tasks.length === 1 ? 'task' : 'tasks'} assigned`}
+        >
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-sm text-muted-foreground">Quick add</span>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'Bring chord charts',
+                'Set up PA early',
+                'Record audio',
+                'Review bridge vocal harmonies',
+                'Bring spare cables',
+              ].map(suggestion => (
+                <Selector key={suggestion} selected={false} onClick={() => handleAddQuickTask(suggestion)}>
+                  + {suggestion}
+                </Selector>
+              ))}
             </div>
-            <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2', isSetlistExpanded && 'rotate-180')} />
-          </button>
+          </div>
 
-          <AnimatePresence>
-            {isSetlistExpanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="px-4 pb-4 border-t border-border/30 pt-3 space-y-3 overflow-hidden"
-              >
-                {/* Action Buttons Row */}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSongPickerOpen(true)}
-                    className="px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-xs font-bold text-[var(--fg)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-[var(--wizard-accent)]" />
-                    <span>+ Add Songs</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (data.setlistSnapshotFinal) {
-                        setIsReviewSetlistOpen(true);
-                      } else {
-                        openSetlistEditor(null);
-                      }
-                    }}
-                    className="px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-xs font-bold text-[var(--fg)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Layers className="w-3.5 h-3.5 text-[var(--wizard-accent)]" />
-                    <span>Setlist Template</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsProposeModalOpen(true)}
-                    className="px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 text-xs font-bold text-[var(--fg)] flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-[var(--wizard-accent)]" />
-                    <span>+ Propose Song</span>
-                  </button>
-                </div>
+          <div className="flex items-center gap-2">
+            <PillField
+              label="New task"
+              hideLabel
+              className="flex-1"
+              value={newTaskText}
+              onChange={e => setNewTaskText(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddNewTask();
+                }
+              }}
+              placeholder="Add a preparation task…"
+            />
+            <PillButton variant="dark" size="md" fullWidth={false} onClick={handleAddNewTask} disabled={!newTaskText.trim()}>
+              Add
+            </PillButton>
+          </div>
 
-                {/* Selected Songs List */}
-                {data.setlist.length > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Selected Songs ({data.setlist.length})
-                    </span>
-                    <div className="divide-y divide-border/20 rounded-lg border border-border/30 bg-background/50 overflow-hidden">
-                      {data.setlist.map((song, idx) => (
-                        <div key={`${song.id}-${idx}`} className="flex items-center justify-between py-2 px-3 hover:bg-muted/30 transition-colors">
-                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                            <span className="text-xs font-bold text-muted-foreground w-4">{idx + 1}</span>
-                            <div className="min-w-0">
-                              <span className="text-sm font-medium text-[var(--fg)] truncate block">{song.title}</span>
-                              {song.artist && <span className="text-xs text-muted-foreground truncate block">{song.artist}</span>}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs text-muted-foreground font-medium">{song.duration}</span>
-                            <button
-                              type="button"
-                              onClick={() => setData(prev => ({ ...prev, setlist: prev.setlist.filter((_, i) => i !== idx) }))}
-                              className="p-1 text-muted-foreground hover:text-[var(--danger)] transition-colors cursor-pointer"
-                              aria-label="Remove song"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Proposals List */}
-                {data.proposals.length > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Proposed Songs ({data.proposals.length})
-                    </span>
-                    <div className="divide-y divide-border/20 rounded-lg border border-border/30 bg-background/50 overflow-hidden">
-                      {data.proposals.map((prop, idx) => (
-                        <div key={`${prop.id}-${idx}`} className="flex items-center justify-between py-2 px-3 hover:bg-muted/30 transition-colors">
-                          <div className="min-w-0 pr-2">
-                            <span className="text-sm font-medium text-[var(--fg)] truncate block">{prop.title}</span>
-                            <span className="text-xs text-muted-foreground truncate block">{prop.artist} • By {prop.proposer}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setData(prev => ({ ...prev, proposals: prev.proposals.filter(p => p.id !== prop.id) }))}
-                            className="p-1 text-muted-foreground hover:text-[var(--danger)] transition-colors cursor-pointer"
-                            aria-label="Remove proposal"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {data.setlist.length === 0 && data.proposals.length === 0 && (
-                  <div className="py-4 text-center">
-                    <span className="text-xs text-muted-foreground">
-                      No songs added yet. Add songs from your catalog or propose new tracks to rehearse.
-                    </span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Optional Collapsible Section: Band Preparation Tasks */}
-        <div className="bg-card rounded-xl border border-border/40 overflow-hidden shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setIsTasksExpanded(!isTasksExpanded)}
-            className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-[var(--wizard-accent)]/10 text-[var(--wizard-accent)] flex items-center justify-center shrink-0">
-                <CheckSquare className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[var(--fg)]">Band Preparation Tasks</span>
-                  <span className="text-xs uppercase font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
-                </div>
-                <span className="text-xs text-muted-foreground block truncate mt-0.5">
-                  {data.tasks.length === 0 ? '0 Tasks' : `${data.tasks.length} task${data.tasks.length === 1 ? '' : 's'} assigned`}
-                </span>
-              </div>
+          {data.tasks.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <span className="bw-label-sm text-muted-foreground">Band tasks · {data.tasks.length}</span>
+              <ul className="flex flex-col gap-2">
+                {data.tasks.map(task => (
+                  <li key={task.id} className={songRowCls}>
+                    <span className="flex-1 min-w-0 bw-body-md truncate">{task.text}</span>
+                    <IconButton label={`Delete task ${task.text}`} icon={<X />} variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} />
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform shrink-0 ml-2', isTasksExpanded && 'rotate-180')} />
-          </button>
-
-          <AnimatePresence>
-            {isTasksExpanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="px-4 pb-4 border-t border-border/30 pt-3 space-y-3 overflow-hidden"
-              >
-                {/* Quick Add Suggestion Chips */}
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                    Quick Add Suggestions
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      'Bring chord charts',
-                      'Set up PA early',
-                      'Record audio',
-                      'Review bridge vocal harmonies',
-                      'Bring spare cables'
-                    ].map(suggestion => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => handleAddQuickTask(suggestion)}
-                        className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-[var(--fg)] border border-border/40 transition-colors cursor-pointer"
-                      >
-                        + {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Task Input */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTaskText}
-                    onChange={e => setNewTaskText(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddNewTask();
-                      }
-                    }}
-                    placeholder="Add a preparation task..."
-                    className="flex-1 bg-background border border-border/40 focus:border-[var(--wizard-accent)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-muted-foreground focus:outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddNewTask}
-                    disabled={!newTaskText.trim()}
-                    className={cn(
-                      'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer',
-                      newTaskText.trim()
-                        ? 'bg-[var(--wizard-accent)] text-white hover:opacity-90'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed'
-                    )}
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {/* Tasks List */}
-                {data.tasks.length > 0 ? (
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Band Tasks ({data.tasks.length})
-                    </span>
-                    <div className="divide-y divide-border/20 rounded-lg border border-border/30 bg-background/50 overflow-hidden">
-                      {data.tasks.map(task => (
-                        <div key={task.id} className="flex items-center justify-between py-2 px-3 hover:bg-muted/30 transition-colors">
-                          <span className="text-sm font-medium text-[var(--fg)] truncate pr-2">
-                            {task.text}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="p-1 text-muted-foreground hover:text-[var(--danger)] transition-colors cursor-pointer shrink-0"
-                            aria-label="Delete task"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-2 text-center">
-                    <span className="text-xs text-muted-foreground">
-                      No tasks added. Add action items for the band to prepare ahead of time.
-                    </span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          ) : (
+            <p className="bw-body-sm text-muted-foreground">Add action items for the band to prepare ahead of time.</p>
+          )}
+        </RehearsalAccordionCard>
       </div>
     );
   };
@@ -1506,844 +1350,327 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const renderEditAccordionView = () => {
     const queueIds = data.selectedTemplateIdsInOrder || [];
     const hasQueue = queueIds.length > 0;
-    const selectedCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
+    const selectedCount = audienceCount;
     const totalAvailable = data.members.length;
     const isAllSelected = data.audienceIds.length === 0 || data.audienceIds.length === data.members.length;
 
     return (
-      <div className="flex flex-col gap-5">
-        {/* Warnings Banner */}
+      <div className="flex flex-col gap-4">
+        {/* Warnings */}
         {editingWarnings.length > 0 && (
-          <div className="p-4 rounded-2xl bg-[var(--warning)]/10 border border-[var(--warning)]/20 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[var(--warning)] shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-bold text-[var(--warning)] uppercase tracking-wider">
-                {editingWarnings.length} {editingWarnings.length === 1 ? 'FIELD NEEDS' : 'FIELDS NEED'} ATTENTION
+          <div role="alert" className="flex items-start gap-3 p-4 rounded-[20px] border-2 border-warning">
+            <AlertCircle className="w-5 h-5 text-warning shrink-0" />
+            <div className="flex flex-col gap-1">
+              <span className="bw-label-sm text-warning">
+                {editingWarnings.length} {editingWarnings.length === 1 ? 'field needs' : 'fields need'} attention
               </span>
-              <span className="text-xs font-medium text-muted-foreground">
-                Please complete missing details: {editingWarnings.join(', ')}.
-              </span>
+              <span className="bw-body-sm">Please complete: {editingWarnings.join(', ')}.</span>
             </div>
           </div>
         )}
 
-        {/* Section 1: Session Type & Recurrence */}
+        {/* Section 1: Session type & recurrence */}
         <RehearsalAccordionCard
           isOpen={!!expandedEditSections.basics}
           onToggle={() => toggleEditSection('basics')}
           stepNumber="01"
-          title="SESSION TYPE & RECURRENCE"
-          summary={`${data.type.replace('_', ' ').toUpperCase()} • ${data.recurrence === 'once' ? 'ONE TIME' : data.recurrence.toUpperCase()}`}
+          title="Session & recurrence"
+          summary={`${(TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band')} · ${recurrenceOptions.find(o => o.value === data.recurrence)?.label || 'One time'}`}
           hasWarning={!data.title.trim()}
-          warningLabel="MISSING TITLE"
+          warningLabel="Missing title"
         >
-          {/* Title */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 text-muted-foreground">SESSION TITLE</label>
-            <input
-              type="text"
-              value={data.title}
-              onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl px-4 py-3 text-base font-bold text-[var(--fg)] placeholder:text-muted-foreground/50 focus:outline-none transition-colors"
-              placeholder={getEffectiveTitle()}
+          <PillField
+            label="Session title"
+            value={data.title}
+            onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder={getEffectiveTitle()}
+          />
+          {renderTypeTiles()}
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-sm text-muted-foreground">Recurrence</span>
+            <Segmented
+              label="Recurrence"
+              value={data.recurrence}
+              options={recurrenceOptions}
+              onChange={(freq) => setData(prev => ({ ...prev, recurrence: freq }))}
             />
-          </div>
-
-          {/* Type Selection */}
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider block mb-2.5 text-muted-foreground">SESSION TYPE</span>
-            <div className="flex flex-col gap-2">
-              {TYPE_OPTIONS.map(opt => {
-                const isSelected = data.type === opt.value;
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleTypeChange(opt.value)}
-                    className={cn(
-                      'flex items-center justify-between p-3.5 rounded-xl border transition-colors text-left cursor-pointer',
-                      isSelected
-                        ? 'border-[var(--wizard-accent)] bg-[var(--wizard-accent)]/10'
-                        : 'border-border/40 bg-card hover:bg-muted/40'
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0 pr-2">
-                      <div className={cn(
-                        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-                        isSelected
-                          ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                          : 'bg-muted text-muted-foreground'
-                      )}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-bold text-[var(--fg)] leading-snug">{opt.label}</span>
-                        <span className="text-xs text-muted-foreground truncate">{opt.subtitle}</span>
-                      </div>
-                    </div>
-                    <DotRadio
-                      selected={isSelected}
-                      activeColor="var(--wizard-accent)"
-                      inactiveColor="var(--border)"
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recurrence */}
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider block mb-2 text-muted-foreground">RECURRENCE</span>
-            <div className="flex flex-wrap gap-2">
-              {(['once', 'weekly', 'biweekly', 'monthly'] as const).map(freq => (
-                <button
-                  key={freq}
-                  type="button"
-                  onClick={() => setData(prev => ({ ...prev, recurrence: freq }))}
-                  className={cn(
-                    'px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase border transition-all cursor-pointer',
-                    data.recurrence === freq
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)] hover:border-border'
-                  )}
-                >
-                  {freq === 'once' ? 'ONE TIME' : freq.toUpperCase()}
-                </button>
-              ))}
-            </div>
           </div>
         </RehearsalAccordionCard>
 
-        {/* Section 2: Date, Time & Studio */}
+        {/* Section 2: Date, time & studio */}
         <RehearsalAccordionCard
           isOpen={!!expandedEditSections.when_where}
           onToggle={() => toggleEditSection('when_where')}
           stepNumber="02"
-          title="DATE, TIME & STUDIO"
-          summary={`${formatDate(data.date)} @ ${data.time} – ${endTime} • ${data.location || 'LOCATION TBD'}`}
+          title="Date, time & studio"
+          summary={`${formatDate(data.date)} · ${data.time} – ${endTime} · ${data.location || 'Location TBD'}`}
           hasWarning={!data.location.trim() || data.location === 'TBD' || !data.date}
-          warningLabel="NEEDS ATTENTION"
         >
-          {/* Venue Location */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 text-muted-foreground">LOCATION / STUDIO</label>
-            <VenueAutocomplete
-              value={data.location}
-              onChange={val => setData(prev => ({ ...prev, location: val }))}
-              onSelect={place => {
-                const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
-                setData(prev => ({
-                  ...prev,
-                  location: place.name,
-                  ...(formatted ? { address: formatted } : {}),
-                }));
-              }}
-              placeholder="Venue or Studio Name"
-              className="w-full bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl px-4 py-3 text-base font-bold text-[var(--fg)] placeholder:text-muted-foreground/50 focus:outline-none transition-colors"
-            />
-          </div>
+          {renderLocationField('Venue or studio name')}
 
-          {/* Address */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider block mb-1.5 text-muted-foreground">ADDRESS</label>
-            <input
-              type="text"
+          <div className="flex flex-col gap-2">
+            <PillField
+              label="Address"
               value={data.address}
               onChange={e => setData(prev => ({ ...prev, address: e.target.value }))}
-              className="w-full bg-card border border-border/40 focus:border-[var(--wizard-accent)] rounded-xl px-4 py-2.5 text-sm font-semibold text-[var(--fg)] placeholder:text-muted-foreground/50 focus:outline-none transition-colors"
-              placeholder="Street, City, ZIP, Country"
+              placeholder="Street, city, ZIP, country"
             />
             {data.address && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {data.address.split(',').map((tag, i) => (
-                  <span key={i} className="bg-muted text-muted-foreground rounded-lg px-2.5 py-1 text-xs font-bold uppercase">
-                    {tag.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Date & Time Group */}
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-                REHEARSAL DATE
-              </label>
-              <DatePicker
-                value={data.date}
-                onChange={d => setData(prev => ({ ...prev, date: d }))}
-                accentColor={activeAccentColor}
-                placeholder="Select rehearsal date..."
-              />
-            </div>
-
-            {/* Start & End Times */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-                  START TIME
-                </label>
-                <TimePicker
-                  value={data.time}
-                  onChange={val => setData(prev => ({ ...prev, time: val }))}
-                  accentColor={activeAccentColor}
-                  textSize="text-base"
-                  showIcon
-                  className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">
-                  END TIME
-                </label>
-                <TimePicker
-                  value={endTime}
-                  onChange={val => setEndTime(val)}
-                  accentColor={activeAccentColor}
-                  align="end"
-                  textSize="text-base"
-                  showIcon
-                  className="border-b border-border/40 text-[var(--fg)] focus-within:border-[var(--wizard-accent)] transition-colors pb-1.5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Studio Cost & Split */}
-          <div className="pt-2 border-t border-border/40">
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-2">STUDIO COST</label>
-            <div className="grid grid-cols-2 gap-2.5 mb-3">
-              <button
-                type="button"
-                onClick={() => setData(prev => ({ ...prev, venueType: 'free' }))}
-                className={cn(
-                  'flex items-center justify-center gap-2 py-2.5 rounded-xl border font-bold text-xs uppercase transition-all cursor-pointer',
-                  data.venueType === 'free'
-                    ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                    : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
+              <div className="flex flex-wrap gap-1.5">
+                {data.address.split(',').map((tag, i) =>
+                  tag.trim() ? (
+                    <Tag key={i} variant="outline">
+                      {tag.trim()}
+                    </Tag>
+                  ) : null
                 )}
-              >
-                <Home className="w-4 h-4" />
-                Free
-              </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setData(prev => ({ ...prev, venueType: 'paid' }))}
-                  className={cn(
-                    'flex items-center justify-center gap-2 py-2.5 rounded-xl border font-bold text-xs uppercase transition-all cursor-pointer',
-                    data.venueType === 'paid'
-                      ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                      : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-                  )}
-                >
-                  <Euro className="w-4 h-4" />
-                  Paid
-                </button>
-              )}
-            </div>
-
-            {data.venueType === 'paid' && isAdmin && (
-              <div className="p-4 rounded-xl bg-muted/40 border border-border/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold uppercase text-muted-foreground block">TOTAL COST (€)</span>
-                    <input
-                      type="number"
-                      value={data.totalCost}
-                      onChange={e => setData(prev => ({ ...prev, totalCost: e.target.value }))}
-                      className="bg-transparent text-2xl font-bold focus:outline-none w-32 border-b border-border/40 focus:border-[var(--wizard-accent)] text-[var(--fg)]"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold uppercase text-muted-foreground block">PER PERSON</span>
-                    <span className="text-lg font-bold text-[var(--fg)]">
-                      €{(parseInt(data.totalCost || '0') / Math.max(data.audienceIds.length || data.members.length, 1)).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}
-                    className={cn(
-                      'px-3 py-1 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                      data.splitMethod === 'equal'
-                        ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                        : 'bg-card text-muted-foreground border-border/40'
-                    )}
-                  >
-                    Equal Split
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}
-                    className={cn(
-                      'px-3 py-1 rounded-lg text-xs font-bold uppercase border transition-all cursor-pointer',
-                      data.splitMethod === 'custom'
-                        ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)]'
-                        : 'bg-card text-muted-foreground border-border/40'
-                    )}
-                  >
-                    Custom
-                  </button>
-                </div>
               </div>
             )}
+          </div>
+
+          {renderDateTimeFields()}
+
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-sm text-muted-foreground">Studio cost</span>
+            <Segmented
+              label="Studio cost"
+              value={data.venueType}
+              options={
+                isAdmin
+                  ? [
+                      { value: 'free', label: 'Free' },
+                      { value: 'paid', label: 'Paid' },
+                    ]
+                  : [{ value: 'free', label: 'Free' }]
+              }
+              onChange={(v) => setData(prev => ({ ...prev, venueType: v }))}
+            />
+            {data.venueType === 'paid' && isAdmin && <div className="pt-2">{renderCostCard(true)}</div>}
           </div>
         </RehearsalAccordionCard>
 
-        {/* Section 3: Band Roster (1-Column Vertical List) */}
+        {/* Section 3: Band roster */}
         <RehearsalAccordionCard
           isOpen={!!expandedEditSections.roster}
           onToggle={() => toggleEditSection('roster')}
           stepNumber="03"
-          title="BAND ROSTER"
-          summary={`${selectedCount} OF ${totalAvailable} MUSICIANS SELECTED`}
+          title="Band roster"
+          summary={`${selectedCount} of ${totalAvailable} musicians selected`}
         >
-          <div className="flex gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}
-              className={cn(
-                'flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer',
-                isAllSelected
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
-            >
-              Select All ({totalAvailable})
-            </button>
-            <button
-              type="button"
+          <div className="flex gap-2">
+            <Selector size="md" selected={isAllSelected} onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}>
+              Select all · {totalAvailable}
+            </Selector>
+            <Selector
+              size="md"
+              selected={!isAllSelected}
               onClick={() => {
                 if (data.audienceIds.length === 0) {
                   setData(prev => ({ ...prev, audienceIds: prev.members.map(m => m.id) }));
                 }
               }}
-              className={cn(
-                'flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer',
-                !isAllSelected
-                  ? 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] border-[var(--wizard-accent)] shadow-xs'
-                  : 'bg-card text-muted-foreground border-border/40 hover:text-[var(--fg)]'
-              )}
             >
               Custom
-            </button>
+            </Selector>
           </div>
-
-          <div className="flex flex-col divide-y divide-border/40 border-y border-border/40">
-            {data.members.map(m => {
-              const isSelected = data.audienceIds.length === 0 || data.audienceIds.includes(m.id);
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => toggleAudienceMember(m.id)}
-                  className="flex items-center justify-between py-3 px-1 hover:bg-card/60 transition-colors text-left rounded-xl cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1 pr-3">
-                    <DotCheckbox
-                      checked={isSelected}
-                      activeColor="var(--wizard-accent)"
-                      inactiveColor="var(--border)"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <span className={cn('text-sm font-semibold block truncate leading-normal', isSelected ? 'text-[var(--fg)]' : 'text-muted-foreground')}>{m.name}</span>
-                      <span className="text-xs font-medium uppercase text-muted-foreground leading-normal">{m.role || 'Member'}</span>
-                    </div>
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0">
-                    {m.initials}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <ul className="flex flex-col">{data.members.map(renderMemberRow)}</ul>
         </RehearsalAccordionCard>
 
-        {/* Section 4: Setlist & Proposals */}
+        {/* Section 4: Setlist & proposals */}
         <RehearsalAccordionCard
           isOpen={!!expandedEditSections.setlist_proposals}
           onToggle={() => toggleEditSection('setlist_proposals')}
           stepNumber="04"
-          title="SETLIST & PROPOSALS"
-          summary={`${data.setlistSnapshotFinal?.songs.length || data.setlist.length} SONGS • ${data.proposals.length} PROPOSALS`}
+          title="Setlist & proposals"
+          summary={(() => {
+            const n = data.setlistSnapshotFinal?.songs.length || data.setlist.length;
+            return `${n} ${n === 1 ? 'song' : 'songs'} · ${data.proposals.length} ${data.proposals.length === 1 ? 'proposal' : 'proposals'}`;
+          })()}
         >
-          {/* Active Setlist Card */}
           {data.setlistSnapshotFinal ? (
-            <div
-              className={cn(
-                'rounded-xl p-4 cursor-pointer transition-all border',
-                isSetlistConfirmed
-                  ? 'bg-[var(--wizard-accent)]/15 border-[var(--wizard-accent)]/40'
-                  : 'bg-card border-border/40 hover:border-border/60'
-              )}
+            <button
+              type="button"
               onClick={() => setIsReviewSetlistOpen(true)}
+              className={cn(
+                'w-full flex flex-col gap-3 p-4 rounded-[16px] text-left cursor-pointer active:scale-[0.99] transition-transform',
+                isSetlistConfirmed ? 'bg-accent-rehearsal text-accent-rehearsal-foreground' : 'bg-background'
+              )}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Active Setlist</span>
-                <span className="text-xs font-bold uppercase text-muted-foreground">Tap to edit</span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[var(--fg)] leading-none">{data.setlistSnapshotFinal.songs.length}</span>
-                <span className="text-xs font-bold text-muted-foreground uppercase">Songs</span>
-              </div>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-muted text-[var(--fg)] text-xs font-bold uppercase rounded-full">{totalDuration}</span>
-                <span className="px-2 py-0.5 bg-muted/60 text-muted-foreground text-xs font-bold uppercase rounded-full">
-                  {data.setlistSnapshotFinal.sources.length} sources
-                </span>
-              </div>
-            </div>
+              <span className="flex items-center justify-between gap-3">
+                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>Active setlist</span>
+                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>Tap to edit</span>
+              </span>
+              <span className="flex items-baseline gap-2">
+                <span className="bw-value-lg">{data.setlistSnapshotFinal.songs.length}</span>
+                <span className="bw-label-sm">{data.setlistSnapshotFinal.songs.length === 1 ? 'Song' : 'Songs'}</span>
+              </span>
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <Tag variant={isSetlistConfirmed ? 'solid' : 'subtle'}>{totalDuration}</Tag>
+                <Tag variant={isSetlistConfirmed ? 'solid' : 'subtle'}>
+                  {data.setlistSnapshotFinal.sources.length} {data.setlistSnapshotFinal.sources.length === 1 ? 'source' : 'sources'}
+                </Tag>
+              </span>
+            </button>
           ) : (
-            <div className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-card">
-              <span className="text-xs font-bold uppercase text-muted-foreground">No setlist attached</span>
-              <button
-                type="button"
-                onClick={() => setSongPickerOpen(true)}
-                className="px-3 py-1.5 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] rounded-lg text-xs font-bold uppercase hover:opacity-95 transition-opacity cursor-pointer"
-              >
-                + Add Songs
-              </button>
+            <div className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background">
+              <span className="bw-label-sm text-muted-foreground">No setlist attached</span>
+              <PillButton variant="dark" size="sm" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setSongPickerOpen(true)}>
+                Add songs
+              </PillButton>
             </div>
           )}
 
-          {/* Pending queue if any */}
+          {!data.setlistSnapshotFinal && renderSongLists()}
+
           {hasQueue && (
-            <div className="bg-card rounded-xl p-3 border border-border/40 space-y-2">
-              <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider block">
-                Queue ({queueIds.length})
-              </span>
-              <div className="space-y-1">
+            <div className="flex flex-col gap-2 p-4 rounded-[16px] bg-background">
+              <span className="bw-label-sm text-muted-foreground">Queue · {queueIds.length}</span>
+              <ul className="flex flex-col gap-1">
                 {queueIds.map((tid, i) => {
                   const t = templates.find(tp => tp.id === tid);
                   return (
-                    <div key={`${tid}-${i}`} className="flex items-center justify-between bg-muted/40 px-2.5 py-1.5 rounded-lg text-xs">
-                      <span className="font-bold text-[var(--fg)] truncate">{t?.name || 'Unknown'}</span>
-                      <button type="button" onClick={() => handleRemoveFromQueue(i)} className="text-muted-foreground hover:text-[var(--destructive)]">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <li key={`${tid}-${i}`} className="flex items-center gap-3">
+                      <span className="flex-1 min-w-0 bw-body-md truncate">{t?.name || 'Unknown'}</span>
+                      <IconButton label={`Remove ${t?.name || 'template'} from queue`} icon={<X />} variant="ghost" size="sm" onClick={() => handleRemoveFromQueue(i)} />
+                    </li>
                   );
                 })}
-              </div>
-              <button
-                type="button"
-                onClick={handleBuildSnapshot}
-                className="w-full py-2 bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] rounded-lg text-xs font-bold uppercase cursor-pointer"
-              >
-                Merge into Setlist
-              </button>
+              </ul>
+              <PillButton variant="dark" size="md" onClick={handleBuildSnapshot}>
+                Merge into setlist
+              </PillButton>
             </div>
           )}
 
-          {/* Available setlists */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Available Setlists</span>
-              <button
-                type="button"
-                onClick={() => openSetlistEditor(null)}
-                className="text-xs font-bold uppercase text-muted-foreground hover:text-[var(--fg)] flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" /> New Setlist
-              </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="bw-label-sm text-muted-foreground">Available setlists</span>
+              <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3" icon={<Plus className="w-4 h-4" />} onClick={() => openSetlistEditor(null)}>
+                New setlist
+              </PillButton>
             </div>
-            <div className="space-y-1.5">
+            {templates.length === 0 && <p className="bw-body-sm text-muted-foreground">No saved setlists yet.</p>}
+            <ul className="flex flex-col gap-2">
               {templates.slice(0, 4).map(template => {
                 const inQueue = queueIds.includes(template.id);
                 return (
-                  <div key={template.id} className="p-2.5 rounded-lg border border-border/40 bg-card flex items-center justify-between text-xs">
-                    <span className="font-bold text-[var(--fg)] truncate">{template.name} ({template.songIds.length})</span>
-                    <button
-                      type="button"
+                  <li key={template.id} className="flex items-center gap-3 pl-4 pr-2 py-2 rounded-[16px] bg-background">
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-body-md truncate">{template.name}</span>
+                      <span className="bw-body-sm text-muted-foreground">
+                        {template.songIds.length} {template.songIds.length === 1 ? 'song' : 'songs'}
+                      </span>
+                    </span>
+                    <PillButton
+                      variant={inQueue ? 'dark' : 'outline'}
+                      size="sm"
+                      fullWidth={false}
+                      icon={inQueue ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                       onClick={() => handleAddToQueue(template.id)}
-                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs font-bold uppercase text-[var(--fg)] cursor-pointer"
                     >
-                      {inQueue ? 'Queued' : '+ Add'}
-                    </button>
-                  </div>
+                      {inQueue ? 'Queued' : 'Add'}
+                    </PillButton>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="bw-label-sm text-muted-foreground">
+              {data.proposals.length} {data.proposals.length === 1 ? 'song proposal' : 'song proposals'}
+            </span>
+            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
+              Propose song
+            </PillButton>
+          </div>
+        </RehearsalAccordionCard>
+
+        {/* Section 5: Gear, checklists & tasks */}
+        <RehearsalAccordionCard
+          isOpen={!!expandedEditSections.prep_tasks}
+          onToggle={() => toggleEditSection('prep_tasks')}
+          stepNumber="05"
+          title="Gear & tasks"
+          summary={`${data.tasks.length} ${data.tasks.length === 1 ? 'task' : 'tasks'} · ${checklistChecked.size} of ${data.defaultChecklist.length} gear checked`}
+        >
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-sm text-muted-foreground">My gear checklist</span>
+            <div className="grid grid-cols-2 gap-2">
+              {data.defaultChecklist.map((item, i) => {
+                const checked = checklistChecked.has(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-pressed={checked}
+                    className="flex items-center gap-3 p-3 rounded-[16px] bg-background text-left cursor-pointer"
+                    onClick={() =>
+                      setChecklistChecked(prev => {
+                        const next = new Set(prev);
+                        if (next.has(i)) next.delete(i);
+                        else next.add(i);
+                        return next;
+                      })
+                    }
+                  >
+                    <DotCheck checked={checked} className={checked ? 'text-foreground' : 'text-muted-foreground'} />
+                    <span className={cn('bw-body-sm truncate', !checked && 'text-muted-foreground')}>{item}</span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Proposals */}
-          <div className="pt-2 border-t border-border/40 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase text-muted-foreground">
-              {data.proposals.length} Song Proposals
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsProposeModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl border border-border/40 text-xs font-bold uppercase text-[var(--fg)] hover:bg-muted cursor-pointer"
-            >
-              + Propose Song
-            </button>
-          </div>
-        </RehearsalAccordionCard>
-
-        {/* Section 5: Gear, Checklists & Tasks */}
-        <RehearsalAccordionCard
-          isOpen={!!expandedEditSections.prep_tasks}
-          onToggle={() => toggleEditSection('prep_tasks')}
-          stepNumber="05"
-          title="GEAR, CHECKLISTS & TASKS"
-          summary={`${data.tasks.length} TASKS • ${checklistChecked.size} OF ${data.defaultChecklist.length} GEAR CHECKED`}
-        >
-          {/* Personal Checklist */}
-          <div>
-            <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-2">MY GEAR CHECKLIST</span>
-            <div className="grid grid-cols-2 gap-2">
-              {data.defaultChecklist.map((item, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className="flex items-center gap-2 p-2 rounded-xl border border-border/40 text-left hover:bg-muted/40 transition-colors cursor-pointer"
-                  onClick={() => setChecklistChecked(prev => {
-                    const next = new Set(prev);
-                    if (next.has(i)) next.delete(i); else next.add(i);
-                    return next;
-                  })}
-                >
-                  <DotCheckbox
-                    checked={checklistChecked.has(i)}
-                    activeColor="var(--wizard-accent)"
-                    inactiveColor="var(--border)"
-                  />
-                  <span className={cn('text-xs font-semibold truncate', checklistChecked.has(i) ? 'text-[var(--fg)]' : 'text-muted-foreground')}>{item}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tasks List */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">TASKS ({data.tasks.length})</span>
-              <button
-                type="button"
-                onClick={() => setIsAddTaskModalOpen(true)}
-                className="text-xs font-bold uppercase text-muted-foreground hover:text-[var(--fg)] flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3 h-3" /> Add Task
-              </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="bw-label-sm text-muted-foreground">Tasks · {data.tasks.length}</span>
+              <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3" icon={<Plus className="w-4 h-4" />} onClick={() => setIsAddTaskModalOpen(true)}>
+                Add task
+              </PillButton>
             </div>
 
             {taskTemplatesDB.length > 0 && data.tasks.length === 0 && (
-              <div className="mb-2">
-                <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1">LOAD TEMPLATE</span>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-col gap-2">
+                <span className="bw-label-sm text-muted-foreground">Load template</span>
+                <div className="flex flex-wrap gap-2">
                   {taskTemplatesDB.map(tpl => (
-                    <button
-                      key={tpl.id}
-                      type="button"
-                      onClick={() => loadTaskTemplate(tpl)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase bg-muted text-[var(--fg)] hover:bg-muted/80 cursor-pointer"
-                    >
+                    <Selector key={tpl.id} selected={false} onClick={() => loadTaskTemplate(tpl)}>
                       {tpl.name}
-                    </button>
+                    </Selector>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="space-y-1.5">
+            <ul className="flex flex-col gap-2">
               {data.tasks.map(task => (
-                <div
-                  key={task.id}
-                  onClick={() => openTaskEdit(task)}
-                  className="p-2.5 rounded-xl border border-border/40 bg-card flex items-center justify-between cursor-pointer hover:bg-muted/40"
-                >
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs font-bold text-[var(--fg)] truncate">{task.text}</p>
-                    <span className="text-xs font-medium uppercase text-muted-foreground">{task.type}</span>
-                  </div>
-                  <DotCheckbox
-                    checked={task.completed}
-                    activeColor="var(--wizard-accent)"
-                    inactiveColor="var(--border)"
-                  />
-                </div>
+                <li key={task.id}>
+                  <button
+                    type="button"
+                    onClick={() => openTaskEdit(task)}
+                    className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-background text-left cursor-pointer"
+                  >
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-body-md truncate">{task.text}</span>
+                      <span className="bw-label-xs text-muted-foreground">{task.type}</span>
+                    </span>
+                    <DotCheck checked={task.completed} className={task.completed ? 'text-foreground' : 'text-muted-foreground'} />
+                  </button>
+                </li>
               ))}
-              {data.tasks.length === 0 && (
-                <span className="text-xs text-muted-foreground italic block py-1">No tasks assigned yet.</span>
-              )}
-            </div>
+            </ul>
+            {data.tasks.length === 0 && <p className="bw-body-sm text-muted-foreground">No tasks assigned yet.</p>}
           </div>
         </RehearsalAccordionCard>
       </div>
     );
   };
 
-  // ── MAIN RENDER ───────────────────────────────────────────
+  // ── MODALS (shared by both modes) ─────────────────────────
 
-  if (isEditing) {
-    return (
-      <>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          data-wizard-type="rehearsal"
-          style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-          className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col h-full overflow-hidden"
-        >
-          <WizardAccentRail color={activeAccentColor} />
-
-          {/* Top Header Zone (shrink-0) */}
-          <div className="px-6 pb-4 shrink-0 bg-[var(--bg)]/95 backdrop-blur-md border-b border-border/40 z-10 flex items-start justify-between" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
-            <div className="flex flex-col gap-1 min-w-0 pr-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] shadow-xs">
-                  EDITING
-                </span>
-                <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-muted text-muted-foreground">
-                  {data.type.replace('_', ' ').toUpperCase()}
-                </span>
-                {data.recurrence !== 'once' && (
-                  <span className="px-2.5 py-0.5 text-xs font-bold uppercase rounded-md bg-muted text-muted-foreground">
-                    {data.recurrence.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <h1 className="text-2xl font-bold uppercase leading-tight text-[var(--fg)] truncate mt-1">
-                {getEffectiveTitle()}
-              </h1>
-              <span className="text-xs font-semibold uppercase text-muted-foreground">
-                {formatDate(data.date)} @ {data.time} – {endTime} • {data.location || 'LOCATION TBD'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close edit rehearsal modal"
-              className="w-11 h-11 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5 text-[var(--fg)]" />
-            </button>
-          </div>
-
-          {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
-          <PeekingScrollContainer className="flex-1 px-6 py-4 min-h-0">
-            {renderEditAccordionView()}
-          </PeekingScrollContainer>
-
-          {/* Bottom Action Bar (shrink-0) */}
-          <div className="px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 shrink-0 border-t border-border/40 bg-[var(--bg)]/95 backdrop-blur-md">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-4 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4 text-[var(--fg)]" />
-                CANCEL
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !data.location.trim()}
-                className={cn(
-                  'rounded-xl py-4 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2',
-                  !data.location.trim()
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                    : isSubmitting
-                      ? 'opacity-60 cursor-not-allowed bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]'
-                      : 'bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)] hover:opacity-95 shadow-lg shadow-black/20 cursor-pointer'
-                )}
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                <Check className="w-4 h-4" />
-                SAVE REHEARSAL
-              </button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Modals */}
-        <RehearsalProposeSongModal
-          isOpen={isProposeModalOpen}
-          onClose={() => setIsProposeModalOpen(false)}
-          currentUser={{ initials: currentUserInitials }}
-          onPropose={(proposal) => setData(prev => ({ ...prev, proposals: [...prev.proposals, proposal] }))}
-        />
-        <RehearsalAddTaskModal
-          isOpen={isAddTaskModalOpen}
-          onClose={() => setIsAddTaskModalOpen(false)}
-          members={data.members}
-          songs={data.setlist}
-          onAdd={(task) => setData(prev => ({ ...prev, tasks: [...prev.tasks, task] }))}
-        />
-        <RehearsalSetlistEditorModal
-          isOpen={isSetlistEditorOpen}
-          onClose={() => setIsSetlistEditorOpen(false)}
-          initialTemplate={editingTemplate}
-          library={library}
-          onSave={handleSaveTemplate}
-          onCreate={handleCreateTemplate}
-          currentUserInitials={currentUserInitials}
-          bandId={selectedBand?.id}
-          onSongCreated={(song) => {
-            if (!library.find(s => s.id === song.id)) {
-              setLibrary(prev => [song, ...prev]);
-            }
-          }}
-        />
-        <RehearsalEditProposalModal
-          isOpen={isEditProposalOpen}
-          onClose={() => setIsEditProposalOpen(false)}
-          proposal={editingProposal}
-          onSave={handleSaveProposalDetails}
-        />
-        <RehearsalTaskDetailModal
-          isOpen={isTaskDetailOpen}
-          onClose={() => setIsTaskDetailOpen(false)}
-          task={editingTask}
-          members={data.members}
-          onSave={handleSaveTask}
-          onDelete={handleDeleteTask}
-        />
-        <RehearsalReviewSetlistModal
-          isOpen={isReviewSetlistOpen}
-          onClose={() => setIsReviewSetlistOpen(false)}
-          snapshot={data.setlistSnapshotFinal}
-          totalDuration={totalDuration}
-          onUpdateSnapshot={handleUpdateSnapshot}
-          onConfirmSetlist={handleConfirmSetlist}
-          onDeselectSetlist={handleDeselectSetlist}
-          isConfirmed={isSetlistConfirmed}
-        />
-        <AnimatePresence>
-          {songPickerOpen && (
-            <SongPicker
-              isOpen={songPickerOpen}
-              onClose={() => setSongPickerOpen(false)}
-              onSelect={handleSongPicked}
-              selectedIds={data.setlist.map(s => s.id)}
-              theme="blue"
-            />
-          )}
-        </AnimatePresence>
-      </>
-    );
-  }
-
-  return (
+  const modals = (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        data-wizard-type="rehearsal"
-        style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
-        className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col h-full overflow-hidden"
-      >
-        <WizardAccentRail color={activeAccentColor} />
-
-        {/* Top Header Zone (shrink-0) */}
-        <div className="shrink-0 px-6 pb-3 border-b border-border/40 bg-[var(--bg)] z-10 flex flex-col gap-3" style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}>
-          {/* Step indicator bar */}
-          <div className="pt-1">
-            <InteractiveRehearsalStepIndicator
-              current={step}
-              total={STEPS.length}
-              steps={STEPS}
-              maxAccessibleStep={maxAccessibleStep}
-              onSelectStep={(s) => setStep(s)}
-              activeColor="var(--wizard-accent)"
-              inactiveColor="var(--border)"
-            />
-          </div>
-
-          {/* Eyebrow + Title and Close button */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                NEW REHEARSAL
-              </span>
-              <h2 className="text-2xl font-bold tracking-tight leading-tight text-[var(--fg)] mt-0.5 truncate">
-                {STEPS[step].title}
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close rehearsal wizard"
-              className="w-10 h-10 rounded-full border border-border/40 bg-card hover:bg-muted flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5 text-[var(--fg)]" />
-            </button>
-          </div>
-        </div>
-
-        {/* Scrollable Body Zone with 90% Viewport Peeking Affordance */}
-        <PeekingScrollContainer className="flex-1 px-6 py-4 space-y-5 min-h-0">
-          {step === 0 && renderSessionRosterStep()}
-          {step === 1 && renderDateLocationStep()}
-          {step === 2 && renderReviewExtrasStep()}
-        </PeekingScrollContainer>
-
-        {/* Bottom Action Bar */}
-        <div className="shrink-0 border-t border-border/40 px-6 pb-[max(env(safe-area-inset-bottom,16px),16px)] pt-4 bg-[var(--bg)]/95 backdrop-blur-md">
-          <div className="grid grid-cols-2 gap-3">
-            {step > 0 ? (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4 text-[var(--fg)]" />
-                BACK
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="bg-card text-[var(--fg)] border border-border/40 rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider hover:bg-muted transition-colors flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <X className="w-4 h-4 text-[var(--fg)]" />
-                CANCEL
-              </button>
-            )}
-
-            {step < STEPS.length - 1 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canProceed}
-                className={cn(
-                  'rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2',
-                  canProceed
-                    ? 'bg-[var(--wizard-accent)] text-white shadow-lg shadow-black/20 hover:opacity-95 cursor-pointer'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed'
-                )}
-              >
-                NEXT
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className={cn(
-                  'rounded-xl py-3.5 font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-[var(--wizard-accent)] text-white shadow-lg shadow-black/20',
-                  isSubmitting ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-95 cursor-pointer'
-                )}
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                CREATE REHEARSAL
-              </button>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Modals */}
       <RehearsalProposeSongModal
         isOpen={isProposeModalOpen}
         onClose={() => setIsProposeModalOpen(false)}
@@ -2407,6 +1734,114 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           />
         )}
       </AnimatePresence>
+    </>
+  );
+
+  // ── MAIN RENDER ───────────────────────────────────────────
+
+  if (isEditing) {
+    const typeLabel = TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band';
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          data-wizard-type="rehearsal"
+          style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
+          className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+        >
+          {/* Header */}
+          <header className="shrink-0 px-4 pb-4 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+            <div className="flex items-center gap-3 min-h-11">
+              <IconButton label="Close edit rehearsal" icon={<ArrowLeft />} onClick={onClose} />
+              <div className="flex-1" />
+              <Tag variant="rehearsal">Editing</Tag>
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <p className="bw-label-sm text-muted-foreground">
+                {typeLabel}
+                {data.recurrence !== 'once' && ` · ${recurrenceOptions.find(o => o.value === data.recurrence)?.label}`}
+              </p>
+              <h1 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h1>
+              <p className="bw-body-sm text-muted-foreground truncate">
+                {formatDate(data.date)} · {data.time} – {endTime} · {data.location || 'Location TBD'}
+              </p>
+            </div>
+          </header>
+
+          {/* Scrollable body */}
+          <PeekingScrollContainer className="flex-1 px-4 pt-1 pb-6 min-h-0">
+            {renderEditAccordionView()}
+          </PeekingScrollContainer>
+
+          {/* CTA bar */}
+          <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+            <div className="grid grid-cols-[2fr_3fr] gap-3">
+              <PillButton variant="outline" onClick={onClose}>
+                Cancel
+              </PillButton>
+              <PillButton
+                onClick={handleSubmit}
+                disabled={!data.location.trim()}
+                loading={isSubmitting}
+                icon={<Check className="w-[18px] h-[18px]" />}
+              >
+                Save rehearsal
+              </PillButton>
+            </div>
+          </div>
+        </motion.div>
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        data-wizard-type="rehearsal"
+        style={{ '--wizard-accent': activeAccentColor } as React.CSSProperties}
+        className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col h-full overflow-hidden"
+      >
+        {/* Header: Top Bar + wizard steps (Figma "Rehearsal / New") */}
+        <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+          <div className="flex items-center gap-3 min-h-11">
+            <IconButton label={step > 0 ? 'Back' : 'Cancel'} icon={<ArrowLeft />} onClick={handleBack} />
+            <h2 className="flex-1 min-w-0 bw-h1 truncate">New rehearsal</h2>
+            <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={onClose} />
+          </div>
+          <WizardSteps current={step} steps={STEPS} maxAccessibleStep={maxAccessibleStep} onSelectStep={(s) => setStep(s)} />
+        </header>
+
+        {/* Scrollable body */}
+        <PeekingScrollContainer className="flex-1 px-4 pt-2 pb-6 min-h-0">
+          {step === 0 && renderSessionRosterStep()}
+          {step === 1 && renderDateLocationStep()}
+          {step === 2 && renderReviewExtrasStep()}
+        </PeekingScrollContainer>
+
+        {/* CTA bar */}
+        <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+          <div className="grid grid-cols-[2fr_3fr] gap-3">
+            <PillButton variant="outline" onClick={step > 0 ? handleBack : onClose}>
+              {step > 0 ? 'Back' : 'Cancel'}
+            </PillButton>
+            {step < STEPS.length - 1 ? (
+              <PillButton onClick={handleNext} disabled={!canProceed}>
+                Next
+                <ArrowUpRight className="w-5 h-5" />
+              </PillButton>
+            ) : (
+              <PillButton onClick={handleSubmit} loading={isSubmitting} icon={<Check className="w-[18px] h-[18px]" />}>
+                Create rehearsal
+              </PillButton>
+            )}
+          </div>
+        </div>
+      </motion.div>
+      {modals}
     </>
   );
 };

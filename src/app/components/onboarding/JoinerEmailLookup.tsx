@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Mail, ArrowLeft, Loader2 } from '@/app/components/icons';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
+import { ArrowUpRight, Mail, Search } from '@/app/components/icons';
+import { AuthScreen, BackButton, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 
 interface PendingInvite {
   id: string;
@@ -98,136 +98,57 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
   };
 
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Subtle gradient */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[60%]"
-          style={{
-            background: 'linear-gradient(to top, rgba(0, 71, 255, 0.03) 0%, transparent 100%)',
-          }}
-        />
-      </div>
-
-      {/* Header */}
-      <div className="px-6 pt-6 relative z-10 flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 rounded-full bg-card flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground/90 hover:bg-card/80 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.6 }}
-        >
-          <BrandLogo
-            variant="waveform"
-            lockup="horizontal"
-            className="h-6"
-            textClassName="text-lg"
-          />
-        </motion.div>
-        
-        <div className="w-10" /> {/* Spacer for centering */}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 pt-16 relative z-10">
-        {/* Editorial headline */}
-        <motion.div
-          className="mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-        >
-          <h1 className="text-[48px] font-black text-foreground leading-[0.95] tracking-tight mb-4">
-            Find your
-            <br />
-            <span className="text-[var(--accent-rehearsal)]">invite</span>
-          </h1>
-          <p className="text-muted-foreground/60 text-[17px] font-medium leading-relaxed max-w-[280px]">
-            Enter the email where your band invitation was sent.
-          </p>
-        </motion.div>
-
-        {/* Email input */}
-        <motion.div
-          className="space-y-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" strokeWidth={1.5} />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="your@email.com"
-              className="w-full h-14 pl-12 pr-4 bg-card border border-border rounded-2xl text-foreground text-[17px] placeholder:text-muted-foreground/30 focus:outline-none focus:border-white/30 focus:bg-card/80 transition-all"
-              autoComplete="email"
-              autoCapitalize="none"
-              autoFocus
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400/80 text-[14px] font-medium px-1"
-            >
-              {error}
-            </motion.p>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Footer */}
-      <motion.div
-        className="px-6 pb-10 pt-6 relative z-10 space-y-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-      >
-        {/* Primary CTA */}
-        <button
+    <AuthScreen
+      bodyClassName="pt-3 gap-5"
+      top={<BackButton onClick={onBack} />}
+      footer={
+        <PillButton
+          variant="dark"
           onClick={handleLookup}
-          disabled={!email || isLoading}
-          className="w-full h-14 rounded-full text-[15px] font-black uppercase tracking-[0.15em] bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={!email}
+          loading={isLoading}
+          trailingIcon={<ArrowUpRight className="w-5 h-5" />}
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Searching...
-            </>
-          ) : (
-            <>
-              Find Invite
-              <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-            </>
-          )}
-        </button>
+          {isLoading ? 'Searching…' : 'Find invite'}
+        </PillButton>
+      }
+    >
+      <motion.div
+        className="flex flex-col gap-5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <div className="dark w-16 h-16 rounded-[24px] bg-sheet text-sheet-foreground flex items-center justify-center">
+          <Search className="w-[29px] h-[29px]" aria-hidden />
+        </div>
 
-        {/* Helper text */}
-        <p className="text-center text-muted-foreground/30 text-[13px] font-medium px-8">
-          We'll look for pending invitations sent to this address
+        <Kicker overline="Join a band" title="Find your invite" />
+
+        <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px]">
+          Enter the email where your band invitation was sent.
         </p>
+
+        <PillField
+          label="Email"
+          type="email"
+          inputMode="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="your@email.com"
+          autoComplete="email"
+          autoCapitalize="none"
+          autoFocus
+          icon={<Mail className="w-5 h-5" strokeWidth={1.75} />}
+          error={error}
+          hint="We'll look for pending invitations sent to this address."
+        />
       </motion.div>
-    </div>
+    </AuthScreen>
   );
 };
 

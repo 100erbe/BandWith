@@ -47,7 +47,7 @@ export const RehearsalModalWrapper: React.FC<Props> = ({
           >
             <div
               className="flex flex-col gap-8 px-4 pb-8 max-w-2xl mx-auto w-full"
-              style={{ paddingTop: 'calc(var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px)) + 8px)' }}
+              style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 56px)) + 8px)' }}
             >
               {/* Header */}
               <div className="flex items-center gap-4">

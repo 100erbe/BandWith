@@ -1,80 +1,50 @@
-import { registerPlugin, Capacitor } from '@capacitor/core';
-
-interface BandWithHapticsPlugin {
-  impact(options?: { style?: 'light' | 'medium' | 'heavy' }): Promise<void>;
-  notification(options?: { type?: 'success' | 'warning' | 'error' | 'delete' }): Promise<void>;
-  selection(): Promise<void>;
-}
-
-const NativeHaptics = registerPlugin<BandWithHapticsPlugin>('BandWithHaptics');
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 
 /**
- * Haptic feedback utility providing subtle native tactile feedback on mobile devices,
- * with graceful web API fallbacks.
+ * Haptic feedback on native (official @capacitor/haptics plugin) with a
+ * navigator.vibrate fallback on the web. Every call is fire-and-forget and
+ * never throws. Respects prefers-reduced-motion: users who ask for less motion
+ * get no web vibration either.
  */
+const isNative = () => Capacitor.isNativePlatform();
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const vibrate = (pattern: number | number[]) => {
+  if (prefersReducedMotion()) return;
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* unsupported */
+  }
+};
+
+const run = (native: () => Promise<void>, web: number | number[]) => {
+  if (isNative()) {
+    native().catch(() => {});
+  } else {
+    vibrate(web);
+  }
+};
+
 export const haptic = {
-  /**
-   * Subtle tap - ideal for navbar items, tabs, small action triggers
-   */
-  tap: () => {
-    if (Capacitor.isNativePlatform()) {
-      NativeHaptics.impact({ style: 'light' }).catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate(10);
-      } catch (_) {}
-    }
-  },
+  /** Subtle tap: nav items, tabs, small triggers. */
+  tap: () => run(() => Haptics.impact({ style: ImpactStyle.Light }), 10),
 
-  /**
-   * Medium impact - for noticeable user interactions like modals opening or primary actions
-   */
-  medium: () => {
-    if (Capacitor.isNativePlatform()) {
-      NativeHaptics.impact({ style: 'medium' }).catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate(20);
-      } catch (_) {}
-    }
-  },
+  /** Medium impact: sheets opening, primary actions. */
+  medium: () => run(() => Haptics.impact({ style: ImpactStyle.Medium }), 20),
 
-  /**
-   * Success confirmation - for event creation, saving changes, RSVP accept
-   */
-  confirm: () => {
-    if (Capacitor.isNativePlatform()) {
-      NativeHaptics.notification({ type: 'success' }).catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate([15, 60, 25]);
-      } catch (_) {}
-    }
-  },
+  /** Success: event created, changes saved, RSVP accepted. */
+  confirm: () => run(() => Haptics.notification({ type: NotificationType.Success }), [15, 60, 25]),
 
-  /**
-   * Destructive or warning action - for deleting events, cancelling, decline
-   */
-  delete: () => {
-    if (Capacitor.isNativePlatform()) {
-      NativeHaptics.notification({ type: 'delete' }).catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate([30, 50, 30]);
-      } catch (_) {}
-    }
-  },
+  /** Destructive or warning: delete, cancel, decline. */
+  delete: () => run(() => Haptics.notification({ type: NotificationType.Warning }), [30, 50, 30]),
 
-  /**
-   * Selection tick - for scroll wheels, toggle switches
-   */
-  selection: () => {
-    if (Capacitor.isNativePlatform()) {
-      NativeHaptics.selection().catch(() => {});
-    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      try {
-        navigator.vibrate(5);
-      } catch (_) {}
-    }
-  },
+  /** Selection tick: toggles, step pads, pickers. */
+  selection: () => run(() => Haptics.selectionChanged(), 5),
 };

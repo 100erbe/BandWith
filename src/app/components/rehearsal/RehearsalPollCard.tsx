@@ -1,23 +1,15 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Calendar,
-  Clock,
   Check,
-  X,
-  Users,
-  Sparkles,
-  ArrowRight,
-  Loader2,
+  ArrowUpRight,
   ChevronDown,
   ChevronUp,
   MapPin,
-  HelpCircle,
   AlertCircle,
   Trash2,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import {
   togglePollVote,
   clearUserVotesForPoll,
@@ -25,8 +17,9 @@ import {
   dismissPoll,
   deletePoll,
   type RehearsalPoll,
-  type RehearsalPollOption,
 } from '@/lib/services/rehearsalPolls';
+import { haptic } from '@/lib/haptics';
+import { StepPad, Card, Tag, PillButton, PillField } from '@/app/components/bw';
 
 interface RehearsalPollCardProps {
   poll: RehearsalPoll;
@@ -58,8 +51,6 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
 
   // Status checks
   const isProposed = poll.status === 'proposed';
-  const isPolling = poll.status === 'polling';
-  const isConfirmed = poll.status === 'confirmed';
 
   // Calculate highest vote count among options
   const maxVotes = useMemo(() => {
@@ -143,6 +134,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
 
   // Toggle vote
   const handleToggleVote = async (optionId: string) => {
+    haptic.selection();
     setVotingOptionId(optionId);
     startAutoClose();
     const { error } = await togglePollVote(poll.id, optionId, currentUserId);
@@ -172,7 +164,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
   // Finalize into official rehearsal
   const handleConfirmFinalize = async (optionId: string) => {
     setFinalizingOptionId(optionId);
-    const { data: newEv, error } = await finalizePollIntoRehearsal({
+    const { error } = await finalizePollIntoRehearsal({
       pollId: poll.id,
       winningOptionId: optionId,
       bandId: poll.band_id,
@@ -225,170 +217,131 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     if (!isAdmin && !isAuthor) return null;
 
     return (
-      <div className="w-full bg-card border border-foreground/15 rounded-2xl p-4 sm:p-5 shadow-xs transition-all hover:border-foreground/25 relative overflow-hidden">
-        {/* Accent strip */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--accent-rehearsal)]" />
-
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--accent-rehearsal)]/15 border border-[var(--accent-rehearsal)]/30 text-[var(--accent-rehearsal)] flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--accent-rehearsal)] block">
-                {isAuthor && !isAdmin ? 'Your Rehearsal Proposal' : 'Member Rehearsal Proposal'}
-              </span>
-              <h4 className="text-base font-black text-foreground uppercase tracking-tight leading-tight">
-                {poll.title}
-              </h4>
-            </div>
+      <Card className="w-full gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-accent-rehearsal" />
+              {isAuthor && !isAdmin ? 'Your rehearsal proposal' : 'Member rehearsal proposal'}
+            </span>
+            <h4 className="bw-h2 [overflow-wrap:anywhere]">{poll.title}</h4>
           </div>
-
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-foreground/10 text-muted-foreground uppercase tracking-wider shrink-0">
-            Pending Admin
-          </span>
+          <Tag variant="subtle">Pending admin</Tag>
         </div>
 
         {/* Proposer Details */}
-        <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">
-            Proposed by: {poll.creator_profile?.full_name || poll.creator_profile?.email || 'Band Member'}
-          </span>
-          <span>•</span>
-          <span>
-            {new Date(poll.created_at).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </span>
-        </div>
+        <p className="bw-body-sm text-muted-foreground">
+          Proposed by{' '}
+          <span className="text-foreground font-semibold">
+            {poll.creator_profile?.full_name || poll.creator_profile?.email || 'Band member'}
+          </span>{' '}
+          ·{' '}
+          {new Date(poll.created_at).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </p>
 
         {/* Preferred Days */}
         {poll.preferred_days && poll.preferred_days.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap mb-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Preferred:
-            </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="bw-label-sm text-muted-foreground mr-1">Preferred</span>
             {poll.preferred_days.map((day) => (
-              <span
-                key={day}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25"
-              >
+              <Tag key={day} variant="rehearsal">
                 {day}
-              </span>
+              </Tag>
             ))}
           </div>
         )}
 
         {/* Optional Notes */}
-        {poll.notes && (
-          <p className="text-xs text-foreground/80 bg-background/50 rounded-xl p-3 mb-4 leading-relaxed border border-foreground/10">
-            {poll.notes}
-          </p>
-        )}
+        {poll.notes && <p className="bw-body-md">{poll.notes}</p>}
 
         {/* Admin Actions */}
         {isAdmin && (
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-foreground/10">
-            <button
-              type="button"
-              disabled={dismissing}
-              onClick={handleDismiss}
-              className="py-2 px-3 rounded-lg text-xs font-bold text-muted-foreground hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors uppercase"
-            >
+          <div className="flex items-center justify-end gap-2">
+            <PillButton variant="ghost" size="sm" fullWidth={false} loading={dismissing} onClick={handleDismiss}>
               Dismiss
-            </button>
-            <button
-              type="button"
+            </PillButton>
+            <PillButton
+              variant="dark"
+              size="sm"
+              fullWidth={false}
               onClick={() => onConvertProposal?.(poll)}
-              className="py-2 px-4 rounded-xl bg-[var(--accent-rehearsal)] hover:opacity-95 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-xs"
+              icon={<ArrowUpRight className="w-4 h-4" />}
             >
-              <span>Build Poll from Proposal</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+              Build poll
+            </PillButton>
           </div>
         )}
-      </div>
+      </Card>
     );
   }
 
   // 2. ACTIVE AVAILABILITY POLL CARD (For polling status)
+  // Figma "Action card": dark card, status row, title, and one Step Pad per
+  // option. Tapping a pad toggles your availability; "Details" opens the
+  // full list (lock-in, delete, "none work").
+  const padOptions = poll.options.slice(0, 8);
   return (
-    <div className="w-full bg-card border border-foreground/15 rounded-2xl shadow-xs transition-all hover:border-foreground/25 relative overflow-hidden">
-      {/* Accent header bar */}
-      <div className="h-1 bg-[var(--accent-rehearsal)] w-full" />
+    <div className="dark w-full bg-sheet text-sheet-foreground rounded-[24px] relative overflow-hidden">
+      <div className="p-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 bw-label-sm">
+            <span className="w-2 h-2 rounded-full bg-destructive-solid" />
+            Poll · Active
+          </span>
+          <span
+            className={cn(
+              'h-4 px-1.5 rounded-full inline-flex items-center bw-label-xs',
+              hasUserVotedAny ? 'bg-white/15 text-white' : 'bg-accent text-accent-foreground'
+            )}
+          >
+            {hasUserVotedAny ? 'Voted' : 'Vote now'}
+          </span>
+        </div>
 
-      {/* Main Bar / Header - Clickable entire card area */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        onClick={() => {
-          clearAutoClose();
-          setExpanded((prev) => !prev);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
+        <div className="flex flex-col gap-2">
+          <h4 className="bw-h2 text-white">{poll.title}</h4>
+          <p className="bw-body-sm text-white/75">
+            {poll.notes ? `${poll.notes} — ` : 'Select your available options — '}
+            {uniqueVoterCount} of {totalMembers} voted
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, padOptions.length))}, minmax(0, 1fr))` }}>
+          {padOptions.map((option) => {
+            const d = new Date(option.proposed_date + 'T12:00:00');
+            const count = option.vote_count || 0;
+            const slots = Math.min(Math.max(totalMembers, count, 1), 8);
+            return (
+              <StepPad
+                key={option.id}
+                onDark
+                selected={!!option.has_voted}
+                disabled={votingOptionId === option.id}
+                day={d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                date={d.getDate()}
+                time={`${(option.start_time || '').slice(0, 5)}${option.end_time ? `–${option.end_time.slice(0, 5)}` : ''}`}
+                votes={Array.from({ length: slots }, (_, i) => i < count)}
+                onClick={() => handleToggleVote(option.id)}
+              />
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => {
             clearAutoClose();
             setExpanded((prev) => !prev);
-          }
-        }}
-        className="p-4 sm:p-5 cursor-pointer select-none transition-colors hover:bg-foreground/[0.03] active:bg-foreground/[0.06]"
-      >
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[var(--accent-rehearsal)]/15 border border-[var(--accent-rehearsal)]/30 text-[var(--accent-rehearsal)] flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--accent-rehearsal)]">
-                  Availability Poll
-                </span>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25 uppercase shrink-0">
-                  Active
-                </span>
-              </div>
-              <h4 className="text-base font-black text-foreground uppercase tracking-tight leading-tight mt-0.5 truncate">
-                {poll.title}
-              </h4>
-            </div>
-          </div>
-
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground transition-transform shrink-0"
-          >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
-
-        {poll.notes && (
-          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-            {poll.notes}
-          </p>
-        )}
-
-        {/* Participation Summary */}
-        <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground pt-1">
-          <div className="flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-[var(--accent-rehearsal)]" />
-            <span>
-              {uniqueVoterCount} of {totalMembers} members voted
-            </span>
-          </div>
-
-          {hasUserVotedAny ? (
-            <span className="text-[11px] font-bold text-[var(--success)] flex items-center gap-1">
-              <Check className="w-3.5 h-3.5" />
-              <span>You voted</span>
-            </span>
-          ) : (
-            <span className="text-[11px] font-bold text-[var(--accent-rehearsal)]">
-              Vote now
-            </span>
-          )}
-        </div>
+          }}
+          className="self-start flex items-center gap-1.5 bw-label-sm text-white/70 hover:text-white transition-colors cursor-pointer"
+        >
+          {expanded ? 'Hide details' : isAdmin ? 'Details · Lock in' : 'Details'}
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
       </div>
 
       {/* Expanded Candidate Options List */}
@@ -399,146 +352,100 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="border-t border-foreground/10 px-4 sm:px-5 pb-5 pt-3 flex flex-col gap-3"
+            className="overflow-hidden"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Select your available options:
-                </span>
-                {autoCloseCountdown !== null && (
-                  <span className="text-[10px] font-bold text-[var(--accent-rehearsal)] flex items-center gap-1.5 animate-pulse">
-                    <span>• Closing in {autoCloseCountdown}s</span>
-                    <button
-                      type="button"
-                      onClick={clearAutoClose}
-                      className="text-[9px] font-semibold text-muted-foreground hover:text-foreground underline uppercase tracking-wider"
-                    >
-                      Keep open
-                    </button>
-                  </span>
+            <div className="px-5 pb-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3 min-h-9">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="bw-label-sm text-white/70">Your availability</span>
+                  {autoCloseCountdown !== null && (
+                    <span className="flex items-center gap-2 bw-label-sm text-white/70">
+                      <span className="animate-pulse">· Closing in {autoCloseCountdown}s</span>
+                      <button
+                        type="button"
+                        onClick={clearAutoClose}
+                        className="underline underline-offset-2 text-white hover:opacity-80"
+                      >
+                        Keep open
+                      </button>
+                    </span>
+                  )}
+                </div>
+
+                {hasUserVotedAny && (
+                  <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3 shrink-0" onClick={handleNoneWork}>
+                    None work
+                  </PillButton>
                 )}
               </div>
 
-              {hasUserVotedAny && (
-                <button
-                  type="button"
-                  onClick={handleNoneWork}
-                  className="text-[10px] font-bold uppercase text-muted-foreground hover:text-[var(--destructive)] transition-colors"
-                >
-                  None work for me
-                </button>
-              )}
-            </div>
+              {/* Candidate Options */}
+              <div className="flex flex-col gap-2">
+                {poll.options.map((option) => {
+                  const parsedDate = new Date(option.proposed_date + 'T12:00:00');
+                  const isWinning = maxVotes > 0 && (option.vote_count || 0) === maxVotes;
+                  const isChecked = !!option.has_voted;
+                  const isFinalizing = finalizingOptionId === option.id;
+                  const isSelectingLocation = showLocationInput === option.id;
 
-            {/* Candidate Options */}
-            <div className="flex flex-col gap-2.5">
-              {poll.options.map((option) => {
-                const parsedDate = new Date(option.proposed_date + 'T12:00:00');
-                const isWinning = maxVotes > 0 && (option.vote_count || 0) === maxVotes;
-                const isChecked = !!option.has_voted;
-                const isVoting = votingOptionId === option.id;
-                const isFinalizing = finalizingOptionId === option.id;
-                const isSelectingLocation = showLocationInput === option.id;
-
-                return (
-                  <div
-                    key={option.id}
-                    className={cn(
-                      'rounded-xl border p-3 sm:p-3.5 transition-all relative flex flex-col gap-2.5',
-                      isChecked
-                        ? 'bg-[var(--accent-rehearsal)]/5 border-[var(--accent-rehearsal)] shadow-2xs'
-                        : isWinning
-                        ? 'bg-card border-[var(--accent-rehearsal)]/40'
-                        : 'bg-card border-foreground/10 hover:border-foreground/20'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2.5">
-                      {/* Left: Checkbox + Date/Time */}
-                      <div
-                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer select-none"
-                        onClick={() => handleToggleVote(option.id)}
-                      >
-                        <DotCheckbox
-                          checked={isChecked}
-                          activeColor="var(--accent-rehearsal)"
-                          className="shrink-0"
-                        />
-
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-black text-foreground whitespace-nowrap">
+                  return (
+                    <div
+                      key={option.id}
+                      className={cn(
+                        'rounded-[16px] p-4 flex flex-col gap-3 transition-colors',
+                        isChecked ? 'bg-accent text-accent-foreground' : 'bg-white/[0.08] text-white'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Toggle vote */}
+                        <button
+                          type="button"
+                          aria-pressed={isChecked}
+                          disabled={votingOptionId === option.id}
+                          onClick={() => handleToggleVote(option.id)}
+                          className="flex-1 min-w-0 flex flex-col gap-1 text-left cursor-pointer select-none"
+                        >
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span className="bw-body-lg whitespace-nowrap">
                               {parsedDate.toLocaleDateString(undefined, {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',
                               })}
                             </span>
-
-                            {isWinning && maxVotes > 0 && (
-                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--accent-rehearsal)] text-white shadow-2xs whitespace-nowrap shrink-0">
-                                Top Pick ({option.vote_count})
-                              </span>
+                            {isWinning && (
+                              <Tag variant={isChecked ? 'solid' : 'accent'} className={isChecked ? 'bg-black text-white' : undefined}>
+                                Top pick
+                              </Tag>
                             )}
-                          </div>
-
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mt-0.5">
-                            <Clock className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                            <span className="whitespace-nowrap">
-                              {option.start_time}
-                              {option.end_time ? ` – ${option.end_time}` : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Vote tally + Admin Lock-in */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* Attendance badge */}
-                        <div className="text-right">
-                          <span
-                            className={cn(
-                              'text-xs font-black block',
-                              isWinning && maxVotes > 0
-                                ? 'text-[var(--accent-rehearsal)]'
-                                : 'text-foreground'
-                            )}
-                          >
-                            {option.vote_count || 0}/{totalMembers}
                           </span>
-                          <span className="text-[9px] font-bold uppercase text-muted-foreground block -mt-0.5 whitespace-nowrap">
-                            Available
+                          <span className="bw-body-sm opacity-75 whitespace-nowrap">
+                            {option.start_time}
+                            {option.end_time ? ` – ${option.end_time}` : ''} · {option.vote_count || 0}/{totalMembers} available
                           </span>
-                        </div>
+                        </button>
 
                         {/* Admin Action: Lock In Slot */}
                         {isAdmin && (
-                          <button
-                            type="button"
+                          <PillButton
+                            size="sm"
+                            fullWidth={false}
+                            variant={isChecked ? 'dark' : isWinning ? 'primary' : 'outline'}
+                            className={isChecked ? 'bg-black text-white' : undefined}
+                            aria-expanded={isSelectingLocation}
                             onClick={() => {
                               clearAutoClose();
                               setShowLocationInput(isSelectingLocation ? null : option.id);
                             }}
-                            className={cn(
-                              'py-1.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all border shrink-0',
-                              isWinning
-                                ? 'bg-[var(--accent-rehearsal)] text-white border-[var(--accent-rehearsal)] hover:opacity-95 shadow-2xs'
-                                : 'bg-foreground/5 hover:bg-foreground/10 text-foreground border-foreground/15'
-                            )}
                           >
-                            Lock In
-                          </button>
+                            Lock in
+                          </PillButton>
                         )}
                       </div>
-                    </div>
 
-                    {/* Voters Avatars Row */}
-                    {option.votes && option.votes.length > 0 && (
-                      <div className="flex items-center gap-1.5 pt-1.5 border-t border-foreground/5">
-                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider mr-1 shrink-0">
-                          Voted:
-                        </span>
-                        <div className="flex items-center -space-x-1.5 overflow-hidden flex-wrap">
+                      {/* Voters */}
+                      {option.votes && option.votes.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {option.votes.map((v) => {
                             const initials = v.profile?.full_name
                               ? v.profile.full_name
@@ -550,130 +457,111 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                               : 'MB';
 
                             return (
-                              <div
+                              <span
                                 key={v.id}
                                 title={v.profile?.full_name || 'Member'}
-                                className="w-6 h-6 rounded-full border-2 border-card bg-foreground/10 text-[9px] font-black text-foreground flex items-center justify-center shrink-0 overflow-hidden"
+                                className="w-7 h-7 rounded-full border border-current/40 bw-label-xs flex items-center justify-center shrink-0 overflow-hidden"
                               >
                                 {v.profile?.avatar_url ? (
-                                  <img
-                                    src={v.profile.avatar_url}
-                                    alt="voter"
-                                    className="w-full h-full object-cover"
-                                  />
+                                  <img src={v.profile.avatar_url} alt={v.profile?.full_name || 'Voter'} className="w-full h-full object-cover" />
                                 ) : (
                                   initials
                                 )}
-                              </div>
+                              </span>
                             );
                           })}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Admin Location Prompt when clicking Lock In */}
-                    {isAdmin && isSelectingLocation && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-2 p-3 rounded-xl bg-background border border-[var(--accent-rehearsal)]/30 flex flex-col gap-2"
-                      >
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-rehearsal)]">
-                          Confirm Rehearsal Location & Create Event
-                        </span>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          <div className="flex items-center gap-2 flex-1 min-w-0 bg-card border border-foreground/15 rounded-lg px-2.5 py-1.5 focus-within:border-[var(--accent-rehearsal)]">
-                            <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <input
-                              type="text"
-                              value={finalLocation}
-                              onChange={(e) => setFinalLocation(e.target.value)}
-                              placeholder="Location / Practice Studio"
-                              className="w-full min-w-0 bg-transparent text-xs font-bold text-foreground focus:outline-none"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            disabled={isFinalizing}
+                      {/* Admin Location Prompt when clicking Lock In */}
+                      {isAdmin && isSelectingLocation && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col gap-3 p-4 -mx-1 rounded-[16px] bg-sheet text-white"
+                        >
+                          <PillField
+                            tone="sheet"
+                            label="Rehearsal location"
+                            icon={<MapPin className="w-5 h-5" />}
+                            value={finalLocation}
+                            onChange={(e) => setFinalLocation(e.target.value)}
+                            placeholder="Location / practice studio"
+                          />
+                          <PillButton
+                            size="md"
+                            loading={isFinalizing}
+                            icon={<Check className="w-4 h-4" />}
                             onClick={() => handleConfirmFinalize(option.id)}
-                            className="py-2 sm:py-1.5 px-4 rounded-lg bg-[var(--accent-rehearsal)] text-white text-xs font-black uppercase tracking-wider hover:opacity-95 flex items-center justify-center gap-1.5 shrink-0 shadow-2xs active:scale-95 transition-all"
                           >
-                            {isFinalizing ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Check className="w-3.5 h-3.5" />
-                            )}
-                            <span>Confirm</span>
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                            Confirm &amp; create event
+                          </PillButton>
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-            {/* Admin or Creator Footer Action: Delete Poll with Confirmation */}
-            {(isAdmin || poll.created_by === currentUserId) && (
-              <div className="pt-2 border-t border-foreground/10 flex flex-col gap-2">
-                {!showDeleteConfirm ? (
-                  <div className="flex items-center justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearAutoClose();
-                        setShowDeleteConfirm(true);
-                      }}
-                      className="text-[11px] font-bold text-muted-foreground hover:text-[var(--destructive)] flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-[var(--destructive)]/10 transition-colors uppercase tracking-wider"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Poll</span>
-                    </button>
-                  </div>
+              {/* Admin or Creator: Delete Poll with Confirmation */}
+              {(isAdmin || poll.created_by === currentUserId) &&
+                (!showDeleteConfirm ? (
+                  <PillButton
+                    variant="danger"
+                    size="sm"
+                    fullWidth={false}
+                    className="self-start -ml-3"
+                    icon={<Trash2 className="w-4 h-4" />}
+                    onClick={() => {
+                      clearAutoClose();
+                      setShowDeleteConfirm(true);
+                    }}
+                  >
+                    Delete poll
+                  </PillButton>
                 ) : (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-3 rounded-xl bg-[var(--destructive)]/10 border border-[var(--destructive)]/30 flex flex-col gap-2.5"
+                    role="alertdialog"
+                    aria-labelledby={`poll-delete-${poll.id}`}
+                    className="flex flex-col gap-3 p-4 rounded-[16px] border-2 border-destructive"
                   >
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-[var(--destructive)] shrink-0 mt-0.5" />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-black text-[var(--destructive)] uppercase">
-                          Delete Rehearsal Poll?
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        <span id={`poll-delete-${poll.id}`} className="bw-h3 text-destructive">
+                          Delete rehearsal poll?
                         </span>
-                        <p className="text-[11px] font-medium text-foreground/80 leading-snug">
+                        <p className="bw-body-sm text-white/80">
                           All proposed dates and member votes will be permanently deleted. This cannot be undone.
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
+                    <div className="flex items-center justify-end gap-2">
+                      <PillButton
+                        variant="ghost"
+                        size="sm"
+                        fullWidth={false}
                         disabled={isDeleting}
                         onClick={() => setShowDeleteConfirm(false)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-foreground/70 hover:text-foreground hover:bg-foreground/10 transition-colors uppercase"
                       >
                         Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isDeleting}
+                      </PillButton>
+                      <PillButton
+                        size="sm"
+                        fullWidth={false}
+                        loading={isDeleting}
+                        icon={<Trash2 className="w-4 h-4" />}
+                        className="bg-destructive-solid text-white"
                         onClick={handleDeletePoll}
-                        className="px-3.5 py-1.5 rounded-lg bg-[var(--destructive)] text-white text-xs font-black uppercase tracking-wider hover:opacity-95 flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all"
                       >
-                        {isDeleting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isDeleting ? 'Deleting...' : 'Delete Poll'}</span>
-                      </button>
+                        {isDeleting ? 'Deleting…' : 'Delete poll'}
+                      </PillButton>
                     </div>
                   </motion.div>
-                )}
-              </div>
-            )}
+                ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

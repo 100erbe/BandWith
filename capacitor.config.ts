@@ -22,12 +22,22 @@ const config: CapacitorConfig = {
       backgroundColor: '#000000',
       showSpinner: false
     },
+    // Edge-to-edge: the web view draws under transparent system bars and the
+    // app pads its own content with --safe-top / --safe-bottom (theme.css).
     StatusBar: {
-      style: 'Dark',
-      backgroundColor: '#000000'
+      overlaysWebView: true,
+      style: 'DEFAULT'
+    },
+    SystemBars: {
+      // Android: inject correct --safe-area-inset-* CSS variables
+      insetsHandling: 'css',
+      style: 'DEFAULT'
     },
     Keyboard: {
-      resize: 'body',
+      // 'native' shrinks the web view itself, so full-screen `fixed inset-0`
+      // panels (chat composer, wizards) stay above the keyboard. 'body' only
+      // resized <body> and, with contentInset 'never', left inputs hidden.
+      resize: 'native',
       style: 'dark'
     },
     PushNotifications: {
@@ -40,7 +50,7 @@ const config: CapacitorConfig = {
     }
   },
   ios: {
-    contentInset: 'automatic',
+    contentInset: 'never',
     preferredContentMode: 'mobile',
     backgroundColor: '#000000'
   },

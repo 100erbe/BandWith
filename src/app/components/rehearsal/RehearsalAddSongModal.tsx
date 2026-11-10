@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Music, UploadCloud, Smartphone, FileText, Folder, Plus } from '@/app/components/icons';
+import { UploadCloud, Smartphone, FileText, Plus } from '@/app/components/icons';
+import { BwSheet, PillButton, PillField, Selector } from '@/app/components/bw';
 import { RehearsalSong } from './types';
 import { cn } from '@/app/components/ui/utils';
 
@@ -42,121 +42,104 @@ export const RehearsalAddSongModal: React.FC<Props> = ({ isOpen, onClose, onAdd,
   };
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Add External Song" icon={Music}>
-        <div className="space-y-6">
-            
-            {/* Source Selection */}
-            <div className="grid grid-cols-3 gap-3">
-               <button onClick={() => setMethod('local')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'local' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
-                  <Smartphone className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Local Device</span>
-               </button>
-               <button onClick={() => setMethod('drive')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'drive' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
-                  <UploadCloud className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Google Drive</span>
-               </button>
-               <button onClick={() => setMethod('dropbox')} className={cn("flex flex-col items-center p-4 rounded-xl border-2 transition-all", method === 'dropbox' ? "bg-black border-black text-accent" : "bg-transparent border-black/10 text-foreground/40")}>
-                  <UploadCloud className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-bold uppercase">Dropbox</span>
-               </button>
-            </div>
-
-            {/* Upload Area */}
-            <div className="border-2 border-dashed border-black/10 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-black/[0.02]">
-                <FileText className="w-10 h-10 text-foreground/20 mb-3" />
-                <p className="text-sm font-bold text-foreground/60 mb-1">
-                   {file ? file.name : "Drag & Drop or Click to Upload"}
-                </p>
-                <p className="text-[10px] font-bold text-foreground/30 uppercase">
-                   Supports PDF, MP3, GPX
-                </p>
-                <input 
-                   type="file" 
-                   className="hidden" 
-                   id="file-upload"
-                   onChange={(e) => setFile(e.target.files?.[0] || null)}
-                />
-                <label htmlFor="file-upload" className="mt-4 px-4 py-2 bg-black/5 rounded-full text-xs font-bold uppercase cursor-pointer hover:bg-black/10 transition-colors">
-                   Choose File
-                </label>
-            </div>
-
-            {/* Manual Details */}
-            <div className="space-y-4">
-                <div className="group">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
-                    <input 
-                       type="text" 
-                       value={details.title}
-                       onChange={e => setDetails({...details, title: e.target.value})}
-                       className="w-full bg-transparent border-b-2 border-black/10 py-2 text-xl font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
-                       placeholder="e.g. Superstition"
-                    />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Artist</label>
-                        <input 
-                           type="text" 
-                           value={details.artist}
-                           onChange={e => setDetails({...details, artist: e.target.value})}
-                           className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
-                           placeholder="e.g. Stevie Wonder"
-                        />
-                    </div>
-                    <div className="group">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Folder</label>
-                        <div className="space-y-2">
-                             <div className="flex flex-wrap gap-2">
-                                 {categories.map(cat => (
-                                     <button
-                                         key={cat}
-                                         onClick={() => setDetails({...details, category: cat})}
-                                         className={cn(
-                                             "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all",
-                                             details.category === cat 
-                                               ? "bg-black text-white border-black" 
-                                               : "bg-transparent text-foreground/40 border-black/10 hover:border-black/30"
-                                         )}
-                                     >
-                                         {cat}
-                                     </button>
-                                 ))}
-                                 <button
-                                     onClick={() => setDetails({...details, category: ''})} // Clear to trigger input or use a 'custom' state
-                                     className={cn(
-                                         "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed transition-all flex items-center gap-1",
-                                         !categories.includes(details.category) && details.category !== '' 
-                                            ? "bg-black text-white border-black" 
-                                            : "text-foreground/40 border-black/20 hover:border-black/40"
-                                     )}
-                                 >
-                                     <Plus className="w-3 h-3" /> New
-                                 </button>
-                             </div>
-                             {(!categories.includes(details.category) || details.category === '') && (
-                                 <input 
-                                     type="text"
-                                     value={details.category}
-                                     onChange={(e) => setDetails({...details, category: e.target.value})}
-                                     className="w-full bg-transparent border-b-2 border-black/10 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-black transition-all placeholder:text-foreground/20"
-                                     placeholder="Type new folder name..."
-                                     autoFocus
-                                 />
-                             )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button 
-               onClick={handleSave}
-               disabled={!details.title}
-               className="w-full py-4 bg-black text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-               Add to Setlist
-            </button>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline="Setlist"
+      title="Add external song"
+      zIndex={110}
+      footer={
+        <div className="dark">
+          <PillButton onClick={handleSave} disabled={!details.title} icon={<Plus className="w-[18px] h-[18px]" />}>
+            Add to setlist
+          </PillButton>
         </div>
-    </RehearsalModalWrapper>
+      }
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Source */}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Source</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              ['local', Smartphone, 'Local device'],
+              ['drive', UploadCloud, 'Google Drive'],
+              ['dropbox', UploadCloud, 'Dropbox'],
+            ] as const).map(([id, Icon, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={method === id}
+                onClick={() => setMethod(id)}
+                className={cn(
+                  'flex flex-col items-center gap-2 p-4 rounded-[16px] transition-colors cursor-pointer',
+                  method === id ? 'bg-accent text-accent-foreground' : 'bg-white/[0.08] text-sheet-foreground'
+                )}
+              >
+                <Icon className="w-6 h-6" />
+                <span className="bw-label-xs text-center">{label}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Upload Area */}
+        <div className="flex flex-col items-center justify-center gap-2 p-8 rounded-[24px] border-[1.5px] border-dashed border-sheet-foreground/30 text-center">
+          <FileText className="w-8 h-8 text-sheet-foreground/40" />
+          <p className="bw-body-md">{file ? file.name : 'Drag & drop or choose a file'}</p>
+          <p className="bw-label-sm text-sheet-foreground/60">Supports PDF, MP3, GPX</p>
+          <input type="file" className="hidden" id="file-upload" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <label
+            htmlFor="file-upload"
+            className="mt-2 inline-flex items-center h-9 px-4 rounded-full border-[1.5px] border-sheet-foreground bw-button-sm cursor-pointer active:scale-[0.97] transition-transform"
+          >
+            Choose file
+          </label>
+        </div>
+
+        {/* Manual Details */}
+        <PillField
+          tone="sheet"
+          label="Song title *"
+          value={details.title}
+          onChange={(e) => setDetails({ ...details, title: e.target.value })}
+          placeholder="e.g. Superstition"
+        />
+        <PillField
+          tone="sheet"
+          label="Artist"
+          value={details.artist}
+          onChange={(e) => setDetails({ ...details, artist: e.target.value })}
+          placeholder="e.g. Stevie Wonder"
+        />
+        <fieldset className="flex flex-col gap-2">
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Folder</legend>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <Selector key={cat} selected={details.category === cat} onClick={() => setDetails({ ...details, category: cat })}>
+                {cat}
+              </Selector>
+            ))}
+            <Selector
+              selected={!categories.includes(details.category) && details.category !== ''}
+              onClick={() => setDetails({ ...details, category: '' })}
+            >
+              <Plus className="w-3 h-3" /> New
+            </Selector>
+          </div>
+          {(!categories.includes(details.category) || details.category === '') && (
+            <PillField
+              tone="sheet"
+              label="New folder name"
+              hideLabel
+              value={details.category}
+              onChange={(e) => setDetails({ ...details, category: e.target.value })}
+              placeholder="Type new folder name…"
+              autoFocus
+            />
+          )}
+        </fieldset>
+      </div>
+    </BwSheet>
   );
 };

@@ -102,13 +102,13 @@ export const generateOnboardingEmailHtml = (
   const buttonStyle = `
     display: inline-block;
     padding: 18px 48px;
-    background-color: #C8431A;
-    color: #FFFFFF;
+    background-color: #D5FB46;
+    color: #000000;
     text-decoration: none;
     font-size: 16px;
     font-weight: 700;
     border-radius: 14px;
-    box-shadow: 0 4px 24px rgba(200, 67, 26, 0.35);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
   `;
 
   switch (type) {
@@ -131,9 +131,9 @@ export const generateOnboardingEmailHtml = (
                     <!-- Header -->
                     <tr>
                       <td align="center" style="padding: 48px 40px 32px;">
-                        <div style="width: 72px; height: 72px; background-color: #C8431A; border-radius: 20px; text-align: center; line-height: 72px; font-size: 36px;">🎸</div>
+                        <div style="width: 72px; height: 72px; background-color: #D5FB46; border-radius: 20px; text-align: center; line-height: 72px; font-size: 36px;">🎸</div>
                         <h1 style="margin: 20px 0 0; font-size: 28px; font-weight: 700; color: #FFFFFF;">
-                          Band<span style="color: #C8431A;">With</span>
+                          Band<span style="color: #000000;">With</span>
                         </h1>
                       </td>
                     </tr>
@@ -153,7 +153,7 @@ export const generateOnboardingEmailHtml = (
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #2C2C2E; border-radius: 16px; margin-bottom: 32px;">
                           <tr>
                             <td style="padding: 24px; text-align: center;">
-                              <h3 style="margin: 0; font-size: 28px; font-weight: 800; color: #C8431A;">"${data.bandName}"</h3>
+                              <h3 style="margin: 0; font-size: 28px; font-weight: 800; color: #000000;">"${data.bandName}"</h3>
                               <p style="margin: 8px 0 0; font-size: 14px; color: #71717A;">as ${data.role}</p>
                             </td>
                           </tr>
@@ -173,7 +173,7 @@ export const generateOnboardingEmailHtml = (
                         <p style="margin: 24px 0 0; font-size: 13px; line-height: 20px; color: #52525B; text-align: center;">
                           If the button doesn't work, copy and paste this link:
                         </p>
-                        <p style="margin: 8px 0 0; font-size: 12px; line-height: 18px; color: #C8431A; text-align: center; word-break: break-all;">
+                        <p style="margin: 8px 0 0; font-size: 12px; line-height: 18px; color: #000000; text-align: center; word-break: break-all;">
                           ${data.inviteUrl}
                         </p>
                       </td>
@@ -215,7 +215,7 @@ export const generateOnboardingEmailHtml = (
                       <td style="padding: 24px 40px 40px; background-color: #141416;">
                         <p style="margin: 0 0 16px; font-size: 13px; color: #52525B; text-align: center;">
                           Need help? Contact us at
-                          <a href="mailto:support@bandwith.app" style="color: #C8431A; text-decoration: none;">support@bandwith.app</a>
+                          <a href="mailto:support@bandwith.app" style="color: #000000; text-decoration: none;">support@bandwith.app</a>
                         </p>
                         <p style="margin: 0; font-size: 11px; color: #3F3F46; text-align: center;">
                           © 2026 BandWith. All rights reserved.<br>
@@ -262,7 +262,7 @@ export const generateOnboardingEmailHtml = (
                     <tr>
                       <td style="padding: 0 40px 40px; text-align: center;">
                         <p style="font-size: 16px; color: #A1A1AA; margin-bottom: 24px;">
-                          ${data.inviterName} invited you to join <strong style="color: #C8431A;">"${data.bandName}"</strong> 
+                          ${data.inviterName} invited you to join <strong style="color: #000000;">"${data.bandName}"</strong> 
                           and is waiting for your response.
                         </p>
                         
@@ -303,7 +303,7 @@ export const generateOnboardingEmailHtml = (
                     
                     <tr>
                       <td align="center" style="padding: 48px 40px 32px;">
-                        <div style="width: 72px; height: 72px; background-color: #C8431A; border-radius: 20px; text-align: center; line-height: 72px; font-size: 36px;">🎉</div>
+                        <div style="width: 72px; height: 72px; background-color: #D5FB46; border-radius: 20px; text-align: center; line-height: 72px; font-size: 36px;">🎉</div>
                         <h1 style="margin: 20px 0 0; font-size: 24px; font-weight: 700; color: #FFFFFF;">
                           New Member!
                         </h1>
@@ -316,7 +316,7 @@ export const generateOnboardingEmailHtml = (
                           <strong>${data.newMemberName}</strong>
                         </p>
                         <p style="font-size: 14px; color: #A1A1AA; margin-bottom: 24px;">
-                          just joined <strong style="color: #C8431A;">"${data.bandName}"</strong>
+                          just joined <strong style="color: #000000;">"${data.bandName}"</strong>
                         </p>
                         
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background-color: #2C2C2E; border-radius: 12px; margin: 0 auto;">

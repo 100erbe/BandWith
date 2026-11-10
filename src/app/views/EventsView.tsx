@@ -1,28 +1,30 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { flushSync } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { 
   ArrowUpRight,
-  ChevronRight,
-  ChevronLeft,
+  ArrowLeft,
+  ArrowRight,
   AlertCircle,
   Plus,
   Search,
   X,
   ChevronDown,
+  ChevronRight,
   History,
-  Calendar,
-  MapPin,
-  Clock,
   RefreshCw,
 } from '@/app/components/icons';
+import { createPortal } from 'react-dom';
+import { IconButton, Tag, SearchField, Card } from '@/app/components/bw/Screen';
+import { PillButton, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
-import { StatusBadge } from '@/app/components/ui/StatusBadge';
 import { EventData } from '@/app/components/dashboard/EventCard';
 import { APP_COPY } from '@/app/constants/copy';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { EventsSkeleton } from '@/app/components/ui/EventsSkeleton';
+import { parseLocalDate } from '@/lib/dates';
+import { DotMeter, DotText, EventMark, SectionHeader, type EventKind } from '@/app/components/bw';
+import { FIT, FitText } from '@/app/components/bw/FitText';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -52,16 +54,6 @@ interface EventsViewProps {
 
 const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
 
-const TAG_COLORS: Record<string, string> = {
-  gig: 'bg-accent-gig text-accent-gig-foreground',
-  outdoor: 'bg-accent-gig text-accent-gig-foreground',
-  confirmed: 'bg-accent-gig text-accent-gig-foreground',
-  rehearsal: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
-  series: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
-  quote: 'bg-accent-quote text-accent-quote-foreground',
-  draft: 'bg-black/20 text-foreground/60',
-  pending: 'bg-accent-quote text-accent-quote-foreground',
-};
 
 const getRehearsalCadence = (event: EventData): string => {
   if (!event.is_recurring) return 'ONCE';
@@ -94,32 +86,22 @@ const getEventTags = (event: EventData): string[] => {
   return tags;
 };
 
-const getTagStyle = (tag: string, eventStatus?: string): { bg: string; text: string } => {
-  const secondaryLabels = ['WEEKLY', 'BI-WEEKLY', 'MONTHLY', 'BI-MONTHLY', 'ONCE', 'RECURRING', 'INDOOR', 'OUTDOOR', 'HYBRID', 'PENDING', 'DRAFT', 'TENTATIVE', 'CONFIRMED', 'SENT', 'CANCELLED', 'COMPLETED'];
-  if (secondaryLabels.includes(tag)) {
-    return { bg: 'var(--muted)', text: 'var(--fg)' };
-  }
-  const s = eventStatus?.toUpperCase();
-  if (s === 'REHEARSAL') return { bg: 'var(--accent-rehearsal)', text: 'var(--accent-rehearsal-fg)' };
-  if (s === 'QUOTED' || s === 'QUOTE') return { bg: 'var(--accent-quote)', text: 'var(--accent-quote-fg)' };
-  if (s === 'DRAFT' || s === 'PENDING') return { bg: 'var(--muted-fg)', text: 'var(--surface-inverse-fg)' };
-  return { bg: 'var(--accent-gig)', text: 'var(--accent-gig-fg)' };
-};
 
-const getCalendarColor = (event: EventData): string => {
+
+const calendarKind = (event: EventData, isPast = false): EventKind => {
+  if (isPast) return 'past';
   const status = event.status?.toUpperCase();
-  if (status === 'REHEARSAL') return 'var(--accent-rehearsal)';
-  if (status === 'CONFIRMED' || status === 'COMPLETED') return 'var(--accent-gig)';
-  if (status === 'QUOTED' || status === 'QUOTE') return 'var(--accent-quote)';
-  if (status === 'DRAFT' || status === 'PENDING') return 'var(--muted-fg)';
-  return 'var(--accent-gig)';
+  if (status === 'REHEARSAL' || event.eventType === 'rehearsal') return 'rehearsal';
+  if (status === 'QUOTED' || status === 'QUOTE' || status === 'DRAFT' || status === 'PENDING') return 'quote';
+  if (!event.band_id) return 'personal';
+  return 'gig';
 };
 
 const normalizeDateStr = (rawDate: string | undefined): string | null => {
   if (!rawDate) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return rawDate;
   if (rawDate.includes('T')) return rawDate.split('T')[0];
-  const parsed = new Date(rawDate);
+  const parsed = parseLocalDate(rawDate);
   if (!isNaN(parsed.getTime())) {
     const y = parsed.getFullYear();
     const m = String(parsed.getMonth() + 1).padStart(2, '0');
@@ -131,28 +113,10 @@ const normalizeDateStr = (rawDate: string | undefined): string | null => {
 
 const formatEventDate = (dateStr: string): string => {
   if (!dateStr) return 'TBD';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   const day = d.getDate();
   return `${month} ${day}`;
-};
-
-const formatEventDateShort = (dateStr?: string): string => {
-  if (!dateStr) return 'TBD';
-  const norm = normalizeDateStr(dateStr);
-  if (!norm) return dateStr;
-  const parts = norm.split('-');
-  if (parts.length === 3) {
-    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      });
-    }
-  }
-  return dateStr;
 };
 
 const getPrimaryBadge = (event: EventData): string => {
@@ -161,14 +125,6 @@ const getPrimaryBadge = (event: EventData): string => {
   if (s === 'QUOTED' || s === 'QUOTE' || event.eventType === 'quote') return 'QUOTE';
   if (s === 'DRAFT' || s === 'PENDING') return 'DRAFT';
   return 'GIG';
-};
-
-const getBadgeStyleClass = (event: EventData): string => {
-  const badge = getPrimaryBadge(event);
-  if (badge === 'REHEARSAL') return 'bg-accent-rehearsal/15 text-accent-rehearsal border border-accent-rehearsal/25';
-  if (badge === 'QUOTE') return 'bg-accent-quote/15 text-accent-quote border border-accent-quote/25';
-  if (badge === 'DRAFT') return 'bg-foreground/10 text-foreground/60 border border-foreground/15';
-  return 'bg-accent-gig/15 text-accent-gig border border-accent-gig/25';
 };
 
 const formatEventTime = (timeStr: string): string => {
@@ -250,7 +206,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onCreateEvent,
   onOpenPastEvents,
   isAdmin = true,
-  onDayPickerOpen,
   userFeeMap = {},
   bands = [],
   rehearsalPolls = [],
@@ -286,22 +241,22 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const monthOffsetRef = useRef(monthOffset);
   monthOffsetRef.current = monthOffset;
   const [selectedEmptyDate, setSelectedEmptyDate] = useState<string | null>(null);
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
+  // Figma "Calendar / Search": a full-screen search opened from the header's
+  // search button (Header dispatches `bw:open-event-search`).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTab, setSearchTab] = useState<'ALL' | 'GIGS' | 'REHEARSALS' | 'QUOTES' | 'PAST'>('ALL');
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setShowAutocomplete(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside, { capture: true });
-    document.addEventListener('touchstart', handleClickOutside, { capture: true });
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside, { capture: true });
-      document.removeEventListener('touchstart', handleClickOutside, { capture: true });
-    };
+    const open = () => setSearchOpen(true);
+    window.addEventListener('bw:open-event-search', open);
+    return () => window.removeEventListener('bw:open-event-search', open);
   }, []);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchTab('ALL');
+    setEventSearch('');
+  };
 
   const [warningPopoverId, setWarningPopoverId] = useState<number | null>(null);
   const [suggestionPopoverId, setSuggestionPopoverId] = useState<number | null>(null);
@@ -316,7 +271,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
     window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
     return () => window.removeEventListener('scroll', handleScroll, { capture: true });
   }, [warningPopoverId, suggestionPopoverId]);
-  const bandIds = React.useMemo(() => (bands || []).map(b => b.id), [bands]);
   const [dayPickerEvents, setDayPickerEvents] = useState<EventData[] | null>(null);
   const [showPastEvents, setShowPastEvents] = useState(false);
 
@@ -390,8 +344,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
     pastMatches.sort((a, b) => (normalizeDateStr(b.date) || '').localeCompare(normalizeDateStr(a.date) || ''));
 
     return {
-      upcomingMatches: upcomingMatches.slice(0, 6),
-      pastMatches: pastMatches.slice(0, 6),
+      upcomingMatches,
+      pastMatches,
       totalCount: matches.length,
     };
   }, [eventSearch, rawEvents, filteredAllEvents, isAdmin, todayStr]);
@@ -460,6 +414,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return { upcomingEvents: upcoming, pastEvents: past };
   }, [filteredAllEvents, todayStr]);
 
+  const maxUpcomingFee = useMemo(
+    () => Math.max(0, ...upcomingEvents.map((e) => parseFloat(String(e.price || '').replace(/[^0-9.]/g, '')) || 0)),
+    [upcomingEvents]
+  );
+
   const eyebrowLabel = useMemo(() => {
     if (eventFilter === 'All' || eventFilter === 'ALL') return 'SCHEDULE';
     if (eventFilter === 'GIGS') return 'GIGS';
@@ -469,15 +428,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return 'SCHEDULE';
   }, [eventFilter]);
 
+  // A day with several events opens an inline panel under the grid (like the
+  // free-day panel), so the bottom navigation stays put.
   const openDayPicker = (events: EventData[]) => {
     setDayPickerEvents(events);
-    onDayPickerOpen?.(true);
   };
-  const closeDayPicker = () => {
-    setDayPickerEvents(null);
-    onDayPickerOpen?.(false);
-  };
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const getMonthForOffset = (offset: number) => {
     const base = baseDateRef.current;
@@ -497,9 +452,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const nextMonthInfo = useMemo(() => getMonthForOffset(monthOffset + 1), [monthOffset]);
 
   const calendarYear = currMonthInfo.year;
-  const calendarMonth = currMonthInfo.month;
-  const daysInMonth = currMonthInfo.daysInMonth;
-  const firstDayOfWeek = currMonthInfo.firstDayOfWeek;
   const monthName = currMonthInfo.monthName;
 
   const today = new Date();
@@ -665,16 +617,6 @@ export const EventsView: React.FC<EventsViewProps> = ({
     }
   };
 
-  const formatSelectedDate = (dateKey: string) => {
-    const [y, m, d] = dateKey.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   const renderEventCard = (event: EventData, isPast: boolean = false) => {
     const status = event.status?.toUpperCase();
@@ -684,27 +626,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const isDraft = !isRehearsal && !isGig && !isQuote;
     const memberCount = event.members?.length || 0;
 
-    let accentColor = 'var(--accent-gig)';
-    let accentFg = 'var(--accent-gig-fg)';
-    let typeLabel = 'GIG';
+    let typeLabel = event.band_id ? 'GIG' : 'PERSONAL';
 
     if (isRehearsal) {
-      accentColor = 'var(--accent-rehearsal)';
-      accentFg = 'var(--accent-rehearsal-fg)';
       typeLabel = 'REHEARSAL';
     } else if (isQuote) {
-      accentColor = 'var(--accent-quote)';
-      accentFg = 'var(--accent-quote-fg)';
       typeLabel = 'QUOTE';
     } else if (isDraft) {
-      accentColor = 'var(--muted-fg)';
-      accentFg = 'var(--bg)';
       typeLabel = 'DRAFT';
-    }
-
-    if (isPast) {
-      accentColor = 'var(--accent-past)';
-      accentFg = 'var(--accent-past-fg)';
     }
 
     const warnings = getEventWarnings(event);
@@ -712,99 +641,84 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const tags = getEventTags(event);
     const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
 
-    const rehearsalTime = event.time
-      ? (event.endTime
-          ? `${formatEventTime(event.time)} - ${formatEventTime(event.endTime)}`
-          : formatEventTime(event.time))
-      : 'TBD';
 
-    const loadInTime = event.loadInTime
-      ? formatEventTime(event.loadInTime)
-      : event.time
-        ? formatEventTime(event.time.replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 3))))
-        : 'TBD';
 
-    const soundCheckTime = event.soundcheckTime
-      ? formatEventTime(event.soundcheckTime)
-      : event.time
-        ? formatEventTime(event.time.replace(/:d{2}$/, ':30').replace(/^(\d+)/, (_, h) => String(Math.max(1, parseInt(h) - 2))))
-        : 'TBD';
 
-    const showTime = event.time ? formatEventTime(event.time) : 'TBD';
+
+    // ── Figma "EventCard": the whole card is the event colour ──
+    const kind: EventKind = isPast ? 'past' : isRehearsal ? 'rehearsal' : isQuote ? 'quote' : !event.band_id ? 'personal' : 'gig';
+    const cardBg = isDraft && !isPast ? 'var(--muted)' : `var(--accent-${kind})`;
+    const cardFg = isDraft && !isPast ? 'var(--fg)' : `var(--accent-${kind}-fg)`;
+    const dimFg = `color-mix(in srgb, ${cardFg} 22%, transparent)`;
+    const chipBg = `color-mix(in srgb, ${cardFg} 12%, transparent)`;
+    const statusChip = isPast ? 'PAST' : secondaryTags[0] || (isGig ? 'CONFIRMED' : isDraft ? 'DRAFT' : '');
+    const issues = [...warnings, ...(isAdmin ? suggestions : [])];
+    const venue = event.location?.split(',')[0] || event.clientName || 'TBD';
+    const address = event.venueAddress || event.location?.split(',').slice(1).join(',').trim();
+    const dateLabel = [event.date ? formatEventDate(event.date) : 'TBD', event.time ? formatEventTime(event.time) : null].filter(Boolean).join(' · ');
+
+    const hours = (() => {
+      const m1 = event.time?.match(/^(\d{1,2}):(\d{2})/);
+      const m2 = event.endTime?.match(/^(\d{1,2}):(\d{2})/);
+      if (!m1 || !m2) return null;
+      let diff = (+m2[1] * 60 + +m2[2]) - (+m1[1] * 60 + +m1[2]);
+      if (diff <= 0) diff += 24 * 60;
+      return Math.round((diff / 60) * 10) / 10;
+    })();
+    const feeNum = parseFloat(String(event.price || '').replace(/[^0-9.]/g, '')) || 0;
+
+    const left = { label: isRehearsal ? 'GOING' : isQuote || isGig ? 'LINEUP' : 'TEAM', value: String(memberCount), fill: memberCount / 16 };
+    const right = isRehearsal
+      ? { label: 'LENGTH', value: hours ? `${hours}H` : '--', fill: hours ? hours / 4 : 0 }
+      : { label: isQuote ? 'QUOTE' : getFeeLabel(event) === 'YOUR FEE' ? 'YOUR FEE' : 'FEE', value: feeNum > 0 ? getDisplayFee(event) : '--', fill: maxUpcomingFee > 0 ? feeNum / maxUpcomingFee : 0 };
 
     return (
       <motion.div
         key={event.id}
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEventClick(event); } }}
         className={cn(
-          "relative flex flex-col rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 overflow-hidden cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-[0.99]",
-          isPast && "opacity-80 hover:opacity-100"
+          'relative flex flex-col gap-4 rounded-[24px] p-5 cursor-pointer active:scale-[0.99] transition-transform',
+          isPast && 'opacity-85'
         )}
+        style={{ backgroundColor: cardBg, color: cardFg }}
         onClick={() => onEventClick(event)}
       >
-        {/* Left Accent Rail */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-[5px]"
-          style={{ backgroundColor: accentColor }}
-        />
-
-        <div className="flex flex-col gap-[14px] p-[16px] pl-[20px] sm:p-[20px] sm:pl-[24px]">
-          {/* Card Header: Tags + Date & Warnings */}
-          <div className="flex items-start justify-between gap-[12px]">
-            <div className="flex items-center gap-[6px] flex-wrap">
-              {/* Multi-band member: band name pill */}
-              {!isAdmin && (
-                !event.band_id ? (
-                  <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-accent-gig/15 text-accent-gig border border-accent-gig/30">
-                    Personal
-                  </div>
-                ) : (bands.length > 1 && event.band_name && (
-                  <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/80">
-                    {event.band_name}
-                  </div>
-                ))
+        {/* Top: chips + title, open button (Figma "Event Card") */}
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <EventMark kind={kind} size={20} bare />
+              <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center">{typeLabel}</span>
+              {statusChip && (
+                <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center" style={{ backgroundColor: chipBg }}>
+                  {statusChip}
+                </span>
               )}
-              {/* Primary Type Badge */}
-              <div
-                className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight"
-                style={{ backgroundColor: accentColor, color: accentFg }}
-              >
-                {typeLabel}
-              </div>
-              {/* Secondary Tags */}
-              {secondaryTags.map((tag, i) => (
-                <div
-                  key={i}
-                  className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/70"
-                >
-                  {tag}
-                </div>
-              ))}
-              {isPast && (
-                <div className="inline-flex items-center justify-center rounded-[6px] px-[8px] py-[3px] text-[11px] font-bold uppercase tracking-wider leading-tight bg-foreground/10 text-foreground/50">
-                  PAST
-                </div>
+              {!isAdmin && bands.length > 1 && event.band_name && (
+                <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center truncate max-w-[140px]" style={{ backgroundColor: chipBg }}>
+                  {event.band_name}
+                </span>
               )}
               {event._isPendingSync && (
-                <div className="inline-flex items-center gap-1 rounded-[6px] px-[8px] py-[3px] text-[11px] font-black uppercase tracking-wider leading-tight bg-amber-400 text-zinc-950 border border-amber-500">
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span>Pending Sync</span>
-                </div>
+                <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center gap-1 bg-warning text-warning-foreground">
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Sync
+                </span>
               )}
-            </div>
-
-            {/* Top-Right Badges: Warnings & Date */}
-            <div className="flex items-center gap-[8px] shrink-0">
-              {!isPast && warnings.length > 0 && (
+              {!isPast && issues.length > 0 && (
                 <div className="relative">
                   <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                    aria-label="Missing event details"
-                    title="Missing event details"
-                    className="w-6 h-6 rounded-full bg-warning/15 text-warning border border-warning/30 flex items-center justify-center hover:bg-warning/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
+                    aria-label={`${issues.length} details missing`}
+                    className="relative h-4 px-1.5 rounded-full inline-flex items-center gap-1 bw-label-xs cursor-pointer after:absolute after:-inset-3 after:content-['']"
+                    style={{ backgroundColor: chipBg }}
                   >
-                    <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <AlertCircle className="w-2.5 h-2.5" />
+                    {issues.length}
                   </button>
                   <AnimatePresence>
                     {warningPopoverId === event.id && (
@@ -812,221 +726,92 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         initial={{ opacity: 0, scale: 0.95, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                        className="absolute top-full right-0 mt-2 bg-popover text-popover-foreground border border-foreground/15 rounded-[12px] p-3 z-50 min-w-[210px] shadow-xl backdrop-blur-md cursor-pointer hover:border-warning/50 transition-all group/popover"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setWarningPopoverId(null);
-                          setSuggestionPopoverId(null);
-                          onEventClick(event);
-                        }}
+                        className="absolute top-full left-0 mt-2 bg-popover text-popover-foreground rounded-[16px] p-3 z-50 min-w-[210px] shadow-lg cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); onEventClick(event); }}
                       >
-                        <div className="flex items-center justify-between gap-1.5 mb-2 border-b border-foreground/10 pb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 stroke-[2.5]" />
-                            <span className="text-[10px] font-bold text-warning uppercase tracking-wider">Missing Info</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-foreground/50 group-hover/popover:text-foreground flex items-center gap-0.5 uppercase tracking-wider transition-colors">
-                            Edit <ArrowUpRight className="w-3 h-3" />
-                          </span>
+                        <div className="flex items-center justify-between gap-1.5 mb-2 pb-1.5 border-b border-border">
+                          <span className="bw-label-xs text-warning">Missing info</span>
+                          <span className="bw-label-xs text-muted-foreground flex items-center gap-0.5">Edit <ArrowUpRight className="w-3 h-3" /></span>
                         </div>
-                        <div className="space-y-1.5">
-                          {warnings.map((w, wi) => (
-                            <div key={wi} className="flex items-center gap-2 py-0.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
-                              <span className="text-[11px] font-medium text-foreground/80">{w}</span>
+                        <div className="flex flex-col gap-1.5">
+                          {issues.map((w, wi) => (
+                            <div key={wi} className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                              <span className="bw-body-sm">{w}</span>
                             </div>
                           ))}
-                        </div>
-                        <div className="mt-2.5 pt-1.5 border-t border-foreground/10 text-[10px] font-semibold text-foreground/50 text-center">
-                          Tap to update details
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
               )}
-              {!isPast && isAdmin && suggestions.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); setSuggestionPopoverId(suggestionPopoverId === event.id ? null : event.id); }}
-                    aria-label="Event suggestions"
-                    title="Event suggestions"
-                    className="w-6 h-6 rounded-full bg-warning/15 text-warning border border-warning/30 flex items-center justify-center hover:bg-warning/25 active:scale-95 transition-all shadow-2xs shrink-0 cursor-pointer"
-                  >
-                    <AlertCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </button>
-                  <AnimatePresence>
-                    {suggestionPopoverId === event.id && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                        className="absolute top-full right-0 mt-2 bg-popover text-popover-foreground border border-foreground/15 rounded-[12px] p-3 z-50 min-w-[210px] shadow-xl backdrop-blur-md cursor-pointer hover:border-warning/50 transition-all group/popover"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setWarningPopoverId(null);
-                          setSuggestionPopoverId(null);
-                          onEventClick(event);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-1.5 mb-2 border-b border-foreground/10 pb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 stroke-[2.5]" />
-                            <span className="text-[10px] font-bold text-warning uppercase tracking-wider">Suggestions</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-foreground/50 group-hover/popover:text-foreground flex items-center gap-0.5 uppercase tracking-wider transition-colors">
-                            Edit <ArrowUpRight className="w-3 h-3" />
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {suggestions.map((s, si) => (
-                            <div key={si} className="flex items-center gap-2 py-0.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
-                              <span className="text-[11px] font-medium text-foreground/80">{s}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-2.5 pt-1.5 border-t border-foreground/10 text-[10px] font-semibold text-foreground/50 text-center">
-                          Tap to view details
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              {/* Date Badge */}
-              <div
-                className="rounded-[8px] px-[10px] py-[4px] text-[12px] font-bold uppercase tracking-wider whitespace-nowrap shadow-xs"
-                style={{ backgroundColor: accentColor, color: accentFg }}
-              >
-                {event.date ? formatEventDate(event.date) : 'TBD'}
-              </div>
             </div>
+            <FitText as="h3" text={event.title} sizes={FIT.h1} maxLines={2} className="bw-h1" />
           </div>
+          <span className="w-8 h-8 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center shrink-0" aria-hidden="true">
+            <ArrowUpRight className="w-[18px] h-[18px]" />
+          </span>
+        </div>
 
-          {/* Card Body: Title & Venue */}
-          <div className="flex flex-col gap-[3px]">
-            {!event.band_id && (
-              <div className="text-[11px] uppercase tracking-wider leading-tight text-foreground/60 mb-0.5">
-                <span className="font-bold text-accent-gig">PERSONAL</span> • GIG
-              </div>
-            )}
-            <h3 className="text-[19px] sm:text-[21px] font-bold text-foreground uppercase tracking-tight leading-snug line-clamp-1">
-              {event.title}
-            </h3>
-            <div className="flex items-center gap-[6px] text-[13px] text-foreground/60 font-medium truncate">
-              <span className="font-semibold text-foreground/80">
-                {event.location?.split(',')[0] || event.clientName || 'TBD'}
-              </span>
-              {(event.venueAddress || event.location?.includes(',')) && (
-                <>
-                  <span className="text-foreground/30">•</span>
-                  <span className="truncate text-foreground/50">
-                    {event.venueAddress || event.location?.split(',').slice(1).join(',').trim()}
-                  </span>
-                </>
-              )}
+        {/* Venue + date */}
+        <div className="flex items-end justify-between gap-2">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="bw-label-md truncate">{venue}</span>
+            {address && <span className="bw-label-xs truncate opacity-70">{address}</span>}
+          </div>
+          <span className="bw-label-xs h-5 px-2 rounded-[4px] inline-flex items-center whitespace-nowrap shrink-0" style={{ backgroundColor: chipBg }}>
+            {dateLabel}
+          </span>
+        </div>
+
+        {/* Metrics (Figma Metric, Layout=Card, Tone=On event) */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8">
+          {[left, right].map((m) => (
+            <div key={m.label} className="flex flex-col gap-2 min-w-0">
+              <DotMeter value={m.fill} rows={2} cols={10} dot={10} onColor={cardFg} offColor={dimFg} peakColor={cardFg} />
+              <span className="bw-label-md">{m.label}</span>
+              <DotText text={m.value} size={30} />
             </div>
-          </div>
-
-          {/* Card Footer: Metadata Strip */}
-          <div className="border-t border-foreground/10 pt-[10px] flex items-center justify-between gap-[12px]">
-            {isRehearsal ? (
-              <>
-                <div className="flex items-center gap-[8px]">
-                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TIME</span>
-                  <span className="text-[15px] font-bold text-foreground leading-none">
-                    {rehearsalTime}
-                  </span>
-                </div>
-                <div className="flex items-center gap-[6px] text-foreground/70">
-                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">MEMBERS</span>
-                  <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                </div>
-              </>
-            ) : isGig ? (
-              <>
-                <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
-                  <div className="flex items-center gap-[4px]">
-                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">LOAD</span>
-                    <span className="text-[14px] font-bold text-foreground leading-none">{loadInTime}</span>
-                  </div>
-                  <div className="flex items-center gap-[4px]">
-                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SOUND</span>
-                    <span className="text-[14px] font-bold text-foreground leading-none">{soundCheckTime}</span>
-                  </div>
-                  <div className="flex items-center gap-[4px]">
-                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">SHOW</span>
-                    <span className="text-[14px] font-bold text-foreground leading-none">{showTime}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
-                    {getFeeLabel(event)}
-                  </span>
-                  <span className="text-[17px] font-bold text-foreground leading-none">
-                    {getDisplayFee(event)}
-                  </span>
-                </div>
-              </>
-            ) : isQuote ? (
-              <>
-                <div className="flex items-center gap-[12px] sm:gap-[16px] flex-wrap text-[13px]">
-                  <div className="flex items-center gap-[4px]">
-                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">CLIENT</span>
-                    <span className="text-[14px] font-bold text-foreground uppercase leading-none truncate max-w-[140px] sm:max-w-[200px]">
-                      {event.clientName || 'TBD'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-[4px]">
-                    <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
-                    <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <span className="text-[10px] font-bold text-foreground/45 uppercase tracking-wider leading-none mb-[2px]">
-                    {getFeeLabel(event)}
-                  </span>
-                  <span className="text-[17px] font-bold text-foreground leading-none">
-                    {getDisplayFee(event)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-[6px]">
-                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">STATUS</span>
-                  <span className="text-[14px] font-bold text-foreground uppercase leading-none">DRAFT</span>
-                </div>
-                <div className="flex items-center gap-[6px]">
-                  <span className="text-[11px] font-bold text-foreground/45 uppercase tracking-wider">TEAM</span>
-                  <span className="text-[14px] font-bold text-foreground leading-none">{memberCount}</span>
-                </div>
-              </>
-            )}
-          </div>
+          ))}
         </div>
       </motion.div>
     );
   };
+
+  // Figma "Calendar Month": pill cells 24px high, 8px row gap.
+  const CELL_H = 24;
+  const ROW_GAP = 8;
+  const gridHeight = (rows: number) => rows * CELL_H + (rows - 1) * ROW_GAP;
 
   const renderMonthGrid = (
     info: ReturnType<typeof getMonthForOffset>,
     isInteractive: boolean
   ) => {
     const { offset, year, month, daysInMonth, firstDayOfWeek, numRows } = info;
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    const trailing = numRows * 7 - (firstDayOfWeek + daysInMonth);
+    const fadedCell = (label: number, key: string) => (
+      <div
+        key={key}
+        aria-hidden="true"
+        className="rounded-full flex items-center justify-center bw-label-md bg-foreground/[0.08] text-muted-foreground"
+      >
+        {label}
+      </div>
+    );
     return (
       <div
-        className="grid grid-cols-7 gap-[4px] w-full"
+        className="grid grid-cols-7 gap-x-[5px] w-full"
         style={{
-          gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
-          height: numRows * 30,
+          gridTemplateRows: `repeat(${numRows}, ${CELL_H}px)`,
+          rowGap: ROW_GAP,
+          height: gridHeight(numRows),
         }}
       >
-        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-          <div key={`empty-${offset}-${i}`} />
-        ))}
+        {Array.from({ length: firstDayOfWeek }).map((_, i) =>
+          fadedCell(prevMonthDays - firstDayOfWeek + 1 + i, `prev-${offset}-${i}`)
+        )}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
           const dateKey = `${year}-${month}-${day}`;
@@ -1035,94 +820,59 @@ export const EventsView: React.FC<EventsViewProps> = ({
           const hasEvents = eventsOnDay.length > 0;
           const multipleEvents = eventsOnDay.length > 1;
           const isToday = year === today.getFullYear() && month === today.getMonth() && day === today.getDate();
-          const isSelected = selectedEmptyDate === dateKeyStr;
+          const isSelected = selectedEmptyDate === dateKeyStr
+            || (!!dayPickerEvents?.length && normalizeDateStr(dayPickerEvents[0].date) === dateKeyStr);
+          const isPastDay = dateKeyStr < todayStr;
 
-          let bgColor = 'rgba(0,0,0,0.1)';
-          let textColor = 'text-foreground';
-          let bgStyle: React.CSSProperties = { backgroundColor: bgColor };
-
+          let style: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, var(--fg) 8%, transparent)', color: 'var(--fg)' };
           if (hasEvents) {
             const primary = eventsOnDay[0];
-            bgColor = getCalendarColor(primary);
-            const status = primary.status?.toUpperCase();
-            textColor =
-              status === 'REHEARSAL' || status === 'DRAFT' || status === 'PENDING' || status === 'QUOTE' || status === 'QUOTED'
-                ? 'text-white'
-                : 'text-accent-gig-foreground';
-
+            const k = calendarKind(primary, isPastDay);
+            style = { backgroundColor: `var(--accent-${k})`, color: `var(--accent-${k}-fg)` };
             if (multipleEvents) {
-              const colors = [...new Set(eventsOnDay.map(getCalendarColor))];
-              if (colors.length > 1) {
-                bgStyle = { background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
-                textColor = 'text-white';
-              } else {
-                bgStyle = { backgroundColor: bgColor };
-              }
-            } else {
-              bgStyle = { backgroundColor: bgColor };
+              const colors = [...new Set(eventsOnDay.map((e) => `var(--accent-${calendarKind(e, isPastDay)})`))];
+              if (colors.length > 1) style = { ...style, background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
             }
+          } else if (isToday) {
+            style = { backgroundColor: 'var(--surface-inverse)', color: 'var(--surface-inverse-fg)' };
           }
 
-          return hasEvents ? (
+          return (
             <button
               key={`${year}-${month}-${day}`}
               type="button"
               disabled={!isInteractive}
+              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length} event${eventsOnDay.length > 1 ? 's' : ''}` : ''}${isToday ? ', today' : ''}`}
+              aria-current={isToday ? 'date' : undefined}
               onClick={() => {
                 if (!isInteractive) return;
-                setSelectedEmptyDate(null);
-                if (multipleEvents) {
-                  openDayPicker(eventsOnDay);
+                if (hasEvents) {
+                  setSelectedEmptyDate(null);
+                  if (multipleEvents) openDayPicker(eventsOnDay);
+                  else { setDayPickerEvents(null); onEventClick(eventsOnDay[0]); }
                 } else {
-                  onEventClick(eventsOnDay[0]);
+                  setDayPickerEvents(null);
+                  setSelectedEmptyDate(isSelected ? null : dateKeyStr);
                 }
               }}
               className={cn(
-                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer relative select-none",
-                isInteractive && "hover:scale-105 active:scale-95",
-                textColor,
-                isToday && "ring-2 ring-primary ring-offset-2 ring-offset-background font-bold shadow-md"
+                'rounded-full flex items-center justify-center relative select-none cursor-pointer transition-transform bw-label-md',
+                isInteractive && 'active:scale-95',
+                isSelected && 'ring-2 ring-foreground ring-offset-2 ring-offset-background',
+                isToday && hasEvents && 'ring-2 ring-foreground ring-offset-1 ring-offset-background'
               )}
-              style={bgStyle}
+              style={style}
             >
-              <span className="text-[16px] font-medium leading-none">{day}</span>
+              {day}
               {multipleEvents && (
-                <span className="absolute -top-1 -right-1 w-[14px] h-[14px] bg-[var(--surface-inverse)] text-[var(--surface-inverse-fg)] text-[8px] font-bold rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-1.5 -right-1 min-w-[14px] h-[14px] px-0.5 bg-surface-inverse text-surface-inverse-foreground bw-label-xs leading-none rounded-full flex items-center justify-center">
                   {eventsOnDay.length}
                 </span>
-              )}
-              {isToday && !multipleEvents && (
-                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white dark:bg-primary" />
-              )}
-            </button>
-          ) : (
-            <button
-              key={`${year}-${month}-${day}`}
-              type="button"
-              disabled={!isInteractive}
-              onClick={() => {
-                if (!isInteractive) return;
-                setSelectedEmptyDate(isSelected ? null : dateKeyStr);
-              }}
-              className={cn(
-                "rounded-[10px] flex items-center justify-center transition-all cursor-pointer relative select-none",
-                isSelected
-                  ? "bg-foreground/20 text-foreground ring-2 ring-foreground/60 shadow-xs scale-105 z-10"
-                  : isToday
-                  ? "bg-primary/15 text-primary font-bold ring-2 ring-primary/80 ring-offset-1 ring-offset-background hover:bg-primary/25 active:scale-95"
-                  : "text-foreground/60 dark:text-muted-foreground hover:bg-foreground/10 active:scale-95"
-              )}
-              style={!isSelected && !isToday ? { backgroundColor: 'var(--muted)' } : undefined}
-            >
-              <span className={cn("text-[16px] leading-none", isToday ? "font-bold" : "font-medium")}>
-                {day}
-              </span>
-              {isToday && (
-                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
               )}
             </button>
           );
         })}
+        {Array.from({ length: trailing }).map((_, i) => fadedCell(i + 1, `next-${offset}-${i}`))}
       </div>
     );
   };
@@ -1134,262 +884,44 @@ export const EventsView: React.FC<EventsViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="flex flex-col gap-[20px] relative z-10 min-h-[50vh]"
+      className="flex flex-col gap-5 relative z-10 min-h-[50vh]"
     >
-      {/* ═══ SEARCH & FILTERS SECTION ═══ */}
-      <div className="flex flex-col gap-2.5 shrink-0">
-        {/* ═══ PERMANENT SEARCH BAR & AUTOCOMPLETE ═══ */}
-        <div ref={searchContainerRef} className="relative z-30">
-          <div className="flex items-center gap-[10px] bg-foreground/5 border border-foreground/10 hover:border-foreground/20 focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-foreground/5 rounded-[12px] px-[14px] py-[9px] transition-all">
-            <Search className="w-[16px] h-[16px] text-foreground/45 shrink-0" />
-            <input
-              ref={searchRef}
-              type="text"
-              value={eventSearch}
-              onChange={(e) => {
-                setEventSearch(e.target.value);
-                setShowAutocomplete(true);
-              }}
-              onFocus={() => {
-                if (eventSearch.trim().length > 0) {
-                  setShowAutocomplete(true);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  setShowAutocomplete(false);
-                  searchRef.current?.blur();
-                } else if (e.key === 'Escape') {
-                  setShowAutocomplete(false);
-                }
-              }}
-              placeholder="Search events by title, venue, client..."
-              className="bg-transparent text-[13px] font-medium text-foreground placeholder:text-foreground/35 focus:outline-none flex-1 min-w-0"
-            />
-            {eventSearch && (
-              <button 
-                type="button"
-                onClick={() => {
-                  setEventSearch('');
-                  setShowAutocomplete(false);
-                  searchRef.current?.focus();
-                }}
-                className="p-1 text-foreground/40 hover:text-foreground transition-colors rounded-full shrink-0"
-                aria-label="Clear search"
-              >
-                <X className="w-[14px] h-[14px]" />
-              </button>
-            )}
-          </div>
-
-          {/* Autocomplete Dropdown */}
-          <AnimatePresence>
-            {showAutocomplete && eventSearch.trim().length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.99 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.99 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="absolute top-full left-0 right-0 mt-2 bg-card text-card-foreground rounded-[16px] shadow-2xl border border-foreground/15 max-h-[380px] overflow-y-auto z-50 divide-y divide-foreground/10 backdrop-blur-md"
-              >
-                {autocompleteResults.totalCount === 0 ? (
-                  <div className="px-4 py-8 text-center text-foreground/50 text-[12px] flex flex-col items-center gap-1.5">
-                    <Search className="w-5 h-5 text-foreground/30 mb-0.5" />
-                    <span className="font-bold uppercase text-[11px] tracking-wider text-foreground/70">
-                      No matching events found
-                    </span>
-                    <span className="text-foreground/40 text-[11px]">
-                      No events matching &ldquo;{eventSearch}&rdquo; were found
-                    </span>
-                  </div>
-                ) : (
-                  <>
-                    {/* Upcoming Matches */}
-                    {autocompleteResults.upcomingMatches.length > 0 && (
-                      <div>
-                        <div className="px-3.5 py-2 bg-foreground/[0.03] text-[10px] font-bold uppercase tracking-wider text-foreground/50 sticky top-0 backdrop-blur-xs flex items-center justify-between">
-                          <span>Upcoming Events</span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-foreground/10 text-foreground/70">
-                            {autocompleteResults.upcomingMatches.length}
-                          </span>
-                        </div>
-                        <div className="divide-y divide-foreground/5">
-                          {autocompleteResults.upcomingMatches.map((event) => (
-                            <div
-                              key={String(event.id || event.eventId)}
-                              onClick={() => {
-                                setShowAutocomplete(false);
-                                onEventClick(event);
-                              }}
-                              className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-foreground/5 cursor-pointer transition-colors group"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <span className={cn(
-                                  'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px] shrink-0',
-                                  getBadgeStyleClass(event)
-                                )}>
-                                  {getPrimaryBadge(event)}
-                                </span>
-                                <div className="flex flex-col min-w-0 flex-1">
-                                  <span className="text-[13px] font-bold text-foreground truncate uppercase group-hover:text-primary transition-colors">
-                                    {event.title}
-                                  </span>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-foreground/50 truncate font-medium">
-                                    {event.date && (
-                                      <span>{formatEventDateShort(event.date)}</span>
-                                    )}
-                                    {event.time && <span>· {event.time}</span>}
-                                    {event.location && (
-                                      <>
-                                        <span>·</span>
-                                        <span className="truncate">{event.location}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground shrink-0 transition-colors" />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Past Matches */}
-                    {autocompleteResults.pastMatches.length > 0 && (
-                      <div>
-                        <div className="px-3.5 py-2 bg-foreground/[0.03] text-[10px] font-bold uppercase tracking-wider text-foreground/50 sticky top-0 backdrop-blur-xs flex items-center justify-between">
-                          <span>Past Events</span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-foreground/10 text-foreground/70">
-                            {autocompleteResults.pastMatches.length}
-                          </span>
-                        </div>
-                        <div className="divide-y divide-foreground/5">
-                          {autocompleteResults.pastMatches.map((event) => (
-                            <div
-                              key={String(event.id || event.eventId)}
-                              onClick={() => {
-                                setShowAutocomplete(false);
-                                onEventClick(event);
-                              }}
-                              className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-foreground/5 cursor-pointer transition-colors group opacity-80 hover:opacity-100"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                <span className={cn(
-                                  'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px] shrink-0',
-                                  getBadgeStyleClass(event)
-                                )}>
-                                  {getPrimaryBadge(event)}
-                                </span>
-                                <div className="flex flex-col min-w-0 flex-1">
-                                  <span className="text-[13px] font-bold text-foreground truncate uppercase group-hover:text-primary transition-colors">
-                                    {event.title}
-                                  </span>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-foreground/50 truncate font-medium">
-                                    {event.date && (
-                                      <span>{formatEventDateShort(event.date)}</span>
-                                    )}
-                                    {event.location && (
-                                      <>
-                                        <span>·</span>
-                                        <span className="truncate">{event.location}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-foreground/30 group-hover:text-foreground shrink-0 transition-colors" />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
+      {/* ═══ FILTERS (Figma "Tabs": Selector MD) ═══ */}
+      <div className="flex flex-col gap-3 shrink-0">
         {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
         {!isAdmin && (
-          <div className="flex gap-[6px] items-center flex-wrap pb-0.5">
-            <button
-              key="all"
-              onClick={() => onBandPillClick('all')}
-              className={cn(
-                'inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase shrink-0 transition-all leading-tight',
-                selectedBandPill === 'all'
-                  ? 'bg-foreground text-background'
-                  : 'bg-foreground/10 text-foreground/50'
-              )}
-            >
+          <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+            <Selector size="sm" selected={selectedBandPill === 'all'} onClick={() => onBandPillClick('all')}>
               All
-            </button>
-            {bands.map((band) => {
-              const isActive = selectedBandPill === band.id;
-              return (
-                <button
-                  key={band.id}
-                  onClick={() => onBandPillClick(band.id)}
-                  className={cn(
-                    'inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase shrink-0 transition-all leading-tight',
-                    isActive
-                      ? 'bg-foreground text-background'
-                      : 'bg-foreground/10 text-foreground/50'
-                  )}
-                >
-                  {band.name}
-                </button>
-              );
-            })}
-            <button
-              key="personal"
-              onClick={() => onBandPillClick('personal')}
-              className={cn(
-                'inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase shrink-0 transition-all leading-tight',
-                selectedBandPill === 'personal'
-                  ? 'bg-foreground text-background'
-                  : 'bg-foreground/10 text-foreground/50'
-              )}
-            >
+            </Selector>
+            {bands.map((band) => (
+              <Selector key={band.id} size="sm" selected={selectedBandPill === band.id} onClick={() => onBandPillClick(band.id)}>
+                {band.name}
+              </Selector>
+            ))}
+            <Selector size="sm" selected={selectedBandPill === 'personal'} onClick={() => onBandPillClick('personal')}>
               Personal
-            </button>
+            </Selector>
           </div>
         )}
 
-        {/* ═══ FILTER PILLS ═══ */}
-        <div className="flex gap-[8px] items-center overflow-x-auto scrollbar-hide py-0.5">
-            {visibleFilters.map((f) => {
-              const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
-              let activeBg = 'bg-white';
-              let activeText = 'text-foreground';
-              if (f === 'GIGS') { activeBg = 'bg-accent-gig'; activeText = 'text-accent-gig-foreground'; }
-              else if (f === 'REHEARSALS') { activeBg = 'bg-accent-rehearsal'; activeText = 'text-accent-rehearsal-foreground'; }
-              else if (f === 'QUOTES') { activeBg = 'bg-accent-quote'; activeText = 'text-accent-quote-foreground'; }
-              else if (f === 'DRAFTS') { activeBg = 'bg-black/50'; activeText = 'text-white'; }
-              return (
-              <button
-                key={f}
-                onClick={() => setEventFilter(f)}
-                className={cn(
-                  "px-[8px] py-[6px] rounded-[6px] text-[12px] whitespace-nowrap transition-all shrink-0",
-                  isActive
-                    ? `${activeBg} ${activeText} font-bold`
-                    : "bg-black/20 text-foreground/40 font-medium"
-                )}
-              >
+        <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+          {visibleFilters.map((f) => {
+            const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
+            return (
+              <Selector key={f} size="md" selected={isActive} onClick={() => setEventFilter(f)} count={isActive ? allEvents.length : undefined}>
                 {f}
-              </button>);
-            })}
-          </div>
+              </Selector>
+            );
+          })}
         </div>
+      </div>
 
           {/* ═══ ACTIVE REHEARSAL POLLS & PROPOSALS ═══ */}
           {activePolls.length > 0 && (
             <div className="flex flex-col gap-3">
-              <span className="text-[11px] font-bold text-foreground/60 tracking-wider uppercase">
-                Rehearsal Availability Polls ({activePolls.length})
+              <span className="bw-label-md text-muted-foreground">
+                Rehearsal scheduling ({activePolls.length})
               </span>
               <div className="flex flex-col gap-3">
                 {activePolls.map((poll) => (
@@ -1408,56 +940,30 @@ export const EventsView: React.FC<EventsViewProps> = ({
           )}
 
           {/* ═══ CALENDAR (GOOGLE CALENDAR LATERAL SCROLLING STYLE) ═══ */}
-          <div className="flex flex-col gap-[16px]">
+          <div className="flex flex-col gap-2">
             {/* Calendar Header: Month Navigation, Title & Today Shortcut */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-[12px]">
-                <div className="flex gap-[6px] items-center">
-                  <button
-                    type="button"
-                    onClick={prevMonth}
-                    aria-label="Previous month"
-                    className="border border-border/70 hover:border-foreground/30 bg-card active:scale-95 rounded-full p-[6px] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                  >
-                    <ChevronLeft className="w-[18px] h-[18px] text-foreground" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={nextMonth}
-                    aria-label="Next month"
-                    className="border border-border/70 hover:border-foreground/30 bg-card active:scale-95 rounded-full p-[6px] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                  >
-                    <ChevronRight className="w-[18px] h-[18px] text-foreground" />
-                  </button>
-                </div>
-                <span className="text-[16px] font-bold text-foreground uppercase tracking-tight leading-tight">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <IconButton label="Previous month" size="sm" icon={<ArrowLeft />} onClick={prevMonth} />
+                <IconButton label="Next month" size="sm" icon={<ArrowRight />} onClick={nextMonth} />
+                <span className="bw-h3 truncate">
                   {monthName} {calendarYear}
                 </span>
               </div>
-
-              {/* Today jump button */}
-              <button
-                type="button"
-                onClick={jumpToToday}
-                className={cn(
-                  "inline-flex items-center gap-[6px] px-[12px] py-[6px] rounded-full text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer active:scale-95",
-                  isCurrentMonth
-                    ? "bg-foreground/5 text-foreground/45 border border-foreground/10"
-                    : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/15 shadow-2xs"
-                )}
-              >
-                <Calendar className="w-[13px] h-[13px]" />
-                <span>Today</span>
-              </button>
+              {!isCurrentMonth && (
+                <Selector size="sm" selected={false} onClick={jumpToToday}>
+                  Today
+                </Selector>
+              )}
             </div>
 
             {/* Day Labels & Lateral Swipable Grid */}
-            <div className="flex flex-col gap-[10px]">
+            <div className="flex flex-col gap-2">
               {/* Day Labels (M T W T F S S) */}
-              <div className="bg-black/10 dark:bg-white/5 rounded-[10px] flex">
+              <div className="rounded-full flex h-5 items-center bg-foreground/[0.08]">
                 {['M','T','W','T','F','S','S'].map((d, i) => (
-                  <div key={i} className="flex-1 py-[4px] text-center">
-                    <span className="text-[10px] font-bold text-muted-foreground leading-tight">{d}</span>
+                  <div key={i} className="flex-1 text-center">
+                    <span className="bw-label-xs text-muted-foreground">{d}</span>
                   </div>
                 ))}
               </div>
@@ -1465,9 +971,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
               {/* Continuous Lateral Scrolling 3-Month Carousel (Physical 1:1 Peeking Track) */}
               <div
                 ref={carouselContainerRef}
-                className="overflow-hidden relative w-full touch-pan-y select-none"
+                // overflow-clip (not hidden): focus or scrollIntoView on a day can't
+                // scroll the track sideways and misalign the weekday columns.
+                className="overflow-clip relative w-full touch-pan-y select-none"
                 style={{
-                  height: currMonthInfo.numRows * 30,
+                  height: gridHeight(currMonthInfo.numRows),
                   transition: 'height 0.2s ease',
                 }}
               >
@@ -1499,6 +1007,65 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 </motion.div>
               </div>
 
+              {/* Day with several events: pick one */}
+              <AnimatePresence>
+                {dayPickerEvents && dayPickerEvents.length > 0 && (
+                  <motion.div
+                    key="day-picker"
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    {(() => {
+                      const key = normalizeDateStr(dayPickerEvents[0].date) || '';
+                      const [yy, mm, dd] = key.split('-').map(Number);
+                      const sel = new Date(yy, (mm || 1) - 1, dd || 1);
+                      return (
+                        <div className="dark mt-4 rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="bw-label-sm">{sel.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                              <span className="flex items-end gap-1.5">
+                                <DotText text={dd} size={24} />
+                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString('en-US', { month: 'long' })}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Tag variant="subtle">{dayPickerEvents.length} events</Tag>
+                              <IconButton label="Close day" variant="sheet" size="sm" icon={<X />} onClick={() => setDayPickerEvents(null)} />
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            {dayPickerEvents.map((ev) => {
+                              const kind = calendarKind(ev, key < todayStr);
+                              return (
+                                <button
+                                  key={String(ev.id)}
+                                  type="button"
+                                  onClick={() => { setDayPickerEvents(null); onEventClick(ev); }}
+                                  className="w-full flex items-center gap-3 rounded-[16px] bg-sheet-foreground/[0.08] p-3 text-left cursor-pointer active:scale-[0.99] transition-transform"
+                                >
+                                  <EventMark kind={kind} size={24} />
+                                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                    <span className="bw-h3 truncate">{ev.title}</span>
+                                    <span className="bw-body-sm text-sheet-foreground/70 truncate">
+                                      {ev.time ? formatEventTime(ev.time) : 'Time TBD'}{ev.location ? ` · ${ev.location}` : ''}
+                                    </span>
+                                  </span>
+                                  <ArrowRight className="w-4 h-4 shrink-0" />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Floating Context Pill: Two-Tier Layout (Date/Status + 3 Action Chips) */}
               <AnimatePresence>
                 {selectedEmptyDate && (
@@ -1509,189 +1076,139 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     transition={{ duration: 0.18, ease: 'easeOut' }}
                     className="overflow-hidden"
                   >
-                    <div className="flex flex-col gap-2.5 p-3 rounded-[16px] bg-card border border-foreground/15 shadow-sm">
-                      {/* Top Tier: Date, Status & Dismiss */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-full bg-foreground/5 flex items-center justify-center shrink-0 text-foreground/70">
-                            <Calendar className="w-3.5 h-3.5" />
+                    {(() => {
+                      const [yy, mm, dd] = selectedEmptyDate.split('-').map(Number);
+                      const sel = new Date(yy, mm - 1, dd);
+                      const tiles: Array<{ type: 'gig' | 'rehearsal' | 'quote'; label: string }> = [
+                        { type: 'gig', label: 'Gig' },
+                        { type: 'rehearsal', label: 'Rehearsal' },
+                        { type: 'quote', label: 'Quote' },
+                      ];
+                      return (
+                        <div className="dark mt-4 rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="bw-label-sm">{sel.toLocaleDateString('en-US', { weekday: 'long' })}</span>
+                              <span className="flex items-end gap-1.5">
+                                <DotText text={dd} size={24} />
+                                <span className="bw-body-lg leading-none">{sel.toLocaleDateString('en-US', { month: 'long' })}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Tag variant="subtle">Free day</Tag>
+                              <IconButton label="Dismiss date selection" variant="sheet" size="sm" icon={<X />} onClick={() => setSelectedEmptyDate(null)} />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-[12px] font-bold text-foreground truncate">
-                              {formatSelectedDate(selectedEmptyDate)}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-medium hidden xs:inline">
-                              • No events scheduled
-                            </span>
-                          </div>
+                          {isAdmin && onCreateEvent ? (
+                            <>
+                              <p className="bw-body-md">Nothing scheduled yet. Add something for the band:</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {tiles.map((t) => (
+                                  <button
+                                    key={t.type}
+                                    type="button"
+                                    onClick={() => { onCreateEvent(t.type, selectedEmptyDate); setSelectedEmptyDate(null); }}
+                                    className="h-[76px] rounded-[16px] px-3 py-4 flex flex-col justify-between text-left cursor-pointer active:scale-[0.97] transition-transform"
+                                    style={{ backgroundColor: `var(--accent-${t.type})`, color: `var(--accent-${t.type}-fg)` }}
+                                  >
+                                    <span className="flex items-center justify-between">
+                                      <EventMark kind={t.type} size={20} bare />
+                                      <Plus className="w-4 h-4" />
+                                    </span>
+                                    <span className="bw-button-sm">{t.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="bw-body-md text-sheet-foreground/80">Nothing scheduled on this day.</p>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedEmptyDate(null)}
-                          className="p-1 rounded-full text-foreground/40 hover:text-foreground hover:bg-foreground/5 transition-colors cursor-pointer"
-                          aria-label="Dismiss date selection"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Bottom Tier: 3 Action Chips (+ Gig, + Rehearsal, + Quote) */}
-                      {isAdmin && onCreateEvent && (
-                        <div className="grid grid-cols-3 gap-2 pt-0.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onCreateEvent('gig', selectedEmptyDate);
-                              setSelectedEmptyDate(null);
-                            }}
-                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-gig text-accent-gig-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3 shrink-0" />
-                            <span>Gig</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onCreateEvent('rehearsal', selectedEmptyDate);
-                              setSelectedEmptyDate(null);
-                            }}
-                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-rehearsal text-accent-rehearsal-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3 shrink-0" />
-                            <span>Rehearsal</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onCreateEvent('quote', selectedEmptyDate);
-                              setSelectedEmptyDate(null);
-                            }}
-                            className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-[10px] bg-accent-quote text-accent-quote-foreground text-[11px] font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3 shrink-0" />
-                            <span>Quote</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </div>
 
+          {/* ═══ LEGEND (Event Marks) ═══ */}
+          <div className="flex items-center gap-4 flex-wrap">
+            {(isAdmin ? (['gig', 'rehearsal', 'quote', 'personal'] as const) : (['gig', 'rehearsal', 'personal'] as const)).map((k) => (
+              <span key={k} className="flex items-center gap-2">
+                <EventMark kind={k} size={20} />
+                <span className="bw-label-sm text-muted-foreground">{k}</span>
+              </span>
+            ))}
+          </div>
+
           {/* ═══ SECTION HEADER ═══ */}
-          <div className="flex flex-col gap-[4px]">
-            <span className="text-[12px] font-bold text-foreground/60 uppercase leading-none tracking-wider">
-              {eyebrowLabel}
-            </span>
-            <div className="flex items-center gap-[10px]">
-              <h2 className="text-[32px] font-bold text-foreground uppercase leading-none">
-                UPCOMING
-              </h2>
-              {upcomingEvents.length > 0 && (
-                <span className="px-[8px] py-[2px] rounded-full text-[12px] font-bold bg-foreground/10 text-foreground/80 leading-none">
-                  {upcomingEvents.length}
-                </span>
-              )}
-            </div>
+          <div className="flex flex-col gap-2">
+            {eyebrowLabel !== 'SCHEDULE' && (
+              <span className="bw-label-sm text-muted-foreground">{eyebrowLabel}</span>
+            )}
+            <SectionHeader title="Upcoming" />
           </div>
 
           {/* ═══ UPCOMING EVENT CARDS ═══ */}
-          <div className="flex flex-col gap-[14px]">
+          <div className="flex flex-col gap-4">
             {loading && allEvents.length === 0 ? (
               <EventsSkeleton />
             ) : upcomingEvents.length > 0 ? (
               upcomingEvents.map((event) => renderEventCard(event, false))
             ) : (
-              <div className="rounded-[16px] border border-dashed border-foreground/15 bg-card/40 p-[28px] text-center flex flex-col items-center justify-center gap-[8px]">
-                <p className="text-[13px] font-bold uppercase tracking-wider text-foreground/70">
-                  NO UPCOMING {eyebrowLabel === 'SCHEDULE' ? 'EVENTS' : eyebrowLabel}
+              <Card className="items-center text-center py-8 gap-3">
+                <p className="bw-h3">
+                  No upcoming {eyebrowLabel === 'SCHEDULE' ? 'events' : eyebrowLabel.toLowerCase()}
                 </p>
-                <p className="text-[12px] text-foreground/50 max-w-[280px]">
+                <p className="bw-body-sm text-muted-foreground max-w-[280px]">
                   {eventFilter !== 'All' && eventFilter !== 'ALL'
                     ? `No upcoming ${eventFilter.toLowerCase()} scheduled.`
                     : pastEvents.length > 0
                     ? `All ${pastEvents.length} scheduled event${pastEvents.length > 1 ? 's are' : ' is'} in the past. Check the past events section below.`
                     : 'No events have been scheduled yet.'}
                 </p>
-                <div className="flex items-center gap-[8px] mt-[4px]">
+                <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
                   {eventFilter !== 'All' && eventFilter !== 'ALL' && (
-                    <button
-                      onClick={() => setEventFilter('ALL')}
-                      className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-foreground/10 hover:bg-foreground/15 text-foreground text-[12px] font-bold uppercase tracking-wider transition-colors"
-                    >
+                    <PillButton size="sm" variant="outline" fullWidth={false} onClick={() => setEventFilter('ALL')}>
                       {APP_COPY.events.emptyState.showAllEvents}
-                    </button>
+                    </PillButton>
                   )}
                   {isAdmin && onCreateEvent && (
-                    <button
-                      onClick={() => onCreateEvent('gig')}
-                      className="inline-flex items-center gap-[6px] px-[14px] py-[8px] rounded-[10px] bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
-                    >
-                      <Plus className="w-[14px] h-[14px]" />
+                    <PillButton size="sm" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('gig')}>
                       {APP_COPY.events.emptyState.createEvent}
-                    </button>
+                    </PillButton>
                   )}
                 </div>
-              </div>
+              </Card>
             )}
           </div>
 
           {/* ═══ PAST EVENTS ARCHIVE QUICK ACCESS & COLLAPSIBLE ═══ */}
           {pastEvents.length > 0 && (
-            <div className="flex flex-col gap-[12px] pt-[8px]">
-              {/* Quick access hero card to full dedicated archive */}
-              {onOpenPastEvents && (
-                <div
-                  onClick={onOpenPastEvents}
-                  className="flex items-center justify-between p-[16px] rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/25 cursor-pointer shadow-2xs hover:shadow-xs transition-all active:scale-[0.99] group"
+            <div className="flex flex-col gap-3">
+              {/* Figma: "N past events" + archive link, then an inline peek toggle */}
+              <div className="flex items-center justify-between gap-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPastEvents((prev) => !prev)}
+                  aria-expanded={showPastEvents}
+                  className="flex items-center gap-1.5 bw-body-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center gap-[12px]">
-                    <div className="w-[42px] h-[42px] rounded-[12px] bg-foreground/5 flex items-center justify-center text-foreground/70 group-hover:scale-105 transition-transform">
-                      <History className="w-[20px] h-[20px]" />
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                          {APP_COPY.events.archive.eyebrow}
-                        </span>
-                        <span className="px-[6px] py-[1px] rounded-full text-[10px] font-bold bg-foreground/10 text-foreground/75">
-                          {pastEvents.length}
-                        </span>
-                      </div>
-                      <span className="text-[15px] font-bold text-foreground uppercase tracking-tight">
-                        {APP_COPY.events.archive.viewFullArchive}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-[4px] text-foreground/50 group-hover:text-foreground transition-colors">
-                    <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">{APP_COPY.events.archive.explore}</span>
-                    <ArrowUpRight className="w-[16px] h-[16px]" />
-                  </div>
-                </div>
-              )}
-
-              {/* Inline collapsible preview */}
-              <button
-                type="button"
-                onClick={() => setShowPastEvents((prev) => !prev)}
-                className="flex items-center justify-between px-[16px] py-[12px] rounded-[12px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 transition-all text-left group"
-              >
-                <div className="flex items-center gap-[8px]">
-                  <span className="text-[12px] font-bold uppercase text-foreground/60 tracking-wider">
-                    {APP_COPY.events.archive.quickPeek} ({pastEvents.length})
-                  </span>
-                </div>
-                <ChevronDown
-                  className={cn(
-                    "w-[16px] h-[16px] text-foreground/50 transition-transform duration-200",
-                    showPastEvents && "rotate-180 text-foreground"
-                  )}
-                />
-              </button>
+                  {pastEvents.length} past event{pastEvents.length === 1 ? '' : 's'}
+                  <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', showPastEvents && 'rotate-180')} />
+                </button>
+                {onOpenPastEvents && (
+                  <button
+                    type="button"
+                    onClick={onOpenPastEvents}
+                    className="h-9 flex items-center gap-2 bw-button-sm text-foreground cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    {APP_COPY.events.archive.viewFullArchive}
+                  </button>
+                )}
+              </div>
 
               <AnimatePresence>
                 {showPastEvents && (
@@ -1700,7 +1217,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="flex flex-col gap-[14px] overflow-hidden"
+                    className="flex flex-col gap-4 overflow-hidden"
                   >
                     {pastEvents.map((event) => renderEventCard(event, true))}
                   </motion.div>
@@ -1708,6 +1225,141 @@ export const EventsView: React.FC<EventsViewProps> = ({
               </AnimatePresence>
             </div>
           )}
+
+      {/* ═══ SEARCH EVENTS (Figma "Calendar / Search") ═══ */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {searchOpen && (() => {
+            const q = eventSearch.trim();
+            const upcoming = autocompleteResults.upcomingMatches as EventData[];
+            const past = autocompleteResults.pastMatches as EventData[];
+            const all = [...upcoming, ...past];
+            const isPastEv = (e: EventData) => past.includes(e);
+            const tabs = (isAdmin
+              ? (['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'PAST'] as const)
+              : (['ALL', 'GIGS', 'REHEARSALS', 'PAST'] as const));
+            const inTab = (e: EventData, t: typeof searchTab) => {
+              if (t === 'ALL') return true;
+              if (t === 'PAST') return isPastEv(e);
+              if (isPastEv(e)) return false;
+              const badge = getPrimaryBadge(e);
+              if (t === 'GIGS') return badge === 'GIG';
+              if (t === 'REHEARSALS') return badge === 'REHEARSAL';
+              return badge === 'QUOTE';
+            };
+            const results = all.filter((e) => inTab(e, searchTab));
+            return (
+              <motion.div
+                key="event-search"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Search events"
+                className="fixed inset-0 z-[81] bg-background text-foreground flex flex-col"
+                style={{ paddingTop: 'var(--safe-top)' }}
+              >
+                {/* Top Bar */}
+                <div className="h-14 shrink-0 px-4 flex items-center gap-3">
+                  <IconButton label="Close search" size="sm" icon={<ArrowLeft />} onClick={closeSearch} />
+                  <h2 className="bw-h2 truncate">Search events</h2>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 pt-2 flex flex-col gap-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}>
+                  <div className="flex flex-col gap-2">
+                    <span className="bw-label-sm text-muted-foreground" aria-hidden="true">Search</span>
+                    <SearchField
+                      value={eventSearch}
+                      onChange={setEventSearch}
+                      label="Search events"
+                      placeholder="Title, venue, client…"
+                      autoFocus
+                      onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide -mx-4 px-4">
+                    {tabs.map((t) => (
+                      <Selector
+                        key={t}
+                        size="md"
+                        selected={searchTab === t}
+                        onClick={() => setSearchTab(t)}
+                        count={searchTab === t && q ? all.filter((e) => inTab(e, t)).length : undefined}
+                      >
+                        {t}
+                      </Selector>
+                    ))}
+                  </div>
+
+                  {q ? (
+                    <>
+                      <p className="bw-label-sm text-muted-foreground">
+                        {results.length} {results.length === 1 ? 'result' : 'results'} for &ldquo;{q}&rdquo;
+                      </p>
+                      <ul className="flex flex-col gap-4">
+                        {results.map((ev) => {
+                          const evPast = isPastEv(ev);
+                          const kind = calendarKind(ev, evPast);
+                          const norm = normalizeDateStr(ev.date);
+                          const d = norm ? parseLocalDate(norm) : null;
+                          const valid = d && !isNaN(d.getTime());
+                          const badge = getPrimaryBadge(ev);
+                          const typeWord = badge === 'GIG' && !ev.band_id ? 'Personal' : badge.charAt(0) + badge.slice(1).toLowerCase();
+                          const sub = badge === 'QUOTE' ? ev.quoteStatus : evPast ? (ev as any).payment_status || (ev as any).paymentStatus : undefined;
+                          const over = [evPast ? 'Past' : typeWord, sub ? String(sub).charAt(0).toUpperCase() + String(sub).slice(1) : null].filter(Boolean).join(' · ');
+                          const meta = [ev.location?.split(',')[0] || ev.clientName, ev.time ? formatEventTime(ev.time) : null].filter(Boolean).join(' · ');
+                          const feeNum = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, '')) || 0;
+                          const value = badge !== 'REHEARSAL' && feeNum > 0 ? getDisplayFee(ev) : null;
+                          return (
+                            <li key={String(ev.id || ev.eventId)}>
+                              <button
+                                type="button"
+                                onClick={() => onEventClick(ev)}
+                                className="w-full flex items-center gap-4 p-3 rounded-[24px] bg-card text-left active:scale-[0.99] transition-transform cursor-pointer"
+                              >
+                                <span
+                                  className="w-[52px] h-14 rounded-full flex flex-col items-center justify-center shrink-0"
+                                  style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
+                                >
+                                  <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '–'}</span>
+                                  <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}</span>
+                                </span>
+                                <span className="flex-1 min-w-0 flex flex-col gap-1">
+                                  <span className="bw-label-xs text-muted-foreground truncate">{over}</span>
+                                  <span className="bw-h3 line-clamp-2 [overflow-wrap:anywhere]">{ev.title}</span>
+                                  {meta && <span className="bw-body-sm text-muted-foreground truncate">{meta}</span>}
+                                </span>
+                                {value ? (
+                                  <span className="bw-label-md shrink-0">{value}</span>
+                                ) : (
+                                  <ChevronRight className="w-[18px] h-[18px] text-muted-foreground shrink-0" aria-hidden />
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {results.length === 0 && (
+                        <Card className="items-center text-center py-8 gap-2">
+                          <Search className="w-6 h-6 text-muted-foreground" />
+                          <p className="bw-h3">No matching events</p>
+                          <p className="bw-body-sm text-muted-foreground">Try a title, venue or client name.</p>
+                        </Card>
+                      )}
+                    </>
+                  ) : (
+                    <p className="bw-body-sm text-muted-foreground">Search by title, venue, client or notes.</p>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {/* Bottom clearance spacer ensuring last card cleanly clears floating navbar */}
       <div

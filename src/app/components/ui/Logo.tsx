@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from './utils';
 import { BrandLogo } from './BrandLogo';
+import { BrandMark } from '../bw/BrandMark';
 
 interface LogoProps {
   variant?: 'full' | 'icon' | 'wordmark';
@@ -51,21 +52,11 @@ export const AppIcon: React.FC<{
   className?: string;
 }> = ({ size = 96, className }) => (
   <div
-    className={cn(
-      'flex items-center justify-center rounded-[22%] bg-card border border-foreground/10',
-      className
-    )}
-    style={{
-      width: size,
-      height: size,
-      boxShadow: `0 ${Math.round(size * 0.1)}px ${Math.round(size * 0.35)}px rgba(200, 67, 26, 0.25)`,
-    }}
+    className={cn('flex items-center justify-center rounded-[22.5%]', className)}
+    style={{ width: size, height: size, background: 'linear-gradient(180deg, #E5FF84 0%, #D4FB46 100%)' }}
   >
-    <BrandLogo
-      variant="waveform"
-      lockup="icon-only"
-      style={{ height: Math.round(size * 0.56) }}
-    />
+    {/* Figma: Logo/App Icon — black pictogram at 72% on the lime gradient. */}
+    <BrandMark size={Math.round(size * 0.72)} color="#050505" />
   </div>
 );
 

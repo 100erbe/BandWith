@@ -16,12 +16,15 @@ import {
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
+import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet, type TagStyle } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 
 interface TaskItem {
   id: string;
   title: string;
-  dueOffset: number; // days before/after event
-  required: boolean;
+  /** Days before (<0) / after (>0) the event. Older rows may not have it. */
+  dueOffset?: number;
+  required?: boolean;
 }
 
 interface TaskTemplate {
@@ -40,13 +43,14 @@ interface TaskTemplatesViewProps {
   bandId: string;
 }
 
-const CATEGORIES: Record<string, { label: string }> = {
-  wedding: { label: 'Wedding' },
-  corporate: { label: 'Corporate' },
-  festival: { label: 'Festival' },
-  private: { label: 'Private Party' },
-  rehearsal: { label: 'Rehearsal' },
-  other: { label: 'Other' },
+/** Category tag colours follow the event palette (Figma: Templates / Task templates). */
+const CATEGORIES: Record<string, { label: string; tag: TagStyle }> = {
+  wedding: { label: 'Wedding', tag: 'gig' },
+  corporate: { label: 'Corporate', tag: 'quote' },
+  festival: { label: 'Festival', tag: 'personal' },
+  private: { label: 'Private party', tag: 'outline' },
+  rehearsal: { label: 'Rehearsal', tag: 'rehearsal' },
+  other: { label: 'Other', tag: 'subtle' },
 };
 
 const DEFAULT_TEMPLATES: Omit<TaskTemplate, 'id' | 'band_id' | 'created_at'>[] = [
@@ -206,7 +210,18 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates(data || []);
+      setTemplates(
+        (data || []).map((t: any) => ({
+          ...t,
+          description: t.description ?? '',
+          tasks: (Array.isArray(t.tasks) ? t.tasks : []).map((task: any, i: number) => ({
+            id: task.id ?? `${t.id}-${i}`,
+            title: task.title ?? '',
+            dueOffset: task.dueOffset ?? task.due_offset ?? undefined,
+            required: task.required ?? false,
+          })),
+        })),
+      );
     } catch (err) {
       console.error('Error loading templates:', err);
       setTemplates(DEFAULT_TEMPLATES.map((t, i) => ({
@@ -251,11 +266,22 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setMenuOpenId(null);
   };
 
-  const formatDueOffset = (offset: number) => {
-    if (offset === 0) return 'Day of event';
-    if (offset < 0) return `${Math.abs(offset)} days before`;
-    return `${offset} days after`;
+  const formatDueOffset = (offset?: number | null) => {
+    if (offset == null || Number.isNaN(Number(offset))) return null;
+    const n = Number(offset);
+    if (n === 0) return 'Day of event';
+    const days = Math.abs(n) === 1 ? 'day' : 'days';
+    return n < 0 ? `${Math.abs(n)} ${days} before` : `${n} ${days} after`;
   };
+
+  const offsetOptions = [
+    { value: -14, label: '14 days before' },
+    { value: -7, label: '7 days before' },
+    { value: -3, label: '3 days before' },
+    { value: -1, label: '1 day before' },
+    { value: 0, label: 'Day of event' },
+    { value: 1, label: '1 day after' },
+  ];
 
   return (
     <motion.div
@@ -264,454 +290,275 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
       className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
-      style={{
-        overscrollBehaviorX: 'none',
-        touchAction: 'pan-y',
-      }}
+      style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      {/* ═══ STICKY HEADER ═══ */}
-      <div
-        className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-        style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          paddingBottom: '14px',
-        }}
-      >
-        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              aria-label="Go back"
-              className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                WORKFLOWS & CHECKLISTS
-              </span>
-              <h1 className="text-[22px] font-black uppercase text-foreground leading-none">
-                TASK TEMPLATES
-              </h1>
-            </div>
-          </div>
+      <ScreenHeader
+        onBack={onBack}
+        overline="Workflows & checklists"
+        title="Task templates"
+        actions={
+          <IconButton label="Create template" variant="filled" icon={<Plus />} onClick={() => setShowCreateModal(true)} />
+        }
+      />
 
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs active:scale-95 transition-all shrink-0"
-            aria-label="Create template"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search templates" placeholder="Search templates…" />
 
-      {/* ═══ MAIN CONTENT ═══ */}
-      <div className="p-4 flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full pb-32">
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search templates by name or description..."
-            className="w-full px-4 py-2.5 pl-10 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-          />
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-        </div>
-
-        {/* Templates List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-foreground/40 border border-dashed border-foreground/15 rounded-[16px] p-8">
-            <LayoutTemplate className="w-12 h-12 text-foreground/20 mb-3" />
-            <h3 className="text-base font-bold text-foreground mb-1">No templates found</h3>
-            <p className="text-xs text-foreground/50 max-w-xs mb-5">
-              Create reusable checklists for gigs, weddings, rehearsals, or festival setups.
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-[10px] font-bold text-xs uppercase tracking-wider shadow-xs hover:opacity-95 transition-opacity"
-            >
-              Create First Template
-            </button>
-          </div>
+          <Card className="items-center text-center py-10 gap-4">
+            <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
+            <div className="flex flex-col gap-1">
+              <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No templates yet'}</h2>
+              <p className="bw-body-sm text-muted-foreground max-w-xs">
+                {searchQuery
+                  ? 'Try another name or description.'
+                  : 'Create reusable checklists for gigs, weddings, rehearsals or festival setups.'}
+              </p>
+            </div>
+            {!searchQuery && (
+              <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowCreateModal(true)}>
+                Create template
+              </PillButton>
+            )}
+          </Card>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                TEMPLATES ({filteredTemplates.length})
-              </span>
-            </div>
-
-            <div className="space-y-2.5">
-              {filteredTemplates.map((template, index) => {
-                const categoryConfig = CATEGORIES[template.category] || { label: template.category };
-                
-                return (
-                  <motion.div
-                    key={template.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(index * 0.03, 0.3) }}
-                    className="bg-card rounded-[14px] p-4 border border-foreground/10 shadow-xs flex items-center justify-between hover:border-foreground/20 transition-all cursor-pointer group"
-                    onClick={() => setSelectedTemplate(template)}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-[10px] bg-foreground/5 flex items-center justify-center text-primary shrink-0 group-hover:bg-primary/10 transition-colors">
-                        <CheckSquare className="w-5 h-5" />
+          <ul className="flex flex-col gap-4">
+            {filteredTemplates.map((template, index) => {
+              const category = CATEGORIES[template.category] || { label: template.category, tag: 'subtle' as TagStyle };
+              const summary = [`${template.tasks.length} ${template.tasks.length === 1 ? 'task' : 'tasks'}`, template.description]
+                .filter(Boolean)
+                .join(' · ');
+              return (
+                <motion.li
+                  key={template.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.03, 0.3) }}
+                  className="relative"
+                >
+                  <Card className="relative">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                        <Tag variant={category.tag}>{category.label}</Tag>
+                        {template.is_default && <Tag variant="solid">Default</Tag>}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-sm text-foreground truncate">{template.name}</h3>
-                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-[6px] border bg-foreground/5 text-foreground/60 border-foreground/10 shrink-0">
-                            {categoryConfig.label}
-                          </span>
-                          {template.is_default && (
-                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-[6px] border bg-primary/10 text-primary border-primary/20 shrink-0">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-foreground/50 truncate mt-0.5">
-                          {template.tasks.length} tasks · {template.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="relative shrink-0 ml-2">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId(menuOpenId === template.id ? null : template.id);
-                        }}
-                        aria-label="Actions"
-                        className="w-8 h-8 rounded-full hover:bg-foreground/10 flex items-center justify-center text-foreground/50 transition-colors"
+                        type="button"
+                        onClick={() => setMenuOpenId(menuOpenId === template.id ? null : template.id)}
+                        aria-label={`Actions for ${template.name}`}
+                        aria-expanded={menuOpenId === template.id}
+                        className="relative z-10 -m-3 p-3 text-foreground"
                       >
-                        <MoreHorizontal className="w-4 h-4" />
+                        <MoreHorizontal className="w-[18px] h-[18px]" />
                       </button>
-                      <AnimatePresence>
-                        {menuOpenId === template.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="absolute right-0 top-9 bg-card rounded-[12px] shadow-lg border border-foreground/15 p-1 z-20 min-w-[140px]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => handleDuplicate(template)}
-                              className="w-full px-3 py-2 flex items-center gap-2 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-foreground/60" /> Duplicate
-                            </button>
-                            <button
-                              onClick={() => handleEdit(template)}
-                              className="w-full px-3 py-2 flex items-center gap-2 hover:bg-foreground/5 rounded-[8px] text-left text-xs font-semibold text-foreground transition-colors"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-foreground/60" /> Edit
-                            </button>
-                            {!template.is_default && (
-                              <button
-                                onClick={() => handleDelete(template.id)}
-                                className="w-full px-3 py-2 flex items-center gap-2 hover:bg-destructive/10 rounded-[8px] text-left text-xs font-semibold text-destructive transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> Delete
-                              </button>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTemplate(template)}
+                      className="text-left flex flex-col gap-3 after:absolute after:inset-0 after:rounded-[24px] after:content-['']"
+                    >
+                      <h3 className="bw-h3 text-foreground [overflow-wrap:anywhere]">{template.name}</h3>
+                      <p className="bw-body-sm text-muted-foreground line-clamp-2">{summary}</p>
+                    </button>
+                  </Card>
+
+                  <AnimatePresence>
+                    {menuOpenId === template.id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="absolute right-3 top-11 z-20 min-w-[168px] p-1 rounded-[16px] bg-popover text-popover-foreground shadow-lg border border-border origin-top-right"
+                        role="menu"
+                      >
+                        {[
+                          { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, run: () => handleDuplicate(template) },
+                          { label: 'Edit', icon: <Edit2 className="w-4 h-4" />, run: () => handleEdit(template) },
+                          ...(!template.is_default
+                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDelete(template.id), danger: true }]
+                            : []),
+                        ].map((item) => (
+                          <button
+                            key={item.label}
+                            type="button"
+                            role="menuitem"
+                            onClick={item.run}
+                            className={cn(
+                              'w-full h-11 px-3 flex items-center gap-3 rounded-[12px] bw-body-sm font-medium text-left hover:bg-foreground/[0.06]',
+                              'danger' in item && item.danger ? 'text-destructive' : 'text-foreground',
+                            )}
+                          >
+                            {item.icon}
+                            {item.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.li>
+              );
+            })}
+          </ul>
         )}
       </div>
 
-      {/* ═══ TEMPLATE DETAIL BOTTOM SHEET ═══ */}
-      <AnimatePresence>
+      {/* Template details (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={!!selectedTemplate}
+        onClose={() => setSelectedTemplate(null)}
+        overline="Template details"
+        title={selectedTemplate?.name ?? ''}
+        footer={
+          <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={() => setSelectedTemplate(null)}>
+            Use this template
+          </PillButton>
+        }
+      >
         {selectedTemplate && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80]"
-              onClick={() => setSelectedTemplate(null)}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="fixed inset-x-0 bottom-0 z-[90] bg-card rounded-t-[24px] max-h-[85vh] overflow-y-auto border-t border-foreground/10 shadow-2xl text-foreground"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
-            >
-              <div className="max-w-xl mx-auto w-full p-6">
-                <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-5" />
-                <div className="flex items-start justify-between mb-5">
-                  <div>
-                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider block mb-1">
-                      TEMPLATE DETAILS
+          <div className="flex flex-col gap-4">
+            {selectedTemplate.description && <p className="bw-body-md text-sheet-foreground/80">{selectedTemplate.description}</p>}
+            <p className="bw-label-sm text-sheet-foreground/85">Tasks ({selectedTemplate.tasks.length})</p>
+            <ol className="flex flex-col gap-2">
+              {selectedTemplate.tasks.map((task, i) => {
+                const due = formatDueOffset(task.dueOffset);
+                return (
+                  <li key={task.id} className="flex items-center gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
+                    <span className="w-8 h-8 rounded-full border-[1.5px] border-sheet-foreground/40 flex items-center justify-center bw-label-sm shrink-0">
+                      {i + 1}
                     </span>
-                    <h2 className="text-xl font-black text-foreground">{selectedTemplate.name}</h2>
-                    <p className="text-xs text-foreground/50 mt-0.5">{selectedTemplate.description}</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedTemplate(null)}
-                    className="w-8 h-8 rounded-full border border-foreground/20 bg-foreground/5 flex items-center justify-center text-foreground hover:bg-foreground/10 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                    TASKS ({selectedTemplate.tasks.length})
-                  </span>
-                </div>
-                
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {selectedTemplate.tasks.map((task, i) => (
-                    <div 
-                      key={task.id}
-                      className="flex items-center gap-3 p-3 bg-foreground/5 rounded-[12px] border border-foreground/5"
-                    >
-                      <div className="w-6 h-6 rounded-full bg-foreground/10 text-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
-                        {i + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-xs text-foreground truncate">{task.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] text-foreground/50 flex items-center gap-1 font-medium">
-                            <Calendar className="w-3 h-3" />
-                            {formatDueOffset(task.dueOffset)}
-                          </span>
-                          {task.required && (
-                            <span className="text-[9px] font-bold text-red-500 uppercase">Required</span>
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <p className="bw-body-lg [overflow-wrap:anywhere]">{task.title}</p>
+                      {(due || task.required) && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {due && (
+                            <span className="bw-body-sm text-sheet-foreground/70 inline-flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {due}
+                            </span>
                           )}
+                          {task.required && <Tag variant="accent">Required</Tag>}
                         </div>
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setSelectedTemplate(null)}
-                  className="w-full h-12 rounded-[12px] bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 mt-5 shadow-xs active:scale-[0.98] transition-all"
-                >
-                  <Copy className="w-4 h-4" />
-                  Use This Template
-                </button>
-              </div>
-            </motion.div>
-          </>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         )}
-      </AnimatePresence>
+      </BwSheet>
 
-      {/* ═══ CREATE TEMPLATE MODAL ═══ */}
+      {/* Create template — full screen */}
       <AnimatePresence>
         {showCreateModal && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ type: 'tween', duration: 0.25 }}
+            className="fixed inset-0 z-[100] flex flex-col bg-background text-foreground"
           >
-            {/* Header */}
-            <div
-              className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-              style={{
-                paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-                paddingBottom: '14px',
+            <ScreenHeader
+              onBack={() => {
+                setShowCreateModal(false);
+                resetForm();
               }}
-            >
-              <div className="max-w-xl mx-auto w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-foreground" />
-                  </button>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                      NEW TEMPLATE
-                    </span>
-                    <h2 className="text-[20px] font-black uppercase text-foreground leading-none">
-                      CREATE TEMPLATE
-                    </h2>
-                  </div>
-                </div>
-              </div>
-            </div>
+              overline="New template"
+              title="Create template"
+              titleSize="h1"
+            />
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 max-w-xl mx-auto w-full pb-32 space-y-5">
-              {/* Template Name */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5">
-                  Template Name *
-                </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g., Festival Preparation Checklist"
-                  className="w-full px-4 py-3 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
-              
-              {/* Description */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="e.g., Gear packing and stage protocol"
-                  className="w-full px-4 py-3 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
-              
-              {/* Category */}
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-2">
-                  Category
-                </label>
+            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8 max-w-xl mx-auto w-full flex flex-col gap-6">
+              <PillField
+                label="Template name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Festival preparation"
+              />
+              <PillField
+                label="Description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Gear packing and stage protocol"
+              />
+
+              <fieldset className="flex flex-col gap-2">
+                <legend className="bw-label-sm text-muted-foreground mb-2">Category</legend>
                 <div className="flex flex-wrap gap-2">
-                  {(['wedding', 'corporate', 'festival', 'private', 'rehearsal', 'other'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setFormCategory(cat)}
-                      className={cn(
-                        'px-3.5 py-1.5 rounded-[8px] text-[11px] font-bold uppercase tracking-wider transition-all border',
-                        formCategory === cat
-                          ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                          : 'bg-foreground/5 text-foreground/70 border-foreground/10 hover:bg-foreground/10'
-                      )}
-                    >
-                      {cat}
-                    </button>
+                  {(Object.keys(CATEGORIES) as (keyof typeof CATEGORIES)[]).map((cat) => (
+                    <Selector key={cat} size="md" selected={formCategory === cat} onClick={() => setFormCategory(cat)}>
+                      {CATEGORIES[cat].label}
+                    </Selector>
                   ))}
                 </div>
-              </div>
-              
-              {/* Tasks List */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                    Tasks ({formTasks.length})
-                  </label>
-                </div>
-                
+              </fieldset>
+
+              <section className="flex flex-col gap-3">
+                <h2 className="bw-label-sm text-muted-foreground">Tasks ({formTasks.length})</h2>
                 {formTasks.length > 0 && (
-                  <div className="space-y-2 mb-4">
+                  <ol className="flex flex-col gap-2">
                     {formTasks.map((task, index) => (
-                      <div
-                        key={task.id}
-                        className="p-3 bg-card border border-foreground/10 rounded-[12px] flex items-center gap-3 shadow-xs"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center text-[10px] font-bold text-foreground shrink-0">
+                      <li key={task.id} className="flex items-center gap-3 p-4 rounded-[16px] bg-card">
+                        <span className="w-8 h-8 rounded-full border-[1.5px] border-foreground/30 flex items-center justify-center bw-label-sm shrink-0">
                           {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-xs text-foreground truncate">{task.title}</p>
-                          <p className="text-[10px] text-foreground/50 mt-0.5">
-                            {formatDueOffset(task.dueOffset)} {task.required ? '• Required' : '• Optional'}
+                        </span>
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                          <p className="bw-body-lg [overflow-wrap:anywhere]">{task.title}</p>
+                          <p className="bw-body-sm text-muted-foreground">
+                            {[formatDueOffset(task.dueOffset), task.required ? 'Required' : 'Optional'].filter(Boolean).join(' · ')}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTask(task.id)}
-                          className="w-7 h-7 rounded-full hover:bg-destructive/10 text-foreground/40 hover:text-destructive flex items-center justify-center transition-colors shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                        <IconButton label={`Remove ${task.title}`} variant="ghost" size="sm" icon={<X />} onClick={() => handleRemoveTask(task.id)} />
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 )}
-                
-                {/* Add Task Box */}
-                <div className="p-3.5 bg-foreground/5 rounded-[12px] border border-dashed border-foreground/15 space-y-3">
-                  <input
-                    type="text"
+
+                <Card className="gap-4">
+                  <PillField
+                    label="New task"
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="New task title..."
-                    className="w-full px-3 py-2 rounded-[8px] bg-background border border-foreground/10 text-xs font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary"
+                    placeholder="Charge in-ears"
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
                   />
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={newTaskOffset}
-                      onChange={(e) => setNewTaskOffset(parseInt(e.target.value))}
-                      className="flex-1 bg-background border border-foreground/10 rounded-[8px] px-2.5 py-1.5 text-xs font-medium text-foreground outline-none"
-                    >
-                      <option value={-14}>14 days before</option>
-                      <option value={-7}>7 days before</option>
-                      <option value={-3}>3 days before</option>
-                      <option value={-1}>1 day before</option>
-                      <option value={0}>Day of event</option>
-                      <option value={1}>1 day after</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setNewTaskRequired(!newTaskRequired)}
-                      className={cn(
-                        'px-2.5 py-1.5 rounded-[8px] text-[10px] font-bold uppercase tracking-wider transition-all border',
-                        newTaskRequired 
-                          ? 'bg-primary/10 text-primary border-primary/20' 
-                          : 'bg-background text-foreground/50 border-foreground/10'
-                      )}
-                    >
-                      {newTaskRequired ? 'Required' : 'Optional'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddTask}
-                      disabled={!newTaskTitle.trim()}
-                      className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0 shadow-xs"
-                      aria-label="Add task item"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                  <div className="flex flex-col gap-2">
+                    <p className="bw-label-sm text-muted-foreground">Due</p>
+                    <div className="flex flex-wrap gap-2">
+                      {offsetOptions.map((o) => (
+                        <Selector key={o.value} selected={newTaskOffset === o.value} onClick={() => setNewTaskOffset(o.value)}>
+                          {o.label}
+                        </Selector>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div className="flex items-center gap-3">
+                    <Selector size="md" selected={newTaskRequired} onClick={() => setNewTaskRequired(!newTaskRequired)}>
+                      {newTaskRequired ? 'Required' : 'Optional'}
+                    </Selector>
+                    <div className="flex-1" />
+                    <PillButton size="md" variant="dark" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
+                      Add task
+                    </PillButton>
+                  </div>
+                </Card>
+              </section>
             </div>
 
-            {/* Footer */}
-            <div 
-              className="sticky bottom-0 left-0 right-0 px-4 py-4 border-t border-foreground/10 bg-background/95 backdrop-blur-md"
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
-            >
+            <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
               <div className="max-w-xl mx-auto w-full">
-                <button
+                <PillButton
                   onClick={handleSaveTemplate}
-                  disabled={!formName.trim() || formTasks.length === 0 || saving}
-                  className="w-full h-12 rounded-[12px] bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs disabled:opacity-40 active:scale-[0.98] transition-all"
+                  loading={saving}
+                  disabled={!formName.trim() || formTasks.length === 0}
+                  icon={<CheckSquare className="w-[18px] h-[18px]" />}
                 >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <CheckSquare className="w-4 h-4" />
-                      Create Template ({formTasks.length} tasks)
-                    </>
-                  )}
-                </button>
+                  Create template ({formTasks.length} {formTasks.length === 1 ? 'task' : 'tasks'})
+                </PillButton>
               </div>
             </div>
           </motion.div>

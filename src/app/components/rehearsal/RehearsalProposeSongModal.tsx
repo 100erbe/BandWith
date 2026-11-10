@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { Mic2, Link as LinkIcon, Plus, UploadCloud } from '@/app/components/icons';
+import { Link as LinkIcon, Plus, Send, UploadCloud } from '@/app/components/icons';
+import { BwSheet, PillButton, PillField } from '@/app/components/bw';
 import { SongProposal } from './types';
 
 interface Props {
@@ -15,7 +15,7 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
   const [artist, setArtist] = useState('');
   const [reason, setReason] = useState('');
   const [links, setLinks] = useState<string[]>(['']);
-  
+
   const handleAddLink = () => setLinks([...links, '']);
   const handleLinkChange = (idx: number, val: string) => {
     const newLinks = [...links];
@@ -45,70 +45,94 @@ export const RehearsalProposeSongModal: React.FC<Props> = ({ isOpen, onClose, on
   };
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Propose New Song" icon={Mic2}>
-        <div className="space-y-6">
-            
-            {/* Title & Artist */}
-            <div className="space-y-4">
-                <div>
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Song Title *</label>
-                   <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 text-lg font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Superstition" />
-                </div>
-                <div>
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Artist *</label>
-                   <input value={artist} onChange={e => setArtist(e.target.value)} className="w-full bg-transparent border-b-2 border-black/10 py-2 font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all" placeholder="e.g. Stevie Wonder" />
-                </div>
-            </div>
-
-            {/* Why This Song */}
-            <div>
-               <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Why This Song?</label>
-               <textarea 
-                  value={reason} 
-                  onChange={e => setReason(e.target.value)}
-                  className="w-full bg-transparent border-b-2 border-black/10 py-3 font-bold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-black transition-all min-h-[100px] resize-none" 
-                  placeholder="Would be great for our funk set! The groove is amazing..."
-               />
-            </div>
-
-            {/* Links */}
-            <div>
-               <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Reference Links</label>
-               <div className="space-y-2">
-                  {links.map((link, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                          <LinkIcon className="w-4 h-4 text-foreground/30" />
-                          <input 
-                            value={link}
-                            onChange={e => handleLinkChange(i, e.target.value)}
-                            className="flex-1 bg-transparent border-b border-black/10 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-black"
-                            placeholder="https://youtube.com/..."
-                          />
-                      </div>
-                  ))}
-                  <button onClick={handleAddLink} className="text-[10px] font-bold uppercase text-foreground/40 hover:text-foreground flex items-center gap-1 mt-1">
-                      <Plus className="w-3 h-3" /> Add Link
-                  </button>
-               </div>
-            </div>
-
-            {/* Upload Score */}
-            <div>
-               <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 block">Upload Score (Optional)</label>
-               <div className="border border-dashed border-black/20 rounded-[10px] p-4 flex flex-col items-center justify-center text-center bg-black/[0.02] cursor-pointer hover:bg-black/5 transition-colors">
-                   <UploadCloud className="w-6 h-6 text-foreground/30 mb-1" />
-                   <span className="text-xs font-bold text-foreground/50">Drag & drop or click to upload</span>
-               </div>
-            </div>
-
-            <button 
-               onClick={handleSubmit}
-               disabled={!title || !artist}
-               className="w-full py-4 bg-black text-white rounded-[10px] font-black text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-               Submit Proposal
-            </button>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline="Song proposal"
+      title="Propose a song"
+      zIndex={110}
+      footer={
+        <div className="dark">
+          <PillButton
+            onClick={handleSubmit}
+            disabled={!title || !artist}
+            icon={<Send className="w-[18px] h-[18px]" />}
+          >
+            Submit proposal
+          </PillButton>
         </div>
-    </RehearsalModalWrapper>
+      }
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Title & artist */}
+        <PillField
+          tone="sheet"
+          label="Song title *"
+          autoFocus
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Superstition"
+        />
+        <PillField
+          tone="sheet"
+          label="Artist *"
+          value={artist}
+          onChange={(e) => setArtist(e.target.value)}
+          placeholder="e.g. Stevie Wonder"
+        />
+
+        {/* Why this song */}
+        <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-white/10 border border-white/20 focus-within:border-2 focus-within:border-white transition-[border-color]">
+          <span className="bw-label-sm text-white/70">Why this song?</span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="w-full bg-transparent outline-none bw-body-lg text-white placeholder:text-white/40 min-h-[96px] resize-none"
+            placeholder="Would be great for our funk set! The groove is amazing…"
+          />
+        </label>
+
+        {/* Reference links */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="bw-label-sm text-sheet-foreground/70">Reference links</h3>
+            <PillButton
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              className="-mr-3"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={handleAddLink}
+            >
+              Add link
+            </PillButton>
+          </div>
+          {links.map((link, i) => (
+            <PillField
+              key={i}
+              tone="sheet"
+              type="url"
+              label={`Reference link ${i + 1}`}
+              hideLabel
+              icon={<LinkIcon className="w-5 h-5" />}
+              value={link}
+              onChange={(e) => handleLinkChange(i, e.target.value)}
+              placeholder="https://youtube.com/…"
+            />
+          ))}
+        </section>
+
+        {/* Upload score */}
+        <section className="flex flex-col gap-2">
+          <h3 className="bw-label-sm text-sheet-foreground/70">Upload score (optional)</h3>
+          <div className="flex flex-col items-center justify-center gap-2 p-8 rounded-[24px] border-[1.5px] border-dashed border-sheet-foreground/30 text-center cursor-pointer">
+            <span className="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center">
+              <UploadCloud className="w-5 h-5" />
+            </span>
+            <span className="bw-body-sm text-sheet-foreground/70">Drag & drop or tap to upload</span>
+          </div>
+        </section>
+      </div>
+    </BwSheet>
   );
 };

@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ChevronLeft, 
+  ArrowLeft, 
   Send, 
   Trash2,
   Users,
+  User,
   Calendar,
+  Music,
+  Mic,
+  FileText,
   Loader2,
   Check,
   CheckCheck,
   Clock,
-  Paperclip,
   X,
   Reply,
   ArrowUpRight,
   Lock,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { eventKindOf, type EventKind, IconButton, Tag, PillButton } from '@/app/components/bw';
 import { supabase } from '@/lib/supabase';
 import { getMessages, sendMessage, markChatAsRead, subscribeToChat, getChatParticipants, deleteChat, getChat } from '@/lib/services/chats';
 import type { Message } from '@/lib/services/chats';
@@ -35,9 +39,20 @@ interface ChatDetailModalProps {
     unread: number;
     members?: number;
     isOnline?: boolean;
+    /** Optional: tints/iconises event chats by event type (defaults to gig). */
+    eventType?: string;
   };
   onClose: () => void;
 }
+
+/** Icon shown on an event chat tile, per event kind (Figma: music / mic / file). */
+const EVENT_ICON: Record<EventKind, React.ComponentType<{ className?: string }>> = {
+  gig: Music,
+  rehearsal: Mic,
+  quote: FileText,
+  personal: User,
+  past: Calendar,
+};
 
 const renderMessageContent = (content: string, isMe: boolean) => {
   const mentionRegex = /@(\w+(?:\s+\w+)?)/g;
@@ -54,7 +69,7 @@ const renderMessageContent = (content: string, isMe: boolean) => {
               key={index}
               className={cn(
                 "font-bold",
-                isMe ? "underline decoration-primary-foreground/60 font-semibold" : "text-primary"
+                isMe ? "underline decoration-accent-foreground/60" : "text-accent-ink"
               )}
             >
               @{part}
@@ -431,6 +446,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
   const messageGroups = groupMessagesByDate(messages);
   const chatTypeLabel = chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT';
+  const eventKind = eventKindOf({ eventType: chat.eventType });
+  const EventIcon = EVENT_ICON[eventKind];
+  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Direct Chat' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
 
   return (
     <motion.div
@@ -442,98 +460,75 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     >
       {/* ── Header ── */}
       <div
-        className="flex items-center gap-3 px-4 py-3 bg-card/90 backdrop-blur-md border-b border-border"
-        style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
+        className="relative flex items-center gap-3 px-4 pb-3 bg-background shrink-0"
+        style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
       >
-        <button
-          onClick={onClose}
-          aria-label="Back"
-          className="w-10 h-10 rounded-full border border-foreground/15 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
+        <IconButton label="Back" icon={<ArrowLeft />} onClick={onClose} />
 
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden",
-              chat.type === 'band' ? "bg-accent-rehearsal/15 border border-accent-rehearsal/30 text-accent-rehearsal" :
-              chat.type === 'event' ? "bg-accent-gig/15 border border-accent-gig/30 text-accent-gig" :
-              "bg-primary/10 border border-primary/20 text-primary"
-            )}>
-              {chatAvatarUrl && (chat.type === 'direct' || chat.type === 'band') ? (
-                <img
-                  src={chatAvatarUrl}
-                  alt={chatName}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : chat.type === 'direct' ? (
-                <span>{chatInitials || (chat.initials && chat.initials !== 'NC' ? chat.initials : 'U')}</span>
-              ) : chat.type === 'band' ? (
-                <Users className="w-5 h-5" />
-              ) : (
-                <Calendar className="w-5 h-5" />
-              )}
-            </div>
+            {chat.type === 'event' ? (
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `var(--accent-${eventKind})`, color: `var(--accent-${eventKind}-fg)` }}
+              >
+                <EventIcon className="w-5 h-5" />
+              </div>
+            ) : (
+              <div className={cn(
+                "w-11 h-11 rounded-full flex items-center justify-center overflow-hidden",
+                chat.type === 'band'
+                  ? "bg-surface-inverse text-surface-inverse-foreground"
+                  : "bg-white text-black border-[1.5px] border-border"
+              )}>
+                {chatAvatarUrl ? (
+                  <img
+                    src={chatAvatarUrl}
+                    alt={chatName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <span className="bw-h3">
+                    {chatInitials || (chat.initials && chat.initials !== 'NC' ? chat.initials : chat.type === 'band' ? 'B' : 'U')}
+                  </span>
+                )}
+              </div>
+            )}
             {chat.isOnline && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success ring-2 ring-background" />
             )}
           </div>
 
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-sm sm:text-base text-foreground truncate leading-tight">
-              {toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Direct Chat' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'))}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <h3 className="bw-h3 text-foreground truncate">
+              {displayTitle}
             </h3>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span
-                className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider",
-                  chat.type === 'event'
-                    ? "text-accent-gig"
-                    : chat.type === 'band'
-                    ? "text-accent-rehearsal"
-                    : "text-primary"
-                )}
-              >
-                {chatTypeLabel}
-              </span>
-              {chat.type === 'direct' && (
-                <>
-                  <span className="text-foreground/20 text-[8px]">•</span>
-                  {chat.isOnline ? (
-                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-500 uppercase">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                      Online
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-medium text-foreground/45 uppercase">
-                      Offline
-                    </span>
-                  )}
-                </>
+            <p className="bw-body-sm text-muted-foreground truncate flex items-center gap-1.5">
+              <span className="sr-only">{chatTypeLabel} · </span>
+              {chat.type === 'direct' ? (
+                chat.isOnline ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-success inline-block shrink-0" />
+                    Online
+                  </>
+                ) : (
+                  'Offline'
+                )
+              ) : chat.members ? (
+                `${chat.members} ${chat.members === 1 ? 'member' : 'members'}`
+              ) : chat.type === 'band' ? (
+                'Band chat'
+              ) : (
+                'Event chat'
               )}
-              {(chat.type === 'band' || chat.type === 'event') && chat.members && (
-                <>
-                  <span className="text-foreground/20 text-[8px]">•</span>
-                  <span className="text-[10px] font-bold text-foreground/50 uppercase">
-                    {chat.members} {chat.members === 1 ? 'member' : 'members'}
-                  </span>
-                </>
-              )}
-            </div>
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          aria-label="Delete chat"
-          className="w-10 h-10 rounded-full border border-foreground/15 bg-foreground/5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 flex items-center justify-center text-foreground/50 active:scale-90 transition-all shrink-0"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <IconButton label="Delete chat" variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
       </div>
 
       {/* Delete confirmation overlay */}
@@ -543,69 +538,89 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-x-0 top-0 z-10 bg-card/95 backdrop-blur-md border-b border-destructive/20 flex items-center justify-between px-4 py-3"
-            style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
+            className="absolute inset-x-0 top-0 z-10 bg-background flex items-center justify-between gap-3 px-4 pb-3"
+            style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
           >
-            <div className="flex-1 min-w-0 mr-3">
-              <p className="text-xs font-bold text-foreground uppercase">Delete this chat?</p>
-              <p className="text-[11px] text-foreground/50 mt-0.5">All messages will be permanently removed</p>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              <p className="bw-label-md text-foreground">Delete this chat?</p>
+              <p className="bw-body-sm text-muted-foreground">All messages will be permanently removed</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="h-9 px-4 rounded-full border border-foreground/15 text-xs font-bold text-foreground/70 uppercase hover:bg-foreground/5 active:scale-95 transition-all"
-              >
+              <PillButton variant="outline" size="md" fullWidth={false} onClick={() => setShowDeleteConfirm(false)}>
                 Cancel
-              </button>
-              <button
+              </PillButton>
+              <PillButton
+                variant="dark"
+                size="md"
+                fullWidth={false}
                 onClick={handleDeleteChat}
-                disabled={deleting}
-                className="h-9 px-4 rounded-full bg-destructive text-destructive-foreground text-xs font-bold uppercase flex items-center gap-1.5 active:scale-95 transition-all shadow-xs"
+                loading={deleting}
+                icon={<Trash2 className="w-4 h-4" />}
+                className="bg-destructive-solid text-white"
               >
-                {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 Delete
-              </button>
+              </PillButton>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-background">
+      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 bg-background">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-foreground/30" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-foreground/5 border border-foreground/10 flex items-center justify-center text-foreground/30">
-              {chat.type === 'band' ? (
-                <Users className="w-7 h-7" />
-              ) : (
-                <ArrowUpRight className="w-7 h-7" />
-              )}
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-foreground uppercase mb-1">No messages yet</h4>
-              <p className="text-xs font-medium text-foreground/50 uppercase">
+          <div className="flex flex-col items-center justify-center h-full text-center gap-4">
+            {chat.type === 'event' ? (
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `var(--accent-${eventKind})`, color: `var(--accent-${eventKind}-fg)` }}
+              >
+                <EventIcon className="w-7 h-7" />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full border-[1.5px] border-foreground flex items-center justify-center text-foreground">
+                {chat.type === 'band' ? (
+                  <Users className="w-7 h-7" />
+                ) : (
+                  <ArrowUpRight className="w-7 h-7" />
+                )}
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <h4 className="bw-h3 text-foreground">No messages yet</h4>
+              <p className="bw-label-sm text-muted-foreground">
                 Start the conversation
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {messageGroups.map((group, groupIndex) => (
-              <div key={groupIndex} className="flex flex-col gap-2">
+              <div key={groupIndex} className="flex flex-col gap-3">
                 {/* Date separator */}
-                <div className="flex items-center justify-center py-2">
-                  <span className="px-3 py-1 rounded-full bg-card border border-foreground/10 text-[10px] font-bold text-foreground/60 uppercase tracking-wider shadow-2xs">
-                    {formatDate(group.date)}
-                  </span>
+                <div className="flex items-center justify-center">
+                  <Tag variant="subtle">{formatDate(group.date)}</Tag>
                 </div>
 
                 {group.messages.map((message) => {
                   const isMe = message.sender_id === user?.id;
                   const replyTo = message.reply_to;
+                  const isTemp = message.id.startsWith('temp-');
+                  const isRead = !isTemp && isMessageRead(message.created_at);
+
+                  const replyButton = (
+                    <button
+                      type="button"
+                      onClick={() => handleReply(message)}
+                      aria-label="Reply to message"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition-opacity active:scale-90 self-center shrink-0 cursor-pointer"
+                    >
+                      <Reply className="w-3.5 h-3.5" />
+                    </button>
+                  );
                   
                   return (
                     <motion.div
@@ -613,87 +628,63 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15 }}
-                      className={cn("flex group items-end gap-1.5", isMe ? "justify-end" : "justify-start")}
+                      className={cn("flex group gap-1.5", isMe ? "justify-end" : "justify-start")}
                     >
                       {/* Reply button for sent messages */}
-                      {isMe && (
-                        <button
-                          onClick={() => handleReply(message)}
-                          aria-label="Reply to message"
-                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full bg-card border border-foreground/10 text-foreground/50 hover:text-foreground hover:bg-foreground/5 flex items-center justify-center transition-all active:scale-90 self-center shadow-xs"
-                        >
-                          <Reply className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      {isMe && replyButton}
 
                       <div className={cn(
-                        "max-w-[80%] px-4 py-2.5 shadow-xs transition-all",
-                        isMe
-                          ? "bg-primary text-primary-foreground rounded-2xl rounded-br-xs"
-                          : "bg-card text-card-foreground border border-foreground/10 rounded-2xl rounded-bl-xs"
+                        "flex flex-col gap-1 min-w-0 max-w-[78%]",
+                        isMe ? "items-end" : "items-start"
                       )}>
-                        {replyTo && message.reply_to_id && replyTo.content && (
-                          <div className={cn(
-                            "mb-2 px-3 py-1.5 rounded-lg border-l-2",
-                            isMe
-                              ? "bg-black/15 border-primary-foreground/70 text-primary-foreground"
-                              : "bg-foreground/5 border-primary text-foreground"
-                          )}>
-                            <p className={cn(
-                              "text-[10px] font-bold uppercase mb-0.5",
-                              isMe ? "text-primary-foreground/90" : "text-primary"
-                            )}>
-                              {replyTo.sender?.full_name || 'Unknown'}
-                            </p>
-                            <p className={cn(
-                              "text-xs line-clamp-1",
-                              isMe ? "text-primary-foreground/75" : "text-foreground/60"
-                            )}>
-                              {replyTo.content}
-                            </p>
-                          </div>
-                        )}
-
                         {!isMe && (chat.type === 'band' || chat.type === 'event') && (
-                          <p className="text-[11px] font-bold text-primary uppercase mb-1 tracking-wide">
+                          <p className="bw-label-xs text-muted-foreground">
                             {message.sender?.full_name || 'Member'}
                           </p>
                         )}
 
-                        <p className={cn(
-                          "text-sm font-normal leading-relaxed break-words",
-                          isMe ? "text-primary-foreground" : "text-card-foreground"
-                        )}>
-                          {renderMessageContent(message.content, isMe)}
-                        </p>
-
                         <div className={cn(
-                          "flex items-center justify-end gap-1 mt-1",
-                          isMe ? "text-primary-foreground/70" : "text-foreground/45"
+                          "flex flex-col gap-2 px-4 py-3 rounded-[20px] max-w-full",
+                          isMe
+                            ? "bg-accent text-accent-foreground"
+                            : "bg-card text-card-foreground"
                         )}>
-                          <span className="text-[10px] font-medium">{formatTime(message.created_at)}</span>
+                          {replyTo && message.reply_to_id && replyTo.content && (
+                            <div className="flex flex-col gap-1 px-3 py-2 rounded-[20px] bg-black text-white min-w-0">
+                              <p className="bw-label-xs text-accent truncate">
+                                {replyTo.sender?.full_name || 'Unknown'}
+                              </p>
+                              <p className="bw-body-sm text-white line-clamp-1">
+                                {replyTo.content}
+                              </p>
+                            </div>
+                          )}
+
+                          <p className="bw-body-md break-words">
+                            {renderMessageContent(message.content, isMe)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span className="bw-label-xs">{formatTime(message.created_at)}</span>
                           {isMe && (
-                            message.id.startsWith('temp-') ? (
-                              <Clock className="w-3 h-3 opacity-60" />
-                            ) : isMessageRead(message.created_at) ? (
-                              <CheckCheck className="w-3.5 h-3.5 text-sky-400" />
+                            isTemp ? (
+                              <Clock aria-label="Sending" className="w-3 h-3" />
+                            ) : isRead ? (
+                              <CheckCheck
+                                aria-label="Read"
+                                className="w-3 h-3"
+                                style={{ color: 'var(--accent-rehearsal-ink)' }}
+                              />
                             ) : (
-                              <Check className="w-3.5 h-3.5 opacity-60" />
+                              <Check aria-label="Sent" className="w-3 h-3" />
                             )
                           )}
                         </div>
                       </div>
 
                       {/* Reply button for received messages */}
-                      {!isMe && (
-                        <button
-                          onClick={() => handleReply(message)}
-                          aria-label="Reply to message"
-                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full bg-card border border-foreground/10 text-foreground/50 hover:text-foreground hover:bg-foreground/5 flex items-center justify-center transition-all active:scale-90 self-center shadow-xs"
-                        >
-                          <Reply className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      {!isMe && replyButton}
                     </motion.div>
                   );
                 })}
@@ -704,16 +695,16 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         )}
       </div>
 
-      {/* ── Input ── */}
+      {/* ── Composer ── */}
       <div
-        className="bg-card/95 backdrop-blur-md border-t border-border flex-shrink-0"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+        className="bg-background flex-shrink-0"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)' }}
       >
         {!canText ? (
-          <div className="px-4 py-3.5 flex items-center justify-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-foreground/5 border border-foreground/10 text-xs font-semibold text-foreground/60 uppercase tracking-wide">
-              <Lock className="w-3.5 h-3.5 text-foreground/50 shrink-0" />
-              <span>{restrictionReason || 'Messaging is restricted'}</span>
+          <div className="px-4 pt-3 flex items-center justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-card text-muted-foreground">
+              <Lock className="w-3.5 h-3.5 shrink-0" />
+              <span className="bw-label-xs">{restrictionReason || 'Messaging is restricted'}</span>
             </div>
           </div>
         ) : (
@@ -727,47 +718,41 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-4 pt-3 flex items-start gap-2">
-                    <div className="flex-1 bg-foreground/5 rounded-xl p-3 border-l-2 border-primary">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[10px] font-bold text-primary uppercase">
-                          Replying to {replyingTo.sender?.full_name || 'Message'}
-                        </span>
-                        <button
-                          onClick={() => setReplyingTo(null)}
-                          className="p-1 hover:bg-foreground/10 rounded-full text-foreground/50 hover:text-foreground transition-colors"
-                          aria-label="Cancel reply"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-foreground/70 line-clamp-1">{replyingTo.content}</p>
+                  <div className="bg-card px-4 py-3 flex items-center gap-3">
+                    <span className="w-[3px] h-7 rounded-full bg-accent shrink-0" aria-hidden="true" />
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="bw-label-sm text-foreground truncate">
+                        Replying to {replyingTo.sender?.full_name || 'Message'}
+                      </span>
+                      <p className="bw-body-sm text-muted-foreground line-clamp-1">{replyingTo.content}</p>
                     </div>
+                    <IconButton label="Cancel reply" variant="ghost" size="sm" icon={<X />} onClick={() => setReplyingTo(null)} className="-mr-2 text-muted-foreground" />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
             
-            <div className="px-4 py-3 flex items-center gap-2">
-              <div className="flex-1 relative">
+            <div className="px-4 pt-3 flex items-center gap-3">
+              <div className="flex-1 relative min-w-0">
                 <AnimatePresence>
                   {showMentionSuggestions && filteredParticipants.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
-                      className="absolute bottom-full left-0 right-0 mb-2 bg-card rounded-xl border border-border shadow-xl max-h-40 overflow-y-auto z-10 divide-y divide-border"
+                      className="absolute bottom-full left-0 right-0 mb-2 bg-card rounded-[16px] border border-border max-h-40 overflow-y-auto z-10 py-1"
                     >
                       {filteredParticipants.map((participant) => (
                         <button
+                          type="button"
                           key={participant.id}
                           onClick={() => insertMention(participant)}
-                          className="w-full px-4 py-2.5 text-left hover:bg-foreground/5 flex items-center gap-3 transition-colors first:rounded-t-xl last:rounded-b-xl"
+                          className="w-full px-4 py-2 text-left hover:bg-foreground/[0.06] flex items-center gap-3 transition-colors cursor-pointer"
                         >
-                          <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] font-bold shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center bw-label-xs shrink-0">
                             {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
-                          <span className="font-bold text-foreground text-xs uppercase truncate">{participant.name}</span>
+                          <span className="bw-label-sm text-foreground truncate">{participant.name}</span>
                         </button>
                       ))}
                     </motion.div>
@@ -787,28 +772,19 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       insertMention(filteredParticipants[0]);
                     }
                   }}
-                  placeholder={replyingTo ? "Write a reply..." : "Write a message..."}
-                  className="w-full h-11 px-4 rounded-full bg-foreground/5 text-foreground text-sm font-medium placeholder:text-foreground/35 border border-foreground/10 focus:border-primary/50 focus:bg-background focus:outline-none transition-all"
+                  placeholder={replyingTo ? "Write a reply…" : "Write a message…"}
+                  aria-label="Message"
+                  className="w-full h-12 px-4 rounded-full bg-field text-foreground bw-body-md placeholder:text-muted-foreground/60 border border-border focus:border-2 focus:border-foreground focus:outline-none transition-colors"
                 />
               </div>
               
-              <button
+              <IconButton
+                label="Send message"
+                variant="filled"
                 onClick={handleSend}
                 disabled={!newMessage.trim() || sending}
-                aria-label="Send message"
-                className={cn(
-                  "w-11 h-11 rounded-full flex items-center justify-center transition-all shrink-0 active:scale-90",
-                  newMessage.trim()
-                    ? "bg-primary text-primary-foreground shadow-xs hover:opacity-95"
-                    : "bg-foreground/5 text-foreground/30 cursor-not-allowed"
-                )}
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
+                icon={sending ? <Loader2 className="animate-spin" /> : <Send />}
+              />
             </div>
           </>
         )}

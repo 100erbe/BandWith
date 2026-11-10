@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  X,
-  User,
-  Mail,
-  Phone,
-  Music2,
-  Camera,
-  Loader2,
-  Check,
-  Save,
-  ArrowLeft,
-} from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
+import { User, Camera, Loader2, Check, ArrowLeft, Lock } from '@/app/components/icons';
+import { IconButton } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -185,6 +175,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   if (!isOpen) return null;
 
+  const initials =
+    fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() ||
+    user?.email?.slice(0, 2).toUpperCase() ||
+    'U';
+
   return (
     <AnimatePresence>
       <motion.div
@@ -193,205 +188,124 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
       >
-        {/* ═══ STICKY HEADER ═══ */}
-        <div
-          className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-          style={{
-            paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-            paddingBottom: '14px',
-          }}
-        >
-          <div className="max-w-xl mx-auto w-full flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onClose}
-                aria-label="Go back"
-                className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
-              >
-                <ArrowLeft className="w-5 h-5 text-foreground" />
-              </button>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                  USER PROFILE
-                </span>
-                <h2 className="text-[20px] font-black uppercase text-foreground leading-none">
-                  EDIT PROFILE
-                </h2>
-              </div>
-            </div>
-
-            <button 
-              onClick={onClose}
-              aria-label="Close"
-              className="w-8 h-8 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground/60 transition-all active:scale-90"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* ═══ HEADER (Figma: Identity / Edit profile — back + H2 title) ═══ */}
+        <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+          <div className="max-w-xl mx-auto w-full flex items-center gap-3 min-h-11">
+            <IconButton label="Go back" icon={<ArrowLeft />} onClick={onClose} />
+            <h2 className="bw-h2 text-foreground truncate">Edit profile</h2>
           </div>
-        </div>
+        </header>
 
         {/* ═══ CONTENT ═══ */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 max-w-xl mx-auto w-full pb-32 space-y-6">
-          {/* Avatar Section */}
-          <div className="flex justify-center">
-            <div className="relative">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-foreground/15 shadow-sm"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-primary/10 text-primary border-2 border-primary/20 flex items-center justify-center font-black text-2xl shadow-inner">
-                  {fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || user?.email?.slice(0, 2).toUpperCase() || 'U'}
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
-                className="absolute -bottom-1 -right-1 w-9 h-9 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all"
-                aria-label="Upload photo"
-              >
-                {uploadingAvatar ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 pt-6 pb-6 max-w-xl mx-auto w-full flex flex-col gap-6">
+            {/* Avatar */}
+            <div className="flex flex-col gap-3">
+              <div className="relative w-[92px] h-[92px]">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  <Camera className="w-4 h-4" />
+                  <div className="w-full h-full rounded-full bg-accent text-accent-foreground flex items-center justify-center bw-h1">
+                    {initials}
+                  </div>
                 )}
-              </button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <IconButton
+                  label="Upload photo"
+                  variant="filled"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  icon={uploadingAvatar ? <Loader2 className="animate-spin" /> : <Camera />}
+                  className="absolute -bottom-1 -right-3"
+                />
+              </div>
+              <p className="bw-label-xs text-muted-foreground">Max 8 MB · JPG or PNG</p>
             </div>
-          </div>
 
-          {error && (
-            <div className="p-3.5 bg-destructive/10 border border-destructive/20 rounded-[12px] text-destructive text-xs font-semibold">
-              {error}
-            </div>
-          )}
+            {error && <FormError>{error}</FormError>}
 
-          <div className="space-y-4">
-            {/* Full Name */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-foreground/50" />
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your full name"
-                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
+            <PillField
+              label="Full name"
+              icon={<User className="w-5 h-5" />}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Your full name"
+              autoComplete="name"
+            />
 
             {/* Email (read-only) */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-foreground/50" />
+            <div className="flex flex-col gap-2">
+              <label htmlFor="edit-profile-email" className="bw-label-sm text-muted-foreground">
                 Email
               </label>
-              <input
-                type="email"
-                value={user?.email || ''}
-                disabled
-                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground/50 cursor-not-allowed"
-              />
-              <p className="text-[10px] text-foreground/40 mt-1 font-medium">Email address is linked to your account authentication</p>
+              <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-foreground/[0.06] text-muted-foreground">
+                <Lock className="w-5 h-5 shrink-0" />
+                <input
+                  id="edit-profile-email"
+                  type="email"
+                  value={user?.email || ''}
+                  disabled
+                  aria-describedby="edit-profile-email-hint"
+                  className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+              <p id="edit-profile-email-hint" className="bw-body-sm text-muted-foreground">
+                Linked to your sign-in.
+              </p>
             </div>
 
-            {/* Phone */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-foreground/50" />
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 234 567 8900"
-                className="w-full px-4 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-semibold text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
+            <PillField
+              label="Phone number"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 234 567 8900"
+              autoComplete="tel"
+            />
 
-            {/* Primary Instrument */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-2 flex items-center gap-1.5">
-                <Music2 className="w-3.5 h-3.5 text-foreground/50" />
-                Primary Instrument / Role
-              </label>
+            {/* Primary instrument */}
+            <fieldset className="flex flex-col gap-2">
+              <legend className="bw-label-sm text-muted-foreground mb-2">Primary instrument / role</legend>
               <div className="flex flex-wrap gap-2">
                 {instruments.map((inst) => (
-                  <button
+                  <Selector
                     key={inst}
-                    type="button"
+                    selected={instrument === inst}
                     onClick={() => setInstrument(inst)}
-                    className={cn(
-                      'px-3.5 py-1.5 rounded-[8px] text-[11px] font-bold uppercase tracking-wider transition-all border',
-                      instrument === inst
-                        ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                        : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
-                    )}
+                    className={instrument === inst ? 'bg-accent text-accent-foreground' : undefined}
                   >
                     {inst}
-                  </button>
+                  </Selector>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Bio */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block mb-1.5">
-                Bio & Background
-              </label>
+            <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-foreground transition-colors">
+              <span className="bw-label-xs text-muted-foreground">Bio &amp; background</span>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Share your musical background, credits, experience..."
+                placeholder="Share your musical background, credits, experience…"
                 rows={3}
-                className="w-full p-4 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors resize-none"
+                className="w-full bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none resize-none"
               />
-            </div>
+            </label>
           </div>
         </div>
 
         {/* ═══ FOOTER ═══ */}
-        <div
-          className="sticky bottom-0 left-0 right-0 px-4 py-4 border-t border-foreground/10 bg-background/95 backdrop-blur-md"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
-        >
+        <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
           <div className="max-w-xl mx-auto w-full">
-            <button
+            <PillButton
               onClick={handleSave}
-              disabled={saving}
-              className={cn(
-                'w-full h-12 rounded-[12px] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98]',
-                success
-                  ? 'bg-green-600 text-white'
-                  : 'bg-primary text-primary-foreground hover:opacity-95'
-              )}
+              loading={saving}
+              variant={success ? 'dark' : 'primary'}
+              icon={<Check className="w-[18px] h-[18px]" />}
             >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : success ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </>
-              )}
-            </button>
+              {success ? 'Saved' : 'Save changes'}
+            </PillButton>
           </div>
         </div>
       </motion.div>

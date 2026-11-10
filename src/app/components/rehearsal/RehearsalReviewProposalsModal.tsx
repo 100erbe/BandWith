@@ -1,6 +1,6 @@
 import React from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { MessageCircle, ThumbsUp, ThumbsDown, CheckCircle2, Clock } from '@/app/components/icons';
+import { MessageCircle, ThumbsUp, CheckCircle2, Clock } from '@/app/components/icons';
+import { BwSheet, Tag } from '@/app/components/bw';
 import { SongProposal } from './types';
 import { cn } from '@/app/components/ui/utils';
 
@@ -15,70 +15,79 @@ export const RehearsalReviewProposalsModal: React.FC<Props> = ({ isOpen, onClose
   const pending = proposals.filter(p => p.status === 'pending' || p.status === 'new');
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Proposals Outcome" icon={MessageCircle}>
-        <div className="flex flex-col h-[60vh]">
-             {/* Swiss Summary Row */}
-             <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-black/5 shrink-0">
-                 <div className="px-2 py-1 bg-black/5 rounded text-[10px] font-bold uppercase text-foreground/60 flex items-center gap-1">
-                     <MessageCircle className="w-3 h-3" /> Total: {proposals.length}
-                 </div>
-                 <div className="px-2 py-1 bg-green-50 text-green-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                     <CheckCircle2 className="w-3 h-3" /> Approved: {approved.length}
-                 </div>
-                 <div className="px-2 py-1 bg-amber-50 text-amber-800 rounded text-[10px] font-bold uppercase flex items-center gap-1">
-                     <Clock className="w-3 h-3" /> Pending: {pending.length}
-                 </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
-                
-                {/* Approved */}
-                <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2 text-green-700">Approved</h4>
-                    {approved.length === 0 ? <div className="text-xs text-foreground/30 italic">None</div> : (
-                        <div className="space-y-2">
-                            {approved.map(p => (
-                                <div key={p.id} className="p-3 bg-white border border-green-100 rounded-xl shadow-sm">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <div>
-                                            <div className="text-sm font-bold">{p.title}</div>
-                                            <div className="text-[10px] text-foreground/50 uppercase">{p.artist}</div>
-                                        </div>
-                                        <div className="flex gap-2 text-[10px] font-bold text-foreground/40">
-                                            <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {p.votes.yes}</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-foreground/60 italic bg-[var(--surface-alt)] p-1.5 rounded mt-2">"{p.reason}"</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Pending */}
-                <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-foreground/40 mb-2">Pending</h4>
-                    {pending.length === 0 ? <div className="text-xs text-foreground/30 italic">None</div> : (
-                        <div className="space-y-2">
-                            {pending.map(p => (
-                                <div key={p.id} className="p-3 bg-[var(--surface-alt)] rounded-xl border border-transparent opacity-75">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <div>
-                                            <div className="text-sm font-bold text-foreground/70">{p.title}</div>
-                                            <div className="text-[10px] text-foreground/40 uppercase">{p.artist}</div>
-                                        </div>
-                                        <div className="flex gap-2 text-[10px] font-bold text-foreground/30">
-                                            <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {p.votes.yes}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline={`${proposals.length} ${proposals.length === 1 ? 'proposal' : 'proposals'}`}
+      title="Proposals outcome"
+      zIndex={110}
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Summary */}
+        <div className="flex flex-wrap gap-1.5">
+          <Tag variant="outline" icon={<MessageCircle />}>
+            Total {proposals.length}
+          </Tag>
+          <Tag variant="accent" icon={<CheckCircle2 />}>
+            Approved {approved.length}
+          </Tag>
+          <Tag variant="outline" icon={<Clock />}>
+            Pending {pending.length}
+          </Tag>
         </div>
-    </RehearsalModalWrapper>
+
+        {/* Approved */}
+        <section className="flex flex-col gap-2">
+          <h4 className="bw-label-sm text-sheet-foreground/70">Approved</h4>
+          {approved.length === 0 ? (
+            <EmptyNote>None yet</EmptyNote>
+          ) : (
+            approved.map(p => (
+              <div key={p.id} className="flex flex-col gap-3 p-4 rounded-[16px] bg-white/[0.08]">
+                <ProposalHead proposal={p} />
+                {p.reason && (
+                  <p className="bw-body-sm text-sheet-foreground/70">“{p.reason}”</p>
+                )}
+              </div>
+            ))
+          )}
+        </section>
+
+        {/* Pending */}
+        <section className="flex flex-col gap-2">
+          <h4 className="bw-label-sm text-sheet-foreground/70">Pending</h4>
+          {pending.length === 0 ? (
+            <EmptyNote>None</EmptyNote>
+          ) : (
+            pending.map(p => (
+              <div key={p.id} className="p-4 rounded-[16px] bg-white/[0.08]">
+                <ProposalHead proposal={p} muted />
+              </div>
+            ))
+          )}
+        </section>
+      </div>
+    </BwSheet>
   );
 };
+
+const ProposalHead: React.FC<{ proposal: SongProposal; muted?: boolean }> = ({ proposal, muted }) => (
+  <div className="flex items-start gap-3">
+    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+      <span className={cn('bw-body-lg truncate', muted && 'text-sheet-foreground/70')}>{proposal.title}</span>
+      {proposal.artist && <span className="bw-body-sm text-sheet-foreground/60 truncate">{proposal.artist}</span>}
+    </div>
+    <span
+      className="flex items-center gap-1 bw-label-sm text-sheet-foreground/70 shrink-0"
+      aria-label={`${proposal.votes.yes} ${proposal.votes.yes === 1 ? 'vote' : 'votes'} in favour`}
+    >
+      <ThumbsUp className="w-4 h-4" /> {proposal.votes.yes}
+    </span>
+  </div>
+);
+
+const EmptyNote: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="p-4 rounded-[16px] border-[1.5px] border-dashed border-sheet-foreground/25 bw-body-sm text-sheet-foreground/60 text-center">
+    {children}
+  </p>
+);

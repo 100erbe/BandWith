@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, Wifi, RefreshCw } from '@/app/components/icons';
+import { cn } from './utils';
 
 interface OfflineBannerProps {
   isOnline: boolean;
@@ -29,50 +30,52 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
 
   const visible = !isOnline || showReconnected;
 
+  const changes = `${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'}`;
+
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          key="offline-banner"
+          initial={{ y: '-100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '-100%' }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="fixed inset-x-0 z-[120] flex justify-center items-center pointer-events-none px-4"
-          style={{ top: 'calc(var(--safe-top, 12px) + 8px)' }}
+          role="status"
+          aria-live="polite"
+          className={cn(
+            // Figma "State / Offline + toast" → Offline banner: full-width strip under the status bar.
+            'fixed inset-x-0 top-0 z-[120] flex items-center gap-3 px-4 pb-3',
+            !isOnline ? 'bg-warning text-warning-foreground' : 'bg-success text-success-foreground'
+          )}
+          style={{ paddingTop: 'calc(var(--safe-top, 0px) + 12px)' }}
         >
-          <div
-            className={`pointer-events-auto inline-flex items-center gap-2.5 px-4 py-2 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.45)] text-[12px] font-bold tracking-wide border-2 transition-colors ${
-              !isOnline
-                ? 'bg-zinc-950 text-white border-amber-400'
-                : 'bg-zinc-950 text-white border-emerald-400'
-            }`}
-          >
-            {!isOnline ? (
-              <>
-                <WifiOff className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-                <span className="text-white">Offline • Showing cached info</span>
-                {pendingCount > 0 && (
-                  <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-zinc-950">
-                    {pendingCount} pending
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                <Wifi className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-white">Back online • Synced</span>
-                {pendingCount > 0 && onSyncNow && (
-                  <button
-                    onClick={onSyncNow}
-                    className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-400 text-zinc-950 hover:bg-emerald-300"
-                  >
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    Sync now
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+          {!isOnline ? (
+            <>
+              <WifiOff className="w-[18px] h-[18px] shrink-0" aria-hidden />
+              <span className="flex-1 min-w-0 truncate bw-label-sm">
+                {pendingCount > 0 ? `You’re offline · ${changes} will sync` : 'You’re offline · showing cached info'}
+              </span>
+              <RefreshCw className="w-4 h-4 shrink-0" aria-hidden />
+            </>
+          ) : (
+            <>
+              <Wifi className="w-[18px] h-[18px] shrink-0" aria-hidden />
+              <span className="flex-1 min-w-0 truncate bw-label-sm">
+                {pendingCount > 0 ? `Back online · ${changes} to sync` : 'Back online · synced'}
+              </span>
+              {pendingCount > 0 && onSyncNow && (
+                <button
+                  type="button"
+                  onClick={onSyncNow}
+                  aria-label="Sync now"
+                  className="relative -m-2 p-2 shrink-0 rounded-full active:scale-[var(--press-scale,0.97)] transition-transform"
+                >
+                  <RefreshCw className="w-4 h-4 animate-spin" aria-hidden />
+                </button>
+              )}
+            </>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

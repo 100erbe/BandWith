@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronDown, 
-  Sparkles,
-  Bell
+  Bell,
+  Search,
+  Plus,
 } from '@/app/components/icons';
+import { IconButton } from '@/app/components/bw/Screen';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
 import { TabName } from '@/app/types';
 import { useAuth } from '@/lib/AuthContext';
-import { Capacitor } from '@capacitor/core';
-import { HEADER_SPRING, durations, easings } from '@/styles/motion';
+import { HEADER_SPRING, durations } from '@/styles/motion';
+import { FIT, FitText } from '@/app/components/bw/FitText';
 
 export { HEADER_SPRING };
 
@@ -37,8 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   selectedBand,
   bands,
   onOpenBandSwitcher,
-  filteredEventsCount,
-  totalEventsCount,
+  filteredEventsCount: _filteredEventsCount,
+  totalEventsCount: _totalEventsCount,
   onOpenIdentity,
   onOpenNotifications,
   unreadCount,
@@ -46,8 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
   isScrolled = false,
 }) => {
   const { profile } = useAuth();
-  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
-  const isAndroid = typeof window !== 'undefined' && (Capacitor.getPlatform() === 'android' || /Android/i.test(navigator.userAgent));
   
   // Calculate initials from actual profile or fallback
   const getInitials = () => {
@@ -67,6 +67,9 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const initials = getInitials();
+
+  // Long band names step down 36 → 30 → 24 → 20 (Figma: Fit Text / Header)
+  // to fit beside the bell and avatar; only past 20px do they truncate.
 
   // 3D Welcome Flip: Initials -> Photo once when HomeView opens; flips back and forth on hover
   const [isFlipped, setIsFlipped] = useState(false);
@@ -101,8 +104,8 @@ export const Header: React.FC<HeaderProps> = ({
       className={cn(
         "sticky top-0 z-40 -mx-4 px-4 select-none transition-[background-color,border-color,box-shadow] duration-200",
         isScrolled 
-          ? "bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs" 
-          : "bg-background/80 backdrop-blur-md border-b border-transparent"
+          ? "bg-background/95 backdrop-blur-xl"
+          : "bg-background/80 backdrop-blur-md"
       )}
       animate={{ 
         opacity: isHidden ? 0 : 1, 
@@ -128,63 +131,60 @@ export const Header: React.FC<HeaderProps> = ({
       >
           {/* ═══ LEFT: Single Unified Morphing Title Lockup (Zero duplicate DOM nodes) ═══ */}
           {activeTab === 'Chat' ? (
-            <div className="flex flex-col pr-[104px]">
-              <motion.h1
-                initial={false}
-                animate={{
-                  scale: isScrolled ? 0.52 : 1,
-                  y: isScrolled ? 5 : 2,
-                }}
-                transition={HEADER_SPRING}
-                style={{ willChange: 'transform' }}
-                className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase origin-top-left"
-              >
-                Messages
-              </motion.h1>
-              <motion.div
-                initial={false}
-                animate={{
-                  y: isScrolled ? -10 : 8,
-                  scale: isScrolled ? 0.9 : 1,
-                  opacity: isScrolled ? 0.85 : 1,
-                }}
-                transition={HEADER_SPRING}
-                style={{ willChange: 'transform, opacity' }}
-                className="flex items-center gap-1.5 origin-top-left"
-              >
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none">
-                  All caught up
-                </span>
-                <Sparkles className="w-3 h-3 text-primary fill-primary shrink-0" />
-              </motion.div>
-            </div>
-          ) : activeTab === 'Events' ? (
-            <div className="flex flex-col pr-[104px]">
-              <motion.h1
-                initial={false}
-                animate={{
-                  scale: isScrolled ? 0.52 : 1,
-                  y: isScrolled ? 5 : 2,
-                }}
-                transition={HEADER_SPRING}
-                style={{ willChange: 'transform' }}
-                className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase origin-top-left"
-              >
-                Events
-              </motion.h1>
+            /* Figma "Chat / Inbox" Kicker: "Messages" overline above the Display/LG title */
+            <div className="flex flex-col gap-1 pr-[56px]">
               <motion.span
                 initial={false}
                 animate={{
-                  y: isScrolled ? -10 : 8,
-                  scale: isScrolled ? 0.9 : 1,
-                  opacity: isScrolled ? 0.85 : 1,
+                  y: isScrolled ? -6 : 0,
+                  opacity: isScrolled ? 0 : 1,
                 }}
                 transition={HEADER_SPRING}
                 style={{ willChange: 'transform, opacity' }}
-                className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none origin-top-left"
+                className="bw-label-sm text-muted-foreground leading-none origin-top-left truncate h-[13px]"
               >
-                {filteredEventsCount} of {totalEventsCount} events
+                Messages
               </motion.span>
+              <motion.h1
+                initial={false}
+                animate={{
+                  scale: isScrolled ? 0.52 : 1,
+                  y: isScrolled ? -12 : 0,
+                }}
+                transition={HEADER_SPRING}
+                style={{ willChange: 'transform' }}
+                className="bw-display-lg text-foreground origin-top-left"
+              >
+                Chat
+              </motion.h1>
+            </div>
+          ) : activeTab === 'Events' ? (
+            /* Figma "Calendar" Kicker: overline above the Display/LG title */
+            <div className="flex flex-col gap-1 pr-[56px]">
+              <motion.span
+                initial={false}
+                animate={{
+                  y: isScrolled ? -6 : 0,
+                  opacity: isScrolled ? 0 : 1,
+                }}
+                transition={HEADER_SPRING}
+                style={{ willChange: 'transform, opacity' }}
+                className="bw-label-sm text-muted-foreground leading-none origin-top-left truncate h-[13px]"
+              >
+                {selectedBand.name} · Schedule
+              </motion.span>
+              <motion.h1
+                initial={false}
+                animate={{
+                  scale: isScrolled ? 0.52 : 1,
+                  y: isScrolled ? -12 : 0,
+                }}
+                transition={HEADER_SPRING}
+                className="bw-display-lg text-foreground origin-top-left"
+                style={{ willChange: 'transform', fontSize: 'min(44px, calc((100vw - 100px) / 4.9))' }}
+              >
+                Calendar
+              </motion.h1>
             </div>
           ) : (
             <div className="flex flex-col pr-[104px]">
@@ -200,10 +200,10 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex items-center gap-1.5 h-[14px] origin-top-left"
               >
                 <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0", 
-                  selectedBand.role === 'ADMIN' ? "bg-primary" : "bg-[var(--accent-rehearsal)]"
+                  "w-2.5 h-2.5 rounded-full shrink-0",
+                  selectedBand.role === 'ADMIN' ? "bg-destructive-solid" : "bg-accent"
                 )} />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
+                <span className="bw-label-sm text-foreground leading-none">
                   {selectedBand.role}
                 </span>
               </motion.div>
@@ -225,9 +225,13 @@ export const Header: React.FC<HeaderProps> = ({
                     style={{ willChange: 'transform' }}
                     className="flex items-center gap-2 origin-top-left"
                   >
-                    <h1 className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase truncate max-w-[260px] group-hover:text-foreground/75 transition-colors">
-                      {selectedBand.name}
-                    </h1>
+                    <FitText
+                      as="h1"
+                      text={selectedBand.name}
+                      sizes={FIT.header}
+                      maxLines={1}
+                      className="bw-display text-foreground max-w-[260px] group-hover:text-foreground/75 transition-colors"
+                    />
                     <motion.div
                       initial={false}
                       animate={{
@@ -255,29 +259,52 @@ export const Header: React.FC<HeaderProps> = ({
                     }}
                     className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors origin-top-left"
                   >
-                    <span className="text-[11px] font-bold uppercase tracking-wider leading-none">Change Band</span>
-                    <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5" />
+                    <span className="bw-label-sm leading-none">Switch band</span>
+                    <ChevronDown className="w-3 h-3 transition-transform group-hover:translate-y-0.5" />
                   </motion.div>
                 </button>
               ) : (
-                <motion.h1
+                <motion.div
                   initial={false}
                   animate={{
                     scale: isScrolled ? 0.52 : 1,
                     y: isScrolled ? 6 : 5,
                   }}
                   transition={HEADER_SPRING}
+                  className="origin-top-left"
                   style={{ willChange: 'transform' }}
-                  className="text-[40px] sm:text-[44px] font-black tracking-tighter leading-[0.9] text-foreground uppercase truncate max-w-[260px] origin-top-left"
                 >
-                  {selectedBand.name}
-                </motion.h1>
+                  <FitText
+                    as="h1"
+                    text={selectedBand.name}
+                    sizes={FIT.header}
+                    maxLines={1}
+                    className="bw-display text-foreground max-w-[260px]"
+                  />
+                </motion.div>
               )}
             </div>
           )}
 
           {/* ═══ RIGHT: Stationary Bell & Identity Actions (Pinned at top-right, 0px vertical shift) ═══ */}
-          <div className="absolute top-[3px] right-0 flex items-center gap-2.5 z-20">
+          <div className="absolute top-[3px] right-0 flex items-center gap-2 z-20">
+            {activeTab === 'Chat' ? (
+              /* Figma "Chat / Inbox": a single filled "+" starts a new conversation */
+              <IconButton
+                label="New chat"
+                variant="filled"
+                icon={<Plus />}
+                onClick={() => window.dispatchEvent(new CustomEvent('bw:new-chat'))}
+              />
+            ) : activeTab === 'Events' ? (
+              /* Figma "Calendar": a single Outline search button opens "Search events" */
+              <IconButton
+                label="Search events"
+                icon={<Search />}
+                onClick={() => window.dispatchEvent(new CustomEvent('bw:open-event-search'))}
+              />
+            ) : (
+            <>
             {/* Bell / Notifications */}
             <motion.button 
               type="button"
@@ -285,16 +312,16 @@ export const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.92 }}
               onClick={onOpenNotifications}
               aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
-              className="relative shrink-0 p-2 text-foreground/80 hover:text-foreground flex items-center justify-center transition-colors focus:outline-none cursor-pointer"
+              className="relative shrink-0 w-11 h-11 rounded-full border-[1.5px] border-foreground text-foreground flex items-center justify-center transition-colors hover:bg-foreground/[0.08] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground cursor-pointer"
             >
-              <Bell className="w-6 h-6 text-foreground" />
+              <Bell className="w-5 h-5 text-foreground" />
               <AnimatePresence>
                 {unreadCount > 0 && (
                   <motion.div 
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
-                    className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-black flex items-center justify-center border-2 border-background z-30 shadow-xs"
+                    className="absolute -top-0.5 left-[26px] min-w-[20px] h-5 px-1 rounded-full bg-destructive-solid text-white text-[11px] font-bold leading-none flex items-center justify-center border-2 border-background z-30"
                   >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </motion.div>
@@ -311,7 +338,7 @@ export const Header: React.FC<HeaderProps> = ({
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               aria-label="Open Identity and Account Hub"
-              className="relative shrink-0 w-11 h-11 rounded-[14px] bg-card border border-foreground/10 hover:border-foreground/20 hover:bg-foreground/5 text-foreground flex items-center justify-center font-bold text-sm tracking-wide transition-colors shadow-2xs focus:outline-none overflow-hidden cursor-pointer"
+              className="relative shrink-0 w-11 h-11 rounded-full bg-white border-[1.5px] border-border text-black flex items-center justify-center bw-h3 transition-colors focus:outline-none overflow-hidden cursor-pointer"
             >
               {profile?.avatar_url ? (
                 <div 
@@ -326,7 +353,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     {/* Front Face: Initials */}
                     <div 
-                      className="absolute inset-0 flex items-center justify-center font-bold text-sm tracking-wide text-foreground select-none"
+                      className="absolute inset-0 flex items-center justify-center bw-h3 select-none"
                       style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
                     >
                       {initials}
@@ -334,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                     {/* Back Face: Profile Photo */}
                     <div 
-                      className="absolute inset-0 rounded-[13px] overflow-hidden"
+                      className="absolute inset-0 rounded-full overflow-hidden"
                       style={{ 
                         backfaceVisibility: 'hidden', 
                         WebkitBackfaceVisibility: 'hidden',
@@ -353,6 +380,8 @@ export const Header: React.FC<HeaderProps> = ({
                 initials
               )}
             </motion.button>
+            </>
+            )}
           </div>
         </motion.div>
     </motion.header>

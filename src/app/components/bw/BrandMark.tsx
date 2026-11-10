@@ -1,0 +1,179 @@
+import React from 'react';
+
+/**
+ * BandWith pictogram — seven rounded blocks on a 3×3 grid (Figma: Logo/Mark).
+ * The middle column is one tall bar sitting on the bottom two rows, so the
+ * mark reads as a level meter / a stylised "B".
+ *
+ *   ■   ■
+ *   ■ ┃ ■
+ *   ■ ┃ ■
+ *
+ * Master grid is 286 units: 88 cells, 11 gaps, 30 corner radius.
+ */
+export const MARK_SIZE = 286;
+const CELL = 88;
+const PITCH = 99; // cell + gap
+const RADIUS = 30;
+
+type Block = { x: number; y: number; h: number };
+
+const BLOCKS: Block[] = [
+  { x: 0, y: 0, h: CELL },
+  { x: 0, y: PITCH, h: CELL },
+  { x: 0, y: 2 * PITCH, h: CELL },
+  { x: PITCH, y: PITCH, h: PITCH + CELL }, // tall bar
+  { x: 2 * PITCH, y: 0, h: CELL },
+  { x: 2 * PITCH, y: PITCH, h: CELL },
+  { x: 2 * PITCH, y: 2 * PITCH, h: CELL },
+];
+
+interface BrandMarkProps {
+  /** Rendered size in px (the mark is square). */
+  size?: number;
+  /** Fill colour. Defaults to the current text colour. */
+  color?: string;
+  className?: string;
+  /** Accessible name; pass '' when the mark sits next to the wordmark. */
+  title?: string;
+  /** Blocks pop in column by column, the bar rises last (splash). Respects reduced motion. */
+  animated?: boolean;
+}
+
+export const BrandMark: React.FC<BrandMarkProps> = ({
+  size = 32,
+  color = 'currentColor',
+  className,
+  title = 'BandWith',
+  animated = false,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox={`0 0 ${MARK_SIZE} ${MARK_SIZE}`}
+    className={className}
+    role={title ? 'img' : undefined}
+    aria-label={title || undefined}
+    aria-hidden={title ? undefined : true}
+    style={{ display: 'block', flexShrink: 0 }}
+  >
+    {animated && (
+      <style>{`
+        @keyframes bw-block-in { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+        @keyframes bw-bar-in { from { opacity: 0; transform: scaleY(0.2); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .bw-mark-block { animation: none !important; } }
+      `}</style>
+    )}
+    {BLOCKS.map((b, i) => {
+      const bar = b.h > CELL;
+      return (
+        <rect
+          key={i}
+          x={b.x}
+          y={b.y}
+          width={CELL}
+          height={b.h}
+          rx={RADIUS}
+          fill={color}
+          className={animated ? 'bw-mark-block' : undefined}
+          style={
+            animated
+              ? {
+                  transformBox: 'fill-box',
+                  transformOrigin: bar ? 'center bottom' : 'center',
+                  animation: bar
+                    ? 'bw-bar-in 360ms cubic-bezier(0.16,1,0.3,1) 420ms both'
+                    : `bw-block-in 260ms cubic-bezier(0.16,1,0.3,1) ${i * 55}ms both`,
+                }
+              : undefined
+          }
+        />
+      );
+    })}
+  </svg>
+);
+
+/* Logotype outlines from the brand file (BAND upright, WITH italic), cap height 286. */
+const BAND = [
+  'M0 286V0H138C166.53 0 188.8 6.53 204.8 19.6C221.33 33.2 229.6 51.47 229.6 74.4C229.6 101.6 216.27 120.27 189.6 130.4V131.6C205.33 136.4 217.73 145.07 226.8 157.6C236.13 170.13 240.8 184.8 240.8 201.6C240.8 229.33 231.07 250.67 211.6 265.6C194.27 279.2 170.8 286 141.2 286H0ZM70 229.2H133.2C144.67 229.2 153.73 226.13 160.4 220C167.33 213.87 170.8 205.73 170.8 195.6C170.8 184.67 167.2 176.27 160 170.4C152.8 164.27 143.6 161.2 132.4 161.2H70V229.2ZM70 113.2H127.6C138 113.2 146.27 110.67 152.4 105.6C158.8 100.53 162 93.47 162 84.4C162 75.6 158.93 68.67 152.8 63.6C146.67 58.53 138.4 56 128 56H70V113.2Z',
+  'M240.36 286L343.16 0H415.96L519.16 286H444.76L427.96 234.4H327.96L311.56 286H240.36ZM344.36 183.6H411.56L389.96 114.4L378.76 74H377.96C373.43 91.07 369.56 104.53 366.36 114.4L344.36 183.6Z',
+  'M531.27 286V0H602.47L687.27 143.6L706.87 180H707.67C707.13 157.07 706.87 142.27 706.87 135.6V0H776.07V286H704.87L620.87 144.4L600.47 106H599.67C600.2 130.53 600.47 146.13 600.47 152.8V286H531.27Z',
+  'M878.05 226.4H919.65C942.58 226.4 960.05 219.47 972.05 205.6C984.05 191.47 990.05 171.2 990.05 144.8C990.05 118.4 983.92 97.6 971.65 82.4C959.38 66.93 942.32 59.2 920.45 59.2H878.05V226.4ZM807.25 286V0H929.25C968.98 0 1000.98 13.2 1025.25 39.6C1049.52 66 1061.65 101.07 1061.65 144.8C1061.65 196.27 1045.12 234.67 1012.05 260C988.85 277.33 959.78 286 924.85 286H807.25Z',
+];
+const WITH = [
+  'M1121.28 286L1096.48 0H1166.08L1171.68 120L1172.08 192H1172.88C1182.48 165.33 1191.15 142 1198.88 122L1246.88 0H1311.28L1316.48 121.6L1317.68 192H1318.48C1328.61 162.93 1337.55 138.67 1345.28 119.2L1392.88 0H1463.68L1338.48 286H1270.08L1264.08 148.4L1263.28 93.2H1262.48C1256.08 113.73 1249.68 132.13 1243.28 148.4L1189.68 286H1121.28Z',
+  'M1421.24 286L1476.84 0H1546.44L1491.24 286H1421.24Z',
+  'M1589.43 286L1633.43 59.2H1553.03L1564.22 0H1795.43L1784.22 59.2H1703.03L1659.03 286H1589.43Z',
+  'M1757.58 286L1812.78 0H1882.78L1861.58 108.8H1956.38L1977.58 0H2047.18L1991.98 286H1922.38L1945.18 166.4H1850.38L1827.58 286H1757.58Z',
+];
+export const WORDMARK_WIDTH = 2048;
+/** Gap between mark and logotype in the lockup, as a fraction of their height. */
+const LOCKUP_GAP = 79 / 286;
+
+interface BrandWordmarkProps {
+  /** Colour of BAND. Defaults to the current text colour. */
+  color?: string;
+  /** Colour of WITH. Defaults to `color` (single colour). */
+  accent?: string;
+  /** Height in px; omit to size with CSS (className). */
+  height?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/** The BANDWITH logotype (Figma: Logo/Wordmark › Logotype). Decorative: label the parent. */
+export const BrandWordmark: React.FC<BrandWordmarkProps> = ({ color = 'currentColor', accent, height, className, style }) => (
+  <svg
+    viewBox={`0 0 ${WORDMARK_WIDTH} ${MARK_SIZE}`}
+    height={height}
+    width={height ? (height * WORDMARK_WIDTH) / MARK_SIZE : undefined}
+    className={className}
+    aria-hidden
+    style={{ display: 'block', flexShrink: 0, ...style }}
+  >
+    <g fill={color}>
+      {BAND.map((d) => (
+        <path key={d.slice(0, 12)} d={d} />
+      ))}
+    </g>
+    <g fill={accent ?? color}>
+      {WITH.map((d) => (
+        <path key={d.slice(0, 12)} d={d} />
+      ))}
+    </g>
+  </svg>
+);
+
+interface BrandLockupProps {
+  /** Logotype cap height in px; the mark matches it (or scales up when vertical). */
+  size?: number;
+  /** Stack the mark above the logotype (splash, app icon screens). */
+  vertical?: boolean;
+  /** Everything in the current text colour (no accent). */
+  monochrome?: boolean;
+  className?: string;
+}
+
+/**
+ * Mark + logotype (Figma: Logo/Wordmark). Two-tone by default: mark and WITH in
+ * --accent-ink (lime in dark mode, olive in light mode), BAND in the text colour.
+ */
+export const BrandLockup: React.FC<BrandLockupProps> = ({ size = 18, vertical = false, monochrome = false, className }) => {
+  const accent = monochrome ? 'currentColor' : 'var(--accent-ink)';
+  return (
+    <span
+      className={className}
+      role="img"
+      aria-label="BandWith"
+      style={{
+        display: 'inline-flex',
+        flexDirection: vertical ? 'column' : 'row',
+        alignItems: vertical ? 'flex-start' : 'center',
+        gap: vertical ? size * 0.9 : size * LOCKUP_GAP,
+      }}
+    >
+      <BrandMark size={vertical ? size * 3 : size} color={accent} title="" />
+      <BrandWordmark height={size} accent={accent} />
+    </span>
+  );
+};

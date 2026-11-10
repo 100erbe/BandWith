@@ -1,11 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { createDemoClient } from './demo/demoClient';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables - using mock mode');
+/**
+ * Demo mode (development builds only): the app runs on an in-memory fake
+ * backend with sample data, and any sign-in opens the demo account. It turns
+ * on when VITE_DEMO_MODE=true or when the Supabase env vars are missing.
+ * `import.meta.env.DEV` is false in production builds, so it can never ship.
+ */
+export const isDemoMode =
+  import.meta.env.DEV &&
+  (import.meta.env.VITE_DEMO_MODE === 'true' || !supabaseUrl || !supabaseAnonKey);
+
+if (isDemoMode) {
+  console.info('[BandWith] Demo mode: using local sample data, no Supabase connection.');
+} else if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Missing Supabase environment variables');
 }
 
 // Create a Supabase client using the standard browser client.
@@ -13,7 +26,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // and interferes with session persistence in a standard SPA.
 // We use createClient which automatically handles localStorage in the browser
 // and works correctly with OAuth redirect flows.
-export const supabase = createClient(
+export const supabase = isDemoMode
+  ? (createDemoClient() as unknown as ReturnType<typeof createClient>)
+  : createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {

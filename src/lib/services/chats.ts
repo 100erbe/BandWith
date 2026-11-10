@@ -678,9 +678,24 @@ export const getMessages = async (
     }
 
     console.log('[getMessages] Found', data?.length || 0, 'messages');
-    
+
+    // Attach sender profiles in one batch: the chat UI shows `sender.full_name`
+    // above each message in group chats, and falls back to "Member" without it.
+    const rows = data || [];
+    const senderIds = [...new Set(rows.map((m: any) => m.sender_id).filter(Boolean))];
+    if (senderIds.length > 0) {
+      const { data: senders } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', senderIds);
+      const byId = new Map((senders || []).map((p: any) => [p.id, p]));
+      for (const m of rows as any[]) {
+        if (!m.sender && byId.has(m.sender_id)) m.sender = byId.get(m.sender_id);
+      }
+    }
+
     // Return in ascending order for display
-    return { data: (data || []).reverse(), error: null };
+    return { data: rows.reverse(), error: null };
   } catch (error: any) {
     console.error('[getMessages] Exception:', error);
     return { data: null, error };

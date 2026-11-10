@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Calendar, Users } from '@/app/components/icons';
+import { ArrowUpRight } from '@/app/components/icons';
+import { cn } from '@/app/components/ui/utils';
+import { useOnboarding } from '@/lib/OnboardingContext';
+import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
+import { DotMatrixRadio, WizardTop, wizardStep } from './OnboardingChrome';
 
 interface IntentSelectorProps {
   onSelectSolo: () => void;
@@ -8,99 +12,127 @@ interface IntentSelectorProps {
   onBack: () => void;
 }
 
+type Intent = 'solo' | 'band';
+
+interface IntentOption {
+  id: Intent;
+  title: string;
+  description: string;
+  badge: string;
+  /** Lit dots out of 5 (1 = just you, 5 = the whole band). */
+  dots: number;
+  /** Badge uses the lime accent pill instead of the outline pill. */
+  accentBadge?: boolean;
+}
+
+const OPTIONS: IntentOption[] = [
+  {
+    id: 'solo',
+    title: 'Solo schedule',
+    description: 'Manage personal gigs, sync private rehearsals and track your earnings.',
+    badge: 'Free',
+    dots: 1,
+  },
+  {
+    id: 'band',
+    title: 'Manage my band',
+    description: 'Coordinate shared schedules, automate quotes and track band finances.',
+    badge: 'Admin',
+    dots: 5,
+    accentBadge: true,
+  },
+];
+
 export const IntentSelector: React.FC<IntentSelectorProps> = ({
   onSelectSolo,
   onSelectBand,
   onBack,
 }) => {
+  const { path } = useOnboarding();
+  const [choice, setChoice] = useState<Intent | null>(null);
+  const { step, total } = wizardStep(path, 'intent');
+
+  const handleContinue = () => {
+    if (choice === 'solo') onSelectSolo();
+    else if (choice === 'band') onSelectBand();
+  };
+
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
+    <AuthScreen
+      top={<WizardTop onBack={onBack} step={step} total={total} />}
+      bodyClassName="pt-2 gap-3"
+      footer={
+        <PillButton onClick={handleContinue} disabled={!choice} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
+          Continue
+        </PillButton>
+      }
     >
-      {/* Header */}
-      <div className="px-6 pt-14 pb-4">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-[15px] font-medium"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
+      <Kicker overline="Choose your path" title="What brings you here?" />
+      <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px]">
+        Choose how you want to use BandWith. You can change this later.
+      </p>
+
+      <div role="radiogroup" aria-label="Choose your path" className="flex flex-col gap-3">
+        {OPTIONS.map((opt, i) => {
+          const selected = choice === opt.id;
+          return (
+            <motion.button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setChoice(opt.id)}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 + i * 0.08, duration: 0.4 }}
+              className={cn(
+                'w-full text-left flex flex-col gap-3 p-5 rounded-[24px] transition-colors',
+                'active:scale-[var(--press-scale,0.97)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground',
+                // Selected card is the dark Figma card; scoping `dark` flips the tokens inside it.
+                selected ? 'dark bg-sheet text-foreground border border-transparent' : 'bg-card text-foreground border border-border',
+              )}
+            >
+              <span className="flex items-center justify-between w-full">
+                <span className="flex items-center gap-1" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, d) => (
+                    <span
+                      key={d}
+                      className={cn(
+                        'w-2.5 h-2.5 rounded-full',
+                        d < opt.dots ? (selected ? 'bg-accent' : 'bg-dot-on') : 'bg-dot-off',
+                      )}
+                    />
+                  ))}
+                </span>
+                <span
+                  className={cn(
+                    'inline-flex items-center h-7 px-3 rounded-full bw-label-sm',
+                    opt.accentBadge ? 'bg-accent text-accent-foreground' : 'border border-border text-muted-foreground',
+                  )}
+                >
+                  {opt.badge}
+                </span>
+              </span>
+              <span className="bw-h1">{opt.title}</span>
+              <span
+                className={cn(
+                  'text-[16px] leading-[1.45] tracking-[-0.003em]',
+                  selected ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {opt.description}
+              </span>
+              <span className="flex items-center gap-2">
+                <DotMatrixRadio checked={selected} />
+                <span className={cn('bw-label-sm', selected ? 'text-accent' : 'text-muted-foreground')}>
+                  {selected ? 'Selected' : 'Select'}
+                </span>
+              </span>
+            </motion.button>
+          );
+        })}
       </div>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col px-6 justify-center -mt-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-2"
-        >
-          <p className="text-muted-foreground text-[13px] font-semibold uppercase tracking-widest mb-3">
-            Step 2 of 5
-          </p>
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-3">
-            What brings you here today?
-          </h1>
-          <p className="text-muted-foreground text-[15px] font-medium leading-relaxed max-w-[300px]">
-            Choose how you want to use BandWith. You can always change this later.
-          </p>
-        </motion.div>
-
-        {/* Card selection */}
-        <motion.div
-          className="space-y-3 mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5 }}
-        >
-          {/* Solo Card */}
-          <button
-            onClick={onSelectSolo}
-            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-accent/50 active:scale-[0.98] transition-all group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                <Calendar className="w-6 h-6 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-[18px] font-bold text-foreground mb-1">
-                  Organize My Schedule
-                </h3>
-                <p className="text-muted-foreground text-[14px] leading-relaxed">
-                  Manage personal gigs, sync private rehearsals.{' '}
-                  <span className="text-accent font-semibold">Free to use.</span>
-                </p>
-              </div>
-            </div>
-          </button>
-
-          {/* Band Admin Card */}
-          <button
-            onClick={onSelectBand}
-            className="w-full text-left bg-card border border-border rounded-2xl p-5 hover:border-accent/50 active:scale-[0.98] transition-all group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                <Users className="w-6 h-6 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-[18px] font-bold text-foreground mb-1">
-                  Manage My Band
-                </h3>
-                <p className="text-muted-foreground text-[14px] leading-relaxed">
-                  Coordinate shared schedules, automate quotes, and track finances.
-                </p>
-              </div>
-            </div>
-          </button>
-        </motion.div>
-      </div>
-    </div>
+    </AuthScreen>
   );
 };
 

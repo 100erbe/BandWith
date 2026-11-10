@@ -1,25 +1,64 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Loader2 } from '@/app/components/icons';
+import { BarChart3, Loader2 } from '@/app/components/icons';
+import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import { useDashboardData } from '@/app/hooks/useData';
+import { DotText } from '@/app/components/bw';
+import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 
 interface AnalyticsViewProps {
   onClose: () => void;
+  /**
+   * The dashboard stats Home already shows. When passed, Analytics reads the
+   * same numbers instead of re-querying, so the two screens can't disagree.
+   */
+  dashboardData?: ReturnType<typeof useDashboardData>['data'];
+  isAdmin?: boolean;
 }
 
-const MONTHLY_DATA = [
-  { month: 'JAN', pct: 45 },
-  { month: 'FEB', pct: 32 },
-  { month: 'MAR', pct: 67 },
-  { month: 'APR', pct: 55 },
-  { month: 'MAY', pct: 78 },
-  { month: 'JUN', pct: 42 },
-];
+/** Placeholder monthly shares (0–100) for the last six months, oldest first. */
+const MONTHLY_PCT = [45, 32, 67, 55, 78, 42];
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const LED_ROWS = 10;
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
+/** Figma "LED Column": 10 dots of 10pt, 4pt apart, filled from the bottom. */
+const LedColumn: React.FC<{ lit: number; current: boolean }> = ({ lit, current }) => (
+  <span className="flex flex-col gap-1" aria-hidden>
+    {Array.from({ length: LED_ROWS }).map((_, i) => {
+      const on = LED_ROWS - i <= lit;
+      return (
+        <span
+          key={i}
+          className="w-2.5 h-2.5 rounded-full"
+          style={{ backgroundColor: on ? (current ? 'var(--accent-ink)' : 'var(--dot-on)') : 'var(--dot-off)' }}
+        />
+      );
+    })}
+  </span>
+);
+
+const StatCard: React.FC<{ label: string; value: string | number; accent?: boolean; delay: number }> = ({ label, value, accent, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+    className={cn(
+      'flex-1 min-w-0 flex flex-col gap-1 px-4 py-3 rounded-[24px]',
+      accent ? 'bg-accent text-accent-foreground' : 'bg-card text-card-foreground',
+    )}
+  >
+    <span className="bw-label-sm truncate">{label}</span>
+    <DotText text={value} size={24} label={`${label}: ${value}`} />
+  </motion.div>
+);
+
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboardData: sharedData, isAdmin = true }) => {
   const { selectedBand } = useBand();
-  const { data: dashboardData, loading } = useDashboardData(selectedBand?.id || null);
+  // Skip the query when Home's numbers were handed in.
+  const { data: fetchedData, loading: fetching } = useDashboardData(sharedData ? null : selectedBand?.id || null);
+  const dashboardData = sharedData ?? fetchedData;
+  const loading = !sharedData && fetching;
 
   const fmt = (v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1)}k` : `€${v}`);
 
@@ -27,7 +66,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
   const totalEvents = dashboardData?.eventStats?.totalEvents || 0;
   const confirmed = dashboardData?.eventStats?.confirmedEvents || 0;
   const upcoming = dashboardData?.eventStats?.upcomingEvents || 0;
-  const change = dashboardData?.memberStats?.revenueChange || 0;
+  // Same source as Home: band-wide change for admins, the member's own otherwise.
+  const change = (isAdmin ? dashboardData?.eventStats?.revenueChange : dashboardData?.memberStats?.revenueChange) || 0;
+  const changeLabel = change !== 0 ? `${change > 0 ? '+' : ''}${change.toFixed(0)}%` : '--';
+
+  const now = new Date();
+  const monthly = MONTHLY_PCT.map((pct, i) => {
+    const offset = MONTHLY_PCT.length - 1 - i;
+    const m = (now.getMonth() - offset + 12) % 12;
+    return { month: MONTHS[m], lit: Math.max(1, Math.round((pct / 100) * LED_ROWS)), current: offset === 0 };
+  });
+
+  const overline = [selectedBand?.name, now.getFullYear()].filter(Boolean).join(' · ');
 
   return (
     <motion.div
@@ -35,156 +85,64 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose }) => {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      {/* Header */}
-      <div
-        className="px-4 shrink-0"
-        style={{ paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))' }}
-      >
-        <div className="flex items-center gap-4 mb-10">
-          <button
-            onClick={onClose}
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-            style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
-          >
-            <ArrowLeft className="w-[24px] h-[24px] text-foreground" />
-          </button>
-          <div className="flex flex-col leading-none">
-            <span className="text-[32px] font-bold text-foreground leading-none">DATA</span>
-            <span className="text-[32px] font-bold text-foreground leading-none">INSIGHTS</span>
-          </div>
-        </div>
-      </div>
+      <ScreenHeader onBack={onClose} overline={overline} title={<>Data<br />insights</>} />
 
-      {/* Content */}
-      <div className="px-4 pb-32">
+      <div className="px-4 pt-4 flex flex-col gap-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-foreground/30" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex flex-col gap-10">
-            {/* Stats Grid (2×2) */}
-            <div className="flex flex-col gap-10">
-              <div className="flex gap-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="flex-1 flex flex-col gap-2 items-start text-left"
-                >
-                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL REVENUE</span>
-                  <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-foreground block">
-                      {fmt(totalRevenue)}
-                    </span>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex-1 flex flex-col gap-2 items-start text-left"
-                >
-                  <span className="text-xs font-bold text-foreground tracking-wide">TOTAL EVENTS</span>
-                  <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-foreground block">
-                      {totalEvents}
-                    </span>
-                  </div>
-                </motion.div>
-              </div>
-
-              <div className="flex gap-5">
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="flex-1 flex flex-col gap-2 items-start text-left"
-                >
-                  <span className="text-xs font-bold text-foreground tracking-wide">CONFIRMED</span>
-                  <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-foreground block">
-                      {confirmed}
-                    </span>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex-1 flex flex-col gap-2 items-start text-left"
-                >
-                  <span className="text-xs font-bold text-black tracking-wide">UPCOMING</span>
-                  <div className="h-[62px] overflow-hidden">
-                    <span className="text-[52px] font-bold leading-none text-foreground block">
-                      {upcoming}
-                    </span>
-                  </div>
-                </motion.div>
-              </div>
+          <>
+            <div className="flex gap-2">
+              <StatCard label="Total revenue" value={fmt(totalRevenue)} accent delay={0.05} />
+              <StatCard label="Total events" value={totalEvents} delay={0.1} />
+            </div>
+            <div className="flex gap-2">
+              <StatCard label="Confirmed" value={confirmed} delay={0.15} />
+              <StatCard label="Upcoming" value={upcoming} delay={0.2} />
             </div>
 
-            {/* Bottom Stats Row */}
-            <div className="flex gap-2.5">
-              <div className="flex flex-col flex-1">
-                <span className="text-xs font-bold text-black tracking-wide">REVENUE CHANGE</span>
-                <span className="text-[42px] font-bold leading-tight text-black">
-                  {change !== 0
-                    ? `${change > 0 ? '+' : ''}${change.toFixed(0)}%`
-                    : '--'}
-                </span>
-                <span className="text-xs font-bold text-black tracking-wide">VS PREVIOUS PERIOD</span>
+            {/* Revenue change (Figma: inverse card, 32pt dot value, lime chart icon) */}
+            <div className="flex items-center gap-3 px-5 py-4 rounded-[24px] bg-surface-inverse text-surface-inverse-foreground">
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <span className="bw-label-sm">Revenue vs previous period</span>
+                <DotText text={changeLabel} size={32} label={`Revenue change: ${changeLabel}`} />
               </div>
-              <div className="flex flex-col flex-1">
-                <span className="text-xs font-bold text-black tracking-wide">ALL TIME</span>
-                <span className="text-[42px] font-bold leading-tight text-black">
-                  {fmt(totalRevenue)}
-                </span>
-                <span className="text-xs font-bold text-black tracking-wide">TOTAL EARNINGS</span>
-              </div>
+              <BarChart3 className="w-7 h-7 shrink-0 text-accent" aria-hidden />
             </div>
 
-            {/* Monthly Breakdown */}
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col">
-                <span className="text-[32px] font-bold leading-none text-black">MONTHLY</span>
-                <span className="text-[32px] font-bold leading-none text-black">BREAKDOWN</span>
-              </div>
-
-              <div className="flex flex-col gap-0">
-                {MONTHLY_DATA.map(({ month, pct }, i) => (
+            {/* Monthly breakdown */}
+            <Card className="p-5 gap-4">
+              <h2 className="bw-label-md">Monthly breakdown</h2>
+              <div className="flex items-end justify-between" role="img" aria-label="Monthly revenue, last six months">
+                {monthly.map(({ month, lit, current }, i) => (
                   <motion.div
                     key={month}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.04 }}
-                    className="flex items-center gap-4 py-4 border-b border-black/10 last:border-0"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + i * 0.04 }}
+                    className="flex flex-col items-center gap-2"
                   >
-                    <span className="text-xs font-bold text-black w-10 tracking-wide">
-                      {month}
+                    <span className="flex gap-1">
+                      <LedColumn lit={lit} current={current} />
+                      <LedColumn lit={lit} current={current} />
                     </span>
-                    <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-accent rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
-                      />
-                    </div>
+                    <span className={cn('bw-label-sm', current ? 'text-foreground' : 'text-muted-foreground')}>{month}</span>
                   </motion.div>
                 ))}
               </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="bw-body-lg text-muted-foreground">All-time total earnings</span>
+                <span className="bw-label-md shrink-0">€{totalRevenue.toLocaleString('en-US')}</span>
+              </div>
+            </Card>
 
-              <span className="text-[10px] font-medium text-foreground/40 uppercase text-center">
-                Detailed analytics coming soon
-              </span>
-            </div>
-          </div>
+            <p className="bw-label-sm text-muted-foreground">Detailed analytics coming soon</p>
+          </>
         )}
       </div>
     </motion.div>

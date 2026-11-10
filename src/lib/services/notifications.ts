@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '../supabase';
+import { parseLocalDate } from '@/lib/dates';
 
 // Types
 export type NotificationType =
@@ -652,7 +653,7 @@ export const notifyEventCreated = async (
     user_id: userId,
     type: (eventType === 'rehearsal' ? 'rehearsal_reminder' : 'event_invite') as NotificationType,
     title: eventType === 'rehearsal' ? 'New Rehearsal' : 'New Gig',
-    body: `${eventTitle} on ${new Date(eventDate).toLocaleDateString()}`,
+    body: `${eventTitle} on ${parseLocalDate(eventDate).toLocaleDateString()}`,
     band_id: bandId,
     data: { event_id: eventId, event_title: eventTitle, event_date: eventDate },
   }));
@@ -827,7 +828,7 @@ export const notifyEventMembersCreated = async (
     const config = EVENT_TYPE_CONFIG[eventType] || EVENT_TYPE_CONFIG.other;
     
     // Format date for display
-    const dateObj = new Date(eventDate);
+    const dateObj = parseLocalDate(eventDate);
     const formattedDate = dateObj.toLocaleDateString('it-IT', { 
       weekday: 'short', 
       day: 'numeric', 

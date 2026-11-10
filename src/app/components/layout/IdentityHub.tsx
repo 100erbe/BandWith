@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { HEADER_SPRING } from '@/styles/motion';
@@ -8,30 +7,27 @@ import {
   Plus,
   ArrowUpRight,
   LogOut,
-  Shield,
-  ListMusic,
-  Package,
+  Music,
+  Box,
   FileSignature,
-  LayoutTemplate,
-  Sun,
-  Moon,
-  Monitor,
+  CheckSquare,
+  Euro,
   Users,
   Bell,
-  DollarSign,
-  Smartphone,
-  Volume2,
-  VolumeX,
+  Mail,
+  Play,
   ChevronDown,
-  HelpCircle,
+  ChevronRight,
   Download,
   IconSettings,
   Check,
   Edit3,
   Upload,
   Trash2,
-  Loader2,
 } from '@/app/components/icons';
+import { DotText, Toggle } from '@/app/components/bw';
+import { IconButton, Tag, ListRow } from '@/app/components/bw/Screen';
+import { PillButton, PillField } from '@/app/components/bw/Form';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
@@ -39,8 +35,6 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
-import { BrandLogo } from '@/app/components/ui/BrandLogo';
-import { Switch } from '@/app/components/ui/switch';
 import { todayLocal } from '../../../lib/dates';
 
 interface NotificationGroup {
@@ -71,6 +65,18 @@ export interface IdentityHubProps {
   onBandUpdated?: () => void;
 }
 
+/* Figma "Who you are": cards sit on bg/card in light and bg/sheet in dark. */
+const HUB_CARD = 'bg-card text-card-foreground dark:bg-sheet dark:text-sheet-foreground';
+
+const initialsOf = (name: string, fallback = 'BW') =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || fallback;
+
 export const IdentityHub: React.FC<IdentityHubProps> = ({
   isOpen,
   onClose,
@@ -97,9 +103,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     refreshBands,
   } = useBand();
 
-  const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
-  const isAndroid = typeof window !== 'undefined' && (Capacitor.getPlatform() === 'android' || /Android/i.test(navigator.userAgent));
-  const topInset = (isAndroid && isNative) ? '56px' : 'max(env(safe-area-inset-top, 0px), 12px)';
+  const topInset = 'max(var(--safe-top), 12px)';
 
   const [isScrolled, setIsScrolled] = useState(false);
   const isScrolledRef = useRef(false);
@@ -249,6 +253,18 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     }
   };
 
+  const notificationStatus = (() => {
+    const on = [
+      pushEnabled && 'Push',
+      emailEnabled && 'email',
+      soundEnabled && 'sound',
+    ].filter(Boolean) as string[];
+    if (on.length === 0) return 'Alerts paused';
+    const list =
+      on.length === 1 ? on[0] : `${on.slice(0, -1).join(', ')} & ${on[on.length - 1]}`;
+    return `${list.charAt(0).toUpperCase()}${list.slice(1)} alerts enabled`;
+  })();
+
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
   const displayEmail = user?.email || 'No email attached';
   const displayInitials = profile?.full_name
@@ -280,42 +296,35 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       .slice(0, 2)
       .toUpperCase() ||
     'BW';
-  const bandSubtitle = [
-    `${lineupCount} ${lineupCount === 1 ? 'Musician' : 'Musicians'} in Lineup`,
-    isAdmin ? 'Band Admin' : 'Band Member',
-    myInstrument,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   const assetShortcuts = [
     {
       id: 'REPERTOIRE',
-      label: 'Setlist & Repertoire',
+      label: 'Repertoire',
       count: entityCounts?.repertoire ?? 0,
       unit: 'songs',
-      icon: ListMusic,
+      icon: Music,
     },
     {
       id: 'INVENTORY',
-      label: 'Gear & Inventory',
+      label: 'Gear & inventory',
       count: entityCounts?.inventory ?? 0,
       unit: 'items',
-      icon: Package,
+      icon: Box,
     },
     {
       id: 'DOCUMENTS',
-      label: 'Contracts & Docs',
+      label: 'Contracts & docs',
       count: entityCounts?.documents ?? 0,
       unit: 'files',
       icon: FileSignature,
     },
     {
       id: 'TEMPLATES',
-      label: 'Task Templates',
+      label: 'Task templates',
       count: entityCounts?.templates ?? 0,
       unit: 'workflows',
-      icon: LayoutTemplate,
+      icon: CheckSquare,
     },
   ];
 
@@ -328,13 +337,13 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           exit={{ y: '100%' }}
           transition={{ type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
           onScroll={handleContainerScroll}
-          className="fixed inset-0 z-[60] bg-[var(--bg)] text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
+          className="fixed inset-0 z-[60] bg-background text-foreground overflow-y-auto overflow-x-hidden flex flex-col min-h-screen"
           style={{
             overscrollBehaviorX: 'none',
             touchAction: 'pan-y',
           }}
         >
-          {/* ═══ STICKY HEADER (Consistent Expanded -> Compact Morph, Zero Layout Shift) ═══ */}
+          {/* ═══ STICKY HEADER (Expanded -> Compact Morph, Zero Layout Shift) ═══ */}
           <div
             className="sticky top-0 z-30 shrink-0 pointer-events-none select-none"
             style={{
@@ -344,10 +353,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           >
             <div
               className={cn(
-                'absolute top-0 left-0 right-0 px-4 pointer-events-auto transition-[background-color,border-color,box-shadow] duration-200',
-                isScrolled
-                  ? 'bg-background/95 backdrop-blur-xl border-b border-foreground/10 shadow-2xs'
-                  : 'bg-background/80 backdrop-blur-md border-b border-transparent'
+                'absolute top-0 left-0 right-0 px-4 pointer-events-auto bg-background'
               )}
               style={{
                 paddingTop: topInset,
@@ -362,153 +368,137 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 style={{ willChange: 'height' }}
                 className="max-w-xl mx-auto w-full relative overflow-hidden"
               >
-                <div className="flex flex-col pr-14">
+                <div className="flex flex-col pr-14 pt-2">
                   <motion.span
                     initial={false}
                     animate={{
-                      y: isScrolled ? 4 : 0,
+                      y: isScrolled ? 2 : 0,
                       scale: isScrolled ? 0.9 : 1,
                     }}
                     transition={HEADER_SPRING}
                     style={{ willChange: 'transform' }}
-                    className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest leading-none h-[14px] flex items-center origin-top-left"
+                    className="bw-label-sm text-muted-foreground h-[14px] flex items-center origin-top-left"
                   >
-                    IDENTITY & ACCOUNT
+                    Identity & account
                   </motion.span>
                   <motion.h1
                     initial={false}
                     animate={{
-                      scale: isScrolled ? 0.52 : 1,
-                      y: isScrolled ? 6 : 5,
+                      scale: isScrolled ? 0.55 : 1,
+                      y: isScrolled ? 2 : 4,
                     }}
                     transition={HEADER_SPRING}
                     style={{ willChange: 'transform' }}
-                    className="text-[40px] sm:text-[44px] font-black text-foreground uppercase tracking-tighter leading-[0.9] origin-top-left"
+                    className="bw-display-lg text-foreground origin-top-left whitespace-nowrap"
                   >
-                    WHO YOU ARE
+                    Who you are
                   </motion.h1>
                 </div>
                 {showCloseButton && (
-                  <button
+                  <IconButton
+                    label="Close Account Hub"
+                    variant="filled"
+                    icon={<X />}
                     onClick={onClose}
-                    aria-label="Close Account Hub"
-                    className="absolute top-[5px] right-0 w-10 h-10 rounded-full border border-border/40 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                    className="absolute top-2 right-0"
+                  />
                 )}
               </motion.div>
             </div>
           </div>
 
           {/* ═══ SCROLLABLE CONTENT ═══ */}
-          <div
-            className="px-4 pt-3 pb-2 max-w-xl mx-auto w-full flex flex-col gap-6"
-          >
+          <div className="px-4 pt-5 pb-2 max-w-xl mx-auto w-full flex flex-col gap-4">
             {/* ═══ 1. PROFILE CARD ═══ */}
-            <div className="p-5 rounded-2xl bg-card border border-border/40 flex flex-col gap-4 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={displayName}
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-border/40 shrink-0 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary text-primary-foreground font-black text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-xs">
-                      {displayInitials}
-                    </div>
-                  )}
-                  <div className="flex flex-col min-w-0 gap-1">
-                    <h2 className="text-lg sm:text-xl font-bold uppercase text-foreground leading-tight truncate">
-                      {displayName}
-                    </h2>
-                    <span className="text-xs text-muted-foreground truncate font-medium">
-                      {displayEmail}
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider',
-                          isAdmin
-                            ? 'bg-primary/15 text-primary border border-primary/25'
-                            : 'bg-foreground/10 text-foreground/70 border border-foreground/15'
-                        )}
-                      >
-                        <Shield className="w-3 h-3" />
-                        {roleLabel}
-                      </span>
-                    </div>
+            <section aria-label="Your profile" className={cn('p-5 rounded-[24px]', HUB_CARD)}>
+              <div className="flex items-center gap-4">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={displayName}
+                    className="w-16 h-16 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground bw-h2 flex items-center justify-center shrink-0">
+                    {displayInitials}
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0 flex-1 gap-1">
+                  <h2 className="bw-h2 text-foreground line-clamp-2 break-words">{displayName}</h2>
+                  <span className="bw-body-sm text-muted-foreground truncate">{displayEmail}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Tag variant={isAdmin ? 'accent' : 'subtle'}>{roleLabel}</Tag>
+                    {myInstrument && <Tag>{myInstrument}</Tag>}
                   </div>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => {
                     onEditProfile?.();
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                  className="h-9 px-2 -mr-2 rounded-full flex items-center gap-2 text-accent-ink bw-button-sm shrink-0 self-start mt-1 active:scale-95 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
+                  <Edit3 aria-hidden className="w-3.5 h-3.5" />
                   <span>Edit</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </div>
+            </section>
 
             {/* ═══ 2. CURRENT BAND & LINEUP ═══ */}
-            <div className="p-5 rounded-2xl bg-card border border-border/40 flex flex-col gap-4 shadow-sm">
-              {/* Top Band Identity Row */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  {activeBandDetails?.logo_url ? (
-                    <img
-                      src={activeBandDetails.logo_url}
-                      alt={selectedBand.name}
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border border-border/40 shrink-0 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-foreground text-background font-black text-base sm:text-lg flex items-center justify-center shrink-0 shadow-xs tracking-tight">
-                      {bandInitials}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
-                        CURRENT BAND
-                      </span>
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-black uppercase text-foreground leading-tight truncate mt-1">
-                      {activeBandDetails?.name || selectedBand.name}
-                    </h3>
-                    <span className="text-xs font-semibold text-muted-foreground truncate mt-0.5">
-                      {bandSubtitle}
-                      {activeBandDetails?.home_base_address
-                        ? ` · ${activeBandDetails.home_base_address}`
-                        : ''}
-                    </span>
-                    {activeBandDetails?.description && (
-                      <span className="text-[11px] text-foreground/65 truncate mt-0.5">
-                        {activeBandDetails.description}
-                      </span>
-                    )}
+            <section
+              aria-label="Current band"
+              className={cn('p-5 rounded-[24px] flex flex-col gap-4', HUB_CARD)}
+            >
+              {/* Band identity row */}
+              <div className="flex items-center gap-4">
+                {activeBandDetails?.logo_url ? (
+                  <img
+                    src={activeBandDetails.logo_url}
+                    alt={selectedBand.name}
+                    className="w-16 h-16 rounded-full object-cover border-[1.5px] border-border shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-white text-black border-[1.5px] border-border bw-h2 flex items-center justify-center shrink-0">
+                    {bandInitials}
                   </div>
+                )}
+
+                <div className="flex flex-col min-w-0 flex-1 gap-2">
+                  <h3 className="bw-h2 text-foreground line-clamp-2 break-words">
+                    {activeBandDetails?.name || selectedBand.name}
+                  </h3>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Tag>
+                      {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
+                    </Tag>
+                    <Tag>{isAdmin ? 'Band admin' : 'Band member'}</Tag>
+                  </div>
+                  {(activeBandDetails?.home_base_address || activeBandDetails?.description) && (
+                    <span className="bw-body-sm text-muted-foreground truncate">
+                      {[activeBandDetails?.home_base_address, activeBandDetails?.description]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  )}
                 </div>
 
                 {isAdmin && (
                   <button
                     type="button"
+                    aria-expanded={isEditingBandDetails}
                     onClick={() => setIsEditingBandDetails((prev) => !prev)}
                     className={cn(
-                      'px-3 py-1.5 rounded-xl border text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-all shrink-0',
+                      'h-9 rounded-full flex items-center gap-2 bw-button-sm shrink-0 self-start mt-1 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       isEditingBandDetails
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-foreground/5 hover:bg-foreground/10 border-border/40 text-foreground'
+                        ? 'px-3 bg-surface-inverse text-surface-inverse-foreground'
+                        : 'px-2 -mr-2 text-accent-ink'
                     )}
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
+                    {isEditingBandDetails ? (
+                      <X aria-hidden className="w-3.5 h-3.5" />
+                    ) : (
+                      <Edit3 aria-hidden className="w-3.5 h-3.5" />
+                    )}
                     <span>{isEditingBandDetails ? 'Close' : 'Edit'}</span>
                   </button>
                 )}
@@ -525,686 +515,497 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     onSubmit={handleSaveBandIdentity}
                     className="overflow-hidden"
                   >
-                    <div className="p-4 rounded-xl bg-background/70 border border-border/50 flex flex-col gap-3.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-12 h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
-                            {editBandLogoUrl ? (
-                              <img
-                                src={editBandLogoUrl}
-                                alt="Band Emblem"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-xs font-black text-muted-foreground">
-                                {bandInitials}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                              Band Emblem / Logo
-                            </span>
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              Shown on your band card, switcher & quote PDFs
-                            </span>
-                          </div>
+                    <div className="p-4 rounded-[16px] bg-foreground/[0.08] flex flex-col gap-4">
+                      {/* Logo row */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center overflow-hidden shrink-0">
+                          {editBandLogoUrl ? (
+                            <img
+                              src={editBandLogoUrl}
+                              alt="Band Emblem"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="bw-label-md">{bandInitials}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                          <span className="bw-label-md text-foreground">Band logo</span>
+                          <span className="bw-body-sm text-muted-foreground truncate">
+                            Band card, switcher & quote PDFs
+                          </span>
                         </div>
 
+                        <input
+                          ref={bandLogoInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBandLogoFileChange}
+                          className="hidden"
+                        />
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            ref={bandLogoInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleBandLogoFileChange}
-                            className="hidden"
-                          />
-                          <button
-                            type="button"
+                          <PillButton
+                            size="sm"
+                            variant="outline"
+                            fullWidth={false}
                             onClick={() => bandLogoInputRef.current?.click()}
-                            disabled={uploadingBandLogo}
-                            className="px-3 py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground hover:text-background text-foreground text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                            loading={uploadingBandLogo}
+                            icon={<Upload aria-hidden className="w-3.5 h-3.5" />}
                           >
-                            {uploadingBandLogo ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Upload className="w-3.5 h-3.5" />
-                            )}
-                            <span>{editBandLogoUrl ? 'Change' : 'Upload'}</span>
-                          </button>
+                            {editBandLogoUrl ? 'Change' : 'Upload'}
+                          </PillButton>
                           {editBandLogoUrl && (
-                            <button
-                              type="button"
+                            <IconButton
+                              label="Remove logo"
+                              variant="ghost"
+                              size="sm"
+                              icon={<Trash2 aria-hidden />}
                               onClick={() => setEditBandLogoUrl('')}
-                              className="p-1.5 rounded-lg bg-foreground/5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                              title="Remove Logo"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              className="text-destructive"
+                            />
                           )}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Band Name
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={editBandName}
-                            onChange={(e) => setEditBandName(e.target.value)}
-                            placeholder="e.g. Bandazz"
-                            className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:border-primary"
-                          />
-                        </div>
+                      <PillField
+                        id="hub-band-name"
+                        label="Band name"
+                        type="text"
+                        required
+                        value={editBandName}
+                        onChange={(e) => setEditBandName(e.target.value)}
+                        placeholder="e.g. Bandazz"
+                      />
 
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Home Base City
-                          </label>
-                          <input
-                            type="text"
-                            value={editBandCity}
-                            onChange={(e) => setEditBandCity(e.target.value)}
-                            placeholder="e.g. Milan, Italy"
-                            className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                      </div>
+                      <PillField
+                        id="hub-band-city"
+                        label="Home base city"
+                        type="text"
+                        value={editBandCity}
+                        onChange={(e) => setEditBandCity(e.target.value)}
+                        placeholder="e.g. Milan, Italy"
+                      />
 
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Band Bio / Tagline (optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={editBandDescription}
-                          onChange={(e) => setEditBandDescription(e.target.value)}
-                          placeholder="e.g. Live Funk, Soul & Disco Collective"
-                          className="w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:border-primary"
-                        />
-                      </div>
+                      <PillField
+                        id="hub-band-bio"
+                        label="Band bio / tagline (optional)"
+                        type="text"
+                        value={editBandDescription}
+                        onChange={(e) => setEditBandDescription(e.target.value)}
+                        placeholder="e.g. Live Funk, Soul & Disco Collective"
+                      />
 
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <button
-                          type="button"
+                      <div className="flex items-center gap-3">
+                        <PillButton
+                          size="md"
+                          variant="outline"
+                          className="flex-1 min-w-0"
                           onClick={() => setIsEditingBandDetails(false)}
-                          className="px-3.5 py-2 rounded-lg bg-foreground/5 hover:bg-foreground/10 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                         >
                           Cancel
-                        </button>
-                        <button
+                        </PillButton>
+                        <PillButton
                           type="submit"
-                          disabled={savingBandDetails || !editBandName.trim()}
-                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 hover:opacity-95 transition-opacity disabled:opacity-50"
+                          size="md"
+                          className="flex-1 min-w-0"
+                          loading={savingBandDetails}
+                          disabled={!editBandName.trim()}
+                          icon={<Check aria-hidden className="w-4 h-4" />}
                         >
-                          {savingBandDetails ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Check className="w-3.5 h-3.5" />
-                          )}
-                          <span>Save Details</span>
-                        </button>
+                          Save details
+                        </PillButton>
                       </div>
                     </div>
                   </motion.form>
                 )}
               </AnimatePresence>
 
-              {/* Interactive Lineup Roster & Band Settings Bar */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onEditBand?.();
-                  }}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 border border-border/40 flex items-center justify-between gap-3 active:scale-[0.99] transition-all group"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {rosterMembers.length > 0 ? (
-                      <div className="flex -space-x-1.5 overflow-hidden shrink-0">
-                        {rosterMembers.slice(0, 4).map((m) => {
-                          const mName =
-                            m.stage_name ||
-                            m.profile?.full_name ||
-                            m.profile?.email?.split('@')[0] ||
-                            'M';
-                          const mInitials = mName
-                            .split(' ')
-                            .filter(Boolean)
-                            .map((p) => p[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase();
-                          return m.profile?.avatar_url ? (
-                            <img
-                              key={m.id}
-                              src={m.profile.avatar_url}
-                              alt={mName}
-                              className="w-6 h-6 rounded-full object-cover border-2 border-card shrink-0"
-                            />
-                          ) : (
-                            <div
-                              key={m.id}
-                              className="w-6 h-6 rounded-full bg-foreground/15 text-foreground text-[9px] font-black flex items-center justify-center border-2 border-card shrink-0"
-                            >
-                              {mInitials}
-                            </div>
-                          );
-                        })}
-                        {lineupCount > 4 && (
-                          <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground text-[9px] font-bold flex items-center justify-center border-2 border-card shrink-0">
-                            +{lineupCount - 4}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="w-7 h-7 rounded-lg bg-foreground/10 flex items-center justify-center text-foreground shrink-0">
-                        <Users className="w-3.5 h-3.5" />
-                      </div>
+              {/* Members pill (opens lineup) */}
+              <button
+                type="button"
+                onClick={() => {
+                  onEditBand?.();
+                }}
+                aria-label={`Members (${lineupCount})`}
+                className="w-full px-4 py-3 rounded-full bg-foreground/[0.08] flex items-center gap-3 text-left transition-colors hover:bg-foreground/[0.12] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="bw-label-md text-foreground flex-1 min-w-0 truncate">Members</span>
+                {rosterMembers.length > 0 ? (
+                  <span className="flex items-center shrink-0" aria-hidden>
+                    {rosterMembers.slice(0, 4).map((m) => {
+                      const mName =
+                        m.stage_name ||
+                        m.profile?.full_name ||
+                        m.profile?.email?.split('@')[0] ||
+                        'M';
+                      const mInitials = initialsOf(mName, 'M');
+                      return m.profile?.avatar_url ? (
+                        <img
+                          key={m.id}
+                          src={m.profile.avatar_url}
+                          alt={mName}
+                          className="w-7 h-7 rounded-full object-cover -mr-1.5 last:mr-0 ring-2 ring-card shrink-0"
+                        />
+                      ) : (
+                        <span
+                          key={m.id}
+                          className="w-7 h-7 rounded-full bg-card text-muted-foreground bw-label-sm flex items-center justify-center -mr-1.5 last:mr-0 ring-2 ring-card shrink-0"
+                        >
+                          {mInitials}
+                        </span>
+                      );
+                    })}
+                    {lineupCount > 4 && (
+                      <span className="w-7 h-7 rounded-full bg-card text-muted-foreground bw-label-xs flex items-center justify-center ring-2 ring-card shrink-0">
+                        +{lineupCount - 4}
+                      </span>
                     )}
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
-                        Lineup & Members
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-foreground/10 text-[10px] font-black text-foreground/80 tabular-nums shrink-0">
-                        {lineupCount}
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                </button>
-
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenBandSettings) {
-                        onOpenBandSettings();
-                      } else {
-                        onOpenPricing?.();
-                      }
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-xs font-bold uppercase tracking-wider text-primary flex items-center justify-center gap-2 active:scale-[0.99] transition-all shrink-0"
-                  >
-                    <IconSettings className="w-4 h-4" />
-                    <span>Band Settings</span>
-                  </button>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+                    <Users aria-hidden className="w-4 h-4" />
+                    <span className="bw-label-sm">{lineupCount}</span>
+                  </span>
                 )}
-              </div>
+                <ChevronRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
+              </button>
+
+              {isAdmin && (
+                <PillButton
+                  size="md"
+                  variant="outline"
+                  icon={<IconSettings aria-hidden className="w-[18px] h-[18px]" />}
+                  onClick={() => {
+                    if (onOpenBandSettings) {
+                      onOpenBandSettings();
+                    } else {
+                      onOpenPricing?.();
+                    }
+                  }}
+                >
+                  Band settings
+                </PillButton>
+              )}
 
               {/* Band Switcher / Multi-Band Section */}
               {bands.length > 1 ? (
-                <div className="flex flex-col gap-2.5 pt-3 border-t border-border/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      YOUR BANDS ({bands.length})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onAddEntity?.();
-                      }}
-                      className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" /> New Band
-                    </button>
-                  </div>
+                <div className="flex flex-col gap-3 pt-1">
+                  <span className="bw-label-sm text-muted-foreground">Your bands ({bands.length})</span>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-2">
                     {bands.map((b) => {
                       const isActive = b.id === selectedBand.id || b.name === selectedBand.name;
                       const matchedRealBand = realBandsList?.find((rb) => rb.name === b.name);
-                      const itemInitials =
-                        b.initials ||
-                        b.name
-                          .split(' ')
-                          .filter(Boolean)
-                          .map((w) => w[0])
-                          .join('')
-                          .slice(0, 2)
-                          .toUpperCase() ||
-                        'BW';
+                      const itemInitials = b.initials || initialsOf(b.name);
                       return (
                         <button
                           key={b.id}
                           type="button"
                           onClick={() => setSelectedBand(b)}
+                          aria-current={isActive ? 'true' : undefined}
                           className={cn(
-                            'p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-2.5 active:scale-[0.99]',
+                            'w-full px-4 py-3 rounded-[16px] text-left flex items-center gap-3 transition-colors active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             isActive
-                              ? 'bg-primary/10 border-primary/40 shadow-2xs'
-                              : 'bg-foreground/[0.03] hover:bg-foreground/[0.07] border-border/40'
+                              ? 'bg-accent text-accent-foreground'
+                              : 'bg-foreground/[0.08] text-foreground'
                           )}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {matchedRealBand?.logo_url ? (
-                              <img
-                                src={matchedRealBand.logo_url}
-                                alt={b.name}
-                                className="w-9 h-9 rounded-lg object-cover border border-border/40 shrink-0"
-                              />
-                            ) : (
-                              <div
-                                className={cn(
-                                  'w-9 h-9 rounded-lg text-xs font-black flex items-center justify-center shrink-0 tracking-tight',
-                                  isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-foreground/10 text-foreground/80'
-                                )}
-                              >
-                                {itemInitials}
-                              </div>
-                            )}
-                            <div className="flex flex-col min-w-0">
-                              <span
-                                className={cn(
-                                  'text-xs font-black uppercase tracking-wide truncate leading-tight',
-                                  isActive ? 'text-foreground' : 'text-foreground/85'
-                                )}
-                              >
-                                {b.name}
-                              </span>
-                              <span className="text-[10px] font-semibold text-muted-foreground truncate mt-0.5">
-                                {b.members} {b.members === 1 ? 'member' : 'members'} ·{' '}
-                                {b.role === 'ADMIN' ? 'Admin' : 'Member'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {isActive ? (
-                            <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                              <Check className="w-3.5 h-3.5" />
-                            </div>
+                          {matchedRealBand?.logo_url ? (
+                            <img
+                              src={matchedRealBand.logo_url}
+                              alt={b.name}
+                              className="w-10 h-10 rounded-full object-cover border-[1.5px] border-black/15 shrink-0"
+                            />
                           ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5 rounded-md bg-foreground/5 shrink-0">
-                              Switch
+                            <span className="w-10 h-10 rounded-full bg-white text-black border-[1.5px] border-black/15 bw-label-md flex items-center justify-center shrink-0">
+                              {itemInitials}
                             </span>
+                          )}
+                          <span className="flex flex-col min-w-0 flex-1 gap-0.5">
+                            <span className="flex items-center gap-1.5 bw-label-xs">
+                              {!isActive && (
+                                <span aria-hidden className="w-2 h-2 rounded-full bg-accent shrink-0" />
+                              )}
+                              {b.role === 'ADMIN' ? 'Admin' : 'Member'}
+                            </span>
+                            <span className="bw-h3 truncate">{b.name}</span>
+                            <span
+                              className={cn(
+                                'bw-body-sm truncate',
+                                isActive ? 'text-accent-foreground/70' : 'text-muted-foreground'
+                              )}
+                            >
+                              {b.members} {b.members === 1 ? 'member' : 'members'}
+                            </span>
+                          </span>
+                          {isActive ? (
+                            <Tag variant="solid">Active</Tag>
+                          ) : (
+                            <span className="bw-label-xs text-muted-foreground shrink-0">Switch</span>
                           )}
                         </button>
                       );
                     })}
                   </div>
+
+                  <PillButton size="md" variant="outline" icon={<Plus aria-hidden className="w-4 h-4" />} onClick={() => onAddEntity?.()}>
+                    New band
+                  </PillButton>
                 </div>
               ) : (
-                <div className="flex items-center justify-between pt-3 border-t border-border/30">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Playing in another act or side project?
-                  </span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="bw-body-sm text-muted-foreground">Playing in another act?</span>
                   <button
                     type="button"
                     onClick={() => {
                       onAddEntity?.();
                     }}
-                    className="text-[11px] font-bold uppercase tracking-wider text-primary hover:underline flex items-center gap-1 shrink-0"
+                    className="h-9 px-2 -mr-2 rounded-full text-accent-ink bw-button-sm flex items-center gap-1 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <Plus className="w-3 h-3" /> New Band
+                    <Plus aria-hidden className="w-3 h-3" /> New band
                   </button>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* ═══ 3. BAND ASSETS & WORKFLOWS ═══ */}
-            <div className="flex flex-col">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3 px-1">
-                BAND ASSETS & WORKFLOWS
-              </div>
+            <h2 className="bw-label-md text-foreground">Band assets & workflows</h2>
 
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  {assetShortcuts.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onEntityDetailClick?.(item.id);
-                        }}
-                        className="p-4 rounded-2xl bg-card border border-border/40 hover:border-foreground/25 flex flex-col justify-between gap-3 text-left transition-all active:scale-[0.98] shadow-sm group"
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="w-8 h-8 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40 group-hover:text-primary transition-colors" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xl font-black text-foreground tabular-nums leading-none">
-                            {item.count}
-                          </span>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mt-1 truncate">
-                            {item.label}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* PRICING, FEES & SERVICES (Admin Only) */}
-                {isAdmin && (
+            <div className="grid grid-cols-2 gap-3">
+              {assetShortcuts.map((item) => {
+                const Icon = item.icon;
+                return (
                   <button
+                    key={item.id}
                     type="button"
-                    onClick={() => onOpenPricing?.()}
-                    className="w-full p-4 rounded-2xl bg-card border border-border/40 hover:border-foreground/25 flex items-center justify-between gap-4 text-left transition-all active:scale-[0.98] shadow-sm group"
+                    onClick={() => {
+                      onEntityDetailClick?.(item.id);
+                    }}
+                    aria-label={`${item.label}: ${item.count} ${item.unit}`}
+                    className={cn(
+                      'p-4 rounded-[24px] flex flex-col gap-3 text-left min-w-0 active:scale-[0.98] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      HUB_CARD,
+                    )}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
-                        <DollarSign className="w-5 h-5" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                            PRICING, FEES & SERVICES
-                          </span>
-                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
-                            Admin
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground font-normal mt-0.5">
-                          Band logo, payment & IBAN details, musician fees & quote services
-                        </span>
-                      </div>
-                    </div>
-                    <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                    <span className="flex items-center justify-between w-full">
+                      <Icon aria-hidden className="w-[22px] h-[22px] text-accent-ink" />
+                      <ArrowUpRight aria-hidden className="w-4 h-4 text-foreground" />
+                    </span>
+                    <span className="bw-label-md text-foreground truncate w-full">{item.label}</span>
+                    <span className="flex items-end gap-1.5 min-w-0">
+                      <DotText text={item.count} size={24} />
+                      <span className="bw-body-lg leading-none truncate">{item.unit}</span>
+                    </span>
                   </button>
-                )}
-              </div>
+                );
+              })}
             </div>
+
+            {/* PRICING, FEES & SERVICES (Admin Only) */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onOpenPricing?.()}
+                className="w-full p-4 rounded-[24px] bg-accent text-accent-foreground flex items-center gap-4 text-left transition-transform active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Euro aria-hidden className="w-6 h-6 shrink-0" />
+                <span className="flex flex-col gap-1 min-w-0 flex-1">
+                  <span className="bw-label-md">Pricing, fees & services</span>
+                  <span className="bw-body-sm">Logo, IBAN, musician fees & quote services</span>
+                </span>
+                <ArrowUpRight aria-hidden className="w-5 h-5 shrink-0" />
+              </button>
+            )}
 
             {/* ═══ 4. APP SETTINGS ═══ */}
-            <div className="flex flex-col">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3 px-1">
-                APP SETTINGS
+            <h2 className="bw-label-md text-foreground">App settings</h2>
+
+            <div className={cn('p-4 rounded-[24px] flex flex-col gap-3', HUB_CARD)}>
+              {/* Appearance / Theme */}
+              <span className="bw-label-sm text-muted-foreground">Appearance</span>
+              <div role="group" aria-label="Theme" className="flex items-center gap-2">
+                {[
+                  { id: 'light' as const, label: 'Light' },
+                  { id: 'dark' as const, label: 'Dark' },
+                  { id: 'system' as const, label: 'System' },
+                ].map((t) => {
+                  const isSelected = mode === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      title={t.id === 'system' ? `System (${resolvedTheme})` : undefined}
+                      onClick={() => setMode(t.id)}
+                      className={cn(
+                        'flex-1 min-w-0 h-9 px-4 rounded-full bw-label-md flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        isSelected
+                          ? 'bg-surface-inverse text-surface-inverse-foreground'
+                          : 'border border-border text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="bg-card rounded-2xl border border-border/40 divide-y divide-border/30 overflow-hidden shadow-sm">
-                {/* 1. Appearance / Theme */}
-                <div className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-foreground/5 flex items-center justify-center text-foreground shrink-0">
-                      {resolvedTheme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                        Appearance
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Theme & display ({resolvedTheme})
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center p-1 bg-foreground/5 rounded-xl border border-border/40 shrink-0">
-                    {[
-                      { id: 'light' as const, label: 'Light', icon: Sun },
-                      { id: 'dark' as const, label: 'Dark', icon: Moon },
-                      { id: 'system' as const, label: 'System', icon: Monitor },
-                    ].map((t) => {
-                      const Icon = t.icon;
-                      const isSelected = mode === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setMode(t.id)}
-                          className={cn(
-                            'px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all',
-                            isSelected
-                              ? 'bg-primary text-primary-foreground shadow-xs'
-                              : 'text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          <Icon className="w-3 h-3" />
-                          <span className="hidden sm:inline">{t.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 2. Notifications (Interactive Accordion / Inline Controls) */}
-                <div className="flex flex-col">
-                  <button
-                    type="button"
-                    onClick={() => setIsNotificationsOpen((prev) => !prev)}
-                    className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
-                        <Bell className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                          Notifications
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {pushEnabled && emailEnabled
-                            ? 'Push, email & sound alerts enabled'
-                            : pushEnabled
-                              ? 'Push alerts enabled'
-                              : emailEnabled
-                                ? 'Email alerts enabled'
-                                : 'Alerts paused'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-foreground/5 text-muted-foreground">
-                        {isNotificationsOpen ? 'Hide' : 'Configure'}
-                      </span>
-                      <ChevronDown
-                        className={cn(
-                          'w-4 h-4 text-muted-foreground transition-transform duration-200',
-                          isNotificationsOpen && 'rotate-180 text-foreground'
-                        )}
-                      />
-                    </div>
-                  </button>
-
-                  <AnimatePresence initial={false}>
-                    {isNotificationsOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden bg-foreground/[0.02] border-t border-border/30 divide-y divide-border/20 px-4"
-                      >
-                        {/* Push Notifications */}
-                        <div className="py-3.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground shrink-0">
-                              <Smartphone className="w-4 h-4" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-bold text-foreground">
-                                Push Notifications
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                Receive gig, rehearsal & poll alerts on this device
-                              </span>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={pushEnabled}
-                            onCheckedChange={handleTogglePush}
-                          />
-                        </div>
-
-                        {/* Email Notifications */}
-                        <div className="py-3.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground shrink-0">
-                              <Bell className="w-4 h-4" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-bold text-foreground">
-                                Email Notifications
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                Get schedule digests & event updates in your inbox
-                              </span>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={emailEnabled}
-                            onCheckedChange={handleToggleEmail}
-                          />
-                        </div>
-
-                        {/* Sound Effects */}
-                        <div className="py-3.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-muted-foreground shrink-0">
-                              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-bold text-foreground">
-                                Sound Effects
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                Play audio cues for chat messages & notifications
-                              </span>
-                            </div>
-                          </div>
-                          <Switch
-                            checked={soundEnabled}
-                            onCheckedChange={handleToggleSound}
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Settings & account (notifications, theme, language, delete account) */}
-                {onOpenSettings && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenSettings('main')}
-                    className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
-                        <IconSettings className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                          Settings & Account
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          Notifications, appearance, privacy, delete account
-                        </span>
-                      </div>
-                    </div>
-                    <ArrowUpRight aria-hidden className="w-4 h-4 text-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                  </button>
-                )}
-
-                {/* 3. Help & Support */}
+              {/* Notifications (accordion with inline toggles) */}
+              <div className="flex flex-col">
                 <button
                   type="button"
-                  onClick={() => window.open('mailto:support@bandwith.app?subject=BandWith%20Help%20Request', '_blank')}
-                  className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left group"
+                  aria-expanded={isNotificationsOpen}
+                  onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                  className="w-full p-4 rounded-[16px] flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
-                      <HelpCircle className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                        Help & Support
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        FAQ & direct support (support@bandwith.app)
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                </button>
-
-                {/* 4. Export My Data */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const exportData = {
-                      exportedAt: new Date().toISOString(),
-                      user: user?.email,
-                      band: selectedBand.name,
-                      preferences: {
-                        theme: mode,
-                        pushNotifications: pushEnabled,
-                        emailNotifications: emailEnabled,
-                        soundEffects: soundEnabled,
-                      },
-                      message: 'BandWith user data export',
-                    };
-                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `bandwith-export-${todayLocal()}.json`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="p-4 flex items-center justify-between w-full hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors text-left group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-foreground/5 group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center text-foreground transition-colors shrink-0">
-                      <Download className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold uppercase tracking-wide text-foreground">
-                        Export My Data
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Download a JSON copy of your workspace data
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                </button>
-
-                {/* 5. Sign Out */}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-4 flex items-center justify-between w-full hover:bg-[var(--destructive)]/5 active:bg-[var(--destructive)]/10 transition-colors text-left group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-[var(--destructive)]/10 text-[var(--destructive)] flex items-center justify-center shrink-0">
-                      <LogOut className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold uppercase tracking-wide text-[var(--destructive)]">
-                        Sign Out
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {displayEmail}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--destructive)]/70 group-hover:text-[var(--destructive)] transition-colors">
-                    Leave
+                  <span className="flex flex-col gap-1 min-w-0 flex-1">
+                    <span className="bw-body-lg">Notifications</span>
+                    <span className="bw-body-sm text-muted-foreground">{notificationStatus}</span>
                   </span>
+                  <span className="bw-label-xs text-muted-foreground shrink-0">
+                    {isNotificationsOpen ? 'Hide' : 'Configure'}
+                  </span>
+                  <ChevronDown
+                    aria-hidden
+                    className={cn(
+                      'w-5 h-5 text-foreground transition-transform duration-200 shrink-0',
+                      isNotificationsOpen && 'rotate-180'
+                    )}
+                  />
                 </button>
+
+                <AnimatePresence initial={false}>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-col gap-2 pt-1">
+                        {[
+                          {
+                            key: 'push',
+                            icon: <Bell />,
+                            title: 'Push notifications',
+                            sub: 'Gig, rehearsal & poll alerts on this device',
+                            checked: pushEnabled,
+                            onChange: handleTogglePush,
+                          },
+                          {
+                            key: 'email',
+                            icon: <Mail />,
+                            title: 'Email notifications',
+                            sub: 'Schedule digests & event updates',
+                            checked: emailEnabled,
+                            onChange: handleToggleEmail,
+                          },
+                          {
+                            key: 'sound',
+                            icon: <Play />,
+                            title: 'Sound effects',
+                            sub: 'Audio cues for chat & notifications',
+                            checked: soundEnabled,
+                            onChange: handleToggleSound,
+                          },
+                        ].map((row) => (
+                          <div
+                            key={row.key}
+                            className="p-3 rounded-[16px] bg-foreground/[0.08] flex items-center gap-3"
+                          >
+                            <span
+                              aria-hidden
+                              className="size-8 rounded-full bg-foreground/[0.08] flex items-center justify-center text-foreground shrink-0 [&>svg]:size-4"
+                            >
+                              {row.icon}
+                            </span>
+                            <span className="flex flex-col gap-0.5 min-w-0 flex-1">
+                              <span className="bw-body-md font-medium">{row.title}</span>
+                              <span className="bw-body-sm text-muted-foreground">{row.sub}</span>
+                            </span>
+                            <Toggle
+                              checked={row.checked}
+                              onCheckedChange={row.onChange}
+                              aria-label={row.title}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
-            {/* Brand Footer */}
-            <div className="flex flex-col items-center justify-center gap-1.5 pt-4 pb-4 text-center opacity-40">
-              <BrandLogo variant="waveform" lockup="horizontal" className="h-3.5" textClassName="text-[11px] font-bold" />
-              <span className="text-[10px] text-foreground/50 uppercase tracking-wider">
-                v1.0.0 · All data encrypted
-              </span>
-            </div>
+            {/* Settings & account (notifications, theme, language, delete account) */}
+            {onOpenSettings && (
+              <ListRow
+                className="dark:bg-sheet"
+                icon={<IconSettings />}
+                title="Settings & account"
+                subtitle="Privacy, language, delete account"
+                onClick={() => onOpenSettings('main')}
+              />
+            )}
 
-            {/* Bottom clearance spacer ensuring Brand Footer cleanly clears floating navbar */}
+            {/* Help & Support */}
+            <ListRow
+              className="dark:bg-sheet"
+              icon={<Mail />}
+              title="Help & support"
+              subtitle="support@bandwith.app"
+              onClick={() =>
+                window.open('mailto:support@bandwith.app?subject=BandWith%20Help%20Request', '_blank')
+              }
+            />
+
+            {/* Export My Data */}
+            <ListRow
+              className="dark:bg-sheet"
+              icon={<Download />}
+              title="Export my data"
+              subtitle="Download a JSON copy"
+              onClick={() => {
+                const exportData = {
+                  exportedAt: new Date().toISOString(),
+                  user: user?.email,
+                  band: selectedBand.name,
+                  preferences: {
+                    theme: mode,
+                    pushNotifications: pushEnabled,
+                    emailNotifications: emailEnabled,
+                    soundEffects: soundEnabled,
+                  },
+                  message: 'BandWith user data export',
+                };
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `bandwith-export-${todayLocal()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+              }}
+            />
+
+            {/* Sign Out */}
+            <PillButton
+              variant="outline"
+              onClick={handleLogout}
+              title={`Sign out (${displayEmail})`}
+              icon={<LogOut aria-hidden className="w-5 h-5" />}
+              className="border-destructive text-destructive"
+            >
+              Sign out
+            </PillButton>
+
+            {/* Footer */}
+            <p className="bw-label-sm text-muted-foreground">v1.0.0 · All data encrypted</p>
+
+            {/* Bottom clearance spacer ensuring the footer cleanly clears the floating navbar */}
             <div
               className="shrink-0 pointer-events-none"
               style={{ height: 'var(--content-bottom-clearance, 136px)' }}

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { uuidToNumericId } from '@/lib/numericId';
+import { motion } from 'motion/react';
 import {
-  ArrowLeft,
   ArrowUpRight,
   ArrowDownLeft,
-  Loader2,
-  Receipt,
   Plus,
   Check,
   Calendar,
 } from '@/app/components/icons';
-import { cn } from '@/app/components/ui/utils';
-import { ExpandedCardWrapper } from './ExpandedCardWrapper';
+import { BwSheet, Card, IconButton, ListRow } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector, SectionHeader, Metric } from '@/app/components/bw';
+import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { createTransaction } from '@/lib/services/transactions';
 import type { Transaction } from '@/lib/services/transactions';
 import { todayLocal } from '../../../../lib/dates';
+import { parseLocalDate } from '@/lib/dates';
 
 interface FinanceExpandedProps {
   bandId: string;
@@ -80,9 +80,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     realTransactions && realTransactions.length > 0
       ? realTransactions.map((t) => ({
           id:
-            parseInt(t.id.replace(/-/g, '').slice(0, 8), 16) || Date.now(),
+            uuidToNumericId(t.id),
           title: t.title,
-          date: new Date(t.date).toLocaleDateString('en-US', {
+          date: parseLocalDate(t.date).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
           }),
@@ -97,328 +97,162 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
   const fmt = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0));
 
+  const income = Math.max(0, stats.totalIncome);
+  const expenses = Math.abs(stats.totalExpenses);
+
   return (
     <ExpandedCardWrapper
       backgroundColor="var(--bg)"
       onClose={onClose}
       origin={{ top: '12%', left: '3%', right: '42%', bottom: '62%' }}
     >
-      {/* Header */}
-      <motion.div
-        className="sticky top-0 z-50 px-4 py-4 flex items-center gap-4 bg-background/95 backdrop-blur-md"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.3 }}
+      <ExpandedTopBar
+        title="Money flow"
+        onBack={onClose}
+        actions={
+          <IconButton label="Add transaction" variant="filled" icon={<Plus />} onClick={() => setShowAddTransaction(true)} />
+        }
+      />
+
+      <div
+        className="flex-1 flex flex-col gap-8 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
       >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center border-2 border-black shrink-0 active:scale-90 transition-transform"
-          style={{ backgroundColor: 'rgba(216,216,216,0.2)' }}
+        {/* Metrics (Figma Metric: label, dot value, 4×12 meter) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8 gap-y-8"
         >
-          <ArrowLeft className="w-[24px] h-[24px] text-black" />
-        </button>
-        <div className="flex flex-col leading-none flex-1">
-          <span className="text-[32px] font-bold text-black leading-none">MONEY</span>
-          <span className="text-[32px] font-bold text-black leading-none">FLOW</span>
-        </div>
-        <button
-          onClick={() => setShowAddTransaction(true)}
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center bg-accent-gig shrink-0 active:scale-90 transition-transform"
-        >
-          <Plus className="w-[20px] h-[20px] text-black" />
-        </button>
-      </motion.div>
+          <Metric
+            label="Net profit"
+            value={loading ? '-' : `€${fmt(stats.netProfit)}`}
+            fill={income > 0 ? Math.max(0, stats.netProfit) / income : 0}
+          />
+          <Metric
+            label="Revenue"
+            value={loading ? '-' : `€${fmt(stats.totalIncome)}`}
+            fill={income + expenses > 0 ? income / (income + expenses) : 0}
+          />
+          <Metric
+            label="Expenses"
+            value={loading ? '-' : `-€${fmt(expenses)}`}
+            fill={income + expenses > 0 ? expenses / (income + expenses) : 0}
+          />
+        </motion.div>
 
-      {/* Content */}
-      <div className="px-4 pb-32">
-        <div className="flex flex-col gap-10">
-          {/* Stats Grid */}
-          <div className="flex flex-col gap-10">
-            <div className="flex gap-5">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex-1 flex flex-col gap-2 items-start text-left"
-              >
-                <span className="text-xs font-bold text-black tracking-wide">NET PROFIT</span>
-                <div className="h-[62px] overflow-hidden">
-                  {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
-                  ) : (
-                    <span className="text-[52px] font-bold leading-none text-black block">
-                      €{fmt(stats.netProfit)}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="flex-1 flex flex-col gap-2 items-start text-left"
-              >
-                <span className="text-xs font-bold text-black tracking-wide">REVENUE</span>
-                <div className="h-[62px] overflow-hidden">
-                  {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
-                  ) : (
-                    <span className="text-[52px] font-bold leading-none text-black block">
-                      €{fmt(stats.totalIncome)}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
+        {/* Recent activity */}
+        <section className="flex flex-col gap-4">
+          <SectionHeader title="Recent activity" />
+          {displayTransactions.length === 0 ? (
+            <Card className="items-center text-center py-8 gap-1">
+              <h3 className="bw-h3">No transactions yet</h3>
+              <p className="bw-body-sm text-muted-foreground">Your income and expenses will appear here.</p>
+            </Card>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {displayTransactions.map((tx, i) => (
+                <motion.div
+                  key={tx.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.03 }}
+                >
+                  <ListRow
+                    icon={tx.type === 'income' ? <ArrowDownLeft /> : <ArrowUpRight />}
+                    title={tx.title}
+                    subtitle={`${tx.tag} · ${tx.date}`}
+                    trailing={
+                      <span className={tx.type === 'income' ? 'bw-label-md shrink-0' : 'bw-label-md shrink-0 text-muted-foreground'}>
+                        {tx.amount}
+                      </span>
+                    }
+                  />
+                </motion.div>
+              ))}
             </div>
-
-            <div className="flex gap-5">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex-1 flex flex-col gap-2 items-start text-left"
-              >
-                <span className="text-xs font-bold text-black tracking-wide">EXPENSES</span>
-                <div className="h-[62px] overflow-hidden">
-                  {loading ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-foreground/30 mt-4" />
-                  ) : (
-                    <span className="text-[52px] font-bold leading-none text-black block">
-                      -€{fmt(stats.totalExpenses)}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-              <div className="flex-1" />
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col">
-              <span className="text-[32px] font-bold leading-none text-black">RECENT</span>
-              <span className="text-[32px] font-bold leading-none text-black">ACTIVITY</span>
-            </div>
-
-            {displayTransactions.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-col items-center py-10"
-              >
-                <Receipt className="w-12 h-12 text-black/15 mb-3" />
-                <span className="text-xs font-bold text-foreground/40 uppercase tracking-wide mb-1">
-                  No transactions yet
-                </span>
-                <span className="text-[10px] font-medium text-foreground/30 uppercase">
-                  Your income and expenses will appear here
-                </span>
-              </motion.div>
-            ) : (
-              <div className="flex flex-col gap-0">
-                {displayTransactions.map((tx, i) => (
-                  <motion.div
-                    key={tx.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.03 }}
-                    className="flex items-center justify-between py-4 border-b border-black/10 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          'w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0',
-                          tx.type === 'income' ? 'bg-accent-gig' : 'bg-muted',
-                        )}
-                      >
-                        {tx.type === 'income' ? (
-                          <ArrowDownLeft className="w-5 h-5 text-black" />
-                        ) : (
-                          <ArrowUpRight className="w-5 h-5 text-black" />
-                        )}
-                      </div>
-                      <div className="flex flex-col items-start">
-                        <span className="text-xs font-bold text-black uppercase tracking-wide">
-                          {tx.title}
-                        </span>
-                        <span className="text-[10px] font-medium text-foreground/40 uppercase">
-                          {tx.tag} · {tx.date}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={cn(
-                        'text-xs font-bold',
-                        tx.type === 'income' ? 'text-black' : 'text-foreground/50',
-                      )}
-                    >
-                      {tx.amount}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </section>
       </div>
 
-      {/* Add Transaction Modal */}
-      <AnimatePresence>
-        {showAddTransaction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end justify-center"
-            onClick={() => setShowAddTransaction(false)}
+      {/* Add transaction (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={showAddTransaction}
+        onClose={() => setShowAddTransaction(false)}
+        overline="Money flow"
+        title="Add transaction"
+        zIndex={200}
+        footer={
+          <PillButton
+            onClick={handleAddTransaction}
+            loading={saving}
+            disabled={!txTitle.trim() || !txAmount}
+            icon={<Check className="w-[18px] h-[18px]" />}
           >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="w-full max-w-md bg-background rounded-t-[20px] p-6"
-              onClick={(e) => e.stopPropagation()}
-              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+            Add {txType === 'income' ? 'income' : 'expense'}
+          </PillButton>
+        }
+      >
+        <div className="dark flex flex-col gap-6 text-foreground">
+          {/* Type */}
+          <div className="flex gap-2" role="group" aria-label="Transaction type">
+            <Selector
+              size="md"
+              selected={txType === 'income'}
+              onClick={() => {
+                setTxType('income');
+                setTxCategory('GIG');
+              }}
             >
-              <div className="w-12 h-1 bg-black/20 rounded-full mx-auto mb-6" />
+              <ArrowDownLeft className="w-3.5 h-3.5" /> Income
+            </Selector>
+            <Selector
+              size="md"
+              selected={txType === 'expense'}
+              onClick={() => {
+                setTxType('expense');
+                setTxCategory('EQUIPMENT');
+              }}
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" /> Expense
+            </Selector>
+          </div>
 
-              <span className="text-[32px] font-bold text-black leading-none block mb-6">
-                ADD TRANSACTION
-              </span>
+          <PillField
+            label="Description"
+            value={txTitle}
+            onChange={(e) => setTxTitle(e.target.value)}
+            placeholder="e.g., Jazz Night @ Blue Note"
+          />
+          <PillField
+            label="Amount (€)"
+            type="number"
+            inputMode="decimal"
+            value={txAmount}
+            onChange={(e) => setTxAmount(e.target.value)}
+            placeholder="0.00"
+          />
+          <PillField
+            label="Date"
+            type="date"
+            value={txDate}
+            onChange={(e) => setTxDate(e.target.value)}
+            icon={<Calendar className="w-5 h-5" />}
+          />
 
-              {/* Type Toggle */}
-              <div className="flex gap-0 mb-6 border-b border-black/10">
-                <button
-                  onClick={() => {
-                    setTxType('income');
-                    setTxCategory('GIG');
-                  }}
-                  className={cn(
-                    'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
-                    txType === 'income'
-                      ? 'border-black'
-                      : 'border-transparent text-foreground/40',
-                  )}
-                >
-                  <ArrowDownLeft className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wide">Income</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setTxType('expense');
-                    setTxCategory('EQUIPMENT');
-                  }}
-                  className={cn(
-                    'flex-1 py-3 flex items-center justify-center gap-2 transition-all border-b-2',
-                    txType === 'expense'
-                      ? 'border-black'
-                      : 'border-transparent text-foreground/40',
-                  )}
-                >
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wide">Expense</span>
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-5">
-                {/* Title */}
-                <div>
-                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={txTitle}
-                    onChange={(e) => setTxTitle(e.target.value)}
-                    placeholder="e.g., Jazz Night @ Blue Note"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
-                  />
-                </div>
-
-                {/* Amount */}
-                <div>
-                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
-                    Amount (€)
-                  </label>
-                  <input
-                    type="number"
-                    value={txAmount}
-                    onChange={(e) => setTxAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-transparent border-b-2 border-black/10 py-3 text-xl font-bold text-black placeholder:text-foreground/20 focus:outline-none focus:border-black transition-colors"
-                  />
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
-                    Date
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={txDate}
-                      onChange={(e) => setTxDate(e.target.value)}
-                      className="w-full bg-transparent border-b-2 border-black/10 py-3 text-sm font-bold text-black focus:outline-none focus:border-black transition-colors"
-                    />
-                    <Calendar className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="text-[10px] font-bold text-foreground/40 uppercase block mb-2 tracking-wide">
-                    Category
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {categories[txType].map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setTxCategory(cat)}
-                        className={cn(
-                          'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all',
-                          txCategory === cat
-                            ? 'bg-black text-white'
-                            : 'bg-black/5 text-foreground/40 active:bg-black/10',
-                        )}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <button
-                  onClick={handleAddTransaction}
-                  disabled={!txTitle.trim() || !txAmount || saving}
-                  className={cn(
-                    'w-full h-14 rounded-[10px] font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 transition-all mt-2',
-                    txTitle.trim() && txAmount
-                      ? 'bg-black text-white active:scale-[0.98]'
-                      : 'bg-black/10 text-foreground/30 cursor-not-allowed',
-                  )}
-                >
-                  {saving ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Check className="w-5 h-5" />
-                      ADD {txType === 'income' ? 'INCOME' : 'EXPENSE'}
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-muted-foreground mb-2">Category</legend>
+            <div className="flex flex-wrap gap-2">
+              {categories[txType].map((cat) => (
+                <Selector key={cat} selected={txCategory === cat} onClick={() => setTxCategory(cat)}>
+                  {cat}
+                </Selector>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+      </BwSheet>
     </ExpandedCardWrapper>
   );
 };

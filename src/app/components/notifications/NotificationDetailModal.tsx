@@ -7,27 +7,24 @@ import {
   CheckCheck,
   CalendarPlus,
   Calendar,
-  Clock,
-  MapPin,
   Euro,
-  ChevronRight,
   Bell,
   BellOff,
-  Sparkles,
   Music,
   Mic2,
-  MessageSquare,
+  MessageCircle,
   UserPlus,
   Trash2,
-  Mail,
-  Shield,
-  User,
   AlertTriangle,
+  Poll,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { durations, easings } from '@/styles/motion';
+import { parseLocalDate } from '@/lib/dates';
+import { IconButton, Card, Tag } from '@/app/components/bw/Screen';
+import { PillButton, Selector } from '@/app/components/bw/Form';
 
 export interface NotificationData {
   id: string;
@@ -54,7 +51,7 @@ interface NotificationDetailModalProps {
 }
 
 const formatTime = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  const date = parseLocalDate(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -69,7 +66,7 @@ const formatTime = (dateStr: string): string => {
 };
 
 const formatEventDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
+  const date = parseLocalDate(dateStr);
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -85,100 +82,70 @@ const cleanNotificationTitle = (title?: string): string => {
     .trim();
 };
 
-function getNotificationMeta(type: string, data?: Record<string, unknown>) {
+
+/**
+ * Per-type label + colour (Figma: Notifications / Activity — 44pt icon tile in
+ * the event colour; the detail hero card uses the same fill).
+ * `onDark` = the fill is dark, so the hero badge flips to white.
+ */
+interface NotificationMeta {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  fill: string;
+  onDark: boolean;
+}
+
+function getNotificationMeta(type: string, data?: Record<string, unknown>): NotificationMeta {
   const t = (type || '').toLowerCase();
   const evType = String(data?.event_type || '').toLowerCase();
+  const tag = data?.tag as string | undefined;
 
   if (t === 'member_dropped_out' || t === 'event_declined' || data?.response === 'declined') {
-    return {
-      label: (data?.tag as string) || 'DROPOUT ALERT',
-      icon: AlertTriangle,
-      tileClass: 'bg-red-500/15 text-red-500 border border-red-500/30',
-      badgeClass: 'bg-red-500/15 text-red-500 font-bold',
-    };
+    return { label: tag || 'Dropout alert', icon: AlertTriangle, fill: 'bg-destructive-solid text-white', onDark: true };
   }
   if (t === 'rehearsal_poll') {
-    return {
-      label: (data?.tag as string) || 'POLL',
-      icon: Calendar,
-      tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
-      badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
-    };
+    return { label: tag || 'Poll', icon: Poll, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (t === 'rehearsal_proposal') {
-    return {
-      label: (data?.tag as string) || 'PROPOSAL',
-      icon: Sparkles,
-      tileClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] border border-[var(--accent-rehearsal)]/25',
-      badgeClass: 'bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)]',
-    };
+    return { label: tag || 'Proposal', icon: Mic2, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (t.includes('rehearsal') || evType === 'rehearsal') {
-    return {
-      label: (data?.tag as string) || 'REHEARSAL',
-      icon: Music,
-      tileClass: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20',
-      badgeClass: 'bg-indigo-500/15 text-indigo-400',
-    };
+    return { label: tag || 'Rehearsal', icon: Music, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
   if (t.includes('chat')) {
     const isDirect = data?.chatType === 'direct' || data?.tag === 'Direct Message' || !data?.band_id;
     return {
-      label: (data?.tag as string) || (isDirect ? 'PRIVATE MESSAGE' : 'BAND MESSAGE'),
-      icon: MessageSquare,
-      tileClass: isDirect
-        ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
-        : 'bg-primary/15 text-primary border border-primary/20',
-      badgeClass: isDirect ? 'bg-blue-500/15 text-blue-400' : 'bg-primary/15 text-primary',
+      label: tag || (isDirect ? 'Private message' : 'Band message'),
+      icon: MessageCircle,
+      fill: 'bg-surface-inverse text-surface-inverse-foreground',
+      onDark: true,
     };
   }
   if (t === 'event_invite') {
-    return {
-      label: (data?.tag as string) || 'GIG INVITATION',
-      icon: Mic2,
-      tileClass: 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
-      badgeClass: 'bg-rose-500/15 text-rose-400',
-    };
+    return { label: tag || 'Gig invitation', icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (t === 'event_confirmed') {
-    return {
-      label: (data?.tag as string) || 'GIG CONFIRMED',
-      icon: CheckCheck,
-      tileClass: 'bg-accent/15 text-accent border border-accent/25',
-      badgeClass: 'bg-accent/15 text-accent',
-    };
+    return { label: tag || 'Gig confirmed', icon: CheckCheck, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (t.includes('gig') || t.includes('event')) {
-    return {
-      label: (data?.tag as string) || 'GIG',
-      icon: Mic2,
-      tileClass: 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
-      badgeClass: 'bg-rose-500/15 text-rose-400',
-    };
+    return { label: tag || 'Gig', icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
   if (t.includes('quote') || t.includes('payment') || t.includes('finance')) {
-    return {
-      label: (data?.tag as string) || 'FINANCE',
-      icon: Euro,
-      tileClass: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-      badgeClass: 'bg-emerald-500/15 text-emerald-400',
-    };
+    return { label: tag || 'Finance', icon: Euro, fill: 'bg-accent-quote text-accent-quote-foreground', onDark: false };
   }
   if (t.includes('invite') || t.includes('member')) {
-    return {
-      label: (data?.tag as string) || 'INVITE',
-      icon: UserPlus,
-      tileClass: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-      badgeClass: 'bg-amber-500/15 text-amber-400',
-    };
+    return { label: tag || 'Invite', icon: UserPlus, fill: 'bg-accent-personal text-accent-personal-foreground', onDark: false };
   }
-  return {
-    label: (data?.tag as string) || 'ALERT',
-    icon: Bell,
-    tileClass: 'bg-primary/15 text-primary border border-primary/20',
-    badgeClass: 'bg-primary/15 text-primary',
-  };
+  return { label: tag || 'Alert', icon: Bell, fill: 'bg-surface-inverse text-surface-inverse-foreground', onDark: true };
 }
+
+/** Key/value line of the Figma "Event specifications" card. */
+const KV: React.FC<{ k: string; v: React.ReactNode }> = ({ k, v }) => (
+  <div className="flex items-baseline gap-3">
+    <span className="bw-body-md text-muted-foreground shrink-0">{k}</span>
+    <span className="flex-1 min-w-0 text-right bw-label-md text-foreground [overflow-wrap:anywhere]">{v}</span>
+  </div>
+);
 
 const addToCalendar = async (data: Record<string, unknown>) => {
   try {
@@ -279,6 +246,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     setIsAddingToCalendar(false);
   };
 
+
+  const isPollType = detailNotif?.type === 'rehearsal_poll' || detailNotif?.type === 'rehearsal_proposal';
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -290,265 +260,154 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
           className="fixed inset-0 z-[101] flex flex-col bg-background text-foreground overflow-x-hidden"
           style={{ overscrollBehaviorX: 'none' }}
         >
-          {/* ═══ STICKY HEADER ═══ */}
-          <div
-            className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-            style={{
-              paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-              paddingBottom: '14px',
-            }}
-          >
-            <div className="max-w-xl mx-auto w-full flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                {viewingIndex !== null && (
-                  <button
-                    onClick={backToList}
-                    aria-label="Back to notification list"
-                    className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all shrink-0"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                )}
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider truncate">
-                    {viewingIndex !== null ? 'NOTIFICATION DETAIL' : 'ACTIVITY & UPDATES'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-[20px] sm:text-[22px] font-black text-foreground uppercase tracking-tight leading-none truncate">
-                      {viewingIndex !== null
-                        ? (getNotificationMeta(detailNotif?.type || '').label)
-                        : (isListView ? 'NOTIFICATIONS' : 'NOTIFICATION')}
-                    </h1>
-                    {isListView && unreadCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-black leading-none">
-                        {unreadCount} NEW
-                      </span>
-                    )}
-                  </div>
+          {/* ═══ HEADER ═══ */}
+          {isListView ? (
+            /* Figma: Kicker (Activity & updates / Inbox) + Outline close */
+            <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+              <div className="max-w-xl mx-auto w-full flex items-end gap-3">
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <p className="bw-label-sm text-muted-foreground">Activity &amp; updates</p>
+                  <h1 className="bw-display-lg text-foreground truncate">Inbox</h1>
                 </div>
+                <IconButton label="Close notifications" icon={<X />} onClick={handleClose} />
               </div>
-
-              {/* Header Right Actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                {isListView && unreadCount > 0 && onMarkAllAsRead && (
-                  <button
-                    onClick={onMarkAllAsRead}
-                    aria-label="Mark all as read"
-                    title="Mark all as read"
-                    className="px-3 py-1.5 rounded-[10px] bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5 active:scale-95 transition-all"
-                  >
-                    <CheckCheck className="w-3.5 h-3.5 text-accent" />
-                    <span className="hidden sm:inline">Mark Read</span>
-                  </button>
+            </header>
+          ) : (
+            /* Figma: back · NOTIFICATION DETAIL · delete */
+            <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
+              <div className="max-w-xl mx-auto w-full h-11 flex items-center gap-3">
+                {viewingIndex !== null ? (
+                  <IconButton label="Back to notification list" icon={<ArrowLeft />} onClick={backToList} />
+                ) : (
+                  <IconButton label="Close notifications" icon={<X />} onClick={handleClose} />
                 )}
-                <button
-                  onClick={handleClose}
-                  aria-label="Close notifications"
-                  className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground active:scale-90 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <p className="flex-1 min-w-0 text-center bw-label-sm text-muted-foreground truncate">Notification detail</p>
+                <IconButton label="Delete notification" variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
               </div>
-            </div>
-          </div>
+            </header>
+          )}
 
-          {/* ═══ SCROLLABLE BODY (MAX-W-XL CENTERED) ═══ */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 pb-36">
+          {/* ═══ SCROLLABLE BODY ═══ */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6">
             <div className="max-w-xl mx-auto w-full flex flex-col gap-4">
               {isListView ? (
                 /* ═══ LIST VIEW ═══ */
                 <>
-                  {/* Segmented Filter Pills */}
                   {allNotifications.length > 0 && (
-                    <div className="flex items-center justify-between pb-1">
-                      <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-foreground/5 border border-foreground/10 text-[11px] font-bold uppercase">
-                        <button
-                          onClick={() => setFilter('all')}
-                          className={cn(
-                            'px-3 py-1 rounded-[8px] transition-all',
-                            filter === 'all'
-                              ? 'bg-foreground text-background shadow-xs'
-                              : 'text-foreground/60 hover:text-foreground'
-                          )}
-                        >
-                          All ({allNotifications.length})
-                        </button>
-                        <button
-                          onClick={() => setFilter('unread')}
-                          className={cn(
-                            'px-3 py-1 rounded-[8px] transition-all flex items-center gap-1.5',
-                            filter === 'unread'
-                              ? 'bg-foreground text-background shadow-xs'
-                              : 'text-foreground/60 hover:text-foreground'
-                          )}
-                        >
-                          <span>Unread</span>
-                          {unreadCount > 0 && (
-                            <span className={cn(
-                              'px-1.5 py-0.2 rounded-full text-[9px] font-black',
-                              filter === 'unread' ? 'bg-background text-foreground' : 'bg-accent text-accent-foreground'
-                            )}>
-                              {unreadCount}
-                            </span>
-                          )}
-                        </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Selector size="md" selected={filter === 'all'} onClick={() => setFilter('all')} count={allNotifications.length}>
+                          All
+                        </Selector>
+                        <Selector size="md" selected={filter === 'unread'} onClick={() => setFilter('unread')} count={unreadCount}>
+                          Unread
+                        </Selector>
                       </div>
-                      <span className="text-[11px] font-semibold text-foreground/40">
-                        {displayedNotifications.length} {displayedNotifications.length === 1 ? 'alert' : 'alerts'}
-                      </span>
+                      {unreadCount > 0 && onMarkAllAsRead && (
+                        <PillButton
+                          variant="ghost"
+                          size="sm"
+                          fullWidth={false}
+                          icon={<Check className="w-4 h-4" />}
+                          onClick={onMarkAllAsRead}
+                          aria-label="Mark all as read"
+                          className="px-0"
+                        >
+                          Mark read
+                        </PillButton>
+                      )}
                     </div>
                   )}
 
-                  {/* Empty state */}
                   {displayedNotifications.length === 0 ? (
-                    <div className="p-8 rounded-[16px] bg-card border border-foreground/10 flex flex-col items-center justify-center text-center gap-3 shadow-2xs mt-4">
-                      <div className="w-12 h-12 rounded-full bg-foreground/5 text-foreground/40 flex items-center justify-center">
-                        <BellOff className="w-6 h-6" />
-                      </div>
+                    <Card className="items-center text-center py-10 gap-4">
+                      <BellOff className="w-10 h-10 text-muted-foreground" />
                       <div className="flex flex-col gap-1">
-                        <h3 className="text-sm font-bold uppercase text-foreground">
-                          {filter === 'unread' ? 'No Unread Notifications' : 'All Caught Up'}
-                        </h3>
-                        <p className="text-xs text-foreground/50 max-w-xs">
+                        <h3 className="bw-h3">{filter === 'unread' ? 'No unread notifications' : 'All caught up'}</h3>
+                        <p className="bw-body-sm text-muted-foreground max-w-xs">
                           {filter === 'unread'
                             ? 'All notifications have been reviewed.'
                             : 'There are no active alerts or gig updates at the moment.'}
                         </p>
                       </div>
-                    </div>
+                    </Card>
                   ) : (
-                    /* Notification Cards List */
-                    <div className="flex flex-col gap-2.5">
+                    <ul className="flex flex-col gap-3">
                       {displayedNotifications.map((notif, i) => {
                         const originalIndex = allNotifications.findIndex(n => n.id === notif.id);
                         const isRead = notif.read;
                         const meta = getNotificationMeta(notif.type, notif.data);
                         const IconComponent = meta.icon;
+                        const typeLine = [meta.label, notif.data?.subtitle ? String(notif.data.subtitle) : null]
+                          .filter(Boolean)
+                          .join(' · ');
 
                         return (
-                          <div
-                            key={notif.id}
-                            onClick={() => {
-                              if (notif.type === 'event_invite' && onOpenRSVP) {
-                                onOpenRSVP(notif);
-                                return;
-                              }
-                              if ((notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') && onOpenPoll) {
-                                onOpenPoll(notif);
-                                return;
-                              }
-                              setViewingIndex(originalIndex >= 0 ? originalIndex : i);
-                            }}
-                            className={cn(
-                              'p-4 rounded-[14px] border transition-all cursor-pointer flex items-start gap-3.5 shadow-2xs active:scale-[0.99]',
-                              isRead
-                                ? 'bg-card/60 border-foreground/10 hover:border-foreground/20 hover:bg-card'
-                                : 'bg-card border-foreground/20 hover:border-foreground/30 ring-1 ring-accent/20'
-                            )}
-                          >
-                            {/* Type Icon Tile */}
-                            <div className={cn(
-                              'w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 shadow-xs',
-                              meta.tileClass
-                            )}>
-                              <IconComponent className="w-5 h-5" />
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                                  <span className={cn(
-                                    'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px]',
-                                    meta.badgeClass
-                                  )}>
-                                    {meta.label}
-                                  </span>
-                                  {Boolean(notif.data?.subtitle) && (
-                                    <span className="text-[9px] font-medium text-foreground/50 bg-foreground/5 px-1.5 py-0.5 rounded-[4px] truncate max-w-[140px]">
-                                      {String(notif.data?.subtitle)}
-                                    </span>
-                                  )}
-                                  {!isRead && (
-                                    <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
-                                  )}
-                                </div>
-                                <span className="text-[10px] font-semibold text-foreground/40 shrink-0">
-                                  {formatTime(notif.created_at)}
-                                </span>
-                              </div>
-
-                              <h3 className={cn(
-                                'text-sm font-bold uppercase mt-1.5 leading-snug truncate',
-                                isRead ? 'text-foreground/80' : 'text-foreground'
-                              )}>
-                                {cleanNotificationTitle(notif.title)}
-                              </h3>
-
-                              {notif.body && (
-                                <p className="text-xs text-foreground/60 line-clamp-2 mt-1 leading-relaxed">
-                                  {notif.body}
-                                </p>
+                          <li key={notif.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (notif.type === 'event_invite' && onOpenRSVP) {
+                                  onOpenRSVP(notif);
+                                  return;
+                                }
+                                if ((notif.type === 'rehearsal_poll' || notif.type === 'rehearsal_proposal') && onOpenPoll) {
+                                  onOpenPoll(notif);
+                                  return;
+                                }
+                                setViewingIndex(originalIndex >= 0 ? originalIndex : i);
+                              }}
+                              className={cn(
+                                'w-full text-left p-4 rounded-[24px] flex items-start gap-3 active:scale-[0.99] transition-transform',
+                                isRead ? 'border border-border' : 'bg-card',
                               )}
-                            </div>
-
-                            <ChevronRight className="w-4 h-4 text-foreground/30 shrink-0 mt-3" />
-                          </div>
+                            >
+                              <span className={cn('w-11 h-11 rounded-full flex items-center justify-center shrink-0', meta.fill)}>
+                                <IconComponent className="w-5 h-5" />
+                              </span>
+                              <span className="flex-1 min-w-0 flex flex-col gap-1">
+                                <span className="flex items-center gap-2">
+                                  <span className="flex-1 min-w-0 bw-label-xs text-muted-foreground truncate">{typeLine}</span>
+                                  <span className="bw-label-xs text-muted-foreground shrink-0">{formatTime(notif.created_at)}</span>
+                                </span>
+                                <span className="bw-label-md text-foreground truncate">{cleanNotificationTitle(notif.title)}</span>
+                                {notif.body && <span className="bw-body-sm text-muted-foreground line-clamp-2">{notif.body}</span>}
+                              </span>
+                              {!isRead && (
+                                <span className="w-2 h-2 mt-1 rounded-full bg-destructive shrink-0" aria-label="Unread" />
+                              )}
+                            </button>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
                   )}
                 </>
               ) : detailNotif ? (
-                /* ═══ DETAIL VIEW ═══ */
-                <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-right-4 duration-200">
-                  {/* Hero Card */}
+                /* ═══ DETAIL VIEW (Figma: Notifications / Gig invitation) ═══ */
+                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-200">
                   {(() => {
                     const meta = getNotificationMeta(detailNotif.type, detailNotif.data);
-                    const IconComponent = meta.icon;
-
                     return (
-                      <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <div className={cn(
-                              'w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0',
-                              meta.tileClass
-                            )}>
-                              <IconComponent className="w-4 h-4" />
-                            </div>
-                            <span className={cn(
-                              'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[5px]',
-                              meta.badgeClass
-                            )}>
-                              {meta.label}
-                            </span>
-                            {Boolean(detailNotif.data?.subtitle) && (
-                              <span className="text-[10px] font-medium text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded-[5px]">
-                                {String(detailNotif.data?.subtitle)}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs font-semibold text-foreground/40">
-                            {formatTime(detailNotif.created_at)}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <h2 className="text-lg sm:text-xl font-black uppercase text-foreground leading-tight">
-                            {cleanNotificationTitle(detailNotif.title)}
-                          </h2>
-                          {detailNotif.body && (
-                            <p className="text-xs sm:text-sm text-foreground/70 leading-relaxed font-normal">
-                              {detailNotif.body}
-                            </p>
+                      <div className={cn('p-5 rounded-[24px] flex flex-col gap-3', meta.fill)}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Tag variant="solid" className={meta.onDark ? 'bg-white text-black' : undefined}>
+                            {meta.label}
+                          </Tag>
+                          {Boolean(detailNotif.data?.subtitle) && (
+                            <Tag variant="outline" className="border-current text-current">
+                              {String(detailNotif.data?.subtitle)}
+                            </Tag>
                           )}
+                          <span className="flex-1" />
+                          <span className="bw-label-xs opacity-70">{formatTime(detailNotif.created_at)}</span>
                         </div>
+                        <h2 className="bw-display-lg [overflow-wrap:anywhere]">{cleanNotificationTitle(detailNotif.title)}</h2>
+                        {detailNotif.body && <p className="bw-body-md">{detailNotif.body}</p>}
                       </div>
                     );
                   })()}
 
-                  {/* Structured Event / Payload Details Card */}
                   {detailNotif.data && (() => {
                     const d = detailNotif.data as Record<string, any>;
                     const hasEventData = !!d.event_date;
@@ -557,98 +416,46 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     if (!hasEventData && !hasGenericFields) return null;
 
                     return (
-                      <div className="p-5 rounded-[16px] bg-card border border-foreground/10 flex flex-col gap-4 shadow-2xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                          {hasEventData ? 'EVENT SPECIFICATIONS' : 'INVITATION DETAILS'}
-                        </span>
+                      <>
+                        <h3 className="bw-label-sm text-muted-foreground">
+                          {hasEventData ? 'Event specifications' : 'Invitation details'}
+                        </h3>
+                        <Card className="gap-4">
+                          {hasEventData && (
+                            <>
+                              {d.event_title && <KV k="Event" v={String(d.event_title)} />}
+                              <KV
+                                k="Date & time"
+                                v={[formatEventDate(String(d.event_date)), d.event_time ? String(d.event_time) : null]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              />
+                              {d.venue && <KV k="Venue" v={String(d.venue)} />}
+                              {(d.member_fee || d.fee) && (
+                                <KV
+                                  k={d.member_fee ? 'Allocated fee' : 'Total fee'}
+                                  v={`€${Number(d.member_fee || d.fee).toLocaleString()}`}
+                                />
+                              )}
+                            </>
+                          )}
+                          {d.invitee_email && <KV k="Email" v={String(d.invitee_email)} />}
+                          {d.inviter_name && <KV k="Invited by" v={String(d.inviter_name)} />}
+                          {d.member_name && <KV k="Member" v={String(d.member_name)} />}
+                        </Card>
 
                         {hasEventData && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {d.event_title && (
-                              <div className="p-3.5 rounded-[12px] bg-foreground/5 border border-foreground/10 flex items-start gap-3 col-span-1 sm:col-span-2">
-                                <Sparkles className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">EVENT</span>
-                                  <span className="text-sm font-bold uppercase text-foreground truncate">{String(d.event_title)}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {d.event_date && (
-                              <div className="p-3.5 rounded-[12px] bg-foreground/5 border border-foreground/10 flex items-start gap-3">
-                                <Calendar className="w-4 h-4 text-foreground/60 shrink-0 mt-0.5" />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">DATE & TIME</span>
-                                  <span className="text-xs font-bold text-foreground">{formatEventDate(String(d.event_date))}</span>
-                                  {d.event_time && (
-                                    <span className="text-[11px] font-medium text-foreground/50">{String(d.event_time)}</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {d.venue && (
-                              <div className="p-3.5 rounded-[12px] bg-foreground/5 border border-foreground/10 flex items-start gap-3">
-                                <MapPin className="w-4 h-4 text-foreground/60 shrink-0 mt-0.5" />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">VENUE</span>
-                                  <span className="text-xs font-bold uppercase text-foreground truncate">{String(d.venue)}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {(d.member_fee || d.fee) && (
-                              <div className="p-3.5 rounded-[12px] bg-foreground/5 border border-foreground/10 flex items-start gap-3 col-span-1 sm:col-span-2">
-                                <Euro className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/40">
-                                    {d.member_fee ? 'ALLOCATED FEE' : 'TOTAL FEE'}
-                                  </span>
-                                  <span className="text-sm font-bold text-foreground">
-                                    €{Number(d.member_fee || d.fee).toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {hasGenericFields && (
-                          <div className="flex flex-col gap-2">
-                            {d.invitee_email && (
-                              <div className="p-3 rounded-[10px] bg-foreground/5 flex justify-between items-center text-xs">
-                                <span className="font-bold text-foreground/40 uppercase">EMAIL</span>
-                                <span className="font-semibold text-foreground">{String(d.invitee_email)}</span>
-                              </div>
-                            )}
-                            {d.inviter_name && (
-                              <div className="p-3 rounded-[10px] bg-foreground/5 flex justify-between items-center text-xs">
-                                <span className="font-bold text-foreground/40 uppercase">INVITED BY</span>
-                                <span className="font-semibold text-foreground">{String(d.inviter_name)}</span>
-                              </div>
-                            )}
-                            {d.member_name && (
-                              <div className="p-3 rounded-[10px] bg-foreground/5 flex justify-between items-center text-xs">
-                                <span className="font-bold text-foreground/40 uppercase">MEMBER</span>
-                                <span className="font-semibold text-foreground">{String(d.member_name)}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {hasEventData && (
-                          <button
+                          <PillButton
+                            variant="outline"
+                            size="md"
                             onClick={handleAddToCalendar}
                             disabled={isAddingToCalendar}
-                            className="w-full py-2.5 rounded-[10px] flex items-center justify-center gap-2 bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 active:scale-98 transition-all"
+                            icon={<CalendarPlus className="w-[18px] h-[18px]" />}
                           >
-                            <CalendarPlus className="w-4 h-4 text-foreground/70" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-foreground/80">
-                              {isAddingToCalendar ? 'ADDING...' : 'ADD TO GOOGLE CALENDAR'}
-                            </span>
-                          </button>
+                            {isAddingToCalendar ? 'Adding…' : 'Add to Google Calendar'}
+                          </PillButton>
                         )}
-                      </div>
+                      </>
                     );
                   })()}
                 </div>
@@ -656,80 +463,39 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             </div>
           </div>
 
-          {/* ═══ STICKY BOTTOM BAR ═══ */}
-          <div className="fixed bottom-0 left-0 right-0 z-[102] bg-background/95 backdrop-blur-md px-4 pb-6 pt-3.5 border-t border-foreground/10">
+          {/* ═══ CTA BAR ═══ */}
+          <div className="shrink-0 bg-background px-4 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
             <div className="max-w-xl mx-auto w-full">
               {isListView ? (
-                <button
-                  onClick={handleClose}
-                  className="w-full py-3.5 rounded-[12px] flex items-center justify-center gap-2 bg-foreground text-background font-bold uppercase text-xs tracking-wider active:scale-98 transition-all shadow-xs"
-                >
-                  <span>CLOSE NOTIFICATIONS</span>
-                </button>
+                <PillButton variant="dark" onClick={handleClose}>
+                  Close notifications
+                </PillButton>
               ) : detailNotif?.type === 'event_invite' ? (
-                <div className="flex flex-col gap-2.5">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => handleAction('decline_event')}
-                      className="rounded-[12px] py-3.5 flex items-center justify-center bg-foreground/5 hover:bg-foreground/10 border border-foreground/10 active:scale-98 transition-all"
-                    >
-                      <span className="text-xs font-bold uppercase text-foreground tracking-wider">DECLINE</span>
-                    </button>
-                    <button
-                      onClick={() => handleAction('accept_event')}
-                      className="rounded-[12px] py-3.5 flex items-center justify-center bg-foreground hover:bg-foreground/90 text-background active:scale-98 transition-all shadow-xs"
-                    >
-                      <span className="text-xs font-bold uppercase tracking-wider">ACCEPT EVENT</span>
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(detailNotif?.id)}
-                    className="text-[11px] font-semibold uppercase text-foreground/40 hover:text-foreground/70 py-1"
-                  >
-                    DISMISS NOTIFICATION
-                  </button>
+                <div className="flex items-center gap-3">
+                  <PillButton variant="outline" className="flex-[0_0_36%]" onClick={() => handleAction('decline_event')}>
+                    Decline
+                  </PillButton>
+                  <PillButton className="flex-1" icon={<Check className="w-[18px] h-[18px]" />} onClick={() => handleAction('accept_event')}>
+                    Accept event
+                  </PillButton>
                 </div>
-              ) : (detailNotif?.type === 'rehearsal_poll' || detailNotif?.type === 'rehearsal_proposal') ? (
-                <div className="flex flex-col gap-2.5">
-                  <button
-                    onClick={() => onOpenPoll?.(detailNotif)}
-                    className="w-full rounded-[12px] py-3.5 flex items-center justify-center bg-[var(--accent-rehearsal)] hover:opacity-95 text-white active:scale-98 transition-all font-bold text-xs uppercase tracking-wider gap-2 shadow-xs"
+              ) : isPollType ? (
+                <div className="flex items-center gap-3">
+                  <PillButton
+                    variant="outline"
+                    className="flex-[0_0_36%]"
+                    onClick={viewingIndex !== null ? backToList : handleClose}
                   >
-                    <Calendar className="w-4 h-4" />
-                    <span>{detailNotif.type === 'rehearsal_poll' ? 'VOTE ON DATES' : 'VIEW PROPOSAL'}</span>
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={backToList}
-                      className="flex-1 py-3 rounded-[12px] flex items-center justify-center gap-2 bg-foreground/10 text-foreground font-bold uppercase text-xs tracking-wider active:scale-98 transition-all"
-                    >
-                      <span>BACK TO LIST</span>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(detailNotif?.id)}
-                      aria-label="Delete notification"
-                      className="w-11 h-11 rounded-[12px] flex items-center justify-center bg-foreground/5 hover:bg-red-500/10 hover:text-red-500 text-foreground/50 border border-foreground/10 active:scale-95 transition-all shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                    {viewingIndex !== null ? 'Back' : 'Close'}
+                  </PillButton>
+                  <PillButton className="flex-1" icon={<Calendar className="w-[18px] h-[18px]" />} onClick={() => detailNotif && onOpenPoll?.(detailNotif)}>
+                    {detailNotif?.type === 'rehearsal_poll' ? 'Vote on dates' : 'View proposal'}
+                  </PillButton>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={backToList}
-                    className="flex-1 py-3.5 rounded-[12px] flex items-center justify-center gap-2 bg-foreground text-background font-bold uppercase text-xs tracking-wider active:scale-98 transition-all shadow-xs"
-                  >
-                    <span>BACK TO LIST</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(detailNotif?.id)}
-                    aria-label="Delete notification"
-                    className="w-12 h-12 rounded-[12px] flex items-center justify-center bg-foreground/5 hover:bg-red-500/10 hover:text-red-500 text-foreground/50 border border-foreground/10 active:scale-95 transition-all shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <PillButton variant="dark" onClick={viewingIndex !== null ? backToList : handleClose}>
+                  {viewingIndex !== null ? 'Back to list' : 'Close'}
+                </PillButton>
               )}
             </div>
           </div>

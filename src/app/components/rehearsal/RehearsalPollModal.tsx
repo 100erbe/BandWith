@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  X,
-  Plus,
-  Trash2,
-  Calendar,
-  Clock,
-  Sparkles,
-  Loader2,
-  ArrowRight,
-  Check,
-  Zap,
-} from '@/app/components/icons';
+import { X, Calendar, Clock, Sparkles, Send } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { IconButton, PillButton, PillField, Selector, Card, FormError } from '@/app/components/bw';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import {
   createOrPublishAdminPoll,
@@ -249,397 +239,267 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
   if (!isOpen) return null;
 
+  const slotLabel = (slot: TimeSlotDraft) => {
+    const parsedDate = new Date(slot.proposed_date + 'T12:00:00');
+    const day = parsedDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    return `${day} · ${slot.start_time}${slot.end_time ? ` – ${slot.end_time}` : ''}`;
+  };
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-        />
-
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-xl bg-background border border-foreground/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-foreground/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[var(--accent-rehearsal)]/15 border border-[var(--accent-rehearsal)]/30 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 text-[var(--accent-rehearsal)]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-foreground uppercase tracking-tight leading-tight">
-                  {initialProposal ? 'Convert Proposal to Poll' : 'Rehearsal Availability Poll'}
-                </h2>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Admin Tool • Find the Best Day
-                </p>
-              </div>
+      <motion.div
+        key="rehearsal-poll-builder"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="poll-builder-title"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        transition={{ type: 'tween', duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+        className="fixed inset-0 z-[120] bg-background text-foreground flex flex-col"
+      >
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {/* Figma "Rehearsal / Poll builder": rehearsal-blue header */}
+          <header
+            className="bg-accent-rehearsal text-accent-rehearsal-foreground px-4 pb-5 flex flex-col gap-2"
+            style={{ paddingTop: 'calc(var(--safe-top) + 16px)' }}
+          >
+            <div className="flex items-center gap-3 min-h-11">
+              <p className="flex-1 min-w-0 bw-label-sm truncate">Admin tool · Find the best day</p>
+              <IconButton label="Close" icon={<X />} variant="sheet" onClick={onClose} />
             </div>
+            <h1 id="poll-builder-title" className="bw-display-lg [overflow-wrap:anywhere]">
+              {initialProposal ? 'Proposal to poll' : 'Availability poll'}
+            </h1>
+          </header>
 
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-foreground/10 hover:bg-foreground/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Modal Body */}
-          <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
-            {error && (
-              <div className="p-3.5 rounded-xl bg-[var(--destructive)]/10 border border-[var(--destructive)]/25 text-[var(--destructive)] text-xs font-bold">
-                {error}
-              </div>
-            )}
+          <div className="w-full max-w-xl mx-auto px-4 pt-5 pb-6 flex flex-col gap-4">
+            {error && <FormError>{error}</FormError>}
 
             {/* Converting banner */}
             {initialProposal && (
-              <div className="p-3.5 rounded-2xl bg-[var(--accent-rehearsal)]/10 border border-[var(--accent-rehearsal)]/20 flex items-start gap-3">
-                <Sparkles className="w-4 h-4 text-[var(--accent-rehearsal)] shrink-0 mt-0.5" />
-                <div className="text-xs text-foreground">
-                  <span className="font-bold">
-                    Converting proposal from{' '}
-                    {initialProposal.creator_profile?.full_name || 'Band Member'}:
-                  </span>{' '}
-                  <span className="text-muted-foreground">{initialProposal.title}</span>
+              <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
+                <Sparkles className="w-5 h-5 shrink-0" />
+                <div className="flex flex-col gap-1 min-w-0">
+                  <p className="bw-body-sm">
+                    <span className="font-semibold">
+                      From {initialProposal.creator_profile?.full_name || 'Band member'}:
+                    </span>{' '}
+                    <span className="text-muted-foreground">{initialProposal.title}</span>
+                  </p>
                   {initialProposal.preferred_days && initialProposal.preferred_days.length > 0 && (
-                    <div className="mt-1 font-semibold text-[11px] text-[var(--accent-rehearsal)]">
-                      Preferred days: {initialProposal.preferred_days.join(', ')}
-                    </div>
+                    <p className="bw-label-sm text-muted-foreground">
+                      Preferred days · {initialProposal.preferred_days.join(', ')}
+                    </p>
                   )}
                 </div>
               </div>
             )}
 
             {/* Title & Notes */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Poll Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Next Week Rehearsal Availability"
-                  className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-3 text-sm font-bold text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-[var(--accent-rehearsal)] transition-colors"
-                />
-              </div>
+            <PillField
+              label="Poll title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Extra rehearsal before the wedding"
+            />
+            <PillField
+              label="Goal / notes (optional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Focus on ending transitions"
+            />
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Goal / Notes (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Focus on ending transitions and sound balance"
-                  className="w-full bg-card border border-foreground/15 rounded-xl px-4 py-2.5 text-xs font-medium text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-[var(--accent-rehearsal)] transition-colors"
-                />
-              </div>
+            {/* Generator mode (Figma Segmented) */}
+            <div role="tablist" aria-label="Slot generator" className="flex p-1 gap-1 rounded-full bg-card">
+              {([
+                ['preset', 'Whole week preset'],
+                ['custom', 'Custom date / time'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={generatorMode === mode}
+                  onClick={() => setGeneratorMode(mode)}
+                  className={cn(
+                    'flex-1 h-9 px-2 rounded-full bw-button-sm transition-colors',
+                    generatorMode === mode
+                      ? 'bg-accent-rehearsal text-accent-rehearsal-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {/* Generator Mode Selector Tabs */}
-            <div className="flex flex-col gap-3 pt-2 border-t border-foreground/10">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Slot Generator
-                </span>
-                <div className="flex rounded-lg bg-card border border-foreground/10 p-1 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setGeneratorMode('preset')}
-                    className={cn(
-                      'px-3 py-1 rounded-md text-[11px] font-bold uppercase transition-all',
-                      generatorMode === 'preset'
-                        ? 'bg-[var(--accent-rehearsal)] text-white shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    Whole Week Preset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGeneratorMode('custom')}
-                    className={cn(
-                      'px-3 py-1 rounded-md text-[11px] font-bold uppercase transition-all',
-                      generatorMode === 'custom'
-                        ? 'bg-[var(--accent-rehearsal)] text-white shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    Custom Date/Time
-                  </button>
-                </div>
-              </div>
+            {generatorMode === 'preset' ? (
+              <>
+                {/* Target Week */}
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="bw-label-sm text-muted-foreground mb-2">Week of</legend>
+                  <div className="flex gap-2">
+                    <Selector selected={weekOffset === 0} onClick={() => setWeekOffset(0)}>
+                      This week
+                    </Selector>
+                    <Selector selected={weekOffset === 1} onClick={() => setWeekOffset(1)}>
+                      Next week
+                    </Selector>
+                  </div>
+                </fieldset>
 
-              {/* Option A: Whole Week Preset */}
-              {generatorMode === 'preset' ? (
-                <div className="p-4 rounded-2xl bg-card border border-foreground/10 flex flex-col gap-4">
-                  {/* Target Week */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">Week of:</span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setWeekOffset(0)}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase border transition-all',
-                          weekOffset === 0
-                            ? 'bg-foreground/10 border-foreground/25 text-foreground'
-                            : 'border-transparent text-muted-foreground hover:text-foreground'
-                        )}
+                {/* Day Pills */}
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="bw-label-sm text-muted-foreground mb-2">Include days</legend>
+                  <div className="flex gap-1.5">
+                    {DAYS_META.map((d) => (
+                      <Selector
+                        key={d.dayIndex}
+                        selected={selectedPresetDays.includes(d.dayIndex)}
+                        onClick={() => {
+                          setSelectedPresetDays((prev) =>
+                            prev.includes(d.dayIndex)
+                              ? prev.filter((idx) => idx !== d.dayIndex)
+                              : [...prev, d.dayIndex]
+                          );
+                        }}
+                        className="flex-1 min-w-0 justify-center px-0"
                       >
-                        This Week
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWeekOffset(1)}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-[11px] font-bold uppercase border transition-all',
-                          weekOffset === 1
-                            ? 'bg-foreground/10 border-foreground/25 text-foreground'
-                            : 'border-transparent text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        Next Week
-                      </button>
-                    </div>
+                        {d.label}
+                      </Selector>
+                    ))}
                   </div>
+                </fieldset>
 
-                  {/* Day Pills */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Include Days
-                    </span>
-                    <div className="grid grid-cols-7 gap-1">
-                      {DAYS_META.map((d) => {
-                        const isSelected = selectedPresetDays.includes(d.dayIndex);
-                        return (
-                          <button
-                            key={d.dayIndex}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPresetDays((prev) =>
-                                prev.includes(d.dayIndex)
-                                  ? prev.filter((idx) => idx !== d.dayIndex)
-                                  : [...prev, d.dayIndex]
-                              );
-                            }}
-                            className={cn(
-                              'py-2 rounded-lg text-xs font-bold uppercase transition-all border',
-                              isSelected
-                                ? 'bg-[var(--accent-rehearsal)] text-white border-[var(--accent-rehearsal)] shadow-2xs'
-                                : 'bg-background text-muted-foreground border-foreground/10 hover:border-foreground/25 hover:text-foreground'
-                            )}
-                          >
-                            {d.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Default Time range */}
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        Start Time
-                      </span>
-                      <TimePicker
-                        value={presetStartTime}
-                        onChange={setPresetStartTime}
-                        textSize="text-sm"
-                        className="w-full bg-background border-foreground/15 text-xs py-2"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        End Time
-                      </span>
-                      <TimePicker
-                        value={presetEndTime}
-                        onChange={setPresetEndTime}
-                        textSize="text-sm"
-                        className="w-full bg-background border-foreground/15 text-xs py-2"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Button to batch add */}
-                  <button
-                    type="button"
-                    onClick={handleGenerateWeekPreset}
-                    className="w-full py-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Selected Days to Poll</span>
-                  </button>
+                {/* Default Time range */}
+                <div className="grid grid-cols-2 gap-3">
+                  <TimeField label="Start" value={presetStartTime} onChange={setPresetStartTime} />
+                  <TimeField label="End" value={presetEndTime} onChange={setPresetEndTime} align="end" />
                 </div>
-              ) : (
-                /* Option B: Custom Date & Time */
-                <div className="p-4 rounded-2xl bg-card border border-foreground/10 flex flex-col gap-4">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                      Candidate Date
-                    </span>
+
+                <PillButton variant="dark" size="md" onClick={handleGenerateWeekPreset}>
+                  Add selected days to poll
+                </PillButton>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="poll-custom-date" className="bw-label-sm text-muted-foreground">
+                    Candidate date
+                  </label>
+                  <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+                    <Calendar className="w-5 h-5 shrink-0" />
                     <input
+                      id="poll-custom-date"
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      className="w-full bg-background border border-foreground/15 rounded-xl px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:border-[var(--accent-rehearsal)]"
+                      className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        Start Time
-                      </span>
-                      <TimePicker
-                        value={customStartTime}
-                        onChange={setCustomStartTime}
-                        textSize="text-sm"
-                        className="w-full bg-background border-foreground/15 text-xs py-2"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                        End Time
-                      </span>
-                      <TimePicker
-                        value={customEndTime}
-                        onChange={setCustomEndTime}
-                        textSize="text-sm"
-                        className="w-full bg-background border-foreground/15 text-xs py-2"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleAddCustomSlot}
-                    className="w-full py-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Slot to Candidate List</span>
-                  </button>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <TimeField label="Start" value={customStartTime} onChange={setCustomStartTime} />
+                  <TimeField label="End" value={customEndTime} onChange={setCustomEndTime} align="end" />
+                </div>
+
+                <PillButton variant="dark" size="md" onClick={handleAddCustomSlot}>
+                  Add slot to poll
+                </PillButton>
+              </>
+            )}
+
+            {/* Candidate slots */}
+            <div className="flex items-center justify-between gap-3 min-h-9 pt-2">
+              <h2 className="bw-label-md text-foreground">Candidate slots · {timeSlots.length}</h2>
+              {timeSlots.length > 0 && (
+                <PillButton variant="danger" size="sm" fullWidth={false} onClick={() => setTimeSlots([])}>
+                  Clear all
+                </PillButton>
               )}
             </div>
 
-            {/* Candidate Options Review List */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-foreground/10">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Poll Options ({timeSlots.length})
-                </span>
-                {timeSlots.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setTimeSlots([])}
-                    className="text-[10px] font-bold uppercase text-[var(--destructive)] hover:opacity-80"
+            {timeSlots.length === 0 ? (
+              <Card className="items-center text-center py-8">
+                <Clock className="w-6 h-6 text-muted-foreground" />
+                <p className="bw-body-sm text-muted-foreground max-w-xs">
+                  No slots yet. Add days above to give the band dates to vote on.
+                </p>
+              </Card>
+            ) : (
+              <ul className="flex flex-col gap-4">
+                {timeSlots.map((slot, index) => (
+                  <li
+                    key={slot.id || index}
+                    className="flex items-center gap-3 min-h-[47px] pl-4 pr-1 rounded-full bg-card"
                   >
-                    Clear All
-                  </button>
-                )}
-              </div>
-
-              {timeSlots.length === 0 ? (
-                <div className="py-8 rounded-2xl border border-dashed border-foreground/20 flex flex-col items-center justify-center text-center p-4">
-                  <Clock className="w-6 h-6 text-muted-foreground/40 mb-2" />
-                  <p className="text-xs font-bold text-muted-foreground uppercase">
-                    No time slots added yet
-                  </p>
-                  <p className="text-[11px] text-muted-foreground/60 max-w-xs mt-0.5">
-                    Generate slots above to give band members dates and times to vote on.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
-                  {timeSlots.map((slot, index) => {
-                    const parsedDate = new Date(slot.proposed_date + 'T12:00:00');
-                    return (
-                      <div
-                        key={slot.id || index}
-                        className="flex items-center justify-between p-3 rounded-xl bg-card border border-foreground/10 hover:border-foreground/20 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[var(--accent-rehearsal)]/15 text-[var(--accent-rehearsal)] flex items-center justify-center text-xs font-black">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <span className="text-xs font-black text-foreground block">
-                              {parsedDate.toLocaleDateString(undefined, {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                              })}
-                            </span>
-                            <span className="text-[11px] font-semibold text-muted-foreground">
-                              {slot.start_time}
-                              {slot.end_time ? ` – ${slot.end_time}` : ''}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSlot(slot.id)}
-                          className="w-7 h-7 rounded-lg text-muted-foreground hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 flex items-center justify-center transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    <Calendar className="w-[18px] h-[18px] shrink-0" />
+                    <span className="flex-1 min-w-0 bw-body-md truncate">{slotLabel(slot)}</span>
+                    <IconButton
+                      label="Remove slot"
+                      icon={<X />}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSlot(slot.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+        </div>
 
-          {/* Footer Actions */}
-          <div className="p-4 px-6 border-t border-foreground/10 bg-background/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="py-3 px-5 rounded-xl border border-foreground/15 text-foreground hover:bg-foreground/5 font-bold text-xs uppercase tracking-wider transition-colors"
-            >
+        {/* CTA bar */}
+        <div
+          className="shrink-0 px-4 pt-3 bg-background"
+          style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
+        >
+          <div className="max-w-xl mx-auto grid grid-cols-[2fr_3fr] gap-3">
+            <PillButton variant="outline" onClick={onClose} disabled={submitting}>
               Cancel
-            </button>
-
-            <button
-              type="button"
+            </PillButton>
+            <PillButton
               onClick={handlePublish}
-              disabled={submitting || timeSlots.length === 0}
-              className="flex-1 py-3.5 rounded-xl bg-[var(--accent-rehearsal)] hover:opacity-95 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+              loading={submitting}
+              disabled={timeSlots.length === 0}
+              icon={<Send className="w-[18px] h-[18px]" />}
             >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Publishing Poll...</span>
-                </>
-              ) : (
-                <>
-                  <span>Publish Poll & Notify Band</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              {submitting ? 'Publishing…' : 'Publish poll'}
+            </PillButton>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </AnimatePresence>
+  );
+};
+
+/** Figma "Input" with a clock glyph, hosting the shared TimePicker. */
+const TimeField: React.FC<{
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  align?: 'start' | 'end';
+}> = ({ label, value, onChange, align }) => {
+  const id = React.useId();
+  return (
+    <div className="flex flex-col gap-2 min-w-0">
+      <label htmlFor={id} className="bw-label-sm text-muted-foreground">
+        {label}
+      </label>
+      <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border text-foreground focus-within:border-2 focus-within:border-foreground">
+        <Clock className="w-5 h-5 shrink-0" />
+        <TimePicker
+          id={id}
+          value={value}
+          onChange={onChange}
+          align={align}
+          showIcon={false}
+          textSize="bw-body-lg"
+          className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+        />
+      </div>
+    </div>
   );
 };

@@ -6,8 +6,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="theme-color" content="#E6E5E1" />
+    <meta name="theme-color" content="#E5E3E0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href="https://use.typekit.net/mzr4hzv.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;600&display=swap">
     <title>BandWith</title>
     <script>
       // ═══ Dark-mode flash prevention — runs before any paint ═══
@@ -18,7 +23,7 @@
         var isDark = stored === 'dark' || (stored !== 'light' && prefersDark);
         if (isDark) {
           document.documentElement.classList.add('dark');
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#050505');
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#313131');
         }
         // Detect Android or mobile native container for safe margins
         if (/Android/i.test(navigator.userAgent) || window.Capacitor?.getPlatform?.() === 'android') {
@@ -42,9 +47,10 @@
         height: 100%; overflow-y: scroll; overflow-x: hidden;
         -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;
       }
-      input, textarea, select {
-        border-radius: 0; font-size: 16px;
-      }
+      /* 16px stops iOS zooming on focus. The radius reset sits in the base
+         layer so Tailwind's rounded-* utilities can still override it. */
+      input, textarea, select { font-size: 16px; }
+      @layer base { input, textarea, select { border-radius: 0; } }
       input:-webkit-autofill, input:-webkit-autofill:hover,
       input:-webkit-autofill:focus, input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px #E6E5E1 inset !important;

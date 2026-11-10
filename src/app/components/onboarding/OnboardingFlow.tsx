@@ -346,8 +346,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       <div
         className="min-h-screen bg-background flex items-center justify-center"
         style={{
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingTop: 'var(--safe-top)',
+          paddingBottom: 'var(--safe-bottom)',
         }}
       >
         <motion.div
@@ -377,6 +377,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           // Auth state change will be handled by the useEffect above
         }}
         onForgotPassword={() => setScreenMode('forgot-password')}
+        onCreateAccount={() => {
+          startOnboarding('creator');
+          setScreenMode('flow');
+        }}
       />
     );
   }

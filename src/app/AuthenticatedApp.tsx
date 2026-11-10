@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { uuidToNumericId } from '@/lib/numericId';
 import { AnimatePresence, motion } from "motion/react";
 import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X } from '@/app/components/icons';
 import { cn } from "@/app/components/ui/utils";
@@ -118,6 +119,7 @@ import type { RehearsalPoll } from "@/lib/services/rehearsalPolls";
 
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
+import { parseLocalDate } from '@/lib/dates';
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -134,7 +136,7 @@ const mapEventStatus = (event: Event): EventStatus => {
 const eventToEventItem = (event: Event): EventItem => {
   const status = mapEventStatus(event);
   return {
-    id: parseInt(event.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
+    id: uuidToNumericId(event.id),
     eventId: event.id,
     title: event.title || "Untitled Event",
     status,
@@ -179,7 +181,6 @@ export default function AuthenticatedApp() {
     isAdmin,
   } = useBand();
 
-  const isAndroid = Capacitor.getPlatform() === "android";
   const isNative = Capacitor.isNativePlatform();
 
   const { initialize: initializePush, isSupported: pushSupported } =
@@ -196,10 +197,6 @@ export default function AuthenticatedApp() {
         // Sync system bars (both top status bar & bottom navigation bar) with the active theme
         const isDark = document.documentElement.classList.contains('dark');
         await syncSystemBarsAppearance(isDark ? 'dark' : 'light');
-        if (Capacitor.getPlatform() === "ios") {
-          const { StatusBar } = await import("@capacitor/status-bar");
-          await StatusBar.setOverlaysWebView({ overlay: true });
-        }
         try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch (_) {}
         try { await Keyboard.setScroll({ isDisabled: false }); } catch (_) {}
 
@@ -761,7 +758,7 @@ export default function AuthenticatedApp() {
   const notificationIdMap = useMemo(() => {
     const map = new Map<number, string>();
     realNotifications?.forEach((n) => {
-      const numId = parseInt(n.id.replace(/-/g, "").slice(0, 8), 16) || Date.now();
+      const numId = uuidToNumericId(n.id);
       map.set(numId, n.id);
     });
     return map;
@@ -801,7 +798,7 @@ export default function AuthenticatedApp() {
       const chatId = (n.data as any)?.chat_id || (n.data as any)?.chatId;
 
       return {
-        id: parseInt(n.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
+        id: uuidToNumericId(n.id),
         type: uiType,
         title: n.title,
         message: n.body || "",
@@ -831,7 +828,7 @@ export default function AuthenticatedApp() {
     }
     if (realBand) {
       return {
-        id: parseInt(realBand.id.replace(/-/g, "").slice(0, 8), 16) || 1,
+        id: uuidToNumericId(realBand.id),
         name: realBand.name,
         role: realBand.user_role === "admin" ? "ADMIN" : "MEMBER",
         initials: realBand.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(),
@@ -1074,7 +1071,7 @@ export default function AuthenticatedApp() {
         : false;
 
       return {
-        id: parseInt(chat.id.replace(/-/g, "").slice(0, 8), 16) || Date.now(),
+        id: uuidToNumericId(chat.id),
         uuid: chat.id,
         type,
         name: displayName,
@@ -1150,7 +1147,7 @@ export default function AuthenticatedApp() {
         const rule = e.recurrence_rule;
         const freq = (rule.freq || rule.frequency || '').toLowerCase();
         if (freq) {
-          const baseDate = new Date(normDate);
+          const baseDate = parseLocalDate(normDate);
           const until = rule.until ? new Date(rule.until) : new Date(now.getFullYear(), now.getMonth() + 4, 0);
           const maxCount = rule.count || 24;
           let cursor = new Date(baseDate);
@@ -1320,7 +1317,7 @@ export default function AuthenticatedApp() {
       }
     }
 
-    const realNotifForType = first ? realNotifications?.find((rn) => { const nid = parseInt(rn.id.replace(/-/g, "").slice(0, 8), 16) || 0; return nid === first.id; }) : null;
+    const realNotifForType = first ? realNotifications?.find((rn) => { const nid = uuidToNumericId(rn.id); return nid === first.id; }) : null;
     const realType = realNotifForType?.type || first?.type;
 
     // 1. Direct Pop-up for Gig Invitation RSVP
@@ -2606,7 +2603,7 @@ export default function AuthenticatedApp() {
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: uuidToNumericId(b.id), name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
           eventView={eventView} setEventView={setEventView}
@@ -2697,7 +2694,7 @@ export default function AuthenticatedApp() {
             refetchChats?.();
             refetchEvents();
           }}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: uuidToNumericId(b.id), name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           setSelectedBand={setSelectedBand}
           notificationGroups={notificationGroups}
@@ -2729,35 +2726,35 @@ export default function AuthenticatedApp() {
         <SwitchBandPopup
           isOpen={isBandSwitcherOpen}
           onClose={() => setIsBandSwitcherOpen(false)}
-          bands={realBands.length > 0 ? realBands.map((b) => ({ id: parseInt(b.id.replace(/-/g, "").slice(0, 8), 16) || 1, name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
+          bands={realBands.length > 0 ? realBands.map((b) => ({ id: uuidToNumericId(b.id), name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           selectedBand={selectedBand}
           onSelectBand={setSelectedBand}
           onAddNewBand={handleRequestCreateBand}
         />
 
         <AnimatePresence>
-          {expandedCard === "finance" && <FinanceExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
-          {expandedCard === "pending" && <PendingExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
-          {isAdmin && expandedCard === "quotes" && <QuotesExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} />}
-          {expandedCard === "confirmed" && <ConfirmedExpanded bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
+          {expandedCard === "finance" && <FinanceExpanded key="finance-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
+          {expandedCard === "pending" && <PendingExpanded key="pending-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
+          {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} />}
+          {expandedCard === "confirmed" && <ConfirmedExpanded key="confirmed-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
-            <RehearsalExpanded upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
+            <RehearsalExpanded key="rehearsal-expanded" upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
           ) : expandedCard === "rehearsal" ? (
-            <ExpandedCardWrapper backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
-              <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3" style={{ paddingTop: isAndroid && isNative ? "60px" : "calc(env(safe-area-inset-top, 0px) + 12px)" }}>
+            <ExpandedCardWrapper key="expanded-card-wrapper" backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
+              <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3">
                 <button onClick={() => setExpandedCard(null)} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><ChevronLeft className="w-6 h-6 text-white" /></button>
                 <h1 className="text-lg font-bold text-white">My Rehearsals</h1>
                 {isAdmin ? <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"><Plus className="w-5 h-5 text-white" /></button> : <div className="w-10" />}
               </div>
               <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
                 <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-white" /></div>
-                <h2 className="text-2xl font-black text-white mb-2">No Rehearsals</h2>
+                <h2 className="bw-h2 uppercase text-white mb-2">No Rehearsals</h2>
                 <p className="text-white/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
                 {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-white text-blue-600 px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
               </div>
             </ExpandedCardWrapper>
           ) : null}
-          {expandedCard === "fee" && <FeeExpanded onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={myConfirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
+          {expandedCard === "fee" && <FeeExpanded key="fee-expanded" onClose={() => setExpandedCard(null)} bandName={realBand?.name || selectedBand.name} memberFee={realBand?.members?.find((m) => m.user_id === user?.id)?.default_fee || 0} loading={false} events={myConfirmedEvents.map((e) => ({ id: e.id, title: e.title, date: e.event_date, fee: e.fee || 0, status: e.status as "confirmed" | "pending" | "completed", type: e.event_type as "gig" | "rehearsal" }))} />}
         </AnimatePresence>
       </div>
 
@@ -2802,7 +2799,7 @@ export default function AuthenticatedApp() {
               isAdmin={isAdmin}
             />
           )}
-          {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} />}
+          {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
           {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
@@ -2854,7 +2851,7 @@ export default function AuthenticatedApp() {
             />
           )}
           {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
-          <UpgradePricingSheet isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} limitReached />
+          <UpgradePricingSheet key="upgrade-pricing-sheet" isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} limitReached />
           <PendingInvitesPrompt
             key="pending-invites"
             userId={user?.id}
@@ -2867,7 +2864,7 @@ export default function AuthenticatedApp() {
             }}
           />
           {showPersonalGigModal && user?.id && (
-            <PersonalGigModal
+            <PersonalGigModal key="personal-gig-modal"
               isOpen={showPersonalGigModal}
               onClose={() => {
                 setShowPersonalGigModal(false);
@@ -2884,7 +2881,7 @@ export default function AuthenticatedApp() {
             />
           )}
 
-          <AnimatePresence>
+          <AnimatePresence key="nested-presence-1">
             {isCreateEventOpen && (!!editingEventData || createEventType !== "quote") && (
               <CreateEventModal
                 initialType={createEventType as any}
@@ -2912,7 +2909,7 @@ export default function AuthenticatedApp() {
           </AnimatePresence>
 
           {showNoBandRehearsalModal && (
-            <NoBandRehearsalModal
+            <NoBandRehearsalModal key="no-band-rehearsal-modal"
               isOpen={showNoBandRehearsalModal}
               onClose={() => setShowNoBandRehearsalModal(false)}
               onOpenUpgrade={() => {
@@ -2923,7 +2920,7 @@ export default function AuthenticatedApp() {
           )}
 
           {showChooseBandProposalModal && (
-            <ChooseBandProposalModal
+            <ChooseBandProposalModal key="choose-band-proposal-modal"
               isOpen={showChooseBandProposalModal}
               onClose={() => setShowChooseBandProposalModal(false)}
               bands={realBands}
@@ -2936,7 +2933,7 @@ export default function AuthenticatedApp() {
           )}
 
           {showProposeRehearsalModal && (proposalTargetBand || realBand) && user && (
-            <ProposeRehearsalModal
+            <ProposeRehearsalModal key="propose-rehearsal-modal"
               isOpen={showProposeRehearsalModal}
               onClose={() => {
                 setShowProposeRehearsalModal(false);
@@ -2951,7 +2948,7 @@ export default function AuthenticatedApp() {
           )}
 
           {showRehearsalPollModal && realBand && user && (
-            <RehearsalPollModal
+            <RehearsalPollModal key="rehearsal-poll-modal"
               isOpen={showRehearsalPollModal}
               onClose={() => {
                 setShowRehearsalPollModal(false);
@@ -2967,7 +2964,7 @@ export default function AuthenticatedApp() {
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             />
           )}
-          <AnimatePresence>{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
+          <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
             setIsCreateEventOpen(false);
             setCreateEventInitialDate(null);
             // The share sheet / PDF opens only after the quote is saved, so it
@@ -3076,7 +3073,7 @@ export default function AuthenticatedApp() {
             }
           }} />}</AnimatePresence>
 
-          <AnimatePresence>
+          <AnimatePresence key="nested-presence-3">
             {sharingQuote && (
               <QuoteShareModal
                 isOpen={!!sharingQuote}
@@ -3168,12 +3165,12 @@ export default function AuthenticatedApp() {
           <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
         )}
         {selectedChat && !selectedChat.uuid && (
-          <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-xs flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-card text-card-foreground border border-border rounded-3xl p-8 text-center max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
-              <h3 className="text-xl font-black text-foreground mb-2">Demo Chat</h3>
-              <p className="text-muted-foreground text-sm mb-6">This is sample data. Start a real conversation using the + button!</p>
-              <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full bg-primary text-primary-foreground py-3 rounded-full font-bold text-sm shadow-xs hover:opacity-95 active:scale-95 transition-all">Start Real Chat</button>
+          <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-background text-foreground rounded-[24px] p-6 text-center max-w-[342px] w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="w-14 h-14 bg-accent text-accent-foreground rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
+              <h3 className="bw-h2 uppercase text-foreground mb-2">Demo Chat</h3>
+              <p className="bw-body-md text-muted-foreground mb-6">This is sample data. Start a real conversation using the + button!</p>
+              <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full h-14 px-5 bg-accent text-accent-foreground rounded-full bw-button-md active:scale-[0.97] transition-transform">Start Real Chat</button>
             </motion.div>
           </motion.div>
         )}
@@ -3350,7 +3347,7 @@ export default function AuthenticatedApp() {
       <AnimatePresence>
         {saveToast && (
           saveToast.minimal ? (
-            <motion.div
+            <motion.div key="layer-1"
               initial={{ opacity: 0, y: 16, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
@@ -3360,7 +3357,7 @@ export default function AuthenticatedApp() {
               {saveToast.message}
             </motion.div>
           ) : (
-            <motion.div
+            <motion.div key="layer-2"
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -3391,7 +3388,7 @@ export default function AuthenticatedApp() {
                     setSaveToast(null);
                     act?.();
                   }}
-                  className="px-3.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shrink-0 shadow-xs"
+                  className="h-8 px-3 rounded-full bg-white/20 hover:bg-white/30 active:scale-[0.97] text-white bw-button-sm transition-[transform,background-color] shrink-0"
                 >
                   {saveToast.action.label}
                 </button>

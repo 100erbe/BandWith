@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { springs } from '@/styles/motion';
-import { StatusBadge } from '@/app/components/ui/StatusBadge';
+import { ArrowUpRight } from '@/app/components/icons';
+import { EventMark, type EventKind } from '@/app/components/bw/EventMark';
+import { parseLocalDate } from '@/lib/dates';
 
 export interface EventData {
   id: number;
@@ -42,76 +44,80 @@ interface EventCardProps {
   onClick: () => void;
 }
 
+/** Figma "Event Card": the whole card is the event colour (see EventsView). */
 export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
+  const status = (event.status || '').toUpperCase();
+  const kind: EventKind =
+    status === 'REHEARSAL' ? 'rehearsal'
+    : status === 'QUOTE' || status === 'QUOTED' ? 'quote'
+    : !event.band_id ? 'personal'
+    : 'gig';
+  const typeLabel = kind === 'personal' ? 'Personal' : kind === 'rehearsal' ? 'Rehearsal' : kind === 'quote' ? 'Quote' : 'Gig';
+  const d = event.date ? parseLocalDate(event.date) : null;
+  const valid = !!d && !isNaN(d.getTime());
+  const chipBg = `color-mix(in srgb, var(--accent-${kind}-fg) 12%, transparent)`;
+  const statusChip = ['REHEARSAL', 'QUOTE', 'QUOTED'].includes(status) ? '' : status;
+  const meta = [event.time, event.location].filter(Boolean).join(' · ');
+
   return (
     <motion.div
       layoutId={`card-${event.id}`}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="bg-white p-5 rounded-[2rem] relative overflow-hidden group shadow-sm border border-transparent hover:border-black/5 cursor-pointer"
-      whileHover={{ scale: 1.02 }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      className="relative flex flex-col gap-4 rounded-[24px] p-5 cursor-pointer active:scale-[0.99] transition-transform"
       transition={springs.smooth}
-      style={{ borderRadius: "2rem" }}
+      style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)`, borderRadius: 24 }}
     >
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex gap-4">
-            {/* Date Block */}
-            <motion.div 
-              layoutId={`date-block-${event.id}`}
-              className="flex flex-col items-center justify-center w-14 h-14 bg-stone-100 rounded-2xl group-hover:bg-accent transition-colors shrink-0"
-            >
-                <span className="text-[10px] font-black uppercase text-stone-400 group-hover:text-black leading-none mb-0.5">
-                  {event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
-                </span>
-                <span className="text-xl font-black text-foreground leading-none group-hover:text-black">{event.date?.split('-')[2] || '--'}</span>
-            </motion.div>
-            
-            {/* Title & Status */}
-            <div>
-                <motion.div layoutId={`status-${event.id}`}>
-                  <StatusBadge status={event.status} />
-                </motion.div>
-                {!event.band_id && (
-                  <div className="text-[11px] uppercase tracking-wider leading-tight text-foreground/60 mt-1 mb-0.5">
-                    <span className="font-bold text-accent-gig">PERSONAL</span> • GIG
-                  </div>
-                )}
-                <motion.h4 
-                  layoutId={`title-${event.id}`}
-                  className="text-2xl font-black text-foreground leading-tight mt-1 group-hover:text-foreground/80"
-                >
-                  {event.title}
-                </motion.h4>
-            </div>
+      {/* Top: chips + title, open affordance */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          <motion.div layoutId={`status-${event.id}`} className="flex items-center gap-1.5 flex-wrap">
+            <EventMark kind={kind} size={20} bare />
+            <span className="bw-label-xs">{typeLabel}</span>
+            {statusChip && (
+              <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center" style={{ backgroundColor: chipBg }}>
+                {statusChip}
+              </span>
+            )}
+          </motion.div>
+          <motion.h4 layoutId={`title-${event.id}`} className="bw-h1 [overflow-wrap:anywhere]">
+            {event.title}
+          </motion.h4>
         </div>
-
-        {/* Pill badge replaces the top-right menu icon */}
-        <StatusBadge status={event.status} />
+        <span className="w-8 h-8 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center shrink-0" aria-hidden="true">
+          <ArrowUpRight className="w-[18px] h-[18px]" />
+        </span>
       </div>
-      
-      {/* Metadata — typographic only, no icons */}
-      <motion.div 
-        layoutId={`meta-${event.id}`}
-        className="flex items-center gap-3 text-xs font-bold text-stone-400 uppercase tracking-wide mb-6 pl-1"
-      >
-          <span>{event.time}</span>
-          <span className="w-1 h-1 rounded-full bg-stone-300" />
-          <span className="truncate max-w-[150px]">{event.location}</span>
+
+      {/* Meta: date tile + time · venue */}
+      <motion.div layoutId={`meta-${event.id}`} className="flex items-end justify-between gap-3">
+        <motion.span layoutId={`date-block-${event.id}`} className="flex items-baseline gap-1.5 shrink-0">
+          <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '--'}</span>
+          <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}</span>
+        </motion.span>
+        {meta && <span className="bw-label-md truncate min-w-0 text-right">{meta}</span>}
       </motion.div>
 
-      {/* Footer */}
-      <motion.div 
+      {/* Footer: team + fee */}
+      <motion.div
         layoutId={`footer-${event.id}`}
-        className="flex items-center justify-between border-t border-stone-100 pt-4"
+        className="flex items-center justify-between gap-3 pt-3"
+        style={{ borderTop: `1px solid ${chipBg}` }}
       >
-          <div className="flex -space-x-2">
-              {event.members.length > 0 ? event.members.map((m, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-[var(--surface-inverse)] border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
-                      {m}
-                  </div>
-              )) : <span className="text-[10px] font-bold text-stone-400 uppercase">No team</span>}
-          </div>
-          <span className="text-xl font-black text-foreground">€{event.price}</span>
+        {event.members.length > 0 ? (
+          <span className="flex -space-x-2">
+            {event.members.map((m, i) => (
+              <span key={i} className="w-8 h-8 rounded-full bg-white text-black border-[1.5px] border-black/15 flex items-center justify-center bw-label-sm">
+                {m}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="bw-label-xs opacity-70">No team</span>
+        )}
+        {event.price && <span className="bw-num whitespace-nowrap">€{event.price}</span>}
       </motion.div>
     </motion.div>
   );

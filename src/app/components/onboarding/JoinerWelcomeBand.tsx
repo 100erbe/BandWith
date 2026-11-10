@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Loader2, Sparkles, Star } from '@/app/components/icons';
+import { AlertCircle, ArrowUpRight, RefreshCw } from '@/app/components/icons';
+import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { useOnboarding } from '@/lib/OnboardingContext';
 
 interface JoinerWelcomeBandProps {
@@ -46,29 +47,32 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
       .slice(0, 2);
   };
 
-  return (
-    <div 
-      className="min-h-screen bg-background flex flex-col relative overflow-hidden"
-      style={{ 
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      {/* Background gradient */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-20"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(0, 71, 255, 0.4) 0%, transparent 60%)',
-            filter: 'blur(100px)',
-          }}
-        />
-      </div>
+  const youName = profileData?.fullName || 'You';
+  const youMeta = profileData?.instruments?.length ? profileData.instruments.join(' · ') : 'Musician';
+  // Avatars we can show before joining: the inviter, then a "+N" chip for the rest.
+  const othersCount = Math.max(0, memberCount - bandmates.length);
 
+  return (
+    <AuthScreen
+      className="relative overflow-hidden"
+      bodyClassName="pt-10 gap-5 relative z-10"
+      footer={
+        <PillButton
+          onClick={onComplete}
+          loading={joining}
+          aria-busy={joining}
+          icon={error && !joining ? <RefreshCw className="w-5 h-5" /> : undefined}
+          trailingIcon={!error ? <ArrowUpRight className="w-5 h-5" /> : undefined}
+        >
+          <span className="block max-w-[240px] truncate">
+            {joining ? 'Joining…' : error ? 'Try again' : `Join ${bandName}`}
+          </span>
+        </PillButton>
+      }
+    >
       {/* Confetti */}
       {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
           {[...Array(40)].map((_, i) => (
             <motion.div
               key={i}
@@ -95,150 +99,99 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
         </div>
       )}
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10">
-        {/* Celebration Icon */}
-        <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{
-            type: 'spring',
-            damping: 12,
-            stiffness: 200,
-            delay: 0.2,
-          }}
-          className="mb-8"
-        >
-          <div
-            className="w-28 h-28 rounded-[2.5rem] bg-[var(--accent-rehearsal)] flex items-center justify-center"
-            style={{
-              boxShadow: '0 16px 64px rgba(0, 71, 255, 0.5)',
-            }}
-          >
-            <Sparkles className="w-14 h-14 text-foreground" strokeWidth={1.5} />
-          </div>
-        </motion.div>
+      {/* Accent pill row */}
+      <motion.div
+        className="flex items-center gap-1"
+        aria-hidden
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1, duration: 0.35 }}
+      >
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span key={i} className="w-6 h-2.5 rounded-full bg-accent" />
+        ))}
+      </motion.div>
 
-        {/* Title */}
-        <motion.div
-          className="text-center mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <h1 className="text-[32px] font-black text-foreground leading-tight mb-2">
-            You’re joining
-          </h1>
-          <p className="text-accent text-[28px] font-black">"{bandName}"!</p>
-        </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.35 }}
+      >
+        <Kicker overline="You’re joining" title={bandName} size="xl" className="break-words" />
+      </motion.div>
 
-        {/* Bandmates Card */}
-        <motion.div
-          className="w-full max-w-sm bg-card rounded-[2rem] p-6 border border-border"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <p className="text-muted-foreground text-[12px] font-medium mb-4 uppercase">
-            {memberCount > 0
-              ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'} + you`
-              : 'Your band'}
-          </p>
-
-          <div className="space-y-3">
-            {bandmates.map((member, index) => (
-              <motion.div
+      {/* Bandmates */}
+      <motion.div
+        className="bg-card rounded-[24px] p-4 flex flex-col gap-3"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.35 }}
+      >
+        <p className="bw-label-md text-foreground">
+          {memberCount > 0
+            ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'} + you`
+            : 'Your band'}
+        </p>
+        {(bandmates.length > 0 || othersCount > 0) && (
+          <div className="flex items-center">
+            {bandmates.map((member) => (
+              <div
                 key={member.id}
-                className="flex items-center gap-3"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 + index * 0.1 }}
+                title={`${member.name} · ${member.role}`}
+                className="w-11 h-11 -mr-2 last:mr-0 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center shrink-0"
               >
-                <div className="w-11 h-11 rounded-full bg-[var(--accent-rehearsal)]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[var(--accent-rehearsal)] font-bold text-[14px]">
-                    {getInitials(member.name)}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
-                    {member.name}
-                    {member.isAdmin && (
-                      <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
-                        Admin
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-muted-foreground text-[12px]">{member.role}</p>
-                </div>
-              </motion.div>
-            ))}
-
-            {/* You (new member) */}
-            <motion.div
-              className="flex items-center gap-3 bg-accent/10 rounded-xl p-2 -mx-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9 }}
-            >
-              <div className="w-11 h-11 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="text-accent-foreground font-bold text-[14px]">
-                  {getInitials(profileData?.fullName || 'You')}
+                <span className="bw-h3" aria-hidden>
+                  {getInitials(member.name)}
+                </span>
+                <span className="sr-only">
+                  {member.name}, {member.isAdmin ? 'admin, ' : ''}
+                  {member.role}
                 </span>
               </div>
-              <div className="flex-1">
-                <p className="text-foreground font-medium text-[14px] flex items-center gap-2">
-                  {profileData?.fullName || 'You'}
-                  <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center gap-1">
-                    <Star className="w-3 h-3" /> NEW
-                  </span>
-                </p>
-                <p className="text-muted-foreground text-[12px]">
-                  {profileData?.instruments?.join(', ') || 'Musician'}
-                </p>
+            ))}
+            {othersCount > 0 && (
+              <div className="w-11 h-11 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center shrink-0">
+                <span className="bw-label-md" aria-label={`and ${othersCount} more`}>
+                  +{othersCount}
+                </span>
               </div>
-            </motion.div>
+            )}
           </div>
-        </motion.div>
-
-      </div>
-
-      {/* Footer */}
-      <motion.div
-        className="px-6 pb-10 pt-4 relative z-10"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2 }}
-      >
-        {error && (
-          <p role="alert" className="mb-3 text-center text-[14px] font-medium text-destructive">
-            {error}
-          </p>
         )}
-        <motion.button
-          onClick={onComplete}
-          disabled={joining}
-          aria-busy={joining}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-accent text-accent-foreground font-bold text-[16px] disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          style={{
-            boxShadow: '0 4px 20px rgba(200, 67, 26, 0.25)',
-          }}
-          whileHover={joining ? undefined : { scale: 0.98 }}
-          whileTap={joining ? undefined : { scale: 0.95 }}
-        >
-          {joining ? (
-            <>
-              <Loader2 aria-hidden className="w-5 h-5 animate-spin" />
-              Joining…
-            </>
-          ) : (
-            <>
-              {error ? 'Try again' : `Join ${bandName}`}
-              <ArrowRight className="w-5 h-5" strokeWidth={2} />
-            </>
-          )}
-        </motion.button>
+        {inviterName && <p className="bw-body-sm text-muted-foreground">{inviterName} invited you</p>}
       </motion.div>
-    </div>
+
+      {/* You (new member) */}
+      <motion.div
+        className="dark bg-sheet text-sheet-foreground rounded-[24px] p-4 flex items-center gap-3"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.35 }}
+      >
+        <div className="w-11 h-11 rounded-full bg-accent text-accent-foreground flex items-center justify-center shrink-0">
+          <span className="bw-h3" aria-hidden>
+            {getInitials(youName)}
+          </span>
+        </div>
+        <div className="min-w-0 flex flex-col gap-1">
+          <p className="bw-h3 truncate">
+            {youName}
+            <span className="sr-only">, new member</span>
+          </p>
+          <p className="bw-label-sm truncate">{youMeta}</p>
+        </div>
+      </motion.div>
+
+      {error && (
+        <div
+          role="alert"
+          className="bg-muted border border-destructive rounded-[24px] px-4 py-3 flex items-start gap-3"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 text-destructive" aria-hidden />
+          <p className="bw-body-sm text-foreground">{error}</p>
+        </div>
+      )}
+    </AuthScreen>
   );
 };
 

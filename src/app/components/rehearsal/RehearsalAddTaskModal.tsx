@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { RehearsalModalWrapper } from './RehearsalModalWrapper';
-import { CheckSquare, Plus, User, Users, Music, AlertCircle, Check } from '@/app/components/icons';
+import { Plus, AlertCircle } from '@/app/components/icons';
 import { RehearsalMember, RehearsalSong, RehearsalTask } from './types';
 import { cn } from '@/app/components/ui/utils';
-import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
+import { BwSheet, PillButton, PillField, Selector } from '@/app/components/bw';
 
 interface Props {
   isOpen: boolean;
@@ -83,96 +82,129 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
   };
 
   return (
-    <RehearsalModalWrapper isOpen={isOpen} onClose={onClose} title="Add New Task" icon={CheckSquare}>
-        <div className="space-y-6">
-            
-            {/* Description Input */}
-            <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Task Description</label>
-                <input 
-                    autoFocus
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    className="w-full bg-transparent border-b-2 border-black/10 py-2 text-sm font-bold text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-black transition-all"
-                    placeholder="e.g. Learn the bridge part"
-                />
-            </div>
-
-            {/* Assignment Mode Selector */}
-            <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Assign To</label>
-                
-                {/* Mode Tabs */}
-                <div className="flex p-1 bg-black/5 rounded-[10px] mb-2">
-                    <button onClick={() => { setAssignMode('all'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'all' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>Entire Band</button>
-                    <button onClick={() => { setAssignMode('single'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'single' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>One Member</button>
-                    <button onClick={() => { setAssignMode('multiple'); setSelectedMemberIds([]); }} className={cn("flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all", assignMode === 'multiple' ? "bg-black text-white shadow-sm" : "text-foreground/40")}>Multiple</button>
-                </div>
-
-                {/* Member Selection Grid (Only if not All) */}
-                {assignMode !== 'all' && (
-                    <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1">
-                        {members.map(m => {
-                            const isSelected = selectedMemberIds.includes(m.id);
-                            return (
-                                <button 
-                                    key={m.id}
-                                    onClick={() => handleToggleMember(m.id)}
-                                    className={cn(
-                                        "flex flex-col items-start justify-start gap-[10px] px-3 py-2 rounded-[10px] border transition-all text-left group",
-                                        isSelected ? "bg-black border-black text-white" : "bg-white border-black/10 hover:border-black/30 text-foreground/60"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold", isSelected ? "bg-white text-foreground" : "bg-black/10 text-foreground/40")}>{m.initials}</div>
-                                        <span className="text-xs font-bold">{m.name}</span>
-                                    </div>
-                                    <DotCheckbox checked={isSelected} activeColor={isSelected ? 'var(--surface-inverse-fg)' : 'var(--fg)'} inactiveColor={isSelected ? "var(--dot-inactive)" : undefined} />
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-                
-                {/* Helper Note for Multiple */}
-                {assignMode === 'multiple' && selectedMemberIds.length > 0 && (
-                     <div className="flex items-center gap-2 p-2 bg-black/5 rounded-lg text-[10px] text-foreground/50 font-medium">
-                         <AlertCircle className="w-3 h-3" />
-                         Creates {selectedMemberIds.length} separate tasks (one for each member).
-                     </div>
-                )}
-            </div>
-
-            {/* Task Type */}
-            <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Category</label>
-                <div className="flex flex-wrap gap-2">
-                    {['study', 'bring', 'fix', 'prepare', 'other'].map(t => (
-                        <button 
-                            key={t}
-                            onClick={() => setType(t as any)}
-                            className={cn(
-                                "px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase transition-all",
-                                type === t ? "bg-black text-white border-black" : "bg-transparent border-black/10 text-foreground/40 hover:border-black/30"
-                            )}
-                        >
-                            {t}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Footer Action */}
-            <div className="pt-4 mt-4 border-t border-black/10">
-                <button 
-                    onClick={handleAdd}
-                    disabled={!text || (assignMode !== 'all' && selectedMemberIds.length === 0)}
-                    className="w-full py-4 bg-black text-white rounded-[10px] font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Plus className="w-4 h-4" /> {getButtonText()}
-                </button>
-            </div>
+    <BwSheet
+      open={isOpen}
+      onClose={onClose}
+      overline="Rehearsal prep"
+      title="Add task"
+      zIndex={110}
+      footer={
+        <div className="dark">
+          <PillButton
+            onClick={handleAdd}
+            disabled={!text || (assignMode !== 'all' && selectedMemberIds.length === 0)}
+            icon={<Plus className="w-[18px] h-[18px]" />}
+          >
+            {getButtonText()}
+          </PillButton>
         </div>
-    </RehearsalModalWrapper>
+      }
+    >
+      <div className="dark flex flex-col gap-5">
+        {/* Description */}
+        <PillField
+          tone="sheet"
+          label="Task description"
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="e.g. Learn the bridge part"
+        />
+
+        {/* Assignment */}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Assign to</legend>
+          <div role="tablist" aria-label="Assign to" className="flex p-1 gap-1 rounded-full bg-white/[0.08]">
+            {([
+              ['all', 'Entire band'],
+              ['single', 'One member'],
+              ['multiple', 'Multiple'],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                aria-selected={assignMode === mode}
+                onClick={() => {
+                  setAssignMode(mode);
+                  setSelectedMemberIds([]);
+                }}
+                className={cn(
+                  'flex-1 h-9 px-2 rounded-full bw-button-sm transition-colors',
+                  assignMode === mode ? 'bg-accent text-accent-foreground' : 'text-sheet-foreground/70'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {assignMode !== 'all' && (
+            <div className="flex flex-col gap-2 pt-2">
+              {members.map((m) => {
+                const isSelected = selectedMemberIds.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handleToggleMember(m.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 p-4 rounded-[16px] text-left transition-colors cursor-pointer',
+                      isSelected ? 'bg-white/[0.08]' : 'bg-transparent'
+                    )}
+                  >
+                    <DotCheck checked={isSelected} />
+                    <span className="w-7 h-7 rounded-full border border-sheet-foreground/40 bw-label-xs flex items-center justify-center shrink-0">
+                      {m.initials}
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="bw-label-md truncate">{m.name}</span>
+                      {m.role && <span className="bw-body-sm text-sheet-foreground/70 truncate">{m.role}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {assignMode === 'multiple' && selectedMemberIds.length > 0 && (
+            <p className="flex items-center gap-2 bw-body-sm text-sheet-foreground/70">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Creates {selectedMemberIds.length} separate {selectedMemberIds.length === 1 ? 'task' : 'tasks'} (one per member).
+            </p>
+          )}
+        </fieldset>
+
+        {/* Category */}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Category</legend>
+          <div className="flex flex-wrap gap-2">
+            {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((t) => (
+              <Selector key={t} selected={type === t} onClick={() => setType(t)}>
+                {t}
+              </Selector>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </BwSheet>
   );
 };
+
+/** Figma "Control": 24pt dot-grid check — solid dots on, a dotted outline off. */
+const DotCheck: React.FC<{ checked: boolean; className?: string }> = ({ checked, className }) => (
+  <span aria-hidden className={cn('grid grid-cols-4 gap-[2.67px] w-6 h-6 shrink-0', className)}>
+    {Array.from({ length: 16 }).map((_, i) => {
+      const r = Math.floor(i / 4);
+      const c = i % 4;
+      const edge = r === 0 || r === 3 || c === 0 || c === 3;
+      return (
+        <span
+          key={i}
+          className={cn('w-1 h-1 rounded-full bg-current transition-opacity', !checked && (edge ? 'opacity-35' : 'opacity-0'))}
+        />
+      );
+    })}
+  </span>
+);

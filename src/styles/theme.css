@@ -11,10 +11,13 @@
 
 :root {
   /* ── Safe System Margins & Insets (Status bar, Navigation bar) ── */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --wizard-header-pt: calc(env(safe-area-inset-top, 0px) + 16px);
-  --content-bottom-clearance: calc(env(safe-area-inset-bottom, 0px) + 136px);
+  /* Capacitor 8 injects --safe-area-inset-* on Android; iOS/web use env(). */
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --wizard-header-pt: calc(var(--safe-top) + 16px);
+  --content-bottom-clearance: calc(var(--safe-bottom) + 136px);
 
   /* ── Motion & Animation System (Uniform Durations & Curves) ── */
   --duration-instant: 100ms;
@@ -30,138 +33,152 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --press-scale: 0.97;
+
+  /* Values mirror the Figma tokens (Theme → Light, Event modes).
+     Light = admin. Accent colors double as fills; *-ink variants are the
+     legible text/border tone of the same hue on light surfaces. */
 
   /* ── Base ── */
-  --bg: #E6E5E1;
-  --fg: #0A0A0A;
+  --bg: #E5E3E0;
+  --fg: #000000;
 
   /* ── Surfaces ── */
   --card: #F2F0ED;
-  --card-fg: #0A0A0A;
+  --card-fg: #000000;
   --surface-alt: #F2F0ED;
-  --surface-alt-fg: #0A0A0A;
+  --surface-alt-fg: #000000;
   --popover: #F2F0ED;
-  --popover-fg: #0A0A0A;
-  --muted: #D1D1D1;
-  --muted-fg: #4F4F4F;
+  --popover-fg: #000000;
+  --field: #FFFFFF;
+  --sheet: #050505;
+  --sheet-fg: #FFFFFF;
+  --muted: #D3D1CE;
+  --muted-fg: #5C5B5A;
 
-  /* ── Primary brand — Burnt Orange (amp glow / warm analog) ── */
-  --primary: #C8431A;
-  --primary-fg: #FFFFFF;
+  /* ── Brand accent — Signal Lime ── */
+  --primary: #D5FB46;
+  --primary-fg: #000000;
+  --primary-ink: #4D5E00;
 
   /* ── Secondary ── */
-  --secondary: #E5E7EB;
-  --secondary-fg: #1A1A1A;
+  --secondary: #D3D1CE;
+  --secondary-fg: #000000;
 
-  /* ── Action (gig) — Petrol Teal ── */
-  --accent-gig: #0F6A6B;
-  --accent-gig-fg: #FFFFFF;
-
-  /* ── Utility (rehearsal) — Vinyl Cobalt ── */
-  --accent-rehearsal: #1E4E8C;
+  /* ── Event modes (same in both themes) ── */
+  --accent-gig: #D5FB46;
+  --accent-gig-fg: #000000;
+  --accent-gig-ink: #4D5E00;
+  --accent-rehearsal: #0147FF;
   --accent-rehearsal-fg: #FFFFFF;
-
-  /* ── Context (quote) — Tolex Olive ── */
-  --accent-quote: #3D6B35;
-  --accent-quote-fg: #FFFFFF;
-
-  /* ── Inactive / Historical (past events) — Cool Slate ── */
-  --accent-past: #475569;
+  --accent-rehearsal-ink: #0147FF;
+  --accent-quote: #9A8878;
+  --accent-quote-fg: #000000;
+  --accent-quote-ink: #6B5A4B;
+  --accent-personal: #FF0066;
+  --accent-personal-fg: #000000;
+  --accent-personal-ink: #C2004E;
+  --accent-past: #5C5C5C;
   --accent-past-fg: #FFFFFF;
+  --accent-past-ink: #5C5C5C;
 
-  /* ── General accent (legacy / fallback) — maps to primary brand ── */
-  --accent: #C8431A;
-  --accent-fg: #FFFFFF;
+  /* ── General accent — same as brand accent ── */
+  --accent: #D5FB46;
+  --accent-fg: #000000;
+  --accent-ink: #4D5E00;
 
   /* ── Dynamic Wizard Accent (defaults to rehearsal) ── */
   --wizard-accent: var(--accent-rehearsal);
   --wizard-accent-fg: var(--accent-rehearsal-fg);
 
+  /* ── Dot matrix ── */
+  --dot-on: #000000;
+  --dot-off: #CDCACA;
+  --dot-mid: #737373;
+
   /* ── Semantic ── */
-  --success: #059669;
+  --success: #0E8A4A;
   --success-fg: #FFFFFF;
-  --destructive: #B91C1C;
+  --destructive: #C41414;
+  --destructive-solid: #C41414;
   --destructive-fg: #FFFFFF;
-  --warning: #B45309;
+  --warning: #A15C00;
   --warning-fg: #FFFFFF;
-  --amber: #B45309;
-  --surface-inverse: #171717;
+  --amber: #A15C00;
+  --info: #0147FF;
+  --surface-inverse: #000000;
   --surface-inverse-fg: #FFFFFF;
-  --border: rgba(0, 0, 0, 0.12);
-  --input: rgba(0, 0, 0, 0.12);
-  --ring: #C8431A;
+  --border: rgba(0, 0, 0, 0.15);
+  --input: rgba(0, 0, 0, 0.15);
+  --ring: #000000;
   --radius: 2.5rem;
 }
 
 .dark {
-  /* ── Base (deep gray — softer than pure black) ── */
-  --bg: #121212;
-  --fg: #E5E7EB;
+  /* Dark = member (Figma Theme → Dark) */
+  --bg: #313131;
+  --fg: #FFFFFF;
 
-  /* ── Surfaces ── */
-  --card: #1E1E1E;
-  --card-fg: #E5E7EB;
-  --surface-alt: #1E1E1E;
-  --surface-alt-fg: #E5E7EB;
-  --popover: #1E1E1E;
-  --popover-fg: #E5E7EB;
-  --muted: #2C2C2C;
-  --muted-fg: #9CA3AF;
+  --card: #3B3B3B;
+  --card-fg: #FFFFFF;
+  --surface-alt: #3B3B3B;
+  --surface-alt-fg: #FFFFFF;
+  --popover: #3B3B3B;
+  --popover-fg: #FFFFFF;
+  --field: #3B3B3B;
+  --sheet: #1C1C1C;
+  --sheet-fg: #FFFFFF;
+  --muted: #434343;
+  --muted-fg: #ADADAD;
 
-  /* ── Primary brand — Ember Orange (accessible in dark) ── */
-  --primary: #F2784B;
+  --primary: #D5FB46;
   --primary-fg: #000000;
+  --primary-ink: #D5FB46;
 
-  /* ── Secondary ── */
-  --secondary: #27272A;
-  --secondary-fg: #E5E7EB;
+  --secondary: #434343;
+  --secondary-fg: #FFFFFF;
 
-  /* ── Action (gig) — Bright Teal ── */
-  --accent-gig: #3CC4BC;
-  --accent-gig-fg: #000000;
+  --accent-gig-ink: #D5FB46;
+  --accent-rehearsal-ink: #6F95FF;
+  --accent-quote-ink: #C4B4A5;
+  --accent-personal-ink: #FF4D8F;
+  --accent-past-ink: #A3A3A3;
 
-  /* ── Utility (rehearsal) — Soft Cobalt ── */
-  --accent-rehearsal: #7EA8F0;
-  --accent-rehearsal-fg: #000000;
-
-  /* ── Context (quote) — Sage Olive ── */
-  --accent-quote: #8DC77F;
-  --accent-quote-fg: #000000;
-
-  /* ── Inactive / Historical (past events) — Cool Slate ── */
-  --accent-past: #64748B;
-  --accent-past-fg: #FFFFFF;
-
-  /* ── General accent (legacy / fallback) — maps to primary brand ── */
-  --accent: #F2784B;
+  --accent: #D5FB46;
   --accent-fg: #000000;
+  --accent-ink: #D5FB46;
 
-  /* ── Dynamic Wizard Accent (defaults to rehearsal) ── */
   --wizard-accent: var(--accent-rehearsal);
   --wizard-accent-fg: var(--accent-rehearsal-fg);
 
-  /* ── Semantic ── */
-  --success: #34D399;
+  --dot-on: #FFFFFF;
+  --dot-off: #4A4A4A;
+  --dot-mid: #737373;
+
+  --success: #1FC16B;
   --success-fg: #000000;
-  --destructive: #F87171;
+  --destructive: #FF6B6B;
+  --destructive-solid: #E02A2A;
   --destructive-fg: #000000;
-  --warning: #FBBF24;
+  --warning: #FFB020;
   --warning-fg: #000000;
-  --amber: #FBBF24;
-  --surface-inverse: #FAFAFA;
-  --surface-inverse-fg: #0A0A0A;
-  --border: rgba(255, 255, 255, 0.12);
-  --input: rgba(255, 255, 255, 0.12);
-  --ring: #F2784B;
+  --amber: #FFB020;
+  --info: #6F95FF;
+  --surface-inverse: #FFFFFF;
+  --surface-inverse-fg: #000000;
+  --border: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #D5FB46;
 }
 
 /* ═══ Safe System Insets on Android Native & WebViews ═══ */
 .is-android,
 :root[data-platform="android"] {
-  --safe-top: max(env(safe-area-inset-top, 0px), 48px);
-  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
-  --wizard-header-pt: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px);
-  --content-bottom-clearance: calc(max(env(safe-area-inset-bottom, 0px), 16px) + 136px);
+  /* Floor values only cover old WebViews where neither source reports insets. */
+  --safe-top: max(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)), 24px);
+  --safe-bottom: max(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)), 16px);
+  --wizard-header-pt: calc(var(--safe-top) + 16px);
+  --content-bottom-clearance: calc(var(--safe-bottom) + 136px);
 }
 
 /* ═══ Wizard Type Semantic Scoping ═══ */
@@ -178,6 +195,11 @@
 [data-wizard-type="quote"] {
   --wizard-accent: var(--accent-quote);
   --wizard-accent-fg: var(--accent-quote-fg);
+}
+
+[data-wizard-type="personal"] {
+  --wizard-accent: var(--accent-personal);
+  --wizard-accent-fg: var(--accent-personal-fg);
 }
 
 /* ═══ Map CSS vars to Tailwind v4 theme tokens ═══
@@ -209,6 +231,8 @@
   --color-accent-rehearsal-foreground: var(--accent-rehearsal-fg);
   --color-accent-quote: var(--accent-quote);
   --color-accent-quote-foreground: var(--accent-quote-fg);
+  --color-accent-personal: var(--accent-personal);
+  --color-accent-personal-foreground: var(--accent-personal-fg);
   --color-accent-past: var(--accent-past);
   --color-accent-past-foreground: var(--accent-past-fg);
 
@@ -216,9 +240,19 @@
   --color-success-foreground: var(--success-fg);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-fg);
+  --color-destructive-solid: var(--destructive-solid);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-fg);
   --color-amber: var(--amber);
+  --color-info: var(--info);
+  --color-field: var(--field);
+  --color-sheet: var(--sheet);
+  --color-sheet-foreground: var(--sheet-fg);
+  --color-dot-on: var(--dot-on);
+  --color-dot-off: var(--dot-off);
+  --color-dot-mid: var(--dot-mid);
+  --color-primary-ink: var(--primary-ink);
+  --color-accent-ink: var(--accent-ink);
   --color-surface-inverse: var(--surface-inverse);
   --color-surface-inverse-foreground: var(--surface-inverse-fg);
   --color-border: var(--border);
@@ -242,6 +276,27 @@
   --ease-out: var(--ease-out);
   --ease-in: var(--ease-in);
   --ease-in-out: var(--ease-in-out);
+}
+
+/* ═══ Accent ink on light surfaces ═══
+   Lime (and the lighter event hues) is a fill color: as text or a thin
+   border on the light canvas it is unreadable. In light mode, outside
+   dark containers, the text/border utilities of those hues switch to the
+   matching -ink tone. Fills (bg-*) keep the real hue. */
+:root:not(.dark) :is(.text-primary, .text-accent, .text-accent-gig):not(:where(.dark, .bg-sheet, .bg-surface-inverse, .bg-black, .bg-primary, .bg-accent, .bg-accent-gig) *) {
+  color: var(--accent-ink);
+}
+:root:not(.dark) :is(.text-accent-quote):not(:where(.dark, .bg-sheet, .bg-surface-inverse, .bg-black) *) {
+  color: var(--accent-quote-ink);
+}
+:root:not(.dark) :is(.text-accent-past):not(:where(.dark, .bg-sheet, .bg-surface-inverse, .bg-black) *) {
+  color: var(--accent-past-ink);
+}
+:root:not(.dark) :is(.border-primary, .border-accent, .border-accent-gig):not(:where(.dark, .bg-sheet, .bg-surface-inverse, .bg-black) *) {
+  border-color: var(--accent-ink);
+}
+:root:not(.dark) :is(.ring-primary):not(:where(.dark, .bg-sheet, .bg-surface-inverse, .bg-black) *) {
+  --tw-ring-color: var(--accent-ink);
 }
 
 /* ═══ Base layer — applied to <body> via Tailwind ═══ */

@@ -1,17 +1,20 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import {
-  X,
-  Mic2,
+  Mic,
   Music,
-  FileText,
+  File,
+  User,
+  ArrowUpRight,
   IconHome,
   IconCalendar,
   IconChat,
   IconPlus,
-  IconSettings,
+  IconClose,
+  IconMenu,
   type IconProps,
 } from '@/app/components/icons';
+import { BwSheet } from '@/app/components/bw/Screen';
 import { cn } from '@/app/components/ui/utils';
 import { TabName, CreateEventType } from '@/app/types';
 import { haptic } from '@/lib/haptics';
@@ -47,16 +50,9 @@ type TabDescriptor = {
 /* ═══ Shared spring config — unified design system springs ═══ */
 
 const SPRING = springs.smooth;
-const STIFF_SPRING = springs.snappy;
 
 /* ═══ Tab index map ═══ */
 
-const TAB_INDEX_MAP: Record<string, number> = {
-  Home: 0,
-  Events: 1,
-  Chat: 2,
-  Settings: 3,
-};
 
 /* ═══ Discrete pill positions (hardcoded from layout) ═══
  *
@@ -74,32 +70,7 @@ const TAB_INDEX_MAP: Record<string, number> = {
  * handles the visual shrink uniformly, avoiding conflicting layout animations.
  */
 
-const PILL_POSITIONS = [4, 76, 208, 280];
-const PILL_WIDTH = 72;
 
-const SlidingPill: React.FC<{
-  activeKey: string | null;
-}> = ({ activeKey }) => {
-  if (!activeKey) return null;
-
-  const idx = TAB_INDEX_MAP[activeKey];
-  if (idx === undefined) return null;
-
-  return (
-    <motion.div
-      className="absolute rounded-full bg-foreground/10 dark:bg-white/10 z-0"
-      style={{ top: '2px', bottom: '2px' }}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{
-        left: PILL_POSITIONS[idx],
-        width: PILL_WIDTH,
-        opacity: 1,
-        scale: 1,
-      }}
-      transition={SPRING}
-    />
-  );
-};
 
 /* ═══ NavTab sub-component — Framer Motion layout for auto-size animation ═══ */
 
@@ -112,53 +83,33 @@ const NavTab: React.FC<{
   isScrollingDown: boolean;
   badgeCount?: number;
 }> = ({ tabKey, label, icon: Icon, isActive, onClick, isScrollingDown, badgeCount }) => {
+  // Figma "Bottom Nav": icon-only tabs (24px in a 44px hit area); the active
+  // tab is full opacity with a lime dot beneath it.
+  void isScrollingDown;
   return (
     <button
       data-tab-key={tabKey}
       onClick={onClick}
+      aria-label={label}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'relative z-10 outline-none px-0 shrink-0 h-full overflow-hidden w-16',
-        'flex flex-col items-center justify-center transition-colors duration-150',
-        isActive ? 'text-[var(--fg)]' : 'text-muted-foreground hover:text-foreground/80'
+        'relative z-10 outline-none shrink-0 w-11 h-11 flex flex-col items-center justify-center transition-colors duration-150 cursor-pointer',
+        isActive ? 'text-foreground' : 'text-foreground/55 hover:text-foreground/80'
       )}
     >
-      {/* Icon: smoothly glides between elevated (with label) and dead-center (when shrunk) */}
-      <motion.div
-        className="w-[26px] h-[26px] flex items-center justify-center z-10 relative"
-        animate={{
-          y: isScrollingDown ? 0 : -6,
-        }}
-        transition={SPRING}
-      >
-        <Icon color="currentColor" size={26.4} strokeWidth={isActive ? 2.85 : 2.4} />
+      <span className="relative w-6 h-6 flex items-center justify-center">
+        <Icon color="currentColor" size={24} strokeWidth={isActive ? 2.2 : 2} />
         {badgeCount !== undefined && badgeCount > 0 ? (
-          <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-black flex items-center justify-center leading-none pointer-events-none shadow-xs ring-2 ring-card dark:ring-zinc-900">
+          <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive-solid text-white text-[9px] font-bold flex items-center justify-center leading-none pointer-events-none ring-2 ring-background">
             {badgeCount > 99 ? '99+' : badgeCount}
           </span>
         ) : null}
-      </motion.div>
-
-      {/* Label: smoothly fades and glides in/out in absolute position to avoid layout jumps */}
-      <motion.div
-        className="absolute bottom-[8px] left-0 right-0 flex items-center justify-center pointer-events-none"
-        animate={{
-          opacity: isScrollingDown ? 0 : 1,
-          y: isScrollingDown ? 6 : 0,
-          scale: isScrollingDown ? 0.75 : 1,
-        }}
-        transition={SPRING}
-      >
-        <span
-          className={cn(
-            'text-[10px] tracking-tight select-none leading-none transition-colors duration-150',
-            isActive
-              ? 'text-[var(--fg)] font-semibold'
-              : 'text-muted-foreground font-medium'
-          )}
-        >
-          {label}
-        </span>
-      </motion.div>
+      </span>
+      <span
+        aria-hidden="true"
+        className="absolute bottom-0 w-[5px] h-[5px] rounded-full bg-accent transition-opacity duration-150"
+        style={{ opacity: isActive ? 1 : 0 }}
+      />
     </button>
   );
 };
@@ -271,15 +222,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const isEventsActive = activeTab === 'Events' && !isSettingsActive;
   const isChatActive = activeTab === 'Chat' && !isSettingsActive;
 
-  const pillActiveKey = isSettingsActive
-    ? 'Settings'
-    : isHomeActive
-      ? 'Home'
-      : isEventsActive
-        ? 'Events'
-        : isChatActive
-          ? 'Chat'
-          : null;
 
   const tabs: TabDescriptor[] = [
     { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
@@ -288,7 +230,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     {
       key: 'Settings',
       label: 'Settings',
-      icon: IconSettings,
+      icon: IconMenu,
       isActive: isSettingsActive,
       onClick: () => {
         haptic.tap();
@@ -304,155 +246,162 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     },
   ];
 
+  /* Figma "Home / Create menu – Admin / Member" rows. */
+  const createOptions: {
+    key: string;
+    type: CreateEventType;
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    tile: string;
+    muted?: boolean;
+  }[] = [
+    ...(!isAdmin || isSolo
+      ? [{
+          key: 'personal',
+          type: 'personal' as CreateEventType,
+          title: 'Add personal gig',
+          description: 'Log your outside gig and track personal earnings.',
+          icon: <User />,
+          tile: 'bg-accent-personal text-accent-personal-foreground',
+        }]
+      : []),
+    ...(isAdmin && !isSolo
+      ? [{
+          key: 'gig',
+          type: 'gig' as CreateEventType,
+          title: 'New gig',
+          description: 'Lineup, fees, venue and setlist',
+          icon: <Music />,
+          tile: 'bg-accent-gig text-accent-gig-foreground',
+        }]
+      : []),
+    {
+      key: 'rehearsal',
+      type: 'rehearsal' as CreateEventType,
+      title: isAdmin ? 'New rehearsal' : 'Propose rehearsal',
+      description: isAdmin ? 'Schedule directly or poll availability' : 'Suggest a date or topic to the band admin.',
+      icon: <Mic />,
+      tile: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
+    },
+    ...(isAdmin && !isSolo
+      ? [
+          {
+            key: 'quote',
+            type: 'quote' as CreateEventType,
+            title: 'New quote',
+            description: 'Branded PDF with pricing & terms',
+            icon: <File />,
+            tile: 'bg-accent-quote text-accent-quote-foreground',
+          },
+          {
+            key: 'log-personal',
+            type: 'personal' as CreateEventType,
+            title: 'Log personal gig',
+            description: 'Log an outside solo gig without inviting band members.',
+            icon: <User />,
+            tile: 'bg-sheet-foreground/[0.08] text-sheet-foreground',
+            muted: true,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <>
-      {/* Plus Menu Bottom Sheet */}
-      <AnimatePresence>
-        {isPlusMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[90] bg-[var(--surface-inverse)]/30 backdrop-blur-[10px]"
-              onClick={() => setIsPlusMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed bottom-0 left-0 right-0 z-[91] bg-background rounded-t-[26px] px-4 pt-4 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]"
-              style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+      {/* Create menu (Figma "Home / Create menu"): dark sheet that sits under
+          the nav bar, so the FAB turns into its close button. */}
+      <BwSheet
+        open={isPlusMenuOpen}
+        onClose={() => setIsPlusMenuOpen(false)}
+        overline="Start"
+        title="Create"
+        zIndex={79}
+      >
+        <div className="flex flex-col gap-3">
+          {createOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => {
+                haptic.tap();
+                onCreateEvent(option.type);
+                setIsPlusMenuOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center gap-4 p-3 rounded-[16px] bg-sheet-foreground/[0.08] text-left text-sheet-foreground',
+                'active:scale-[0.99] transition-[transform,opacity] cursor-pointer',
+                option.muted && 'opacity-80 hover:opacity-100',
+              )}
             >
-              <div className="flex justify-center mb-2.5">
-                <div className="w-10 h-1 rounded-full bg-foreground/20" />
-              </div>
-              <div className="flex items-end justify-between mb-8">
-                <p className="text-[12px] font-bold text-foreground/50 uppercase">START</p>
-                <button onClick={() => setIsPlusMenuOpen(false)} className="w-9 h-9 rounded-full border border-foreground/20 flex items-center justify-center">
-                  <X className="w-5 h-5 text-foreground" />
-                </button>
-              </div>
-              <div className="flex flex-col gap-6">
-                {/* Solo or Non-Admin Member: Add Personal Gig */}
-                {(!isAdmin || isSolo) && (
-                  <button onClick={() => { haptic.tap(); onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                    <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Mic2 className="w-7 h-7 text-accent-gig" />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[20px] font-bold text-foreground uppercase">ADD PERSONAL GIG</span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Log your outside gig, track personal earnings, and keep your calendar unified.</span>
-                    </div>
-                  </button>
+              <span
+                className={cn(
+                  'w-[52px] h-[52px] rounded-full flex items-center justify-center shrink-0 [&_svg]:w-6 [&_svg]:h-6',
+                  option.tile,
                 )}
-
-                {/* Admins: Band Gig */}
-                {isAdmin && !isSolo && (
-                  <button onClick={() => { haptic.tap(); onCreateEvent('gig'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                    <div className="w-14 h-14 rounded-2xl bg-accent-gig/15 border border-accent-gig/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Mic2 className="w-7 h-7 text-accent-gig" />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[20px] font-bold text-foreground uppercase">NEW GIG</span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Click to create a new gig—your next live performance—right in the app.</span>
-                    </div>
-                  </button>
-                )}
-
-                {/* Rehearsal / Propose Rehearsal: Always accessible */}
-                <button onClick={() => { haptic.tap(); onCreateEvent('rehearsal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                  <div className="w-14 h-14 rounded-2xl bg-accent-rehearsal/15 border border-accent-rehearsal/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                    <Music className="w-7 h-7 text-accent-rehearsal" />
-                  </div>
-                  <div className="flex flex-col gap-1 flex-1">
-                    <span className="text-[20px] font-bold text-foreground uppercase">
-                      {isAdmin ? 'NEW REHEARSAL' : 'PROPOSE REHEARSAL'}
-                    </span>
-                    <span className="text-[12px] font-medium text-foreground/60 leading-normal">
-                      {isAdmin
-                        ? 'Plan the session, share details, and keep everyone in sync.'
-                        : 'Suggest a rehearsal date or topic to the band admin.'}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Quotes: Admin only */}
-                {isAdmin && !isSolo && (
-                  <button onClick={() => { haptic.tap(); onCreateEvent('quote'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group">
-                    <div className="w-14 h-14 rounded-2xl bg-accent-quote/15 border border-accent-quote/30 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <FileText className="w-7 h-7 text-accent-quote" />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[20px] font-bold text-foreground uppercase">NEW QUOTE</span>
-                      <span className="text-[12px] font-medium text-foreground/60 leading-normal">Build an estimate, package details, and send it fast.</span>
-                    </div>
-                  </button>
-                )}
-
-                {/* Admins: optional personal gig */}
-                {isAdmin && !isSolo && (
-                  <button onClick={() => { haptic.tap(); onCreateEvent('personal'); setIsPlusMenuOpen(false); }} className="flex items-center gap-5 w-full text-left group opacity-80 hover:opacity-100 transition-opacity">
-                    <div className="w-14 h-14 rounded-2xl bg-foreground/5 border border-foreground/15 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Mic2 className="w-7 h-7 text-foreground/60" />
-                    </div>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <span className="text-[16px] font-bold text-foreground/80 uppercase">LOG PERSONAL GIG</span>
-                      <span className="text-[11px] font-medium text-foreground/50 leading-normal">Log an outside solo gig without inviting band members.</span>
-                    </div>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              >
+                {option.icon}
+              </span>
+              <span className="flex-1 min-w-0 flex flex-col gap-1">
+                <span className={cn('bw-h3', option.muted && 'text-sheet-foreground/85')}>{option.title}</span>
+                <span className="bw-body-sm text-sheet-foreground/85">{option.description}</span>
+              </span>
+              <ArrowUpRight className="w-5 h-5 shrink-0" aria-hidden />
+            </button>
+          ))}
+        </div>
+        {/* Clearance for the floating nav bar that stays above the sheet */}
+        <div aria-hidden="true" className="h-[104px]" />
+      </BwSheet>
 
       {/* Main Bar Centering Wrapper */}
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-[80] flex justify-center pointer-events-none"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
+        style={{ paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}
         animate={{ y: isHidden ? 200 : 0, opacity: isHidden ? 0 : 1 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         <motion.div
           ref={navRef}
           className={cn(
-            'pointer-events-auto relative flex items-center justify-center rounded-[999px] origin-bottom',
-            'bg-card/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-300/80 dark:border-zinc-800/80',
-            'h-[56px] gap-x-2 px-2'
+            'pointer-events-auto relative flex items-center justify-between rounded-full origin-bottom',
+            'bg-white/[0.86] dark:bg-[#1c1c1c]/[0.86] border border-border',
+            'h-[60px] w-[calc(100%-32px)] max-w-[420px] px-6'
           )}
-          animate={{ scale: isShrunk ? 0.78 : 1 }}
+          animate={{ scale: isShrunk ? 0.9 : 1 }}
           transition={SPRING}
           style={{
-            boxShadow: '0px 0px 4px 0px rgba(0,0,0,0.04), 0px 8px 16px 0px rgba(0,0,0,0.08)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             willChange: 'transform',
           }}
         >
-          <SlidingPill activeKey={pillActiveKey} />
-
           {tabs.slice(0, 2).map((tab) => (
             <NavTab key={tab.key} tabKey={tab.key} label={tab.label} icon={tab.icon} isActive={tab.isActive} badgeCount={tab.badgeCount} onClick={tab.onClick} isScrollingDown={isShrunk} />
           ))}
 
-          <div className="relative z-10 flex items-center justify-center mx-1">
+          <div className="relative z-10 w-[60px] h-11 flex items-center justify-center">
             <motion.button
+              type="button"
+              aria-label={isPlusMenuOpen ? 'Close create menu' : 'Create'}
+              aria-expanded={isPlusMenuOpen}
               onClick={() => {
                 haptic.tap();
                 setIsPlusMenuOpen(!isPlusMenuOpen);
                 setForceOpen(true);
               }}
               className={cn(
-                'bg-accent rounded-[18px] flex items-center justify-center shadow-[0px_4px_16px_rgba(0,0,0,0.15)] w-[48px] h-[48px] -translate-y-3'
+                'absolute -top-[24px] rounded-full flex items-center justify-center w-[60px] h-[60px] cursor-pointer transition-colors duration-200',
+                isPlusMenuOpen ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-accent text-accent-foreground',
               )}
-              animate={{ scale: isShrunk ? 1.282 : 1 }}
-              transition={SPRING}
+              style={{ boxShadow: '0 12px 32px rgba(0,0,0,0.14)' }}
+              whileTap={{ scale: 0.94 }}
             >
-              <IconPlus size={29} color="var(--accent-fg)" strokeWidth={3.15} className={cn('transition-transform duration-300', isPlusMenuOpen && 'rotate-45')} />
+              {isPlusMenuOpen ? (
+                <IconClose size={28} color="currentColor" strokeWidth={2.4} />
+              ) : (
+                <IconPlus size={28} color="currentColor" strokeWidth={2.4} />
+              )}
             </motion.button>
           </div>
 

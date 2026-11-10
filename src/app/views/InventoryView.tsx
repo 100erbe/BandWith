@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Search, Package, Loader2, Plus, X, Trash2 } from '@/app/components/icons';
+import { motion } from 'motion/react';
+import { Package, Loader2, Plus, Minus, Trash2, Music, Mic, Link, Box, Sun, Briefcase } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { supabase } from '@/lib/supabase';
+import { ScreenHeader, IconButton, SearchField, Card, BwSheet } from '@/app/components/bw/Screen';
+import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 
 interface InventoryItem {
   id: string;
@@ -31,12 +33,37 @@ const CATEGORIES = [
   'Other',
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  available: { label: 'Available', color: 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20' },
-  in_use: { label: 'In Use', color: 'bg-primary/10 text-primary border border-primary/20' },
-  maintenance: { label: 'Maintenance', color: 'bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/20' },
-  lost: { label: 'Lost', color: 'bg-[var(--destructive)]/10 text-[var(--destructive)] border border-[var(--destructive)]/20' },
+/** Figma "Status": a dot + Label/XS. */
+const STATUS_CONFIG: Record<string, { label: string; dot: string }> = {
+  available: { label: 'Available', dot: 'bg-success' },
+  in_use: { label: 'In use', dot: 'bg-warning' },
+  maintenance: { label: 'Maintenance', dot: 'bg-destructive' },
+  lost: { label: 'Lost', dot: 'bg-destructive' },
 };
+
+const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  Instruments: Music,
+  Microphones: Mic,
+  Cables: Link,
+  Stands: Box,
+  Lighting: Sun,
+  Cases: Briefcase,
+};
+
+/** Choice chip on the dark sheet (the shared Selector is built for light surfaces). */
+const SheetChip: React.FC<{ selected: boolean; onClick: () => void; children: React.ReactNode }> = ({ selected, onClick, children }) => (
+  <button
+    type="button"
+    aria-pressed={selected}
+    onClick={onClick}
+    className={cn(
+      'inline-flex items-center h-9 px-4 rounded-full bw-label-sm whitespace-nowrap active:scale-[var(--press-scale,0.97)] transition-[transform,background-color]',
+      selected ? 'bg-sheet-foreground text-sheet' : 'border border-sheet-foreground/30 text-sheet-foreground',
+    )}
+  >
+    {children}
+  </button>
+);
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -128,246 +155,149 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
       className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
     >
-      {/* Sticky Header */}
-      <div
-        className="px-4 shrink-0 border-b border-foreground/10 bg-background/95 backdrop-blur-md sticky top-0 z-30"
-        style={{
-          paddingTop: 'var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 56px))',
-          paddingBottom: '14px',
-        }}
-      >
-        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              aria-label="Go back"
-              className="w-10 h-10 rounded-full border border-foreground/20 bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground transition-all active:scale-90 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
-                EQUIPMENT & ASSETS
-              </span>
-              <h1 className="text-[22px] font-black uppercase text-foreground leading-none">
-                GEAR & INVENTORY
-              </h1>
-            </div>
-          </div>
+      <ScreenHeader
+        onBack={onBack}
+        backLabel="Go back"
+        overline="Equipment & assets"
+        title="Gear & inventory"
+        actions={<IconButton label="Add equipment" variant="filled" icon={<Plus />} onClick={() => setShowAddModal(true)} />}
+      />
 
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs active:scale-95 transition-all shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search equipment" placeholder="Search equipment, mics, cables…" />
 
-      {/* Main Content */}
-      <div className="p-4 flex-1 flex flex-col gap-5 max-w-2xl mx-auto w-full pb-32">
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search equipment, mics, cables..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2.5 pl-10 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-medium text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary transition-colors"
-          />
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-        </div>
-
-        {/* Category Filter */}
-        <div className="overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
-          <div className="flex gap-2 w-max">
-            {CATEGORIES.map((cat) => (
-              <button
+        {/* Category filter (Figma Selector MD, wrapping) */}
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map((cat) => {
+            const count = cat === 'All' ? items.length : categoryCounts[cat];
+            return (
+              <Selector
                 key={cat}
-                type="button"
+                size="md"
+                selected={selectedCategory === cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-[8px] text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-all border',
-                  selectedCategory === cat
-                    ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                    : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/70 border-foreground/10'
-                )}
+                count={count ? count : undefined}
               >
-                {cat} {cat !== 'All' && categoryCounts[cat] ? `(${categoryCounts[cat]})` : ''}
-              </button>
-            ))}
+                {cat}
+              </Selector>
+            );
+          })}
+        </div>
+
+        {/* Inventory list */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        </div>
-
-        {/* Inventory List */}
-        <div className="flex flex-col gap-2.5">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-7 h-7 animate-spin text-foreground/30" />
+        ) : filteredItems.length === 0 ? (
+          <Card className="items-center text-center py-10 gap-4">
+            <Package className="w-10 h-10 text-muted-foreground" />
+            <div className="flex flex-col gap-1">
+              <h2 className="bw-h3">No equipment found</h2>
+              <p className="bw-body-sm text-muted-foreground max-w-xs">Add items to keep track of your band's gear.</p>
             </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
-              <div className="w-16 h-16 rounded-[16px] bg-foreground/5 flex items-center justify-center text-foreground/30">
-                <Package className="w-8 h-8" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-sm font-bold text-foreground/50 uppercase tracking-wide">
-                  No equipment found
-                </p>
-                <p className="text-xs text-foreground/30 uppercase">
-                  Add items to keep track of your band's gear
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(true)}
-                className="mt-2 px-4 py-2 rounded-[12px] bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-all"
-              >
-                + Add Equipment
-              </button>
-            </div>
-          ) : (
-            filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 transition-all shadow-2xs"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-[12px] bg-foreground/5 flex items-center justify-center shrink-0">
-                    <Package className="w-5 h-5 text-foreground/50" />
-                  </div>
-                  <div className="flex flex-col min-w-0 gap-0.5">
-                    <p className="text-sm font-bold text-foreground uppercase truncate">
-                      {item.name}
-                    </p>
-                    <span className="text-xs font-medium text-foreground/50 uppercase">
-                      {item.category} · Qty: {item.quantity}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <span
-                    className={cn(
-                      'px-2.5 py-0.5 rounded-[6px] text-[10px] font-bold uppercase tracking-wider',
-                      STATUS_CONFIG[item.status]?.color || STATUS_CONFIG.available.color
-                    )}
-                  >
-                    {STATUS_CONFIG[item.status]?.label || item.status}
+          </Card>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {filteredItems.map((item) => {
+              const status = STATUS_CONFIG[item.status];
+              const Icon = CATEGORY_ICON[item.category] ?? Package;
+              return (
+                <li key={item.id} className="flex items-center gap-3 p-4 pr-2 rounded-[24px] bg-card text-card-foreground">
+                  <span className="w-11 h-11 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5" />
                   </span>
-                  <button
-                    type="button"
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <p className="bw-label-md truncate">{item.name}</p>
+                    <p className="bw-body-sm text-muted-foreground truncate">
+                      {item.category} · qty {item.quantity}
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className={cn('w-2 h-2 rounded-full', status?.dot ?? 'bg-muted-foreground')} aria-hidden />
+                    <span className="bw-label-xs">{status?.label ?? item.status}</span>
+                  </span>
+                  <IconButton
+                    label={`Delete ${item.name}`}
+                    variant="ghost"
+                    size="sm"
+                    icon={<Trash2 />}
+                    className="text-muted-foreground"
                     onClick={() => handleDeleteItem(item.id)}
-                    className="w-8 h-8 rounded-[8px] hover:bg-[var(--destructive)]/10 text-foreground/40 hover:text-[var(--destructive)] flex items-center justify-center transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {!loading && (
+          <PillButton icon={<Plus className="w-[18px] h-[18px]" />} onClick={() => setShowAddModal(true)}>
+            Add equipment
+          </PillButton>
+        )}
       </div>
 
-      {/* Add Item Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={() => setShowAddModal(false)}
-          >
-            <motion.form
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              onSubmit={handleAddItem}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-background text-foreground rounded-t-[24px] sm:rounded-[20px] border border-foreground/10 p-6 w-full max-w-md flex flex-col gap-4 shadow-xl"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black uppercase text-foreground leading-none">
-                  Add Gear / Equipment
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="w-8 h-8 rounded-full border border-foreground/20 flex items-center justify-center text-foreground hover:bg-foreground/10"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* Add item (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        overline="Gear & inventory"
+        title="Add equipment"
+        zIndex={80}
+        footer={
+          <PillButton type="submit" form="add-gear-form" loading={savingItem} disabled={!newItemName.trim()}>
+            Save item
+          </PillButton>
+        }
+      >
+        <form id="add-gear-form" onSubmit={handleAddItem} className="flex flex-col gap-6">
+          <PillField
+            tone="sheet"
+            label="Item name"
+            required
+            placeholder="Shure SM58, drum kit, DI box…"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+          />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                  Item Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Shure SM58, Drum Kit, DI Box..."
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-bold text-foreground focus:outline-none focus:border-primary"
-                />
-              </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Category</legend>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.filter((c) => c !== 'All').map((c) => (
+                <SheetChip key={c} selected={newItemCategory === c} onClick={() => setNewItemCategory(c)}>
+                  {c}
+                </SheetChip>
+              ))}
+            </div>
+          </fieldset>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                    Category
-                  </label>
-                  <select
-                    value={newItemCategory}
-                    onChange={(e) => setNewItemCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-xs font-bold text-foreground focus:outline-none"
-                  >
-                    {CATEGORIES.filter((c) => c !== 'All').map((c) => (
-                      <option key={c} value={c} className="bg-background text-foreground">
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/50">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newItemQty}
-                    onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3.5 py-2.5 rounded-[12px] bg-foreground/5 border border-foreground/10 text-sm font-bold text-foreground focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-[12px] bg-foreground/5 text-xs font-bold uppercase tracking-wider text-foreground/70"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingItem}
-                  className="px-5 py-2.5 rounded-[12px] bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider shadow-xs hover:opacity-95 disabled:opacity-50"
-                >
-                  {savingItem ? 'Saving...' : 'Save Item'}
-                </button>
-              </div>
-            </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="gear-qty" className="bw-label-sm text-sheet-foreground/70">
+              Quantity
+            </label>
+            <div className="flex items-center gap-3">
+              <IconButton
+                label="Decrease quantity"
+                variant="sheet"
+                icon={<Minus />}
+                onClick={() => setNewItemQty((q) => Math.max(1, q - 1))}
+                disabled={newItemQty <= 1}
+              />
+              <input
+                id="gear-qty"
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={newItemQty}
+                onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-20 h-[52px] rounded-full bg-white/10 border border-white/20 text-center bw-num text-sheet-foreground outline-none focus:border-2 focus:border-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <IconButton label="Increase quantity" variant="sheet" icon={<Plus />} onClick={() => setNewItemQty((q) => q + 1)} />
+            </div>
+          </div>
+        </form>
+      </BwSheet>
     </motion.div>
   );
 };

@@ -3,21 +3,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   ArrowUpRight,
-  MessageCircle,
+  MessageSquare,
   Check,
   Pencil,
   Music,
   RotateCcw,
-  MapPin,
-  Calendar,
-  Clock,
-  Users,
-  ListMusic,
-  FileText,
-  Truck,
-  Volume2,
   Play,
-  Wallet,
+  Plus,
+  Trash2,
   AlertCircle,
   X,
   Copy,
@@ -29,9 +22,15 @@ import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { supabase } from '@/lib/supabase';
 import { useBand } from '@/lib/BandContext';
 import { cn } from '@/app/components/ui/utils';
-import { WizardAccentRail } from '@/app/components/ui/WizardAccentRail';
+import { DotText } from '@/app/components/bw';
+import { IconButton, Tag, BwSheet } from '@/app/components/bw/Screen';
+import { PillButton, Selector } from '@/app/components/bw/Form';
 import { haptic } from '@/lib/haptics';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
+import { StageMode } from './StageMode';
+import { parseLocalDate } from '@/lib/dates';
+import { setStatusBarTone, toneForForeground } from '@/lib/systemBars';
+import { FIT, FitText } from '@/app/components/bw/FitText';
 
 interface EventDetailProps {
   event: EventData;
@@ -53,7 +52,7 @@ interface EventDetailProps {
 
 const formatEventDateShort = (dateStr: string): string => {
   if (!dateStr) return 'TBD';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return 'TBD';
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   const day = d.getDate();
@@ -62,7 +61,7 @@ const formatEventDateShort = (dateStr: string): string => {
 
 const formatEventDateFull = (dateStr: string): string => {
   if (!dateStr) return 'DATE TBD';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return 'DATE TBD';
   const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
@@ -83,14 +82,6 @@ const formatEventTime = (timeStr?: string): string => {
     return m > 0 ? `${h}:${match[2]} ${ampm}` : `${h} ${ampm}`;
   }
   return timeStr;
-};
-
-const formatCurrencyCompact = (price?: string | number): string => {
-  if (price === undefined || price === null || price === '') return '€0';
-  const raw = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.]/g, ''));
-  if (isNaN(raw)) return String(price);
-  if (raw >= 1000) return `€${(raw / 1000).toFixed(raw % 1000 === 0 ? 0 : 1)}K`;
-  return `€${Math.round(raw).toLocaleString()}`;
 };
 
 const formatCurrencyExact = (price?: string | number): string => {
@@ -173,6 +164,135 @@ const getEventTags = (event: EventData, eventType: EventCategory): string[] => {
   return tags;
 };
 
+/* ─────────────── Figma kit pieces local to the event detail ─────────────── */
+
+/** Figma Button / Ghost SM: text-only action under the main CTAs. */
+const LINK_CLASS =
+  'h-9 inline-flex items-center gap-2 bw-button-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50';
+
+const parseDurationSeconds = (d?: string): number => {
+  const m = d?.match(/^(\d+):(\d{2})$/);
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+};
+
+const formatTotalDuration = (secs: number): string => {
+  const totalMin = Math.round(secs / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}H ${m}M` : `${m}M`;
+};
+
+/** "7:30 PM" → ["7:30", "PM"], "7 PM" → ["7:00", "PM"]; anything else is shown as is. */
+const splitTimeDisplay = (display: string): [string, string] => {
+  const m = display.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!m) return [display, ''];
+  return [`${m[1]}:${m[2] || '00'}`, m[3].toUpperCase()];
+};
+
+const TimeTile: React.FC<{ label: string; value: string; text?: boolean }> = ({ label, value, text }) => {
+  const [main, suffix] = text ? [value, ''] : splitTimeDisplay(value);
+  return (
+    <div className="@container bg-card rounded-[16px] p-4 flex flex-col gap-1 min-w-0">
+      <span className="bw-label-xs text-muted-foreground truncate">{label}</span>
+      {text ? (
+        <span className="bw-num truncate">{main}</span>
+      ) : (
+        <span className="flex items-baseline gap-1 min-w-0 whitespace-nowrap overflow-hidden">
+          {/* Narrow tiles (320px phones) step the digits down and drop AM/PM. */}
+          <span className="bw-num @max-[84px]:text-[19px]">{main}</span>
+          {suffix && <span className="bw-label-xs @max-[84px]:hidden">{suffix}</span>}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const KeyValueRow: React.FC<{ label: string; value: string; muted?: boolean }> = ({ label, value, muted }) => (
+  <span className="flex items-baseline justify-between gap-3 w-full min-w-0">
+    <span className={cn('bw-body-md min-w-0 truncate', muted && 'text-muted-foreground')}>{label}</span>
+    <span className="bw-label-md shrink-0 text-right">{value}</span>
+  </span>
+);
+
+const SectionTitle: React.FC<{ title: string; actionLabel?: string; onAction?: () => void }> = ({
+  title,
+  actionLabel,
+  onAction,
+}) => (
+  <div className="flex items-center justify-between gap-3 min-h-10">
+    <h2 className="bw-h1 min-w-0">{title}</h2>
+    {actionLabel && onAction && (
+      <button
+        type="button"
+        onClick={onAction}
+        aria-label={`${actionLabel}: ${title}`}
+        className="shrink-0 h-9 inline-flex items-center bw-button-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      >
+        {actionLabel}
+      </button>
+    )}
+  </div>
+);
+
+const MEMBER_STATUS: Record<ResolvedMember['status'], { label: string; color: string }> = {
+  confirmed: { label: 'CONFIRMED', color: 'var(--success)' },
+  pending: { label: 'PENDING', color: 'var(--warning)' },
+  maybe: { label: 'MAYBE', color: 'var(--warning)' },
+  declined: { label: 'DECLINED', color: 'var(--destructive-solid)' },
+};
+
+const MemberRow: React.FC<{ member: ResolvedMember }> = ({ member }) => {
+  const status = MEMBER_STATUS[member.status] || MEMBER_STATUS.confirmed;
+  return (
+    <span className="flex items-center gap-3 flex-1 min-w-0 w-full">
+      <span className="w-11 h-11 rounded-full bg-white text-black border-[1.5px] border-black/15 flex items-center justify-center bw-h3 shrink-0">
+        {member.initials}
+      </span>
+      <span className="flex flex-col gap-1 flex-1 min-w-0">
+        <span className="bw-label-md truncate">{member.name}</span>
+        <span className="bw-body-sm text-muted-foreground truncate">{member.role}</span>
+      </span>
+      <span className="inline-flex items-center gap-2 bw-label-sm shrink-0">
+        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
+        {status.label}
+      </span>
+    </span>
+  );
+};
+
+/** Set flow: one dot column per song, height = song length (opener → encore). */
+const SetFlow: React.FC<{ seconds: number[]; max: number }> = ({ seconds, max }) => {
+  const ROWS = 7;
+  const dot = seconds.length <= 16 ? 10 : 8;
+  return (
+    <span className="flex justify-between w-full" aria-hidden="true">
+      {seconds.map((s, c) => {
+        const lit = s > 0 && max > 0 ? Math.max(1, Math.round((s / max) * ROWS)) : 0;
+        return (
+          <span key={c} className="flex flex-col gap-1">
+            {Array.from({ length: ROWS }).map((_, r) => {
+              const fromBottom = ROWS - 1 - r;
+              const on = fromBottom < lit;
+              const peak = on && fromBottom === lit - 1;
+              return (
+                <span
+                  key={r}
+                  className="rounded-full block"
+                  style={{
+                    width: dot,
+                    height: dot,
+                    backgroundColor: peak ? 'var(--accent-ink)' : on ? 'var(--dot-on)' : 'var(--dot-off)',
+                  }}
+                />
+              );
+            })}
+          </span>
+        );
+      })}
+    </span>
+  );
+};
+
 export const EventDetail: React.FC<EventDetailProps> = ({
   event,
   onClose,
@@ -198,6 +318,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [isShareQuoteOpen, setIsShareQuoteOpen] = useState(false);
+  const [isStageOpen, setIsStageOpen] = useState(false);
 
   const isPending = userResponse === 'pending';
   const eventType = getEventType(event.status);
@@ -228,7 +349,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       try {
         const { data } = await supabase
           .from('setlist_songs')
-          .select('*, song:songs(title, artist, duration, key)')
+          // songs has duration_seconds, not duration: asking for a missing
+          // column makes PostgREST fail the whole query.
+          .select('*, song:songs(title, artist, duration_seconds, key)')
           .eq('setlist_id', event.setlistId)
           .order('position', { ascending: true });
         if (!cancelled && data && data.length > 0) {
@@ -236,7 +359,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             data.map((s: any) => ({
               title: s.song?.title || 'Unknown Song',
               artist: s.song?.artist || undefined,
-              duration: s.song?.duration || undefined,
+              duration:
+                typeof s.song?.duration_seconds === 'number' && s.song.duration_seconds > 0
+                  ? `${Math.floor(s.song.duration_seconds / 60)}:${String(s.song.duration_seconds % 60).padStart(2, '0')}`
+                  : undefined,
               key: s.song?.key || undefined,
             }))
           );
@@ -321,6 +447,26 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     return normDate < todayStr;
   }, [event.date]);
 
+  // Status bar icons follow the hero colour while the hero sits under the bar
+  // (white on rehearsal blue / personal pink / past), then the theme default.
+  const heroFg = isPast
+    ? 'var(--accent-past-fg)'
+    : isPersonalGig
+      ? 'var(--accent-personal-fg)'
+      : THEME[eventType].accentFg;
+  const heroRef = React.useRef<HTMLElement>(null);
+  const scrimRef = React.useRef<HTMLDivElement>(null);
+  const [heroUnderBar, setHeroUnderBar] = useState(true);
+  const handleScroll = React.useCallback(() => {
+    const bottom = heroRef.current?.getBoundingClientRect().bottom ?? 0;
+    const barHeight = scrimRef.current?.offsetHeight || 24;
+    setHeroUnderBar(bottom > barHeight);
+  }, []);
+  useEffect(() => {
+    if (!heroUnderBar) return;
+    return setStatusBarTone(toneForForeground(heroFg));
+  }, [heroUnderBar, heroFg]);
+
   const resolvedMembers: ResolvedMember[] = useMemo(() => {
     if (dbMembers && dbMembers.length > 0) return dbMembers;
     const rawCount = event.members?.length || 0;
@@ -348,13 +494,22 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         accentFg: 'var(--accent-past-fg)',
         deleteLabel: `DELETE THIS ${eventType.toUpperCase()}`,
       }
-    : baseTheme;
+    : isPersonalGig
+      ? { ...baseTheme, accentColor: 'var(--accent-personal)', accentFg: 'var(--accent-personal-fg)' }
+      : baseTheme;
 
   const tags = getEventTags(event, eventType);
+
+  // Stage mode is offered for upcoming gigs and promoted (filled) on gig day.
+  const canStage = eventType === 'gig' && !isPast;
+  const isGigDay = (() => {
+    if (!event.date) return false;
+    const t = new Date();
+    const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    return (event.date.includes('T') ? event.date.split('T')[0] : event.date) === todayStr;
+  })();
   const secondaryTags = tags.filter((t) => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
   const memberCount = resolvedMembers.length || event.members?.length || 0;
-  const confirmedMemberCount = resolvedMembers.filter((m) => m.status === 'confirmed').length || memberCount;
-  const pendingMemberCount = resolvedMembers.filter((m) => m.status === 'pending').length;
 
   const myResolvedFee = useMemo(() => {
     if (memberFee != null) return memberFee;
@@ -463,15 +618,6 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         )
       : 'TBD';
 
-  const bandTotalFormatted = formatCurrencyCompact(event.price);
-  const displayFeeValue = isPersonalGig
-    ? bandTotalFormatted
-    : isAdmin
-      ? bandTotalFormatted
-      : myResolvedFee != null
-        ? formatCurrencyCompact(myResolvedFee)
-        : bandTotalFormatted;
-
   const feeCardLabel = isPersonalGig
     ? 'MY PERSONAL FEE'
     : isAdmin
@@ -488,6 +634,65 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     if (!raw || raw === 'GIG' || raw === 'REHEARSAL' || raw === 'QUOTE' || raw === 'OTHER') return null;
     return raw;
   }, [event.eventType]);
+
+  // ─── Figma layout helpers (display only) ───
+  const heroDate = event.date ? parseLocalDate(event.date) : null;
+  const hasHeroDate = !!heroDate && !isNaN(heroDate.getTime());
+  const heroDay = hasHeroDate ? String(heroDate!.getDate()).padStart(2, '0') : '--';
+  const heroMonth = hasHeroDate
+    ? heroDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+    : 'TBD';
+  const heroDateTime = `${formatEventDateFull(event.date)}${
+    showTime !== 'TBD' ? ` · ${showTime}${endTimeFormatted ? `–${endTimeFormatted}` : ''}` : ''
+  }`;
+  const feeExactValue = isPersonalGig
+    ? formatCurrencyExact(event.price)
+    : isAdmin
+      ? formatCurrencyExact(event.price)
+      : myResolvedFee != null
+        ? formatCurrencyExact(myResolvedFee)
+        : formatCurrencyExact(event.price);
+  const payoutTotal = resolvedMembers.reduce((sum, m) => sum + (Number(m.fee) || 0), 0);
+  const bandFeeNum = parseFloat(String(event.price ?? '').replace(/[^0-9.]/g, '')) || 0;
+  const bandFund = Math.max(0, bandFeeNum - payoutTotal);
+  const confirmedExact = resolvedMembers.filter((m) => m.status === 'confirmed').length;
+  const songSeconds = setlistSongs.map((s) => parseDurationSeconds(s.duration));
+  const totalSongSeconds = songSeconds.reduce((a, b) => a + b, 0);
+  const maxSongSeconds = Math.max(0, ...songSeconds);
+  const showSetFlow = numSongs >= 2 && numSongs <= 24 && maxSongSeconds > 0;
+  const chatLabel = eventType === 'rehearsal' ? 'REHEARSAL CHAT' : 'EVENT CHAT';
+  const showRsvpCard = !isPast && !isPersonalGig && isPending && !!onAccept && !!onDecline;
+  const heroChipStyle: React.CSSProperties = { backgroundColor: theme.accentFg, color: theme.accentColor };
+  const heroTintStyle: React.CSSProperties = {
+    backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)',
+  };
+  const notesTitle = event.clientName && !isPersonalGig ? 'CLIENT & NOTES' : 'NOTES';
+  const notesRows: { label: string; value: string }[] = [];
+  if (event.clientName && !isPersonalGig) notesRows.push({ label: 'Client', value: event.clientName });
+  if (subTypeEyebrow) notesRows.push({ label: 'Event type', value: subTypeEyebrow });
+  if (eventType === 'rehearsal') notesRows.push({ label: 'Cadence', value: getRehearsalCadence(event) });
+  if (eventType !== 'rehearsal' && event.indoorOutdoor)
+    notesRows.push({ label: 'Setting', value: event.indoorOutdoor.toUpperCase() });
+  if (event.guests) notesRows.push({ label: 'Guests', value: `${event.guests} PAX` });
+
+  const renderDeleteConfirm = (onCancel: () => void) => (
+    <div className="flex items-center gap-3">
+      <PillButton
+        size="sm"
+        fullWidth={false}
+        className="bg-destructive-solid text-white"
+        onClick={() => {
+          onDelete?.();
+          setShowDeleteConfirm(false);
+        }}
+      >
+        Confirm delete
+      </PillButton>
+      <button onClick={onCancel} className={LINK_CLASS}>
+        CANCEL
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -506,740 +711,711 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         transition={springs.smooth}
         className="fixed inset-0 z-[90] flex flex-col overflow-hidden bg-background text-foreground select-none"
       >
-        <WizardAccentRail color={theme.accentColor} />
-
-        {/* ═══ MAIN ZERO-SCROLL CONTENT AREA ═══ */}
+        {/* Status-bar scrim: keeps scrolled content off the clock once the hero is gone */}
         <div
-          className="flex-1 min-h-0 flex flex-col justify-between gap-2.5 sm:gap-3.5 px-[16px] pl-[20px] max-w-[640px] w-full mx-auto"
-          style={{
-            paddingTop: 'calc(var(--wizard-header-pt, max(env(safe-area-inset-top, 0px), 44px)) + 4px)',
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 104px)',
-          }}
-        >
-          {/* ─── 1. COMPACT TOP HEADER BAR ─── */}
-          <div className="flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <button
-                onClick={onClose}
-                aria-label="Back"
-                className="w-[42px] h-[42px] rounded-full flex items-center justify-center border border-foreground/15 bg-card hover:bg-foreground/10 active:scale-95 transition-all shrink-0 shadow-2xs cursor-pointer"
-              >
-                <ArrowLeft className="w-[20px] h-[20px] text-foreground" />
-              </button>
-
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                {/* Primary Type Pill */}
-                <span
-                  className="rounded-[7px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider leading-none shadow-2xs whitespace-nowrap"
-                  style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                >
-                  {isPast ? `PAST ${eventType.toUpperCase()}` : eventType.toUpperCase()}
-                </span>
-
-                {/* Secondary Tags (INDOOR, WEEKLY, PENDING, etc.) */}
-                {secondaryTags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="rounded-[7px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider leading-none bg-foreground/10 text-foreground/75 whitespace-nowrap"
-                  >
-                    {tag}
-                  </span>
-                ))}
-
-                {/* Personal or Band Pill */}
-                {isPersonalGig ? (
-                  <span className="rounded-[7px] px-2 py-1 text-[10px] font-bold uppercase tracking-wider leading-none bg-accent-gig/15 text-accent-gig border border-accent-gig/30 whitespace-nowrap">
-                    PERSONAL
-                  </span>
-                ) : event.band_name ? (
-                  <span className="rounded-[7px] px-2 py-1 text-[10px] font-bold uppercase tracking-wider leading-none bg-foreground/[0.07] text-foreground/65 truncate max-w-[110px]">
-                    {event.band_name}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* Right Status Indicator (RSVP / Completed) */}
-            <div className="shrink-0">
-              {isPast ? (
-                <span className="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-foreground/10 text-foreground/70 border border-foreground/15">
-                  <Check className="w-3 h-3 text-foreground/60" />
-                  COMPLETED
-                </span>
-              ) : !isPersonalGig && eventType !== 'quote' && eventType !== 'draft' ? (
-                isPending ? (
-                  <span className="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-warning/15 text-warning border border-warning/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-                    INVITE PENDING
-                  </span>
-                ) : (
-                  <span className="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5 bg-success/15 text-success border border-success/30">
-                    <Check className="w-3 h-3 stroke-[2.5]" />
-                    ACCEPTED
-                  </span>
-                )
-              ) : null}
-            </div>
-          </div>
-
-          {/* ─── 2. HERO SECTION: TITLE, ACTIONABLE VENUE & WEATHER ─── */}
-          <div className="flex items-start justify-between gap-3 shrink-0">
-            <div className="flex-1 flex flex-col gap-1 min-w-0">
-              {(subTypeEyebrow || isPast) && (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 leading-none">
-                  {isPast
-                    ? `ARCHIVED ${eventType.toUpperCase()}${subTypeEyebrow ? ` • ${subTypeEyebrow}` : ''}`
-                    : `${subTypeEyebrow} EVENT`}
-                </span>
-              )}
-
-              <h1 className="text-[24px] sm:text-[28px] font-black text-foreground uppercase tracking-tight leading-[1.05] line-clamp-2">
-                {event.title}
-              </h1>
-
-              {/* Actionable Venue Button */}
-              <button
-                type="button"
-                onClick={hasValidLocation ? handleOpenMaps : onEdit}
-                disabled={!hasValidLocation && !onEdit}
-                title={hasValidLocation ? `Open ${fullLocationQuery} in Maps` : 'Venue TBD'}
-                className={cn(
-                  'group inline-flex items-center gap-1.5 text-left mt-0.5 rounded-[8px] -ml-1.5 px-1.5 py-0.5 transition-colors max-w-full w-fit',
-                  hasValidLocation
-                    ? 'hover:bg-foreground/[0.07] active:scale-[0.99] cursor-pointer'
-                    : 'cursor-default opacity-75'
-                )}
-              >
-                <MapPin className="w-3.5 h-3.5 shrink-0 text-foreground/60 group-hover:text-foreground transition-colors" />
-                <span className="text-[13px] font-bold text-foreground uppercase leading-tight truncate">
-                  {venueName}
-                </span>
-                {venueAddress && (
-                  <>
-                    <span className="text-foreground/30 text-[12px]">•</span>
-                    <span className="text-[12px] font-semibold text-foreground/55 uppercase leading-tight truncate max-w-[160px] sm:max-w-[240px]">
-                      {venueAddress}
-                    </span>
-                  </>
-                )}
-                {hasValidLocation && (
-                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0 text-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                )}
-              </button>
-            </div>
-
-            {/* Weather Widget (or Past Attendance Badge) */}
-            <div className="shrink-0">
-              {isPast ? (
-                <div className="rounded-[12px] bg-card border border-foreground/10 px-3 py-2.5 flex flex-col items-end justify-center">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-foreground/45">
-                    {eventType === 'gig' && !isPersonalGig ? 'ATTENDANCE' : 'STATUS'}
-                  </span>
-                  <span className="text-[14px] font-black uppercase text-foreground mt-0.5">
-                    {memberCount > 0 && !isPersonalGig ? `${memberCount} MEMBERS` : 'ARCHIVED'}
-                  </span>
-                </div>
-              ) : (
-                <WeatherWidget
-                  eventDate={event.date}
-                  location={fullLocationQuery || event.location}
-                  textColor="var(--fg)"
-                  className="bg-card border-foreground/10 py-[6px] px-[10px]"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* ─── 3. UNIFIED SCHEDULE & TIMELINE CARD ─── */}
-          <div className="rounded-[16px] bg-card border border-foreground/10 p-3 sm:p-3.5 flex flex-col gap-2.5 shrink-0 shadow-2xs">
-            {/* Date & Time Range Header */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: theme.accentColor }}
-                />
-                <Calendar className="w-3.5 h-3.5 text-foreground/55 shrink-0" />
-                <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-foreground truncate">
-                  {formatEventDateFull(event.date)}
-                </span>
-              </div>
-
-              <div
-                className="rounded-[7px] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider leading-none shrink-0"
-                style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-              >
-                {eventType === 'rehearsal'
-                  ? getRehearsalCadence(event)
-                  : showTime !== 'TBD'
-                    ? endTimeFormatted
-                      ? `${showTime} – ${endTimeFormatted}`
-                      : `${formatEventDateShort(event.date)} • ${showTime}`
-                    : formatEventDateShort(event.date)}
-              </div>
-            </div>
-
-            {/* Horizontal Timeline Strip */}
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-foreground/10">
-              {eventType === 'gig' ? (
-                <>
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <div className="flex items-center gap-1 text-foreground/50">
-                      <Truck className="w-3 h-3 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">LOAD IN</span>
-                    </div>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight tracking-tight">
-                      {loadInTime}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <div className="flex items-center gap-1 text-foreground/50">
-                      <Volume2 className="w-3 h-3 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">SOUNDCHECK</span>
-                    </div>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight tracking-tight">
-                      {soundCheckTime}
-                    </span>
-                  </div>
-
-                  <div
-                    className="flex flex-col gap-0.5 px-2.5 py-1.5 rounded-[10px] border"
-                    style={{
-                      backgroundColor: 'color-mix(in srgb, var(--accent-gig) 12%, transparent)',
-                      borderColor: 'color-mix(in srgb, var(--accent-gig) 30%, transparent)',
-                    }}
-                  >
-                    <div className="flex items-center gap-1" style={{ color: theme.accentColor }}>
-                      <Play className="w-3 h-3 shrink-0 fill-current" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">SHOW START</span>
-                    </div>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight tracking-tight">
-                      {showTime}
-                    </span>
-                  </div>
-                </>
-              ) : eventType === 'rehearsal' ? (
-                <>
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <div className="flex items-center gap-1 text-foreground/50">
-                      <Clock className="w-3 h-3 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">START</span>
-                    </div>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight">
-                      {showTime}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <div className="flex items-center gap-1 text-foreground/50">
-                      <Clock className="w-3 h-3 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">END TIME</span>
-                    </div>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight">
-                      {endTimeFormatted || 'TBD'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <div className="flex items-center gap-1 text-foreground/50">
-                      <MapPin className="w-3 h-3 shrink-0" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">ROOM / VENUE</span>
-                    </div>
-                    <span className="text-[13px] sm:text-[14px] font-black text-foreground uppercase leading-tight truncate mt-0.5">
-                      {venueName}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                /* QUOTE & DRAFT TIMELINE */
-                <>
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-foreground/50">SHOW TIME</span>
-                    <span className="text-[16px] sm:text-[18px] font-black text-foreground leading-tight">
-                      {showTime}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-foreground/50">SETTING</span>
-                    <span className="text-[15px] sm:text-[16px] font-black text-foreground uppercase leading-tight">
-                      {event.indoorOutdoor?.toUpperCase() || 'INDOOR'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 px-2 py-1.5 rounded-[10px] bg-foreground/[0.04]">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-foreground/50">
-                      {event.guests ? 'GUESTS' : 'STATUS'}
-                    </span>
-                    <span className="text-[15px] sm:text-[16px] font-black text-foreground uppercase leading-tight">
-                      {event.guests ? `${event.guests} PAX` : (event.quoteStatus || eventType).toUpperCase()}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* ─── 4. BENTO GRID: METRICS & DRILL-DOWNS ─── */}
-          <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-2 gap-2.5 sm:gap-3">
-            {eventType === 'rehearsal' ? (
-              <>
-                {/* Rehearsal Card 1: Songs to Play */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('setlist')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <ListMusic className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        SONGS TO PLAY
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <div className="my-auto py-1">
-                    <span className="text-[26px] sm:text-[30px] font-black leading-none tracking-tight text-foreground">
-                      {setlistLoading ? '...' : `${numSongs} ${numSongs === 1 ? 'SONG' : 'SONGS'}`}
-                    </span>
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {numSongs > 0 ? `1. ${setlistSongs[0].title}` : 'Tap to view setlist'}
-                  </span>
-                </button>
-
-                {/* Rehearsal Card 2: Confirmed Members */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('lineup')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        LINEUP
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 my-auto py-1 w-full">
-                    <span className="text-[26px] sm:text-[30px] font-black leading-none tracking-tight text-foreground">
-                      {memberCount}
-                    </span>
-                    {resolvedMembers.length > 0 && (
-                      <div className="flex -space-x-2 overflow-hidden">
-                        {resolvedMembers.slice(0, 4).map((m, i) => (
-                          <div
-                            key={i}
-                            className="w-7 h-7 rounded-full bg-surface-inverse text-surface-inverse-foreground border-2 border-card flex items-center justify-center text-[9px] font-bold"
-                          >
-                            {m.initials}
-                          </div>
-                        ))}
-                        {resolvedMembers.length > 4 && (
-                          <div className="w-7 h-7 rounded-full bg-foreground/15 text-foreground border-2 border-card flex items-center justify-center text-[9px] font-bold">
-                            +{resolvedMembers.length - 4}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {pendingMemberCount > 0 ? `${pendingMemberCount} pending response` : `${confirmedMemberCount} confirmed`}
-                  </span>
-                </button>
-
-                {/* Rehearsal Card 3 (Full Width): Notes & Rehearsal Details */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('notes')}
-                  className="col-span-2 rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        REHEARSAL NOTES & LOGISTICS
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <p className="text-[13px] font-medium text-foreground/80 line-clamp-2 leading-snug my-auto">
-                    {event.notes || `Cadence: ${getRehearsalCadence(event)} • Venue: ${fullLocationQuery || 'TBD'}`}
-                  </p>
-
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">
-                    {event.notes ? 'Tap to read full notes' : 'No extra notes added'}
-                  </span>
-                </button>
-              </>
-            ) : isPersonalGig ? (
-              <>
-                {/* Personal Gig Card 1: Personal Fee */}
-                <div className="rounded-[16px] bg-card border border-foreground/10 p-3.5 flex flex-col justify-between text-left shadow-2xs min-h-0">
-                  <div className="flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5 text-accent-gig" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                      MY PERSONAL FEE
-                    </span>
-                  </div>
-                  <div className="my-auto py-1">
-                    <span className="text-[28px] sm:text-[32px] font-black leading-none tracking-tight text-foreground">
-                      {displayFeeValue}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground/55">
-                    Solo gig earnings
-                  </span>
-                </div>
-
-                {/* Personal Gig Card 2: Location & Setting */}
-                <button
-                  type="button"
-                  onClick={hasValidLocation ? handleOpenMaps : () => setActiveSheet('notes')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        LOCATION
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-                  <div className="my-auto py-1 min-w-0 w-full">
-                    <span className="text-[18px] sm:text-[20px] font-black uppercase leading-tight text-foreground block truncate">
-                      {venueName}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {hasValidLocation ? 'Tap to open in Maps' : 'Location TBD'}
-                  </span>
-                </button>
-
-                {/* Personal Gig Card 3 (Full Width): Personal Notes */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('notes')}
-                  className="col-span-2 rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        PERSONAL NOTES
-                      </span>
-                    </div>
-                    {event.notes && <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />}
-                  </div>
-                  <p className="text-[13px] font-medium text-foreground/80 line-clamp-2 leading-snug my-auto">
-                    {event.notes || 'No personal notes added for this gig.'}
-                  </p>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">
-                    {event.notes ? 'Tap to view full notes' : 'Tap Edit below to add notes'}
-                  </span>
-                </button>
-              </>
-            ) : (
-              /* ─── BAND GIG, QUOTE, OR DRAFT 2x2 BENTO ─── */
-              <>
-                {/* Card 1: Fee / Financials */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('fee')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <Wallet className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        {feeCardLabel}
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <div className="my-auto py-1">
-                    <span className="text-[28px] sm:text-[32px] font-black leading-none tracking-tight text-foreground">
-                      {displayFeeValue}
-                    </span>
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {isAdmin
-                      ? myResolvedFee != null && myResolvedFee > 0
-                        ? `Your cut: ${formatCurrencyExact(myResolvedFee)} • ${memberCount} split`
-                        : `${memberCount} ${memberCount === 1 ? 'member' : 'members'} • Tap for split`
-                      : 'Tap for payout details'}
-                  </span>
-                </button>
-
-                {/* Card 2: Setlist (for Gig) OR Client (for Quote/Draft) */}
-                {eventType === 'quote' ? (
+          ref={scrimRef}
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 z-10 bg-background/85 backdrop-blur-md transition-opacity duration-200',
+            heroUnderBar ? 'opacity-0' : 'opacity-100',
+          )}
+          style={{ height: 'var(--safe-top)' }}
+        />
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" onScroll={handleScroll}>
+          {/* ═══ HERO (event colour, full-bleed) ═══ */}
+          <header
+            ref={heroRef}
+            className="w-full"
+            style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
+          >
+            <div
+              className="max-w-[640px] mx-auto w-full px-4 pb-14 flex flex-col gap-3"
+              style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 44px)) + 4px)' }}
+            >
+              {/* Top bar: back + stage mode */}
+              <div className="flex items-center justify-between gap-2 h-11 -mt-1">
+                <IconButton label="Back" variant="event" size="sm" icon={<ArrowLeft />} onClick={onClose} />
+                {canStage && (
                   <button
                     type="button"
-                    onClick={() => setActiveSheet('notes')}
-                    className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
+                    onClick={() => {
+                      haptic.medium();
+                      setIsStageOpen(true);
+                    }}
+                    aria-label="Open stage mode"
+                    title="Stage mode"
+                    className="w-11 h-11 -mr-2.5 rounded-full flex items-center justify-center shrink-0 active:scale-[var(--press-scale)] transition-transform cursor-pointer"
+                    style={isGigDay ? heroChipStyle : undefined}
                   >
-                    <div className="flex items-center justify-between gap-1 w-full">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        CLIENT
-                      </span>
-                      <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                    </div>
-
-                    <div className="my-auto py-1 min-w-0 w-full">
-                      <span className="text-[20px] sm:text-[22px] font-black uppercase leading-tight tracking-tight text-foreground block truncate">
-                        {event.clientName || 'TBD'}
-                      </span>
-                    </div>
-
-                    <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                      {subTypeEyebrow ? `${subTypeEyebrow} • ${venueName}` : venueName}
-                    </span>
+                    <Play className="w-6 h-6" />
                   </button>
+                )}
+              </div>
+
+              {/* Chips + title | dot-matrix date */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span
+                      className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap"
+                      style={heroChipStyle}
+                    >
+                      {isPast ? `PAST ${eventType.toUpperCase()}` : eventType.toUpperCase()}
+                    </span>
+                    {secondaryTags.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap"
+                        style={heroChipStyle}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {isPast ? (
+                      <span
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center gap-1 whitespace-nowrap"
+                        style={heroChipStyle}
+                      >
+                        <Check className="w-3 h-3" />
+                        COMPLETED
+                      </span>
+                    ) : !isPersonalGig && eventType !== 'quote' && eventType !== 'draft' ? (
+                      <span
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center gap-1 whitespace-nowrap"
+                        style={heroChipStyle}
+                      >
+                        {isPending ? (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                            INVITE PENDING
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3 h-3" />
+                            ACCEPTED
+                          </>
+                        )}
+                      </span>
+                    ) : null}
+                    {subTypeEyebrow && (
+                      <span
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap"
+                        style={heroTintStyle}
+                      >
+                        {subTypeEyebrow}
+                      </span>
+                    )}
+                    {isPersonalGig ? (
+                      <span
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap"
+                        style={heroTintStyle}
+                      >
+                        PERSONAL
+                      </span>
+                    ) : event.band_name ? (
+                      <span
+                        className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center truncate max-w-[140px]"
+                        style={heroTintStyle}
+                      >
+                        {event.band_name}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <FitText as="h1" text={event.title} sizes={FIT.stage} maxLines={3} expandable className="bw-display-lg" />
+                </div>
+
+                <div
+                  className="shrink-0 flex flex-col items-end gap-2"
+                  style={
+                    {
+                      '--dot-off': 'color-mix(in srgb, currentColor 18%, transparent)',
+                    } as React.CSSProperties
+                  }
+                >
+                  <DotText
+                    text={heroDay}
+                    size={40}
+                    showGrid
+                    label={hasHeroDate ? formatEventDateFull(event.date) : 'Date TBD'}
+                  />
+                  <span className="bw-label-sm opacity-70">{heroMonth}</span>
+                </div>
+              </div>
+
+              {/* Venue + date·time | weather */}
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex-1 min-w-0 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={hasValidLocation ? handleOpenMaps : onEdit}
+                    disabled={!hasValidLocation && !onEdit}
+                    title={hasValidLocation ? `Open ${fullLocationQuery} in Maps` : 'Venue TBD'}
+                    className={cn(
+                      'group inline-flex items-center gap-1 text-left max-w-full',
+                      hasValidLocation ? 'cursor-pointer active:opacity-70' : 'cursor-default opacity-75'
+                    )}
+                  >
+                    <span className="bw-label-md truncate">{venueName}</span>
+                    {hasValidLocation && (
+                      <ArrowUpRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    )}
+                  </button>
+                  {venueAddress && <span className="bw-label-xs opacity-70 truncate max-w-full">{venueAddress}</span>}
+                  <span
+                    className="mt-1.5 min-h-5 px-2 py-1 rounded-[4px] bw-label-xs inline-block max-w-full"
+                    style={heroTintStyle}
+                  >
+                    {heroDateTime}
+                  </span>
+                </div>
+
+                <div className="shrink-0">
+                  {isPast ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="bw-label-xs opacity-70">
+                        {eventType === 'gig' && !isPersonalGig ? 'ATTENDANCE' : 'STATUS'}
+                      </span>
+                      <span className="bw-label-md">
+                        {memberCount > 0 && !isPersonalGig ? `${memberCount} MEMBERS` : 'ARCHIVED'}
+                      </span>
+                    </div>
+                  ) : (
+                    <WeatherWidget
+                      eventDate={event.date}
+                      location={fullLocationQuery || event.location}
+                      textColor={theme.accentFg}
+                      className="bg-transparent border-0 rounded-none p-0 min-w-0 max-w-[150px] justify-end"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* ═══ CONTENT SHEET ═══ */}
+          <div className="relative -mt-8 rounded-t-[32px] bg-background">
+            <div
+              className="max-w-[640px] mx-auto w-full px-4 pt-6 flex flex-col gap-6"
+              style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}
+            >
+              {/* ─── RSVP (pending invite) ─── */}
+              {showRsvpCard && (
+                <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
+                  <span className="bw-label-sm">Your RSVP</span>
+                  <h2 className="bw-h1">{eventType === 'rehearsal' ? 'Are you coming?' : 'Are you in?'}</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <PillButton variant="primary" size="md" onClick={handleAccept} disabled={isSubmitting}>
+                      <Check className="w-4 h-4" />
+                      {isSubmitting ? '...' : eventType === 'rehearsal' ? 'GOING' : 'ACCEPT'}
+                    </PillButton>
+                    <PillButton variant="white" size="md" onClick={handleDecline} disabled={isSubmitting}>
+                      {eventType === 'rehearsal' ? "CAN'T" : 'DECLINE'}
+                    </PillButton>
+                  </div>
+                </section>
+              )}
+
+              {/* ─── TIME TILES ─── */}
+              <div className="grid grid-cols-3 gap-2">
+                {eventType === 'gig' ? (
+                  <>
+                    <TimeTile label="LOAD IN" value={loadInTime} />
+                    <TimeTile label="SOUNDCHECK" value={soundCheckTime} />
+                    <TimeTile label="SHOW" value={showTime} />
+                  </>
+                ) : eventType === 'rehearsal' ? (
+                  <>
+                    <TimeTile label="START" value={showTime} />
+                    <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
+                    <TimeTile label="ROOM / VENUE" value={venueName} text />
+                  </>
                 ) : (
+                  <>
+                    <TimeTile label="SHOW TIME" value={showTime} />
+                    <TimeTile label="SETTING" value={event.indoorOutdoor?.toUpperCase() || 'INDOOR'} text />
+                    <TimeTile
+                      label={event.guests ? 'GUESTS' : 'STATUS'}
+                      value={event.guests ? `${event.guests} PAX` : (event.quoteStatus || eventType).toUpperCase()}
+                      text
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* ─── FEE (band gig / quote / draft) ─── */}
+              {eventType !== 'rehearsal' && !isPersonalGig && (
+                <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="bw-label-sm">{feeCardLabel}</span>
+                    <DotText text={feeExactValue} size={32} label={feeExactValue} />
+                  </div>
+                  {isAdmin && (resolvedMembers.length > 0 || (myResolvedFee != null && myResolvedFee > 0)) && (
+                    <div className="flex flex-col gap-3">
+                      {resolvedMembers.length > 0 && (
+                        <KeyValueRow
+                          label={`Musician payouts (${resolvedMembers.length})`}
+                          value={formatCurrencyExact(payoutTotal)}
+                        />
+                      )}
+                      {resolvedMembers.length > 0 && bandFund > 0 && (
+                        <KeyValueRow label="Band fund" value={formatCurrencyExact(bandFund)} />
+                      )}
+                      {myResolvedFee != null && myResolvedFee > 0 && (
+                        <KeyValueRow label="Your share" value={formatCurrencyExact(myResolvedFee)} />
+                      )}
+                    </div>
+                  )}
+                  <PillButton variant="primary" size="md"
+                    type="button"
+                    onClick={() => setActiveSheet('fee')}
+>
+                    {isAdmin ? 'FEE & PAYOUTS' : 'PAYOUT DETAILS'}
+                    <ArrowUpRight className="w-4 h-4" />
+                  </PillButton>
+                </section>
+              )}
+
+              {/* ─── EARNINGS (personal gig) ─── */}
+              {isPersonalGig && eventType !== 'rehearsal' && (
+                <section className="flex flex-col gap-6">
+                  <SectionTitle title="EARNINGS" />
+                  <div className="bg-card rounded-[16px] p-4 flex flex-col gap-3">
+                    <KeyValueRow label="My fee" value={formatCurrencyExact(event.price)} muted />
+                  </div>
+                </section>
+              )}
+
+              {/* ─── LINEUP / ATTENDANCE ─── */}
+              {!isPersonalGig && (
+                <section className="flex flex-col gap-6">
+                  <SectionTitle
+                    title={`${eventType === 'rehearsal' ? 'ATTENDANCE' : 'LINEUP'}${
+                      memberCount > 0 ? ` · ${confirmedExact}/${memberCount}` : ''
+                    }`}
+                    actionLabel="DETAILS"
+                    onAction={() => setActiveSheet('lineup')}
+                  />
+                  <div className="bg-card rounded-[16px] p-4 flex flex-col gap-4">
+                    {resolvedMembers.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveSheet('lineup')}
+                        className="flex flex-col gap-4 text-left cursor-pointer"
+                        aria-label="Open lineup details"
+                      >
+                        {resolvedMembers.slice(0, 6).map((m, i) => (
+                          <MemberRow key={m.userId || i} member={m} />
+                        ))}
+                        {resolvedMembers.length > 6 && (
+                          <span className="bw-label-xs text-muted-foreground pl-14">
+                            + {resolvedMembers.length - 6} MORE
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveSheet('lineup')}
+                        className="flex items-center justify-between gap-3 text-left cursor-pointer"
+                      >
+                        <span className="bw-body-sm text-muted-foreground">No team assigned yet</span>
+                        <span className="bw-label-xs inline-flex items-center gap-1.5 text-warning">
+                          <span className="w-2 h-2 rounded-full bg-warning" />
+                          UNASSIGNED
+                        </span>
+                      </button>
+                    )}
+                    {isAdmin && !isPast && onEdit && eventType !== 'rehearsal' && (
+                      <PillButton variant="outline" size="md" type="button"
+                        onClick={onEdit}>
+                        <Plus className="w-4 h-4" />
+                        EDIT LINEUP
+                      </PillButton>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* ─── SETLIST (gig / draft) ─── */}
+              {!isPersonalGig && eventType !== 'quote' && eventType !== 'rehearsal' && (
+                <section className="flex flex-col gap-6">
+                  <SectionTitle
+                    title="SETLIST"
+                    actionLabel={setlistLoading ? '...' : `${numSongs} ${numSongs === 1 ? 'SONG' : 'SONGS'}`}
+                    onAction={() => setActiveSheet('setlist')}
+                  />
                   <button
                     type="button"
                     onClick={() => setActiveSheet('setlist')}
-                    className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
+                    className="bg-card rounded-[16px] p-4 flex flex-col gap-3 text-left cursor-pointer active:scale-[0.99] transition-transform"
                   >
-                    <div className="flex items-center justify-between gap-1 w-full">
-                      <div className="flex items-center gap-1.5">
-                        <ListMusic
-                          className={cn('w-3.5 h-3.5', numSongs === 0 ? 'text-warning' : 'text-foreground/55')}
-                        />
-                        <span
-                          className={cn(
-                            'text-[10px] font-bold uppercase tracking-wider',
-                            numSongs === 0 ? 'text-warning' : 'text-foreground/60'
-                          )}
-                        >
-                          SETLIST
+                    {setlistLoading ? (
+                      <span className="bw-label-sm text-muted-foreground">LOADING SETLIST…</span>
+                    ) : numSongs === 0 ? (
+                      <span className="flex items-center justify-between gap-3 w-full">
+                        <span className="bw-label-sm text-warning inline-flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          NO SETLIST ASSIGNED
                         </span>
-                      </div>
-                      <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                    </div>
-
-                    <div className="my-auto py-1">
-                      <span className="text-[28px] sm:text-[32px] font-black leading-none tracking-tight text-foreground">
-                        {setlistLoading ? '...' : `${numSongs} ${numSongs === 1 ? 'SONG' : 'SONGS'}`}
+                        <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                       </span>
-                    </div>
-
-                    <span
-                      className={cn(
-                        'text-[11px] font-semibold truncate w-full',
-                        numSongs === 0 ? 'text-warning/90' : 'text-foreground/55'
-                      )}
-                    >
-                      {numSongs > 0 ? `1. ${setlistSongs[0].title}` : 'No setlist assigned'}
-                    </span>
-                  </button>
-                )}
-
-                {/* Card 3: Lineup / Team */}
-                <button
-                  type="button"
-                  onClick={() => setActiveSheet('lineup')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        LINEUP
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 my-auto py-1 w-full">
-                    <span className="text-[26px] sm:text-[30px] font-black leading-none tracking-tight text-foreground">
-                      {memberCount}
-                    </span>
-
-                    {resolvedMembers.length > 0 ? (
-                      <div className="flex -space-x-2 overflow-hidden">
-                        {resolvedMembers.slice(0, 4).map((m, i) => (
-                          <div
-                            key={i}
-                            className="w-7 h-7 rounded-full bg-surface-inverse text-surface-inverse-foreground border-2 border-card flex items-center justify-center text-[9px] font-bold"
-                          >
-                            {m.initials}
-                          </div>
-                        ))}
-                        {resolvedMembers.length > 4 && (
-                          <div className="w-7 h-7 rounded-full bg-foreground/15 text-foreground border-2 border-card flex items-center justify-center text-[9px] font-bold">
-                            +{resolvedMembers.length - 4}
-                          </div>
-                        )}
-                      </div>
                     ) : (
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-warning/15 text-warning">
-                        UNASSIGNED
-                      </span>
+                      <>
+                        {showSetFlow && (
+                          <span className="flex flex-col gap-2 w-full pb-3 border-b border-border">
+                            <SetFlow seconds={songSeconds} max={maxSongSeconds} />
+                            <span className="flex items-center justify-between bw-label-xs text-muted-foreground">
+                              <span>SET FLOW · LENGTH</span>
+                              <span>OPENER → ENCORE</span>
+                            </span>
+                          </span>
+                        )}
+                        <span className="flex flex-col gap-3 w-full">
+                          {setlistSongs.slice(0, 3).map((song, i) => (
+                            <span key={i} className="flex items-center gap-3 w-full min-w-0">
+                              <span className="bw-label-md text-muted-foreground w-5 shrink-0">
+                                {String(i + 1).padStart(2, '0')}
+                              </span>
+                              <span className="bw-body-lg flex-1 min-w-0 truncate">{song.title}</span>
+                              {song.duration && (
+                                <span className="bw-label-sm text-muted-foreground shrink-0">{song.duration}</span>
+                              )}
+                            </span>
+                          ))}
+                        </span>
+                        {(numSongs > 3 || totalSongSeconds > 0) && (
+                          <span className="bw-label-xs text-muted-foreground">
+                            {[
+                              numSongs > 3 ? `+ ${numSongs - 3} MORE` : '',
+                              totalSongSeconds > 0 ? `${formatTotalDuration(totalSongSeconds)} TOTAL` : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        )}
+                      </>
                     )}
-                  </div>
+                  </button>
+                </section>
+              )}
 
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {memberCount === 0
-                      ? 'No team assigned yet'
-                      : pendingMemberCount > 0
-                        ? `${confirmedMemberCount}/${memberCount} confirmed • ${pendingMemberCount} pending`
-                        : `All ${memberCount} members confirmed`}
-                  </span>
-                </button>
+              {/* ─── SONGS TO PLAY (rehearsal) ─── */}
+              {eventType === 'rehearsal' && !isPersonalGig && (
+                <section className="flex flex-col gap-6">
+                  <SectionTitle
+                    title="SONGS TO PLAY"
+                    actionLabel={setlistLoading ? '...' : 'SETLIST'}
+                    onAction={() => setActiveSheet('setlist')}
+                  />
+                  {setlistLoading ? (
+                    <span className="bw-label-sm text-muted-foreground">LOADING…</span>
+                  ) : numSongs > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {setlistSongs.slice(0, 8).map((song, i) => (
+                        <Selector key={i} selected={false} onClick={() => setActiveSheet('setlist')} className="max-w-full truncate">
+                          {song.title}
+                        </Selector>
+                      ))}
+                      {numSongs > 8 && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveSheet('setlist')}
+                          className="h-7 px-3 rounded-full bw-label-sm inline-flex items-center text-muted-foreground cursor-pointer"
+                        >
+                          + {numSongs - 8} MORE
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSheet('setlist')}
+                      className="bg-card rounded-[16px] p-4 text-left bw-body-sm text-muted-foreground cursor-pointer"
+                    >
+                      No songs picked for this rehearsal yet.
+                    </button>
+                  )}
+                </section>
+              )}
 
-                {/* Card 4: Client, Notes & Logistics */}
+              {/* ─── CLIENT & NOTES ─── */}
+              <section className="flex flex-col gap-6">
+                <SectionTitle title={notesTitle} actionLabel="DETAILS" onAction={() => setActiveSheet('notes')} />
                 <button
                   type="button"
                   onClick={() => setActiveSheet('notes')}
-                  className="rounded-[16px] bg-card border border-foreground/10 hover:border-foreground/20 p-3.5 flex flex-col justify-between text-left transition-all active:scale-[0.99] cursor-pointer shadow-2xs min-h-0"
+                  className="bg-card rounded-[16px] p-4 flex flex-col gap-3 text-left cursor-pointer active:scale-[0.99] transition-transform"
                 >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-foreground/55" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">
-                        {event.clientName && eventType !== 'quote' ? 'CLIENT & NOTES' : 'NOTES & INFO'}
-                      </span>
-                    </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-foreground/40" />
-                  </div>
-
-                  <div className="my-auto py-0.5 min-w-0 w-full flex flex-col gap-0.5">
-                    {event.clientName && eventType !== 'quote' && (
-                      <span className="text-[14px] font-black uppercase text-foreground truncate">
-                        {event.clientName}
-                      </span>
+                  {notesRows.map((row) => (
+                    <KeyValueRow key={row.label} label={row.label} value={row.value} muted />
+                  ))}
+                  <span
+                    className={cn(
+                      'block bw-body-md whitespace-pre-wrap line-clamp-4 w-full',
+                      !event.notes && 'text-muted-foreground'
                     )}
-                    <p className="text-[12px] font-medium text-foreground/70 line-clamp-2 leading-snug">
-                      {event.notes
-                        ? event.notes
-                        : event.clientName && eventType !== 'quote'
-                          ? `${event.indoorOutdoor?.toUpperCase() || 'INDOOR'} • ${venueName}`
-                          : 'No notes added yet'}
-                    </p>
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-foreground/55 truncate w-full">
-                    {event.notes || event.clientName ? 'Tap for logistics & notes' : 'Tap to view details'}
+                  >
+                    {event.notes ||
+                      (isPersonalGig
+                        ? 'No personal notes added for this gig.'
+                        : 'No notes added yet.')}
                   </span>
                 </button>
-              </>
-            )}
+              </section>
+
+              {/* ─── ACTIONS ─── */}
+              <section className="flex flex-col items-center gap-4">
+                {isPast ? (
+                  <>
+                    <div
+                      className={cn(
+                        'grid gap-3 w-full',
+                        isAdmin || userResponse === 'accepted' ? 'grid-cols-2' : 'grid-cols-1'
+                      )}
+                    >
+                      <PillButton variant="outline" size="lg"
+                        onClick={() => setActiveSheet('setlist')}
+>
+                        <Music className="w-4 h-4" />
+                        VIEW SETLIST
+                      </PillButton>
+                      {(isAdmin || userResponse === 'accepted') && (
+                        <PillButton variant="dark" size="lg" onClick={onChat}>
+                          <MessageSquare className="w-4 h-4" />
+                          {chatLabel}
+                        </PillButton>
+                      )}
+                    </div>
+                    {isAdmin &&
+                      (showDeleteConfirm ? (
+                        renderDeleteConfirm(() => setShowDeleteConfirm(false))
+                      ) : (
+                        <div className="flex items-center gap-5">
+                          <button onClick={onEdit} className={LINK_CLASS}>
+                            <Pencil className="w-3.5 h-3.5" />
+                            EDIT DETAILS
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            REMOVE FROM ARCHIVE
+                          </button>
+                        </div>
+                      ))}
+                  </>
+                ) : isPersonalGig ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      <PillButton variant="outline" size="lg" onClick={onEdit}>
+                        <Pencil className="w-4 h-4" />
+                        EDIT GIG
+                      </PillButton>
+                      <PillButton variant="danger" size="lg"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        aria-label={theme.deleteLabel}
+>
+                        <Trash2 className="w-4 h-4" />
+                        DELETE GIG
+                      </PillButton>
+                    </div>
+                    {showDeleteConfirm && renderDeleteConfirm(() => setShowDeleteConfirm(false))}
+                  </>
+                ) : showRsvpCard ? null : isAdmin ? (
+                  eventType === 'quote' ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 w-full">
+                        <PillButton variant="outline" size="lg"
+                          onClick={() => {
+                            if (onShareQuote) onShareQuote(event);
+                            else setIsShareQuoteOpen(true);
+                          }}
+>
+                          <Share2 className="w-4 h-4" />
+                          SHARE QUOTE
+                        </PillButton>
+                        <PillButton variant="primary" size="lg" onClick={handleConfirmQuote}
+                          disabled={isConfirming}>
+                          <Check className="w-4 h-4" />
+                          {isConfirming ? '...' : 'CONFIRM AS GIG'}
+                        </PillButton>
+                      </div>
+                      {showDeleteConfirm ? (
+                        renderDeleteConfirm(() => setShowDeleteConfirm(false))
+                      ) : (
+                        <div className="flex items-center gap-5">
+                          <button onClick={onEdit} className={LINK_CLASS}>
+                            <Pencil className="w-3.5 h-3.5" />
+                            EDIT QUOTE
+                          </button>
+                          <button onClick={onChat} className={LINK_CLASS}>
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            CHAT
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            aria-label={theme.deleteLabel}
+                            className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            DELETE
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 w-full">
+                        <PillButton variant="outline" size="lg" onClick={onEdit}>
+                          <Pencil className="w-4 h-4" />
+                          EDIT
+                        </PillButton>
+                        <PillButton variant="dark" size="lg" onClick={onChat}>
+                          <MessageSquare className="w-4 h-4" />
+                          {chatLabel}
+                        </PillButton>
+                      </div>
+                      {showDeleteConfirm ? (
+                        renderDeleteConfirm(() => setShowDeleteConfirm(false))
+                      ) : (
+                        <div className="flex items-center gap-5">
+                          {onRevertQuote && (
+                            <button onClick={handleRevertQuote} disabled={isReverting} className={LINK_CLASS}>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              {isReverting ? 'REVERTING...' : 'REVERT TO QUOTE'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            aria-label={theme.deleteLabel}
+                            className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            DELETE
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )
+                ) : (
+                  /* MEMBER VIEW (Accepted) */
+                  <>
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      <PillButton variant="outline" size="lg"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        disabled={isSubmitting}
+>
+                        {isSubmitting ? '...' : 'DROP OUT'}
+                      </PillButton>
+                      <PillButton variant="dark" size="lg" onClick={onChat}>
+                        <MessageSquare className="w-4 h-4" />
+                        {chatLabel}
+                      </PillButton>
+                    </div>
+                    {showDeleteConfirm && (
+                      <div className="flex items-center gap-3">
+                        <span className="bw-label-sm text-muted-foreground">Drop out?</span>
+                        <PillButton
+                          size="sm"
+                          fullWidth={false}
+                          className="bg-destructive-solid text-white"
+                          onClick={handleDecline}
+                          loading={isSubmitting}
+                        >
+                          Confirm drop
+                        </PillButton>
+                        <button onClick={() => setShowDeleteConfirm(false)} className={LINK_CLASS}>
+                          CANCEL
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            </div>
           </div>
         </div>
 
-        {/* ═══ INTERACTIVE DRILL-DOWN BOTTOM SHEET (Setlist / Lineup / Fee / Notes) ═══ */}
-        <AnimatePresence>
-          {activeSheet && (
+        {/* ═══ DRILL-DOWN BOTTOM SHEET (Setlist / Lineup / Fee / Notes) ═══ */}
+        <BwSheet
+          open={!!activeSheet}
+          onClose={() => setActiveSheet(null)}
+          closeLabel="Close sheet"
+          zIndex={110}
+          overline={activeSheet === 'fee' && isAdmin ? 'Admin only' : event.title}
+          title={
             <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[105] bg-black/50 backdrop-blur-xs"
-                onClick={() => setActiveSheet(null)}
-              />
-              <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={springs.smooth}
-                className="fixed bottom-0 left-0 right-0 z-[110] max-w-[640px] mx-auto rounded-t-[26px] bg-card text-card-foreground border-t border-foreground/15 shadow-2xl max-h-[72dvh] flex flex-col overflow-hidden"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}
-              >
-                {/* Sheet Handle & Header */}
-                <div className="pt-3 pb-3 px-5 border-b border-foreground/10 flex flex-col gap-2 shrink-0">
-                  <div className="w-10 h-1 rounded-full bg-foreground/20 mx-auto" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: theme.accentColor }}
-                      />
-                      <h3 className="text-[16px] font-black uppercase tracking-wider text-foreground">
-                        {activeSheet === 'fee' && 'Fee & Payout Breakdown'}
-                        {activeSheet === 'setlist' && `Setlist (${numSongs} Songs)`}
-                        {activeSheet === 'lineup' && `Lineup (${memberCount} Members)`}
-                        {activeSheet === 'notes' && 'Logistics & Notes'}
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => setActiveSheet(null)}
-                      aria-label="Close sheet"
-                      className="w-8 h-8 rounded-full bg-foreground/10 hover:bg-foreground/15 flex items-center justify-center text-foreground/70 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Sheet Body */}
-                <div className="p-5 overflow-y-auto flex-1 flex flex-col gap-3">
+              {activeSheet === 'fee' && 'Fee & payouts'}
+              {activeSheet === 'setlist' && `Setlist · ${numSongs}`}
+              {activeSheet === 'lineup' && `Lineup · ${memberCount}`}
+              {activeSheet === 'notes' && 'Logistics & notes'}
+            </>
+          }
+        >
+                <div className="dark flex flex-col gap-3" style={{ paddingBottom: 'var(--safe-bottom)' }}>
                   {activeSheet === 'fee' && (
                     <>
-                      <div className="rounded-[14px] bg-foreground/[0.05] border border-foreground/10 p-4 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block">
-                            {isAdmin ? 'BAND TOTAL FEE' : 'YOUR ASSIGNED FEE'}
+                      <div className="flex items-end justify-between gap-3 pb-2">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="bw-label-sm">
+                            {isAdmin ? 'Band total fee' : 'Your assigned fee'}
                           </span>
-                          <span className="text-[28px] font-black text-foreground leading-tight">
-                            {isAdmin
-                              ? formatCurrencyExact(event.price)
-                              : formatCurrencyExact(myResolvedFee ?? event.price)}
-                          </span>
+                          <DotText
+                            text={
+                              isAdmin
+                                ? formatCurrencyExact(event.price)
+                                : formatCurrencyExact(myResolvedFee ?? event.price)
+                            }
+                            size={32}
+                          />
                         </div>
                         {myResolvedFee != null && isAdmin && (
-                          <div className="text-right">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/50 block">
-                              YOUR SHARE
-                            </span>
-                            <span className="text-[20px] font-black text-foreground">
-                              {formatCurrencyExact(myResolvedFee)}
-                            </span>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="bw-label-sm text-muted-foreground">Your share</span>
+                            <span className="bw-label-md">{formatCurrencyExact(myResolvedFee)}</span>
                           </div>
+                        )}
+                        {isAdmin && onEdit && (
+                          <IconButton
+                            label="Edit fee"
+                            variant="sheet"
+                            size="sm"
+                            icon={<Pencil />}
+                            onClick={() => {
+                              setActiveSheet(null);
+                              onEdit();
+                            }}
+                          />
                         )}
                       </div>
 
                       {isAdmin && resolvedMembers.length > 0 && (
-                        <div className="flex flex-col gap-2 mt-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50">
-                            MEMBER PAYOUT SPLIT
-                          </span>
+                        <div className="flex flex-col gap-2">
+                          <span className="bw-label-sm text-muted-foreground">Member payout split</span>
                           {resolvedMembers.map((m, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between p-3 rounded-[12px] bg-foreground/[0.04] border border-foreground/10"
+                              className="flex items-center justify-between gap-3 rounded-full bg-foreground/[0.08] pl-2 pr-4 py-2"
                             >
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center text-[11px] font-bold shrink-0">
+                                <span className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center bw-label-sm shrink-0">
                                   {m.initials}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[14px] font-bold text-foreground truncate">
-                                    {m.name}
-                                  </span>
-                                  <span className="text-[11px] font-medium text-foreground/50 uppercase">
-                                    {m.role}
-                                  </span>
-                                </div>
+                                </span>
+                                <span className="bw-label-sm truncate">
+                                  {m.name} · {m.role}
+                                </span>
                               </div>
-                              <span className="text-[16px] font-black text-foreground shrink-0">
-                                {formatCurrencyExact(m.fee)}
-                              </span>
+                              <span className="bw-label-md shrink-0">{formatCurrencyExact(m.fee)}</span>
                             </div>
                           ))}
+                          {bandFund > 0 && (
+                            <div className="flex items-center justify-between gap-3 rounded-full border-[1.5px] border-foreground/30 pl-4 pr-4 py-2 min-h-12">
+                              <span className="bw-label-sm">Band fund</span>
+                              <span className="bw-label-md shrink-0">{formatCurrencyExact(bandFund)}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
@@ -1252,18 +1428,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           {setlistSongs.map((song, i) => (
                             <div
                               key={i}
-                              className="flex items-center justify-between p-3 rounded-[12px] bg-foreground/[0.04] border border-foreground/10"
+                              className="flex items-center justify-between gap-3 rounded-[16px] bg-foreground/[0.08] px-4 py-3"
                             >
                               <div className="flex items-center gap-3 min-w-0">
-                                <span className="w-6 h-6 rounded-full bg-foreground/10 text-foreground/70 text-[11px] font-bold flex items-center justify-center shrink-0">
-                                  {i + 1}
+                                <span className="bw-label-sm text-muted-foreground w-5 shrink-0">
+                                  {String(i + 1).padStart(2, '0')}
                                 </span>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-[14px] font-bold text-foreground truncate">
-                                    {song.title}
-                                  </span>
+                                  <span className="bw-body-md truncate">{song.title}</span>
                                   {song.artist && (
-                                    <span className="text-[11px] font-medium text-foreground/55 truncate">
+                                    <span className="bw-label-xs text-muted-foreground truncate mt-1">
                                       {song.artist}
                                     </span>
                                   )}
@@ -1271,41 +1445,33 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {song.key && (
-                                  <span className="px-2 py-0.5 rounded bg-foreground/10 text-[10px] font-bold uppercase text-foreground/75">
-                                    {song.key}
-                                  </span>
+                                  <Tag variant="subtle">{song.key}</Tag>
                                 )}
                                 {song.duration && (
-                                  <span className="text-[11px] font-semibold text-foreground/50">
-                                    {song.duration}
-                                  </span>
+                                  <span className="bw-label-sm text-muted-foreground">{song.duration}</span>
                                 )}
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="py-8 flex flex-col items-center justify-center text-center gap-2">
+                        <div className="py-8 flex flex-col items-center justify-center text-center gap-3">
                           <AlertCircle className="w-8 h-8 text-warning" />
-                          <p className="text-[14px] font-bold uppercase text-foreground">
-                            No Setlist Assigned
-                          </p>
-                          <p className="text-[12px] text-foreground/60 max-w-[260px]">
+                          <p className="bw-h3">No setlist assigned</p>
+                          <p className="bw-body-sm text-muted-foreground max-w-[260px]">
                             {isAdmin
                               ? 'Tap Edit to assign songs or a setlist to this event.'
                               : 'The band admin has not attached a setlist yet.'}
                           </p>
                           {isAdmin && onEdit && (
-                            <button
+                            <PillButton variant="primary" size="md" fullWidth={false} className="mt-1"
                               onClick={() => {
                                 setActiveSheet(null);
                                 onEdit();
                               }}
-                              style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                              className="mt-2 px-4 py-2 rounded-[10px] text-[12px] font-bold uppercase tracking-wider shadow-xs cursor-pointer"
                             >
-                              Assign Setlist
-                            </button>
+                              Assign setlist
+                            </PillButton>
                           )}
                         </div>
                       )}
@@ -1319,42 +1485,17 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           {resolvedMembers.map((m, i) => (
                             <div
                               key={i}
-                              className="flex items-center justify-between p-3 rounded-[12px] bg-foreground/[0.04] border border-foreground/10"
+                              className="flex items-center justify-between gap-3 rounded-[16px] bg-foreground/[0.08] px-3 py-3"
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-9 h-9 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center text-[12px] font-bold shrink-0">
-                                  {m.initials}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-[15px] font-bold text-foreground truncate">
-                                    {m.name}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[11px] font-semibold uppercase text-foreground/50">
-                                      {m.role}
-                                    </span>
-                                    <span className="text-foreground/30">•</span>
-                                    <span
-                                      className={cn(
-                                        'text-[10px] font-bold uppercase tracking-wider',
-                                        m.status === 'confirmed' ? 'text-success' : 'text-warning'
-                                      )}
-                                    >
-                                      {m.status === 'confirmed' ? 'CONFIRMED' : 'PENDING'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
+                              <MemberRow member={m} />
                               {(isAdmin || m.userId === currentUserId) && m.fee > 0 && (
-                                <span className="text-[16px] font-black text-foreground shrink-0">
-                                  {formatCurrencyExact(m.fee)}
-                                </span>
+                                <span className="bw-label-md shrink-0">{formatCurrencyExact(m.fee)}</span>
                               )}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="py-8 text-center text-foreground/55 text-[13px] font-medium">
+                        <div className="py-8 text-center bw-body-sm text-muted-foreground">
                           No members assigned to this event yet.
                         </div>
                       )}
@@ -1363,393 +1504,55 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
                   {activeSheet === 'notes' && (
                     <div className="flex flex-col gap-3">
-                      {/* Venue & Address Box */}
-                      <div className="rounded-[12px] bg-foreground/[0.04] border border-foreground/10 p-3.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45 block">
-                            VENUE & LOCATION
-                          </span>
-                          <span className="text-[14px] font-bold text-foreground uppercase block truncate mt-0.5">
-                            {venueName}
-                          </span>
+                      {/* Venue & address */}
+                      <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-3">
+                        <div className="min-w-0 flex flex-col gap-1">
+                          <span className="bw-label-sm text-muted-foreground">Venue & location</span>
+                          <span className="bw-label-md truncate">{venueName}</span>
                           {venueAddress && (
-                            <span className="text-[12px] font-medium text-foreground/60 block truncate">
-                              {venueAddress}
-                            </span>
+                            <span className="bw-body-sm text-muted-foreground truncate">{venueAddress}</span>
                           )}
                         </div>
                         {hasValidLocation && (
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={handleCopyAddress}
-                              title="Copy address"
-                              className="px-2.5 py-1.5 rounded-[8px] bg-foreground/10 hover:bg-foreground/15 text-[11px] font-bold uppercase text-foreground flex items-center gap-1 cursor-pointer"
-                            >
+                          <div className="grid grid-cols-2 gap-2">
+                            <PillButton variant="outline" size="sm" onClick={handleCopyAddress}
+                              title="Copy address">
                               <Copy className="w-3.5 h-3.5" />
-                              {copiedAddress ? 'COPIED' : 'COPY'}
-                            </button>
-                            <button
-                              onClick={handleOpenMaps}
-                              style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                              className="px-2.5 py-1.5 rounded-[8px] text-[11px] font-bold uppercase flex items-center gap-1 cursor-pointer"
-                            >
-                              MAPS
+                              {copiedAddress ? 'Copied' : 'Copy'}
+                            </PillButton>
+                            <PillButton variant="primary" size="sm" onClick={handleOpenMaps}>
+                              Maps
                               <ArrowUpRight className="w-3.5 h-3.5" />
-                            </button>
+                            </PillButton>
                           </div>
                         )}
                       </div>
 
-                      {/* Client & Event Metadata */}
+                      {/* Client & event metadata */}
                       {(event.clientName || event.guests || event.indoorOutdoor) && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {event.clientName && (
-                            <div className="rounded-[12px] bg-foreground/[0.04] border border-foreground/10 p-3">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45 block">
-                                CLIENT
-                              </span>
-                              <span className="text-[14px] font-bold text-foreground uppercase block mt-0.5 truncate">
-                                {event.clientName}
-                              </span>
-                            </div>
-                          )}
-                          <div className="rounded-[12px] bg-foreground/[0.04] border border-foreground/10 p-3">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45 block">
-                              SETTING {event.guests ? '• GUESTS' : ''}
-                            </span>
-                            <span className="text-[14px] font-bold text-foreground uppercase block mt-0.5">
-                              {event.indoorOutdoor?.toUpperCase() || 'INDOOR'}
-                              {event.guests ? ` • ${event.guests} PAX` : ''}
-                            </span>
-                          </div>
+                        <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-3">
+                          {event.clientName && <KeyValueRow label="Client" value={event.clientName} muted />}
+                          <KeyValueRow
+                            label={event.guests ? 'Setting · Guests' : 'Setting'}
+                            value={`${event.indoorOutdoor?.toUpperCase() || 'INDOOR'}${
+                              event.guests ? ` · ${event.guests} PAX` : ''
+                            }`}
+                            muted
+                          />
                         </div>
                       )}
 
-                      {/* Event Notes */}
-                      <div className="rounded-[12px] bg-foreground/[0.04] border border-foreground/10 p-3.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/45 block mb-1">
-                          NOTES
-                        </span>
-                        <p className="text-[13px] font-medium text-foreground/85 whitespace-pre-wrap leading-relaxed">
+                      {/* Notes */}
+                      <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-2">
+                        <span className="bw-label-sm text-muted-foreground">Notes</span>
+                        <p className="bw-body-md whitespace-pre-wrap select-text">
                           {event.notes || 'No additional notes recorded for this event.'}
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* ═══ 5. FIXED BOTTOM ACTION DOCK ═══ */}
-        <div
-          className="fixed bottom-0 left-0 right-0 rounded-t-[24px] px-[16px] pt-[12px] z-[95] bg-background/95 backdrop-blur-md border-t border-foreground/15 shadow-[0px_-4px_20px_rgba(0,0,0,0.12)]"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)' }}
-        >
-          <div className="max-w-[640px] mx-auto w-full">
-            {isPast ? (
-              <div className="flex flex-col gap-[10px] items-center w-full">
-                <div
-                  className={cn(
-                    'grid gap-[10px] w-full',
-                    isAdmin || userResponse === 'accepted' ? 'grid-cols-2' : 'grid-cols-1'
-                  )}
-                >
-                  {(isAdmin || userResponse === 'accepted') && (
-                    <button
-                      onClick={onChat}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground text-background font-bold shadow-md hover:opacity-90 active:scale-[0.99] transition-all cursor-pointer"
-                    >
-                      <MessageCircle className="w-[17px] h-[17px]" />
-                      <span className="text-[14px] font-bold uppercase">EVENT CHAT</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setActiveSheet('setlist')}
-                    className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold border border-foreground/15 active:scale-[0.99] transition-all cursor-pointer"
-                  >
-                    <Music className="w-[17px] h-[17px] text-foreground/75" />
-                    <span className="text-[14px] font-bold uppercase">VIEW SETLIST</span>
-                  </button>
-                </div>
-                {isAdmin &&
-                  (showDeleteConfirm ? (
-                    <div className="flex items-center gap-[12px]">
-                      <button
-                        onClick={() => {
-                          onDelete?.();
-                          setShowDeleteConfirm(false);
-                        }}
-                        className="text-[11px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[14px] py-[6px] uppercase cursor-pointer"
-                      >
-                        CONFIRM DELETE
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="text-[11px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors cursor-pointer"
-                      >
-                        CANCEL
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/50">
-                      <button
-                        onClick={onEdit}
-                        className="hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        EDIT DETAILS
-                      </button>
-                      <span>•</span>
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="hover:text-[var(--destructive)] transition-colors cursor-pointer"
-                      >
-                        REMOVE FROM ARCHIVE
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            ) : isPersonalGig ? (
-              <div className="flex flex-col gap-[10px] items-center w-full">
-                <div className="grid grid-cols-2 gap-[10px] w-full">
-                  <button
-                    onClick={onEdit}
-                    style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                    className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
-                  >
-                    <Pencil className="w-[17px] h-[17px]" />
-                    <span className="text-[15px] font-bold uppercase">EDIT GIG</span>
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-[var(--destructive)] font-bold active:scale-[0.99] transition-all cursor-pointer"
-                  >
-                    <span className="text-[15px] font-bold uppercase">DELETE GIG</span>
-                  </button>
-                </div>
-                {showDeleteConfirm && (
-                  <div className="flex items-center gap-[12px]">
-                    <button
-                      onClick={() => {
-                        onDelete?.();
-                        setShowDeleteConfirm(false);
-                      }}
-                      className="text-[11px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[14px] py-[6px] uppercase cursor-pointer"
-                    >
-                      CONFIRM DELETE
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="text-[11px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors cursor-pointer"
-                    >
-                      CANCEL
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : isPending && onAccept && onDecline ? (
-              <div className="grid grid-cols-2 gap-[10px] w-full">
-                <button
-                  onClick={handleAccept}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                  className="rounded-[12px] py-[14px] flex items-center justify-center gap-[8px] font-bold shadow-md shadow-black/10 hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer"
-                >
-                  <Check className="w-[17px] h-[17px]" />
-                  <span className="text-[15px] font-bold uppercase">
-                    {isSubmitting ? '...' : 'ACCEPT'}
-                  </span>
-                </button>
-                <button
-                  onClick={handleDecline}
-                  disabled={isSubmitting}
-                  className="rounded-[12px] py-[14px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  <span className="text-[15px] font-bold uppercase">DECLINE</span>
-                </button>
-              </div>
-            ) : isAdmin ? (
-              eventType === 'quote' ? (
-                <div className="flex flex-col gap-[10px] items-center w-full">
-                  <div className="grid grid-cols-3 gap-[8px] w-full">
-                    <button
-                      onClick={handleConfirmQuote}
-                      disabled={isConfirming}
-                      style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      <Check className="w-[16px] h-[16px]" />
-                      <span className="text-[13px] font-bold uppercase">
-                        {isConfirming ? '...' : 'CONFIRM'}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (onShareQuote) onShareQuote(event);
-                        else setIsShareQuoteOpen(true);
-                      }}
-                      style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
-                    >
-                      <Share2 className="w-[16px] h-[16px]" />
-                      <span className="text-[13px] font-bold uppercase">SHARE QUOTE</span>
-                    </button>
-                    <button
-                      onClick={onEdit}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[6px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold active:scale-[0.99] transition-all cursor-pointer"
-                    >
-                      <Pencil className="w-[15px] h-[15px] text-foreground" />
-                      <span className="text-[13px] font-bold uppercase">EDIT</span>
-                    </button>
-                  </div>
-                  {showDeleteConfirm ? (
-                    <div className="flex items-center gap-[12px]">
-                      <button
-                        onClick={() => {
-                          onDelete?.();
-                          setShowDeleteConfirm(false);
-                        }}
-                        className="text-[11px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[14px] py-[6px] uppercase cursor-pointer"
-                      >
-                        CONFIRM DELETE
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="text-[11px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors cursor-pointer"
-                      >
-                        CANCEL
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/50">
-                      <button
-                        onClick={onChat}
-                        className="hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        CHAT
-                      </button>
-                      <span>•</span>
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="text-[var(--destructive)] hover:opacity-80 transition-opacity cursor-pointer"
-                      >
-                        {theme.deleteLabel}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-[10px] items-center w-full">
-                  <div className="grid grid-cols-2 gap-[10px] w-full">
-                    <button
-                      onClick={onEdit}
-                      style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
-                    >
-                      <Pencil className="w-[16px] h-[16px]" />
-                      <span className="text-[15px] font-bold uppercase">EDIT</span>
-                    </button>
-                    <button
-                      onClick={onChat}
-                      className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold active:scale-[0.99] transition-all cursor-pointer"
-                    >
-                      <MessageCircle className="w-[17px] h-[17px] text-foreground" />
-                      <span className="text-[15px] font-bold uppercase">CHAT</span>
-                    </button>
-                  </div>
-                  {showDeleteConfirm ? (
-                    <div className="flex items-center gap-[12px]">
-                      <button
-                        onClick={() => {
-                          onDelete?.();
-                          setShowDeleteConfirm(false);
-                        }}
-                        className="text-[11px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[14px] py-[6px] uppercase cursor-pointer"
-                      >
-                        CONFIRM DELETE
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="text-[11px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors cursor-pointer"
-                      >
-                        CANCEL
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-[12px] text-[11px] font-bold uppercase tracking-wider text-foreground/50">
-                      {onRevertQuote && (
-                        <>
-                          <button
-                            onClick={handleRevertQuote}
-                            disabled={isReverting}
-                            className="hover:opacity-80 transition-opacity flex items-center gap-1.5 cursor-pointer"
-                            style={{ color: 'var(--accent-quote)' }}
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            <span>{isReverting ? 'REVERTING...' : 'REVERT TO QUOTE'}</span>
-                          </button>
-                          <span>•</span>
-                        </>
-                      )}
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="text-[11px] font-bold text-[var(--destructive)] uppercase hover:opacity-80 transition-opacity tracking-wider cursor-pointer"
-                      >
-                        {theme.deleteLabel}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            ) : (
-              /* MEMBER VIEW (Accepted) */
-              <div className="flex flex-col gap-[10px] items-center w-full">
-                <div className="grid grid-cols-2 gap-[10px] w-full">
-                  <button
-                    onClick={onChat}
-                    style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
-                    className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] font-bold shadow-md shadow-black/10 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
-                  >
-                    <MessageCircle className="w-[17px] h-[17px]" />
-                    <span className="text-[15px] font-bold uppercase">CHAT</span>
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isSubmitting}
-                    className="rounded-[12px] py-[13px] flex items-center justify-center gap-[8px] bg-foreground/10 hover:bg-foreground/15 text-foreground font-bold transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="text-[15px] font-bold uppercase">
-                      {isSubmitting ? '...' : 'DROP OUT'}
-                    </span>
-                  </button>
-                </div>
-                {showDeleteConfirm && (
-                  <div className="flex items-center gap-[12px]">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/70">
-                      Drop out?
-                    </span>
-                    <button
-                      onClick={handleDecline}
-                      disabled={isSubmitting}
-                      className="text-[11px] font-bold text-white bg-[var(--destructive)] rounded-[8px] px-[14px] py-[6px] uppercase disabled:opacity-50 cursor-pointer"
-                    >
-                      {isSubmitting ? '...' : 'CONFIRM DROP'}
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="text-[11px] font-bold text-foreground/70 hover:text-foreground uppercase transition-colors cursor-pointer"
-                    >
-                      CANCEL
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        </BwSheet>
       </motion.div>
 
       <QuoteShareModal
@@ -1786,6 +1589,27 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         onClose={() => setIsShareQuoteOpen(false)}
         onOpenBandSettings={onOpenBandSettings}
       />
+
+      <AnimatePresence>
+        {isStageOpen && (
+          <StageMode
+            title={event.title}
+            venue={venueName !== 'TBD' ? venueName : undefined}
+            dateLabel={formatEventDateShort(event.date)}
+            date={event.date}
+            accentColor="var(--accent-gig)"
+            steps={[
+              { label: 'Load in', time: event.loadInTime, display: loadInTime },
+              { label: 'Soundcheck', time: event.soundcheckTime, display: soundCheckTime },
+              { label: 'Show', time: event.time, display: showTime },
+              { label: 'End', time: event.endTime, display: endTimeFormatted || 'TBD' },
+            ]}
+            songs={setlistSongs}
+            songsLoading={setlistLoading}
+            onClose={() => setIsStageOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };

@@ -1,6 +1,10 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowRight, Sparkles } from '@/app/components/icons';
+import { motion } from 'motion/react';
+import { X, ArrowUpRight } from '@/app/components/icons';
+import { cn } from '@/app/components/ui/utils';
+import { DotMeter } from '@/app/components/bw/Metric';
+import { Tag } from '@/app/components/bw/Screen';
+import { PillButton } from '@/app/components/bw/Form';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 
@@ -64,83 +68,57 @@ export const DashboardChecklist: React.FC<DashboardChecklistProps> = ({
 
   return (
     <motion.div
-      className="bg-card rounded-[2rem] p-6 border border-border"
+      className="bg-card text-card-foreground rounded-[24px] p-4 flex flex-col gap-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-accent" />
-          </div>
-          <div>
-            <h3 className="text-foreground font-bold text-[16px]">
-              Complete Your Setup
-            </h3>
-            <p className="text-muted-foreground text-[13px]">{progressPercent}% done</p>
-          </div>
+      {/* Header (Figma Card: overline + H3, count on the right) */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <p className="bw-label-sm text-muted-foreground">Setup · {progressPercent}% done</p>
+          <h3 className="bw-h3 text-foreground">Complete your setup</h3>
         </div>
+        <Tag variant="accent">
+          {completedCount}/{items.length}
+        </Tag>
       </div>
 
-      {/* Progress Bar */}
-      <div className="h-2 bg-card/80 rounded-full overflow-hidden mb-5">
-        <motion.div
-          className="h-full bg-accent rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
-      </div>
+      {/* Progress as a dot meter */}
+      <DotMeter value={completedCount / items.length} rows={1} cols={12} />
 
       {/* Checklist Items */}
-      <div className="space-y-3 mb-5">
+      <ul className="flex flex-col gap-3">
         {items.map((item, index) => (
-          <motion.div
+          <motion.li
             key={item.id}
             className="flex items-center gap-3"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <DotCheckbox
-              checked={item.completed}
-              activeColor="var(--accent)"
-              inactiveColor="rgba(255,255,255,0.15)"
-            />
+            <DotCheckbox checked={item.completed} activeColor="var(--accent)" inactiveColor="var(--dot-off)" />
             <span
-              className={`text-[14px] ${
-                item.completed
-                  ? 'text-muted-foreground line-through'
-                  : 'text-foreground font-medium'
-              }`}
+              className={cn(
+                'bw-body-md',
+                item.completed ? 'text-muted-foreground line-through' : 'text-foreground font-medium',
+              )}
             >
               {item.label}
             </span>
-          </motion.div>
+          </motion.li>
         ))}
-      </div>
+      </ul>
 
       {/* Actions */}
-      <div className="flex gap-3">
-        <button
-          onClick={onContinue}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-[14px]"
-        >
-          Continue Setup
-          <ArrowRight className="w-4 h-4" />
-        </button>
+      <div className="flex flex-col gap-1">
+        <PillButton size="md" onClick={onContinue} trailingIcon={<ArrowUpRight className="w-4 h-4" />}>
+          Continue setup
+        </PillButton>
+        <PillButton size="sm" variant="ghost" onClick={handleDismiss} icon={<X className="w-3.5 h-3.5" />} className="text-muted-foreground">
+          Dismiss
+        </PillButton>
       </div>
-
-      {/* Dismiss */}
-      <button
-        onClick={handleDismiss}
-        className="w-full mt-3 text-center text-muted-foreground/60 text-[13px] py-2 hover:text-muted-foreground transition-colors flex items-center justify-center gap-1"
-      >
-        <X className="w-3 h-3" />
-        Dismiss
-      </button>
     </motion.div>
   );
 };
