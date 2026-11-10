@@ -171,7 +171,14 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
     <>
       <div
         // Dark layers (Stage mode) get the dark-theme tokens: dark glass, light icons.
-        className={cn('fixed right-0 z-[190] flex flex-col items-center justify-center gap-2 pointer-events-none', tone === 'dark' && 'dark')}
+        // Scrolls (scrollbar hidden) when the keyboard shrinks the viewport
+        // below the rail group, so the bottom actions stay reachable; safe
+        // centring keeps the top reachable too once it overflows.
+        className={cn(
+          'fixed right-0 z-[190] flex flex-col items-center justify-center-safe gap-2 pointer-events-none',
+          'overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          tone === 'dark' && 'dark',
+        )}
         // Figma "Duo" frames centre the rail group 20pt below the display's
         // middle (y 359 of 678 closed, 355 of 669 open), clear of the clock.
         style={{ top: 0, bottom: 0, paddingTop: 40, width: 'var(--bw-rail-w)' }}

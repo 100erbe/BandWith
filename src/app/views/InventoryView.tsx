@@ -156,6 +156,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
       className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
     >
       <ScreenHeader
+        sticky
         onBack={onBack}
         backLabel="Go back"
         overline="Equipment & assets"

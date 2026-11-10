@@ -360,7 +360,8 @@ const LedgerRow: React.FC<{ label: string; value: string; tone?: 'success' }> = 
 
 interface QuoteCreationWizardProps {
   onClose: () => void;
-  onCreate: (quote: Partial<Quote>) => void;
+  /** `share`: the user tapped Share, open the PDF/share sheet after saving. */
+  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean }) => void;
   initialEventId?: string;
   initialEventTitle?: string;
   initialClientName?: string;
@@ -462,9 +463,6 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [clientCompany, setClientCompany] = useState(initialData?.clientCompany || '');
   const [eventName, setEventName] = useState(
     initialData?.eventName || initialData?.eventTitle || initialEventTitle || ''
-  );
-  const [titleManuallyEdited, setTitleManuallyEdited] = useState(
-    Boolean(initialData?.eventName || initialData?.eventTitle || initialEventTitle)
   );
 
   // Default eventType to 'wedding' so Step 1 NEXT is never blocked on load
@@ -1417,7 +1415,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       // New quotes get their number from the database on insert (services/quotes.ts createQuote);
       // the caller must put the DB number on the quote before the PDF/share step.
       ...(initialData?.quoteNumber ? { quoteNumber: initialData.quoteNumber } : {}),
-      status: sendImmediately ? 'SENT' : initialData?.status || 'DRAFT',
+      // Saved as a draft; it becomes SENT only after a share channel completes (QuoteShareModal).
+      status: initialData?.status || 'DRAFT',
       clientName: finalClientName,
       clientEmail: clientEmail.trim() || '',
       clientPhone: clientPhone.trim() || undefined,
@@ -1489,12 +1488,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       showBankDetailsOnPdf,
       includeProposalSummary,
       quoteOptions: includeProposalSummary ? quoteOptions : undefined,
-      sentAt: sendImmediately ? new Date().toISOString() : initialData?.sentAt,
+      sentAt: initialData?.sentAt,
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       eventTitle: finalEventName,
     };
-    onCreate(quoteData);
+    onCreate(quoteData, { share: sendImmediately });
   };
 
   const activeCatalogServices = useMemo(
@@ -1780,11 +1779,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         value={clientName}
         onChange={e => {
           const val = e.target.value;
+          // The auto title ("Wedding - Client") stays a placeholder and is
+          // used as the fallback by getEffectiveTitle(), so typing a title
+          // never appends to a pre-filled value.
           setClientName(val);
-          if (!titleManuallyEdited) {
-            const typeLabel = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : 'Wedding';
-            setEventName(val ? `${typeLabel} - ${val}` : '');
-          }
         }}
         placeholder="Paolo Rossi"
         autoComplete="off"
@@ -1794,7 +1792,6 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         value={eventName}
         onChange={e => {
           setEventName(e.target.value);
-          setTitleManuallyEdited(true);
         }}
         placeholder={getEffectiveTitle()}
         autoComplete="off"
@@ -1812,10 +1809,6 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               title={opt.subtitle}
               onClick={() => {
                 setEventType(opt.value);
-                if (!titleManuallyEdited) {
-                  const typeLabel = opt.value.charAt(0).toUpperCase() + opt.value.slice(1);
-                  setEventName(clientName ? `${typeLabel} - ${clientName}` : '');
-                }
               }}
             >
               {opt.label}

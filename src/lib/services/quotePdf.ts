@@ -98,12 +98,19 @@ const drawBandLogoOrWordmark = (
     ctx.drawImage(logoImg, rightEdge - drawW, topY, drawW, drawH);
   } else {
     ctx.save();
-    ctx.font = '300 86px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#6e6a7c';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    const display = (bandName || 'BAND').toUpperCase().slice(0, 12);
-    ctx.fillText(display, rightEdge, topY + 10);
+    // Shrink the wordmark to fit instead of cutting the band name.
+    const display = (bandName || 'BAND').toUpperCase();
+    const maxW = 900;
+    let size = 86;
+    ctx.font = `300 ${size}px Georgia, "Times New Roman", serif`;
+    while (size > 36 && ctx.measureText(display).width > maxW) {
+      size -= 4;
+      ctx.font = `300 ${size}px Georgia, "Times New Roman", serif`;
+    }
+    ctx.fillText(display, rightEdge, topY + 10, maxW);
     ctx.restore();
   }
 };

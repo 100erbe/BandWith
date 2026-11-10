@@ -61,7 +61,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
 
   return (
     <div
-      className="dark fixed inset-0 z-[200] bg-sheet text-foreground flex flex-col"
+      className="dark fixed inset-0 z-[185] bg-sheet text-foreground flex flex-col"
       style={{
         paddingTop: 'var(--safe-top)',
         paddingBottom: 'var(--safe-bottom)',

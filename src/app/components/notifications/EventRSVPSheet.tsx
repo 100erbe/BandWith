@@ -130,7 +130,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="bw-rail-sheet fixed inset-0 z-[90] bg-black/60"
+        className="bw-rail-sheet fixed inset-0 z-[184] bg-black/60"
         onClick={onClose}
       />
 
@@ -144,7 +144,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-        className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
+        className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 max-h-[90vh] overflow-y-auto flex flex-col gap-4"
         style={{
           paddingBottom: 'calc(16px + var(--safe-bottom))',
           ...maskStyle,

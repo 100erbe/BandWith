@@ -135,3 +135,42 @@
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
+
+/* ── Dot micro-motion ───────────────────────────────────────────────────────
+   Dot-matrix numbers light up in a left → right sweep (like an LED board
+   refreshing); meters fill dot by dot and the peak dot gives one soft pop;
+   dot columns rise from the bottom. Each element sets its own --d delay. */
+@keyframes bw-dot-in {
+  from { opacity: 0; transform: scale(0.35); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bw-dot-rise {
+  from { opacity: 0.15; transform: scale(0.55); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bw-dot-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  50%  { opacity: 1; transform: scale(1.38); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.bw-dot-in,
+.bw-dot-rise,
+.bw-dot-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-delay: var(--d, 0ms);
+}
+.bw-dot-in   { animation: bw-dot-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-rise { animation: bw-dot-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-pop  { animation: bw-dot-pop 520ms cubic-bezier(0.3, 1.5, 0.5, 1) backwards; animation-delay: var(--d, 0ms); }
+.bw-dot-cell {
+  transition: background-color 240ms ease-out;
+  transition-delay: var(--d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bw-dot-in, .bw-dot-rise, .bw-dot-pop, .bw-dot-cell {
+    animation: none !important;
+    transition: none !important;
+  }
+}

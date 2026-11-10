@@ -21,6 +21,8 @@ import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { supabase } from '@/lib/supabase';
+import { dbQuoteToAppQuote } from '@/lib/services/quotes';
+import type { Quote as AppQuote } from '@/app/data/quotes';
 import { useBand } from '@/lib/BandContext';
 import { cn } from '@/app/components/ui/utils';
 import { useRailAction, useRailOwnsChrome } from '@/lib/railActions';
@@ -280,12 +282,13 @@ const SetFlow: React.FC<{ seconds: number[]; max: number }> = ({ seconds, max })
               const peak = on && fromBottom === lit - 1;
               return (
                 <span
-                  key={r}
-                  className="rounded-full block"
+                  key={`${r}-${on ? 'on' : 'off'}`}
+                  className={'rounded-full block' + (peak ? ' bw-dot-pop' : on ? ' bw-dot-rise' : '')}
                   style={{
                     width: dot,
                     height: dot,
                     backgroundColor: peak ? 'var(--accent-ink)' : on ? 'var(--dot-on)' : 'var(--dot-off)',
+                    ['--d' as string]: `${150 + c * 35 + fromBottom * 30}ms`,
                   }}
                 />
               );
@@ -324,6 +327,23 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [isShareQuoteOpen, setIsShareQuoteOpen] = useState(false);
+  // The real quote saved with this event (quotes.converted_to_event_id), so
+  // the PDF carries its number, line items and VAT instead of a stand-in.
+  const [linkedQuote, setLinkedQuote] = useState<Partial<AppQuote> | null>(null);
+  useEffect(() => {
+    if (!isShareQuoteOpen || !event.eventId) return;
+    let cancelled = false;
+    supabase
+      .from('quotes')
+      .select('*, musicians:quote_musicians(*)')
+      .eq('converted_to_event_id', event.eventId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled && data?.[0]) setLinkedQuote(dbQuoteToAppQuote(data[0] as any));
+      });
+    return () => { cancelled = true; };
+  }, [isShareQuoteOpen, event.eventId]);
   const [isStageOpen, setIsStageOpen] = useState(false);
 
   const isPending = userResponse === 'pending';
@@ -610,18 +630,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   // Schedule & Timeline computations
   const showTime = event.time ? formatEventTime(event.time) : 'TBD';
   const endTimeFormatted = event.endTime ? formatEventTime(event.endTime) : '';
-  const loadInTime = event.loadInTime
-    ? formatEventTime(event.loadInTime)
-    : event.time
-      ? formatEventTime(event.time.replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 3))))
-      : 'TBD';
-  const soundCheckTime = event.soundcheckTime
-    ? formatEventTime(event.soundcheckTime)
-    : event.time
-      ? formatEventTime(
-          event.time.replace(/:\d{2}$/, ':30').replace(/^(\d+)/, (_, h: string) => String(Math.max(1, parseInt(h) - 2)))
-        )
-      : 'TBD';
+  // Only times someone actually set; no invented schedule.
+  const loadInTime = event.loadInTime ? formatEventTime(event.loadInTime) : 'TBD';
+  const soundCheckTime = event.soundcheckTime ? formatEventTime(event.soundcheckTime) : 'TBD';
 
   const feeCardLabel = isPersonalGig
     ? 'MY PERSONAL FEE'
@@ -1388,7 +1399,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             </>
           }
         >
-                <div className="dark flex flex-col gap-3" style={{ paddingBottom: 'var(--safe-bottom)' }}>
+                <div className="dark flex flex-col gap-3">
                   {activeSheet === 'fee' && (
                     <>
                       <div className="flex items-end justify-between gap-3 pb-2">
@@ -1591,8 +1602,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
       <QuoteShareModal
         isOpen={isShareQuoteOpen}
-        quote={{
-          id: String(event.id),
+        quote={linkedQuote || {
           quoteNumber: `EVT-${String(event.id).slice(0, 6).toUpperCase()}`,
           eventName: event.title,
           eventTitle: event.title,

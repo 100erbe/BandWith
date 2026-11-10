@@ -172,6 +172,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setSaving(true);
     setError(null);
 
+    // Files uploaded in this attempt: removed again if the song isn't saved.
+    const uploaded: string[] = [];
     try {
       // Links: https only.
       const youtube = youtubeUrl.trim() ? safeHttpsUrl(youtubeUrl) : undefined;
@@ -188,12 +190,14 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       if (audioFile) {
         const up = await uploadSongFile(bandId, audioFile);
         if (up.error) throw up.error;
+        uploaded.push(up.ref);
         if (existingAudio) replaced.push(existingAudio);
         audioRef = up.ref;
       }
       if (chartFile) {
         const up = await uploadSongFile(bandId, chartFile);
         if (up.error) throw up.error;
+        uploaded.push(up.ref);
         if (existingChart) replaced.push(existingChart);
         chartRef = up.ref;
       } else if (chartLink && existingChart && existingChart !== chartLink) {
@@ -223,6 +227,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         : await createSong({ ...payload, band_id: bandId, status: 'ready', priority: 'medium' });
 
       if (songError) throw songError;
+      uploaded.length = 0; // saved: the new files now belong to the song
       await removeSongFiles(replaced);
 
       setSuccess(true);
@@ -231,7 +236,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         handleClose();
       }, 1000);
     } catch (err: any) {
-      setError(err.message || (isEdit ? 'Failed to save song' : 'Failed to add song'));
+      // Don't leave orphaned uploads in storage when the song wasn't saved.
+      if (uploaded.length > 0) await removeSongFiles(uploaded);
+      const base = isEdit ? 'Could not save the song' : 'Could not add the song';
+      setError(err?.message ? `${base}: ${err.message}` : `${base}. Try again.`);
     } finally {
       setSaving(false);
     }

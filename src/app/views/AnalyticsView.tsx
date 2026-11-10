@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { BarChart3, Loader2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -7,6 +7,8 @@ import { useDashboardData } from '@/app/hooks/useData';
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { supabase } from '@/lib/supabase';
+import { toLocalDateString } from '@/lib/dates';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -18,21 +20,25 @@ interface AnalyticsViewProps {
   isAdmin?: boolean;
 }
 
-/** Placeholder monthly shares (0–100) for the last six months, oldest first. */
-const MONTHLY_PCT = [45, 32, 67, 55, 78, 42];
+/** Months shown in the breakdown, oldest first, current month last. */
+const MONTH_SPAN = 6;
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const LED_ROWS = 10;
 
 /** Figma "LED Column": 10 dots of 10pt, 4pt apart, filled from the bottom. */
-const LedColumn: React.FC<{ lit: number; current: boolean }> = ({ lit, current }) => (
+const LedColumn: React.FC<{ lit: number; current: boolean; index?: number }> = ({ lit, current, index = 0 }) => (
   <span className="flex flex-col gap-1" aria-hidden>
     {Array.from({ length: LED_ROWS }).map((_, i) => {
-      const on = LED_ROWS - i <= lit;
+      const fromBottom = LED_ROWS - 1 - i;
+      const on = fromBottom < lit;
       return (
         <span
-          key={i}
-          className="w-2.5 h-2.5 rounded-full"
-          style={{ backgroundColor: on ? (current ? 'var(--accent-ink)' : 'var(--dot-on)') : 'var(--dot-off)' }}
+          key={`${i}-${on ? 'on' : 'off'}`}
+          className={cn('w-2.5 h-2.5 rounded-full', on && 'bw-dot-rise')}
+          style={{
+            backgroundColor: on ? (current ? 'var(--accent-ink)' : 'var(--dot-on)') : 'var(--dot-off)',
+            ['--d' as string]: `${200 + index * 50 + fromBottom * 30}ms`,
+          }}
         />
       );
     })}
@@ -73,10 +79,47 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   const changeLabel = change !== 0 ? `${change > 0 ? '+' : ''}${change.toFixed(0)}%` : '--';
 
   const now = new Date();
-  const monthly = MONTHLY_PCT.map((pct, i) => {
-    const offset = MONTHLY_PCT.length - 1 - i;
+
+  // Real confirmed-gig fees per month for the last MONTH_SPAN months.
+  const [monthlyFees, setMonthlyFees] = useState<number[] | null>(null);
+  const bandId = selectedBand?.id;
+  useEffect(() => {
+    if (!bandId) return;
+    let cancelled = false;
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth() - (MONTH_SPAN - 1), 1);
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    supabase
+      .from('events')
+      .select('fee, event_date, status, event_type')
+      .eq('band_id', bandId)
+      .gte('event_date', toLocalDateString(start))
+      .lte('event_date', toLocalDateString(end))
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const sums = Array<number>(MONTH_SPAN).fill(0);
+        if (!error) {
+          for (const e of (data || []) as { fee: number | null; event_date: string; status: string; event_type: string }[]) {
+            if (e.event_type === 'rehearsal' || !(e.status === 'confirmed' || e.status === 'completed')) continue;
+            const [y, m] = e.event_date.split('-').map(Number);
+            const idx = (y - start.getFullYear()) * 12 + (m - 1 - start.getMonth());
+            if (idx >= 0 && idx < MONTH_SPAN) sums[idx] += Number(e.fee) || 0;
+          }
+        }
+        setMonthlyFees(sums);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bandId]);
+
+  const fees = monthlyFees ?? Array<number>(MONTH_SPAN).fill(0);
+  const maxFee = Math.max(0, ...fees);
+  const monthly = fees.map((fee, i) => {
+    const offset = MONTH_SPAN - 1 - i;
     const m = (now.getMonth() - offset + 12) % 12;
-    return { month: MONTHS[m], lit: Math.max(1, Math.round((pct / 100) * LED_ROWS)), current: offset === 0 };
+    const lit = fee > 0 && maxFee > 0 ? Math.max(1, Math.round((fee / maxFee) * LED_ROWS)) : 0;
+    return { month: MONTHS[m], fee, lit, current: offset === 0 };
   });
 
   const overline = [selectedBand?.name, now.getFullYear()].filter(Boolean).join(' · ');
@@ -90,7 +133,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
       className="fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      <ScreenHeader onBack={onClose} overline={overline} title={<>Data<br />insights</>} />
+      <ScreenHeader sticky onBack={onClose} overline={overline} title={<>Data<br />insights</>} />
 
       <div className="px-4 pt-4 flex flex-col gap-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
         {loading ? (
@@ -120,30 +163,30 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
             {/* Monthly breakdown */}
             <Card className="p-5 gap-4">
               <h2 className="bw-label-md">Monthly breakdown</h2>
-              <div className="flex items-end justify-between" role="img" aria-label="Monthly revenue, last six months">
-                {monthly.map(({ month, lit, current }, i) => (
+              <div className="flex items-end justify-between" role="img" aria-label={`Monthly revenue, last six months: ${monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ')}`}>
+                {monthly.map(({ month, fee, lit, current }, i) => (
                   <motion.div
                     key={month}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 + i * 0.04 }}
                     className="flex flex-col items-center gap-2"
+                    title={`${month}: ${sym()}${fee.toLocaleString('en-US')}`}
                   >
                     <span className="flex gap-1">
-                      <LedColumn lit={lit} current={current} />
-                      <LedColumn lit={lit} current={current} />
+                      <LedColumn lit={lit} current={current} index={i * 2} />
+                      <LedColumn lit={lit} current={current} index={i * 2 + 1} />
                     </span>
                     <span className={cn('bw-label-sm', current ? 'text-foreground' : 'text-muted-foreground')}>{month}</span>
                   </motion.div>
                 ))}
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="bw-body-lg text-muted-foreground">All-time total earnings</span>
+                <span className="bw-body-lg text-muted-foreground">Total earnings {now.getFullYear()}</span>
                 <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString('en-US')}</span>
               </div>
             </Card>
 
-            <p className="bw-label-sm text-muted-foreground">Detailed analytics coming soon</p>
           </>
         )}
       </div>

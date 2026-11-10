@@ -293,6 +293,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <ScreenHeader
+        sticky
         onBack={onBack}
         overline="Workflows & checklists"
         title="Task templates"

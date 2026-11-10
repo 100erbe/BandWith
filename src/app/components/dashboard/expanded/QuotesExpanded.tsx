@@ -29,6 +29,8 @@ import {
   deleteQuote as deleteQuoteDB,
   duplicateQuote as duplicateQuoteDB,
   sendQuote as sendQuoteDB,
+  acceptQuote as acceptQuoteDB,
+  declineQuote as declineQuoteDB,
   appQuoteToDbRecord,
   appMusiciansToDb,
   dbQuoteToAppQuote,
@@ -124,7 +126,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   const activeQuotes = quotes.filter(q => q.status !== 'DECLINED' && q.status !== 'EXPIRED');
 
   // Handlers (all persist through src/lib/services/quotes.ts; optimistic changes are reverted on failure)
-  const handleCreateQuote = async (quoteData: Partial<Quote>) => {
+  const handleCreateQuote = async (quoteData: Partial<Quote>, opts?: { share?: boolean }) => {
     if (isSaving) return;
     if (!currentBandId) {
       notify('No band selected — cannot save the quote', 'error');
@@ -156,7 +158,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         setEditingQuote(null);
         notify('Quote updated', 'success');
         onQuotesChanged?.();
-        if (quoteData.status === 'SENT') setSharingQuote(saved);
+        if (opts?.share) setSharingQuote(saved);
         return;
       }
 
@@ -183,9 +185,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       setEditingQuote(null);
       notify(`Quote ${saved.quoteNumber} saved`, 'success');
       onQuotesChanged?.();
-      if (!quoteData.status || quoteData.status === 'SENT') {
-        setSharingQuote(saved);
-      }
+      if (opts?.share) setSharingQuote(saved);
     } finally {
       setIsSaving(false);
     }
@@ -207,6 +207,21 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       return;
     }
     setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
+    onQuotesChanged?.();
+  };
+
+  const handleSetOutcome = async (quote: Quote, outcome: 'ACCEPTED' | 'DECLINED') => {
+    const previous = quotes;
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, status: outcome as QuoteStatus } : q)));
+    setSelectedQuote(null);
+    const { data, error } = outcome === 'ACCEPTED' ? await acceptQuoteDB(quote.id) : await declineQuoteDB(quote.id);
+    if (error || !data) {
+      setQuotes(previous);
+      notify(errorText(error, 'Could not update the quote'), 'error');
+      return;
+    }
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
+    notify(outcome === 'ACCEPTED' ? 'Quote accepted. The gig is confirmed.' : 'Quote marked as declined', 'success');
     onQuotesChanged?.();
   };
 
@@ -322,7 +337,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             <p className="bw-body-sm text-sheet-foreground/70 py-6 text-center">No pipeline data</p>
           ) : (
             <div className="flex justify-between gap-2 pt-6">
-              {chartQuotes.map((quote) => {
+              {chartQuotes.map((quote, qi) => {
                 const probability = getProbabilityFromStatus(quote.status);
                 const lit = Math.max(2, Math.round(Math.min(1, quote.total / chartMax) * CHART_ROWS));
                 const onColor = probability > 70 ? 'var(--accent)' : probability > 40 ? 'var(--sheet-fg)' : 'color-mix(in srgb, var(--sheet-fg) 45%, transparent)';
@@ -344,12 +359,16 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                       {sym()}{(quote.total / 1000).toFixed(1)}k
                     </span>
                     {Array.from({ length: CHART_ROWS }).map((_, r) => {
-                      const on = CHART_ROWS - 1 - r < lit;
+                      const fromBottom = CHART_ROWS - 1 - r;
+                      const on = fromBottom < lit;
                       return (
                         <span
-                          key={r}
-                          className="w-2.5 h-2.5 rounded-full block"
-                          style={{ backgroundColor: on ? onColor : 'color-mix(in srgb, var(--sheet-fg) 12%, transparent)' }}
+                          key={`${r}-${on ? 'on' : 'off'}`}
+                          className={'w-2.5 h-2.5 rounded-full block' + (on ? ' bw-dot-rise' : '')}
+                          style={{
+                            backgroundColor: on ? onColor : 'color-mix(in srgb, var(--sheet-fg) 12%, transparent)',
+                            ['--d' as string]: `${250 + qi * 60 + fromBottom * 35}ms`,
+                          }}
                         />
                       );
                     })}
@@ -476,6 +495,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             onSend={handleSendQuote}
             onDuplicate={handleDuplicateQuote}
             onDelete={handleDeleteQuote}
+            onSetOutcome={handleSetOutcome}
+            onSent={(q) => {
+              setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: 'SENT' as QuoteStatus, sentAt: new Date().toISOString() } : x)));
+              setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: 'SENT' as QuoteStatus } : prev));
+              onQuotesChanged?.();
+            }}
           />
         )}
       </AnimatePresence>
@@ -489,6 +514,12 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
             quote={sharingQuote}
             bandId={currentBandId || bandId || 'default'}
             bandName={selectedBand?.name || 'Band'}
+            onSent={(id) => {
+              const sentAt = new Date().toISOString();
+              setQuotes(prev => prev.map(q => (q.id === id ? { ...q, status: 'SENT' as QuoteStatus, sentAt } : q)));
+              setSharingQuote(prev => (prev && prev.id === id ? { ...prev, status: 'SENT' as QuoteStatus, sentAt } : prev));
+              onQuotesChanged?.();
+            }}
           />
         )}
       </AnimatePresence>

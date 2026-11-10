@@ -332,7 +332,7 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
               user_id: m.user_id || m.id,
               role: m.role || undefined,
               fee: m.fee != null ? Number(m.fee) || 0 : 0,
-              status: m.status || 'confirmed',
+              status: m.status || 'pending',
             }))
             .filter((m: any) => Boolean(m.user_id))
         : undefined;
@@ -342,7 +342,28 @@ const executeMutation = async (mutation: OfflineMutation): Promise<ExecOutcome> 
       );
     }
     if (!result.error && result.data) return { ok: true, realId: result.data.id || clientId };
-    if (clientId && isDuplicateKeyError(result.error)) return { ok: true, realId: clientId };
+    if (clientId && isDuplicateKeyError(result.error)) {
+      // The first attempt reached the server (e.g. it only timed out on the
+      // client) but may have stopped before the lineup: add what is missing.
+      const lineup = Array.isArray(memberIds)
+        ? memberIds
+            .map((m: any) => ({
+              event_id: clientId,
+              user_id: m.user_id || m.id,
+              role: m.role || null,
+              fee: m.fee != null ? Number(m.fee) || 0 : 0,
+              status: m.status || 'pending',
+            }))
+            .filter((m: any) => Boolean(m.user_id))
+        : [];
+      if (!isPersonalGig && lineup.length > 0) {
+        const { error: lineupErr } = await supabase
+          .from('event_members')
+          .upsert(lineup, { onConflict: 'event_id,user_id', ignoreDuplicates: true });
+        if (lineupErr) console.warn('[syncQueue] lineup after duplicate create:', lineupErr);
+      }
+      return { ok: true, realId: clientId };
+    }
     return { ok: false, error: result.error || new Error('Create returned no data') };
   }
 

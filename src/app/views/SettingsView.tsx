@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
 import { Toggle, IconButton, NavBackButton, Tag, PillButton, Selector } from '@/app/components/bw';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
@@ -104,54 +105,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onClose();
   };
 
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_push_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [emailEnabled, setEmailEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_email_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_sound_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
+  const [pushEnabled, setPushEnabled] = useState(() => readLocalPref('push'));
+  const [emailEnabled, setEmailEnabled] = useState(() => readLocalPref('email'));
+  useEffect(() => {
+    let cancelled = false;
+    loadNotificationPrefs().then((prefs) => {
+      if (cancelled || !prefs) return;
+      if (prefs.push !== undefined) setPushEnabled(prefs.push);
+      if (prefs.email !== undefined) setEmailEnabled(prefs.email);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleTogglePush = (val: boolean) => {
     setPushEnabled(val);
-    try {
-      localStorage.setItem('bandwith_push_notifs', String(val));
-    } catch {}
+    saveNotificationPref('push', val).then(({ error }) => { if (error) setPushEnabled(!val); });
   };
 
   const handleToggleEmail = (val: boolean) => {
     setEmailEnabled(val);
-    try {
-      localStorage.setItem('bandwith_email_notifs', String(val));
-    } catch {}
+    saveNotificationPref('email', val).then(({ error }) => { if (error) setEmailEnabled(!val); });
   };
 
-  const handleToggleSound = (val: boolean) => {
-    setSoundEnabled(val);
-    try {
-      localStorage.setItem('bandwith_sound_notifs', String(val));
-    } catch {}
-  };
 
   const notificationStatus = (() => {
     const on = [
       pushEnabled && 'push',
       emailEnabled && 'email',
-      soundEnabled && 'sound',
     ].filter(Boolean) as string[];
     if (on.length === 0) return 'All alerts paused';
     const list =
@@ -261,18 +241,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           checked={emailEnabled}
           onCheckedChange={handleToggleEmail}
           aria-label="Email notifications"
-        />
-      </div>
-
-      <div className={cn(CARD, ROW)}>
-        <IconTile>
-          <Play />
-        </IconTile>
-        <RowText title="Sound effects" hint="In-app sounds" />
-        <Toggle
-          checked={soundEnabled}
-          onCheckedChange={handleToggleSound}
-          aria-label="Sound effects"
         />
       </div>
 
@@ -413,10 +381,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Footer */}
         <p className="bw-label-sm text-muted-foreground pt-1">v1.0.0 · All data encrypted</p>
 
-        {/* Bottom clearance spacer ensuring the footer cleanly clears the floating navbar */}
+        {/* Bottom spacer: the nav bar is hidden here, so only the home indicator needs clearing */}
         <div
           className="shrink-0 pointer-events-none"
-          style={{ height: 'var(--content-bottom-clearance, 136px)' }}
+          style={{ height: 'calc(var(--safe-bottom) + 40px)' }}
           aria-hidden="true"
         />
       </div>

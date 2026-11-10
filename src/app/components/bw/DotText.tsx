@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 /**
  * 5×7 dot-matrix glyphs (Figma: "Dot Glyph"). Each string is one row,
@@ -67,13 +67,23 @@ interface DotTextProps {
   className?: string;
   /** Accessible label; defaults to the text itself. */
   label?: string;
+  /** LED-style micro-motion: a left → right sweep on first paint, and only
+   *  the glyphs that changed refresh afterwards. On by default. */
+  animate?: boolean;
 }
 
 /**
  * Dot-matrix text. Lit dots use currentColor, so the colour comes from the
  * parent's text colour.
  */
-export const DotText: React.FC<DotTextProps> = ({ text, size = 34, showGrid = false, className, label }) => {
+export const DotText: React.FC<DotTextProps> = ({ text, size = 34, showGrid = false, className, label, animate = true }) => {
+  // First paint sweeps the whole string; later renders keep the dots of
+  // unchanged glyphs (same key, no replay) and re-light only changed ones.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
+  const firstPaint = !mounted.current;
   const chars = String(text).toUpperCase().split('');
   // 7 rows of dots; a dot is ~0.83 of the pitch, as in the Figma glyph (5/6).
   const pitch = size / (ROWS - 1 + 0.83);
@@ -90,13 +100,18 @@ export const DotText: React.FC<DotTextProps> = ({ text, size = 34, showGrid = fa
       for (let col = 0; col < COLS; col++) {
         const on = rows[row]?.[col] === '1';
         if (!on && !showGrid) continue;
+        const delay = firstPaint
+          ? Math.min(420, (ci * (COLS + 1) + col) * 14 + row * 4)
+          : col * 22 + row * 6;
         dots.push(
           <circle
-            key={`${ci}-${row}-${col}`}
+            key={`${ci}-${ch}-${row}-${col}`}
             cx={ox + r + col * pitch}
             cy={r + row * pitch}
             r={r}
             fill={on ? 'currentColor' : 'var(--dot-off)'}
+            className={animate && on ? 'bw-dot-in' : undefined}
+            style={animate && on ? ({ '--d': `${delay}ms` } as React.CSSProperties) : undefined}
           />,
         );
       }

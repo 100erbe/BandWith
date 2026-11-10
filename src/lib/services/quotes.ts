@@ -100,12 +100,18 @@ export interface Quote {
   
   // Tracking
   sent_at?: string;
+  accepted_at?: string;
   viewed_at?: string;
   responded_at?: string;
   response_type?: 'accepted' | 'declined';
   rejection_reason?: string;
   converted_to_event_id?: string;
-  
+
+  // Wizard extras (migration 051): package options and PDF presentation
+  options?: unknown[] | null;
+  presentation?: Record<string, unknown> | null;
+  deposit_amount?: number;
+
   // Meta
   created_by?: string;
   created_at: string;
@@ -149,7 +155,7 @@ export const getQuotes = async (
   try {
     let query = supabase
       .from('quotes')
-      .select('*')
+      .select('*, musicians:quote_musicians(*)')
       .eq('band_id', bandId)
       .order('created_at', { ascending: false });
 
@@ -387,6 +393,7 @@ export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null
       .from('quotes')
       .update({
         status: 'accepted',
+        accepted_at: new Date().toISOString(),
         responded_at: new Date().toISOString(),
         response_type: 'accepted',
       })
@@ -395,6 +402,17 @@ export const acceptQuote = async (quoteId: string): Promise<{ data: Quote | null
       .single();
 
     if (error) throw error;
+
+    // The tentative event created with the quote becomes a confirmed gig
+    // (the database trigger notifies the lineup).
+    if (data?.converted_to_event_id) {
+      const { error: evErr } = await supabase
+        .from('events')
+        .update({ status: 'confirmed' })
+        .eq('id', data.converted_to_event_id)
+        .eq('status', 'tentative');
+      if (evErr) console.warn('[quotes] accepted, but the event was not confirmed:', evErr);
+    }
 
     return { data, error: null };
   } catch (error: any) {
@@ -558,6 +576,22 @@ const intOrUndefined = (v?: number | null): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : undefined;
 const num = (v?: number | null): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
+/** Wizard fields with no column of their own, kept in `quotes.presentation` so the PDF can be rebuilt. */
+const PRESENTATION_KEYS = [
+  'musicianCount', 'quoteDescription', 'validityDays', 'customDisclaimer', 'productionTier',
+  'productionBullets', 'travelMode', 'accommodationMode', 'accommodationRooms', 'accommodationNights',
+  'mealsMode', 'showBankDetailsOnPdf', 'paymentTermsText', 'selectedMoments', 'includeProposalSummary',
+] as const;
+
+const pickPresentation = (q: Partial<AppQuote>): Record<string, unknown> | null => {
+  const out: Record<string, unknown> = {};
+  for (const key of PRESENTATION_KEYS) {
+    const v = (q as Record<string, unknown>)[key];
+    if (v !== undefined && v !== null && v !== '') out[key] = v;
+  }
+  return Object.keys(out).length ? out : null;
+};
+
 /** Maps the wizard's camelCase quote to `quotes` table columns (only columns that exist). */
 export const appQuoteToDbRecord = (q: Partial<AppQuote>, bandId: string): Partial<Quote> => {
   const totals = totalsForQuote(q);
@@ -635,6 +669,11 @@ export const appQuoteToDbRecord = (q: Partial<AppQuote>, bandId: string): Partia
     internal_notes: textOrUndefined(q.internalNotes),
     client_notes: textOrUndefined(q.clientNotes || q.notes),
     special_terms: textOrUndefined(q.specialTerms),
+    deposit_amount: q.depositRequired === false
+      ? 0
+      : roundCents(num(q.depositAmount ?? (totals.total * num(q.depositPercentage)) / 100)),
+    options: q.quoteOptions && q.quoteOptions.length > 0 ? (q.quoteOptions as unknown[]) : null,
+    presentation: pickPresentation(q),
     sent_at: dbStatus === 'sent' ? q.sentAt || new Date().toISOString() : undefined,
   };
 };
@@ -655,7 +694,10 @@ export const appMusiciansToDb = (
     }));
 
 /** Maps a `quotes` row to the app's camelCase quote used by the list, detail modal and PDF. */
-export const dbQuoteToAppQuote = (q: Quote): AppQuote => ({
+export const dbQuoteToAppQuote = (q: Quote & { musicians?: QuoteMusician[] }): AppQuote => ({
+  ...((q.presentation as Partial<AppQuote>) || {}),
+  quoteOptions: Array.isArray(q.options) && q.options.length > 0 ? (q.options as AppQuote['quoteOptions']) : undefined,
+  depositAmount: q.deposit_amount != null ? Number(q.deposit_amount) : undefined,
   id: q.id,
   bandId: q.band_id,
   quoteNumber: q.quote_number || '',
@@ -679,7 +721,15 @@ export const dbQuoteToAppQuote = (q: Quote): AppQuote => ({
   setDuration: q.set_duration_minutes || 0,
   numberOfSets: q.number_of_sets || 0,
   breakDuration: q.break_duration_minutes,
-  musicians: [],
+  musicians: (q.musicians || []).map(m => ({
+    id: m.user_id || m.id,
+    userId: m.user_id,
+    name: m.name,
+    instrument: m.instrument || '',
+    fee: Number(m.fee || 0),
+    isExternal: Boolean(m.is_external),
+    isAvailable: m.is_available !== false,
+  })) as AppQuote['musicians'],
   genres: q.genres || [],
   specialRequests: q.special_requests,
   billingCountry: q.billing_country || '',

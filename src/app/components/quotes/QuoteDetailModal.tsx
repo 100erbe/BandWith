@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Edit2, Share2, Trash2 } from '@/app/components/icons';
+import { ArrowLeft, Check, Copy, Edit2, Send, Share2, Trash2, X } from '@/app/components/icons';
 import { Quote, getEventTypeLabel } from '@/app/data/quotes';
 import { WeatherWidget } from '@/app/components/ui/WeatherWidget';
 import { useBand } from '@/lib/BandContext';
 import { QuoteShareModal } from './QuoteShareModal';
 import { totalsForQuote, formatQuoteMoney } from '@/lib/services/quoteMath';
 import { parseLocalDate } from '@/lib/dates';
+import { currencySymbol } from '@/lib/currency';
 import { DotText } from '@/app/components/bw';
 import { useRailOwnsChrome } from '@/lib/railActions';
 import { cn } from '@/app/components/ui/utils';
@@ -20,15 +21,14 @@ interface QuoteDetailModalProps {
   onSend?: (quote: Quote) => void;
   onDuplicate?: (quote: Quote) => void;
   onDelete?: (quote: Quote) => void;
+  /** Client outcome recorded by the band: accepted or declined. */
+  onSetOutcome?: (quote: Quote, outcome: 'ACCEPTED' | 'DECLINED') => void;
+  /** A draft was shared from here and is now SENT. */
+  onSent?: (quote: Quote) => void;
   onOpenBandSettings?: () => void;
 }
 
-const getCurrencySym = (currency?: string): string => {
-  if (currency === 'USD') return '$';
-  if (currency === 'GBP') return '£';
-  if (currency === 'CHF') return 'CHF ';
-  return '€';
-};
+const getCurrencySym = (currency?: string): string => currencySymbol(currency || 'EUR');
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Draft',
@@ -56,7 +56,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   quote,
   onClose,
   onEdit,
+  onSend,
+  onDuplicate,
   onDelete,
+  onSetOutcome,
+  onSent,
   onOpenBandSettings,
 }) => {
   const { selectedBand } = useBand();
@@ -281,16 +285,46 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   Share quote
                 </PillButton>
               </div>
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={() => onDelete(quote)}
-                  className="self-center inline-flex items-center gap-1.5 min-h-11 px-3 bw-button-sm text-destructive"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete this quote
-                </button>
+              {quote.status === 'DRAFT' && onSend && (
+                <PillButton variant="outline" size="lg" icon={<Send className="w-4 h-4" />} onClick={() => onSend(quote)}>
+                  Mark as sent
+                </PillButton>
               )}
+              {onSetOutcome && ['SENT', 'VIEWED', 'NEGOTIATING'].includes(quote.status) && (
+                <div className="flex flex-col gap-2">
+                  <span className="bw-label-sm text-muted-foreground">Client answer</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <PillButton variant="outline" size="lg" icon={<X className="w-4 h-4" />} onClick={() => onSetOutcome(quote, 'DECLINED')}>
+                      Declined
+                    </PillButton>
+                    <PillButton size="lg" icon={<Check className="w-4 h-4" />} onClick={() => onSetOutcome(quote, 'ACCEPTED')}>
+                      Accepted
+                    </PillButton>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {onDuplicate && (
+                  <button
+                    type="button"
+                    onClick={() => onDuplicate(quote)}
+                    className="inline-flex items-center gap-1.5 min-h-11 px-3 bw-button-sm text-foreground"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Duplicate
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(quote)}
+                    className="inline-flex items-center gap-1.5 min-h-11 px-3 bw-button-sm text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete this quote
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -303,6 +337,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         bandName={selectedBand?.name}
         onClose={() => setIsShareOpen(false)}
         onOpenBandSettings={onOpenBandSettings}
+        onSent={() => onSent?.({ ...quote, status: 'SENT' })}
       />
     </>
   );

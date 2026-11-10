@@ -6,6 +6,8 @@
  * Songs store a reference `sb://song-files/<path>`; the app turns it into a
  * short-lived signed URL when someone plays or opens the file.
  */
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '../supabase';
 
 export const SONG_FILES_BUCKET = 'song-files';
@@ -27,7 +29,47 @@ export const SONG_FILE_ACCEPT = [
 
 export type SongFileKind = 'audio' | 'chart';
 
-const extOf = (name: string) => name.split('.').pop()?.toLowerCase() || '';
+const extOf = (name: string) => (name.includes('.') ? name.split('.').pop()?.toLowerCase() || '' : '');
+
+/** MIME types the `song-files` bucket accepts (migration 047, allowed_mime_types). */
+export const SONG_FILE_MIME_TYPES: readonly string[] = [
+  'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/wav', 'audio/x-wav',
+  'audio/wave', 'audio/aiff', 'audio/x-aiff', 'audio/ogg', 'audio/flac', 'audio/x-flac',
+  'application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp',
+];
+
+/** Extension → MIME type, for when the browser/OS gives no (or an odd) type. */
+const MIME_BY_EXT: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/x-m4a',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  aif: 'audio/aiff',
+  aiff: 'audio/aiff',
+  ogg: 'audio/ogg',
+  flac: 'audio/flac',
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  heic: 'image/heic',
+  webp: 'image/webp',
+};
+
+const UNSUPPORTED_TYPE_MESSAGE =
+  'This file type is not supported. Use MP3, M4A, WAV, AIFF, AAC, OGG or FLAC audio, or a PDF, PNG, JPG, HEIC or WebP chart.';
+
+/**
+ * Content type to upload with: the file's own type when the bucket accepts
+ * it, otherwise the type implied by the extension. Null when neither is
+ * accepted by the bucket.
+ */
+export const songFileContentType = (file: Pick<File, 'name' | 'type'>): string | null => {
+  const type = (file.type || '').toLowerCase();
+  if (type && SONG_FILE_MIME_TYPES.includes(type)) return type;
+  const byExt = MIME_BY_EXT[extOf(file.name)];
+  return byExt && SONG_FILE_MIME_TYPES.includes(byExt) ? byExt : null;
+};
 
 export const classifySongFile = (file: Pick<File, 'name' | 'type'>): SongFileKind | null => {
   const ext = extOf(file.name);
@@ -40,6 +82,7 @@ export const classifySongFile = (file: Pick<File, 'name' | 'type'>): SongFileKin
 export const validateSongFile = (file: Pick<File, 'name' | 'type' | 'size'>): string | null => {
   const kind = classifySongFile(file);
   if (!kind) return 'Use an audio file (MP3, M4A, WAV…) or a chart (PDF or image).';
+  if (!songFileContentType(file)) return UNSUPPORTED_TYPE_MESSAGE;
   const max = kind === 'audio' ? SONG_AUDIO_MAX_BYTES : SONG_CHART_MAX_BYTES;
   if (file.size > max) return `File too large: max ${Math.round(max / 1024 / 1024)} MB for ${kind === 'audio' ? 'audio' : 'charts'}.`;
   return null;
@@ -74,10 +117,12 @@ export const uploadSongFile = async (
   const problem = validateSongFile(file);
   if (problem) return { ref: null, kind: null, error: new Error(problem) };
   const kind = classifySongFile(file)!;
+  const contentType = songFileContentType(file);
+  if (!contentType) return { ref: null, kind: null, error: new Error(UNSUPPORTED_TYPE_MESSAGE) };
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
   const path = `${bandId}/${kind}/${id}-${safeName(file.name)}`;
   const { error } = await supabase.storage.from(SONG_FILES_BUCKET).upload(path, file, {
-    contentType: file.type || undefined,
+    contentType,
     upsert: false,
     cacheControl: '3600',
   });
@@ -104,12 +149,55 @@ export const removeSongFiles = async (refs: Array<string | null | undefined>): P
   await supabase.storage.from(SONG_FILES_BUCKET).remove(paths).catch(() => undefined);
 };
 
-/** Open a stored file or https link outside the app (Safari/Files/Maps…). */
-export const openSongResource = async (ref?: string | null): Promise<boolean> => {
-  // Open the window synchronously-ish to keep the user gesture on web; on
-  // native, Capacitor hands the URL to the system.
-  const url = await resolveSongFileUrl(ref);
-  if (!url) return false;
-  window.open(url, '_blank', 'noopener,noreferrer');
-  return true;
+/**
+ * Open a stored file or https link outside the app.
+ *
+ * Pass several candidates (e.g. recording, then Spotify, then YouTube) to open
+ * the first one that resolves. Call it straight from the click handler, before
+ * any other `await`: on the web a blank tab is opened synchronously (so popup
+ * blockers allow it) and pointed at the signed URL once it is ready. On native
+ * the URL opens in the in-app browser, which has a Done button back to the app.
+ */
+export const openSongResource = async (
+  refs?: string | null | Array<string | null | undefined>,
+): Promise<boolean> => {
+  const candidates = (Array.isArray(refs) ? refs : [refs]).filter((r): r is string => !!r);
+  if (candidates.length === 0) return false;
+
+  if (Capacitor.isNativePlatform()) {
+    for (const ref of candidates) {
+      const url = await resolveSongFileUrl(ref);
+      if (!url) continue;
+      try {
+        await Browser.open({ url });
+        return true;
+      } catch {
+        /* try the next candidate */
+      }
+    }
+    return false;
+  }
+
+  // Web: open the tab now, while we still have the user gesture.
+  let win: Window | null = null;
+  try {
+    win = window.open('about:blank', '_blank');
+    if (win) win.opener = null;
+  } catch {
+    win = null;
+  }
+
+  for (const ref of candidates) {
+    const url = await resolveSongFileUrl(ref);
+    if (!url) continue;
+    if (win && !win.closed) {
+      win.location.href = url;
+    } else {
+      window.location.assign(url);
+    }
+    return true;
+  }
+
+  win?.close();
+  return false;
 };

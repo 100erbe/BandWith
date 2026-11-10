@@ -59,8 +59,24 @@ const splitLine = (line: string, delim: string): string[] => {
   return out.map((c) => c.trim());
 };
 
+const isAlias = (field: keyof ParsedSong, value?: string) =>
+  !!value && HEADER_ALIASES[field].includes(value.trim().toLowerCase());
+
+const isAnyAlias = (value?: string) =>
+  !!value && (Object.keys(HEADER_ALIASES) as (keyof ParsedSong)[]).some((f) => isAlias(f, value));
+
+/** True when one of the cells names the title column. */
+const looksLikeHeader = (cells: string[]): boolean =>
+  cells.some((c) => isAlias('title', c));
+
 const detectDelimiter = (lines: string[]): string | null => {
   const sample = lines.slice(0, 10);
+  // A header row ("Title,Artist") fixes the delimiter even when some rows
+  // have fewer cells (e.g. a song with no artist).
+  for (const d of ['\t', ';', ',']) {
+    const head = splitLine(lines[0], d);
+    if (head.length > 1 && looksLikeHeader(head)) return d;
+  }
   for (const d of ['\t', ';', ',']) {
     const counts = sample.map((l) => splitLine(l, d).length);
     if (counts.length && counts.every((c) => c > 1) && counts.every((c) => c === counts[0])) return d;
@@ -91,13 +107,35 @@ const clean = (v?: string) => {
   return t || undefined;
 };
 
-/** "1. Title - Artist" → { title, artist } */
-const parseFreeLine = (line: string): ParsedSong | null => {
-  const text = line.replace(/^\s*\d{1,4}[.)\-:]\s+/, '').trim();
+const stripNumber = (line: string) => line.replace(/^\s*\d{1,4}[.)\-:]\s+/, '').trim();
+
+/** `"Hello, Goodbye"` → `Hello, Goodbye` (only when the whole text is quoted). */
+const unquote = (text: string) =>
+  text.length >= 2 && text.startsWith('"') && text.endsWith('"') ? text.slice(1, -1).replace(/""/g, '"').trim() : text;
+
+const DASH_SPLIT = /\s+[-–—]\s+/;
+
+/** "1. Title - Artist" → { title, artist }; with `commaSplit`, "Title, Artist" too. */
+const parseFreeLine = (line: string, commaSplit = false): ParsedSong | null => {
+  const text = stripNumber(line);
   if (!text) return null;
-  const dash = text.split(/\s+[-–—]\s+/);
-  if (dash.length >= 2) return { title: dash[0].trim(), artist: clean(dash.slice(1).join(' - ')) };
-  return { title: text };
+  const dash = text.split(DASH_SPLIT);
+  if (dash.length >= 2) return { title: unquote(dash[0].trim()), artist: clean(dash.slice(1).join(' - ')) };
+  if (commaSplit) {
+    const cells = splitLine(text, ',');
+    if (cells.length >= 2 && cells[0]) {
+      return { title: cells[0], artist: clean(cells.slice(1).filter(Boolean).join(', ')) };
+    }
+  }
+  return { title: unquote(text) };
+};
+
+/** A first line like "Title", "Song" or "Title - Artist" is a header, not a song. */
+const isFreeHeader = (line: string): boolean => {
+  const text = unquote(stripNumber(line));
+  const dash = text.split(DASH_SPLIT);
+  const parts = dash.length >= 2 ? dash : splitLine(text, ',');
+  return isAlias('title', parts[0]) && parts.slice(1).every((p) => !p || isAnyAlias(p));
 };
 
 export const parseSongList = (input: string): ParsedSong[] => {
@@ -151,9 +189,18 @@ export const parseSongList = (input: string): ParsedSong[] => {
     return out;
   }
 
-  for (const line of lines) {
+  const body = isFreeHeader(lines[0]) ? lines.slice(1) : lines;
+  // Mixed "Title, Artist" lists where some lines have no artist: split on the
+  // comma when most lines are written that way (a lone "Hello, Goodbye" in a
+  // plain list of titles stays whole).
+  const commaLines = body.filter((l) => {
+    const text = stripNumber(l);
+    return text.split(DASH_SPLIT).length < 2 && splitLine(text, ',').length >= 2;
+  }).length;
+  const commaSplit = commaLines > 0 && commaLines * 2 > body.length;
+  for (const line of body) {
     if (out.length >= SONG_LIST_MAX_ROWS) break;
-    push(parseFreeLine(line));
+    push(parseFreeLine(line, commaSplit));
   }
   return out;
 };

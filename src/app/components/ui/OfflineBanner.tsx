@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, Wifi, RefreshCw } from '@/app/components/icons';
 import { cn } from './utils';
@@ -29,6 +29,34 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
   }, [isOnline, wasOffline]);
 
   const visible = !isOnline || showReconnected;
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // While the banner shows, publish the height of its strip below the status
+  // bar as --offline-h. theme.css adds it to --safe-top, so top bars and back
+  // buttons step below the banner instead of sitting under it. The banner
+  // itself pads by --safe-top-inset (the real status-bar inset), so it never
+  // reacts to its own value.
+  useEffect(() => {
+    const root = document.documentElement;
+    const el = bannerRef.current;
+    if (!visible || !el) {
+      root.style.removeProperty('--offline-h');
+      return;
+    }
+    const measure = () => {
+      const pt = parseFloat(getComputedStyle(el).paddingTop) || 0;
+      // paddingTop = inset + 12px; keep the 12px and everything below it.
+      const strip = Math.max(0, Math.round(el.offsetHeight - (pt - 12)));
+      root.style.setProperty('--offline-h', `${strip}px`);
+    };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      root.style.removeProperty('--offline-h');
+    };
+  }, [visible]);
 
   const changes = `${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'}`;
 
@@ -37,6 +65,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
       {visible && (
         <motion.div
           key="offline-banner"
+          ref={bannerRef}
           initial={{ y: '-100%' }}
           animate={{ y: 0 }}
           exit={{ y: '-100%' }}
@@ -48,7 +77,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
             'bw-rail-clear fixed inset-x-0 top-0 z-[120] flex items-center gap-3 px-4 pb-3 bw-status-clear',
             !isOnline ? 'bg-warning text-warning-foreground' : 'bg-success text-success-foreground'
           )}
-          style={{ paddingTop: 'calc(var(--safe-top, 0px) + 12px)' }}
+          style={{ paddingTop: 'calc(var(--safe-top-inset, 0px) + 12px)' }}
         >
           {!isOnline ? (
             <>

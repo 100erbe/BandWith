@@ -156,6 +156,7 @@ const formatEventLocation = (event: any): string | null => {
 export const HomeView: React.FC<HomeViewProps> = ({
   selectedBand,
   expandedCard: _expandedCard,
+  setExpandedCard,
   upcomingRehearsals,
   currentRehearsal: _currentRehearsal,
   onRehearsalClick: _onRehearsalClick,
@@ -449,12 +450,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
               label={APP_COPY.home.stats.activeQuotes}
               value={dashboardLoading ? '-' : quotesCount}
               fill={countFill(quotesCount)}
-              onClick={() => onFilterEvents ? onFilterEvents('QUOTES') : onViewChange?.('Events')}
+              onClick={() => setExpandedCard('quotes')}
             />
             <Metric
               label={APP_COPY.home.stats.revenue}
               value={dashboardLoading ? '-' : revenueDots}
               fill={revenueFill}
+              onClick={() => setExpandedCard('finance')}
             />
           </>
         ) : (

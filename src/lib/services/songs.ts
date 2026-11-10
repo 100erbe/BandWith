@@ -127,22 +127,6 @@ export const getSongs = async (
   }
 };
 
-export const getSong = async (songId: string): Promise<{ data: Song | null; error: Error | null }> => {
-  try {
-    const { data, error } = await supabase
-      .from('songs')
-      .select('*')
-      .eq('id', songId)
-      .single();
-
-    if (error) throw error;
-
-    return { data, error: null };
-  } catch (error: any) {
-    return { data: null, error };
-  }
-};
-
 export const createSong = async (songData: Partial<Song>): Promise<{ data: Song | null; error: Error | null }> => {
   try {
     const { data: { user } } = await getSafeUser();
@@ -193,13 +177,19 @@ export const deleteSong = async (songId: string): Promise<{ error: Error | null 
       .eq('id', songId)
       .maybeSingle();
 
-    const { error } = await supabase
+    // RLS lets only band admins delete songs; for anyone else the delete
+    // "succeeds" with zero rows, so ask for the deleted ids back.
+    const { data: deleted, error } = await supabase
       .from('songs')
       .delete()
-      .eq('id', songId);
+      .eq('id', songId)
+      .select('id');
 
     if (error) throw error;
-    // Files in storage go with the song.
+    if (!deleted || deleted.length === 0) {
+      throw new Error('Only band admins can delete songs.');
+    }
+    // Files in storage go with the song (only once it is really gone).
     await removeSongFiles([existing?.audio_url, existing?.chart_url]);
 
     return { error: null };
@@ -390,7 +380,9 @@ export const createSetlist = async (
         );
 
       if (songsError) {
-        console.error('Error adding setlist songs:', songsError);
+        // Don't leave an empty setlist behind that looks like it saved.
+        await supabase.from('setlists').delete().eq('id', setlist.id);
+        throw songsError;
       }
     }
 
@@ -422,12 +414,16 @@ export const updateSetlist = async (
 
 export const deleteSetlist = async (setlistId: string): Promise<{ error: Error | null }> => {
   try {
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('setlists')
       .delete()
-      .eq('id', setlistId);
+      .eq('id', setlistId)
+      .select('id');
 
     if (error) throw error;
+    if (!deleted || deleted.length === 0) {
+      throw new Error('This setlist could not be deleted. You may not have permission.');
+    }
 
     return { error: null };
   } catch (error: any) {
@@ -438,6 +434,16 @@ export const deleteSetlist = async (setlistId: string): Promise<{ error: Error |
 // ============================================
 // SETLIST SONGS
 // ============================================
+
+/** Recount a setlist's songs and store it on the setlist (there is no RPC for this). */
+const refreshSetlistSongCount = async (setlistId: string): Promise<void> => {
+  const { count, error } = await supabase
+    .from('setlist_songs')
+    .select('id', { count: 'exact', head: true })
+    .eq('setlist_id', setlistId);
+  if (error || count == null) return;
+  await supabase.from('setlists').update({ song_count: count }).eq('id', setlistId);
+};
 
 export const addSongToSetlist = async (
   setlistId: string,
@@ -459,8 +465,7 @@ export const addSongToSetlist = async (
 
     if (error) throw error;
 
-    // Update song count
-    await supabase.rpc('update_setlist_song_count', { p_setlist_id: setlistId });
+    await refreshSetlistSongCount(setlistId);
 
     return { data, error: null };
   } catch (error: any) {
@@ -475,7 +480,7 @@ export const removeSongFromSetlist = async (setlistSongId: string): Promise<{ er
       .from('setlist_songs')
       .select('setlist_id')
       .eq('id', setlistSongId)
-      .single();
+      .maybeSingle();
 
     const { error } = await supabase
       .from('setlist_songs')
@@ -484,9 +489,8 @@ export const removeSongFromSetlist = async (setlistSongId: string): Promise<{ er
 
     if (error) throw error;
 
-    // Update song count
     if (setlistSong?.setlist_id) {
-      await supabase.rpc('update_setlist_song_count', { p_setlist_id: setlistSong.setlist_id });
+      await refreshSetlistSongCount(setlistSong.setlist_id);
     }
 
     return { error: null };
@@ -495,31 +499,60 @@ export const removeSongFromSetlist = async (setlistSongId: string): Promise<{ er
   }
 };
 
-export const reorderSetlistSongs = async (
-  setlistId: string,
-  songOrder: { id: string; position: number; set_number: number }[]
-): Promise<{ error: Error | null }> => {
-  try {
-    for (const item of songOrder) {
-      const { error } = await supabase
-        .from('setlist_songs')
-        .update({ position: item.position, set_number: item.set_number })
-        .eq('id', item.id);
+/** One entry for replaceSetlistSongs: a song id, or a song id with its set. */
+export type SetlistSongInput =
+  | string
+  | { song_id: string; set_number?: number; notes?: string | null };
 
-      if (error) throw error;
-    }
-
-    return { error: null };
-  } catch (error: any) {
-    return { error };
-  }
-};
-
+/**
+ * Replace a setlist's songs with `songs`, in order.
+ *
+ * Accepts plain song ids (old callers, everything goes in set 1) or objects
+ * carrying `set_number`, so multi-set setlists keep their sets. Notes already
+ * stored for a song are kept unless the caller passes new ones. If the insert
+ * fails, the previous rows are put back.
+ */
 export const replaceSetlistSongs = async (
   setlistId: string,
-  songIds: string[]
+  songs: SetlistSongInput[]
 ): Promise<{ error: Error | null }> => {
   try {
+    // Read the current rows first so a failed insert can be undone.
+    const { data: previous, error: readError } = await supabase
+      .from('setlist_songs')
+      .select('id, setlist_id, song_id, position, set_number, notes')
+      .eq('setlist_id', setlistId);
+
+    if (readError) throw readError;
+    const previousRows = (previous || []) as Array<{
+      id: string;
+      setlist_id: string;
+      song_id: string;
+      position: number;
+      set_number: number | null;
+      notes: string | null;
+    }>;
+    const previousNotes = new Map<string, string | null>();
+    for (const r of previousRows) {
+      if (!previousNotes.has(r.song_id)) previousNotes.set(r.song_id, r.notes ?? null);
+    }
+
+    const rows = songs.map((entry, i) => {
+      const item = typeof entry === 'string' ? { song_id: entry } : entry;
+      const setNumber =
+        typeof item.set_number === 'number' && Number.isFinite(item.set_number) && item.set_number >= 1
+          ? Math.floor(item.set_number)
+          : 1;
+      const notes = 'notes' in item && item.notes !== undefined ? item.notes : previousNotes.get(item.song_id) ?? null;
+      return {
+        setlist_id: setlistId,
+        song_id: item.song_id,
+        position: i + 1,
+        set_number: setNumber,
+        notes,
+      };
+    });
+
     const { error: deleteError } = await supabase
       .from('setlist_songs')
       .delete()
@@ -527,24 +560,27 @@ export const replaceSetlistSongs = async (
 
     if (deleteError) throw deleteError;
 
-    if (songIds.length > 0) {
-      const rows = songIds.map((songId, i) => ({
-        setlist_id: setlistId,
-        song_id: songId,
-        position: i + 1,
-        set_number: 1,
-      }));
-
+    if (rows.length > 0) {
       const { error: insertError } = await supabase
         .from('setlist_songs')
         .insert(rows);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        if (previousRows.length > 0) {
+          const { error: restoreError } = await supabase
+            .from('setlist_songs')
+            .insert(previousRows);
+          if (restoreError) {
+            console.error('Could not restore setlist songs after a failed save:', restoreError);
+          }
+        }
+        throw insertError;
+      }
     }
 
     const { error: updateError } = await supabase
       .from('setlists')
-      .update({ song_count: songIds.length })
+      .update({ song_count: rows.length })
       .eq('id', setlistId);
 
     if (updateError) throw updateError;
@@ -552,48 +588,5 @@ export const replaceSetlistSongs = async (
     return { error: null };
   } catch (error: any) {
     return { error };
-  }
-};
-
-// ============================================
-// STATISTICS
-// ============================================
-
-export const getSongStats = async (
-  bandId: string
-): Promise<{
-  data: {
-    totalSongs: number;
-    readySongs: number;
-    learningSongs: number;
-    totalSetlists: number;
-  } | null;
-  error: Error | null;
-}> => {
-  try {
-    const { data: songs, error: songsError } = await supabase
-      .from('songs')
-      .select('status')
-      .eq('band_id', bandId);
-
-    if (songsError) throw songsError;
-
-    const { count: setlistCount, error: setlistError } = await supabase
-      .from('setlists')
-      .select('*', { count: 'exact', head: true })
-      .eq('band_id', bandId);
-
-    if (setlistError) throw setlistError;
-
-    const stats = {
-      totalSongs: songs?.length || 0,
-      readySongs: songs?.filter(s => s.status === 'ready').length || 0,
-      learningSongs: songs?.filter(s => s.status === 'learning').length || 0,
-      totalSetlists: setlistCount || 0,
-    };
-
-    return { data: stats, error: null };
-  } catch (error: any) {
-    return { data: null, error };
   }
 };

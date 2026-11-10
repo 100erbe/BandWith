@@ -50,13 +50,23 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    getMyPendingInvitations().then((list) => {
-      if (cancelled) return;
-      const dismissed = readDismissed();
-      setInvites(list.filter((i) => !dismissed.includes(i.id)));
-    });
+    const load = (includeDismissed: boolean) =>
+      getMyPendingInvitations().then((list) => {
+        if (cancelled) return;
+        const dismissed = includeDismissed ? [] : readDismissed();
+        setInvites(list.filter((i) => !dismissed.includes(i.id)));
+      });
+    load(false);
+    // A push about a new invite (or the app coming back) reloads the list;
+    // an invite the user just got is shown even if an older one was dismissed.
+    const onRefresh = () => load(true);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(false); };
+    window.addEventListener('bw:refresh-invites', onRefresh);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       cancelled = true;
+      window.removeEventListener('bw:refresh-invites', onRefresh);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [userId]);
 
@@ -123,7 +133,7 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="fixed left-4 right-4 z-[65] mx-auto max-w-md rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4"
+          className="fixed left-4 right-4 bw-status-clear-inset z-[65] mx-auto max-w-md rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4"
           style={{ bottom: 'calc(var(--safe-bottom) + 96px)' }}
         >
           {/* Figma: Home / Pending band invite (dark card) */}

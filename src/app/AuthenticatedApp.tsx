@@ -42,8 +42,9 @@ import {
   deletePersonalGig,
 } from "@/lib/services/events";
 import type { EventMember, Event } from "@/lib/services/events";
-import { createSetlist } from "@/lib/services/songs";
-import { receiptFor, deleteChat as deleteChatService } from "@/lib/services/chats";
+import { createSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
+import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
+import { deleteNotification as deleteNotificationService } from "@/lib/services/notifications";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -275,7 +276,7 @@ export default function AuthenticatedApp() {
 
   // Data hooks
   const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardData(realBand?.id || null, !isAdmin ? user?.id : null);
-  const { data: financeData, loading: financeLoading } = useExpandedFinanceData(realBand?.id || null);
+  const { data: financeData, loading: financeLoading, refetch: refetchFinance } = useExpandedFinanceData(realBand?.id || null);
   const { events: confirmedEvents, loading: confirmedEventsLoading } = useExpandedEventsData(realBand?.id || null, ["confirmed"]);
   const { events: pendingEvents, loading: pendingEventsLoading } = useExpandedEventsData(realBand?.id || null, ["draft", "pending", "quoted"]);
   const { quotes: realQuotes, stats: quotesStats, loading: quotesLoading, refetch: refetchExpandedQuotes } = useExpandedQuotesData(realBand?.id || null);
@@ -375,41 +376,9 @@ export default function AuthenticatedApp() {
   
   const { events: masterEventsList, loading: eventsLoading, refetch: refetchEvents } = useEvents(allMyBandIds);
   
-  // ═══ AUTO-CLEANUP: Deduplicate duplicate DB events ═══
-  useEffect(() => {
-    if (!isOnline || !masterEventsList || masterEventsList.length === 0 || !realBand?.id) return;
-
-    const seenMap = new Map<string, string>();
-    const duplicateIdsToDelete: string[] = [];
-
-    masterEventsList.forEach(e => {
-      if (!e.id || String(e.id).startsWith('offline_') || e._isPendingSync) return;
-      if (e.band_id && e.band_id !== realBand.id) return;
-      const title = (e.title || '').trim().toLowerCase();
-      const date = (e.event_date || '').replace(/T.*$/, '');
-      const time = (e.start_time || '').slice(0, 5);
-      const key = `${title}::${date}::${time}`;
-
-      if (seenMap.has(key)) {
-        duplicateIdsToDelete.push(e.id);
-      } else {
-        seenMap.set(key, e.id);
-      }
-    });
-
-    if (duplicateIdsToDelete.length > 0) {
-      (async () => {
-        try {
-          for (const id of duplicateIdsToDelete) {
-            await supabase.from('events').delete().eq('id', id);
-          }
-          if (refetchEvents) refetchEvents();
-        } catch (err) {
-          console.error('[Duplicate Auto-Sync]', err);
-        }
-      })();
-    }
-  }, [masterEventsList, realBand?.id, refetchEvents]);
+  // (A client-side "dedupe" that silently deleted events sharing title, date
+  // and time was removed: it deleted real rows for everyone. Creates are now
+  // idempotent through a client-generated id, see handleEventCreate.)
   
   // ═══ LOCAL CLIENT-SIDE BAND PILL FILTER (instant, <1ms) ═══
   const [selectedBandPill, setSelectedBandPill] = useState<string>('all');
@@ -735,6 +704,8 @@ export default function AuthenticatedApp() {
   }, [refetchEvents]);
 
   // Push navigation - deep link to the relevant screen
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
   useEffect(() => {
     const handler = (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
@@ -748,7 +719,14 @@ export default function AuthenticatedApp() {
       } else if (d.screen === "event") {
         setActiveTab("Events");
       } else if (d.screen === "quotes") {
-        setExpandedCard("quotes");
+        if (isAdminRef.current) setExpandedCard("quotes");
+        else setActiveTab("Home");
+      } else if (d.screen === "finance") {
+        if (isAdminRef.current) setExpandedCard("finance");
+        else setActiveTab("Home");
+      } else if (d.screen === "invites") {
+        setActiveTab("Home");
+        window.dispatchEvent(new CustomEvent("bw:refresh-invites"));
       } else if (d.screen === "bandMembers") {
         setShowBandMembers(true);
       } else if (d.screen === "home") setActiveTab("Home");
@@ -1801,24 +1779,69 @@ export default function AuthenticatedApp() {
     haptic.delete();
     try {
       if (!selectedEvent.band_id) {
-        await deletePersonalGig(selectedEvent.eventId, user?.id);
+        const { error } = await deletePersonalGig(selectedEvent.eventId, user?.id);
+        if (error) throw error;
       } else {
-        await supabase.from('events').delete().eq('id', selectedEvent.eventId);
+        const { data: deleted, error } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', selectedEvent.eventId)
+          .select('id');
+        if (error) throw error;
+        if (!deleted?.length) throw new Error('Only band admins can delete this event.');
       }
+      setSaveToast({ message: 'Event deleted', type: 'success' });
       refetchEvents();
       refetchDashboard?.();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error:', err);
+      setSaveToast({ message: `Could not delete the event: ${err?.message || 'unknown error'}`, type: 'error' });
+      return; // keep the detail open
     }
     setSelectedEvent(null);
     setSelectedEventMembership(null);
   };
 
-  const handleEventChat = () => {
+  // Opens (or creates) the event's own chat with its lineup.
+  const handleEventChat = async () => {
     if (!selectedEvent) return;
+    const ev = selectedEvent;
+    if (isSolo || !ev.eventId || !ev.band_id) {
+      setSaveToast({ message: 'Event chats are available for band events.', type: 'info' });
+      return;
+    }
+    const lineup = (eventMembersMap[ev.eventId] || [])
+      .map((m: any) => m.userId)
+      .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0);
+    const { data: chat, error } = await createChatService({
+      type: 'event',
+      name: ev.title,
+      band_id: String(ev.band_id),
+      event_id: ev.eventId,
+      participant_ids: lineup,
+    });
+    if (error || !chat) {
+      setSaveToast({ message: error?.message || 'Could not open the event chat.', type: 'error' });
+      return;
+    }
     setSelectedEvent(null);
     setSelectedEventMembership(null);
     setActiveTab('Chat');
+    refetchChats?.();
+    const name = ev.title || 'Event chat';
+    setTimeout(() => {
+      setSelectedChat({
+        id: Date.now(),
+        uuid: chat.id,
+        type: 'event' as ChatType,
+        name,
+        initials: name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+        lastMessage: '',
+        time: 'now',
+        unread: 0,
+        status: 'received',
+      } as ChatItem);
+    }, 100);
   };
 
   const handleConfirmQuote = async (targetEvent?: EventData) => {
@@ -2143,6 +2166,7 @@ export default function AuthenticatedApp() {
           : (data.recurrence_rule || null),
       };
 
+      let addedOnEdit: string[] = [];
       const persistMembers = async (eventId: string, isEdit?: boolean): Promise<string> => {
         if (!data.members?.length) return 'no members in payload';
         let membersToInvite = data.members;
@@ -2151,30 +2175,41 @@ export default function AuthenticatedApp() {
         }
         if (!membersToInvite.length) return 'filtered to 0 members';
 
-        // When editing, preserve existing membership statuses instead of resetting to pending
-        const existingStatuses = isEdit ? await (async () => {
-          const { data: existing } = await supabase
-            .from('event_members')
-            .select('user_id, status')
-            .eq('event_id', eventId);
-          const map: Record<string, string> = {};
-          (existing || []).forEach((em: any) => { map[em.user_id] = em.status; });
-          return map;
-        })() : {};
+        // Edit = diff: keep everyone's RSVP (status, responded_at, reason),
+        // remove only who was taken out, add the new ones as pending.
+        const { data: existingRows, error: readErr } = isEdit
+          ? await supabase.from('event_members').select('user_id, status').eq('event_id', eventId)
+          : { data: [] as { user_id: string; status: string }[], error: null };
+        if (readErr) return `delete failed: ${readErr.message}`;
+        const existingStatus = new Map((existingRows || []).map((r: any) => [r.user_id, r.status]));
+        const wanted = new Set(membersToInvite.map((m: any) => m.id));
 
-        const { error: delErr } = await supabase.from('event_members').delete().eq('event_id', eventId);
-        if (delErr) return `delete failed: ${delErr.message}`;
+        const removed = [...existingStatus.keys()].filter((id) => !wanted.has(id));
+        if (removed.length > 0) {
+          const { error: delErr } = await supabase
+            .from('event_members')
+            .delete()
+            .eq('event_id', eventId)
+            .in('user_id', removed);
+          if (delErr) return `delete failed: ${delErr.message}`;
+        }
 
         const errors: string[] = [];
-        for (const m of membersToInvite) {
-          const isCreator = m.id === user?.id;
-          const prevStatus = existingStatuses[m.id];
-          // Use existing status if available (e.g. 'confirmed'), otherwise fall back to creator rule
-          const status = prevStatus || (isCreator ? 'confirmed' : 'pending');
-          const { error: insErr } = await supabase
-            .from('event_members')
-            .insert({ event_id: eventId, user_id: m.id, role: m.role || null, fee: parseFloat(m.fee) || 0, status });
-          if (insErr) errors.push(`${m.id}: ${insErr.message}`);
+        const rows = membersToInvite.map((m: any) => ({
+          event_id: eventId,
+          user_id: m.id,
+          role: m.role || null,
+          fee: parseFloat(m.fee) || 0,
+          status: existingStatus.get(m.id) || (m.id === user?.id ? 'confirmed' : 'pending'),
+        }));
+        const { error: upErr } = await supabase
+          .from('event_members')
+          .upsert(rows, { onConflict: 'event_id,user_id' });
+        if (upErr) errors.push(upErr.message);
+        if (isEdit) {
+          addedOnEdit = membersToInvite
+            .map((m: any) => m.id)
+            .filter((id: string) => !existingStatus.has(id) && id !== user?.id);
         }
 
         if (errors.length > 0) return `insert errors: ${errors.join('; ')}`;
@@ -2188,49 +2223,72 @@ export default function AuthenticatedApp() {
         return `OK: ${verify?.length || 0} members saved`;
       };
 
-      // Persist setlist: create a DB setlist from form data and attach its ID
+      // Persist setlist: one setlist per event. Editing reuses the event's
+      // setlist (no orphan copies, one "setlist updated" notification).
       const persistSetlist = async (): Promise<string | null> => {
-        try {
-          // Rehearsal flow: setlistSnapshotFinal has songs with songId
-          if (isRehearsalWizard && data.setlistSnapshotFinal?.songs?.length > 0) {
-            const songs = data.setlistSnapshotFinal.songs.map((s: any, i: number) => ({
-              song_id: s.songId,
-              position: i,
-              set_number: 1,
-            }));
-            const { data: sl } = await createSetlist({
-              band_id: realBand.id,
-              name: `${title || 'Rehearsal'} setlist`,
-              song_count: songs.length,
-            }, songs);
-            return sl?.id || null;
-          }
-          // Gig/Quote flow: setlist is array of sets with songs
-          if (!isRehearsalWizard && data.setlist?.length > 0) {
-            const allSongs: { song_id: string; position: number; set_number: number }[] = [];
-            let pos = 0;
-            for (let setIdx = 0; setIdx < data.setlist.length; setIdx++) {
-              const set = data.setlist[setIdx];
-              for (const song of (set.songs || [])) {
-                if (song.songId) {
-                  allSongs.push({ song_id: song.songId, position: pos++, set_number: setIdx + 1 });
-                }
-              }
+        let songs: { song_id: string; position: number; set_number: number }[] = [];
+        if (isRehearsalWizard) {
+          const fromSnapshot = (data.setlistSnapshotFinal?.songs || [])
+            .map((s: any) => s.songId)
+            .filter(Boolean);
+          // Songs picked one by one live in data.setlist (not in the snapshot).
+          const picked = (data.setlist || [])
+            .filter((s: any) => (s?.type ?? 'song') === 'song')
+            .map((s: any) => s.songId || s.id)
+            .filter((id: unknown) => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id));
+          const ids: string[] = [];
+          for (const id of [...fromSnapshot, ...picked]) if (!ids.includes(id)) ids.push(id);
+          songs = ids.map((song_id, i) => ({ song_id, position: i, set_number: 1 }));
+        } else if (Array.isArray(data.setlist)) {
+          let pos = 0;
+          data.setlist.forEach((set: any, setIdx: number) => {
+            for (const song of (set?.songs || [])) {
+              if (song?.songId) songs.push({ song_id: song.songId, position: pos++, set_number: setIdx + 1 });
             }
-            if (allSongs.length === 0) return null;
-            const { data: sl } = await createSetlist({
-              band_id: realBand.id,
-              name: `${title || 'Event'} setlist`,
-              song_count: allSongs.length,
-            }, allSongs);
-            return sl?.id || null;
-          }
-          return null;
-        } catch (err) {
-          console.error('Setlist persist error:', err);
-          return null;
+          });
         }
+        if (songs.length === 0) return null;
+
+        const name = `${title || (isRehearsalWizard ? 'Rehearsal' : 'Event')} setlist`;
+        if (data._editing && data._editingEventId) {
+          const { data: ev } = await supabase
+            .from('events')
+            .select('setlist_id')
+            .eq('id', data._editingEventId)
+            .maybeSingle();
+          const existingId = (ev as { setlist_id?: string | null } | null)?.setlist_id;
+          if (existingId) {
+            const { error: replaceErr } = await replaceSetlistSongs(
+              existingId,
+              songs.map(({ song_id, set_number }) => ({ song_id, set_number }))
+            );
+            if (replaceErr) throw replaceErr;
+            await updateSetlist(existingId, { name, song_count: songs.length });
+            return existingId;
+          }
+        }
+        const { data: sl, error: slErr } = await createSetlist({ band_id: realBand.id, name, song_count: songs.length }, songs);
+        if (slErr) throw slErr;
+        return sl?.id || null;
       };
+
+      // One id for every attempt: a create that times out on the client but
+      // lands on the server is recognised when the offline queue replays it.
+      const newEventId: string =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+              const r = (Math.random() * 16) | 0;
+              return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+            });
+      const queuedMembers = (data.members || [])
+        .filter((m: any) => !(isRehearsalWizard && data.audienceIds?.length > 0) || data.audienceIds.includes(m.id))
+        .map((m: any) => ({
+          id: m.id,
+          role: m.role || null,
+          fee: parseFloat(m.fee) || 0,
+          status: m.id === user?.id ? 'confirmed' : 'pending',
+        }));
 
       // Optimistically build member map from the form data
       const optimisticMembers = (data.members || []).map((m: any) => ({
@@ -2266,7 +2324,7 @@ export default function AuthenticatedApp() {
             _isPendingSync: true,
             _tempId: tempId,
           };
-          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: data.members }, tempId);
+          await enqueueMutation('create_event', { eventData: offlineEv, memberIds: queuedMembers, clientId: newEventId }, tempId);
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => {
               const next = { ...prev, [tempId]: optimisticMembers };
@@ -2294,7 +2352,12 @@ export default function AuthenticatedApp() {
         return;
       }
 
-      const setlistId = await withFastTimeout(persistSetlist(), 3500).catch(() => null);
+      let setlistFailed = false;
+      const setlistId = await withFastTimeout(persistSetlist(), 6000).catch((err) => {
+        console.error('Setlist persist error:', err);
+        setlistFailed = true;
+        return null;
+      });
       if (setlistId) {
         eventData.setlist_id = setlistId;
       }
@@ -2306,10 +2369,18 @@ export default function AuthenticatedApp() {
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [data._editingEventId]: optimisticMembers }));
           }
+          if (addedOnEdit.length > 0 && user?.id) {
+            try {
+              const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+              await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, fee: parseFloat(price) || undefined });
+            } catch (err) { console.error("Notify error:", err); }
+          }
           const memberFailed = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
           if (memberFailed) {
             console.error('Member persist issue:', memberResult);
             setSaveToast({ message: 'Event updated, but there was a problem saving members.', type: 'error' });
+          } else if (setlistFailed) {
+            setSaveToast({ message: 'Event updated, but the setlist was not saved.', type: 'error' });
           } else {
             setSaveToast({ message: 'Event updated!', type: 'success' });
           }
@@ -2320,7 +2391,7 @@ export default function AuthenticatedApp() {
           setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
         }
       } else {
-        const { data: saved, error } = await withFastTimeout(createEvent(eventData), 4500);
+        const { data: saved, error } = await withFastTimeout(createEvent({ ...eventData, id: newEventId }), 4500);
         if (!error && saved) {
           const memberResult = await persistMembers(saved.id, false);
           // Optimistic update
@@ -2342,6 +2413,8 @@ export default function AuthenticatedApp() {
           if (memberFailed2) {
             console.error('Member persist issue:', memberResult);
             setSaveToast({ message: 'Event created, but there was a problem saving members.', type: 'error' });
+          } else if (setlistFailed) {
+            setSaveToast({ message: 'Event created, but the setlist was not saved.', type: 'error' });
           } else {
             setSaveToast({ message: 'Event created!', type: 'success' });
           }
@@ -2616,6 +2689,11 @@ export default function AuthenticatedApp() {
     };
   }, [dashboardData, masterEventsList, optimisticallyHiddenEventIds, realBand?.id, computedMemberStats, isAdmin, user?.id, eventMembersMap]);
 
+  const scrollerMask =
+    isCreateEventOpen || activeTab === 'Chat' || !!selectedChat || !!expandedCard || isIdentityOpen || isBandSwitcherOpen
+      ? 'none'
+      : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)';
+
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-accent/50">
       <MapsChooserHost />
@@ -2644,8 +2722,10 @@ export default function AuthenticatedApp() {
         paddingLeft: "16px", paddingRight: "16px",
         height: '100vh',
         overflowAnchor: 'none',
-        maskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
-        WebkitMaskImage: (isCreateEventOpen || activeTab === 'Chat' || !!selectedChat) ? 'none' : 'linear-gradient(to bottom, black 0%, black calc(100% - 60px), transparent 100%)',
+        // The fade is for the tab content only; the overlays rendered inside this
+        // scroller (identity hub, band switcher, expanded cards) must not fade.
+        maskImage: scrollerMask,
+        WebkitMaskImage: scrollerMask,
       }}>
         <Header
           activeTab={activeTab} selectedBand={selectedBand}
@@ -2699,7 +2779,7 @@ export default function AuthenticatedApp() {
             />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (!error) refetchChats?.(); }} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: 'Could not delete the chat. Try again.', type: 'error' }); else refetchChats?.(); }} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
@@ -2779,7 +2859,7 @@ export default function AuthenticatedApp() {
         />
 
         <AnimatePresence>
-          {expandedCard === "finance" && <FinanceExpanded key="finance-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} />}
+          {expandedCard === "finance" && <FinanceExpanded key="finance-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} onTransactionAdded={() => { refetchFinance(); refetchDashboard?.(); }} />}
           {expandedCard === "pending" && <PendingExpanded key="pending-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
           {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded key="confirmed-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
@@ -3028,12 +3108,16 @@ export default function AuthenticatedApp() {
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             />
           )}
-          <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q) => {
+          <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q, opts) => {
             setIsCreateEventOpen(false);
             setCreateEventInitialDate(null);
             // The share sheet / PDF opens only after the quote is saved, so it
             // carries the number assigned by the database.
-            const wantsShare = !q.status || q.status === 'SENT';
+            const wantsShare = !!opts?.share;
+            if (!realBand?.id) {
+              setSaveToast({ message: 'Select a band before creating a quote.', type: 'error' });
+              return;
+            }
             if (realBand?.id) {
               const createdEventId = q.eventId || (await (async () => {
                 const evD: Record<string, any> = {
@@ -3120,10 +3204,15 @@ export default function AuthenticatedApp() {
                   appMusiciansToDb(q.musicians)
                 );
                 if (quoteErr || !savedQuote) {
-                  setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}. The event was kept as tentative.`, type: 'error' });
+                  // Don't leave a tentative event without its quote.
+                  if (createdEventId && !q.eventId) {
+                    await supabase.from('events').delete().eq('id', createdEventId);
+                  }
+                  setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}`, type: 'error' });
                 } else {
+                  setSaveToast({ message: `Quote ${savedQuote.quote_number} saved`, type: 'success' });
                   if (wantsShare) {
-                    setSharingQuote({ ...q, id: savedQuote.id, quoteNumber: savedQuote.quote_number });
+                    setSharingQuote({ ...q, id: savedQuote.id, quoteNumber: savedQuote.quote_number, status: 'DRAFT' });
                   }
                   refetchExpandedQuotes();
                 }
@@ -3143,6 +3232,7 @@ export default function AuthenticatedApp() {
                 isOpen={!!sharingQuote}
                 onClose={() => setSharingQuote(null)}
                 quote={sharingQuote}
+                onSent={() => { refetchExpandedQuotes(); }}
                 bandId={realBand?.id ? String(realBand.id) : (selectedBand?.id ? String(selectedBand.id) : 'default')}
                 bandName={realBand?.name || selectedBand?.name || 'Band'}
                 onOpenBandSettings={() => {
@@ -3172,7 +3262,18 @@ export default function AuthenticatedApp() {
             }}
             onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
             onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}
-            onDelete={(id) => { if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id)); else { setSelectedNotification(null); setSelectedNotifications([]); } }}
+            onDelete={(id) => {
+              // Deleted for real (it used to come back on the next refresh).
+              const ids = id
+                ? [id]
+                : [selectedNotification?.id, ...selectedNotifications.map((n) => n.id)].filter(Boolean) as string[];
+              if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id));
+              else { setSelectedNotification(null); setSelectedNotifications([]); }
+              Promise.all([...new Set(ids)].map((nid) => deleteNotificationService(nid))).then((results) => {
+                if (results.some((r) => r.error)) setSaveToast({ message: 'Could not delete the notification.', type: 'error' });
+                refetchNotifications?.();
+              });
+            }}
             onAction={async (action, notificationId) => {
               const notif = selectedNotification || selectedNotifications.find((n) => n.id === notificationId);
               try {
@@ -3416,7 +3517,8 @@ export default function AuthenticatedApp() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[250] px-4 py-2 rounded-full text-xs font-semibold text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+              className="fixed -translate-x-1/2 z-[250] px-4 py-2 rounded-full bw-label-sm text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+              style={{ bottom: 'calc(var(--content-bottom-clearance) + 8px)', left: 'calc((100vw - var(--bw-rail-w, 0px)) / 2)' }}
             >
               {saveToast.message}
             </motion.div>
@@ -3427,13 +3529,14 @@ export default function AuthenticatedApp() {
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                "fixed bottom-24 left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl text-sm font-bold shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
+                "bw-status-clear-inset fixed left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl bw-label-md shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
                 saveToast.type === 'error'
-                  ? "bg-red-600/95 text-white border-red-500/40"
+                  ? "bg-destructive-solid text-white border-white/10"
                   : saveToast.type === 'info'
                   ? "bg-zinc-900/95 text-white border-white/20"
-                  : "bg-emerald-600/95 text-white border-emerald-500/40"
+                  : "bg-success text-success-foreground border-white/10"
               )}
+              style={{ bottom: 'calc(var(--content-bottom-clearance) + 8px)' }}
               onClick={() => !saveToast.action && setSaveToast(null)}
             >
               {saveToast.type === 'error' ? (
@@ -3443,7 +3546,7 @@ export default function AuthenticatedApp() {
               ) : (
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
               )}
-              <span className="flex-1 text-left truncate">{saveToast.message}</span>
+              <span className="flex-1 text-left line-clamp-3 [overflow-wrap:anywhere]">{saveToast.message}</span>
               {saveToast.action && (
                 <button
                   onClick={(e) => {

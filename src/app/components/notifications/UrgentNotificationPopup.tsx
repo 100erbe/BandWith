@@ -59,7 +59,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       onClick={onDismiss}
-      className="fixed inset-0 z-[81] bg-black/80"
+      className="fixed inset-0 z-[182] bg-black/80"
     />
     <motion.div
       role="alert"
@@ -68,7 +68,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       exit={{ opacity: 0, y: -24, scale: 0.97 }}
       transition={springs.snappy}
       // Figma: Notifications / Urgent popup — lime card docked under the status bar.
-      className="bg-accent text-accent-foreground fixed left-4 right-4 bw-status-clear-inset mx-auto max-w-[420px] z-[82] rounded-[24px] p-5 flex flex-col gap-3 select-none"
+      className="bg-accent text-accent-foreground fixed left-4 right-4 bw-status-clear-inset mx-auto max-w-[420px] z-[183] rounded-[24px] p-5 flex flex-col gap-3 select-none"
       style={{ top: 'calc(var(--safe-top) + 4px)' }}
     >
       <div className="flex items-center gap-2 min-w-0">

@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
       }}
       transition={HEADER_SPRING}
       style={{ 
-        paddingTop: 'var(--safe-padding-top, 16px)',
+        paddingTop: 'calc(var(--safe-top) + 12px)',
         paddingBottom: '12px',
         marginBottom: '16px',
         pointerEvents: isHidden ? 'none' : 'auto',

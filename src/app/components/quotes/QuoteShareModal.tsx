@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -27,6 +28,9 @@ import {
   uploadQuotePdfForSharing,
 } from '@/lib/services/quotePdf';
 import { parseLocalDate } from '@/lib/dates';
+import { currencySymbol } from '@/lib/currency';
+import { isUuid, sendQuote } from '@/lib/services/quotes';
+import { shareFile, downloadBlobOnWeb, openExternal } from '@/lib/nativeFiles';
 import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
@@ -38,6 +42,8 @@ export interface QuoteShareModalProps {
   bandName?: string;
   onClose: () => void;
   onOpenBandSettings?: () => void;
+  /** Called after a draft quote is marked as sent (a share channel completed). */
+  onSent?: (quoteId: string) => void;
 }
 
 export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
@@ -47,82 +53,92 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   bandName = 'Band',
   onClose,
   onOpenBandSettings,
+  onSent,
 }) => {
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [pdfResult, setPdfResult] = useState<QuotePdfGenerationResult | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(true);
+  const [generateError, setGenerateError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
-  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const sentRef = useRef(false);
 
-  const sym =
-    quote.currency === 'USD'
-      ? '$'
-      : quote.currency === 'GBP'
-        ? '£'
-        : quote.currency === 'CHF'
-          ? 'CHF '
-          : '€';
+  const sym = currencySymbol(quote.currency || 'EUR');
+  const quoteRef = useRef(quote);
+  quoteRef.current = quote;
+  const quoteKey = useMemo(() => {
+    try { return JSON.stringify(quote); } catch { return String(quote.id || ''); }
+  }, [quote]);
+  const canUpload = isUuid(bandId);
+
+  const flash = (text: string, tone: 'ok' | 'error' = 'ok') => {
+    setShareFeedback({ text, tone });
+    setTimeout(() => setShareFeedback(null), tone === 'error' ? 5000 : 3000);
+  };
 
   const loadAndGenerate = useCallback(async () => {
     setIsGenerating(true);
+    setGenerateError(false);
     try {
       let loadedSettings = DEFAULT_BAND_PRICING;
       if (bandId) {
         loadedSettings = await getBandPricing(bandId);
       }
       setSettings(loadedSettings);
-      const generated = await generateQuotePdf(quote, bandName, loadedSettings);
+      const generated = await generateQuotePdf(quoteRef.current, bandName, loadedSettings);
       setPdfResult(generated);
       setActivePageIndex(0);
     } catch (err) {
       console.error('[QuoteShareModal] Failed to generate PDF:', err);
+      setPdfResult(null);
+      setGenerateError(true);
     } finally {
       setIsGenerating(false);
     }
-  }, [bandId, bandName, quote]);
+    // Regenerate when the quote's content changes, not on every parent
+    // render (callers often pass an inline object).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bandId, bandName, quoteKey]);
 
   useEffect(() => {
     if (isOpen) {
       setUploadedUrl(null);
+      sentRef.current = false;
       loadAndGenerate();
     }
   }, [isOpen, loadAndGenerate]);
 
+  // Upload as soon as the PDF exists, so WhatsApp / copy / email can run
+  // synchronously inside the tap (iOS blocks clipboard and popups after an await).
+  useEffect(() => {
+    if (!isOpen || !pdfResult || !canUpload || uploadedUrl) return;
+    let cancelled = false;
+    setIsUploading(true);
+    uploadQuotePdfForSharing(String(bandId), quote.quoteNumber || 'DRAFT', pdfResult.pdfBlob, pdfResult.fileName)
+      .then((url) => { if (!cancelled && url) setUploadedUrl(url); })
+      .finally(() => { if (!cancelled) setIsUploading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, pdfResult, canUpload, bandId, quote.quoteNumber, uploadedUrl]);
+
   if (!isOpen) return null;
 
-  const ensurePublicPdfUrl = async (): Promise<string | null> => {
-    if (uploadedUrl) return uploadedUrl;
-    if (!pdfResult || !bandId) return null;
-    setIsUploading(true);
-    try {
-      const url = await uploadQuotePdfForSharing(
-        bandId,
-        quote.quoteNumber || 'DRAFT',
-        pdfResult.pdfBlob,
-        pdfResult.fileName
-      );
-      if (url) setUploadedUrl(url);
-      return url;
-    } finally {
-      setIsUploading(false);
+  /** A draft becomes SENT only once it actually left through a channel. */
+  const markSent = async () => {
+    if (sentRef.current) return;
+    const id = quote.id;
+    const status = String(quote.status || '').toUpperCase();
+    if (!isUuid(id) || (status && status !== 'DRAFT')) return;
+    sentRef.current = true;
+    const { error } = await sendQuote(id);
+    if (error) {
+      sentRef.current = false;
+      console.warn('[QuoteShareModal] Could not mark the quote as sent:', error);
+      return;
     }
-  };
-
-  const triggerDownload = () => {
-    if (!pdfResult) return;
-    const url = URL.createObjectURL(pdfResult.pdfBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = pdfResult.fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    setShareFeedback('PDF downloaded');
-    setTimeout(() => setShareFeedback(null), 3000);
+    onSent?.(id);
   };
 
   const buildShareText = (pdfUrl?: string | null) => {
@@ -136,7 +152,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       : 'TBD';
     const total = Math.round(quote.total || 0).toLocaleString();
     const validUntilStr = quote.validUntil
-      ? new Date(quote.validUntil).toLocaleDateString('en-GB', {
+      ? parseLocalDate(quote.validUntil).toLocaleDateString('en-GB', {
           day: 'numeric',
           month: 'short',
           year: 'numeric',
@@ -173,65 +189,80 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     return lines.join('\n');
   };
 
-  const handleNativeShare = async () => {
+  const shareTitle = `${bandName} — Quote ${quote.quoteNumber || ''}`.trim();
+
+  /** System share sheet with the PDF attached (Mail, WhatsApp, Files, AirDrop…). */
+  const sharePdf = async (opts: { markAsSent: boolean; withText: boolean }) => {
     if (!pdfResult) return;
     try {
-      const nav = navigator as any;
-      if (
-        nav.share &&
-        nav.canShare &&
-        nav.canShare({ files: [pdfResult.pdfFile] })
-      ) {
-        await nav.share({
-          title: `${bandName} — Quote ${quote.quoteNumber || ''}`,
-          text: buildShareText(uploadedUrl),
-          files: [pdfResult.pdfFile],
-        });
-        setShareFeedback('Quote shared successfully');
-        setTimeout(() => setShareFeedback(null), 3000);
-        return;
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
-      console.warn('[QuoteShareModal] Native share fallback:', err);
+      const result = await shareFile(pdfResult.pdfBlob, pdfResult.fileName, {
+        title: shareTitle,
+        text: opts.withText ? buildShareText(uploadedUrl) : undefined,
+      });
+      if (result === 'cancelled') return;
+      if (result === 'downloaded') flash('PDF downloaded');
+      else flash(opts.markAsSent ? 'Quote shared' : 'PDF ready');
+      if (opts.markAsSent) void markSent();
+    } catch (err) {
+      console.error('[QuoteShareModal] Share failed:', err);
+      flash('Could not share the PDF. Try again.', 'error');
     }
-    triggerDownload();
   };
 
-  const handleWhatsAppShare = async () => {
+  const handleNativeShare = () => sharePdf({ markAsSent: true, withText: true });
+
+  const handleDownload = () => {
     if (!pdfResult) return;
-    const publicUrl = await ensurePublicPdfUrl();
-    if (!publicUrl) {
-      triggerDownload();
+    if (Capacitor.isNativePlatform()) {
+      // "Save to Files" lives in the system sheet on iOS and Android.
+      void sharePdf({ markAsSent: false, withText: false });
+      return;
     }
-    const text = buildShareText(publicUrl);
+    downloadBlobOnWeb(pdfResult.pdfBlob, pdfResult.fileName);
+    flash('PDF downloaded');
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!pdfResult) return;
+    if (!uploadedUrl) {
+      // No public link: send the file itself, WhatsApp is in the sheet.
+      void sharePdf({ markAsSent: true, withText: true });
+      return;
+    }
+    const text = buildShareText(uploadedUrl);
     const cleanPhone = (quote.clientPhone || '').replace(/[^0-9+]/g, '').replace(/^\+/, '');
     const waUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    void openExternal(waUrl);
+    void markSent();
   };
 
-  const handleEmailShare = async () => {
+  const handleEmailShare = () => {
     if (!pdfResult) return;
-    const publicUrl = await ensurePublicPdfUrl();
-    triggerDownload();
-
+    if (!uploadedUrl) {
+      // No link to put in the mail: share the PDF as an attachment instead.
+      void sharePdf({ markAsSent: true, withText: true });
+      return;
+    }
     const subject = `${bandName.toUpperCase()} — Event Quote ${quote.quoteNumber || ''} (${quote.eventName || quote.eventTitle || 'Proposal'})`;
-    const body = buildShareText(publicUrl);
+    const body = buildShareText(uploadedUrl);
     const mailto = `mailto:${encodeURIComponent(quote.clientEmail || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+    void openExternal(mailto);
+    void markSent();
   };
 
-  const handleCopySummary = async () => {
-    const publicUrl = await ensurePublicPdfUrl();
-    const text = buildShareText(publicUrl);
-    try {
-      await navigator.clipboard.writeText(text);
+  const handleCopySummary = () => {
+    const text = buildShareText(uploadedUrl);
+    const done = () => {
       setCopiedSummary(true);
       setTimeout(() => setCopiedSummary(false), 2500);
-    } catch (err) {
-      console.error('Failed to copy quote summary:', err);
+      void markSent();
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, () => flash('Could not copy. Use Share PDF instead.', 'error'));
+    } catch {
+      flash('Could not copy. Use Share PDF instead.', 'error');
     }
   };
 
@@ -249,7 +280,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'native',
       title: 'Share PDF document',
-      subtitle: 'Native share sheet',
+      subtitle: 'Mail, Messages, Files, AirDrop…',
       icon: <Share2 />,
       onClick: handleNativeShare,
       disabled: isGenerating || !pdfResult,
@@ -257,7 +288,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'whatsapp',
       title: 'WhatsApp',
-      subtitle: 'Pre-filled message + PDF link',
+      subtitle: uploadedUrl ? 'Pre-filled message + PDF link' : 'Send the PDF file',
       icon: isUploading ? <Loader2 className="animate-spin" /> : <MessageCircle />,
       onClick: handleWhatsAppShare,
       disabled: isGenerating || isUploading || !pdfResult,
@@ -265,7 +296,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'email',
       title: 'Email client',
-      subtitle: 'Formal proposal + PDF download',
+      subtitle: uploadedUrl ? 'Formal proposal + PDF link' : 'PDF as attachment',
       icon: isUploading ? <Loader2 className="animate-spin" /> : <Mail />,
       onClick: handleEmailShare,
       disabled: isGenerating || isUploading || !pdfResult,
@@ -275,7 +306,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       title: 'Download PDF',
       subtitle: 'Save to Files',
       icon: <Download />,
-      onClick: triggerDownload,
+      onClick: handleDownload,
       disabled: isGenerating || !pdfResult,
     },
     {
@@ -373,7 +404,15 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
             )}
 
             <div className="relative w-full flex items-center justify-center overflow-hidden">
-              {isGenerating || !pdfResult ? (
+              {generateError && !isGenerating ? (
+                <div className="w-full max-w-[260px] aspect-[1/1.414] bg-card rounded-[16px] flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <AlertCircle className="w-7 h-7 text-destructive" />
+                  <p className="bw-body-sm">The PDF could not be created.</p>
+                  <PillButton variant="outline" size="sm" fullWidth={false} icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadAndGenerate}>
+                    Try again
+                  </PillButton>
+                </div>
+              ) : isGenerating || !pdfResult ? (
                 <div className="w-full max-w-[260px] aspect-[1/1.414] bg-white text-black rounded-[16px] flex flex-col items-center justify-center gap-3 p-6">
                   <Loader2 className="w-7 h-7 animate-spin" />
                   <p className="bw-label-xs text-black/60 text-center">Rendering A4 PDF…</p>
@@ -447,9 +486,14 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
           </section>
 
           {shareFeedback && (
-            <p role="status" className="self-center inline-flex items-center gap-2 h-9 px-4 rounded-full bg-success text-success-foreground bw-button-sm">
-              <Check className="w-4 h-4" />
-              {shareFeedback}
+            <p
+              role="status"
+              className={`self-center inline-flex items-center gap-2 min-h-9 px-4 py-2 rounded-full bw-button-sm ${
+                shareFeedback.tone === 'ok' ? 'bg-success text-success-foreground' : 'bg-destructive-solid text-white'
+              }`}
+            >
+              {shareFeedback.tone === 'ok' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+              {shareFeedback.text}
             </p>
           )}
         </div>

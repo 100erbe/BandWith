@@ -8,6 +8,7 @@ import { ThemeProvider } from "./lib/ThemeContext";
 import App from "./app/App";
 import { enableEdgeToEdge } from "./lib/systemBars";
 import { installDuoLayout } from "./lib/deviceRegions";
+import { installKeyboardInsets } from "./lib/keyboardInsets";
 
 // Detect native platform and set safe margin attributes
 if (Capacitor.isNativePlatform()) {
@@ -18,6 +19,7 @@ if (Capacitor.isNativePlatform()) {
   }
   void enableEdgeToEdge();
   installDuoLayout();
+  installKeyboardInsets();
 }
 
 import "@fontsource/inter/400.css";

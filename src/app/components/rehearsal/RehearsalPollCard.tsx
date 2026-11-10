@@ -419,7 +419,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                               </Tag>
                             )}
                           </span>
-                          <span className="bw-body-sm opacity-75 whitespace-nowrap">
+                          <span className="bw-body-sm opacity-75 min-w-0 [overflow-wrap:anywhere]">
                             {option.start_time}
                             {option.end_time ? ` – ${option.end_time}` : ''} · {option.vote_count || 0}/{totalMembers} available
                           </span>

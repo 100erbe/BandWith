@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import {
   Plus,
   X,
@@ -29,7 +29,7 @@ import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import type { Song, Setlist } from '@/lib/services/songs';
 import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
 import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
-import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
+import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { openSongResource } from '@/lib/services/songFiles';
 
 /** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
@@ -83,6 +83,82 @@ const RowMenu: React.FC<{ items: { label: string; icon: React.ReactNode; run: ()
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/** One song in the setlist editor (a song can only appear once, but rows need stable keys). */
+interface EditorItem {
+  key: string;
+  songId: string;
+}
+
+let editorKeySeq = 0;
+const newEditorKey = () => `new-${++editorKeySeq}`;
+
+/** Renumber set numbers to 1, 2, 3… keeping their order (empty sets disappear). */
+const compactSets = (sets: number[]): number[] => {
+  const distinct = Array.from(new Set(sets)).sort((a, b) => a - b);
+  return sets.map((n) => distinct.indexOf(n) + 1);
+};
+
+const errorText = (error: unknown, fallback: string) =>
+  error && typeof error === 'object' && 'message' in error && (error as Error).message
+    ? `${fallback}: ${(error as Error).message}`
+    : `${fallback}. Try again.`;
+
+/**
+ * Setlist row that reorders by dragging its grip (pointer events, so it works
+ * with touch). Only the grip starts a drag, so the list still scrolls.
+ */
+const SetlistOrderRow: React.FC<{
+  item: EditorItem;
+  song: Song;
+  index: number;
+  setLabel?: string;
+  duration: string;
+  onRemove: () => void;
+}> = ({ item, song, index, setLabel, duration, onRemove }) => {
+  const controls = useDragControls();
+  const [dragging, setDragging] = useState(false);
+  return (
+    <Reorder.Item
+      as="li"
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={() => setDragging(false)}
+      whileDrag={{ scale: 1.02 }}
+      className={cn(
+        'relative flex items-center gap-3 p-3 rounded-[16px] bg-card border-[1.5px] transition-[border-color,box-shadow] select-none',
+        dragging ? 'z-10 border-foreground shadow-lg' : 'border-transparent',
+      )}
+    >
+      <span
+        onPointerDown={(e) => {
+          e.preventDefault();
+          controls.start(e);
+        }}
+        className="-my-2 -ml-2 w-9 h-11 flex items-center justify-center shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+        title="Drag to reorder"
+        aria-hidden
+      >
+        <GripVertical className="w-4 h-4" />
+      </span>
+      <span className="w-8 h-8 rounded-full border-[1.5px] border-foreground/30 flex items-center justify-center bw-label-sm shrink-0">
+        {index + 1}
+      </span>
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <p className="bw-label-md truncate flex items-center gap-2 min-w-0">
+          <span className="truncate">{song.title}</span>
+          {setLabel && <Tag variant="accent">{setLabel}</Tag>}
+        </p>
+        <p className="bw-body-sm text-muted-foreground truncate">{song.artist || 'Unknown artist'}</p>
+      </div>
+      <span className="bw-label-sm shrink-0">{duration}</span>
+      <IconButton label={`Remove ${song.title}`} variant="ghost" size="sm" icon={<X />} onClick={onRemove} />
+    </Reorder.Item>
+  );
+};
+
 interface SetlistManagerViewProps {
   onClose: () => void;
 }
@@ -90,7 +166,7 @@ interface SetlistManagerViewProps {
 type ViewMode = 'songs' | 'setlists';
 
 export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose }) => {
-  const { selectedBand } = useBand();
+  const { selectedBand, isAdmin } = useBand();
   const [viewMode, setViewMode] = useState<ViewMode>('songs');
   const [songs, setSongs] = useState<Song[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
@@ -100,6 +176,13 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const [showAddSetlist, setShowAddSetlist] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
+  /** Feedback line above the lists (import results, failed actions). */
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  const [addSetlistError, setAddSetlistError] = useState<string | null>(null);
+  const [addingSetlist, setAddingSetlist] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+  /** The setlist couldn't be read: saving would wipe its songs, so it is blocked. */
+  const [editorLoadFailed, setEditorLoadFailed] = useState(false);
 
   const [newSong, setNewSong] = useState({
     title: '',
@@ -115,14 +198,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   // Setlist editor state
   const [editingSetlistId, setEditingSetlistId] = useState<string | null>(null);
   const [editingSetlistName, setEditingSetlistName] = useState('');
-  const [editingSetlistSongIds, setEditingSetlistSongIds] = useState<string[]>([]);
+  const [editorItems, setEditorItems] = useState<EditorItem[]>([]);
+  /** Set number for each position in `editorItems` (sets keep their size when songs move). */
+  const [editorSets, setEditorSets] = useState<number[]>([]);
   const [setlistEditorLoading, setSetlistEditorLoading] = useState(false);
   const [setlistEditorSaving, setSetlistEditorSaving] = useState(false);
   const [setlistEditorSearch, setSetlistEditorSearch] = useState(false);
   const [setlistSearchQuery, setSetlistSearchQuery] = useState('');
   const [setlistSelectedToAdd, setSetlistSelectedToAdd] = useState<string[]>([]);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (selectedBand?.id) {
@@ -141,46 +224,59 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     
     if (songsRes.data) setSongs(songsRes.data);
     if (setlistsRes.data) setSetlists(setlistsRes.data);
+    if (songsRes.error || setlistsRes.error) {
+      setNotice({ text: errorText(songsRes.error || setlistsRes.error, 'Could not load your songs and setlists'), error: true });
+    }
     setLoading(false);
   };
 
   const handleAddSetlist = async () => {
-    if (!selectedBand?.id || !newSetlistName.trim()) return;
-    
-    const { data } = await createSetlist({
+    if (!selectedBand?.id || !newSetlistName.trim() || addingSetlist) return;
+    setAddingSetlist(true);
+    setAddSetlistError(null);
+
+    const { data, error } = await createSetlist({
       band_id: selectedBand.id,
       name: newSetlistName.trim(),
       is_template: false
     });
+    setAddingSetlist(false);
 
-    if (data) {
-      setSetlists(prev => [data, ...prev]);
-      setNewSetlistName('');
-      setShowAddSetlist(false);
+    if (error || !data) {
+      setAddSetlistError(errorText(error, 'Could not create the setlist'));
+      return;
     }
+    setSetlists(prev => [data, ...prev]);
+    setNewSetlistName('');
+    setShowAddSetlist(false);
   };
 
   const handleDeleteSong = async (songId: string) => {
-    const { error } = await deleteSong(songId);
-    if (!error) {
-      setSongs(prev => prev.filter(s => s.id !== songId));
-    }
     setActionMenuId(null);
+    const { error } = await deleteSong(songId);
+    if (error) {
+      setNotice({ text: errorText(error, 'Could not delete the song'), error: true });
+      return;
+    }
+    setSongs(prev => prev.filter(s => s.id !== songId));
   };
 
   const handlePlaySong = async (song: Song) => {
     setActionMenuId(null);
-    if (song.audio_url && (await openSongResource(song.audio_url))) return;
-    if (song.spotify_id) {
-      window.open(`https://open.spotify.com/track/${encodeURIComponent(song.spotify_id)}`, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    await openSongResource(song.youtube_url);
+    // Recording first, then Spotify, then YouTube (one call keeps the tab
+    // opening inside the tap on the web).
+    const opened = await openSongResource([
+      song.audio_url,
+      song.spotify_id ? `https://open.spotify.com/track/${encodeURIComponent(song.spotify_id)}` : undefined,
+      song.youtube_url,
+    ]);
+    if (!opened) setNotice({ text: 'Could not open this song. Check its recording or links.', error: true });
   };
 
   const handleOpenChart = async (song: Song) => {
     setActionMenuId(null);
-    await openSongResource(song.chart_url);
+    const opened = await openSongResource(song.chart_url);
+    if (!opened) setNotice({ text: 'Could not open the chart. Try again.', error: true });
   };
 
   const handleEditSong = (song: Song) => {
@@ -198,7 +294,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const setImportStatus = (text: string, error = false) => setNotice({ text, error });
 
   // Song list from CSV/TXT (Excel, Numbers, Sheets, Notes) → songs library.
   const handleImportList = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,14 +302,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     e.target.value = '';
     if (!file || !selectedBand?.id) return;
     if (file.size > 2 * 1024 * 1024) {
-      setImportStatus('That file is too large for a song list (max 2 MB).');
+      setImportStatus('That file is too large for a song list (max 2 MB).', true);
       return;
     }
     setImporting(true);
     try {
       const parsed = parseSongList(await file.text());
       if (parsed.length === 0) {
-        setImportStatus('No songs found. Use one song per line or a CSV with a “title” column.');
+        setImportStatus('No songs found. Use one song per line or a CSV with a “title” column.', true);
         return;
       }
       const known = new Set(songs.map((s) => `${s.title.toLowerCase()}|${(s.artist || '').toLowerCase()}`));
@@ -236,7 +332,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
         })) as Parameters<typeof bulkCreateSongs>[1],
       );
       if (error) {
-        setImportStatus(`Import failed: ${error.message}`);
+        setImportStatus(`Import failed: ${error.message}`, true);
         return;
       }
       setImportStatus(
@@ -244,6 +340,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           (fresh.length < parsed.length ? ` (${parsed.length - fresh.length} already in your library).` : '.'),
       );
       await fetchData();
+    } catch (err) {
+      setImportStatus(errorText(err, 'Could not read that file'), true);
     } finally {
       setImporting(false);
     }
@@ -253,8 +351,13 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     if (!selectedBand?.id || seeding) return;
     setSeeding(true);
     const { count, error } = await seedRepertoireSongs(selectedBand.id);
-    if (!error && count > 0) {
+    if (error) {
+      setNotice({ text: errorText(error, 'Could not load the repertoire'), error: true });
+    } else if (count > 0) {
+      setNotice({ text: `Added ${plural(count, 'song')} to your library.` });
       await fetchData();
+    } else {
+      setNotice({ text: 'All repertoire songs are already in your library.' });
     }
     setSeeding(false);
   };
@@ -309,16 +412,23 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     setSetlistEditorSearch(false);
     setSetlistSearchQuery('');
     setSetlistSelectedToAdd([]);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    setEditorError(null);
+    setEditorLoadFailed(false);
+    setEditorItems([]);
+    setEditorSets([]);
 
-    const { data } = await getSetlist(setlistId);
+    const { data, error } = await getSetlist(setlistId);
     if (data) {
       setEditingSetlistName(data.name);
-      const orderedSongIds = data.songs
-        .sort((a, b) => (a.set_number - b.set_number) || (a.position - b.position))
-        .map(s => s.song_id);
-      setEditingSetlistSongIds(orderedSongIds);
+      const seen = new Set<string>();
+      const ordered = [...data.songs]
+        .sort((a, b) => ((a.set_number ?? 1) - (b.set_number ?? 1)) || (a.position - b.position))
+        .filter((s) => (seen.has(s.song_id) ? false : (seen.add(s.song_id), true)));
+      setEditorItems(ordered.map((s) => ({ key: s.id || newEditorKey(), songId: s.song_id })));
+      setEditorSets(compactSets(ordered.map((s) => s.set_number ?? 1)));
+    } else {
+      setEditorError(errorText(error, 'Could not load this setlist'));
+      setEditorLoadFailed(true);
     }
     setSetlistEditorLoading(false);
   }, []);
@@ -326,40 +436,66 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const closeSetlistEditor = () => {
     setEditingSetlistId(null);
     setSetlistEditorSearch(false);
+    setEditorError(null);
   };
 
   const handleSaveSetlist = useCallback(async () => {
-    if (!editingSetlistId || !editingSetlistName.trim()) return;
+    if (!editingSetlistId || !editingSetlistName.trim() || setlistEditorSaving || editorLoadFailed) return;
     setSetlistEditorSaving(true);
+    setEditorError(null);
+    const name = editingSetlistName.trim();
+    const sets = compactSets(editorSets);
 
-    await updateSetlist(editingSetlistId, { name: editingSetlistName.trim() });
-    await replaceSetlistSongs(editingSetlistId, editingSetlistSongIds);
-
-    setSetlists(prev => prev.map(sl =>
-      sl.id === editingSetlistId
-        ? { ...sl, name: editingSetlistName.trim(), song_count: editingSetlistSongIds.length }
-        : sl
-    ));
-
-    setSetlistEditorSaving(false);
-    closeSetlistEditor();
-  }, [editingSetlistId, editingSetlistName, editingSetlistSongIds]);
+    try {
+      const { error: nameError } = await updateSetlist(editingSetlistId, { name });
+      if (nameError) {
+        setEditorError(errorText(nameError, 'Could not save the setlist'));
+        return;
+      }
+      const { error: songsError } = await replaceSetlistSongs(
+        editingSetlistId,
+        editorItems.map((it, i) => ({ song_id: it.songId, set_number: sets[i] ?? 1 })),
+      );
+      // The name is saved either way; keep the list in step with it.
+      setSetlists(prev => prev.map(sl =>
+        sl.id === editingSetlistId
+          ? { ...sl, name, ...(songsError ? {} : { song_count: editorItems.length }) }
+          : sl
+      ));
+      if (songsError) {
+        setEditorError(errorText(songsError, 'The name was saved, but the song order was not'));
+        return;
+      }
+      closeSetlistEditor();
+    } finally {
+      setSetlistEditorSaving(false);
+    }
+  }, [editingSetlistId, editingSetlistName, editorItems, editorSets, setlistEditorSaving, editorLoadFailed]);
 
   const handleDeleteSetlist = useCallback(async () => {
     if (!editingSetlistId) return;
+    setEditorError(null);
     const { error } = await deleteSetlist(editingSetlistId);
-    if (!error) {
-      setSetlists(prev => prev.filter(sl => sl.id !== editingSetlistId));
-      closeSetlistEditor();
+    if (error) {
+      setEditorError(errorText(error, 'Could not delete the setlist'));
+      return;
     }
+    setSetlists(prev => prev.filter(sl => sl.id !== editingSetlistId));
+    closeSetlistEditor();
   }, [editingSetlistId]);
 
-  const handleEditorRemoveSong = (songId: string) => {
-    setEditingSetlistSongIds(prev => prev.filter(id => id !== songId));
+  const handleEditorRemoveSong = (key: string) => {
+    const index = editorItems.findIndex((it) => it.key === key);
+    if (index < 0) return;
+    setEditorItems(prev => prev.filter((_, i) => i !== index));
+    setEditorSets(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleEditorAddSelected = () => {
-    setEditingSetlistSongIds(prev => [...prev, ...setlistSelectedToAdd]);
+    // New songs go at the end, in the last set.
+    const lastSet = editorSets[editorSets.length - 1] ?? 1;
+    setEditorItems(prev => [...prev, ...setlistSelectedToAdd.map((songId) => ({ key: newEditorKey(), songId }))]);
+    setEditorSets(prev => [...prev, ...setlistSelectedToAdd.map(() => lastSet)]);
     setSetlistSelectedToAdd([]);
     setSetlistSearchQuery('');
     setSetlistEditorSearch(false);
@@ -371,36 +507,34 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     );
   };
 
-  const handleEditorDragStart = (index: number) => setDraggedIndex(index);
+  const songsById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
 
-  const handleEditorDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleEditorDragEnd = () => {
-    if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    setEditingSetlistSongIds(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(draggedIndex, 1);
-      next.splice(dragOverIndex, 0, moved);
-      return next;
-    });
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const editorSongs = useMemo(() =>
-    editingSetlistSongIds.map(id => songs.find(s => s.id === id)).filter(Boolean) as Song[],
-    [editingSetlistSongIds, songs]
+  /** Editor rows whose song is in the library (with their position in `editorItems`). */
+  const editorRows = useMemo(
+    () =>
+      editorItems
+        .map((item, fullIndex) => ({ item, fullIndex, song: songsById.get(item.songId) }))
+        .filter((r): r is { item: EditorItem; fullIndex: number; song: Song } => !!r.song),
+    [editorItems, songsById],
   );
+  const editorSongs = useMemo(() => editorRows.map((r) => r.song), [editorRows]);
+  const editorVisibleItems = useMemo(() => editorRows.map((r) => r.item), [editorRows]);
+  const editorMultiSet = useMemo(() => new Set(editorSets).size > 1, [editorSets]);
+  const editorSetNumbers = useMemo(() => compactSets(editorSets), [editorSets]);
+
+  // Reorder moves songs; set sizes stay put, so a song dragged across a
+  // boundary joins the set it lands in.
+  const handleEditorReorder = (nextVisible: EditorItem[]) => {
+    setEditorItems((prev) => {
+      const visible = new Set(editorVisibleItems);
+      let k = 0;
+      return prev.map((it) => (visible.has(it) ? nextVisible[k++] ?? it : it));
+    });
+  };
 
   const editorFilteredLibrary = useMemo(() => {
-    let result = songs.filter(s => !editingSetlistSongIds.includes(s.id));
+    const inSetlist = new Set(editorItems.map((it) => it.songId));
+    let result = songs.filter(s => !inSetlist.has(s.id));
     if (setlistSearchQuery) {
       const q = setlistSearchQuery.toLowerCase();
       result = result.filter(s =>
@@ -408,7 +542,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       );
     }
     return result;
-  }, [songs, editingSetlistSongIds, setlistSearchQuery]);
+  }, [songs, editorItems, setlistSearchQuery]);
 
   // ── Render ──
 
@@ -461,10 +595,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
         tabIndex={-1}
       />
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-        {importStatus && (
-          <p role="status" className="px-4 py-3 rounded-[16px] bg-card bw-body-sm">
-            {importStatus}
-          </p>
+        {notice && (
+          notice.error ? (
+            <FormError>{notice.text}</FormError>
+          ) : (
+            <p role="status" className="px-4 py-3 rounded-[16px] bg-card bw-body-sm">
+              {notice.text}
+            </p>
+          )
         )}
         {/* View toggle (Figma Selector MD) */}
         <div className="flex gap-2">
@@ -610,7 +748,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 ...(canPlay ? [{ label: 'Play', icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
                                 ...(hasChart ? [{ label: 'Open chart', icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: 'Edit', icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
-                                { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true },
+                                ...(isAdmin
+                                  ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true }]
+                                  : []),
                               ]}
                             />
                           )}
@@ -689,12 +829,15 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       {/* New setlist (Figma Sheet, Style=Dark) */}
       <BwSheet
         open={showAddSetlist}
-        onClose={() => setShowAddSetlist(false)}
+        onClose={() => {
+          setShowAddSetlist(false);
+          setAddSetlistError(null);
+        }}
         overline="New setlist"
         title="Create setlist"
         zIndex={80}
         footer={
-          <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={handleAddSetlist} disabled={!newSetlistName.trim()}>
+          <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={handleAddSetlist} loading={addingSetlist} disabled={!newSetlistName.trim() || addingSetlist}>
             Create setlist
           </PillButton>
         }
@@ -708,6 +851,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
           placeholder="Jazz night 1st set, wedding main set…"
           autoFocus
         />
+        {addSetlistError && <FormError className="mt-3">{addSetlistError}</FormError>}
       </BwSheet>
 
       {/* ═══ SETLIST EDITOR ═══ */}
@@ -730,7 +874,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
               </div>
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto">
+                <motion.div layoutScroll className="flex-1 overflow-y-auto">
                   <ScreenHeader
                     onBack={closeSetlistEditor}
                     backLabel="Back to repertoire"
@@ -840,50 +984,41 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           <p className="bw-body-sm text-muted-foreground max-w-[240px]">Tap "Add songs from library" above to build your set.</p>
                         </Card>
                       ) : (
-                        <ol className="flex flex-col gap-2">
-                          {editorSongs.map((song, i) => (
-                            <li
-                              key={`${song.id}-${i}`}
-                              draggable
-                              onDragStart={() => handleEditorDragStart(i)}
-                              onDragOver={(e) => handleEditorDragOver(e, i)}
-                              onDragEnd={handleEditorDragEnd}
-                              className={cn(
-                                'flex items-center gap-3 p-3 rounded-[16px] bg-card border-[1.5px] transition-[opacity,transform,border-color] cursor-grab active:cursor-grabbing select-none',
-                                draggedIndex === i && 'opacity-40 scale-[0.98]',
-                                dragOverIndex === i && draggedIndex !== null && draggedIndex !== i ? 'border-foreground' : 'border-transparent',
-                              )}
-                            >
-                              <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
-                              <span className="w-8 h-8 rounded-full border-[1.5px] border-foreground/30 flex items-center justify-center bw-label-sm shrink-0">
-                                {i + 1}
-                              </span>
-                              <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                <p className="bw-label-md truncate">{song.title}</p>
-                                <p className="bw-body-sm text-muted-foreground truncate">{song.artist || 'Unknown artist'}</p>
-                              </div>
-                              <span className="bw-label-sm shrink-0">{formatClock(song.duration_seconds)}</span>
-                              <IconButton
-                                label={`Remove ${song.title}`}
-                                variant="ghost"
-                                size="sm"
-                                icon={<X />}
-                                onClick={() => handleEditorRemoveSong(song.id)}
+                        <Reorder.Group
+                          as="ol"
+                          axis="y"
+                          values={editorVisibleItems}
+                          onReorder={handleEditorReorder}
+                          className="flex flex-col gap-2"
+                        >
+                          {editorRows.map(({ item, fullIndex, song }, i) => {
+                            const firstOfSet =
+                              editorMultiSet && (fullIndex === 0 || editorSets[fullIndex] !== editorSets[fullIndex - 1]);
+                            return (
+                              <SetlistOrderRow
+                                key={item.key}
+                                item={item}
+                                song={song}
+                                index={i}
+                                setLabel={firstOfSet ? `Set ${editorSetNumbers[fullIndex]}` : undefined}
+                                duration={formatClock(song.duration_seconds)}
+                                onRemove={() => handleEditorRemoveSong(item.key)}
                               />
-                            </li>
-                          ))}
-                        </ol>
+                            );
+                          })}
+                        </Reorder.Group>
                       )}
                     </section>
                   </div>
-                </div>
+                </motion.div>
 
                 <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-                  <div className="max-w-2xl mx-auto w-full">
+                  <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
+                    {editorError && <FormError>{editorError}</FormError>}
                     <PillButton
                       onClick={handleSaveSetlist}
                       loading={setlistEditorSaving}
-                      disabled={!editingSetlistName.trim()}
+                      disabled={!editingSetlistName.trim() || editorLoadFailed || setlistEditorSaving}
                       icon={<Save className="w-[18px] h-[18px]" />}
                     >
                       Save setlist

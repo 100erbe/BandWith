@@ -13,7 +13,10 @@ import {
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // Use Resend test domain until bandwith.app is verified
 // Change to "BandWith <noreply@bandwith.app>" after domain verification
-const FROM_EMAIL = "BandWith <onboarding@resend.dev>";
+// Set EMAIL_FROM (e.g. "BandWith <noreply@your-domain>") once a sender
+// domain is verified in Resend; the resend.dev test sender only delivers to
+// the Resend account owner.
+const FROM_EMAIL = Deno.env.get("EMAIL_FROM") || "BandWith <onboarding@resend.dev>";
 
 interface EmailRequest {
   type: string;
@@ -301,13 +304,10 @@ serve(async (req) => {
     // Check for API key
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
-      // Return success anyway to not block the app - emails will be logged
+      // Say so: the app then tells the admin to share the link instead.
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Email logged (RESEND_API_KEY not configured)" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, code: "email_not_configured", error: "Email sending is not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

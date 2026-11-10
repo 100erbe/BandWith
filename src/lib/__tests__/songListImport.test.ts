@@ -37,6 +37,38 @@ describe('parseSongList', () => {
     ]);
   });
 
+  it('skips the header of a single-column list', () => {
+    expect(parseSongList('Title\nSuperstition\nValerie')).toEqual([{ title: 'Superstition' }, { title: 'Valerie' }]);
+    expect(parseSongList('Song\r\n"Hello, Goodbye"\r\nYesterday')).toEqual([{ title: 'Hello, Goodbye' }, { title: 'Yesterday' }]);
+    expect(parseSongList('Titolo\nVolare')).toEqual([{ title: 'Volare' }]);
+    expect(parseSongList('Title - Artist\nUptown Funk - Mark Ronson')).toEqual([{ title: 'Uptown Funk', artist: 'Mark Ronson' }]);
+  });
+
+  it('splits "Title, Artist" lines when some lines have no artist', () => {
+    const txt = 'Superstition, Stevie Wonder\nFly Me to the Moon\nValerie, Amy Winehouse\nSeptember, Earth, Wind & Fire';
+    expect(parseSongList(txt)).toEqual([
+      { title: 'Superstition', artist: 'Stevie Wonder' },
+      { title: 'Fly Me to the Moon' },
+      { title: 'Valerie', artist: 'Amy Winehouse' },
+      { title: 'September', artist: 'Earth, Wind & Fire' },
+    ]);
+  });
+
+  it('keeps a comma inside a title in a plain list of titles', () => {
+    expect(parseSongList('Hello, Goodbye\nYesterday\nLet It Be')).toEqual([
+      { title: 'Hello, Goodbye' },
+      { title: 'Yesterday' },
+      { title: 'Let It Be' },
+    ]);
+  });
+
+  it('reads a "Title,Artist" CSV where some rows have no artist', () => {
+    expect(parseSongList('Title,Artist\nSuperstition,Stevie Wonder\nFly Me to the Moon')).toEqual([
+      { title: 'Superstition', artist: 'Stevie Wonder', key: undefined, bpm: undefined, duration: undefined, genre: undefined },
+      { title: 'Fly Me to the Moon', artist: undefined, key: undefined, bpm: undefined, duration: undefined, genre: undefined },
+    ]);
+  });
+
   it('returns nothing for empty input', () => {
     expect(parseSongList('  \n \n')).toEqual([]);
   });

@@ -44,6 +44,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txCategory, setTxCategory] = useState<string>('GIG');
+  const [txError, setTxError] = useState<string | null>(null);
   const [txDate, setTxDate] = useState(todayLocal());
   const [saving, setSaving] = useState(false);
 
@@ -59,14 +60,17 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     const { error } = await createTransaction({
       band_id: bandId,
       title: txTitle.trim(),
-      amount: parseFloat(txAmount),
+      amount: parseFloat(String(txAmount).replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')),
       type: txType,
       category: txCategory as any,
       date: txDate,
 
     });
 
-    if (!error) {
+    if (error) {
+      setTxError(error.message || 'Could not save the transaction');
+    } else {
+      setTxError(null);
       setShowAddTransaction(false);
       setTxTitle('');
       setTxAmount('');
@@ -184,7 +188,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         onClose={() => setShowAddTransaction(false)}
         overline="Money flow"
         title="Add transaction"
-        zIndex={200}
+        zIndex={180}
         footer={
           <PillButton
             onClick={handleAddTransaction}
@@ -197,6 +201,9 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         }
       >
         <div className="dark flex flex-col gap-6 text-foreground">
+          {txError && (
+            <p role="alert" className="bw-body-sm text-destructive">{txError}</p>
+          )}
           {/* Type */}
           <div className="flex gap-2" role="group" aria-label="Transaction type">
             <Selector

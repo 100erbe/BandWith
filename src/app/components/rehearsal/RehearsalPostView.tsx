@@ -22,7 +22,7 @@ const ATTENDANCE = [
 
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
   return (
-    <div className="fixed inset-0 z-[200] bg-background text-foreground flex flex-col overflow-y-auto">
+    <div className="fixed inset-0 z-[185] bg-background text-foreground flex flex-col overflow-y-auto">
       <ScreenHeader
         actions={<IconButton label="Close summary" icon={<X />} variant="ghost" onClick={onClose} />}
         overline={

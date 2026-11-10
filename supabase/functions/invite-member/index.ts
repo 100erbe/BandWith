@@ -69,12 +69,28 @@ serve(async (req) => {
 
     // Look the user up by email in profiles (auth.admin.listUsers() only returns
     // the first page of 50 users, so existing users were missed beyond that).
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
+    // ilike for case-insensitivity, with % and _ escaped so they match literally.
+    const emailPattern = normalizedEmail.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const { data: profileMatches, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id")
-      .ilike("email", normalizedEmail)
-      .maybeSingle();
+      .ilike("email", emailPattern)
+      .limit(1);
     if (profileError) throw profileError;
+    const existingProfile = profileMatches?.[0] ?? null;
+
+    if (existingProfile) {
+      const { data: membership, error: membershipError } = await supabaseAdmin
+        .from("band_members")
+        .select("id, is_active")
+        .eq("band_id", bandId)
+        .eq("user_id", existingProfile.id)
+        .maybeSingle();
+      if (membershipError) throw membershipError;
+      if (membership && membership.is_active !== false) {
+        throw new HttpError(409, "Already a member of this band");
+      }
+    }
 
     const invitedBy = caller.kind === "user" ? caller.id : null;
     const upsertInvitation = async () => {
@@ -100,6 +116,17 @@ serve(async (req) => {
       // Existing account: record a pending invitation; the user accepts it
       // in-app (banner on launch). Previously they were added without consent.
       await upsertInvitation();
+      // In-app notification (and push, via the notifications trigger).
+      const { error: notifyError } = await supabaseAdmin.from("notifications").insert({
+        user_id: existingProfile.id,
+        band_id: bandId,
+        type: "invite_received",
+        title: `Invitation to join ${band.name}`,
+        body: "Open BandWith to accept or decline.",
+        data: { band_id: bandId, band_name: band.name, invited_by: invitedBy },
+        priority: "high",
+      });
+      if (notifyError) console.warn("[invite-member] notification not created:", notifyError.message);
       return json({ success: true, userExists: true, userId: existingProfile.id });
     }
 

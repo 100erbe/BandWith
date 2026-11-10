@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -127,6 +128,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteShare, setInviteShare] = useState<{ code: string; url: string | null; name: string } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteMode, setInviteMode] = useState<'search' | 'email'>('search');
 
@@ -145,24 +148,54 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     setLoading(false);
   };
 
-  const handleRemoveMember = async (member: BandMember) => {
-    const { error } = await removeMember(member.id);
-    if (!error) {
-      // The database notifies the removed member and the band (migration 046).
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
-    }
+  const [pendingRemoval, setPendingRemoval] = useState<BandMember | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [memberNotice, setMemberNotice] = useState<string | null>(null);
+  const flashNotice = (text: string) => {
+    setMemberNotice(text);
+    setTimeout(() => setMemberNotice(null), 5000);
+  };
+  const adminCount = members.filter((m) => m.role === 'admin').length;
+  const isLastAdmin = (member: BandMember) => member.role === 'admin' && adminCount <= 1;
+
+  const handleRemoveMember = (member: BandMember) => {
     setActionMenuId(null);
+    if (isLastAdmin(member)) {
+      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      return;
+    }
+    setPendingRemoval(member);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!pendingRemoval || removing) return;
+    setRemoving(true);
+    const { error } = await removeMember(pendingRemoval.id);
+    setRemoving(false);
+    if (error) {
+      flashNotice(error.message || 'Could not remove the member. Try again.');
+      return;
+    }
+    // The database notifies the removed member and the band (migration 046).
+    setMembers((prev) => prev.filter((m) => m.id !== pendingRemoval.id));
+    setPendingRemoval(null);
   };
 
   const handleToggleRole = async (member: BandMember) => {
-    const newRole = member.role === 'admin' ? 'member' : 'admin';
-    const { error } = await updateMemberRole(member.id, newRole);
-    if (!error) {
-      setMembers((prev) =>
-        prev.map((m) => (m.id === member.id ? { ...m, role: newRole } : m)),
-      );
-    }
     setActionMenuId(null);
+    const newRole = member.role === 'admin' ? 'member' : 'admin';
+    if (newRole === 'member' && isLastAdmin(member)) {
+      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      return;
+    }
+    const { error } = await updateMemberRole(member.id, newRole);
+    if (error) {
+      flashNotice(error.message || 'Could not change the role. Try again.');
+      return;
+    }
+    setMembers((prev) =>
+      prev.map((m) => (m.id === member.id ? { ...m, role: newRole } : m)),
+    );
   };
 
   const handleEmailMember = (email: string) => {
@@ -210,21 +243,15 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       if (result.kind === 'existing_user') {
         setInviteSuccess(`Invite sent to ${displayName}. They’ll see it next time they open BandWith.`);
       } else {
-        let copied = false;
-        if (result.inviteUrl) {
-          try {
-            await navigator.clipboard.writeText(result.inviteUrl);
-            copied = true;
-          } catch {
-            // clipboard unavailable
-          }
-        }
+        // New person: keep the sheet open with the code and a Share button
+        // (copying after an await is blocked on iOS, and there may be no email).
+        setInviteShare({ code: result.token, url: result.inviteUrl, name: displayName });
         setInviteSuccess(
-          [
-            result.emailSent ? `Invite emailed to ${displayName}.` : `Invite created for ${displayName}.`,
-            copied ? 'Link copied — you can also share it directly.' : '',
-          ].filter(Boolean).join(' ')
+          result.emailSent
+            ? `Invite emailed to ${displayName}. You can also share it directly.`
+            : `Invite created for ${displayName}. Share it so they can join.`
         );
+        return true;
       }
       setTimeout(() => {
         setShowInvite(false);
@@ -285,6 +312,8 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
   const closeInvite = () => {
     setShowInvite(false);
+    setInviteShare(null);
+    setInviteSuccess(null);
     setSearchQuery('');
     setSearchResults([]);
     setError(null);
@@ -317,6 +346,9 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: isAdmin ? 24 : 'calc(var(--safe-bottom) + 40px)' }}>
+        {memberNotice && (
+          <p role="alert" className="bw-body-sm text-destructive">{memberNotice}</p>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -430,6 +462,28 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       )}
 
       {/* Invite member (Figma Sheet, Style=Dark) */}
+      <BwSheet
+        open={!!pendingRemoval}
+        onClose={() => !removing && setPendingRemoval(null)}
+        overline={selectedBand?.name}
+        title="Remove from band?"
+        zIndex={100}
+        footer={
+          <div className="grid grid-cols-2 gap-2">
+            <PillButton variant="outline" onClick={() => setPendingRemoval(null)} disabled={removing}>
+              Cancel
+            </PillButton>
+            <PillButton variant="danger" loading={removing} icon={<Trash2 className="w-4 h-4" />} onClick={confirmRemoveMember}>
+              Remove
+            </PillButton>
+          </div>
+        }
+      >
+        <p className="bw-body-md text-sheet-foreground/80">
+          {pendingRemoval?.profile?.full_name || 'This member'} loses access to the band's events, chats and repertoire. You can invite them again later.
+        </p>
+      </BwSheet>
+
       <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title="Invite member" zIndex={100}>
         <div className="dark flex flex-col gap-3 text-sheet-foreground">
           {/* Search (white pill) */}
@@ -542,6 +596,53 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             <div role="status" className="flex items-center gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
               <Check className="w-[18px] h-[18px] shrink-0 text-success" />
               <span className="bw-body-sm">{inviteSuccess}</span>
+            </div>
+          )}
+          {inviteShare && (
+            <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
+              <span className="bw-label-sm text-sheet-foreground/70">Invite code</span>
+              <span className="bw-body-sm font-mono select-all [overflow-wrap:anywhere]">{inviteShare.code}</span>
+              <span className="bw-body-sm text-sheet-foreground/70">
+                They install BandWith, sign up and paste this code{inviteShare.url ? ', or open the link' : ''}.
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <PillButton
+                  variant="outline"
+                  icon={codeCopied ? <Check className="w-4 h-4" /> : undefined}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(inviteShare.code).then(
+                      () => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); },
+                      () => setError('Could not copy. Use Share instead.')
+                    );
+                  }}
+                >
+                  {codeCopied ? 'Copied' : 'Copy code'}
+                </PillButton>
+                <PillButton
+                  onClick={async () => {
+                    const text = [
+                      `Join ${selectedBand?.name || 'our band'} on BandWith.`,
+                      inviteShare.url ? inviteShare.url : null,
+                      `Invite code: ${inviteShare.code}`,
+                    ].filter(Boolean).join('\n');
+                    try {
+                      if (Capacitor.isNativePlatform()) {
+                        const { Share } = await import('@capacitor/share');
+                        await Share.share({ title: 'BandWith invite', text });
+                      } else if (navigator.share) {
+                        await navigator.share({ title: 'BandWith invite', text });
+                      } else {
+                        await navigator.clipboard.writeText(text);
+                        setCodeCopied(true);
+                      }
+                    } catch {
+                      // share sheet closed
+                    }
+                  }}
+                >
+                  Share invite
+                </PillButton>
+              </div>
             </div>
           )}
         </div>

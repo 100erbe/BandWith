@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
 import { cn } from '@/app/components/ui/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { HEADER_SPRING } from '@/styles/motion';
@@ -204,48 +205,28 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       setSavingBandDetails(false);
     }
   };
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_push_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [emailEnabled, setEmailEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_email_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    try {
-      return localStorage.getItem('bandwith_sound_notifs') !== 'false';
-    } catch {
-      return true;
-    }
-  });
+  const [pushEnabled, setPushEnabled] = useState(() => readLocalPref('push'));
+  const [emailEnabled, setEmailEnabled] = useState(() => readLocalPref('email'));
+  useEffect(() => {
+    let cancelled = false;
+    loadNotificationPrefs().then((prefs) => {
+      if (cancelled || !prefs) return;
+      if (prefs.push !== undefined) setPushEnabled(prefs.push);
+      if (prefs.email !== undefined) setEmailEnabled(prefs.email);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleTogglePush = (val: boolean) => {
     setPushEnabled(val);
-    try {
-      localStorage.setItem('bandwith_push_notifs', String(val));
-    } catch {}
+    saveNotificationPref('push', val).then(({ error }) => { if (error) setPushEnabled(!val); });
   };
 
   const handleToggleEmail = (val: boolean) => {
     setEmailEnabled(val);
-    try {
-      localStorage.setItem('bandwith_email_notifs', String(val));
-    } catch {}
+    saveNotificationPref('email', val).then(({ error }) => { if (error) setEmailEnabled(!val); });
   };
 
-  const handleToggleSound = (val: boolean) => {
-    setSoundEnabled(val);
-    try {
-      localStorage.setItem('bandwith_sound_notifs', String(val));
-    } catch {}
-  };
 
   const handleLogout = async () => {
     try {
@@ -263,7 +244,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     const on = [
       pushEnabled && 'Push',
       emailEnabled && 'email',
-      soundEnabled && 'sound',
     ].filter(Boolean) as string[];
     if (on.length === 0) return 'Alerts paused';
     const list =
@@ -908,14 +888,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                             checked: emailEnabled,
                             onChange: handleToggleEmail,
                           },
-                          {
-                            key: 'sound',
-                            icon: <Play />,
-                            title: 'Sound effects',
-                            sub: 'Audio cues for chat & notifications',
-                            checked: soundEnabled,
-                            onChange: handleToggleSound,
-                          },
                         ].map((row) => (
                           <div
                             key={row.key}
@@ -982,7 +954,6 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     theme: mode,
                     pushNotifications: pushEnabled,
                     emailNotifications: emailEnabled,
-                    soundEffects: soundEnabled,
                   },
                   message: 'BandWith user data export',
                 };

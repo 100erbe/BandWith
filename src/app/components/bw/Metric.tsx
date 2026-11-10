@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/app/components/ui/utils';
 import { DotText } from './DotText';
 
@@ -24,7 +24,26 @@ export const DotMeter: React.FC<DotMeterProps> = ({ value, rows = 4, cols = 12, 
   const total = rows * cols;
   const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
   const lit = clamped > 0 ? Math.max(1, Math.round(clamped * total)) : 0;
-  const full = lit >= total;
+
+  // Micro-motion: start empty, then fill dot by dot toward the target; on a
+  // later change only the dots between the old and new level move. The peak
+  // gives one soft pop once the fill reaches it.
+  const [shown, setShown] = useState(0);
+  const fromRef = useRef(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      setShown((prev) => {
+        fromRef.current = prev;
+        return lit;
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [lit]);
+
+  const from = fromRef.current;
+  const step = Math.max(8, Math.min(26, 420 / Math.max(1, Math.abs(shown - from))));
+  const full = shown >= total;
+  const peakDelay = Math.abs(shown - from) * step;
 
   return (
     <div
@@ -38,16 +57,19 @@ export const DotMeter: React.FC<DotMeterProps> = ({ value, rows = 4, cols = 12, 
         <div key={r} className="flex justify-between">
           {Array.from({ length: cols }).map((__, c) => {
             const i = r * cols + c;
-            const on = i < lit;
-            const peak = full || i === lit - 1;
+            const on = i < shown;
+            const peak = shown > 0 && (full || i === shown - 1);
+            // Filling: delay grows away from the old level; emptying: from the top down.
+            const d = shown >= from ? (i - from) * step : (from - 1 - i) * step;
             return (
               <span
-                key={c}
-                className="rounded-full shrink-0"
+                key={peak ? `p${c}-${shown}` : c}
+                className={cn('rounded-full shrink-0 bw-dot-cell', peak && !full && 'bw-dot-pop')}
                 style={{
                   width: dot,
                   height: dot,
                   backgroundColor: peak ? peakColor : on ? onColor : offColor,
+                  ['--d' as string]: `${peak ? peakDelay : Math.max(0, d)}ms`,
                 }}
               />
             );

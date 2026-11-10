@@ -57,7 +57,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       try {
         const bioModule = await import('@/lib/services/biometric');
         biometricModuleRef.current = bioModule;
-        const status = await bioModule.checkBiometricAvailability({ allowWebTest: true });
+        const status = await bioModule.checkBiometricAvailability({ allowWebTest: import.meta.env.DEV });
         if (mountedRef.current) {
           setBiometricStatus(status);
         }
@@ -83,7 +83,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setError(null);
 
     try {
-      const credentials = await bioModule.getCredentialsWithBiometric(undefined, { allowWebTest: true });
+      const credentials = await bioModule.getCredentialsWithBiometric(undefined, { allowWebTest: import.meta.env.DEV });
       if (!mountedRef.current) return;
       if (credentials) {
         const { error } = await signIn(credentials.email, credentials.password);
@@ -112,7 +112,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       await biometricModuleRef.current.saveCredentialsForBiometric(
         pendingCredentials.email,
         pendingCredentials.password,
-        { allowWebTest: true }
+        { allowWebTest: import.meta.env.DEV }
       );
     }
 
@@ -178,7 +178,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     // Check if we should show the "Enable Fingerprint?" prompt BEFORE signing in
     let bioStatus = biometricStatus;
     if (!bioStatus && biometricModuleRef.current) {
-      bioStatus = await biometricModuleRef.current.checkBiometricAvailability({ allowWebTest: true });
+      bioStatus = await biometricModuleRef.current.checkBiometricAvailability({ allowWebTest: import.meta.env.DEV });
       if (mountedRef.current) setBiometricStatus(bioStatus);
     }
 
