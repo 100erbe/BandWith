@@ -27,6 +27,16 @@ mkdir -p "$BUILD_ROOT"
 rsync -a --delete --exclude '/app/build/' --exclude '/build/' --exclude '/.gradle/' \
   --exclude '* [0-9].*' --exclude '* [0-9][0-9].*' android/ "$BUILD_ROOT/android/"
 ln -sfn "$(pwd)/node_modules" "$BUILD_ROOT/node_modules"
+# Capacitor plugins are Gradle projects inside node_modules (still in iCloud);
+# point their build dirs into the mirror too, and drop old in-place outputs.
+find -L "$BUILD_ROOT/node_modules" -maxdepth 4 -type d -path '*/android/build' -prune -exec rm -rf {} + 2>/dev/null || true
+cat >> "$BUILD_ROOT/android/build.gradle" <<'GRADLE'
+
+// Added by scripts/build-android-apk.sh: keep plugin build outputs out of iCloud.
+subprojects { p ->
+    if (p.name != 'app') p.layout.buildDirectory = new File(rootDir, "build/modules/${p.name}")
+}
+GRADLE
 (cd "$BUILD_ROOT/android" && ./gradlew assembleDebug)
 cp "$BUILD_ROOT/android/app/build/outputs/apk/debug/app-debug.apk" BandWith-android-debug.apk
 echo "APK: $(pwd)/BandWith-android-debug.apk"
