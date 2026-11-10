@@ -27,6 +27,7 @@ import { toTitleCase } from '@/app/data/chats';
 import { markChatNotificationsAsRead } from '@/lib/services/notifications';
 import { setActiveChat } from '@/lib/services/activeChatTracker';
 import { useAuth } from '@/lib/AuthContext';
+import { useOnlinePresence } from '@/lib/services/presence';
 
 interface ChatDetailModalProps {
   chat: {
@@ -104,6 +105,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const [chatAvatarUrl, setChatAvatarUrl] = useState<string | undefined>(chat.avatarUrl);
   const [canText, setCanText] = useState<boolean>(true);
   const [restrictionReason, setRestrictionReason] = useState<string>('');
+  // Band admins (user ids) for the chat's band: drives the " · Admin" sender label.
+  const [bandAdminIds, setBandAdminIds] = useState<Set<string>>(() => new Set());
+  const onlineUserIds = useOnlinePresence(user?.id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -242,6 +246,17 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               setChatAvatarUrl((fullChat as any).logo_url || (fullChat as any).avatar_url);
             }
           }
+        }
+
+        // One lookup per chat (not per message) for the band's admins.
+        if ((fullChat.type === 'band' || fullChat.type === 'event') && fullChat.band_id) {
+          const { data: admins } = await supabase
+            .from('band_members')
+            .select('user_id')
+            .eq('band_id', fullChat.band_id)
+            .eq('role', 'admin')
+            .eq('is_active', true);
+          setBandAdminIds(new Set((admins || []).map((a: { user_id: string }) => a.user_id)));
         }
 
         // Business rule check: members can only text admins or band/event they're in
@@ -441,6 +456,13 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
   const messageGroups = groupMessagesByDate(messages);
   const chatTypeLabel = chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT';
+  // Group chats: "N members · N online". Online comes from realtime presence and is
+  // only shown once presence has synced (our own id is tracked) and participants are loaded.
+  const memberCount = chatParticipants.length > 0 ? chatParticipants.length + 1 : chat.members;
+  const onlineCount =
+    user?.id && onlineUserIds.has(user.id) && chatParticipants.length > 0
+      ? 1 + chatParticipants.filter(p => onlineUserIds.has(p.id)).length
+      : null;
   const eventKind = eventKindOf({ eventType: chat.eventType });
   const EventIcon = EVENT_ICON[eventKind];
   const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Member' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
@@ -512,8 +534,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 ) : (
                   'Offline'
                 )
-              ) : chat.members ? (
-                `${chat.members} ${chat.members === 1 ? 'member' : 'members'}`
+              ) : memberCount ? (
+                `${memberCount} ${memberCount === 1 ? 'member' : 'members'}${onlineCount !== null ? ` · ${onlineCount} online` : ''}`
               ) : chat.type === 'band' ? (
                 'Band chat'
               ) : (
@@ -607,6 +629,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                         {!isMe && (chat.type === 'band' || chat.type === 'event') && (
                           <p className="bw-label-xs text-muted-foreground">
                             {message.sender?.full_name || 'Member'}
+                            {bandAdminIds.has(message.sender_id) ? ' · Admin' : ''}
                           </p>
                         )}
 

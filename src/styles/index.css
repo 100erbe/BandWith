@@ -37,6 +37,12 @@
 [data-bw-status-column] .bw-status-clear-inset {
   right: max(1rem, var(--bw-status-clear-x));
 }
+/* The column on the leading edge (Split View, left window): the same
+   clearance on the other side (`--bw-status-clear-left`). */
+[data-bw-status-edge="left"] header,
+[data-bw-status-edge="left"] .bw-status-clear {
+  padding-inline-start: max(1rem, var(--bw-status-clear-left, 0px));
+}
 
 /* ── iPhone Duo layout (see src/lib/deviceRegions.ts) ─────────────────────
    Closed and open: the system column is a rail holding the vertical nav, and
@@ -65,6 +71,15 @@
 [data-bw-two-pane] .bw-pane-detail header,
 [data-bw-two-pane] .bw-pane-detail .bw-status-clear {
   padding-inline-end: 1rem;
+}
+/* Full-screen hubs (Identity, band switcher) live on the leading pane in
+   book/open layouts (Figma "Duo · Identity"), never across the fold; the
+   trailing pane keeps its own content. */
+[data-bw-two-pane] .bw-pane-hub {
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+  max-width: var(--bw-pane-leading-w) !important;
+  padding-right: 0 !important;
 }
 [data-bw-two-pane] .bw-pane-backdrop {
   display: none;
@@ -126,6 +141,162 @@
   right: calc(var(--bw-rail-w) + 1rem);
 }
 
+/* Rail on the leading edge (`data-bw-rail-edge="left"`: the system column is
+   on the left, e.g. the left window in Split View). Mirrors the rules above. */
+[data-bw-rail][data-bw-rail-edge="left"] .bw-pane-main {
+  padding-right: 1rem !important;
+  padding-left: calc(var(--bw-rail-w) + 10px) !important;
+}
+[data-bw-rail-host][data-bw-rail-edge="left"] .fixed.inset-0:not(.bw-pane-detail):not(.z-\[9999\]) {
+  padding-right: 0;
+  padding-left: var(--bw-rail-w);
+}
+[data-bw-rail-host][data-bw-rail-edge="left"]:not([data-bw-two-pane]) .bw-pane-detail {
+  padding-right: 0 !important;
+  padding-left: var(--bw-rail-w) !important;
+}
+[data-bw-two-pane][data-bw-rail-edge="left"] .bw-pane-detail {
+  padding-right: 0 !important;
+}
+[data-bw-rail-host][data-bw-rail-edge="left"] .bw-rail-sheet,
+[data-bw-rail-host][data-bw-rail-edge="left"] .bw-rail-clear {
+  right: 0 !important;
+  left: var(--bw-rail-w) !important;
+}
+[data-bw-rail-host][data-bw-rail-edge="left"][data-bw-two-pane] .bw-rail-sheet {
+  left: var(--bw-pane-trailing-x) !important;
+}
+[data-bw-rail-host][data-bw-status-edge="left"] header,
+[data-bw-rail-host][data-bw-status-edge="left"] .bw-status-clear {
+  padding-inline-start: 1rem;
+}
+[data-bw-rail-host][data-bw-rail-edge="left"] .bw-status-clear-inset {
+  right: 1rem;
+}
+
+/* ── Foldable postures (see src/lib/posture.ts) ───────────────────────────
+   `data-bw-posture` on <html>: closed | open-flat | book | tabletop | split,
+   absent on ordinary phones. Laptop pose (tabletop) splits at a horizontal
+   fold: the upright top half is the Display (--bw-display-h tall), the flat
+   bottom half the Deck (from --bw-deck-top), with an empty 44pt band between.
+   Figma "Duo · 11 Laptop pose": sheets, menus and the keyboard on the Deck;
+   toasts and alerts on the Display; navigation on the Deck. */
+
+/* Bottom sheets: scrims cover only the Deck, panels never grow past it. */
+[data-bw-posture="tabletop"] .bw-rail-sheet.inset-0,
+[data-bw-posture="tabletop"] .bw-deck-only.inset-0 {
+  top: var(--bw-deck-top) !important;
+}
+[data-bw-posture="tabletop"] .bw-rail-sheet:not(.inset-0),
+[data-bw-posture="tabletop"] .bw-deck-only:not(.inset-0) {
+  max-height: var(--bw-deck-h) !important;
+}
+/* Toasts and alerts sit at the bottom of the Display, above the fold band. */
+[data-bw-posture="tabletop"] .bw-toast,
+[data-bw-posture="tabletop"] [data-sonner-toaster] {
+  bottom: calc(var(--bw-display-bottom-inset) + 12px) !important;
+}
+
+/* FoldSplit (src/app/components/duo/FoldSplit.tsx). */
+.bw-fold-split {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  /* Over the page, under the floating tab bar (z-80), sheets and the rail.
+     Modes shown over a modal layer pass a higher z-index. */
+  z-index: 70;
+  background: var(--background);
+  color: var(--foreground);
+}
+.bw-fold-split--stage {
+  z-index: 125;
+  background: #000;
+  color: #fff;
+}
+.bw-fold-display,
+.bw-fold-deck {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Display: edge to edge (hero cards bleed); text stays clear of the clock. */
+.bw-fold-display {
+  top: 0;
+  height: var(--bw-display-h);
+  padding-top: var(--safe-top, 0px);
+}
+.bw-fold-display .bw-fold-pad {
+  padding-left: max(20px, var(--bw-status-clear-left, 0px));
+  padding-right: max(20px, var(--bw-status-clear-x, 0px));
+}
+/* The band at the fold stays empty and swallows taps. */
+.bw-fold-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--bw-display-h);
+  height: calc(var(--bw-deck-top) - var(--bw-display-h));
+}
+.bw-fold-deck {
+  top: var(--bw-deck-top);
+  bottom: 0;
+  padding-bottom: var(--safe-bottom, 0px);
+}
+/* Without the Duo rail the floating tab bar stays on the Deck's bottom edge. */
+:root:not([data-bw-rail]) .bw-fold-split:not(.bw-fold-split--stage) .bw-fold-deck {
+  padding-bottom: var(--content-bottom-clearance, calc(var(--safe-bottom, 0px) + 100px));
+}
+[data-bw-rail][data-bw-rail-edge="right"] .bw-fold-deck {
+  right: var(--bw-rail-w);
+}
+[data-bw-rail][data-bw-rail-edge="left"] .bw-fold-deck {
+  left: var(--bw-rail-w);
+}
+.bw-fold-split--stage .bw-fold-deck {
+  background: #0d0d0d;
+}
+/* Display type is one step bigger than the same text on the Deck. */
+.bw-fold-display .bw-label-xs { font-size: 11px; }
+.bw-fold-display .bw-label-sm { font-size: 12px; }
+.bw-fold-display .bw-label-md { font-size: 14px; }
+.bw-fold-display .bw-body-sm { font-size: 16px; }
+.bw-fold-display .bw-body-md { font-size: 18px; }
+.bw-fold-display .bw-body-lg { font-size: 20px; }
+.bw-fold-display .bw-h3 { font-size: 24px; }
+.bw-fold-display .bw-h2 { font-size: 32px; }
+.bw-fold-display .bw-h1 { font-size: 36px; }
+.bw-fold-display .bw-display { font-size: 44px; }
+.bw-fold-display .bw-display-lg { font-size: 56px; }
+.bw-fold-display .bw-value-md { font-size: 32px; }
+.bw-fold-display .bw-value-lg { font-size: 44px; }
+
+/* Leading companion (src/app/components/duo/companion.tsx): on the book
+   layout a trailing-page task can show a companion over the leading pane. */
+.bw-leading-companion {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--bw-pane-leading-w);
+  z-index: 118;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--background);
+  color: var(--foreground);
+  padding-top: var(--safe-top, 0px);
+  padding-bottom: var(--safe-bottom, 0px);
+  border-right: 1px solid var(--border);
+}
+[data-bw-rail-edge="left"] .bw-leading-companion {
+  padding-left: var(--bw-rail-w);
+}
+
 /* Glass surface for the app navbar (Figma bg/nav-glass, border/nav-glass,
    background blur 24, shadow 0 6 20 / 12%). */
 .bw-glass {
@@ -174,3 +345,7 @@
     transition: none !important;
   }
 }
+
+/* Minimal toasts centre on the content area, whichever side the rail is on. */
+:root { --bw-toast-center: calc((100vw - var(--bw-rail-w, 0px)) / 2); }
+[data-bw-rail-edge="left"] { --bw-toast-center: calc(var(--bw-rail-w, 0px) + (100vw - var(--bw-rail-w, 0px)) / 2); }

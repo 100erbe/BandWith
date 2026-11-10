@@ -44,7 +44,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   };
 
   return (
-    <AuthScreen top={<BackButton onClick={onBack} />}>
+    <AuthScreen top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>
       <AnimatePresence mode="wait">
         {success ? (
           <motion.div

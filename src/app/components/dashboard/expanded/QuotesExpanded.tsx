@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Send,
@@ -55,6 +56,8 @@ interface QuotesExpandedProps {
   onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   /** Optional: called after a successful create/update/delete so the parent can refetch. */
   onQuotesChanged?: () => void;
+  /** Opens Band settings (Pricing modal, "Branding & payment" tab) from the share sheet. */
+  onOpenBandSettings?: () => void;
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
@@ -65,6 +68,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   loading,
   onShowToast,
   onQuotesChanged,
+  onOpenBandSettings,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand } = useBand();
@@ -439,90 +443,101 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </section>
       </div>
 
-      {/* Inline feedback (used when no app-level toast is provided) */}
-      <AnimatePresence>
-        {inlineMessage && (
-          <motion.div
-            role={inlineMessage.type === 'error' ? 'alert' : 'status'}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            onClick={() => setInlineMessage(null)}
-            className={
-              'fixed left-4 right-4 bw-status-clear-inset top-[max(var(--safe-top),16px)] z-[300] mx-auto max-w-md rounded-[16px] px-4 py-3 bw-body-sm font-medium cursor-pointer ' +
-              (inlineMessage.type === 'error'
-                ? 'bg-destructive-solid text-destructive-foreground'
-                : 'bg-surface-inverse text-surface-inverse-foreground')
-            }
-          >
-            {inlineMessage.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Toasts and the screens a quote opens render at the top of the
+          document: this card lives inside the home scroller, which keeps fixed
+          layers on the leading page in iOS WebKit, and on the iPhone Duo they
+          open on the trailing page (Figma "Duo · 06 Quotes"). */}
+      {createPortal(
+        <>
+          {/* Inline feedback (used when no app-level toast is provided) */}
+          <AnimatePresence>
+            {inlineMessage && (
+              <motion.div
+                role={inlineMessage.type === 'error' ? 'alert' : 'status'}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                onClick={() => setInlineMessage(null)}
+                className={
+                  'bw-pane-leading-float fixed left-4 right-4 bw-status-clear-inset top-[max(var(--safe-top),16px)] z-[300] mx-auto max-w-md rounded-[16px] px-4 py-3 bw-body-sm font-medium cursor-pointer ' +
+                  (inlineMessage.type === 'error'
+                    ? 'bg-destructive-solid text-destructive-foreground'
+                    : 'bg-surface-inverse text-surface-inverse-foreground')
+                }
+              >
+                {inlineMessage.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {isSaving && (
-        <div
-          role="status"
-          className="fixed left-1/2 -translate-x-1/2 bottom-[calc(var(--safe-bottom)+24px)] z-[300] flex items-center gap-2 h-9 rounded-full bg-surface-inverse text-surface-inverse-foreground px-4 bw-label-sm"
-        >
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Saving quote…
-        </div>
+          {isSaving && (
+            <div
+              role="status"
+              className="bw-pane-leading-center fixed left-1/2 -translate-x-1/2 bottom-[calc(var(--safe-bottom)+24px)] z-[300] flex items-center gap-2 h-9 rounded-full bg-surface-inverse text-surface-inverse-foreground px-4 bw-label-sm"
+            >
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving quote…
+            </div>
+          )}
+
+          {/* Quote Creation Wizard */}
+          <AnimatePresence>
+            {isCreating && (
+              <QuoteCreationWizard
+                onClose={() => {
+                  setIsCreating(false);
+                  setEditingQuote(null);
+                }}
+                onCreate={handleCreateQuote}
+                initialData={editingQuote || undefined}
+                initialClientName={editingQuote?.clientName}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Quote Detail Modal */}
+          <AnimatePresence>
+            {selectedQuote && (
+              <QuoteDetailModal
+                quote={selectedQuote}
+                onClose={() => setSelectedQuote(null)}
+                onEdit={handleEditQuote}
+                onSend={handleSendQuote}
+                onDuplicate={handleDuplicateQuote}
+                onDelete={handleDeleteQuote}
+                onSetOutcome={handleSetOutcome}
+                onOpenBandSettings={onOpenBandSettings}
+                onSent={(q) => {
+                  setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: 'SENT' as QuoteStatus, sentAt: new Date().toISOString() } : x)));
+                  setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: 'SENT' as QuoteStatus } : prev));
+                  onQuotesChanged?.();
+                }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Quote Share Modal */}
+          <AnimatePresence>
+            {sharingQuote && (
+              <QuoteShareModal
+                isOpen={!!sharingQuote}
+                onClose={() => setSharingQuote(null)}
+                quote={sharingQuote}
+                bandId={currentBandId || bandId || 'default'}
+                bandName={selectedBand?.name || 'Band'}
+                onOpenBandSettings={onOpenBandSettings}
+                onSent={(id) => {
+                  const sentAt = new Date().toISOString();
+                  setQuotes(prev => prev.map(q => (q.id === id ? { ...q, status: 'SENT' as QuoteStatus, sentAt } : q)));
+                  setSharingQuote(prev => (prev && prev.id === id ? { ...prev, status: 'SENT' as QuoteStatus, sentAt } : prev));
+                  onQuotesChanged?.();
+                }}
+              />
+            )}
+          </AnimatePresence>
+        </>,
+        document.body,
       )}
-
-      {/* Quote Creation Wizard */}
-      <AnimatePresence>
-        {isCreating && (
-          <QuoteCreationWizard
-            onClose={() => {
-              setIsCreating(false);
-              setEditingQuote(null);
-            }}
-            onCreate={handleCreateQuote}
-            initialData={editingQuote || undefined}
-            initialClientName={editingQuote?.clientName}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Quote Detail Modal */}
-      <AnimatePresence>
-        {selectedQuote && (
-          <QuoteDetailModal
-            quote={selectedQuote}
-            onClose={() => setSelectedQuote(null)}
-            onEdit={handleEditQuote}
-            onSend={handleSendQuote}
-            onDuplicate={handleDuplicateQuote}
-            onDelete={handleDeleteQuote}
-            onSetOutcome={handleSetOutcome}
-            onSent={(q) => {
-              setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: 'SENT' as QuoteStatus, sentAt: new Date().toISOString() } : x)));
-              setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: 'SENT' as QuoteStatus } : prev));
-              onQuotesChanged?.();
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Quote Share Modal */}
-      <AnimatePresence>
-        {sharingQuote && (
-          <QuoteShareModal
-            isOpen={!!sharingQuote}
-            onClose={() => setSharingQuote(null)}
-            quote={sharingQuote}
-            bandId={currentBandId || bandId || 'default'}
-            bandName={selectedBand?.name || 'Band'}
-            onSent={(id) => {
-              const sentAt = new Date().toISOString();
-              setQuotes(prev => prev.map(q => (q.id === id ? { ...q, status: 'SENT' as QuoteStatus, sentAt } : q)));
-              setSharingQuote(prev => (prev && prev.id === id ? { ...prev, status: 'SENT' as QuoteStatus, sentAt } : prev));
-              onQuotesChanged?.();
-            }}
-          />
-        )}
-      </AnimatePresence>
     </ExpandedCardWrapper>
   );
 };

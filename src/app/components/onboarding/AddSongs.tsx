@@ -10,7 +10,7 @@ import {
   Clock,
 } from '@/app/components/icons';
 import { useOnboarding, OnboardingSong } from '@/lib/OnboardingContext';
-import { parseSongList, SONG_LIST_ACCEPT } from '@/lib/songListImport';
+import { parseSongList, parseDuration, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 
@@ -42,11 +42,11 @@ const SUGGESTED_SONGS: OnboardingSong[] = [
   },
   {
     id: 's4',
-    title: 'Uptown Funk',
-    artist: 'Bruno Mars',
-    duration: 270,
-    bpm: 115,
-    key: 'Dm',
+    title: 'September',
+    artist: 'Earth, Wind & Fire',
+    duration: 215,
+    bpm: 126,
+    key: 'A',
   },
   {
     id: 's5',
@@ -58,11 +58,11 @@ const SUGGESTED_SONGS: OnboardingSong[] = [
   },
   {
     id: 's6',
-    title: 'Lovely Day',
-    artist: 'Bill Withers',
-    duration: 243,
-    bpm: 98,
-    key: 'E',
+    title: 'Uptown Funk',
+    artist: 'Bruno Mars',
+    duration: 270,
+    bpm: 115,
+    key: 'Dm',
   },
 ];
 
@@ -106,6 +106,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
 
   // Custom song form
   const [customSong, setCustomSong] = useState<Partial<OnboardingSong>>({});
+  const [durationInput, setDurationInput] = useState('');
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '--:--';
@@ -174,6 +175,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
     });
 
     setCustomSong({});
+    setDurationInput('');
     setShowAddModal(false);
   };
 
@@ -181,6 +183,12 @@ export const AddSongs: React.FC<AddSongsProps> = ({
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 300));
     setIsSubmitting(false);
+    onComplete();
+  };
+
+  // Skip = start with an empty repertoire; drop anything picked so far.
+  const handleSkip = () => {
+    songs.forEach((song) => removeSong(song.id));
     onComplete();
   };
 
@@ -201,11 +209,9 @@ export const AddSongs: React.FC<AddSongsProps> = ({
       bodyClassName="pt-2 gap-4"
       footer={
         <>
-          {songs.length === 0 && (
-            <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSubmit} disabled={isSubmitting}>
-              Skip for now
-            </PillButton>
-          )}
+          <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSkip} disabled={isSubmitting}>
+            Skip for now
+          </PillButton>
           <PillButton
             onClick={handleSubmit}
             disabled={songs.length === 0 || isSubmitting}
@@ -361,6 +367,11 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                       type="text"
                       placeholder="3:30"
                       inputMode="numeric"
+                      value={durationInput}
+                      onChange={(e) => {
+                        setDurationInput(e.target.value);
+                        setCustomSong((prev) => ({ ...prev, duration: parseDuration(e.target.value) }));
+                      }}
                       icon={<Clock className="w-4 h-4" strokeWidth={1.75} />}
                     />
                     <PillField

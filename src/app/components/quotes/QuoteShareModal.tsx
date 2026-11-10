@@ -267,6 +267,15 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   };
 
   const missingBranding = !settings.band_logo_url || !settings.bank_iban;
+
+  // This sheet sits at z-[120]: close it before handing off to Band settings
+  // so the pricing/branding screen is never stacked underneath it.
+  const openBandSettings = onOpenBandSettings
+    ? () => {
+        onClose();
+        onOpenBandSettings();
+      }
+    : undefined;
   const pageCount = pdfResult?.pageDataUrls.length ?? 0;
 
   const shareChannels: {
@@ -280,7 +289,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'native',
       title: 'Share PDF document',
-      subtitle: 'Mail, Messages, Files, AirDrop…',
+      subtitle: 'Native share sheet',
       icon: <Share2 />,
       onClick: handleNativeShare,
       disabled: isGenerating || !pdfResult,
@@ -348,13 +357,13 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
               <HeaderAction pane label="Close" variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
             </div>
             <div className="flex items-center gap-2">
-              {onOpenBandSettings && (
+              {openBandSettings && (
                 <PillButton
                   variant="outline"
                   size="sm"
                   fullWidth={false}
                   icon={<IconSettings className="w-3.5 h-3.5" />}
-                  onClick={onOpenBandSettings}
+                  onClick={openBandSettings}
                   title="Configure band logo, signature & payment details"
                 >
                   Branding & payment
@@ -441,21 +450,19 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
           </section>
 
           {/* Missing branding tip */}
-          {missingBranding && onOpenBandSettings && (
+          {missingBranding && openBandSettings && (
             <button
               type="button"
-              onClick={onOpenBandSettings}
+              onClick={openBandSettings}
               className="w-full flex items-center gap-3 p-4 rounded-[16px] bg-card text-left active:scale-[0.99] transition-transform"
             >
               <AlertCircle className="w-5 h-5 shrink-0 text-warning" />
               <span className="flex-1 min-w-0 flex flex-col gap-1">
                 <span className="bw-label-sm text-foreground">Complete your band branding</span>
                 <span className="bw-body-sm text-muted-foreground">
-                  {!settings.band_logo_url && !settings.bank_iban
-                    ? 'Add logo, signature and IBAN in Band settings to include them on the PDF.'
-                    : !settings.band_logo_url
-                      ? 'Upload your band logo to brand the header of the PDF.'
-                      : 'Add your IBAN / payment details to show bank transfer info on the quote.'}
+                  {!settings.band_logo_url
+                    ? 'Add logo and signature to the PDF'
+                    : 'Add your IBAN / payment details to show bank transfer info on the quote.'}
                 </span>
               </span>
               <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />

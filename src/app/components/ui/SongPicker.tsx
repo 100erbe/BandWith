@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Plus, X, Link, Check } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { BwSheet, Tag } from '@/app/components/bw/Screen';
-import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
+import { FormError, PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { getSongs, createSong, type Song } from '@/lib/services/songs';
 import { useBand } from '@/lib/BandContext';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
@@ -26,6 +26,8 @@ interface SongPickerProps {
   selectedIds?: string[];
   /** Theme color scheme */
   theme?: 'lime' | 'blue' | 'beige';
+  /** Sheet overline, e.g. the target set ("Set 1 · Dinner"). */
+  overline?: string;
 }
 
 type Tab = 'library' | 'add';
@@ -49,12 +51,16 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   multiSelect = false,
   selectedIds = [],
   theme = 'lime',
+  overline = 'Song library',
 }) => {
   const { selectedBand } = useBand();
   const [tab, setTab] = useState<Tab>('library');
   const [search, setSearch] = useState('');
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
 
   // Add form
@@ -65,14 +71,19 @@ export const SongPicker: React.FC<SongPickerProps> = ({
 
   useEffect(() => {
     if (!isOpen || !selectedBand?.id) return;
+    let cancelled = false;
     const fetchSongs = async () => {
       setLoading(true);
-      const { data } = await getSongs(selectedBand.id);
-      if (data) setSongs(data);
+      setLoadError(null);
+      const { data, error } = await getSongs(selectedBand.id);
+      if (cancelled) return;
+      if (error) setLoadError(error.message || "Couldn't load your song library.");
+      else if (data) setSongs(data);
       setLoading(false);
     };
     fetchSongs();
-  }, [isOpen, selectedBand?.id]);
+    return () => { cancelled = true; };
+  }, [isOpen, selectedBand?.id, reloadKey]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return songs;
@@ -130,6 +141,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   const handleAddSong = useCallback(async () => {
     if (!newTitle.trim() || !selectedBand?.id) return;
     setSaving(true);
+    setSaveError(null);
 
     const urlFields = newUrl.trim() ? detectUrlType(newUrl.trim()) : {};
     const songData: Partial<Song> = {
@@ -141,8 +153,12 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       ...urlFields,
     };
 
-    const { data: created } = await createSong(songData);
+    const { data: created, error: createError } = await createSong(songData);
     setSaving(false);
+    if (createError || !created) {
+      setSaveError(createError?.message || "Couldn't save this song.");
+      return;
+    }
 
     if (created) {
       setSongs(prev => [created, ...prev]);
@@ -202,9 +218,10 @@ export const SongPicker: React.FC<SongPickerProps> = ({
 
   return (
     <BwSheet
+      picker
       open={isOpen}
       onClose={onClose}
-      overline="Song library"
+      overline={overline}
       title={tab === 'library' ? 'Add songs' : 'New song'}
       footer={footer}
       zIndex={110}
@@ -264,6 +281,14 @@ export const SongPicker: React.FC<SongPickerProps> = ({
             {/* Song list */}
             {loading ? (
               <p className="py-12 text-center bw-body-md text-sheet-foreground/70">Loading songs…</p>
+            ) : loadError ? (
+              <div role="alert" className="py-8 flex flex-col items-center gap-3 text-center">
+                <p className="bw-label-md text-sheet-foreground">Couldn't load the song library</p>
+                <p className="bw-body-sm text-sheet-foreground/70 max-w-[280px] [overflow-wrap:anywhere]">{loadError}</p>
+                <PillButton variant="white" size="sm" fullWidth={false} onClick={() => setReloadKey(k => k + 1)}>
+                  Try again
+                </PillButton>
+              </div>
             ) : displayed.length === 0 ? (
               <p className="py-12 text-center bw-body-md text-sheet-foreground/70">
                 {songs.length === 0 ? 'No songs in your library yet.' : 'No matches found.'}
@@ -347,6 +372,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
               placeholder="Paste URL"
               hint="Spotify, YouTube, Google Drive, or any audio link"
             />
+            {saveError && <FormError>{saveError}</FormError>}
           </>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -11,40 +11,40 @@ import {
   X,
   Loader2,
   Calendar,
-  ArrowLeft,
-  Search,
+  RefreshCw,
+  Sparkles,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
-import { supabase } from '@/lib/supabase';
 import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet, type TagStyle } from '@/app/components/bw/Screen';
-import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
+import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
+import {
+  createTemplate,
+  deleteTemplate,
+  duplicateTemplate,
+  insertStarterTemplates,
+  listTemplates,
+  updateTemplate,
+  type TaskTemplate,
+  type TemplateCategory,
+  type TemplateTask,
+} from '@/lib/services/taskTemplates';
 
-interface TaskItem {
-  id: string;
-  title: string;
-  /** Days before (<0) / after (>0) the event. Older rows may not have it. */
-  dueOffset?: number;
-  required?: boolean;
-}
+export type { TaskTemplate, TemplateTask } from '@/lib/services/taskTemplates';
 
-interface TaskTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: 'wedding' | 'corporate' | 'festival' | 'private' | 'rehearsal' | 'other';
-  tasks: TaskItem[];
-  band_id: string;
-  is_default: boolean;
-  created_at: string;
-}
+type TaskItem = TemplateTask;
 
 interface TaskTemplatesViewProps {
   onBack: () => void;
   bandId: string;
+  /**
+   * "Use this template" in the details sheet. The parent opens the matching
+   * create flow pre-filled with `template.tasks`. The sheet closes either way.
+   */
+  onUseTemplate?: (template: TaskTemplate) => void;
 }
 
 /** Category tag colours follow the event palette (Figma: Templates / Task templates). */
-const CATEGORIES: Record<string, { label: string; tag: TagStyle }> = {
+const CATEGORIES: Record<TemplateCategory, { label: string; tag: TagStyle }> = {
   wedding: { label: 'Wedding', tag: 'gig' },
   corporate: { label: 'Corporate', tag: 'quote' },
   festival: { label: 'Festival', tag: 'personal' },
@@ -53,80 +53,32 @@ const CATEGORIES: Record<string, { label: string; tag: TagStyle }> = {
   other: { label: 'Other', tag: 'subtle' },
 };
 
-const DEFAULT_TEMPLATES: Omit<TaskTemplate, 'id' | 'band_id' | 'created_at'>[] = [
-  {
-    name: 'Wedding Gig Checklist',
-    description: 'Complete checklist for wedding performances',
-    category: 'wedding',
-    is_default: true,
-    tasks: [
-      { id: '1', title: 'Confirm final setlist with couple', dueOffset: -14, required: true },
-      { id: '2', title: 'Check venue access and load-in times', dueOffset: -7, required: true },
-      { id: '3', title: 'Prepare contracts and get signatures', dueOffset: -14, required: true },
-      { id: '4', title: 'Confirm sound check time', dueOffset: -3, required: true },
-      { id: '5', title: 'Pack equipment checklist', dueOffset: -1, required: true },
-      { id: '6', title: 'Send final invoice', dueOffset: 1, required: false },
-    ],
-  },
-  {
-    name: 'Corporate Event',
-    description: 'Standard corporate gig preparation',
-    category: 'corporate',
-    is_default: true,
-    tasks: [
-      { id: '1', title: 'Review event brief', dueOffset: -7, required: true },
-      { id: '2', title: 'Confirm dress code', dueOffset: -5, required: false },
-      { id: '3', title: 'Check AV requirements', dueOffset: -5, required: true },
-      { id: '4', title: 'Prepare invoice', dueOffset: -3, required: true },
-      { id: '5', title: 'Sound check', dueOffset: 0, required: true },
-    ],
-  },
-  {
-    name: 'Festival Set',
-    description: 'Festival and outdoor event checklist',
-    category: 'festival',
-    is_default: true,
-    tasks: [
-      { id: '1', title: 'Confirm stage time', dueOffset: -7, required: true },
-      { id: '2', title: 'Submit tech rider', dueOffset: -14, required: true },
-      { id: '3', title: 'Arrange transport', dueOffset: -5, required: true },
-      { id: '4', title: 'Pack weather gear', dueOffset: -1, required: false },
-      { id: '5', title: 'Collect artist passes', dueOffset: 0, required: true },
-    ],
-  },
-  {
-    name: 'Rehearsal Session',
-    description: 'Pre-rehearsal preparation',
-    category: 'rehearsal',
-    is_default: true,
-    tasks: [
-      { id: '1', title: 'Share setlist with band', dueOffset: -3, required: true },
-      { id: '2', title: 'Book rehearsal room', dueOffset: -7, required: true },
-      { id: '3', title: 'Prepare charts/lyrics', dueOffset: -2, required: false },
-      { id: '4', title: 'Check equipment', dueOffset: -1, required: true },
-    ],
-  },
-];
-
-export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId }) => {
+export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate }) => {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  
-  // Create form state
+
+  // Create / edit form state (`editingId` set = editing an existing row)
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState<string>('other');
+  const [formCategory, setFormCategory] = useState<TemplateCategory>('other');
   const [formTasks, setFormTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskOffset, setNewTaskOffset] = useState(-7);
   const [newTaskRequired, setNewTaskRequired] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+  const [formError, setFormError] = useState<string | null>(null);
+
   const resetForm = () => {
+    setEditingId(null);
     setFormName('');
     setFormDescription('');
     setFormCategory('other');
@@ -134,8 +86,20 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setNewTaskTitle('');
     setNewTaskOffset(-7);
     setNewTaskRequired(true);
+    setFormError(null);
   };
-  
+
+  const openCreate = () => {
+    resetForm();
+    setShowCreateModal(true);
+  };
+
+  const closeForm = () => {
+    if (saving) return;
+    setShowCreateModal(false);
+    resetForm();
+  };
+
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
     const task: TaskItem = {
@@ -149,90 +113,52 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setNewTaskOffset(-7);
     setNewTaskRequired(true);
   };
-  
+
   const handleRemoveTask = (taskId: string) => {
     setFormTasks(formTasks.filter(t => t.id !== taskId));
   };
-  
+
   const handleSaveTemplate = async () => {
     if (!formName.trim() || formTasks.length === 0 || saving) return;
     setSaving(true);
-    
-    try {
-      const newTemplate: TaskTemplate = {
-        id: crypto.randomUUID(),
-        name: formName.trim(),
-        description: formDescription.trim(),
-        category: formCategory as any,
-        tasks: formTasks,
-        band_id: bandId,
-        is_default: false,
-        created_at: new Date().toISOString(),
-      };
-      
-      const { error } = await supabase
-        .from('task_templates')
-        .insert({
-          id: newTemplate.id,
-          name: newTemplate.name,
-          description: newTemplate.description,
-          category: newTemplate.category,
-          tasks: newTemplate.tasks,
-          band_id: bandId,
-          is_default: false,
-        });
-      
-      if (error) {
-        console.error('Error saving template:', error);
-      }
-      
-      setTemplates([newTemplate, ...templates]);
-      resetForm();
-      setShowCreateModal(false);
-    } catch (err) {
-      console.error('Error saving template:', err);
-    } finally {
-      setSaving(false);
+    setFormError(null);
+    const input = { name: formName, description: formDescription, category: formCategory, tasks: formTasks };
+    const { data, error } = editingId ? await updateTemplate(editingId, input) : await createTemplate(bandId, input);
+    setSaving(false);
+    if (error || !data) {
+      setFormError(error?.message || 'Could not save the template.');
+      return;
     }
+    setTemplates((prev) => (editingId ? prev.map((t) => (t.id === data.id ? data : t)) : [data, ...prev]));
+    setSelectedTemplate((cur) => (cur && cur.id === data.id ? data : cur));
+    setShowCreateModal(false);
+    resetForm();
   };
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    const { data, error } = await listTemplates(bandId);
+    if (error) setLoadError(error.message);
+    else setTemplates(data || []);
+    setLoading(false);
+  }, [bandId]);
 
   useEffect(() => {
     loadTemplates();
-  }, [bandId]);
+  }, [loadTemplates]);
 
-  const loadTemplates = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('task_templates')
-        .select('*')
-        .eq('band_id', bandId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTemplates(
-        (data || []).map((t: any) => ({
-          ...t,
-          description: t.description ?? '',
-          tasks: (Array.isArray(t.tasks) ? t.tasks : []).map((task: any, i: number) => ({
-            id: task.id ?? `${t.id}-${i}`,
-            title: task.title ?? '',
-            dueOffset: task.dueOffset ?? task.due_offset ?? undefined,
-            required: task.required ?? false,
-          })),
-        })),
-      );
-    } catch (err) {
-      console.error('Error loading templates:', err);
-      setTemplates(DEFAULT_TEMPLATES.map((t, i) => ({
-        ...t,
-        id: `default-${i}`,
-        band_id: bandId,
-        created_at: new Date().toISOString(),
-      })));
-    } finally {
-      setLoading(false);
+  const handleAddStarters = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    setListError(null);
+    const { data, error } = await insertStarterTemplates(bandId);
+    setSeeding(false);
+    if (error || !data) {
+      setListError(error?.message || 'Could not add the starter templates.');
+      return;
     }
+    setTemplates((prev) => [...data, ...prev]);
   };
 
   const filteredTemplates = templates.filter(template =>
@@ -240,30 +166,49 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     template.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDuplicate = (template: TaskTemplate) => {
-    const newTemplate: TaskTemplate = {
-      ...template,
-      id: crypto.randomUUID(),
-      name: `${template.name} (Copy)`,
-      is_default: false,
-      created_at: new Date().toISOString(),
-    };
-    setTemplates([newTemplate, ...templates]);
+  const handleDuplicate = async (template: TaskTemplate) => {
     setMenuOpenId(null);
+    if (busyId) return;
+    setBusyId(template.id);
+    setListError(null);
+    const { data, error } = await duplicateTemplate(template);
+    setBusyId(null);
+    if (error || !data) {
+      setListError(`Couldn't duplicate "${template.name}". ${error?.message ?? ''}`.trim());
+      return;
+    }
+    setTemplates((prev) => [data, ...prev]);
   };
 
-  const handleDelete = (id: string) => {
-    setTemplates(templates.filter(t => t.id !== id));
+  const handleDelete = async (template: TaskTemplate) => {
     setMenuOpenId(null);
+    if (busyId) return;
+    setBusyId(template.id);
+    setListError(null);
+    const { error } = await deleteTemplate(template.id);
+    setBusyId(null);
+    if (error) {
+      setListError(`Couldn't delete "${template.name}". ${error.message}`);
+      return;
+    }
+    setTemplates((prev) => prev.filter((t) => t.id !== template.id));
   };
 
   const handleEdit = (template: TaskTemplate) => {
+    resetForm();
+    setEditingId(template.id);
     setFormName(template.name);
     setFormDescription(template.description);
     setFormCategory(template.category);
-    setFormTasks([...template.tasks]);
+    setFormTasks(template.tasks.map((t) => ({ ...t })));
     setShowCreateModal(true);
     setMenuOpenId(null);
+  };
+
+  const handleUseTemplate = () => {
+    const template = selectedTemplate;
+    setSelectedTemplate(null);
+    if (template) onUseTemplate?.(template);
   };
 
   const formatDueOffset = (offset?: number | null) => {
@@ -289,7 +234,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
+      className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <ScreenHeader
@@ -298,17 +243,30 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         overline="Workflows & checklists"
         title="Task templates"
         actions={
-          <IconButton label="Create template" variant="filled" icon={<Plus />} onClick={() => setShowCreateModal(true)} />
+          <IconButton label="Create template" variant="filled" icon={<Plus />} onClick={openCreate} />
         }
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
         <SearchField value={searchQuery} onChange={setSearchQuery} label="Search templates" placeholder="Search templates…" />
 
+        {listError && <FormError>{listError}</FormError>}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
+        ) : loadError ? (
+          <Card className="items-center text-center py-10 gap-4" role="alert">
+            <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
+            <div className="flex flex-col gap-1">
+              <h2 className="bw-h3">Couldn't load templates</h2>
+              <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{loadError}</p>
+            </div>
+            <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={loadTemplates}>
+              Try again
+            </PillButton>
+          </Card>
         ) : filteredTemplates.length === 0 ? (
           <Card className="items-center text-center py-10 gap-4">
             <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
@@ -321,9 +279,21 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
               </p>
             </div>
             {!searchQuery && (
-              <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowCreateModal(true)}>
-                Create template
-              </PillButton>
+              <div className="flex flex-wrap justify-center gap-2">
+                <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
+                  Create template
+                </PillButton>
+                <PillButton
+                  size="md"
+                  variant="outline"
+                  fullWidth={false}
+                  icon={<Sparkles className="w-4 h-4" />}
+                  loading={seeding}
+                  onClick={handleAddStarters}
+                >
+                  Add starter templates
+                </PillButton>
+              </div>
             )}
           </Card>
         ) : (
@@ -352,9 +322,14 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         onClick={() => setMenuOpenId(menuOpenId === template.id ? null : template.id)}
                         aria-label={`Actions for ${template.name}`}
                         aria-expanded={menuOpenId === template.id}
+                        disabled={busyId === template.id}
                         className="relative z-10 -m-3 p-3 text-foreground"
                       >
-                        <MoreHorizontal className="w-[18px] h-[18px]" />
+                        {busyId === template.id ? (
+                          <Loader2 className="w-[18px] h-[18px] animate-spin" />
+                        ) : (
+                          <MoreHorizontal className="w-[18px] h-[18px]" />
+                        )}
                       </button>
                     </div>
                     <button
@@ -380,7 +355,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                           { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, run: () => handleDuplicate(template) },
                           { label: 'Edit', icon: <Edit2 className="w-4 h-4" />, run: () => handleEdit(template) },
                           ...(!template.is_default
-                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDelete(template.id), danger: true }]
+                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDelete(template), danger: true }]
                             : []),
                         ].map((item) => (
                           <button
@@ -414,7 +389,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         overline="Template details"
         title={selectedTemplate?.name ?? ''}
         footer={
-          <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={() => setSelectedTemplate(null)}>
+          <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={handleUseTemplate}>
             Use this template
           </PillButton>
         }
@@ -461,19 +436,18 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: 'tween', duration: 0.25 }}
-            className="fixed inset-0 z-[100] flex flex-col bg-background text-foreground"
+            className="bw-pane-detail fixed inset-0 z-[100] flex flex-col bg-background text-foreground"
           >
             <ScreenHeader
-              onBack={() => {
-                setShowCreateModal(false);
-                resetForm();
-              }}
-              overline="New template"
-              title="Create template"
+                pane
+              onBack={closeForm}
+              overline={editingId ? 'Template' : 'New template'}
+              title={editingId ? 'Edit template' : 'Create template'}
               titleSize="h1"
             />
 
             <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8 max-w-xl mx-auto w-full flex flex-col gap-6">
+              {formError && <FormError>{formError}</FormError>}
               <PillField
                 label="Template name"
                 value={formName}
@@ -490,7 +464,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
               <fieldset className="flex flex-col gap-2">
                 <legend className="bw-label-sm text-muted-foreground mb-2">Category</legend>
                 <div className="flex flex-wrap gap-2">
-                  {(Object.keys(CATEGORIES) as (keyof typeof CATEGORIES)[]).map((cat) => (
+                  {(Object.keys(CATEGORIES) as TemplateCategory[]).map((cat) => (
                     <Selector key={cat} size="md" selected={formCategory === cat} onClick={() => setFormCategory(cat)}>
                       {CATEGORIES[cat].label}
                     </Selector>
@@ -558,7 +532,9 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   disabled={!formName.trim() || formTasks.length === 0}
                   icon={<CheckSquare className="w-[18px] h-[18px]" />}
                 >
-                  Create template ({formTasks.length} {formTasks.length === 1 ? 'task' : 'tasks'})
+                  {editingId
+                    ? 'Save changes'
+                    : `Create template (${formTasks.length} ${formTasks.length === 1 ? 'task' : 'tasks'})`}
                 </PillButton>
               </div>
             </div>

@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { AuthScreen, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import { WizardTop, wizardStep } from './OnboardingChrome';
+import { LegalSheet, legalUrl, type LegalDoc } from '@/app/components/legal/LegalSheet';
 
 interface AccountCreationProps {
   onBack: () => void;
@@ -40,6 +41,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDoc | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -138,8 +140,9 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
           </PillButton>
           <p className="bw-body-sm text-muted-foreground">
             By continuing you accept the{' '}
-            <a href="#" className="text-foreground underline underline-offset-4">Terms</a> and{' '}
-            <a href="#" className="text-foreground underline underline-offset-4">Privacy Policy</a>.
+            <a href={legalUrl('terms')} onClick={(e) => { e.preventDefault(); setLegalDoc('terms'); }} className="text-foreground underline underline-offset-4">Terms</a> and{' '}
+            <a href={legalUrl('privacy')} onClick={(e) => { e.preventDefault(); setLegalDoc('privacy'); }} className="text-foreground underline underline-offset-4">Privacy Policy</a>.
+            <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
           </p>
         </>
       }

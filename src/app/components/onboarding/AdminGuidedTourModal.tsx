@@ -110,7 +110,7 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[120] bg-black/65 flex items-center justify-center p-4"
+      className="bw-pane-dialog fixed inset-0 z-[120] bg-black/65 flex items-center justify-center p-4"
       style={{ paddingTop: 'calc(var(--safe-top) + 16px)', paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
     >
       <motion.div

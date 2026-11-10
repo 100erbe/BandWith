@@ -54,16 +54,16 @@ export class InviteError extends Error {
   }
 }
 
-export function inviteErrorMessage(code: InviteErrorCode): string {
+export function inviteErrorMessage(code: InviteErrorCode, email?: string): string {
   switch (code) {
     case 'invalid_code':
       return 'That doesn’t look like an invite code. Paste the full code or the invite link.';
     case 'invite_not_found':
-      return 'This invite isn’t valid any more. Ask your bandmate to send a new one.';
+      return 'This invite isn’t valid any more. Ask your band admin for a new one.';
     case 'invite_expired':
-      return 'This invite has expired. Ask your bandmate to send a new one.';
+      return 'This invite has expired. Ask your band admin for a new one.';
     case 'invite_email_mismatch':
-      return 'This invite was sent to a different email. Sign in with that email to join.';
+      return `This invite was sent to a different email. Sign in with ${email || 'that email'} to join.`;
     case 'not_authenticated':
       return 'Sign in to join the band.';
     default:
@@ -96,6 +96,7 @@ interface PreviewRow {
   band_description: string | null;
   member_count: number | string | null;
   inviter_name: string | null;
+  gigs_this_year?: number | string | null;
 }
 
 export function previewRowToInviteData(row: PreviewRow): InviteData {
@@ -114,6 +115,7 @@ export function previewRowToInviteData(row: PreviewRow): InviteData {
       description: row.band_description ?? undefined,
     },
     member_count: Number(row.member_count ?? 0),
+    gigs_this_year: row.gigs_this_year == null ? undefined : Number(row.gigs_this_year),
     inviter: row.inviter_name ? { full_name: row.inviter_name } : undefined,
   };
 }

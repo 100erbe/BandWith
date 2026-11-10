@@ -27,8 +27,15 @@ npm-debug.log*
 # Testing
 coverage/
 
-# Capacitor
-android/
+# Capacitor (native projects are tracked; build outputs are ignored by android/.gitignore)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/app/google-services.json
+*.apk
+*.aab
 
 # Supabase CLI cache
 supabase/.temp/

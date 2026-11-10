@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { Eye, EyeOff, Lock } from '@/app/components/icons';
+import { DuoAuthLayout } from './DuoAuthLayout';
 import { AuthScreen, FormError, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 
 const MIN_LENGTH = 8;
@@ -56,6 +57,7 @@ export default function SetNewPasswordScreen() {
 
   if (done) {
     return (
+      <DuoAuthLayout>
       <AuthScreen
         bodyClassName="pt-10"
         footer={<PillButton onClick={dismissPasswordRecovery}>Continue</PillButton>}
@@ -67,10 +69,12 @@ export default function SetNewPasswordScreen() {
           </p>
         </div>
       </AuthScreen>
+      </DuoAuthLayout>
     );
   }
 
   return (
+    <DuoAuthLayout>
     <AuthScreen bodyClassName="pt-10">
       <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col gap-5">
         <Kicker overline="Account recovery" title="Set a new password" />
@@ -109,5 +113,6 @@ export default function SetNewPasswordScreen() {
         </div>
       </form>
     </AuthScreen>
+    </DuoAuthLayout>
   );
 }

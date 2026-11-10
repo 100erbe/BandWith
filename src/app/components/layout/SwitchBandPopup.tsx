@@ -1,4 +1,6 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
+import { useRailLayout } from '@/lib/deviceRegions';
 import { motion } from 'motion/react';
 import { Plus } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -23,8 +25,21 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
   onSelectBand,
   onAddNewBand,
 }) => {
-  return (
-    <BwSheet open={isOpen} onClose={onClose} zIndex={71} overline="Select band" title="Your bands">
+  // iPhone Duo open (Figma "Open · Home / Admin | Home / Switch band"): the
+  // sheet opens on the trailing page next to the home. Creating a band moves
+  // it to the leading page so the list stays in view while the new band is
+  // set up on the right ("Open · Home / Switch band | Band / Create band").
+  const { twoPane } = useRailLayout();
+  const [docked, setDocked] = React.useState(false);
+  React.useEffect(() => {
+    if (!isOpen || !twoPane) setDocked(false);
+  }, [isOpen, twoPane]);
+
+  // Rendered at the top level: the home scroller it is declared in keeps
+  // fixed layers on the leading page in iOS WebKit. Above a detail on the
+  // trailing page (z 90), which it covers like the Figma frame.
+  const sheet = (
+    <BwSheet open={isOpen} onClose={onClose} zIndex={95} overline="Select band" title="Your bands" leading={docked}>
       <div className="flex flex-col gap-3 pb-2">
         <ul className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto">
           {bands.map((band) => {
@@ -76,14 +91,16 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
           type="button"
           onClick={() => {
             onAddNewBand();
-            onClose();
+            if (twoPane) setDocked(true);
+            else onClose();
           }}
           className="w-full h-[52px] rounded-full border-[1.5px] border-dashed border-sheet-foreground/70 flex items-center justify-center gap-2 text-sheet-foreground bw-button-md active:scale-[0.98] transition-transform"
         >
           <Plus className="w-[18px] h-[18px]" />
-          Create or join band
+          Create band
         </button>
       </div>
     </BwSheet>
   );
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body);
 };

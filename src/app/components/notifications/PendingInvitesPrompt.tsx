@@ -133,7 +133,7 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          className="fixed left-4 right-4 bw-status-clear-inset z-[65] mx-auto max-w-md rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4"
+          className="bw-pane-float fixed left-4 right-4 bw-status-clear-inset z-[65] mx-auto max-w-md rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4"
           style={{ bottom: 'calc(var(--safe-bottom) + 96px)' }}
         >
           {/* Figma: Home / Pending band invite (dark card) */}

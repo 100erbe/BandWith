@@ -1,0 +1,167 @@
+/* ── iPhone Duo open: page placement for views (Figma "Duo · 01"…"Duo · 10") ──
+   Loaded after index.css (see src/main.tsx). index.css owns the base pane
+   rules (.bw-pane-main / -detail / -hub / -placeholder, .bw-rail-sheet); this
+   file adds what the individual screens need on top of them. Every rule here
+   is gated on `data-bw-two-pane` (open inner display, 951×669: leading page
+   431pt | 1pt divider | trailing page | rail), so the closed display and
+   ordinary phones are unchanged. */
+
+/* ── Auth & onboarding (Figma "Duo · 01"): BRAND page on the left, the form
+   on the right, where the thumbs are. ─────────────────────────────────── */
+.bw-auth-brand {
+  display: none;
+}
+[data-bw-two-pane] .bw-auth-brand {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  /* The page and the 1pt divider (black in the Figma frames). */
+  width: var(--bw-pane-trailing-x);
+  z-index: 30;
+  overflow-y: auto;
+  background: #000;
+  color: #fff;
+  padding: calc(var(--safe-top, 0px) + 44px) 36px calc(var(--safe-bottom, 0px) + 36px);
+}
+/* The trailing page holds the screen. The transform makes it the containing
+   block of the screens' own fixed layers (sheets, toasts), so they open on
+   this page and never cross the fold. */
+[data-bw-two-pane] .bw-auth-trailing {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: var(--bw-pane-trailing-x);
+  z-index: 20;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+[data-bw-two-pane] .bw-auth-trailing-scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+/* Screen roots (AuthScreen, Welcome) run under the status column with their
+   own colour, like the Figma panes; their content stops before it. */
+[data-bw-two-pane] .bw-auth-trailing .min-h-\[100dvh\] {
+  min-height: 100%;
+  padding-right: var(--bw-rail-w);
+}
+/* A top bar that only holds Back: Back sits in the side column, under the
+   clock (Figma "Open · BRAND | Auth / Sign in": Back 36pt at y 80). The top
+   bar keeps its height. */
+[data-bw-two-pane] .bw-auth-trailing .bw-duo-rail-back {
+  position: fixed;
+  z-index: 5;
+  top: calc(var(--safe-top, 0px) + 76px);
+  right: max(0px, calc((var(--bw-rail-w) - 44px) / 2));
+  margin: 0;
+}
+
+/* ── Hubs on the leading page ─────────────────────────────────────────── */
+/* Bars inside a hub (expanded dashboard cards) stop at the page, not at the
+   rail, which is on the other side of the fold. */
+[data-bw-two-pane] .bw-pane-hub .bw-rail-clear {
+  right: 0 !important;
+}
+[data-bw-two-pane] .bw-pane-hub .bw-rail-clear.fixed {
+  left: 0 !important;
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+}
+/* Toasts and status pills of a hub stay on its page. */
+[data-bw-two-pane] .bw-pane-leading-float {
+  left: 16px !important;
+  right: auto !important;
+  width: calc(var(--bw-pane-leading-w) - 32px) !important;
+  margin: 0 !important;
+}
+[data-bw-two-pane] .bw-pane-leading-center {
+  left: calc(var(--bw-pane-leading-w) / 2) !important;
+}
+/* A sheet that belongs to the leading page (Figma "Open · Home / Switch band
+   | Band / Create band": the band list stays on the left while the new band
+   is created on the right). */
+[data-bw-rail-host][data-bw-two-pane] .bw-rail-sheet.bw-leading-sheet,
+[data-bw-two-pane] .bw-rail-sheet.bw-leading-sheet {
+  left: 0 !important;
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+  max-width: none !important;
+}
+
+/* ── Trailing-page dialogs ────────────────────────────────────────────── */
+/* Centered confirmations open next to what they act on (Figma "Open ·
+   Settings / Privacy & account | Account / Delete – confirm", "Open · Home /
+   Admin | Admin tour"): the scrim and the card stay on the trailing page. */
+[data-bw-two-pane] .bw-pane-dialog {
+  left: var(--bw-pane-trailing-x) !important;
+  right: var(--bw-rail-w) !important;
+  width: auto !important;
+  padding-right: 0 !important;
+}
+[data-bw-two-pane][data-bw-rail-edge="left"] .bw-pane-dialog {
+  right: 0 !important;
+}
+/* Floating cards pinned to the top or bottom edge (urgent pop-up, pending
+   invite): centered on the trailing page, keeping their own max width. */
+[data-bw-two-pane] .bw-pane-float {
+  left: calc(var(--bw-pane-trailing-x) + 16px) !important;
+  right: calc(var(--bw-rail-w) + 16px) !important;
+}
+[data-bw-two-pane][data-bw-rail-edge="left"] .bw-pane-float {
+  right: 16px !important;
+}
+/* Inside the auth trailing page (its own containing block) the same layers
+   are placed against that page. */
+[data-bw-two-pane] .bw-auth-trailing .bw-pane-float {
+  left: 16px !important;
+  right: calc(var(--bw-rail-w) + 16px) !important;
+}
+[data-bw-two-pane] .bw-auth-trailing .bw-pane-dialog {
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* ── Pickers ─────────────────────────────────────────────────────────────
+   Sheets and pickers open on the trailing page next to their form; when the
+   form itself is on the trailing page, it moves to the leading page while the
+   picker is open (Figma "Open · New gig / 2 Date & venue | Picker / Date",
+   "Picker / Time", "Songs library | Song picker"). */
+[data-bw-two-pane] body:has(.bw-picker[data-state="open"]) .bw-pane-detail {
+  left: 0 !important;
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+  padding-right: 0 !important;
+}
+
+/* ── Offline (Figma "Open · Home / Admin | State / Offline + toast") ─────
+   Offline is shown once, in the trailing page; cached data stays readable on
+   the left, which does not make room for the strip. */
+[data-bw-two-pane] .bw-pane-trailing-bar {
+  left: var(--bw-pane-trailing-x) !important;
+}
+[data-bw-two-pane] .bw-pane-main,
+[data-bw-two-pane] .bw-pane-hub {
+  --safe-top: var(--safe-top-inset, 0px);
+}
+
+/* Figma "Open · Event detail / Gig – Admin | Chat / Event thread": the gig
+   stays on the leading page while the band talks about it. */
+[data-bw-two-pane][data-bw-chat-over-event] .bw-event-detail {
+  left: 0 !important;
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+  padding-right: 0 !important;
+}
+
+/* Toasts belong to the trailing page on the open display (Figma "State /
+   Offline + toast"). */
+[data-bw-two-pane] {
+  --bw-toast-center: calc(var(--bw-pane-trailing-x) + var(--bw-pane-trailing-w) / 2);
+}

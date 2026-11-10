@@ -27,7 +27,8 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  const memberCount = invites.length || 1;
+  // You plus everyone invited.
+  const memberCount = invites.length + 1;
   const songCount = songs.length;
   // Meter = 4×12 dots; one dot per member / song.
   const METER_DOTS = 48;

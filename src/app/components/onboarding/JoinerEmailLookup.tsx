@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpRight, Mail, Search } from '@/app/components/icons';
+import { Mail, Search } from '@/app/components/icons';
 import { AuthScreen, BackButton, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 
 interface PendingInvite {
@@ -100,14 +100,14 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
   return (
     <AuthScreen
       bodyClassName="pt-3 gap-5"
-      top={<BackButton onClick={onBack} />}
+      top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}
       footer={
         <PillButton
           variant="dark"
           onClick={handleLookup}
           disabled={!email}
           loading={isLoading}
-          trailingIcon={<ArrowUpRight className="w-5 h-5" />}
+          trailingIcon={<Search className="w-5 h-5" />}
         >
           {isLoading ? 'Searching…' : 'Find invite'}
         </PillButton>

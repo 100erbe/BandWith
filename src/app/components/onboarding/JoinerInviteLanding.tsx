@@ -23,6 +23,8 @@ export interface InviteData {
     description?: string;
   };
   member_count?: number;
+  /** Confirmed gigs this calendar year (invite preview / lookup). */
+  gigs_this_year?: number;
   inviter?: {
     full_name?: string;
     email?: string;
@@ -84,7 +86,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
     <AuthScreen
       className="dark bg-sheet"
       bodyClassName="pt-3 gap-5"
-      top={onBack ? <BackButton onClick={onBack} /> : undefined}
+      top={onBack ? <BackButton onClick={onBack} className="bw-duo-rail-back" /> : undefined}
       footer={
         <>
           <PillButton variant="danger" size="sm" onClick={onDecline}>
@@ -134,7 +136,19 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             <span className="bw-label-md">{memberCount === 1 ? 'Member' : 'Members'}</span>
             <DotText text={memberCount} size={30} label={`${memberCount} ${memberCount === 1 ? 'member' : 'members'}`} />
           </div>
-          <div className="flex-1" aria-hidden />
+          {typeof inviteData?.gigs_this_year === 'number' ? (
+            <div className="flex-1 min-w-0 flex flex-col gap-2 text-foreground">
+              <DotMeter
+                value={Math.min(inviteData.gigs_this_year, METER_ROWS * METER_COLS) / (METER_ROWS * METER_COLS)}
+                rows={METER_ROWS}
+                cols={METER_COLS}
+              />
+              <span className="bw-label-md">Gigs this year</span>
+              <DotText text={inviteData.gigs_this_year} size={30} label={`${inviteData.gigs_this_year} gigs this year`} />
+            </div>
+          ) : (
+            <div className="flex-1" aria-hidden />
+          )}
         </div>
 
         {/* Inviter */}
@@ -145,7 +159,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
             </span>
           </div>
           <p className="bw-body-sm text-muted-foreground min-w-0">
-            {inviterName} invited you as <span className="text-foreground font-medium">{memberRole}</span>
+            {inviterName} invited you{memberRole === 'Admin' && <> as <span className="text-foreground font-medium">Admin</span></>}
             {inviteData?.created_at && <> · Sent {formatDate(inviteData.created_at)}</>}
           </p>
         </div>

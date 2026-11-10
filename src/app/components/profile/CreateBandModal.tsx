@@ -6,25 +6,34 @@ import { RailCover } from '@/lib/railActions';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
-import { createBand } from '@/lib/services/bands';
+import { createBand, type Band as BandRecord } from '@/lib/services/bands';
 import { useBand } from '@/lib/BandContext';
 
 interface CreateBandModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onBandCreated?: (bandId: string) => void;
+  /** Called with the new band's id and its inserted row, after the bands list was refreshed. */
+  onBandCreated?: (bandId: string, band: BandRecord) => void;
 }
 
+// Figma set first (Rock, Pop, Jazz, Funk, Wedding band), then the extra genres, Other last.
 const GENRES = [
-  'Rock', 'Jazz', 'Pop', 'Blues', 'Country', 'Electronic',
-  'Hip-Hop', 'R&B', 'Classical', 'Folk', 'Metal', 'Reggae',
-  'Funk', 'Soul', 'Latin', 'World', 'Other'
+  'Rock', 'Pop', 'Jazz', 'Funk', 'Wedding band', 'Blues',
+  'Soul', 'R&B', 'Country', 'Electronic', 'Hip-Hop', 'Classical',
+  'Folk', 'Metal', 'Reggae', 'Latin', 'World', 'Other'
 ];
 
 const PLANS = [
-  { id: 'free', name: 'Free', description: '1 band', price: '€0' },
-  { id: 'pro', name: 'Pro', description: 'coming soon', price: '€9.99/mo' },
+  { id: 'free', name: 'Free', description: '1 band', price: '€0', available: true },
+  { id: 'pro', name: 'Pro', description: 'coming soon', price: '€9.99/mo', available: false },
 ];
+
+/** Adds https:// when the user typed a bare domain. */
+const normalizeWebsite = (raw: string): string | undefined => {
+  const v = raw.trim();
+  if (!v) return undefined;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(v) ? v : `https://${v}`;
+};
 
 export const CreateBandModal: React.FC<CreateBandModalProps> = ({
   isOpen,
@@ -55,6 +64,8 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
       const { data, error: createError } = await createBand({
         name: name.trim(),
         description: description.trim() || undefined,
+        genre: genre || undefined,
+        website: normalizeWebsite(website),
       });
 
       if (createError) throw createError;
@@ -66,7 +77,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
 
       setTimeout(() => {
         if (data) {
-          onBandCreated?.(data.id);
+          onBandCreated?.(data.id, data);
         }
         onClose();
         resetForm();
@@ -141,7 +152,7 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
           {/* Genre */}
           <fieldset className="flex flex-col gap-2">
             <legend className="bw-label-sm text-muted-foreground mb-2">Genre</legend>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-wrap gap-2">
               {GENRES.map((g) => (
                 <Selector
                   key={g}
@@ -181,15 +192,18 @@ export const CreateBandModal: React.FC<CreateBandModalProps> = ({
             <legend className="bw-label-sm text-muted-foreground mb-2">Plan</legend>
             <div className="grid grid-cols-2 gap-3">
               {PLANS.map((p) => {
-                const selected = plan === p.id;
+                const selected = plan === p.id && p.available;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => setPlan(p.id)}
+                    disabled={!p.available}
+                    aria-disabled={!p.available}
+                    onClick={() => { if (p.available) setPlan(p.id); }}
                     className={cn(
-                      'p-4 rounded-[24px] text-left flex flex-col gap-2 active:scale-[0.98] transition-transform',
+                      'p-4 rounded-[24px] text-left flex flex-col gap-2 transition-transform',
+                      p.available ? 'active:scale-[0.98]' : 'opacity-50 cursor-not-allowed',
                       selected ? 'bg-accent text-accent-foreground' : 'bg-card border border-border text-foreground',
                     )}
                   >

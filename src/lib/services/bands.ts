@@ -8,6 +8,7 @@ export interface Band {
   logo_url?: string;
   description?: string;
   genre?: string;
+  website?: string;
   created_by?: string;
   plan?: string;
   standard_lineup_size?: number;
@@ -235,8 +236,11 @@ export const createBand = async (bandData: {
   name: string;
   description?: string;
   logo_url?: string;
+  genre?: string;
+  website?: string;
 }): Promise<{ data: Band | null; error: Error | null }> => {
   try {
+    if (!bandData.name?.trim()) throw new Error('Band name is required');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -253,6 +257,8 @@ export const createBand = async (bandData: {
         name: bandData.name,
         description: bandData.description || null,
         logo_url: bandData.logo_url || null,
+        genre: bandData.genre?.trim() || null,
+        website: bandData.website?.trim() || null,
         slug,
         created_by: user.id,
       })

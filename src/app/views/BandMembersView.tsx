@@ -333,7 +333,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
+      className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <ScreenHeader
@@ -467,7 +467,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         onClose={() => !removing && setPendingRemoval(null)}
         overline={selectedBand?.name}
         title="Remove from band?"
-        zIndex={100}
+        zIndex={102}
         footer={
           <div className="grid grid-cols-2 gap-2">
             <PillButton variant="outline" onClick={() => setPendingRemoval(null)} disabled={removing}>
@@ -484,7 +484,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         </p>
       </BwSheet>
 
-      <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title="Invite member" zIndex={100}>
+      <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title="Invite member" zIndex={102}>
         <div className="dark flex flex-col gap-3 text-sheet-foreground">
           {/* Search (white pill) */}
           <label className="flex items-center gap-3 h-12 px-4 rounded-full bg-white text-black">

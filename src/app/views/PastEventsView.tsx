@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
@@ -6,7 +6,7 @@ import { APP_COPY } from '@/app/constants/copy';
 import { parseLocalDate } from '@/lib/dates';
 import { Metric } from '@/app/components/bw';
 import { BackButton, Selector } from '@/app/components/bw/Form';
-import { SearchField, Card } from '@/app/components/bw/Screen';
+import { Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 
 interface PastEventsViewProps {
@@ -39,8 +39,14 @@ const parseFee = (price?: string) => {
 
 const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${sym()}${v.toLocaleString('en-US')}`);
 
-const CATEGORIES = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES'] as const;
-type CategoryFilter = (typeof CATEGORIES)[number];
+/** Rehearsals, quotes and drafts are not billable; they never carry a payment state. */
+const isBillable = (e: EventData) => {
+  const s = e.status?.toUpperCase();
+  return s === 'CONFIRMED' || s === 'COMPLETED';
+};
+
+const PAY_FILTERS = ['All', 'Paid', 'Unpaid'] as const;
+type PayFilter = (typeof PAY_FILTERS)[number];
 
 export const PastEventsView: React.FC<PastEventsViewProps> = ({
   onClose,
@@ -51,19 +57,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   userFeeMap = {},
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('ALL');
-  const [selectedYear, setSelectedYear] = useState<string>('ALL');
-
-  const visibleCategories = useMemo(() => {
-    return isAdmin ? CATEGORIES : CATEGORIES.filter(c => c !== 'QUOTES');
-  }, [isAdmin]);
-
-  useEffect(() => {
-    if (!isAdmin && selectedCategory === 'QUOTES') {
-      setSelectedCategory('ALL');
-    }
-  }, [isAdmin, selectedCategory]);
+  const [payFilter, setPayFilter] = useState<PayFilter>('All');
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -72,68 +66,28 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }, []);
+  const currentYear = todayStr.slice(0, 4);
 
-  // Filter only past events
+  // Past events the viewer may see (members never see unconverted quotes)
   const rawPastEvents = useMemo(() => {
     return allEvents.filter((e) => {
       const norm = normalizeDateStr(e.date);
-      return norm && norm < todayStr;
+      if (!norm || norm >= todayStr) return false;
+      if (!isAdmin && ((e.status as string) === 'QUOTE' || (e.status as string) === 'QUOTED' || e.eventType === 'quote')) return false;
+      return true;
     });
-  }, [allEvents, todayStr]);
+  }, [allEvents, todayStr, isAdmin]);
 
-  // Available years from past events
-  const availableYears = useMemo(() => {
-    const years = new Set<string>();
-    rawPastEvents.forEach((e) => {
-      const norm = normalizeDateStr(e.date);
-      if (norm) {
-        years.add(norm.slice(0, 4));
-      }
-    });
-    return Array.from(years).sort((a, b) => b.localeCompare(a));
-  }, [rawPastEvents]);
+  const unpaidCount = useMemo(
+    () => rawPastEvents.filter((e) => isBillable(e) && e.paymentStatus !== 'paid').length,
+    [rawPastEvents],
+  );
 
-  // Filtered past events
+  // Filtered past events (Figma: All / Paid / Unpaid)
   const filteredEvents = useMemo(() => {
     let result = [...rawPastEvents];
-
-    // Regular members must not see unconverted quotes
-    if (!isAdmin) {
-      result = result.filter(e => (e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote');
-    }
-
-    // Year filter
-    if (selectedYear !== 'ALL') {
-      result = result.filter((e) => {
-        const norm = normalizeDateStr(e.date);
-        return norm && norm.startsWith(selectedYear);
-      });
-    }
-
-    // Category filter
-    if (selectedCategory !== 'ALL') {
-      result = result.filter((e) => {
-        const s = e.status?.toUpperCase();
-        if (selectedCategory === 'GIGS') return s === 'CONFIRMED' || s === 'COMPLETED';
-        if (selectedCategory === 'REHEARSALS') return s === 'REHEARSAL';
-        if (selectedCategory === 'QUOTES') return s === 'QUOTE' || s === 'QUOTED';
-        return true;
-      });
-    }
-
-    // Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((e) => {
-        return (
-          e.title?.toLowerCase().includes(q) ||
-          e.location?.toLowerCase().includes(q) ||
-          e.venueAddress?.toLowerCase().includes(q) ||
-          e.clientName?.toLowerCase().includes(q) ||
-          e.band_name?.toLowerCase().includes(q)
-        );
-      });
-    }
+    if (payFilter === 'Paid') result = result.filter((e) => isBillable(e) && e.paymentStatus === 'paid');
+    if (payFilter === 'Unpaid') result = result.filter((e) => isBillable(e) && e.paymentStatus !== 'paid');
 
     // Sort descending (most recent past first)
     result.sort((a, b) => {
@@ -143,26 +97,22 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
     });
 
     return result;
-  }, [rawPastEvents, selectedYear, selectedCategory, searchQuery]);
+  }, [rawPastEvents, payFilter]);
 
-  // Metrics
+  // Metrics: gigs played and earned this calendar year (rehearsals and quotes excluded)
   const metrics = useMemo(() => {
     let gigsCount = 0;
-    let rehearsalsCount = 0;
     let totalRevenue = 0;
 
     rawPastEvents.forEach((e) => {
-      const s = e.status?.toUpperCase();
-      if (s === 'REHEARSAL') {
-        rehearsalsCount++;
-      } else {
-        gigsCount++;
-        if (isAdmin) {
-          const val = parseFloat(e.price?.replace(/[^0-9.]/g, '') || '0');
-          if (!isNaN(val)) totalRevenue += val;
-        } else if (e.eventId && userFeeMap[e.eventId] != null) {
-          totalRevenue += userFeeMap[e.eventId];
-        }
+      if (!isBillable(e)) return;
+      if (!normalizeDateStr(e.date)?.startsWith(currentYear)) return;
+      gigsCount++;
+      if (isAdmin) {
+        const val = parseFloat(e.price?.replace(/[^0-9.]/g, '') || '0');
+        if (!isNaN(val)) totalRevenue += val;
+      } else if (e.eventId && userFeeMap[e.eventId] != null) {
+        totalRevenue += userFeeMap[e.eventId];
       }
     });
 
@@ -171,8 +121,8 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         ? `${sym()}${(totalRevenue / 1000).toFixed(totalRevenue % 1000 === 0 ? 0 : 1)}K`
         : `${sym()}${totalRevenue}`;
 
-    return { gigsCount, rehearsalsCount, totalRevenue, formattedRevenue };
-  }, [rawPastEvents, isAdmin, userFeeMap]);
+    return { gigsCount, totalRevenue, formattedRevenue };
+  }, [rawPastEvents, isAdmin, userFeeMap, currentYear]);
 
   // Group the list by month (Figma: "NOVEMBER 2026" headings).
   const groups = useMemo(() => {
@@ -201,7 +151,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
+      className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground flex flex-col overflow-y-auto overflow-x-hidden"
       style={{
         overscrollBehaviorX: 'none',
         touchAction: 'pan-y',
@@ -212,9 +162,6 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         <div className="h-14 flex items-center gap-3">
           <BackButton onClick={onClose} />
           <h1 className="bw-h2 flex-1 min-w-0 truncate">{APP_COPY.events.archive.title}</h1>
-          <span className="bw-label-sm text-muted-foreground shrink-0" aria-label={`${filteredEvents.length} events`}>
-            {filteredEvents.length}
-          </span>
         </div>
       </header>
 
@@ -225,35 +172,24 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         {/* Metrics (Figma Metric: label, dot value, 4×12 meter) */}
         <div className="grid grid-cols-2 gap-8">
           {/* One dot per gig played */}
-          <Metric label={APP_COPY.events.archive.gigsPlayed} value={metrics.gigsCount} fill={metrics.gigsCount / 48} />
-          {/* One dot per €500 earned */}
-          <Metric
-            label={isAdmin ? APP_COPY.events.archive.totalEarnings : APP_COPY.events.archive.yourEarnings}
-            value={metrics.formattedRevenue}
-            fill={metrics.totalRevenue / (48 * 500)}
-          />
+          <Metric label={`Played in ${currentYear}`} value={metrics.gigsCount} fill={metrics.gigsCount / 48} />
+          {/* One dot per 500 earned */}
+          <Metric label="Earned" value={metrics.formattedRevenue} fill={metrics.totalRevenue / (48 * 500)} />
         </div>
 
-        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search past events" placeholder="Search title or venue…" />
-
-        {/* Filter tabs (Figma Selector MD) */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
-            {visibleCategories.map((cat) => (
-              <Selector key={cat} size="md" selected={selectedCategory === cat} onClick={() => setSelectedCategory(cat)}>
-                {cat}
-              </Selector>
-            ))}
-          </div>
-          {availableYears.length > 1 && (
-            <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
-              {['ALL', ...availableYears].map((yr) => (
-                <Selector key={yr} selected={selectedYear === yr} onClick={() => setSelectedYear(yr)}>
-                  {yr === 'ALL' ? 'All years' : yr}
-                </Selector>
-              ))}
-            </div>
-          )}
+        {/* Payment filter (Figma Selector MD: All / Paid / Unpaid n) */}
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
+          {PAY_FILTERS.map((f) => (
+            <Selector
+              key={f}
+              size="md"
+              selected={payFilter === f}
+              onClick={() => setPayFilter(f)}
+              count={f === 'Unpaid' && unpaidCount > 0 ? unpaidCount : undefined}
+            >
+              {f}
+            </Selector>
+          ))}
         </div>
 
         {/* Event rows grouped by month */}
@@ -266,8 +202,9 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                 const isRehearsal = status === 'REHEARSAL';
                 const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
                 const isQuote = status === 'QUOTED' || status === 'QUOTE';
-                const typeLabel = isRehearsal ? 'Rehearsal' : isGig ? 'Played' : isQuote ? 'Quote' : 'Draft';
-                const dotClass = isGig ? 'bg-success' : isQuote ? 'bg-warning' : 'bg-accent-past';
+                // Every row here is in the past, so an unpaid gig is overdue.
+                const isPaid = isGig && event.paymentStatus === 'paid';
+                const statusLabel = isGig ? (isPaid ? 'Paid' : 'Overdue') : isRehearsal ? 'Rehearsal' : isQuote ? 'Quote' : 'Draft';
                 const norm = normalizeDateStr(event.date);
                 const d = norm ? parseLocalDate(norm) : null;
                 const valid = d && !isNaN(d.getTime());
@@ -299,10 +236,14 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                       <span className="bw-h3 line-clamp-2 [overflow-wrap:anywhere]">{event.title}</span>
                       {meta && <span className="bw-body-sm text-muted-foreground truncate">{meta}</span>}
                     </span>
-                    <span className="flex items-center gap-1.5 shrink-0">
-                      <span className={cn('w-2 h-2 rounded-full', dotClass)} aria-hidden />
-                      <span className="bw-label-xs">{typeLabel}</span>
-                    </span>
+                    {isGig ? (
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        <span className={cn('w-2 h-2 rounded-full', isPaid ? 'bg-success' : 'bg-destructive')} aria-hidden />
+                        <span className="bw-label-xs">{statusLabel}</span>
+                      </span>
+                    ) : (
+                      <span className="bw-label-xs text-muted-foreground shrink-0">{statusLabel}</span>
+                    )}
                   </motion.button>
                 );
               })}
@@ -312,8 +253,10 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
           <Card className="items-center text-center py-10">
             <h2 className="bw-h3">No past events found</h2>
             <p className="bw-body-sm text-muted-foreground max-w-[280px]">
-              {searchQuery || selectedCategory !== 'ALL' || selectedYear !== 'ALL'
-                ? 'No completed gigs or rehearsals matched your search or filters.'
+              {payFilter === 'Paid'
+                ? 'No paid gigs yet.'
+                : payFilter === 'Unpaid'
+                ? 'Every past gig is paid.'
                 : 'No completed gigs or rehearsals recorded yet.'}
             </p>
           </Card>

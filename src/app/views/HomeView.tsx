@@ -16,6 +16,7 @@ import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
+import { BandDeskMode, type DeskActionItem, type DeskGig } from '@/app/components/duo';
 
 interface DashboardData {
   eventStats: {
@@ -64,6 +65,19 @@ interface HomeViewProps {
   onPollUpdated?: () => void;
   onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   currentUserId?: string;
+  /** Member's own fee per event id (event_members.fee). Empty for admins. */
+  userFeeMap?: Record<string, number>;
+  /** Opens the Identity hub "Band assets & workflows" (Quick actions ↗). */
+  onOpenAllAssets?: () => void;
+  // ── iPhone Duo · Laptop pose (BandDeskMode) ──
+  /** Line-up per event id (AuthenticatedApp `eventMembersMap`): the poster's names and pending RSVPs. */
+  eventMembersMap?: Record<string, { name: string; userId?: string; status?: string }[]>;
+  /** Opens a rehearsal poll (vote sheet) from the Band desk's action items. */
+  onOpenPoll?: (poll: RehearsalPoll) => void;
+  onCreateGig?: () => void;
+  onCreateRehearsal?: () => void;
+  onCreateQuote?: () => void;
+  onCreateTask?: () => void;
 }
 
 const formatEventTime = (timeStr?: string): string => {
@@ -78,6 +92,21 @@ const formatEventTime = (timeStr?: string): string => {
     return m > 0 ? `${h}:${match[2]} ${ampm}` : `${h} ${ampm}`;
   }
   return timeStr;
+};
+
+/** "20:00" style clock for row meta; accepts "20:00:00", "8:00 PM" or "8 PM". */
+const formatClock24 = (timeStr?: string): string => {
+  if (!timeStr) return '';
+  const match = String(timeStr).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?/);
+  if (!match) return '';
+  let h = parseInt(match[1], 10);
+  const m = match[2] ?? '00';
+  const ampm = match[3]?.toUpperCase();
+  if (!ampm && match[2] === undefined) return '';
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  if (h > 23) return '';
+  return `${String(h).padStart(2, '0')}:${m}`;
 };
 
 const toTitleCase = (str?: string | null): string => {
@@ -174,6 +203,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onPollUpdated,
   onShowToast,
   currentUserId,
+  userFeeMap,
+  onOpenAllAssets,
+  eventMembersMap,
+  onOpenPoll,
+  onCreateGig,
+  onCreateRehearsal,
+  onCreateQuote,
+  onCreateTask,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   // Use the band context for role, fall back to prop for backwards compatibility
@@ -184,13 +221,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   // For admins: show all quick actions
   // For members: show only performance-relevant actions
-  // PLG: For solo users: show only personal actions
+  // PLG: Solo users have no band, and every quick action (setlist, members,
+  // gear, templates, contracts) is band-scoped — the host ignores them in solo
+  // mode — so no tiles are shown rather than dead ones.
   const filteredQuickActions = QUICK_ACTIONS.filter(action => {
-    if (isSolo) {
-      // Solo mode: show only personal actions
-      const soloActions = ['Setlist & Repertoire'];
-      return soloActions.includes(action.label);
-    }
+    if (isSolo) return false;
     if (!isAdmin) {
       const adminOnlyActions = [
         'Contracts & Riders',
@@ -367,10 +402,100 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   }, [rehearsalPolls, isAdmin, currentUserId, isSolo]);
 
+  // ── iPhone Duo · Laptop pose: Band desk (renders nothing in other postures) ──
+  const deskNextGig = useMemo<DeskGig | null>(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const gig = (dashboardData?.upcomingEvents || [])
+      .filter((e: any) => {
+        const type = (e.event_type || e.eventType || '').toLowerCase();
+        const s = (e.status || '').toLowerCase();
+        const d = String(e.event_date || e.date || '').slice(0, 10);
+        return type !== 'rehearsal' && (s === 'confirmed' || s === 'completed') && !!d && d >= todayStr;
+      })
+      .sort((a: any, b: any) =>
+        String(a.event_date || a.date).slice(0, 10).localeCompare(String(b.event_date || b.date).slice(0, 10)) ||
+        String(a.start_time || a.time || '').localeCompare(String(b.start_time || b.time || '')),
+      )[0];
+    if (!gig) return null;
+    const id = String(gig.eventId || gig.id);
+    const lineup = (eventMembersMap?.[id] || [])
+      .filter((m) => m.status !== 'declined')
+      .map((m) => m.name)
+      .filter(Boolean);
+    const fee = Number(gig.fee);
+    return {
+      id,
+      title: gig.title || APP_COPY.home.nextEvents.untitledEvent,
+      date: String(gig.event_date || gig.date).slice(0, 10),
+      venue: gig.venue_name || gig.venueName || (typeof gig.location === 'string' && gig.location !== 'TBD' ? gig.location : null) || null,
+      city: gig.venue_city || gig.venueCity || null,
+      loadIn: gig.load_in_time || gig.loadInTime || null,
+      soundcheck: gig.soundcheck_time || gig.soundcheckTime || null,
+      start: gig.start_time || gig.time || null,
+      lineup,
+      fee: Number.isFinite(fee) && fee > 0 ? fee : null,
+    };
+  }, [dashboardData?.upcomingEvents, eventMembersMap]);
+
+  const deskActionItems = useMemo<DeskActionItem[]>(() => {
+    const items: DeskActionItem[] = [];
+    // Open polls you have not voted on yet; proposals waiting on an admin.
+    for (const p of activePolls) {
+      const voted = (p.options || []).some((o) => o.has_voted);
+      if (p.status === 'polling' && voted) continue;
+      items.push({
+        id: `poll-${p.id}`,
+        title: p.title || 'Rehearsal poll',
+        detail: p.status === 'proposed' ? 'Rehearsal proposal · build a poll' : 'Rehearsal poll · vote on dates',
+        kind: 'rehearsal',
+        urgent: p.status === 'polling',
+        onSelect: onOpenPoll ? () => onOpenPoll(p) : undefined,
+      });
+    }
+    // Gigs waiting on your RSVP.
+    if (currentUserId && eventMembersMap) {
+      for (const e of dashboardData?.upcomingEvents || []) {
+        const id = String(e.eventId || e.id || '');
+        if (!id || id.includes('-occ-')) continue;
+        const me = (eventMembersMap[id] || []).find((m) => m.userId === currentUserId);
+        if (me?.status !== 'pending') continue;
+        const raw = e.event_date || e.date;
+        const d = raw ? parseLocalDate(raw) : null;
+        items.push({
+          id: `rsvp-${id}`,
+          title: e.title || APP_COPY.home.nextEvents.untitledEvent,
+          detail: ['RSVP', d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null]
+            .filter(Boolean)
+            .join(' · '),
+          kind: (e.event_type || e.eventType) === 'rehearsal' ? 'rehearsal' : 'gig',
+          urgent: true,
+          onSelect: onSelectEvent ? () => onSelectEvent(id) : undefined,
+        });
+      }
+    }
+    return items;
+  }, [activePolls, onOpenPoll, currentUserId, eventMembersMap, dashboardData?.upcomingEvents, onSelectEvent]);
+
+  // Each create button shows only when the host passes its handler (role rules live there).
+  const bandDesk = (
+    <BandDeskMode
+      nextGig={deskNextGig}
+      isAdmin={!!isAdmin}
+      actionItems={deskActionItems}
+      loading={!!dashboardLoading && !deskNextGig}
+      onCreateGig={onCreateGig}
+      onCreateRehearsal={onCreateRehearsal}
+      onCreateQuote={onCreateQuote}
+      onCreateTask={onCreateTask}
+    />
+  );
+
   if (dashboardLoading && !dashboardData?.eventStats && !dashboardData?.memberStats) {
     return (
       <div className={cn("flex flex-col gap-8 sm:gap-10 relative z-10", isHidden && "opacity-0 pointer-events-none")}>
-        <HomeSkeleton isAdmin={isAdmin} />
+        <HomeSkeleton />
+        {bandDesk}
       </div>
     );
   }
@@ -402,20 +527,78 @@ export const HomeView: React.FC<HomeViewProps> = ({
     'Contracts & Riders': 'Contracts',
   };
 
-  const upcomingValue = (event: any): string | undefined => {
+  const shortMoney = (value: number) => formatRevenue(value).replace('.0k', 'k');
+
+  const isRehearsalEvent = (event: any): boolean => {
     const s = (event.status || '').toLowerCase();
     const type = (event.event_type || event.eventType || '').toLowerCase();
-    const isRehearsal = type === 'rehearsal' || s === 'rehearsal';
-    if (!isRehearsal && isAdmin && event.fee != null && event.fee > 0) return formatRevenue(event.fee).replace('.0k', 'k');
+    return type === 'rehearsal' || s === 'rehearsal';
+  };
+
+  // Personal gigs (band_id null) read as "personal", same rule as EventsView.
+  const upcomingKind = (event: any) =>
+    !isRehearsalEvent(event) && !event.band_id ? 'personal' as const : eventKindOf(event);
+
+  const venueOf = (event: any): string =>
+    (event.venue_name || event.venueName || (typeof event.location === 'string' && event.location !== 'TBD' ? event.location.split(',')[0].trim() : '') || '').trim();
+
+  /** The signed-in member's own fee for this event, if one is set. */
+  const myFeeFor = (event: any): number | undefined => {
+    if (!userFeeMap) return undefined;
+    for (const id of [event.eventId, event.id]) {
+      if (id == null) continue;
+      const fee = Number(userFeeMap[String(id)]);
+      if (fee > 0) return fee;
+    }
+    return undefined;
+  };
+
+  /** Personal gig fee: the user's own gig, so the event fee is theirs. */
+  const personalFeeFor = (event: any): number | undefined => {
+    const mine = myFeeFor(event);
+    if (mine) return mine;
+    const createdBy = event.created_by || event.createdBy;
+    if (createdBy && currentUserId && createdBy !== currentUserId) return undefined;
+    const fee = Number(event.fee);
+    return fee > 0 ? fee : undefined;
+  };
+
+  const upcomingTime = (event: any): string | undefined => {
     const t = event.start_time || event.time;
-    return t ? formatEventTime(t) : undefined;
+    return t ? formatEventTime(t) || undefined : undefined;
+  };
+
+  const upcomingValue = (event: any): string | undefined => {
+    if (isRehearsalEvent(event)) return upcomingTime(event);
+    if (upcomingKind(event) === 'personal') {
+      const fee = personalFeeFor(event);
+      return fee ? shortMoney(fee) : upcomingTime(event);
+    }
+    if (isAdmin) {
+      return event.fee != null && event.fee > 0 ? shortMoney(event.fee) : upcomingTime(event);
+    }
+    const fee = myFeeFor(event);
+    return fee ? shortMoney(fee) : upcomingTime(event);
   };
 
   const upcomingMeta = (event: any): string | undefined => {
-    const venue = (event.venue_name || event.venueName || (typeof event.location === 'string' && event.location !== 'TBD' ? event.location.split(',')[0].trim() : '') || '').trim();
+    const venue = venueOf(event);
     const where = formatEventLocation(event);
-    const parts = [venue, where && where.toLowerCase() !== venue.toLowerCase() ? where : ''].filter(Boolean);
-    return parts.length ? parts.join(' · ') : undefined;
+    const join = (parts: (string | null | undefined)[]) => {
+      const list = parts.filter(Boolean) as string[];
+      return list.length ? list.join(' · ') : undefined;
+    };
+
+    if (isRehearsalEvent(event)) {
+      return join([venue || where, formatClock24(event.start_time || event.time)]);
+    }
+    if (upcomingKind(event) === 'personal') {
+      return join([APP_COPY.home.nextEvents.soloGigMeta, where || venue]);
+    }
+    if (!isAdmin && myFeeFor(event)) {
+      return join([APP_COPY.home.nextEvents.yourFeeMeta, venue || where]);
+    }
+    return join([venue, where && where.toLowerCase() !== venue.toLowerCase() ? where : '']);
   };
 
   return (
@@ -590,7 +773,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         ) : (
           <div className="flex flex-col gap-4">
             {upcomingGigsAndRehearsals.map((event: any, index: number) => {
-              const kind = eventKindOf(event);
+              const kind = upcomingKind(event);
               const rawDate = event.event_date || event.date;
               const d = rawDate ? parseLocalDate(rawDate) : null;
               const valid = d && !isNaN(d.getTime());
@@ -621,7 +804,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ QUICK ACTIONS ═══ */}
       {filteredQuickActions.length > 0 && (
         <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
-          <SectionHeader title={APP_COPY.home.quickActions.title} />
+          {/* Figma: ↗ only, no "See all" text — the label stays for screen readers. */}
+          <SectionHeader
+            title={APP_COPY.home.quickActions.title}
+            onSeeAll={onOpenAllAssets}
+            seeAllLabel={APP_COPY.home.quickActions.openAllAssets}
+            className="[&_button>span]:sr-only"
+          />
           <div
             className="grid gap-4 gap-y-6"
             style={{ gridTemplateColumns: `repeat(${Math.min(3, filteredQuickActions.length)}, minmax(0, 1fr))` }}
@@ -660,6 +849,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </motion.div>
       )}
+
+      {bandDesk}
 
       {/* Bottom clearance spacer ensuring last card cleanly clears floating navbar */}
       <div

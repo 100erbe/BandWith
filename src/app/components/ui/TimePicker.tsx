@@ -20,6 +20,8 @@ export interface TimePickerProps {
   id?: string;
   align?: 'start' | 'center' | 'end';
   side?: 'top' | 'bottom';
+  /** Sheet overline (Figma "Picker / Time"), e.g. "Gig · Sat 12 Dec". */
+  overline?: string;
 }
 
 // 0-11 for Outer Circle (0 at 12 o'clock, 1 at 1 o'clock, etc.)
@@ -147,6 +149,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   accentColor,
   placeholder = 'Select time...',
   id,
+  overline = 'Pick a time',
 }) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('Time');
@@ -205,7 +208,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       open={open}
       onOpenChange={handleOpenChange}
       trigger={trigger}
-      overline="Pick a time"
+      overline={overline}
       title={title}
       footer={
         <div className="flex items-center gap-2">

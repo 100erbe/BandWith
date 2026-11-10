@@ -21,6 +21,8 @@ import JoinerEmailLookup from './JoinerEmailLookup';
 import JoinerNoInvites from './JoinerNoInvites';
 import JoinerInviteSelect from './JoinerInviteSelect';
 import { PendingInvitesPrompt } from '@/app/components/notifications/PendingInvitesPrompt';
+import { declineInvitation, inviteErrorMessage, InviteError } from '@/lib/services/invitations';
+import { DuoAuthLayout, CREATOR_BRAND_STEPS, SOLO_BRAND_STEPS } from './DuoAuthLayout';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -118,7 +120,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           setScreenMode('flow');
         } else {
           setInviteCodeError(
-            'This invite link isn’t valid any more. Ask your bandmate to send a new one.'
+            'This invite link isn’t valid any more. Ask your band admin for a new one.'
           );
         }
       });
@@ -135,6 +137,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     setScreenMode('welcome');
   }, [resetOnboarding]);
 
+  // "Decline invitation": tell the server when we can (signed in), then leave.
+  const handleDeclineInvite = useCallback((invitationId?: string) => {
+    if (invitationId) declineInvitation(invitationId).catch(() => {});
+    handleBackToWelcome();
+  }, [handleBackToWelcome]);
+
   const handleComplete = useCallback(async () => {
     if (path === 'joiner') {
       // Joining can fail (expired invite, different email): stay here and say why.
@@ -144,10 +152,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         await completeOnboarding();
       } catch (e) {
         setJoining(false);
+        const invitedEmail = (inviteData || selectedInvite)?.email || lookupEmail;
         setJoinError(
-          e instanceof Error && e.name === 'InviteError'
-            ? e.message
-            : 'We couldn’t add you to the band. Check your connection and try again.'
+          e instanceof InviteError && e.code === 'invite_email_mismatch'
+            ? inviteErrorMessage(e.code, invitedEmail || undefined)
+            : e instanceof Error && e.name === 'InviteError'
+              ? e.message
+              : 'We couldn’t add you to the band. Check your connection and try again.'
         );
         return;
       }
@@ -340,9 +351,31 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     };
   }, [handleBack]);
 
+  // iPhone Duo, open: BRAND page on the left (with the named steps during
+  // onboarding), the screen on the right (Figma "Duo · 01").
+  const brandSteps =
+    screenMode === 'flow' && path === 'creator'
+      ? CREATOR_BRAND_STEPS
+      : screenMode === 'flow' && path === 'solo'
+        ? SOLO_BRAND_STEPS
+        : undefined;
+  const brandCurrent =
+    path === 'solo'
+      ? !isAuthenticated ? 1 : currentStep <= 1 ? 3 : 4
+      : !isAuthenticated ? 1 : currentStep <= 1 ? 2 : Math.min(7, currentStep + 1);
+  const duo = (node: React.ReactNode) => (
+    <DuoAuthLayout
+      steps={brandSteps}
+      current={brandCurrent}
+      screenKey={`${screenMode}-${path}-${currentStep}-${joinerSubStep}-${isAuthenticated}`}
+    >
+      {node}
+    </DuoAuthLayout>
+  );
+
   // Loading state for invite
   if (isLoading) {
-    return (
+    return duo(
       <div
         className="min-h-screen bg-background flex items-center justify-center"
         style={{
@@ -362,7 +395,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   // ─── SCREEN MODE ROUTING ───
 
   if (screenMode === 'forgot-password') {
-    return (
+    return duo(
       <ForgotPasswordScreen
         onBack={() => setScreenMode('sign-in')}
       />
@@ -370,7 +403,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   }
 
   if (screenMode === 'sign-in') {
-    return (
+    return duo(
       <SignInScreen
         onBack={() => setScreenMode('welcome')}
         onSuccess={() => {
@@ -386,7 +419,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   }
 
   if (screenMode === 'welcome' && !path) {
-    return (
+    return duo(
       <>
         <WelcomeScreen
           onGetStarted={() => {
@@ -475,7 +508,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       }
     };
 
-    return (
+    return duo(
       <AnimatePresence mode="wait">
         <motion.div
           key={`creator-${currentStep}-${isAuthenticated}`}
@@ -523,7 +556,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       return <CompletionScreen key="solo-complete" onComplete={handleComplete} />;
     };
 
-    return (
+    return duo(
       <AnimatePresence mode="wait">
         <motion.div
           key={`solo-${currentStep}-${isAuthenticated}`}
@@ -582,7 +615,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               key="invite-landing-token"
               inviteData={inviteData}
               onAccept={handleAcceptInvite}
-              onDecline={handleBackToWelcome}
+              onDecline={() => handleDeclineInvite(inviteData.id)}
               onBack={handleBackToWelcome}
             />
           );
@@ -625,7 +658,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 key="invite-landing-found"
                 inviteData={selectedInvite}
                 onAccept={handleAcceptInvite}
-                onDecline={handleBackToWelcome}
+                onDecline={() => handleDeclineInvite(selectedInvite?.id)}
                 onBack={() => {
                   if (foundInvites.length > 1) {
                     setJoinerSubStep('select-invite');
@@ -675,7 +708,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       );
     };
 
-    return (
+    return duo(
       <AnimatePresence mode="wait">
         <motion.div
           key={`joiner-${currentStep}-${joinerSubStep}-${isAuthenticated}`}
@@ -692,7 +725,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   }
 
   // Fallback: Welcome screen
-  return (
+  return duo(
     <>
       <WelcomeScreen
         onGetStarted={() => {

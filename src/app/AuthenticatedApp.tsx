@@ -44,7 +44,9 @@ import {
 import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
 import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
-import { deleteNotification as deleteNotificationService } from "@/lib/services/notifications";
+import { deleteNotification as deleteNotificationService, createNotification } from "@/lib/services/notifications";
+import { ErrorState } from "@/app/components/ui/ErrorState";
+import { LeadingCompanionSlot } from "@/app/components/duo";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -171,6 +173,15 @@ const eventToEventItem = (event: Event): EventItem => {
     quoteId: (event as any).quote_id || undefined,
     is_recurring: (event as any).is_recurring || false,
     recurrence_rule: (event as any).recurrence_rule || undefined,
+    paymentStatus: event.payment_status || undefined,
+    depositAmount: event.deposit_amount ?? undefined,
+    depositPaid: event.deposit_paid ?? undefined,
+    dressCode: event.dress_code || undefined,
+    clientEmail: event.client_email || undefined,
+    clientPhone: event.client_phone || undefined,
+    clientCompany: event.client_company || undefined,
+    venueCoordinates: event.venue_coordinates || undefined,
+    indoorOutdoor: event.indoor_outdoor || undefined,
     _isPendingSync: event._isPendingSync,
   };
 };
@@ -687,17 +698,25 @@ export default function AuthenticatedApp() {
   eventsRef.current = events;
   const handleEventCardClickRef = useRef<(event: EventData) => void>(() => {});
 
+  const [eventLoadError, setEventLoadError] = useState<{ id: string; message?: string } | null>(null);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
     setActiveTab("Events");
+    setEventLoadError(null);
     setTimeout(async () => {
       const ev = eventsRef.current.find(e => e.eventId === eventDbId);
       if (ev) {
         handleEventCardClickRef.current(ev);
       } else {
-        await refetchEvents();
+        try {
+          await refetchEvents();
+        } catch (err: any) {
+          setEventLoadError({ id: eventDbId, message: err?.message });
+          return;
+        }
         setTimeout(() => {
           const evRetry = eventsRef.current.find(e => e.eventId === eventDbId);
           if (evRetry) handleEventCardClickRef.current(evRetry);
+          else setEventLoadError({ id: eventDbId });
         }, 500);
       }
     }, 200);
@@ -855,6 +874,7 @@ export default function AuthenticatedApp() {
   const [liveInterval, setLiveInterval] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [votePollId, setVotePollId] = useState<string | null>(null);
   const [showCreateBand, setShowCreateBand] = useState(false);
   const [showUpgradePricing, setShowUpgradePricing] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
@@ -1243,7 +1263,29 @@ export default function AuthenticatedApp() {
 
   // Handlers
   const openIdentity = () => { setIsIdentityOpen(true); setIsControlDeckOpen(false); setIsBandSwitcherOpen(false); };
-  const closeIdentity = () => { setIsIdentityOpen(false); if (activeTab === "More") setActiveTab("Home"); };
+  const closeIdentity = () => { setIsIdentityOpen(false); if (twoPane) setShowEditProfile(false); if (activeTab === "More") setActiveTab("Home"); };
+  // Duo open: the event thread opened from a gig keeps the gig on the left.
+  useEffect(() => {
+    const on = twoPane && !!selectedChat && !!selectedEvent;
+    document.documentElement.toggleAttribute('data-bw-chat-over-event', on);
+  }, [twoPane, selectedChat, selectedEvent]);
+
+  // Duo open: a hub (members, library, gear, documents, templates, analytics,
+  // settings, archive) takes the leading page; stale trailing details go.
+  const hubOpen = showBandMembers || showSetlistManager || showInventory || showContracts || showTaskTemplates || showAnalytics || showSettings || showPastEvents;
+  useEffect(() => {
+    if (!twoPane || !hubOpen) return;
+    setShowEditProfile(false);
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [twoPane, hubOpen]);
+
+  // Figma "Duo · Identity" (open): the profile editor sits on the trailing
+  // page next to "Who you are", instead of an empty placeholder.
+  useEffect(() => {
+    if (twoPane && isIdentityOpen) setShowEditProfile(true);
+  }, [twoPane, isIdentityOpen]);
 
   const toggleIdentity = () => {
     setIsIdentityOpen(prev => !prev);
@@ -1257,7 +1299,7 @@ export default function AuthenticatedApp() {
   // first closes the browsing layers that would otherwise sit on top of it.
   // Create/edit flows keep it disabled so nothing typed is lost.
   const railProfileLocked =
-    !isIdentityOpen && (isCreateEventOpen || showPersonalGigModal || showEditProfile || showUpgradePricing || showPricingModal || !!rsvpNotification || !!pollNotification);
+    !isIdentityOpen && (isCreateEventOpen || showPersonalGigModal || showEditProfile || showUpgradePricing || showPricingModal || !!rsvpNotification || !!pollNotification || !!votePollId);
   const openRailProfile = () => {
     if (isIdentityOpen) { closeIdentity(); return; }
     if (railProfileLocked) return;
@@ -1398,6 +1440,7 @@ export default function AuthenticatedApp() {
     refetchNotifications?.();
   };
 
+  const [createEventInitialTasks, setCreateEventInitialTasks] = useState<{ title: string; templateId?: string }[] | undefined>(undefined);
   const handleCreateEvent = (type: CreateEventType) => {
     if (type === 'personal') {
       setEditingPersonalGig(null);
@@ -1824,9 +1867,12 @@ export default function AuthenticatedApp() {
       setSaveToast({ message: error?.message || 'Could not open the event chat.', type: 'error' });
       return;
     }
-    setSelectedEvent(null);
-    setSelectedEventMembership(null);
-    setActiveTab('Chat');
+    // Open display: the gig stays on the leading page next to its thread.
+    if (!twoPane) {
+      setSelectedEvent(null);
+      setSelectedEventMembership(null);
+      setActiveTab('Chat');
+    }
     refetchChats?.();
     const name = ev.title || 'Event chat';
     setTimeout(() => {
@@ -1980,6 +2026,23 @@ export default function AuthenticatedApp() {
   };
   handleEventCardClickRef.current = handleEventCardClick;
 
+  // Figma "Duo · Home" (open): the next gig / commitment is already shown on
+  // the trailing page, next to the dashboard. Once per visit to Home, so a
+  // closed detail stays closed.
+  const homeAutoDetailRef = useRef(false);
+  useEffect(() => {
+    if (!twoPane || activeTab !== 'Home') { homeAutoDetailRef.current = false; return; }
+    if (homeAutoDetailRef.current || selectedEvent || eventsLoading) return;
+    const today = new Date().toISOString().split('T')[0];
+    const next = [...visuallyFilteredEvents]
+      .filter((e) => e.date >= today && e.status !== 'DRAFT' && e.status !== 'QUOTE')
+      .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
+    if (!next) return;
+    homeAutoDetailRef.current = true;
+    handleEventCardClick(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [twoPane, activeTab, eventsLoading, visuallyFilteredEvents, selectedEvent]);
+
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
 
@@ -2039,6 +2102,48 @@ export default function AuthenticatedApp() {
     if (refetchEvents) await refetchEvents();
     if (refetchNotifications) await refetchNotifications();
     if (refetchDashboard) await refetchDashboard();
+  };
+
+  const handleEventMaybe = async () => {
+    if (!selectedEventMembership?.id || !selectedEvent) return;
+    const eventId = selectedEvent.eventId || selectedEvent.id?.toString();
+    const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "maybe");
+    if (error || !updated) {
+      throw new Error(error?.message || "Couldn't save your answer. Try again.");
+    }
+    setSelectedEventMembership((prev: any) => (prev ? { ...prev, status: "maybe" } : prev));
+    if (eventId && user?.id) {
+      setEventMembersMap(prev => {
+        const list = prev[eventId] || [];
+        return { ...prev, [eventId]: list.map(m => m.userId === user.id ? { ...m, status: 'maybe' } : m) };
+      });
+    }
+    setSaveToast({ message: "Saved as maybe", type: 'success' });
+  };
+
+  /** Personal-gig conflict: tell the band's admins the user is booked that evening. */
+  const handleNotifyConflict = async (bandId: string, eventId: string) => {
+    const { data: admins, error } = await supabase
+      .from('band_members')
+      .select('user_id')
+      .eq('band_id', bandId)
+      .eq('role', 'admin')
+      .eq('is_active', true);
+    if (error) throw new Error(error.message);
+    const ids = (admins || []).map((a: any) => a.user_id).filter((id: string) => id && id !== user?.id);
+    if (!ids.length) throw new Error('This band has no other admin to notify.');
+    const bandEvent = events.find((e) => e.eventId === eventId);
+    const who = profile?.full_name?.split(' ')[0] || 'A member';
+    const when = bandEvent ? `${bandEvent.date}${bandEvent.time ? `, ${bandEvent.time}` : ''}` : '';
+    const results = await Promise.all(ids.map((id: string) => createNotification(id, {
+      type: 'event_update',
+      title: 'Schedule conflict',
+      body: `${who} is booked elsewhere${bandEvent ? ` on ${when}` : ''}${bandEvent ? ` (${bandEvent.title})` : ''}.`,
+      band_id: bandId,
+      data: { event_id: eventId, conflict_user_id: user?.id, kind: 'schedule_conflict' },
+    })));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw new Error(failed.error.message);
   };
 
   const handleEventDecline = async () => {
@@ -2710,7 +2815,7 @@ export default function AuthenticatedApp() {
       <div aria-hidden="true" className="bw-pane-placeholder flex-col justify-end gap-3 p-6 pb-10 bg-background text-foreground select-none">
         <span className="bw-label-sm text-muted-foreground">BandWith · Duo</span>
         <span className="bw-display-lg">
-          {activeTab === 'Chat' ? 'Pick a chat' : activeTab === 'More' ? 'Your band, side by side' : 'Pick an event'}
+          {activeTab === 'Chat' ? 'Pick a chat' : (activeTab === 'More' || isIdentityOpen) ? 'Your band, side by side' : 'Pick an event'}
         </span>
         <span className="bw-body-sm text-muted-foreground">Details open on this side.</span>
       </div>
@@ -2776,6 +2881,13 @@ export default function AuthenticatedApp() {
             }}
             onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             currentUserId={user?.id}
+            userFeeMap={userFeeMap}
+            onOpenAllAssets={isSolo ? undefined : openIdentity}
+            eventMembersMap={eventMembersMap}
+            onOpenPoll={(poll) => setVotePollId(poll.id)}
+            onCreateGig={() => { setCreateEventInitialDate(null); setEditingEventData(null); if (!isAdmin || isSolo) { setEditingPersonalGig(null); setShowPersonalGigModal(true); } else { setCreateEventType(null); setIsCreateEventOpen(true); } }}
+            onCreateRehearsal={isSolo ? undefined : () => { setCreateEventInitialDate(null); setEditingEventData(null); handleCreateEvent('rehearsal'); }}
+            onCreateQuote={isAdmin && !isSolo ? () => { setCreateEventInitialDate(null); setEditingEventData(null); setCreateEventType('quote'); setIsCreateEventOpen(true); } : undefined}
             />
           )}
           {activeTab === "Chat" && !isSolo && (
@@ -2796,7 +2908,7 @@ export default function AuthenticatedApp() {
                 setEditingEventData(null);
                 setIsCreateEventOpen(true);
               }
-            }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
+            }} onOpenPastEvents={() => setShowPastEvents(true)} onProposeRehearsal={() => handleCreateEvent('rehearsal')} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
               rehearsalPolls={rehearsalPolls}
               onConvertProposal={handleConvertProposal}
               onPollUpdated={() => {
@@ -2816,6 +2928,7 @@ export default function AuthenticatedApp() {
         <IdentityHub
           isOpen={isIdentityOpen}
           onClose={closeIdentity}
+          showCloseButton
           onBandUpdated={() => {
             refetchChats?.();
             refetchEvents();
@@ -2861,7 +2974,7 @@ export default function AuthenticatedApp() {
         <AnimatePresence>
           {expandedCard === "finance" && <FinanceExpanded key="finance-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} financialStats={financeData.financialStats} transactions={financeData.recentTransactions} loading={financeLoading} onTransactionAdded={() => { refetchFinance(); refetchDashboard?.(); }} />}
           {expandedCard === "pending" && <PendingExpanded key="pending-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} eventFilter={eventFilter} setEventFilter={setEventFilter} events={pendingEvents} loading={pendingEventsLoading} />}
-          {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} />}
+          {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} onOpenBandSettings={() => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); }} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded key="confirmed-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
             <RehearsalExpanded key="rehearsal-expanded" upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
@@ -2913,8 +3026,8 @@ export default function AuthenticatedApp() {
             ? // iPhone Duo: layers that hand their Back/close to the rail hide
               // the tabs themselves (only on the pane they cover when open);
               // these few register nothing with it.
-              !!expandedCard || isNotificationsOpen || isDayPickerOpen || (!twoPane && (!!rsvpNotification || !!pollNotification))
-            : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
+              !!expandedCard || isNotificationsOpen || isDayPickerOpen || (!twoPane && (!!rsvpNotification || !!pollNotification || !!votePollId))
+            : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
         }
         isAdmin={isAdmin}
         isSolo={userMode === 'solo'}
@@ -2946,7 +3059,11 @@ export default function AuthenticatedApp() {
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} />}
+          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} onUseTemplate={(template) => {
+            setShowTaskTemplates(false);
+            setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id })));
+            handleCreateEvent(template.category === 'rehearsal' ? 'rehearsal' : 'gig');
+          }} />}
           {showPastEvents && (
             <PastEventsView
               key="past-events"
@@ -2994,7 +3111,7 @@ export default function AuthenticatedApp() {
               }}
             />
           )}
-          {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { const nb = realBands.find((b) => b.id === id); if (nb) selectBand(nb.id); }} />}
+          {showCreateBand && <CreateBandModal key="create-band" isOpen={showCreateBand} onClose={() => setShowCreateBand(false)} onBandCreated={(id) => { selectBand(id); }} />}
           <UpgradePricingSheet key="upgrade-pricing-sheet" isOpen={showUpgradePricing} onClose={() => setShowUpgradePricing(false)} currentTier={profile?.sub_tier} limitReached />
           <PendingInvitesPrompt
             key="pending-invites"
@@ -3031,8 +3148,10 @@ export default function AuthenticatedApp() {
                 initialType={createEventType as any}
                 initialDate={createEventInitialDate || undefined}
                 layoutId={`create-button-${createEventType}`}
-                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); setCreateEventInitialDate(null); }}
+                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); }}
                 onCreate={handleEventCreate}
+                existingEvents={events}
+                initialTasks={createEventInitialTasks}
                 currentUserId={user?.id}
                 bandMembers={memoizedBandMembers}
                 editingEvent={editingEventData}
@@ -3248,6 +3367,7 @@ export default function AuthenticatedApp() {
             onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
             notification={selectedNotification}
             notifications={selectedNotifications}
+            calendarEvents={events}
             onOpenRSVP={(notif) => {
               setSelectedNotification(null);
               setSelectedNotifications([]);
@@ -3376,9 +3496,18 @@ export default function AuthenticatedApp() {
             event={selectedEvent}
             currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
-            userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
+            userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "maybe" ? "maybe" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
             onAccept={handleEventAccept}
             onDecline={handleEventDecline}
+            onRespond={async (status) => {
+              if (status === 'confirmed') return handleEventAccept();
+              if (status === 'declined') return handleEventDecline();
+              return handleEventMaybe();
+            }}
+            canRespond={!!selectedEventMembership}
+            allEvents={events}
+            onNotifyConflict={handleNotifyConflict}
+            onEventUpdated={() => { refetchEvents(); }}
             onEdit={handleEventEdit}
             onDelete={handleEventDelete}
             onChat={handleEventChat}
@@ -3389,6 +3518,16 @@ export default function AuthenticatedApp() {
           />
         )}
       </AnimatePresence>
+
+      {eventLoadError && (
+        <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center px-6" style={{ paddingTop: 'var(--safe-top)' }}>
+          <ErrorState
+            body={eventLoadError.message || "This event may have been deleted, or you no longer have access to it."}
+            onRetry={() => { const id = eventLoadError.id; setEventLoadError(null); navigateToEvent(id); }}
+            onBack={() => setEventLoadError(null)}
+          />
+        </div>
+      )}
 
       <AnimatePresence>
         {rsvpNotification && (
@@ -3496,6 +3635,24 @@ export default function AuthenticatedApp() {
             }}
           />
         )}
+        {votePollId && !pollNotification && (
+          <RehearsalPollVoteSheet
+            key={`poll-${votePollId}`}
+            pollId={votePollId}
+            currentUserId={user?.id || ''}
+            isAdmin={isAdmin}
+            onClose={() => setVotePollId(null)}
+            onPollUpdated={() => {
+              refetchRehearsalPolls?.();
+              refetchEvents();
+            }}
+            onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
+            onOpenAdminWizard={(proposal) => {
+              setVotePollId(null);
+              handleConvertProposal(proposal);
+            }}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -3509,6 +3666,7 @@ export default function AuthenticatedApp() {
         )}
       </AnimatePresence>
 
+      <LeadingCompanionSlot />
       <AnimatePresence>
         {saveToast && (
           saveToast.minimal ? (
@@ -3517,8 +3675,8 @@ export default function AuthenticatedApp() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed -translate-x-1/2 z-[250] px-4 py-2 rounded-full bw-label-sm text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
-              style={{ bottom: 'calc(var(--content-bottom-clearance) + 8px)', left: 'calc((100vw - var(--bw-rail-w, 0px)) / 2)' }}
+              className="bw-toast fixed -translate-x-1/2 z-[250] px-4 py-2 rounded-full bw-label-sm text-white/95 bg-black/65 dark:bg-zinc-900/75 backdrop-blur-md border border-white/10 shadow-lg text-center whitespace-nowrap pointer-events-none select-none max-w-[85vw]"
+              style={{ bottom: 'calc(var(--content-bottom-clearance) + 8px)', left: 'var(--bw-toast-center, calc((100vw - var(--bw-rail-w, 0px)) / 2))' }}
             >
               {saveToast.message}
             </motion.div>
@@ -3529,7 +3687,7 @@ export default function AuthenticatedApp() {
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                "bw-status-clear-inset fixed left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl bw-label-md shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
+                "bw-toast bw-pane-float bw-status-clear-inset fixed left-4 right-4 max-w-[500px] mx-auto z-[250] p-4 rounded-2xl bw-label-md shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-md",
                 saveToast.type === 'error'
                   ? "bg-destructive-solid text-white border-white/10"
                   : saveToast.type === 'info'

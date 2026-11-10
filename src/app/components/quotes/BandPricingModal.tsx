@@ -428,7 +428,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
 
   if (!isAdmin) {
     return (
-      <div className="fixed inset-0 z-[75] bg-black/60 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4">
         <div role="alertdialog" aria-modal="true" className="bg-card text-card-foreground p-6 rounded-[24px] max-w-sm w-full text-center flex flex-col items-center gap-4">
           <span className="w-10 h-10 rounded-full bg-foreground/[0.08] text-destructive flex items-center justify-center">
             <Lock className="w-5 h-5" />
@@ -657,7 +657,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="bw-pane-detail fixed inset-0 z-[75] bg-background text-foreground flex flex-col overflow-hidden"
+      className="bw-pane-detail fixed inset-0 z-[110] bg-background text-foreground flex flex-col overflow-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -857,6 +857,62 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                     </AnimatePresence>
                   </div>
                 </div>
+              )}
+
+              {/* Mode A: formation packages, compact (Figma). Same data/handlers as
+                  flat mode; the flat price only applies in Flat packages mode. */}
+              {settings.pricing_mode === 'per_musician' && (
+                <Section
+                  title="Formation packages"
+                  hint="Prices apply when the base pricing model is Flat packages."
+                >
+                  <ul className="rounded-[24px] bg-card divide-y divide-border">
+                    {settings.lineup_packages.map((pkg) => (
+                      <li
+                        key={pkg.id}
+                        className={cn('flex items-center gap-3 px-4 py-3 transition-opacity', !pkg.is_active && 'opacity-60')}
+                      >
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <input
+                            type="text"
+                            value={pkg.name}
+                            onChange={(e) => handleUpdatePackage(pkg.id, { name: e.target.value })}
+                            placeholder="Formation name"
+                            aria-label="Formation name"
+                            className="w-full min-w-0 bg-transparent outline-none bw-label-md text-foreground placeholder:text-muted-foreground/60 border-b border-transparent focus:border-foreground"
+                          />
+                          <span className="bw-body-sm text-muted-foreground">
+                            {pkg.musiciansCount} {pkg.musiciansCount === 1 ? 'musician' : 'musicians'}
+                          </span>
+                        </div>
+                        <NumberPill
+                          label={`${pkg.name || 'Formation'} package price (${currencySymbol.trim()})`}
+                          prefix={currencySymbol}
+                          min="0"
+                          className="w-28 shrink-0"
+                          value={pkg.flatPrice}
+                          onChange={(e) =>
+                            handleUpdatePackage(pkg.id, {
+                              flatPrice: Math.max(0, Number(e.target.value)),
+                            })
+                          }
+                        />
+                        {settings.lineup_packages.length > 1 && (
+                          <IconButton
+                            size="sm"
+                            variant="ghost"
+                            label={`Remove ${pkg.name || 'formation'}`}
+                            icon={<Trash2 />}
+                            onClick={() => handleRemovePackage(pkg.id)}
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <PillButton variant="outline" size="md" icon={<Plus className="w-4 h-4" />} onClick={handleAddFormationPackage}>
+                    Add package
+                  </PillButton>
+                </Section>
               )}
 
               {/* Mode B: flat lineup packages */}

@@ -65,6 +65,8 @@ import {
   type LineupPackagePreset,
 } from '@/lib/services/pricing';
 import { calculateTravelDistance } from '@/lib/services/location';
+import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
+import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 
 export interface QuoteBandMember {
   id: string;
@@ -83,19 +85,32 @@ const STEPS = [
   { id: 'review', title: 'REVIEW & CONFIRM' },
 ];
 
+// 'pub' is a wizard-level split of the legacy 'club' value (Figma: 7 chips).
+// quotes.event_type is a free VARCHAR, so both persist as-is; existing 'club'
+// quotes keep selecting the "Club" chip.
+type WizardEventType = QuoteEventType | 'pub';
+
 const EVENT_TYPE_OPTIONS: {
-  value: QuoteEventType;
+  value: WizardEventType;
   label: string;
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   { value: 'wedding', label: 'Wedding', subtitle: 'Ceremony, dinner & party', icon: Sparkles },
   { value: 'corporate', label: 'Corporate', subtitle: 'Company gala & summits', icon: Briefcase },
-  { value: 'private', label: 'Private Party', subtitle: 'Birthdays & celebrations', icon: Users },
+  { value: 'private', label: 'Private party', subtitle: 'Birthdays & celebrations', icon: Users },
   { value: 'festival', label: 'Festival', subtitle: 'Open-air & main stages', icon: Music },
-  { value: 'club', label: 'Club / Pub', subtitle: 'Live music & night venue', icon: Mic2 },
+  { value: 'club', label: 'Club', subtitle: 'Live music & night venue', icon: Mic2 },
+  { value: 'pub', label: 'Pub', subtitle: 'Pub & bar sets', icon: Mic2 },
   { value: 'other', label: 'Other', subtitle: 'Tailored event setup', icon: Sliders },
 ];
+
+/** Human label for a stored event type (falls back to a capitalised raw value). */
+const eventTypeLabel = (value?: string | null): string => {
+  if (!value) return 'Wedding';
+  const opt = EVENT_TYPE_OPTIONS.find(o => o.value === value);
+  return opt ? opt.label : value.charAt(0).toUpperCase() + value.slice(1);
+};
 
 const getEventMonthFromDate = (dateStr?: string): number | undefined => {
   if (!dateStr) return undefined;
@@ -445,7 +460,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // Consolidated 3 Review Drawers in Step 3 (Creation Mode)
   const [openReviewDrawer, setOpenReviewDrawer] = useState<
     'billing' | 'logistics' | 'proposal_terms' | null
-  >(initialData?.includeProposalSummary ? 'proposal_terms' : null);
+  >(initialData?.includeProposalSummary ? 'proposal_terms' : 'billing');
 
   const toggleReviewDrawer = (drawer: 'billing' | 'logistics' | 'proposal_terms') => {
     setOpenReviewDrawer(prev => (prev === drawer ? null : drawer));
@@ -466,7 +481,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   // Default eventType to 'wedding' so Step 1 NEXT is never blocked on load
-  const [eventType, setEventType] = useState<QuoteEventType>(
+  const [eventType, setEventType] = useState<WizardEventType>(
     initialData?.eventType || 'wedding'
   );
 
@@ -1513,7 +1528,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Lineup: adapts to pricingSettings.pricing_mode */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>{pricingSettings.pricing_mode === 'flat_packages' ? 'Lineup formation package' : 'Lineup formation'}</FieldLabel>
+          <FieldLabel>Lineup formation package</FieldLabel>
           {pricingSettings.pricing_mode === 'per_musician' && (
             <span className="bw-label-xs text-muted-foreground">
               {lineupCount} of {availableMusicians.length} selected
@@ -1555,15 +1570,16 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
           </span>
           {availableMusicians.length > 0 && (
-            <button
-              type="button"
+            <PillButton
+              variant="outline"
+              size="sm"
+              fullWidth={false}
               onClick={() => setIsRosterExpanded(!isRosterExpanded)}
               aria-expanded={isRosterExpanded}
-              className="-my-2 py-2 inline-flex items-center gap-1.5 bw-label-sm text-foreground cursor-pointer"
+              icon={isRosterExpanded ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
             >
-              {isRosterExpanded ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
               {isRosterExpanded ? 'Done' : 'Customize'}
-            </button>
+            </PillButton>
           )}
         </div>
 
@@ -2621,7 +2637,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               Quote
             </span>
             <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={heroTintStyle}>
-              {eventType}
+              {eventTypeLabel(eventType)}
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0 -my-2">
@@ -2699,7 +2715,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         onToggle={() => toggleEditSection('client_event')}
         stepNumber="01"
         title="Client & occasion"
-        summary={`${clientName || 'No client'} · ${eventType || 'wedding'} · ${indoorOutdoor}`}
+        summary={`${clientName || 'No client'} · ${eventTypeLabel(eventType)} · ${indoorOutdoor}`}
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
@@ -2817,6 +2833,125 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const headerPadTop = { paddingTop: 'var(--wizard-header-pt, calc(var(--safe-top) + 8px))' };
   const footerPadBottom = { paddingBottom: 'calc(var(--safe-bottom) + 16px)' };
 
+  // ── iPhone Duo ──────────────────────────────────────────────
+  // Laptop pose (QuoteDeskMode): the quote's lines as the client reads them.
+  // Fixed amounts (lineup, travel, production) are single lines; custom items
+  // keep their quantity steppers. Same inputs as `totals`, so the same total.
+  const deskLines = useMemo<QuoteDeskLine[]>(() => {
+    const fixed: QuoteDeskLine[] = [
+      { id: 'f-lineup', description: `Lineup base (${numberOfSets} × ${setDuration} min)`, unitPrice: lineupBaseAmount },
+      { id: 'f-travel', description: 'Travel', unitPrice: effectiveTravelFee },
+      { id: 'f-accommodation', description: 'Accommodation', unitPrice: effectiveAccommodationFee },
+      { id: 'f-meals', description: 'Meals', unitPrice: effectiveMealsFee },
+      { id: 'f-sound', description: 'Sound', unitPrice: effectiveSoundFee },
+      { id: 'f-lights', description: 'Lights', unitPrice: effectiveLightsFee },
+      { id: 'f-backline', description: 'Backline', unitPrice: effectiveBacklineFee },
+    ]
+      .filter(l => l.unitPrice > 0)
+      .map(l => ({ ...l, quantity: 1, adjustable: false }));
+    // Quantity of per-person / per-km catalog services follows the lineup / distance.
+    const synced = new Set(
+      (pricingSettings.custom_services || []).filter(srv => srv.unit === 'per_person' || srv.unit === 'per_km').map(srv => srv.id)
+    );
+    const rest = quoteDeskLinesFromQuote({
+      // `totals` counts every legacy moment, included or not.
+      selectedMoments: legacySelectedMoments.map(m => ({ ...m, included: true })),
+      customItems: normalizedCustomItemsForCalc,
+    }).map(l => (l.id.startsWith('c-') && synced.has(l.id.slice(2)) ? { ...l, adjustable: false } : l));
+    return [...fixed, ...rest];
+  }, [
+    numberOfSets,
+    setDuration,
+    lineupBaseAmount,
+    effectiveTravelFee,
+    effectiveAccommodationFee,
+    effectiveMealsFee,
+    effectiveSoundFee,
+    effectiveLightsFee,
+    effectiveBacklineFee,
+    pricingSettings.custom_services,
+    legacySelectedMoments,
+    normalizedCustomItemsForCalc,
+  ]);
+
+  const handleDeskQuantityChange = (lineId: string, quantity: number) => {
+    if (!lineId.startsWith('c-')) return;
+    const itemId = lineId.slice(2);
+    setCustomItems(prev => prev.map(it => (it.id === itemId ? { ...it, quantity: Math.max(1, quantity) } : it)));
+  };
+
+  // Same default line as "Add item" in Production & travel.
+  const handleDeskAddLine = () => {
+    setCustomItems(prev => [
+      ...prev,
+      { id: `item-${Date.now()}`, name: 'Custom Line Item', amount: 150, price: 150, quantity: 1, taxable: true },
+    ]);
+  };
+
+  // Send = save and open the share sheet, like the wizard's Share button.
+  const quoteDesk = (
+    <QuoteDeskMode
+      title={getEffectiveTitle()}
+      quoteNumber={initialData?.quoteNumber}
+      clientName={clientName.trim() || undefined}
+      clientCompany={clientCompany.trim() || undefined}
+      eventDate={eventDate || undefined}
+      venue={[venueName, venueCity].filter(Boolean).join(', ') || undefined}
+      lines={deskLines}
+      discountType={discountType}
+      discountValue={discountValue}
+      vatRate={vatRate}
+      vatExempt={vatExempt}
+      reverseCharge={reverseCharge}
+      billingCountry={billingCountry}
+      depositPercentage={depositRequired ? depositPercentage : undefined}
+      onQuantityChange={handleDeskQuantityChange}
+      onAddLine={handleDeskAddLine}
+      onSend={() => handleCreate(true)}
+      sendDisabled={!isEditing && (!eventType || !eventDate)}
+    />
+  );
+
+  // Book layout (Figma "Duo · 06"): steps 1–2 show the live quote on the
+  // leading page; step 3 already shows the same review on the trailing page.
+  const previewMusicians = selectedMusicians.length || pricingSettings.core_members_count;
+  useLeadingCompanion(
+    <LiveQuotePreview
+      title={getEffectiveTitle()}
+      typeLabel={eventType ? eventTypeLabel(eventType) : null}
+      quoteNumber={initialData?.quoteNumber}
+      client={[clientName.trim(), clientCompany.trim()].filter(Boolean).join(' · ') || null}
+      clientEmail={clientEmail.trim() || null}
+      dateLabel={eventDate ? formattedDateStr : null}
+      timeLabel={eventTimeStart ? `${eventTimeStart}${eventTimeEnd ? ` – ${eventTimeEnd}` : ''}` : null}
+      venue={venueName}
+      city={venueCity}
+      lineup={`${PERFORMANCE_LABEL[performanceType] || 'Lineup'} (${previewMusicians}) · ${numberOfSets} × ${setDuration} min`}
+      lineupNames={selectedMusicians.map(m => m.name).filter(Boolean)}
+      rows={[
+        { label: `Lineup base (${numberOfSets} × ${setDuration} min)`, value: formatQuoteMoney(lineupBaseAmount, currencySymbol) },
+        {
+          label: `Sets & extras${customItems.length > 0 ? ` (${customItems.length})` : ''}`,
+          value: formatQuoteMoney(setsAndExtrasAmount, currencySymbol),
+        },
+        {
+          label: 'Travel & production',
+          value: travelAndProductionAmount > 0 ? formatQuoteMoney(travelAndProductionAmount, currencySymbol) : 'Included',
+        },
+        ...(totals.discountAmount > 0
+          ? [{ label: 'Discount', value: `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`, tone: 'success' as const }]
+          : []),
+        {
+          label: `VAT ${vatExempt || reverseCharge ? '0% (exempt)' : `${vatRate}%`}`,
+          value: formatQuoteMoney(totals.vatAmount, currencySymbol),
+        },
+      ]}
+      total={formatQuoteMoney(totals.total, currencySymbol)}
+      totalLabel={`Total${depositRequired && depositPercentage > 0 ? ` · ${depositPercentage}% deposit` : ''}`}
+    />,
+    !isEditing && step < 2
+  );
+
   // ── EDIT MODE RENDER ────────────────────────────────────────
   // iPhone Duo: the wizard's close sits in the system column under the clock
   // (Figma "Closed · Quote / New – 1 Event & lineup").
@@ -2845,7 +2980,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   Editing
                 </span>
                 <Tag variant="subtle">{initialData?.quoteNumber || 'Quote'}</Tag>
-                <Tag variant="subtle">{eventType || 'wedding'}</Tag>
+                <Tag variant="subtle">{eventTypeLabel(eventType)}</Tag>
               </div>
               <h1 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h1>
               <span className="bw-body-sm text-muted-foreground">
@@ -2877,6 +3012,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             </div>
           </div>
         </div>
+        {quoteDesk}
       </motion.div>
     );
   }
@@ -2955,6 +3091,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
         </div>
       </div>
+      {quoteDesk}
     </motion.div>
   );
 };

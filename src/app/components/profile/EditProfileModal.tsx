@@ -41,6 +41,40 @@ async function resizeImageToDataUrl(file: File, maxSize: number = 256): Promise<
   });
 }
 
+/**
+ * Primary instrument chips. Figma set first (Vocals, Guitar, Bass, Drums,
+ * Keys, Sax), then the extra roles, Other last. `aliases` keep older stored
+ * values selected: this modal used to save "Keyboard"/"Saxophone" and
+ * onboarding saves lowercase ids ("keys", "saxophone", "guitar, vocals").
+ */
+const INSTRUMENT_OPTIONS: { value: string; aliases?: string[] }[] = [
+  { value: 'Vocals', aliases: ['vocal', 'voice', 'singer'] },
+  { value: 'Guitar' },
+  { value: 'Bass' },
+  { value: 'Drums' },
+  { value: 'Keys', aliases: ['keyboard', 'keyboards'] },
+  { value: 'Sax', aliases: ['saxophone'] },
+  { value: 'Piano' },
+  { value: 'Trumpet' },
+  { value: 'Violin' },
+  { value: 'Cello' },
+  { value: 'DJ' },
+  { value: 'Producer' },
+  { value: 'Other' },
+];
+
+/** The chip matching a stored instrument (first match of a comma list). */
+const instrumentOptionFor = (stored: string): string | null => {
+  const parts = stored.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+  for (const part of parts) {
+    const hit = INSTRUMENT_OPTIONS.find(
+      (o) => o.value.toLowerCase() === part || o.aliases?.includes(part)
+    );
+    if (hit) return hit.value;
+  }
+  return null;
+};
+
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   isOpen,
   onClose,
@@ -73,6 +107,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    if (file.type && !['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('Use a JPG or PNG image');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     if (file.size > 8 * 1024 * 1024) {
       setError('Image must be smaller than 8MB');
@@ -168,12 +208,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
   };
 
-  const instruments = [
-    'Vocals', 'Guitar', 'Bass', 'Drums', 'Keyboard', 'Piano',
-    'Saxophone', 'Trumpet', 'Violin', 'Cello', 'DJ', 'Producer', 'Other'
-  ];
 
   if (!isOpen) return null;
+
+  const selectedInstrument = instrumentOptionFor(instrument);
 
   const initials =
     fullName?.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() ||
@@ -186,7 +224,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
+        className="bw-pane-detail fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
       >
         {/* ═══ HEADER (Figma: Identity / Edit profile — back + H2 title) ═══ */}
         <header className="px-4 shrink-0 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
@@ -209,7 +247,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                     {initials}
                   </div>
                 )}
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleAvatarUpload} />
                 <IconButton
                   label="Upload photo"
                   variant="filled"
@@ -268,16 +306,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <fieldset className="flex flex-col gap-2">
               <legend className="bw-label-sm text-muted-foreground mb-2">Primary instrument / role</legend>
               <div className="flex flex-wrap gap-2">
-                {instruments.map((inst) => (
-                  <Selector
-                    key={inst}
-                    selected={instrument === inst}
-                    onClick={() => setInstrument(inst)}
-                    className={instrument === inst ? 'bg-accent text-accent-foreground' : undefined}
-                  >
-                    {inst}
-                  </Selector>
-                ))}
+                {INSTRUMENT_OPTIONS.map(({ value }) => {
+                  const isSelected = selectedInstrument === value;
+                  return (
+                    <Selector
+                      key={value}
+                      selected={isSelected}
+                      onClick={() => setInstrument(value)}
+                      className={isSelected ? 'bg-accent text-accent-foreground' : undefined}
+                    >
+                      {value}
+                    </Selector>
+                  );
+                })}
               </div>
             </fieldset>
 
