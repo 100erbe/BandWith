@@ -174,9 +174,18 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
                 transition={HEADER_SPRING}
                 style={{ willChange: 'transform, opacity' }}
-                className="bw-label-sm text-muted-foreground leading-none origin-top-left truncate h-[13px]"
+                className="flex items-center gap-1.5 min-w-0 h-[15px] leading-none origin-top-left"
               >
-                {selectedBand.name} · Schedule
+                {/* Band eyebrow: which band's calendar this is, at a glance. */}
+                <span
+                  className={cn(
+                    'w-2.5 h-2.5 rounded-full shrink-0',
+                    selectedBand.role === 'ADMIN' ? 'bg-destructive-solid' : 'bg-accent',
+                  )}
+                  aria-hidden
+                />
+                <span className="bw-label-md text-foreground font-semibold truncate">{selectedBand.name}</span>
+                <span className="bw-label-md text-muted-foreground shrink-0">· Schedule</span>
               </motion.span>
               <motion.h1
                 initial={false}

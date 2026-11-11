@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useSystemBack } from '@/lib/backStack';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check,
@@ -426,6 +427,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   const sampleTravel80Km = useMemo(() => {
     return calculateTravelFeeFromSettings(80, sampleMusiciansCount, settings);
   }, [settings, sampleMusiciansCount]);
+
+  useSystemBack(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { useSystemBack } from '@/lib/backStack';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
@@ -134,6 +135,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       .finally(() => { if (!cancelled) setIsUploading(false); });
     return () => { cancelled = true; };
   }, [isOpen, pdfResult, canUpload, bandId, quote.quoteNumber, uploadedUrl]);
+
+  useSystemBack(isOpen, onClose);
 
   if (!isOpen) return null;
 

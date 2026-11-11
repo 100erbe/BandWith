@@ -1,3 +1,4 @@
+import { useSystemBack } from '@/lib/backStack';
 import React, { useState, useEffect } from 'react';
 import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
 import { loadPrivacyPrefs, savePrivacyPref } from '@/lib/services/privacyPrefs';
@@ -131,6 +132,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
     onClose();
   };
+
+  // System Back (Android) from a section returns to the list, like the header back.
+  useSystemBack(!twoPane && !!activeSection && openedFromMenu, () => setActiveSection(null));
 
   const [pushEnabled, setPushEnabled] = useState(() => readLocalPref('push'));
   const [emailEnabled, setEmailEnabled] = useState(() => readLocalPref('email'));

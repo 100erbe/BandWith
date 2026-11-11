@@ -1,3 +1,4 @@
+import { handleBackFromStack } from '@/lib/backStack';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { uuidToNumericId } from '@/lib/numericId';
 import { AnimatePresence, motion } from "motion/react";
@@ -1698,6 +1699,10 @@ export default function AuthenticatedApp() {
 
     const handlerPromise = App.addListener('backButton', () => {
       const s = backNavStateRef.current;
+
+      // 0. Screens that go back one level themselves (Settings sub-sections,
+      //    the quote PDF sheet, pricing tabs…) get the press first.
+      if (handleBackFromStack()) return;
 
       // 1. Transient Notifications & Popups
       if (s.urgentNotification) {
