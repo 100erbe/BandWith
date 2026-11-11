@@ -630,6 +630,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
           onLock={isAdmin ? handleFinalize : undefined}
           locking={isFinalizing}
           onDone={handleDone}
+          onClose={onClose}
         />
       )}
     </>
