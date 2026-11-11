@@ -50,10 +50,11 @@ Placeholders are `{{Name}}`. Values must be HTML-escaped and links checked again
 | `onboarding_invite` | The app, when an admin invites a new address (`invitations.ts`) |
 | `member_joined` | Database: the `member_joined` notification (046) for each **admin** recipient → `bw_dispatch_email` (063), unless they turned email off |
 | `welcome` | Database: once per user when `auth.users.email_confirmed_at` is set (063), logged in `bw_email_log` |
-| `onboarding_reminder`, `invite_expired` | Not sent yet (planned: daily pg_cron job) |
+| `onboarding_reminder` | Database: daily job `bw-invite-emails` (pg_cron, 08:00 UTC, 064) → once per pending invite with 2 days or less left, to the invited address |
+| `invite_expired` | Same job → once to the admin who sent it, for invites that expired in the last 3 days |
 | product news | Not sent yet (planned: Resend Broadcasts) |
 
-Database calls authenticate with `x-bw-dispatch-secret` (Vault `bw_email_dispatch_secret`, checked by `bw_verify_email_dispatch_secret`) and pass the gateway with the public anon key from Vault `bw_anon_key`. The function looks up every address from the ids it receives.
+Database calls authenticate with `x-bw-dispatch-secret` (Vault `bw_email_dispatch_secret`, checked by `bw_verify_email_dispatch_secret`) and pass the gateway with the public anon key from Vault `bw_anon_key`. The function looks up every address from the ids it receives, and re-checks invitations at send time (accepted or declined ones are skipped). `band_invitations.reminder_sent_at` / `expiry_notified_at` make each email go out once; `invite-member` resets them when an address is invited again.
 
 ## Logos
 

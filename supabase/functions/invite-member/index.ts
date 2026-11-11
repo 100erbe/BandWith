@@ -105,6 +105,9 @@ serve(async (req) => {
           accepted_at: null,
           accepted_by: null,
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          // A fresh invite gets its own reminder / expiry email (064).
+          reminder_sent_at: null,
+          expiry_notified_at: null,
         }, { onConflict: "band_id,email" })
         .select("token")
         .single();
