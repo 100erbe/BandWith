@@ -67,6 +67,7 @@ import {
 import { calculateTravelDistance, venueFields } from '@/lib/services/location';
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
+import { personName } from '@/lib/personName';
 
 export interface QuoteBandMember {
   id: string;
@@ -419,7 +420,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       return selectedBand.members.map(m => ({
         id: m.id,
         userId: m.user_id,
-        name: m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member',
+        name: personName(m.profile),
         instrument: m.role || m.instrument || 'Member',
         fee: m.default_fee && Number(m.default_fee) > 0 ? Number(m.default_fee) : undefined,
         isExternal: false,

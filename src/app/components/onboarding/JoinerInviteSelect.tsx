@@ -4,6 +4,7 @@ import { ChevronRight } from '@/app/components/icons';
 import { InviteData } from './JoinerInviteLanding';
 import { AuthScreen, BackButton, Kicker } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
+import { personName } from '@/lib/personName';
 
 interface JoinerInviteSelectProps {
   invites: InviteData[];
@@ -27,7 +28,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
   };
 
   const inviterOf = (invite: InviteData) =>
-    invite.inviter?.full_name || invite.inviter?.email?.split('@')[0];
+    personName(invite.inviter, '') || undefined;
 
   return (
     <AuthScreen bodyClassName="pt-3 gap-4" top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>

@@ -24,6 +24,7 @@ import { markAsRead, type Notification } from '@/lib/services/notifications';
 import { haptic } from '@/lib/haptics';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
+import { personName } from '@/lib/personName';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -350,7 +351,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                   <p className="bw-body-sm text-sheet-foreground/80">
                     Proposed by{' '}
                     <span className="text-sheet-foreground font-semibold">
-                      {poll.creator_profile?.full_name || poll.creator_profile?.email || 'Band member'}
+                      {personName(poll.creator_profile, 'Band member')}
                     </span>
                   </p>
                 </div>
@@ -490,7 +491,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                             {option.votes.map((v) => (
                               <span
                                 key={v.id}
-                                title={v.profile?.full_name || 'Member'}
+                                title={personName(v.profile)}
                                 className="w-7 h-7 rounded-full border border-sheet-foreground/40 bw-label-xs flex items-center justify-center shrink-0 overflow-hidden"
                               >
                                 {v.profile?.avatar_url ? (

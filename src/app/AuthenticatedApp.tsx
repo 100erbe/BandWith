@@ -131,6 +131,7 @@ import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
+import { personName, personFirstName, personInitials } from "@/lib/personName";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -541,7 +542,7 @@ export default function AuthenticatedApp() {
       // Resolve names from band members already in memory
       const bandNameMap: Record<string, string> = {};
       realBand?.members?.forEach((m: any) => {
-        if (m.user_id) bandNameMap[m.user_id] = m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Member';
+        if (m.user_id) bandNameMap[m.user_id] = personName(m.profile);
       });
 
       // Include pending offline event members from syncQueue
@@ -1107,9 +1108,9 @@ export default function AuthenticatedApp() {
       let displayName = "";
       let avatarUrl: string | undefined = undefined;
       if (type === "direct") {
-        const otherWithProfile = others.find((p) => (p as any).profile?.full_name);
+        const otherWithProfile = others.find((p) => (p as any).profile);
         // Always the other person's name, never a generic "Direct Chat".
-        displayName = otherWithProfile?.profile?.full_name || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : "Member");
+        displayName = (otherWithProfile ? personName((otherWithProfile as any).profile, "") : "") || (chat.name && chat.name !== "New Chat" && chat.name !== "Chat" && chat.name !== "Direct Chat" ? chat.name : "Member");
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
@@ -1152,7 +1153,7 @@ export default function AuthenticatedApp() {
 
       let senderName = "";
       if ((type === "band" || type === "event") && chat.last_message?.sender) {
-        senderName = chat.last_message.sender.id !== user?.id ? (chat.last_message.sender.full_name?.split(" ")[0] || "Someone") : "You";
+        senderName = chat.last_message.sender.id !== user?.id ? personFirstName(chat.last_message.sender, "Someone") : "You";
       }
 
       let lastMessageDisplay = chat.last_message?.content || "No messages yet";
@@ -1328,10 +1329,10 @@ export default function AuthenticatedApp() {
     return realBand.members.map((m) => ({
       id: m.id,
       user_id: m.user_id,
-      name: m.profile?.full_name || m.profile?.email?.split("@")[0] || "Member",
+      name: personName(m.profile),
       role: m.role || m.instrument || "Member",
       fee: String(m.default_fee || 0),
-      initials: (m.profile?.full_name || m.profile?.email || "M").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
+      initials: personInitials(m.profile, "M"),
     }));
   }, [realBand?.members]);
 
@@ -2196,7 +2197,7 @@ export default function AuthenticatedApp() {
         const { data: members } = await getEventMembers(realEventId);
         const creator = members?.find((m) => m.role === "admin" || m.user_id === selectedEvent.createdBy);
         if (creator?.user_id && user?.id) {
-          const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+          const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
           const eventType = selectedEvent.status === "REHEARSAL" ? "rehearsal" : selectedEvent.status === "QUOTE" || selectedEvent.status === "QUOTED" ? "quote" : "gig";
           await notifyEventResponse([creator.user_id], realBand?.id || "", realEventId, selectedEvent.title, eventType, memberName, "confirmed");
         }
@@ -2245,7 +2246,7 @@ export default function AuthenticatedApp() {
     const ids = (admins || []).map((a: any) => a.user_id).filter((id: string) => id && id !== user?.id);
     if (!ids.length) throw new Error('This band has no other admin to notify.');
     const bandEvent = events.find((e) => e.eventId === eventId);
-    const who = profile?.full_name?.split(' ')[0] || 'A member';
+    const who = personFirstName(profile, 'A member');
     const when = bandEvent ? `${bandEvent.date}${bandEvent.time ? `, ${bandEvent.time}` : ''}` : '';
     const results = await Promise.all(ids.map((id: string) => createNotification(id, {
       type: 'event_update',
@@ -2299,7 +2300,7 @@ export default function AuthenticatedApp() {
     try {
       const realEventId = selectedEvent.eventId;
       if (realEventId && user?.id) {
-        const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+        const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
         await notifyMemberDroppedOut(
           realBand?.id || "",
           realEventId,
@@ -2588,7 +2589,7 @@ export default function AuthenticatedApp() {
           }
           if (addedOnEdit.length > 0 && user?.id) {
             try {
-              const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+              const creatorName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Someone");
               await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, fee: parseFloat(price) || undefined });
             } catch (err) { console.error("Notify error:", err); }
           }
@@ -2617,7 +2618,7 @@ export default function AuthenticatedApp() {
           }
           if (user?.id) {
             try {
-              const creatorName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Someone";
+              const creatorName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Someone");
               const invitedIds = data.audienceIds?.length > 0 ? data.audienceIds : data.members?.map((m: any) => m.id) || [];
               const perMemberFees: Record<string, number> = {};
               (data.members || []).forEach((m: any) => { if (m.id && m.fee) perMemberFees[m.id] = parseFloat(m.fee) || 0; });
@@ -3527,7 +3528,7 @@ export default function AuthenticatedApp() {
                   const eventType = notif?.data?.event_type as string || "gig";
                   if (eventId && user?.id) {
                     const status = action === "accept_event" ? "confirmed" : "declined";
-                    const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                    const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
 
                     const { data: membership } = await supabase
                       .from('event_members')
@@ -3689,7 +3690,7 @@ export default function AuthenticatedApp() {
                 if (membership) await respondToEventInvite(membership.id, 'confirmed');
                 const creatorId = rsvpNotification.data?.creator_id as string;
                 if (creatorId) {
-                  const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                  const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
                   const eventType = (rsvpNotification.data?.event_type as string) || 'gig';
                   await notifyEventResponse([creatorId], rsvpNotification.band_id || "", eventId, (rsvpNotification.data?.event_title as string) || "Event", eventType, memberName, "confirmed");
                 }
@@ -3722,7 +3723,7 @@ export default function AuthenticatedApp() {
                   .eq('user_id', user.id)
                   .maybeSingle();
                 if (membership) await respondToEventInvite(membership.id, 'declined');
-                const memberName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Member";
+                const memberName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Member");
                 const eventTitle = (rsvpNotification.data?.event_title as string) || "Event";
                 const eventDate = (rsvpNotification.data?.event_date as string) || undefined;
                 await notifyMemberDroppedOut(

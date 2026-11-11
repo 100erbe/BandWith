@@ -28,6 +28,7 @@ import { markChatNotificationsAsRead } from '@/lib/services/notifications';
 import { setActiveChat } from '@/lib/services/activeChatTracker';
 import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
+import { personName } from '@/lib/personName';
 
 interface ChatDetailModalProps {
   chat: {
@@ -181,13 +182,13 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       setChatParticipants(
         otherParticipants.map(p => ({
           id: p.user_id,
-          name: (p.profile as any)?.full_name || 'Member'
+          name: personName((p.profile as any))
         }))
       );
       
       if (chat.type === 'direct' && otherParticipants.length > 0) {
         const otherProfile = (otherParticipants[0] as any)?.profile;
-        const otherName = otherProfile?.full_name;
+        const otherName = personName(otherProfile, '');
         if (otherName) {
           setChatName(otherName);
           const initials = otherName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
@@ -215,7 +216,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       if (fullChat) {
         if (fullChat.type === 'direct') {
           const other = fullChat.participants.find(p => p.user_id !== user?.id);
-          const name = other?.profile?.full_name;
+          const name = personName(other?.profile, '');
           if (name) {
             setChatName(name);
             const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
@@ -638,7 +639,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       )}>
                         {!isMe && (chat.type === 'band' || chat.type === 'event') && (
                           <p className="bw-label-xs text-muted-foreground">
-                            {message.sender?.full_name || 'Member'}
+                            {personName(message.sender)}
                             {bandAdminIds.has(message.sender_id) ? ' · Admin' : ''}
                           </p>
                         )}
@@ -652,7 +653,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                           {replyTo && message.reply_to_id && replyTo.content && (
                             <div className="flex flex-col gap-1 px-3 py-2 rounded-[20px] bg-black text-white min-w-0">
                               <p className="bw-label-xs text-accent truncate">
-                                {replyTo.sender?.full_name || 'Unknown'}
+                                {personName(replyTo.sender, 'Unknown')}
                               </p>
                               <p className="bw-body-sm text-white line-clamp-1">
                                 {replyTo.content}
@@ -710,7 +711,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                     <span className="w-[3px] h-7 rounded-full bg-accent shrink-0" aria-hidden="true" />
                     <div className="flex-1 min-w-0 flex flex-col">
                       <span className="bw-label-sm text-foreground truncate">
-                        Replying to {replyingTo.sender?.full_name || 'Message'}
+                        Replying to {personName(replyingTo.sender, 'Message')}
                       </span>
                       <p className="bw-body-sm text-muted-foreground line-clamp-1">{replyingTo.content}</p>
                     </div>

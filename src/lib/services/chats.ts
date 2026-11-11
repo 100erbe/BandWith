@@ -1,5 +1,6 @@
 import { supabase, getSafeUser } from '../supabase';
 import { sendPushToUsers } from './notifications';
+import { personName } from '@/lib/personName';
 
 // ============================================
 // TYPES
@@ -36,6 +37,7 @@ export interface ChatParticipant {
   profile?: {
     id: string;
     full_name?: string;
+    email?: string;
     avatar_url?: string;
   };
 }
@@ -58,6 +60,7 @@ export interface Message {
   sender?: {
     id: string;
     full_name?: string;
+    email?: string;
     avatar_url?: string;
   };
 }
@@ -174,7 +177,7 @@ export const getChats = async (
     if (allUserIds.length > 0) {
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, email, avatar_url')
         .in('id', allUserIds);
       if (profilesData) {
         profileMap = new Map(profilesData.map((pr: any) => [pr.id, pr]));
@@ -381,7 +384,7 @@ export const getChat = async (
     const partIds = (chatParticipants || []).map((p: any) => p.user_id);
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url')
+      .select('id, full_name, email, avatar_url')
       .in('id', partIds);
     const profileMap = new Map((profilesData || []).map((p: any) => [p.id, { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url }]));
 
@@ -732,7 +735,7 @@ export const getMessages = async (
     if (senderIds.length > 0) {
       const { data: senders } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, email, avatar_url')
         .in('id', senderIds);
       const byId = new Map((senders || []).map((p: any) => [p.id, p]));
       for (const m of rows as any[]) {
@@ -942,7 +945,7 @@ export const sendMessage = async (
           .eq('id', user.id)
           .single();
 
-        const senderName = profile?.full_name || user.email?.split('@')[0] || 'Someone';
+        const senderName = personName({ full_name: profile?.full_name, email: user.email }, 'Someone');
 
         // Resolve latest band name for notification
         let bandName = chat.name || undefined;
@@ -1030,7 +1033,7 @@ export const getChatParticipants = async (
     if (userIds.length > 0) {
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, email, avatar_url')
         .in('id', userIds);
       if (profilesData) {
         profileMap = new Map(profilesData.map((pr: any) => [pr.id, pr]));

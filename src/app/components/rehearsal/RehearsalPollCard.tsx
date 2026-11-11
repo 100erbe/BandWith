@@ -20,6 +20,7 @@ import {
 } from '@/lib/services/rehearsalPolls';
 import { haptic } from '@/lib/haptics';
 import { StepPad, Card, Tag, PillButton, PillField } from '@/app/components/bw';
+import { personName } from '@/lib/personName';
 
 interface RehearsalPollCardProps {
   poll: RehearsalPoll;
@@ -233,7 +234,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
         <p className="bw-body-sm text-muted-foreground">
           Proposed by{' '}
           <span className="text-foreground font-semibold">
-            {poll.creator_profile?.full_name || poll.creator_profile?.email || 'Band member'}
+            {personName(poll.creator_profile, 'Band member')}
           </span>{' '}
           ·{' '}
           {new Date(poll.created_at).toLocaleDateString(undefined, {
@@ -459,7 +460,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                             return (
                               <span
                                 key={v.id}
-                                title={v.profile?.full_name || 'Member'}
+                                title={personName(v.profile)}
                                 className="w-7 h-7 rounded-full border border-current/40 bw-label-xs flex items-center justify-center shrink-0 overflow-hidden"
                               >
                                 {v.profile?.avatar_url ? (

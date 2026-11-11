@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { AlertCircle, ArrowUpRight, RefreshCw } from '@/app/components/icons';
 import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { useOnboarding } from '@/lib/OnboardingContext';
+import { personName } from '@/lib/personName';
 
 interface JoinerWelcomeBandProps {
   inviteData: any;
@@ -32,7 +33,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
   // Only what we actually know before joining: who invited you and how many
   // people are in the band. (The member list is visible once you're in.)
   const inviterName =
-    inviteData?.inviter?.full_name || inviteData?.inviter?.email?.split('@')[0];
+    personName(inviteData?.inviter, '') || undefined;
   const memberCount: number = inviteData?.member_count ?? 0;
   const bandmates = inviterName
     ? [{ id: 'inviter', name: inviterName, role: 'Invited you', isAdmin: true }]

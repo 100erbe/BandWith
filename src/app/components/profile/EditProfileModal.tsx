@@ -5,6 +5,7 @@ import { IconButton, NavBackButton } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { realName } from '@/lib/personName';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -96,7 +97,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   // Populate form with current profile data
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || '');
+      setFullName(realName(profile.full_name, profile.email));
       setPhone(profile.phone || '');
       setInstrument(profile.instrument || '');
       setBio(profile.bio || '');
