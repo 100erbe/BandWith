@@ -16,6 +16,10 @@ import {
   Share2,
   MoreHorizontal,
   LogOut,
+  EyeOff,
+  Send,
+  CheckCircle2,
+  XCircle,
 } from '@/app/components/icons';
 import { springs } from '@/styles/motion';
 import { EventData } from './EventCard';
@@ -482,9 +486,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     }
   };
 
+  // Reverting takes the gig off the lineup's calendars: it asks first.
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const handleRevertQuote = async () => {
     if (isReverting || !onRevertQuote) return;
     haptic.tap();
+    setShowRevertConfirm(false);
     setIsReverting(true);
     try {
       await onRevertQuote(event);
@@ -590,11 +597,49 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   else if (isQuote) {
     const qs = String(linkedQuote?.status || event.quoteStatus || 'pending');
     statusChips.push(qs.toUpperCase());
-    // A quote not shared yet: on the admins' calendar only.
-    if (qs.toLowerCase() === 'draft' && !isPast) statusChips.push('HIDDEN FROM MEMBERS');
+    // A quote not shared yet: on the admins' calendar only (unless the
+    // lineup was asked for availability, then they see the check).
+    if (qs.toLowerCase() === 'draft' && !isPast && memberCount === 0) statusChips.push('HIDDEN FROM MEMBERS');
   }
   else if (eventType === 'gig' && !isPast) statusChips.push((event.status || 'CONFIRMED').toUpperCase());
   const showPendingChip = !isPast && !isPersonalGig && isPending && (eventType === 'gig' || isRehearsal);
+
+  // ─── Quote: where it stands and the way forward (admins) ───
+  // Says in words what the status chip means, who has seen it, and which
+  // button moves it on, so a draft is never a dead end.
+  const quoteGuide = (() => {
+    if (!isQuote || !isAdmin || isPast) return null;
+    const qs = String(linkedQuote?.status || event.quoteStatus || 'draft').toLowerCase();
+    const answered = resolvedMembers.filter((m) => m.status !== 'pending').length;
+    const free = resolvedMembers.filter((m) => m.status === 'confirmed').length;
+    const lineup =
+      memberCount > 0
+        ? ` Availability: ${free} of ${memberCount} free${answered < memberCount ? `, ${memberCount - answered} still to answer` : ''} (see below).`
+        : '';
+    if (qs === 'draft')
+      return {
+        icon: <EyeOff className="w-5 h-5" />,
+        title: 'Draft · not sent to the client',
+        body: `${memberCount > 0 ? 'The lineup only got an availability check.' : "Only admins see it: the band isn't told yet."} Share quote sends it to the client (it becomes Sent). When they say yes, Confirm as gig puts it on everyone's calendar.${lineup}`,
+      };
+    if (qs === 'accepted')
+      return {
+        icon: <CheckCircle2 className="w-5 h-5" />,
+        title: 'The client said yes',
+        body: `Confirm as gig to put it on everyone's calendar.${lineup}`,
+      };
+    if (qs === 'declined' || qs === 'rejected' || qs === 'expired')
+      return {
+        icon: <XCircle className="w-5 h-5" />,
+        title: qs === 'expired' ? 'The quote expired' : 'The client said no',
+        body: `Edit it and share a new version, or delete the quote to free the date.${lineup}`,
+      };
+    return {
+      icon: <Send className="w-5 h-5" />,
+      title: qs === 'viewed' ? 'The client opened it' : 'Sent · waiting for the client',
+      body: `When the client says yes, Confirm as gig puts it on everyone's calendar.${lineup}`,
+    };
+  })();
 
   // ─── Figma layout helpers (display only) ───
   const heroDate = event.date ? parseLocalDate(event.date) : null;
@@ -979,6 +1024,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── QUOTE (Figma 23:862) ─── */}
               {isQuote && (
                 <>
+                  {quoteGuide && (
+                    <section
+                      aria-label="Quote status"
+                      className="rounded-[16px] bg-card p-4 flex items-start gap-3"
+                    >
+                      <span className="w-9 h-9 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0" aria-hidden>
+                        {quoteGuide.icon}
+                      </span>
+                      <span className="flex flex-col gap-1 min-w-0">
+                        <span className="bw-label-md">{quoteGuide.title}</span>
+                        <span className="bw-body-sm text-muted-foreground [overflow-wrap:anywhere]">{quoteGuide.body}</span>
+                      </span>
+                    </section>
+                  )}
                   <QuoteSummaryCard
                     quote={linkedQuote}
                     loading={quoteLoading}
@@ -991,6 +1050,40 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     fallback={{ company: event.clientCompany, contact: event.clientName, guests: event.guests }}
                     notes={event.notes}
                   />
+                  {/* Availability check sent with the quote: who is free. */}
+                  {!isPersonalGig && (memberCount > 0 || (membersLoading && !dbMembers)) && (
+                    <section className="flex flex-col gap-6" aria-label="Lineup availability">
+                      <SectionTitle
+                        title={`AVAILABILITY${memberCount > 0 ? ` · ${confirmedExact}/${memberCount} FREE` : ''}`}
+                        actionLabel={memberCount > 0 ? 'DETAILS' : undefined}
+                        onAction={memberCount > 0 ? () => setActiveSheet('lineup') : undefined}
+                      />
+                      <div className="bg-card rounded-[16px] p-4 flex flex-col gap-4">
+                        {membersLoading && !dbMembers ? (
+                          <span className="bw-label-sm text-muted-foreground">LOADING…</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveSheet('lineup')}
+                            className="flex flex-col gap-4 text-left cursor-pointer"
+                            aria-label="Open availability details"
+                          >
+                            {resolvedMembers.slice(0, 6).map((m, i) => (
+                              <MemberRow key={m.userId || i} member={m} availability />
+                            ))}
+                            {resolvedMembers.length > 6 && (
+                              <span className="bw-label-xs text-muted-foreground pl-14">
+                                + {resolvedMembers.length - 6} MORE
+                              </span>
+                            )}
+                          </button>
+                        )}
+                        <span className="bw-body-sm text-muted-foreground">
+                          Not confirmed yet: everyone's answer is only about the date. They get the gig when you confirm it.
+                        </span>
+                      </div>
+                    </section>
+                  )}
                 </>
               )}
 
@@ -1402,12 +1495,29 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           {chatLabel}
                         </PillButton>
                       </div>
-                      {showDeleteConfirm ? (
+                      {showRevertConfirm ? (
+                        <div className="flex flex-col gap-3 w-full" role="group" aria-label="Revert to quote?">
+                          <p className="bw-body-sm text-muted-foreground">
+                            Back to a quote: the gig leaves the musicians' calendars
+                            {memberCount > 0 ? ` (${memberCount} in the lineup)` : ''} until you confirm it again. Their
+                            answers are kept.
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <PillButton size="sm" fullWidth={false} onClick={handleRevertQuote} disabled={isReverting}>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              Revert to quote
+                            </PillButton>
+                            <button onClick={() => setShowRevertConfirm(false)} className={LINK_CLASS}>
+                              Keep the gig
+                            </button>
+                          </div>
+                        </div>
+                      ) : showDeleteConfirm ? (
                         renderDeleteConfirm(() => setShowDeleteConfirm(false))
                       ) : (
                         <div className="flex items-center gap-5">
                           {onRevertQuote && (
-                            <button onClick={handleRevertQuote} disabled={isReverting} className={LINK_CLASS}>
+                            <button onClick={() => setShowRevertConfirm(true)} disabled={isReverting} className={LINK_CLASS}>
                               <RotateCcw className="w-3.5 h-3.5" />
                               {isReverting ? 'REVERTING...' : 'REVERT TO QUOTE'}
                             </button>
@@ -1488,7 +1598,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             <>
               {activeSheet === 'fee' && 'Fee & payouts'}
               {activeSheet === 'setlist' && `Setlist · ${numSongs}`}
-              {activeSheet === 'lineup' && `Lineup · ${memberCount}`}
+              {activeSheet === 'lineup' && `${isQuote ? 'Availability' : 'Lineup'} · ${memberCount}`}
               {activeSheet === 'notes' && 'Logistics & notes'}
             </>
           }
@@ -1599,7 +1709,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         key={m.userId || i}
                         className="flex items-center justify-between gap-3 rounded-[16px] bg-foreground/[0.08] px-3 py-3"
                       >
-                        <MemberRow member={m} />
+                        <MemberRow member={m} availability={isQuote} />
                         {(isAdmin || m.userId === currentUserId) && m.fee > 0 && m.status !== 'declined' && (
                           <span className="bw-label-md shrink-0">{formatCurrencyExact(m.fee)}</span>
                         )}

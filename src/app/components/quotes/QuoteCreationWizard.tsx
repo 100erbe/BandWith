@@ -68,6 +68,7 @@ import {
   maskedBankAccount,
 } from '@/lib/services/pricing';
 import { calculateTravelDistance, venueFields } from '@/lib/services/location';
+import { formatDistance, fromUnit, ratePerUnit, toUnit, useDistanceUnit } from '@/lib/units';
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 import { personName } from '@/lib/personName';
@@ -400,6 +401,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [step, setStep] = useState(0);
 
+  // Distances are kept in km; per-distance services are priced and counted in the chosen unit.
+  const distanceUnit = useDistanceUnit();
   const currencySymbol = useMemo(() => {
     if (pricingSettings.currency === 'USD') return '$';
     if (pricingSettings.currency === 'GBP') return '£';
@@ -858,16 +861,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             return { ...item, quantity: targetQty, price: srv.price, amount: srv.price };
           }
         } else if (srv.unit === 'per_km' && travelDistanceKm && travelDistanceKm > 0) {
-          if (item.quantity !== travelDistanceKm) {
+          const targetQty = Math.max(1, toUnit(travelDistanceKm, distanceUnit));
+          const unitPrice = ratePerUnit(srv.price, distanceUnit);
+          if (item.quantity !== targetQty || item.price !== unitPrice) {
             changed = true;
-            return { ...item, quantity: travelDistanceKm, price: srv.price, amount: srv.price };
+            return { ...item, quantity: targetQty, price: unitPrice, amount: unitPrice };
           }
         }
         return item;
       });
       return changed ? next : prev;
     });
-  }, [allMusicians.length, travelDistanceKm, pricingSettings.custom_services, pricingSettings.core_members_count]);
+  }, [allMusicians.length, travelDistanceKm, distanceUnit, pricingSettings.custom_services, pricingSettings.core_members_count]);
 
   // Distance & Flexible Travel Calculation
   const computeTravelFeeForDistance = useCallback(
@@ -1225,15 +1230,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         return Math.max(1, allMusicians.length || pricingSettings.core_members_count || 1);
       }
       if (srv.unit === 'per_km') {
-        return Math.max(1, travelDistanceKm || 50);
+        return Math.max(1, travelDistanceKm ? toUnit(travelDistanceKm, distanceUnit) : 50);
       }
       if (srv.unit === 'per_hour' && srv.default_duration_mins) {
         return Math.max(1, Math.round(srv.default_duration_mins / 60));
       }
       return 1;
     },
-    [allMusicians.length, pricingSettings.core_members_count, travelDistanceKm]
+    [allMusicians.length, pricingSettings.core_members_count, travelDistanceKm, distanceUnit]
   );
+  /** Catalog price per unit of the line: per-distance services in the chosen unit. */
+  const servicePrice = (srv: Pick<CustomService, 'unit' | 'price'>) =>
+    srv.unit === 'per_km' ? ratePerUnit(srv.price, distanceUnit) : srv.price;
 
   const toggleBandCustomService = (srv: CustomService) => {
     setCustomItems(prev => {
@@ -1248,8 +1256,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           id: srv.id,
           name: srv.name,
           description: srv.description,
-          price: srv.price,
-          amount: srv.price,
+          price: servicePrice(srv),
+          amount: servicePrice(srv),
           quantity: qty,
           taxable: true,
         },
@@ -1685,7 +1693,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             {activeCatalogServices.map(srv => {
               const isAdded = customItems.some(it => it.id === srv.id || it.name === srv.name);
               const qty = getServiceAutoQty(srv);
-              const lineTotal = srv.price * qty;
+              const lineTotal = servicePrice(srv) * qty;
               return (
                 <Chip key={srv.id} selected={isAdded} onClick={() => toggleBandCustomService(srv)}>
                   {isAdded ? <Check className="w-3 h-3 shrink-0" /> : <Plus className="w-3 h-3 shrink-0" />}
@@ -1728,10 +1736,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <span className="bw-label-sm">Calculating travel distance…</span>
             ) : travelDistanceKm != null && travelDistanceKm > 0 ? (
               <span className="bw-label-sm block truncate">
-                Travel: {travelDistanceKm} km from band HQ
+                Travel: {formatDistance(travelDistanceKm, distanceUnit)} from band HQ
                 <span className="opacity-70">
                   {' · '}
-                  {billableKm === 0 ? `≤${freeRadius} km free` : `${billableKm} km billable`}
+                  {billableKm === 0
+                    ? `≤${formatDistance(freeRadius, distanceUnit)} free`
+                    : `${formatDistance(billableKm, distanceUnit)} billable`}
                 </span>
               </span>
             ) : (
@@ -1740,12 +1750,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <input
                   type="number"
                   min="0"
-                  value={travelDistanceKm ?? ''}
+                  value={travelDistanceKm != null ? toUnit(travelDistanceKm, distanceUnit) : ''}
                   onChange={e =>
-                    handleManualDistanceChange(e.target.value ? Math.max(0, parseFloat(e.target.value)) : undefined)
+                    handleManualDistanceChange(
+                      e.target.value ? fromUnit(Math.max(0, parseFloat(e.target.value)), distanceUnit) : undefined,
+                    )
                   }
-                  placeholder="km"
-                  aria-label="One-way travel distance in km"
+                  placeholder={distanceUnit}
+                  aria-label={`One-way travel distance in ${distanceUnit === 'mi' ? 'miles' : 'km'}`}
                   className="w-20 h-7 px-3 rounded-full bg-[var(--wizard-accent-fg)]/10 bw-body-sm font-medium outline-none placeholder:opacity-60"
                 />
               </label>
@@ -2246,10 +2258,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         {travelMode === 'separate' && (
           <div className="grid grid-cols-2 gap-2 pt-1">
             <MiniNumber
-              label="One-way distance in km"
-              suffix="km"
-              value={travelDistanceKm ?? ''}
-              onChange={e => handleManualDistanceChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+              label={`One-way distance in ${distanceUnit === 'mi' ? 'miles' : 'km'}`}
+              suffix={distanceUnit}
+              value={travelDistanceKm != null ? toUnit(travelDistanceKm, distanceUnit) : ''}
+              onChange={e => handleManualDistanceChange(e.target.value ? fromUnit(parseFloat(e.target.value), distanceUnit) : undefined)}
               placeholder="0"
             />
             <MiniNumber
@@ -2727,7 +2739,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
           <span className="bw-body-sm text-muted-foreground">
             {askAvailability
-              ? 'When you save, the musicians get an availability check (RSVP) for this date, marked as not confirmed yet.'
+              ? "As soon as the quote is saved (shared, or kept as a draft from ✕), the musicians get an availability check (RSVP) for this date, marked as not confirmed yet."
               : 'Musicians are asked once the client accepts. Turn this on to check their availability now.'}
           </span>
         </section>
@@ -2997,7 +3009,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const [leaveOpen, setLeaveOpen] = useState(false);
   const requestCloseRef = useRef<() => void>(onClose);
   requestCloseRef.current = () => {
-    if (!isEditing && isDirty) setLeaveOpen(true);
+    if (!isEditing && (isDirty || isLastStep)) setLeaveOpen(true);
     else onClose();
   };
   const requestClose = useCallback(() => requestCloseRef.current(), []);
@@ -3056,10 +3068,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 Cancel
               </PillButton>
               <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
-                Save draft
+                Save
               </PillButton>
               <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
-                Share
+                Save & share
               </PillButton>
             </div>
           </div>
@@ -3118,15 +3130,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div className="px-4 pt-4 bg-background" style={footerPadBottom}>
           <div className="max-w-xl mx-auto w-full">
             {isLastStep ? (
-              <div className="flex gap-2">
-                <PillButton variant="outline" fullWidth={false} className="px-4" onClick={handleBack}>
+              // Saving as a draft is the ✕ (Save draft / Discard): the
+              // finished quote's one way forward is to send it.
+              <div className="grid grid-cols-[auto_1fr] gap-2">
+                <PillButton variant="outline" fullWidth={false} className="px-5" onClick={handleBack}>
                   Back
                 </PillButton>
-                <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
-                  Save draft
-                </PillButton>
-                <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
-                  Share
+                <PillButton className="min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
+                  Save & share
                 </PillButton>
               </div>
             ) : (
@@ -3147,7 +3158,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <LeaveWizardSheet
         open={leaveOpen}
         what="quote"
-        draftHint="Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
+        draftHint={
+          askAvailability
+            ? "Saved as a draft quote, not sent to the client. The musicians still get the availability check. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
+            : "Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
+        }
         onSaveDraft={() => {
           setLeaveOpen(false);
           handleCreate(false);

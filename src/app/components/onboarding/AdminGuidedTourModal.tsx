@@ -54,7 +54,7 @@ const TOUR_STEPS: TourStep[] = [
       'When an inquiry comes in, tap "+ NEW QUOTE". The system calculates travel, lineup compensation, taxes, and deposit schedules automatically.',
     highlights: [
       'Seasonal pricing adjustment automatically calculated from the event date',
-      'Travel rate applied per KM per musician from your home base',
+      'Travel rate per km (or mile) per musician from your home base',
       'One-click breakdown of client total, VAT, deposit, and contingency buffer',
     ],
   },

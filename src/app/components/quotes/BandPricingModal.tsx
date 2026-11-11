@@ -61,12 +61,19 @@ interface BandPricingModalProps {
 
 type TabType = PricingModalTabType;
 
+import { formatDistance, fromUnit, ratePerKm, ratePerUnit, toUnit, unitSingular, useDistanceUnit, type DistanceUnit } from '@/lib/units';
+
 const UNIT_LABELS: Record<CustomServiceUnit, string> = {
   flat: 'Flat Fee',
   per_person: 'Per Musician',
   per_hour: 'Per Hour',
   per_km: 'Per KM',
 };
+/** Service unit label in the chosen distance unit ("Per mile"). */
+const unitLabel = (u: CustomServiceUnit, d: DistanceUnit) => (u === 'per_km' ? (d === 'mi' ? 'Per mile' : 'Per km') : UNIT_LABELS[u]);
+/** Prices charged per distance are stored per km and shown per chosen unit. */
+const shownPrice = (srv: { price: number; unit: CustomServiceUnit }, d: DistanceUnit) =>
+  srv.unit === 'per_km' ? ratePerUnit(srv.price, d) : srv.price;
 
 const CATEGORY_LABELS: Record<CustomServiceCategory, string> = {
   performance: 'Performance',
@@ -305,6 +312,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
   }, [isOpen, effectiveBandId, selectedBand?.name, selectedBand?.description, selectedBand?.logo_url, selectedBand?.home_base_address]);
 
   const currencySymbol = symbolFor(settings.currency);
+  const distanceUnit = useDistanceUnit();
   const countryPreset = findCountryPreset(settings.country);
 
   const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -601,7 +609,9 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       name: newServiceName.trim(),
       category: newServiceCategory,
       description: newServiceDesc.trim() || undefined,
-      price: Math.max(0, parseFloat(newServicePrice) || 0),
+      price: newServiceUnit === 'per_km'
+        ? ratePerKm(Math.max(0, parseFloat(newServicePrice) || 0), distanceUnit)
+        : Math.max(0, parseFloat(newServicePrice) || 0),
       unit: newServiceUnit,
       is_active: true,
     };
@@ -656,8 +666,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
 
   const sampleLabel =
     settings.pricing_mode === 'flat_packages'
-      ? `${activeFullPackage?.name || 'Full band'} · ${sampleMusiciansCount} ${sampleMusiciansCount === 1 ? 'musician' : 'musicians'} · 80 km`
-      : `${sampleMusiciansCount} ${sampleMusiciansCount === 1 ? 'musician' : 'musicians'} · 80 km`;
+      ? `${activeFullPackage?.name || 'Full band'} · ${sampleMusiciansCount} ${sampleMusiciansCount === 1 ? 'musician' : 'musicians'} · ${formatDistance(80, distanceUnit)}`
+      : `${sampleMusiciansCount} ${sampleMusiciansCount === 1 ? 'musician' : 'musicians'} · ${formatDistance(80, distanceUnit)}`;
   const sampleNet = `${currencySymbol}${sampleQuote.netTotal.toLocaleString()}`;
 
   // Portaled above everything (z-130), so it also opens on top of a quote
@@ -671,7 +681,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       className="bw-pane-detail fixed inset-0 z-[130] bg-background text-foreground flex flex-col overflow-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+      <div className="@container flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
         {/* Header: kicker + close (Figma: Pricing / Lineup & rates) */}
         <header className="px-4 pb-4" style={{ paddingTop: 'calc(var(--wizard-header-pt, max(var(--safe-top), 44px)) + 8px)' }}>
           <div className="max-w-2xl mx-auto w-full flex items-start gap-3">
@@ -929,7 +939,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
               {/* Mode B: flat lineup packages */}
               {settings.pricing_mode === 'flat_packages' && (
                 <Section title="Formation packages">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-2">
                     {settings.lineup_packages.map((pkg) => (
                       <div
                         key={pkg.id}
@@ -1143,7 +1153,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                               <option value="flat">Flat Fee</option>
                               <option value="per_person">Per Musician</option>
                               <option value="per_hour">Per Hour</option>
-                              <option value="per_km">Per KM</option>
+                              <option value="per_km">{unitLabel('per_km', distanceUnit)}</option>
                             </SelectPill>
                           </label>
                         </div>
@@ -1202,26 +1212,26 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                           prefix={currencySymbol}
                           min="0"
                           className="w-28"
-                          value={srv.price}
-                          onChange={(e) =>
-                            handleUpdateService(srv.id, {
-                              price: Math.max(0, Number(e.target.value)),
-                            })
-                          }
+                          value={shownPrice(srv, distanceUnit)}
+                          onChange={(e) => {
+                            const v = Math.max(0, Number(e.target.value));
+                            handleUpdateService(srv.id, { price: srv.unit === 'per_km' ? ratePerKm(v, distanceUnit) : v });
+                          }}
                         />
                         <SelectPill
                           value={srv.unit}
-                          onChange={(e) =>
-                            handleUpdateService(srv.id, {
-                              unit: e.target.value as CustomServiceUnit,
-                            })
-                          }
+                          onChange={(e) => {
+                            // Keep the number on screen when switching to or from a per-distance price.
+                            const next = e.target.value as CustomServiceUnit;
+                            const shown = shownPrice(srv, distanceUnit);
+                            handleUpdateService(srv.id, { unit: next, price: next === 'per_km' ? ratePerKm(shown, distanceUnit) : shown });
+                          }}
                           aria-label="Service pricing unit"
                           className="flex-1 min-w-0 max-w-[160px]"
                         >
                           {(Object.keys(UNIT_LABELS) as CustomServiceUnit[]).map((u) => (
                             <option key={u} value={u}>
-                              {UNIT_LABELS[u]}
+                              {unitLabel(u, distanceUnit)}
                             </option>
                           ))}
                         </SelectPill>
@@ -1304,7 +1314,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                       [
                         { id: 'per_vehicle', label: 'Per vehicle' },
                         { id: 'per_musician', label: 'Per musician' },
-                        { id: 'flat_km', label: 'Flat per km' },
+                        { id: 'flat_km', label: `Flat per ${unitSingular(distanceUnit)}` },
                       ] as { id: TravelCalcMode; label: string }[]
                     ).map((m) => ({ ...m, active: settings.travel_calc_mode === m.id }))}
                     onSelect={(id) => setSettings({ ...settings, travel_calc_mode: id })}
@@ -1335,44 +1345,44 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                   )}
                 </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <SettingRow label="Free local radius" hint={`One-way km included at ${currencySymbol}0`}>
+                <div className="@container"><div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-2">
+                  <SettingRow label="Free local radius" hint={`One-way ${distanceUnit === 'mi' ? 'miles' : 'km'} included at ${currencySymbol}0`}>
                     <NumberPill
-                      label="Free local radius in km"
-                      suffix="km"
+                      label={`Free local radius in ${distanceUnit === 'mi' ? 'miles' : 'km'}`}
+                      suffix={distanceUnit}
                       min="0"
                       className="w-28"
-                      value={settings.free_travel_radius_km}
+                      value={toUnit(settings.free_travel_radius_km, distanceUnit)}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
-                          free_travel_radius_km: Math.max(0, Number(e.target.value)),
+                          free_travel_radius_km: fromUnit(Math.max(0, Number(e.target.value)), distanceUnit),
                         })
                       }
                     />
                   </SettingRow>
-                  <SettingRow label="Rate per km" hint="Fuel & vehicle wear">
+                  <SettingRow label={`Rate per ${unitSingular(distanceUnit)}`} hint="Fuel & vehicle wear">
                     <NumberPill
-                      label="Rate per km"
+                      label={`Rate per ${unitSingular(distanceUnit)}`}
                       prefix={currencySymbol}
                       step="0.05"
                       min="0"
                       className="w-28"
-                      value={settings.travel_rate_per_km}
+                      value={ratePerUnit(settings.travel_rate_per_km, distanceUnit)}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
-                          travel_rate_per_km: Math.max(0, Number(e.target.value)),
+                          travel_rate_per_km: ratePerKm(Math.max(0, Number(e.target.value)), distanceUnit),
                         })
                       }
                     />
                   </SettingRow>
-                </div>
+                </div></div>
 
                 <p className="p-4 rounded-[16px] bg-foreground/[0.08] bw-body-sm text-muted-foreground">
-                  Example: an <strong className="text-foreground">80 km</strong> one-way gig (
-                  {Math.max(0, 80 - (settings.free_travel_radius_km || 0))} km billable beyond the {settings.free_travel_radius_km || 0} km free
-                  radius, ×2 round-trip) comes to{' '}
+                  Example: a <strong className="text-foreground">{formatDistance(80, distanceUnit)}</strong> one-way gig (
+                  {formatDistance(Math.max(0, 80 - (settings.free_travel_radius_km || 0)), distanceUnit)} billable beyond the{' '}
+                  {formatDistance(settings.free_travel_radius_km || 0, distanceUnit)} free radius, ×2 round-trip) comes to{' '}
                   <strong className="text-foreground">
                     {currencySymbol}
                     {sampleTravel80Km}
@@ -1665,7 +1675,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 title="1. Band identity, logo & sign-off"
                 hint="Band name, tagline, logo and authorised signer shown in the app and on exported A4 quote PDFs."
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-4">
                   <PillField label="Band name" placeholder="Your band name" value={bandName} onChange={(e) => setBandName(e.target.value)} />
                   <PillField
                     label="Band bio / tagline"
@@ -1712,7 +1722,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                   </div>
                 </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-4">
                   <PillField
                     label="Signer full name"
                     placeholder="Full name"
@@ -1827,7 +1837,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                           Other · SWIFT
                         </Selector>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-4">
                         <PillField
                           label="Account holder"
                           placeholder="Name on the bank account"
@@ -1901,7 +1911,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                     <span className="bw-label-sm text-muted-foreground">Online deposit links</span>
                     {!ONLINE_DEPOSITS_ENABLED && <Tag variant="subtle">Coming soon</Tag>}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-4">
                     <PillField
                       label="Stripe payment link"
                       placeholder="https://buy.stripe.com/…"
@@ -1926,7 +1936,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
               </Section>
 
               <Section title="3. Band contact & legal details" hint="Contact details and optional fiscal information for agency or corporate quotes.">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 @min-[520px]:grid-cols-2 gap-4">
                   <PillField
                     label="Booking contact email"
                     type="email"

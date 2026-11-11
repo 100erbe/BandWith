@@ -648,13 +648,12 @@ export const Image = dotIcon('Image', {
   solid: [[8.5, 8.5, 1.5]],
 });
 
-/** Brand mark — kept as drawn (third-party logo, outside the dot system). */
-export const Youtube = createIcon('Youtube', () => (
-  <>
-    <rect x="2.25" y="5" width="19.5" height="14" rx="4" />
-    <path d="M10.25 9.25 15 12l-4.75 2.75v-5.5Z" />
-  </>
-));
+/** Video link (YouTube): a wide screen with open corners around the Play
+ *  triangle, so it sits in the dot set like every other icon. */
+export const Youtube = dotIcon('Youtube', {
+  d: 'M2.5 8.5V15.5M21.5 8.5V15.5M5.5 5H18.5M5.5 19H18.5M10 9.25v5.5l4.75-2.75z',
+  fill: 'M10 9.25v5.5l4.75-2.75z',
+});
 
 const WIFI = `M2.5 9A13.5 13.5 0 0 1 21.5 9M5.5 12.5A9 9 0 0 1 18.5 12.5M8.5 16A4.5 4.5 0 0 1 15.5 16${dot(12, 19.5)}`;
 export const Wifi = dotIcon('Wifi', { d: WIFI });
