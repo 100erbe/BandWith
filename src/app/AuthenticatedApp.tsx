@@ -115,8 +115,9 @@ import { PersonalGigModal } from "@/app/components/modals/PersonalGigModal";
 import { NoBandRehearsalModal } from "@/app/components/modals/NoBandRehearsalModal";
 import { ChooseBandProposalModal, type BandOption } from "@/app/components/modals/ChooseBandProposalModal";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
-import { navigateToNotificationTarget, notificationTarget } from "@/lib/notificationRouting";
+import { navigateToNotificationTarget, notificationBandId, notificationTarget } from "@/lib/notificationRouting";
 import { IS_BETA } from "@/lib/beta";
+import { BandSwitchPrompt, type BandSwitchChoice, type BandSwitchRequest } from "@/app/components/modals/BandSwitchPrompt";
 import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 import { ProposeRehearsalModal } from "@/app/components/rehearsal/ProposeRehearsalModal";
 import { RehearsalPollModal } from "@/app/components/rehearsal/RehearsalPollModal";
@@ -198,6 +199,13 @@ export default function AuthenticatedApp() {
     refreshBands,
     isAdmin,
   } = useBand();
+
+  // Role in the band an item belongs to. Events, quotes and chats come from
+  // every band, so the active band's role must not decide what is shown.
+  const isAdminOfBand = useCallback((bandId?: string | null): boolean => {
+    const band = bandId ? realBands?.find(b => b.id === bandId) : undefined;
+    return band ? band.user_role === 'admin' : isAdmin;
+  }, [realBands, isAdmin]);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -599,8 +607,9 @@ export default function AuthenticatedApp() {
       let list = masterEventsList;
       // Regular members must not have access to quotes until converted to gigs
       // AND members only see gigs or rehearsals where they've been added by an admin
-      if (!isAdmin) {
+      {
         list = list.filter(e => {
+          if (isAdminOfBand(e.band_id)) return true;
           if (!e.band_id && e.created_by === user?.id) return true;
           const s = e.status?.toLowerCase();
           const isQuote = (e.quote_id || (e.event_type as string) === 'quote' || s === 'tentative' || s === 'quoted' || s === 'quote') && s !== 'confirmed' && s !== 'completed';
@@ -629,7 +638,7 @@ export default function AuthenticatedApp() {
       });
     }
     return [];
-  }, [masterEventsList, eventMembersMap, isAdmin, user?.id, bandLookup, realBand?.name]);
+  }, [masterEventsList, eventMembersMap, isAdminOfBand, user?.id, bandLookup, realBand?.name]);
 
   // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search + optimistic) ═══
   const visuallyFilteredEvents = useMemo(() => {
@@ -651,16 +660,14 @@ export default function AuthenticatedApp() {
         if (!e.eventId) return true; // no UUID key, can't filter
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
-        if (!isAdmin) {
+        if (!isAdminOfBand(e.band_id)) {
           return !!myMembership && myMembership.status !== 'declined';
         }
         return !myMembership || myMembership.status !== 'declined';
       });
     }
     // Double safety: regular members must never see unconverted quotes
-    if (!isAdmin) {
-      result = result.filter(e => (e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote');
-    }
+    result = result.filter(e => isAdminOfBand(e.band_id) || ((e.status as string) !== 'QUOTE' && (e.status as string) !== 'QUOTED' && e.eventType !== 'quote'));
     // Status filter
     result = result.filter((e) => {
       const s = e.status?.toUpperCase();
@@ -684,7 +691,7 @@ export default function AuthenticatedApp() {
       );
     }
     return result;
-  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id]);
+  }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id, isAdminOfBand]);
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
@@ -724,12 +731,72 @@ export default function AuthenticatedApp() {
     }, 200);
   }, [refetchEvents]);
 
+  // ═══ Several bands: act in the band an item belongs to ═══
+  // Viewing works from any band; changing something of another band asks to
+  // switch to it first, so an edit never lands in the wrong band.
+  const realBandRef = useRef(realBand);
+  realBandRef.current = realBand;
+  const realBandsRef = useRef(realBands);
+  realBandsRef.current = realBands;
+  const [bandSwitchRequest, setBandSwitchRequest] = useState<BandSwitchRequest | null>(null);
+  const bandSwitchResolveRef = useRef<((choice: BandSwitchChoice) => void) | null>(null);
+  const chooseBandSwitch = useCallback((choice: BandSwitchChoice) => {
+    const resolve = bandSwitchResolveRef.current;
+    bandSwitchResolveRef.current = null;
+    setBandSwitchRequest(null);
+    resolve?.(choice);
+  }, []);
+  /**
+   * 'active' when the item's band is already the active one (or it has none /
+   * isn't one of the user's bands), otherwise the user's choice. 'switch' has
+   * already switched the band.
+   */
+  const askBandFor = useCallback(
+    (bandId: string | null | undefined, action: string, allowStay = false): Promise<BandSwitchChoice | 'active'> => {
+      const band = bandId ? realBandsRef.current.find((b) => b.id === bandId) : undefined;
+      if (!band || band.id === realBandRef.current?.id) return Promise.resolve('active');
+      bandSwitchResolveRef.current?.('cancel');
+      return new Promise((resolve) => {
+        bandSwitchResolveRef.current = (choice) => {
+          if (choice === 'switch') selectBand(band.id);
+          resolve(choice);
+        };
+        setBandSwitchRequest({ bandName: band.name, activeBandName: realBandRef.current?.name, action, allowStay });
+      });
+    },
+    [selectBand],
+  );
+  /** Runs `run` in the item's band, switching first if the user agrees. */
+  const inItemBand = useCallback(
+    async (bandId: string | null | undefined, action: string, run: () => unknown) => {
+      const choice = await askBandFor(bandId, action);
+      if (choice === 'active' || choice === 'switch') await run();
+    },
+    [askBandFor],
+  );
+  const askBandForRef = useRef(askBandFor);
+  askBandForRef.current = askBandFor;
+
   // Push navigation - deep link to the relevant screen
   const isAdminRef = useRef(isAdmin);
   isAdminRef.current = isAdmin;
   useEffect(() => {
-    const handler = (ev: globalThis.Event) => {
+    const handler = async (ev: globalThis.Event) => {
       const d = (ev as CustomEvent).detail;
+      // Another band's notification: band screens (quotes, finance, members)
+      // show the active band, so they need the switch; events and chats can
+      // also just be viewed from here.
+      if (d.bandId && d.screen !== "invites" && d.screen !== "home") {
+        const viewable = d.screen === "event" || d.screen === "chat";
+        const choice = await askBandForRef.current(
+          d.bandId,
+          viewable ? "act on it" : "open it",
+          viewable,
+        );
+        if (choice === "cancel") return;
+        // Let the switched band render before opening a band screen.
+        if (choice === "switch") await new Promise((r) => setTimeout(r, 150));
+      }
       if (d.screen === "chat" && d.chatId) {
         setActiveTab("Chat");
         setTimeout(() => {
@@ -996,9 +1063,10 @@ export default function AuthenticatedApp() {
       if (chat.type === "event") type = "event";
       if (chat.type === "group") type = "band";
 
-      const chatBand = chat.band_id ? realBands.find((b) => b.id === chat.band_id) : realBand;
-      const currentBandName = chatBand?.name || realBand?.name;
-      const currentBandLogo = chatBand?.logo_url || realBand?.logo_url;
+      // The chat's own band; never label a chat with the active band.
+      const chatBand = chat.band_id ? realBands.find((b) => b.id === chat.band_id) : undefined;
+      const currentBandName = chatBand?.name;
+      const currentBandLogo = chatBand?.logo_url;
 
       const others = chat.participants.filter((p) => p.user_id !== user?.id);
       let displayName = "";
@@ -1096,6 +1164,7 @@ export default function AuthenticatedApp() {
         subtitle,
         senderName,
         bandName,
+        bandLabel: realBands.length > 1 && type !== "band" && bandName ? bandName : undefined,
         date: eventDateStr,
         month: eventMonthStr,
         lastMessageAt: lastTime,
@@ -1192,7 +1261,7 @@ export default function AuthenticatedApp() {
         if (!e.eventId) return true;
         const members = eventMembersMap[e.eventId] || [];
         const myMembership = members.find(m => m.userId === user.id);
-        if (!isAdmin) {
+        if (!isAdminOfBand(e.band_id)) {
           return !!myMembership && myMembership.status !== 'declined';
         }
         return !myMembership || myMembership.status !== 'declined';
@@ -1214,7 +1283,7 @@ export default function AuthenticatedApp() {
     });
 
     return uniqueRehearsals.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, eventMembersMap, user?.id, realBand?.id, isAdmin]);
+  }, [events, eventMembersMap, user?.id, realBand?.id, isAdminOfBand]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
   const currentDetails = currentRehearsal ? rehearsalDetails[currentRehearsal.id] || rehearsalDetails[105] : null;
@@ -3374,6 +3443,7 @@ export default function AuthenticatedApp() {
             notification={selectedNotification}
             notifications={selectedNotifications}
             calendarEvents={events}
+            bandNames={(realBands?.length ?? 0) > 1 ? bandLookup : undefined}
             onOpenRSVP={(notif) => {
               setSelectedNotification(null);
               setSelectedNotifications([]);
@@ -3390,7 +3460,7 @@ export default function AuthenticatedApp() {
               setSelectedNotification(null);
               setSelectedNotifications([]);
               if (!notif.read) markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
-              navigateToNotificationTarget(notificationTarget(notif.type, notif.data));
+              navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif));
             }}
             onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
             onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}
@@ -3459,7 +3529,7 @@ export default function AuthenticatedApp() {
 
       <AnimatePresence>
         {selectedChat && selectedChat.uuid && (
-          <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
+          <ChatDetailModal key="chat-detail" chat={{ id: selectedChat.uuid, type: selectedChat.type, name: selectedChat.name, initials: selectedChat.initials, avatarUrl: selectedChat.avatarUrl, unread: selectedChat.unread, members: selectedChat.members, isOnline: selectedChat.isOnline, bandLabel: selectedChat.bandLabel ?? convertedChats.find((c) => c.uuid === selectedChat.uuid)?.bandLabel }} onClose={() => { setSelectedChat(null); refetchChats?.(); }} />
         )}
         {selectedChat && !selectedChat.uuid && (
           <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
@@ -3520,16 +3590,23 @@ export default function AuthenticatedApp() {
             allEvents={events}
             onNotifyConflict={handleNotifyConflict}
             onEventUpdated={() => { refetchEvents(); }}
-            onEdit={handleEventEdit}
-            onDelete={handleEventDelete}
+            onEdit={() => inItemBand(selectedEvent.band_id, "edit this event", handleEventEdit)}
+            onDelete={() => inItemBand(selectedEvent.band_id, "delete this event", handleEventDelete)}
             onChat={handleEventChat}
-            onConfirmQuote={handleConfirmQuote}
-            onRevertQuote={handleRevertQuote}
+            onConfirmQuote={(ev) => inItemBand(ev.band_id, "confirm this quote", () => handleConfirmQuote(ev))}
+            onRevertQuote={(ev) => inItemBand(ev.band_id, "change this quote", () => handleRevertQuote(ev))}
             memberFee={selectedEventMembership?.fee}
-            isAdmin={isAdmin}
+            // Admin rights come from the event's own band, not the active one.
+            isAdmin={
+              selectedEvent.band_id
+                ? realBands.find((b) => b.id === selectedEvent.band_id)?.user_role === "admin"
+                : isAdmin
+            }
           />
         )}
       </AnimatePresence>
+
+      <BandSwitchPrompt request={bandSwitchRequest} onChoose={chooseBandSwitch} />
 
       {eventLoadError && (
         <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center px-6" style={{ paddingTop: 'var(--safe-top)' }}>

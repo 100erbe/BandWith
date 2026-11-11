@@ -1,4 +1,4 @@
-import { navigateToNotificationTarget, notificationTarget } from '@/lib/notificationRouting';
+import { navigateToNotificationTarget, notificationBandId, notificationTarget } from '@/lib/notificationRouting';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import {
@@ -155,7 +155,7 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     }
 
     // Same routing as tapping the notification in the in-app inbox.
-    navigateToNotificationTarget(notificationTarget(String(data.type || ''), data));
+    navigateToNotificationTarget(notificationTarget(String(data.type || ''), data), notificationBandId({ data }));
   };
 
   return {

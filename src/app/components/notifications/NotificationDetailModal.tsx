@@ -30,7 +30,7 @@ import { useRailLayout } from '@/lib/deviceRegions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { findCalendarEvent, findEventConflicts, type CalendarEventLike } from '@/lib/eventConflicts';
-import { notificationTarget, notificationTargetLabel } from '@/lib/notificationRouting';
+import { notificationBandId, notificationTarget, notificationTargetLabel } from '@/lib/notificationRouting';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -74,6 +74,11 @@ interface NotificationDetailModalProps {
    * schedule-conflict card on gig invitations; when absent the card is hidden.
    */
   calendarEvents?: NotificationCalendarEvent[];
+  /**
+   * Names of the user's bands by id. Pass it when the user is in more than one
+   * band: each notification then says which band it comes from.
+   */
+  bandNames?: Record<string, string>;
 }
 
 const formatTime = (dateStr: string): string => {
@@ -210,8 +215,14 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onOpenPoll,
   onNavigate,
   calendarEvents,
+  bandNames,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
+  /** Band a notification comes from, when the user is in several. */
+  const bandOf = (n: NotificationData): string | null => {
+    const id = bandNames ? notificationBandId(n) : undefined;
+    return (id && bandNames?.[id]) || null;
+  };
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
@@ -387,7 +398,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         const isRead = notif.read;
                         const meta = getNotificationMeta(notif.type, notif.data);
                         const IconComponent = meta.icon;
-                        const typeLine = [meta.label, notif.data?.subtitle ? String(notif.data.subtitle) : null]
+                        const subtitle = notif.data?.subtitle ? String(notif.data.subtitle) : null;
+                        const fromBand = bandOf(notif);
+                        const typeLine = [meta.label, fromBand && fromBand !== subtitle ? fromBand : null, subtitle]
                           .filter(Boolean)
                           .join(' · ');
 
@@ -464,6 +477,14 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           <Tag variant="solid" className={meta.onDark ? 'bg-white text-black' : undefined}>
                             {meta.label}
                           </Tag>
+                          {(() => {
+                            const fromBand = bandOf(detailNotif);
+                            return fromBand && fromBand !== String(detailNotif.data?.subtitle ?? '') ? (
+                              <Tag variant="outline" className="border-current text-current">
+                                {fromBand}
+                              </Tag>
+                            ) : null;
+                          })()}
                           {Boolean(detailNotif.data?.subtitle) && (
                             <Tag variant="outline" className="border-current text-current">
                               {String(detailNotif.data?.subtitle)}

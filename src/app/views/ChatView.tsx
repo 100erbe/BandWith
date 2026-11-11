@@ -448,6 +448,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <h3 className="bw-label-md text-foreground truncate">
                       {displayName}
                       {chat.type === 'band' && <span> · Band</span>}
+                      {chat.bandLabel && (
+                        <span className="text-muted-foreground"> · {chat.bandLabel}</span>
+                      )}
                     </h3>
                     <span className={cn(
                       "bw-label-sm whitespace-nowrap shrink-0",

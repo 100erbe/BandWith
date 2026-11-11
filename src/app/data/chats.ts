@@ -23,6 +23,11 @@ export interface ChatItem {
   subtitle?: string;
   senderName?: string;
   bandName?: string;
+  /**
+   * Band shown next to a direct or event chat when the user is in several
+   * bands, so it's clear where the conversation lives.
+   */
+  bandLabel?: string;
   eventDate?: string;
   eventType?: 'gig' | 'rehearsal';
   lastMessageAt?: Date;

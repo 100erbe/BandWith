@@ -66,6 +66,16 @@ export function notificationTargetLabel(target: NotificationTarget): string {
   }
 }
 
-export function navigateToNotificationTarget(target: NotificationTarget | null): void {
-  window.dispatchEvent(new CustomEvent('push-navigate', { detail: target ?? { screen: 'home' } }));
+/** The band a notification belongs to (column or payload), if any. */
+export function notificationBandId(n: { band_id?: string | null; data?: Record<string, unknown> | null }): string | undefined {
+  return (n.band_id || str(n.data?.band_id) || str(n.data?.bandId)) ?? undefined;
+}
+
+/**
+ * Opens the target. `bandId` is the band the notification belongs to: when it
+ * isn't the active band, the app asks whether to switch first.
+ */
+export function navigateToNotificationTarget(target: NotificationTarget | null, bandId?: string): void {
+  const detail = target ? { ...target, ...(bandId ? { bandId } : {}) } : { screen: 'home' };
+  window.dispatchEvent(new CustomEvent('push-navigate', { detail }));
 }

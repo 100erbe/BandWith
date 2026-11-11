@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { notificationTarget, notificationTargetLabel } from './notificationRouting';
+import { notificationBandId, notificationTarget, notificationTargetLabel } from './notificationRouting';
 
 describe('notificationTarget', () => {
   it('opens the event of a confirmed rehearsal', () => {
@@ -27,5 +27,13 @@ describe('notificationTarget', () => {
 
   it('falls back to the type inside the push payload', () => {
     expect(notificationTarget('', { type: 'event_confirmed', eventId: 'e' })).toEqual({ screen: 'event', eventId: 'e' });
+  });
+});
+
+describe('notificationBandId', () => {
+  it('reads the band from the column, then the payload', () => {
+    expect(notificationBandId({ band_id: 'b-1', data: { band_id: 'b-2' } })).toBe('b-1');
+    expect(notificationBandId({ data: { bandId: 'b-3' } })).toBe('b-3');
+    expect(notificationBandId({ data: {} })).toBeUndefined();
   });
 });

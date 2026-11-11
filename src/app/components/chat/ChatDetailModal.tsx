@@ -41,6 +41,8 @@ interface ChatDetailModalProps {
     isOnline?: boolean;
     /** Optional: tints/iconises event chats by event type (defaults to gig). */
     eventType?: string;
+    /** Band of a direct or event chat, shown when the user is in several. */
+    bandLabel?: string;
   };
   onClose: () => void;
 }
@@ -548,6 +550,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               ) : (
                 'Event chat'
               )}
+              {chat.bandLabel && <span className="truncate">· {chat.bandLabel}</span>}
             </p>
           </div>
         </div>
