@@ -35,12 +35,25 @@ Placeholders are `{{Name}}`. Values must be HTML-escaped and links checked again
 |---|---|---|---|
 | `band-invite.html` | `onboarding_invite` | Lime | `BandName` `InviterName` `Role` `InviteURL` `To` `AppURL` |
 | `invite-reminder.html` | `onboarding_reminder` | Lime | `BandName` `InviterName` `Role` `InviteURL` `ExpiresIn` ("in 3 days") `ExpiresInLabel` ("In 3 days") `To` `AppURL` |
-| `member-joined.html` | `member_joined` (to admins) | Lime | `BandName` `NewMemberName` `NewMemberEmail` `AppURL` |
+| `member-joined.html` | `member_joined` (to admins) | Lime | `BandName` `NewMemberName` (name, or the address) `HeroName` (name, or "A new member": an address doesn't fit the headline) `AppURL` |
 | `invite-expired.html` | `invite_expired` (to the inviting admin) | Ink | `BandName` `InviteeName` `Role` `AppURL` |
-| `welcome.html` | `welcome` (after email confirmation) | Lime | `FirstName` `To` `AppURL` |
+| `welcome.html` | `welcome` (after email confirmation) | Lime | `NameSuffix` (", Alex", or ", " + the address) `To` `AppURL` |
 | `product-update.html` | product news (broadcast) | Lime | `IssueLabel` `Preheader` `Headline` `Intro` `CtaLabel` `CtaURL` `Item1–3Title/Text` `Item1–2URL` `UnsubscribeURL` `AppURL` |
 
-`invite_expired`, `welcome` and product news are designed but not sent by any code yet. `onboarding_reminder` and `member_joined` exist in `send-email` but nothing calls them.
+**Names, not addresses.** Wherever an email names a person, it shows their name and falls back to their address only when there is no name. Sign-up saves the part of the address before the @ as `full_name` when no name was given, so `send-email` treats that as no name. The inviter's name is read on the server, not taken from the app.
+
+### Who sends what
+
+| Email | Trigger |
+|---|---|
+| Auth emails | Supabase Auth, automatically |
+| `onboarding_invite` | The app, when an admin invites a new address (`invitations.ts`) |
+| `member_joined` | Database: the `member_joined` notification (046) for each **admin** recipient → `bw_dispatch_email` (063), unless they turned email off |
+| `welcome` | Database: once per user when `auth.users.email_confirmed_at` is set (063), logged in `bw_email_log` |
+| `onboarding_reminder`, `invite_expired` | Not sent yet (planned: daily pg_cron job) |
+| product news | Not sent yet (planned: Resend Broadcasts) |
+
+Database calls authenticate with `x-bw-dispatch-secret` (Vault `bw_email_dispatch_secret`, checked by `bw_verify_email_dispatch_secret`) and pass the gateway with the public anon key from Vault `bw_anon_key`. The function looks up every address from the ids it receives.
 
 ## Logos
 
