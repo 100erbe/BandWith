@@ -13,6 +13,7 @@ import { useRailOwnsChrome } from '@/lib/railActions';
 import { cn } from '@/app/components/ui/utils';
 import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
+import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -243,6 +244,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 {[sentLine, `Deposit ${dp}% · ${money((displayTotal * dp) / 100)}`].filter(Boolean).join(' · ')}
               </p>
             </section>
+
+            {/* Online deposit (Stripe / PayPal): visible, off during the alpha */}
+            {quote.depositRequired !== false && dp > 0 && (
+              <OnlineDepositLinks amount={money((displayTotal * dp) / 100)} />
+            )}
 
             {/* Line items */}
             <section className="flex flex-col gap-4">

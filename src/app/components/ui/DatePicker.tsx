@@ -1,3 +1,5 @@
+import { motion } from 'motion/react';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import React, { useState, useMemo, useEffect } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Calendar, ArrowLeft, ArrowRight, Check, X, AlertTriangle } from '@/app/components/icons';
@@ -142,7 +144,9 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
   children,
   zIndex = 150,
   contentStyle,
-}) => (
+}) => {
+  const drag = useSheetDrag(() => onOpenChange(false));
+  return (
   <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
     <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
     <DialogPrimitive.Portal>
@@ -150,8 +154,9 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
         className="bw-rail-sheet fixed inset-0 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
         style={{ zIndex: zIndex - 1 }}
       />
-      <DialogPrimitive.Content
-        aria-describedby={undefined}
+      <DialogPrimitive.Content asChild aria-describedby={undefined}>
+      <motion.div
+        {...drag.sheet}
         className={cn(
           // bw-picker: on the iPhone Duo open the form that asked moves to the
           // leading page while the picker is open (src/styles/duo-panes.css).
@@ -161,8 +166,8 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
         )}
         style={{ zIndex, ...contentStyle }}
       >
-        {/* Sheet Header (Style=Light) */}
-        <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
+        {/* Sheet Header (Style=Light): swipe it down to close */}
+        <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
           <span className="mx-auto w-10 h-[5px] rounded-full bg-muted-foreground/55" aria-hidden />
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -183,10 +188,12 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
         <div className="shrink-0 px-5 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom, 0px) + 24px)' }}>
           {footer}
         </div>
+      </motion.div>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   </DialogPrimitive.Root>
-);
+  );
+};
 
 /** "Select event date…" → "event date" (sheet title); falls back to "Date". */
 const titleFromPlaceholder = (placeholder: string, fallback: string): string => {

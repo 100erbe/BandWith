@@ -134,7 +134,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     const { data, error } = editingId ? await updateTemplate(editingId, input) : await createTemplate(bandId, input);
     setSaving(false);
     if (error || !data) {
-      setFormError(error?.message || 'Could not save the template.');
+      setFormError(error?.message || 'Could not save the list.');
       return;
     }
     setTemplates((prev) => (editingId ? prev.map((t) => (t.id === data.id ? data : t)) : [data, ...prev]));
@@ -163,7 +163,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     const { data, error } = await insertStarterTemplates(bandId);
     setSeeding(false);
     if (error || !data) {
-      setListError(error?.message || 'Could not add the starter templates.');
+      setListError(error?.message || 'Could not add the starter lists.');
       return;
     }
     setTemplates((prev) => [...data, ...prev]);
@@ -253,14 +253,14 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         sticky
         onBack={onBack}
         overline="Workflows & checklists"
-        title="Task templates"
+        title="To-do lists"
         actions={
-          <IconButton label="Create template" variant="filled" icon={<Plus />} onClick={openCreate} />
+          <IconButton label="New to-do list" variant="filled" icon={<Plus />} onClick={openCreate} />
         }
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search templates" placeholder="Search templates…" />
+        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search to-do lists" placeholder="Search to-do lists…" />
 
         {listError && <FormError>{listError}</FormError>}
 
@@ -272,7 +272,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <Card className="items-center text-center py-10 gap-4" role="alert">
             <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">Couldn't load templates</h2>
+              <h2 className="bw-h3">Couldn't load the to-do lists</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{loadError}</p>
             </div>
             <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={loadTemplates}>
@@ -283,7 +283,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <Card className="items-center text-center py-10 gap-4">
             <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No templates yet'}</h2>
+              <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No to-do lists yet'}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs">
                 {searchQuery
                   ? 'Try another name or description.'
@@ -293,7 +293,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             {!searchQuery && (
               <div className="flex flex-wrap justify-center gap-2">
                 <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-                  Create template
+                  New to-do list
                 </PillButton>
                 <PillButton
                   size="md"
@@ -303,7 +303,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   loading={seeding}
                   onClick={handleAddStarters}
                 >
-                  Add starter templates
+                  Add starter lists
                 </PillButton>
               </div>
             )}
@@ -398,11 +398,11 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       <BwSheet
         open={!!selectedTemplate}
         onClose={() => setSelectedTemplate(null)}
-        overline="Template details"
+        overline="To-do list"
         title={selectedTemplate?.name ?? ''}
         footer={
           <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={handleUseTemplate}>
-            Use this template
+            Use this list
           </PillButton>
         }
       >
@@ -453,15 +453,15 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             <ScreenHeader
                 pane
               onBack={closeForm}
-              overline={editingId ? 'Template' : 'New template'}
-              title={editingId ? 'Edit template' : 'Create template'}
+              overline={editingId ? 'To-do list' : 'New to-do list'}
+              title={editingId ? 'Edit to-do list' : 'New to-do list'}
               titleSize="h1"
             />
 
             <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8 max-w-xl mx-auto w-full flex flex-col gap-6">
               {formError && <FormError>{formError}</FormError>}
               <PillField
-                label="Template name"
+                label="List name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder="Festival preparation"
@@ -546,7 +546,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                 >
                   {editingId
                     ? 'Save changes'
-                    : `Create template (${tasksToSave.length} ${tasksToSave.length === 1 ? 'task' : 'tasks'})`}
+                    : `Create list (${tasksToSave.length} ${tasksToSave.length === 1 ? 'task' : 'tasks'})`}
                 </PillButton>
               </div>
             </div>
@@ -557,7 +557,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       <DeleteChatSheet
         open={!!pendingDelete}
         title={pendingDelete ? `Delete "${pendingDelete.name}"?` : undefined}
-        body="The template is removed for the whole band. Events already created keep their tasks."
+        body="The list is removed for the whole band. Events already created keep their tasks."
         deleting={!!pendingDelete && busyId === pendingDelete.id}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => pendingDelete && handleDelete(pendingDelete)}

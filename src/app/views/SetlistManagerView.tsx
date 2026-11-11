@@ -31,6 +31,8 @@ import { AddSongModal } from '@/app/components/rehearsal/AddSongModal';
 import { ScreenHeader, IconButton, SearchField, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
 import { openSongResource } from '@/lib/services/songFiles';
+import { formatHoursMinutes, genresOf, parseGenres, songHasGenre } from '@/lib/songGenres';
+import { playTrack } from '@/lib/audioPlayer';
 
 /** Readiness dots: 16 per row, one dot per song (scaled down past 48 songs). */
 const READINESS_COLS = 16;
@@ -206,6 +208,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const [setlistEditorSearch, setSetlistEditorSearch] = useState(false);
   const [setlistSearchQuery, setSetlistSearchQuery] = useState('');
   const [setlistSelectedToAdd, setSetlistSelectedToAdd] = useState<string[]>([]);
+  const [editorGenre, setEditorGenre] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedBand?.id) {
@@ -275,8 +278,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
 
   const handlePlaySong = async (song: Song) => {
     setActionMenuId(null);
-    // Recording first, then Spotify, then YouTube (one call keeps the tab
-    // opening inside the tap on the web).
+    // A recording (uploaded file, Drive or any audio link) plays in the app's
+    // mini player; only Spotify / YouTube open outside.
+    if (song.audio_url) {
+      void playTrack({ id: song.id, title: song.title, artist: song.artist }, song.audio_url);
+      return;
+    }
     const opened = await openSongResource([
       song.audio_url,
       song.spotify_id ? `https://open.spotify.com/track/${encodeURIComponent(song.spotify_id)}` : undefined,
@@ -393,25 +400,17 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const stats = useMemo(() => {
     const totalSongs = songs.length;
     const totalDurationSeconds = songs.reduce((acc, song) => acc + (song.duration_seconds || 0), 0);
-    const totalDurationMinutes = Math.floor(totalDurationSeconds / 60);
-    const hours = Math.floor(totalDurationMinutes / 60);
-    const minutes = totalDurationMinutes % 60;
     
     const readySongs = songs.filter(s => s.status === 'ready').length;
     const learningSongs = songs.filter(s => s.status === 'learning').length;
     const suggestedSongs = songs.filter(s => (s as any).status === 'suggested').length;
     
-    const avgBpm = songs.filter(s => s.bpm).length > 0
-      ? Math.round(songs.filter(s => s.bpm).reduce((acc, s) => acc + (s.bpm || 0), 0) / songs.filter(s => s.bpm).length)
-      : null;
-    
     return {
       totalSongs,
-      totalDuration: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
+      totalDuration: formatHoursMinutes(totalDurationSeconds),
       ready: readySongs,
       learning: learningSongs,
       suggested: suggestedSongs,
-      avgBpm,
       totalSetlists: setlists.length
     };
   }, [songs, setlists]);
@@ -504,19 +503,23 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   };
 
   const handleEditorAddSelected = () => {
-    // New songs go at the end, in the last set.
-    const lastSet = editorSets[editorSets.length - 1] ?? 1;
-    setEditorItems(prev => [...prev, ...setlistSelectedToAdd.map((songId) => ({ key: newEditorKey(), songId }))]);
-    setEditorSets(prev => [...prev, ...setlistSelectedToAdd.map(() => lastSet)]);
     setSetlistSelectedToAdd([]);
+    setEditorGenre(null);
     setSetlistSearchQuery('');
     setSetlistEditorSearch(false);
   };
 
   const handleEditorToggleSelect = (songId: string) => {
-    setSetlistSelectedToAdd(prev =>
-      prev.includes(songId) ? prev.filter(id => id !== songId) : [...prev, songId]
-    );
+    const index = editorItems.findIndex((it) => it.songId === songId);
+    if (index >= 0) {
+      setEditorItems(prev => prev.filter((_, i) => i !== index));
+      setEditorSets(prev => prev.filter((_, i) => i !== index));
+      return;
+    }
+    // New songs go at the end, in the last set.
+    const lastSet = editorSets[editorSets.length - 1] ?? 1;
+    setEditorItems(prev => [...prev, { key: newEditorKey(), songId }]);
+    setEditorSets(prev => [...prev, lastSet]);
   };
 
   const songsById = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
@@ -562,9 +565,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     });
   };
 
+  // The whole library stays listed while building a setlist: songs already
+  // in it are highlighted, a tap adds or removes one. Genre chips filter it.
+  const editorInSetlist = useMemo(() => new Set(editorItems.map((it) => it.songId)), [editorItems]);
+  const editorGenres = useMemo(() => genresOf(songs), [songs]);
   const editorFilteredLibrary = useMemo(() => {
-    const inSetlist = new Set(editorItems.map((it) => it.songId));
-    let result = songs.filter(s => !inSetlist.has(s.id));
+    let result = songs.filter(s => songHasGenre(s, editorGenre));
     if (setlistSearchQuery) {
       const q = setlistSearchQuery.toLowerCase();
       result = result.filter(s =>
@@ -572,7 +578,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       );
     }
     return result;
-  }, [songs, editorItems, setlistSearchQuery]);
+  }, [songs, editorGenre, setlistSearchQuery]);
 
   // ── Render ──
 
@@ -593,8 +599,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       <ScreenHeader
         onBack={onClose}
         backLabel="Go back"
-        overline="Music & repertoire"
-        title="Setlists & songs"
+        overline="Songs & setlists"
+        title="Repertoire"
         actions={
           <>
             {viewMode === 'songs' && (
@@ -665,18 +671,21 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 className="rounded-[24px] p-5 bg-surface-inverse text-surface-inverse-foreground flex flex-col gap-4"
               >
                 <h2 className="bw-label-sm">Band repertoire</h2>
-                <dl className="flex flex-wrap gap-x-4 gap-y-3">
+                {/* Counts on the left, total playing time on the right */}
+                <dl className="flex flex-wrap items-end gap-x-4 gap-y-3">
                   {[
                     { label: 'Songs', value: stats.totalSongs },
-                    { label: 'Duration', value: stats.totalDuration || '0m' },
                     { label: 'Setlists', value: stats.totalSetlists },
-                    { label: 'Avg BPM', value: stats.avgBpm ?? '—' },
                   ].map((s) => (
                     <div key={s.label} className="flex flex-col gap-1">
                       <dt className="bw-label-xs">{s.label}</dt>
                       <dd className="bw-h2">{s.value}</dd>
                     </div>
                   ))}
+                  <div className="ml-auto flex flex-col gap-1 text-right">
+                    <dt className="bw-label-xs">Total duration</dt>
+                    <dd className="bw-h2">{stats.totalDuration}</dd>
+                  </div>
                 </dl>
 
                 {stats.totalSongs > 0 && (
@@ -837,9 +846,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           <span className="bw-h3 truncate">{setlist.name}</span>
                           {setlist.is_template && <Tag variant="accent">Template</Tag>}
                         </span>
-                        <span className="bw-body-sm text-muted-foreground">
-                          {plural(setlist.song_count || 0, 'song')} · {formatClock(setlist.total_duration_seconds)}
-                        </span>
+                        <span className="bw-body-sm text-muted-foreground">{plural(setlist.song_count || 0, 'song')}</span>
+                      </span>
+                      <span className="bw-label-md shrink-0 text-right">
+                        {setlist.total_duration_seconds ? formatHoursMinutes(setlist.total_duration_seconds) : '—'}
                       </span>
                       <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
                     </button>
@@ -968,16 +978,26 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 }}
                               />
                             </div>
+                            {editorGenres.length > 0 && (
+                              <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by genre">
+                                <Selector size="sm" selected={!editorGenre} onClick={() => setEditorGenre(null)}>All</Selector>
+                                {editorGenres.map((g) => (
+                                  <Selector key={g} size="sm" selected={editorGenre === g} onClick={() => setEditorGenre(editorGenre === g ? null : g)}>
+                                    {g}
+                                  </Selector>
+                                ))}
+                              </div>
+                            )}
                             <div className="flex items-center justify-between bw-label-sm text-muted-foreground">
                               <span>{plural(editorFilteredLibrary.length, 'result')}</span>
-                              {setlistSelectedToAdd.length > 0 && <span className="text-foreground">{setlistSelectedToAdd.length} selected</span>}
+                              <span className="text-foreground">{plural(editorItems.length, 'song')} in setlist</span>
                             </div>
                             <div className="max-h-72 overflow-y-auto -mx-1 px-1 flex flex-col gap-2">
                               {editorFilteredLibrary.length === 0 && (
                                 <p className="py-6 text-center bw-body-sm text-muted-foreground">No matching songs</p>
                               )}
                               {editorFilteredLibrary.map((song) => {
-                                const isSelected = setlistSelectedToAdd.includes(song.id);
+                                const isSelected = editorInSetlist.has(song.id);
                                 return (
                                   <button
                                     key={song.id}
@@ -992,7 +1012,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                     <span className="flex-1 min-w-0 flex flex-col gap-1">
                                       <span className="bw-label-md truncate">{song.title}</span>
                                       <span className={cn('bw-body-sm truncate', !isSelected && 'text-muted-foreground')}>
-                                        {song.artist || 'Unknown artist'}
+                                        {[song.artist || 'Unknown artist', parseGenres(song.genre).join(', ')].filter(Boolean).join(' · ')}
                                       </span>
                                     </span>
                                     <span className="bw-label-sm shrink-0">{formatClock(song.duration_seconds)}</span>
@@ -1004,11 +1024,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                             <PillButton
                               size="md"
                               variant="dark"
-                              icon={<Plus className="w-4 h-4" />}
+                              icon={<Check className="w-4 h-4" />}
                               onClick={handleEditorAddSelected}
-                              disabled={setlistSelectedToAdd.length === 0}
                             >
-                              Add {plural(setlistSelectedToAdd.length, 'song')}
+                              Done
                             </PillButton>
                           </Card>
                         </motion.div>
@@ -1020,8 +1039,8 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       <div className="flex items-baseline justify-between gap-3">
                         <h2 className="bw-label-sm text-muted-foreground">Setlist order ({plural(editorSongs.length, 'song')})</h2>
                         {editorSongs.length > 0 && (
-                          <span className="bw-label-md shrink-0" aria-label={`Total running time ${formatClock(editorTotals.seconds)}`}>
-                            Total {formatClock(editorTotals.seconds)}
+                          <span className="bw-label-md shrink-0 text-right" aria-label={`Total running time ${formatHoursMinutes(editorTotals.seconds)}`}>
+                            Total {formatHoursMinutes(editorTotals.seconds)}
                           </span>
                         )}
                       </div>
@@ -1029,7 +1048,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                         <div className="flex flex-wrap gap-2">
                           {editorTotals.perSet.map(([n, t]) => (
                             <Tag key={n} className="h-6 px-2.5">
-                              Set {n} · {plural(t.count, 'song')} · {formatClock(t.seconds)}
+                              Set {n} · {plural(t.count, 'song')} · {formatHoursMinutes(t.seconds)}
                             </Tag>
                           ))}
                         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { currencySymbol as symbolFor } from '@/lib/currency';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
 import {
@@ -45,6 +45,10 @@ import { supabase } from '@/lib/supabase';
 import { listEventTasks } from '@/lib/services/eventTasks';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 import { todayLocal } from '../../../lib/dates';
+import { deleteEventDraft, newDraftId, saveEventDraft, type EventDraft } from '@/lib/wizardDrafts';
+import { useSystemBack } from '@/lib/backStack';
+import { haptic } from '@/lib/haptics';
+import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { useLeadingCompanion } from '@/app/components/duo';
 import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
 
@@ -139,6 +143,8 @@ interface CreateEventModalProps {
     memberUserIds?: string[];
     memberFeeMap?: Record<string, string>;
   } | null;
+  /** Reopen an unfinished "New gig" saved as a draft (lib/wizardDrafts). */
+  draft?: EventDraft | null;
 }
 
 // --- Wizard steps (Figma "Wizard steps": 6pt segments + "Step N of 3 · title") ---
@@ -402,8 +408,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   onOpenProposeRehearsal,
   existingEvents,
   initialTasks,
+  draft,
 }) => {
   const isEditing = !!editingEvent;
+  // A draft restores the wizard where it was left (creation only).
+  const ds = (!editingEvent && draft?.state ? draft.state : null) as Record<string, any> | null;
   const { selectedBand, isAdmin } = useBand();
 
   const editingWarnings = useMemo(() => {
@@ -419,7 +428,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     return w;
   }, [editingEvent]);
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<number>(() => (typeof ds?.step === 'number' ? ds.step : 0));
   const [songPickerOpen, setSongPickerOpen] = useState(false);
   const [songPickerTargetSet, setSongPickerTargetSet] = useState<string | null>(null);
 
@@ -559,18 +568,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       ? initialType
       : editingType || (modalCategory === 'quote' ? null : 'club');
 
-  const [eventType, setEventType] = useState<EventType | null>(defaultEventType);
+  const [eventType, setEventType] = useState<EventType | null>(() => (ds?.eventType as EventType | null | undefined) ?? defaultEventType);
   // iPhone Duo: the wizard's close sits in the system column under the clock
   // (Figma "Closed · New gig / 1 Event & lineup").
-  const closeInRail = useRailAction(!isEditing && eventType !== 'rehearsal' ? onClose : undefined, {
+  // Closing "New gig" with something typed in asks to keep it as a draft.
+  const requestCloseRef = useRef<() => void>(onClose);
+  const requestClose = useCallback(() => requestCloseRef.current(), []);
+  const closeInRail = useRailAction(!isEditing && eventType !== 'rehearsal' ? requestClose : undefined, {
     label: `Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`,
     icon: <X />,
     pane: true,
   });
-  const [performanceType, setPerformanceType] = useState<PerformanceType>('full_band');
-  const [setting, setSetting] = useState<SettingType>('indoor');
+  const [performanceType, setPerformanceType] = useState<PerformanceType>(() => ds?.performanceType ?? 'full_band');
+  const [setting, setSetting] = useState<SettingType>(() => ds?.setting ?? 'indoor');
 
-  const [details, setDetails] = useState({
+  const [details, setDetails] = useState(() => {
+    const base = {
     title: editingEvent?.title || '',
     clientName: editingEvent?.clientName || '',
     venue: editingEvent?.location || '',
@@ -588,8 +601,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     guests: editingEvent?.guests || 0,
     duration: 120,
     pay: editingEvent?.price || '',
+    };
+    return { ...base, ...(ds?.details || {}) } as typeof base;
   });
-  const [titleManuallyEdited, setTitleManuallyEdited] = useState(!!editingEvent);
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState(() => !!editingEvent || !!ds?.titleManuallyEdited);
   const forecast = useGigForecast(details.date, details.city);
   const pickerEvents = useMemo(
     () => toDatePickerEvents(existingEvents, editingEvent?.eventId),
@@ -597,6 +612,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(() => {
+    if (Array.isArray(ds?.selectedMembers)) return ds!.selectedMembers;
     if (editingEvent?.memberUserIds?.length) {
       return editingEvent.memberUserIds
         .map(uid => {
@@ -610,6 +626,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   });
 
   const [memberFees, setMemberFees] = useState<Record<string, string>>(() => {
+    if (ds?.memberFees && typeof ds.memberFees === 'object') return ds.memberFees;
     if (editingEvent?.memberUserIds?.length && editingEvent.memberFeeMap) {
       const fees: Record<string, string> = {};
       editingEvent.memberUserIds.forEach(uid => {
@@ -669,9 +686,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     };
   }, [selectedBand?.id, isEditing, currentUserMemberId, MEMBERS, selectedMembers]);
 
-  const [setlist, setSetlist] = useState<any[]>([]);
+  const [setlist, setSetlist] = useState<any[]>(() => (Array.isArray(ds?.setlist) ? ds!.setlist : []));
   const [tasks, setTasks] = useState<any[]>(() =>
-    (initialTasks || []).map((t, i) => ({
+    Array.isArray(ds?.tasks) ? ds!.tasks : (initialTasks || []).map((t, i) => ({
       uid: `t-init-${i}-${Math.random().toString(36).slice(2)}`,
       title: t.title,
       completed: false,
@@ -679,7 +696,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       dueOffset: t.dueOffset,
     })),
   );
-  const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskText, setNewTaskText] = useState<string>(() => ds?.newTaskText ?? '');
   // Editing: show the tasks already saved on the event, so they can be
   // renamed or removed (ids kept to sync on save).
   const [originalTaskIds, setOriginalTaskIds] = useState<string[]>([]);
@@ -699,11 +716,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       cancelled = true;
     };
   }, [isEditing, editingEventId]);
-  const [notes, setNotes] = useState(editingEvent?.notes || '');
+  const [notes, setNotes] = useState<string>(() => editingEvent?.notes || ds?.notes || '');
   // The extra band fee isn't stored on its own: the event fee is members +
   // extra, so when editing it is what the saved fee has beyond the members.
-  const [extraBandFee, setExtraBandFee] = useState(() => {
-    if (!editingEvent) return '';
+  const [extraBandFee, setExtraBandFee] = useState<string>(() => {
+    if (!editingEvent) return ds?.extraBandFee ?? '';
     const total = parseFloat(String(editingEvent.price || '').replace(/[^0-9.]/g, '')) || 0;
     const members = Object.values(editingEvent.memberFeeMap || {}).reduce((acc, f) => acc + (parseFloat(f) || 0), 0);
     const extra = Math.round((total - members) * 100) / 100;
@@ -863,7 +880,82 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         : {}),
     };
     onCreate(eventData);
+    deleteEventDraft(draft?.id);
   };
+
+  // ── Drafts ──────────────────────────────────────────────────
+  // What the user typed (fees filled in automatically don't count).
+  const draftState = {
+    step,
+    eventType,
+    performanceType,
+    setting,
+    details,
+    titleManuallyEdited,
+    selectedMembers,
+    memberFees,
+    setlist,
+    tasks,
+    newTaskText,
+    notes,
+    extraBandFee,
+  };
+  const typedSnapshot = JSON.stringify({
+    eventType,
+    performanceType,
+    setting,
+    details: { ...details, duration: undefined },
+    members: [...selectedMembers].sort(),
+    setlist: setlist.map((s: any) => [s.title, (s.songs || []).map((sg: any) => sg.songId || sg.title)]),
+    tasks: tasks.map((t: any) => t.title),
+    newTaskText: newTaskText.trim(),
+    notes: notes.trim(),
+    extraBandFee,
+  });
+  const baselineRef = useRef<string | null>(null);
+  if (baselineRef.current === null) baselineRef.current = typedSnapshot;
+  const isDirty = typedSnapshot !== baselineRef.current;
+  const draftsEnabled = !isEditing && modalCategory === 'gig' && !!currentUserId;
+  const [leaveOpen, setLeaveOpen] = useState(false);
+
+  requestCloseRef.current = () => {
+    if (draftsEnabled && isDirty) setLeaveOpen(true);
+    else onClose();
+  };
+
+  const handleSaveDraft = () => {
+    if (!currentUserId) return;
+    saveEventDraft({
+      id: draft?.id || newDraftId(),
+      userId: currentUserId,
+      bandId: selectedBand?.id ?? null,
+      title: getEffectiveTitle(),
+      date: details.date || undefined,
+      venue: details.venue || undefined,
+      eventType,
+      state: draftState,
+    });
+    haptic.confirm();
+    setLeaveOpen(false);
+    onClose();
+  };
+
+  const handleDiscardDraft = () => {
+    // Reopened from a draft: throwing it away removes it from Drafts too.
+    deleteEventDraft(draft?.id);
+    setLeaveOpen(false);
+    onClose();
+  };
+
+  // Android Back: the leave sheet first, then the song picker, then close.
+  useSystemBack(!isEditing && eventType !== 'rehearsal', () => {
+    if (leaveOpen) setLeaveOpen(false);
+    else if (songPickerOpen) {
+      setSongPickerOpen(false);
+      setSongPickerTargetSet(null);
+    } else requestClose();
+    return true;
+  });
 
   // iPhone Duo book layout (Figma "Duo · 04"): on step 1 the leading page
   // shows the gig as it will be saved, filling in as the user types. Steps
@@ -1830,7 +1922,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       >
         {taskTemplates.length > 0 && tasks.length === 0 && (
           <div className="flex flex-col gap-2">
-            <FieldLabel>Load from templates</FieldLabel>
+            <FieldLabel>Load a to-do list</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {taskTemplates.map(tpl => (
                 <Selector
@@ -2136,7 +2228,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               pane
               label={isFirstStep ? `Cancel new ${modalCategory === 'quote' ? 'quote' : 'gig'}` : 'Back'}
               size="sm"
-              onClick={isFirstStep ? onClose : handleBack}
+              onClick={isFirstStep ? requestClose : handleBack}
             />
             <h2 className="bw-h2 flex-1 min-w-0 truncate">{modalCategory === 'quote' ? 'New quote' : 'New gig'}</h2>
             {!closeInRail && (
@@ -2145,7 +2237,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 variant="ghost"
                 size="sm"
                 icon={<X />}
-                onClick={onClose}
+                onClick={requestClose}
                 className="-mr-1.5"
               />
             )}
@@ -2172,7 +2264,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         {/* CTA bar */}
         <div className="shrink-0 px-4 pt-3 bg-background" style={ctaPadBottom}>
           <div className="grid grid-cols-[2fr_3fr] gap-3">
-            <PillButton variant="outline" size="lg" onClick={isFirstStep ? onClose : handleBack}>
+            <PillButton variant="outline" size="lg" onClick={isFirstStep ? requestClose : handleBack}>
               {isFirstStep ? 'Cancel' : 'Back'}
             </PillButton>
             <PillButton
@@ -2210,6 +2302,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           />
         )}
       </AnimatePresence>
+
+      {draftsEnabled && (
+        <LeaveWizardSheet
+          open={leaveOpen}
+          what="gig"
+          onSaveDraft={handleSaveDraft}
+          onDiscard={handleDiscardDraft}
+          onKeepEditing={() => setLeaveOpen(false)}
+          discardLabel={draft ? 'Delete draft' : undefined}
+        />
+      )}
     </>
   );
 };

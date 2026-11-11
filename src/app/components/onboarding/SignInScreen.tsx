@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, BackButton, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import type { BiometricStatus } from '@/lib/services/biometric';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 interface SignInScreenProps {
   onBack: () => void;
@@ -29,6 +30,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onForgotPassword,
   onCreateAccount,
 }) => {
+  const bioDrag = useSheetDrag(() => { void handleBiometricPromptDecision(false); });
   const { signIn, signInWithGoogle, signInWithApple, isAuthenticated } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -358,7 +360,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               role="dialog"
               aria-modal="true"
               aria-labelledby="bio-title"
-              className="fixed inset-x-0 bottom-0 z-50 bg-sheet text-sheet-foreground rounded-t-[24px] px-5 pt-2"
+              {...bioDrag.sheet}
+              onPointerDown={bioDrag.handle.onPointerDown}
+              className="touch-none fixed inset-x-0 bottom-0 z-50 bg-sheet text-sheet-foreground rounded-t-[24px] px-5 pt-2"
               style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}

@@ -12,6 +12,7 @@ import { useBand } from "@/lib/BandContext";
 import { useScrollDirection } from "@/app/hooks/useScrollDirection";
 import { syncSystemBarsAppearance } from "@/lib/systemBars";
 import { haptic } from "@/lib/haptics";
+import type { EventDraft } from "@/lib/wizardDrafts";
 import { supabase } from "@/lib/supabase";
 import { getPermissions, type UserRole } from "@/lib/permissions";
 import {
@@ -49,6 +50,7 @@ import { deleteNotification as deleteNotificationService, createNotification, ge
 import { syncAppBadge } from "@/lib/services/appBadge";
 import { ErrorState } from "@/app/components/ui/ErrorState";
 import { LeadingCompanionSlot } from "@/app/components/duo";
+import { MiniPlayer } from "@/app/components/ui/MiniPlayer";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -235,6 +237,11 @@ export default function AuthenticatedApp() {
           (e) => {
             const t = e.target as HTMLElement;
             const a = document.activeElement as HTMLElement;
+            // Areas marked data-keep-keyboard (the chat composer) keep it up;
+            // "android" keeps it up across the whole area there, where the
+            // system Back closes it (iOS has no Back, so a tap elsewhere does).
+            const keep = t.closest?.('[data-keep-keyboard]') as HTMLElement | null;
+            if (keep && (keep.dataset.keepKeyboard !== 'android' || Capacitor.getPlatform() === 'android')) return;
             if (
               a &&
               ["INPUT", "TEXTAREA", "SELECT"].includes(a.tagName) &&
@@ -1150,13 +1157,13 @@ export default function AuthenticatedApp() {
       }
 
       // Presence is the source of truth once it has synced (our own id is in
-      // the set); the last-read heuristic only covers the first second or two.
+      // the set); until then, someone who read a chat in the last minute counts.
       const presenceReady = !!user?.id && onlineUserIds.has(user.id);
       const isOnline = others.some((p) => {
         if (onlineUserIds.has(p.user_id)) return true;
         if (!presenceReady && p.last_read_at) {
           const diff = Date.now() - new Date(p.last_read_at).getTime();
-          return diff < 4 * 60 * 1000;
+          return diff < 60 * 1000;
         }
         return false;
       });
@@ -1535,6 +1542,11 @@ export default function AuthenticatedApp() {
   };
 
   const [createEventInitialTasks, setCreateEventInitialTasks] = useState<{ title: string; templateId?: string; dueOffset?: number }[] | undefined>(undefined);
+  // "New gig" reopened from Drafts on the home screen (lib/wizardDrafts).
+  const [activeEventDraft, setActiveEventDraft] = useState<EventDraft | null>(null);
+  useEffect(() => {
+    if (!isCreateEventOpen) setActiveEventDraft(null);
+  }, [isCreateEventOpen]);
   const handleCreateEvent = (type: CreateEventType) => {
     if (type === 'personal') {
       setEditingPersonalGig(null);
@@ -3027,6 +3039,7 @@ export default function AuthenticatedApp() {
             onCreateGig={() => { setCreateEventInitialDate(null); setEditingEventData(null); if (!isAdmin || isSolo) { setEditingPersonalGig(null); setShowPersonalGigModal(true); } else { setCreateEventType(null); setIsCreateEventOpen(true); } }}
             onCreateRehearsal={isSolo ? undefined : () => { setCreateEventInitialDate(null); setEditingEventData(null); handleCreateEvent('rehearsal'); }}
             onCreateQuote={isAdmin && !isSolo ? () => { setCreateEventInitialDate(null); setEditingEventData(null); setCreateEventType('quote'); setIsCreateEventOpen(true); } : undefined}
+            onOpenEventDraft={(d) => { setCreateEventInitialDate(null); setEditingEventData(null); setCreateEventInitialTasks(undefined); setActiveEventDraft(d); setCreateEventType(null); setIsCreateEventOpen(true); }}
             />
           )}
           {activeTab === "Chat" && !isSolo && (
@@ -3289,8 +3302,9 @@ export default function AuthenticatedApp() {
                 initialType={createEventType as any}
                 initialDate={createEventInitialDate || undefined}
                 layoutId={`create-button-${createEventType}`}
-                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); }}
+                onClose={() => { setIsCreateEventOpen(false); setEditingEventData(null); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); setActiveEventDraft(null); }}
                 onCreate={handleEventCreate}
+                draft={editingEventData ? null : activeEventDraft}
                 existingEvents={events}
                 initialTasks={createEventInitialTasks}
                 currentUserId={user?.id}
@@ -3828,6 +3842,7 @@ export default function AuthenticatedApp() {
       </AnimatePresence>
 
       <LeadingCompanionSlot />
+      <MiniPlayer />
       <AnimatePresence>
         {saveToast && (
           saveToast.minimal ? (

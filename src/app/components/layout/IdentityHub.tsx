@@ -339,9 +339,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     },
     {
       id: 'TEMPLATES',
-      label: 'Task templates',
+      label: 'To-do lists',
       count: entityCounts?.templates ?? 0,
-      unit: 'workflows',
+      unit: 'lists',
       icon: CheckSquare,
     },
   ];

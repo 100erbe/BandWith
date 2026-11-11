@@ -2,6 +2,13 @@ import { supabase } from '@/lib/supabase';
 import { setActiveCurrency } from '@/lib/currency';
 import type { PerformanceType } from '@/app/data/quotes';
 
+
+/**
+ * Online deposits (Stripe / PayPal links on quotes and PDFs). The UI is in
+ * place but stays switched off for the whole alpha.
+ */
+export const ONLINE_DEPOSITS_ENABLED = false;
+
 export type PricingMode = 'per_musician' | 'flat_packages';
 export type BandMarkupType = 'none' | 'percent' | 'fixed';
 export type TravelCalcMode = 'per_vehicle' | 'per_musician' | 'flat_km';
@@ -109,6 +116,9 @@ export interface BandPricingSettings {
   bank_name?: string;
   bank_bic_swift?: string;
   default_payment_terms?: string;
+  /** Online deposit links (Stripe payment link, PayPal.me). Inactive while ONLINE_DEPOSITS_ENABLED is false. */
+  stripe_payment_link?: string;
+  paypal_link?: string;
   contact_email?: string;
   contact_phone?: string;
   website?: string;

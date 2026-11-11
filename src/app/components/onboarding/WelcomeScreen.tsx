@@ -5,6 +5,7 @@ import { BrandLockup } from '@/app/components/bw/BrandMark';
 import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { isDemoMode, signIn } from '@/lib/supabase';
 import { setStatusBarTone } from '@/lib/systemBars';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
@@ -34,6 +35,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   inviteCodeError,
   closeInviteInputRef,
 }) => {
+  const drag = useSheetDrag(() => closeSheet());
   // Open the sheet straight away when we arrive with an error (e.g. a dead invite link).
   const [showInviteInput, setShowInviteInput] = useState(!!inviteCodeError);
   const [inviteCode, setInviteCode] = useState('');
@@ -195,7 +197,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               role="dialog"
               aria-modal="true"
               aria-labelledby="invite-sheet-title"
-              className="fixed inset-x-0 bottom-0 z-50 bg-sheet text-sheet-foreground rounded-t-[24px] px-5 pt-2"
+              {...drag.sheet}
+              onPointerDown={drag.handle.onPointerDown}
+              className="touch-none fixed inset-x-0 bottom-0 z-50 bg-sheet text-sheet-foreground rounded-t-[24px] px-5 pt-2"
               style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}

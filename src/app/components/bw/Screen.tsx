@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronRight, Search, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { RailHeaderActions, useRailAction, useRailBack, useRailHeaderSlot, useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Screen building blocks, 1:1 with the Figma components:
@@ -404,6 +405,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   // the sheet keeps its own close and the rail stays as the screen beneath
   // had it; where that screen has a Back, Back closes the sheet first.
   useRailBack(open ? onClose : undefined, closeLabel, open && zIndex < 190, true, true);
+  const drag = useSheetDrag(onClose);
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -440,8 +442,9 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             )}
             data-state="open"
             style={{ zIndex }}
+            {...drag.sheet}
           >
-            <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
+            <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
               <span className={cn('mx-auto w-10 h-[5px] rounded-full', dark ? 'bg-sheet-foreground/85' : 'bg-muted-foreground/55')} />
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0 flex flex-col gap-1">

@@ -13,6 +13,7 @@ import { useOnboarding, OnboardingSong } from '@/lib/OnboardingContext';
 import { parseSongList, parseDuration, SONG_LIST_ACCEPT } from '@/lib/songListImport';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 // Popular songs suggestions (would come from API in production)
 const SUGGESTED_SONGS: OnboardingSong[] = [
@@ -77,6 +78,8 @@ export const AddSongs: React.FC<AddSongsProps> = ({
   onComplete,
   closeModalRef,
 }) => {
+  const importDrag = useSheetDrag(() => setShowImportModal(false));
+  const addDrag = useSheetDrag(() => setShowAddModal(false));
   const { songs, addSong, removeSong, addSongs, path } = useOnboarding();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -335,9 +338,11 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25 }}
+              {...addDrag.sheet}
             >
               <OnboardingSheet
                 overline="Repertoire"
+                handleProps={addDrag.handle}
                 title="Add custom song"
                 labelledBy="add-song-title"
                 onClose={() => setShowAddModal(false)}
@@ -449,9 +454,11 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25 }}
+              {...importDrag.sheet}
             >
               <OnboardingSheet
                 overline="Repertoire"
+                handleProps={importDrag.handle}
                 title="Import songs"
                 labelledBy="import-songs-title"
                 onClose={() => setShowImportModal(false)}

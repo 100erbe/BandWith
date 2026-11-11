@@ -201,3 +201,64 @@ export const openSongResource = async (
   win?.close();
   return false;
 };
+
+/* ── Files from cloud providers (Google Drive…) ─────────────────────────────
+ * Picked through Android's Drive provider, a file can arrive with no
+ * extension and an empty or generic type ("application/octet-stream"), so
+ * the type checks rejected real MP3s. The first bytes tell what it is.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+const sniffExt = (b: Uint8Array): string | null => {
+  const s = (from: number, len: number) => String.fromCharCode(...b.slice(from, from + len));
+  if (s(0, 3) === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0 && (b[1] & 0x06) !== 0)) return 'mp3';
+  if (b[0] === 0xff && (b[1] & 0xf6) === 0xf0) return 'aac';
+  if (s(0, 4) === 'RIFF' && s(8, 4) === 'WAVE') return 'wav';
+  if (s(0, 4) === 'FORM' && (s(8, 4) === 'AIFF' || s(8, 4) === 'AIFC')) return 'aiff';
+  if (s(0, 4) === 'fLaC') return 'flac';
+  if (s(0, 4) === 'OggS') return 'ogg';
+  if (s(4, 4) === 'ftyp') return 'm4a';
+  if (s(0, 4) === '%PDF') return 'pdf';
+  if (b[0] === 0x89 && s(1, 3) === 'PNG') return 'png';
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg';
+  if (s(0, 4) === 'RIFF' && s(8, 4) === 'WEBP') return 'webp';
+  return null;
+};
+
+/**
+ * The picked file as-is when its name/type are usable; otherwise a copy named
+ * and typed from its content (e.g. "Track 01" from Drive → "Track 01.mp3").
+ */
+export const normalizeSongFile = async (file: File): Promise<File> => {
+  if (classifySongFile(file) && songFileContentType(file)) return file;
+  try {
+    const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const ext = sniffExt(head);
+    if (!ext) return file;
+    const base = file.name.replace(/\.[^/.]+$/, '') || 'file';
+    return new File([file], `${base}.${ext}`, { type: MIME_BY_EXT[ext], lastModified: file.lastModified });
+  } catch {
+    return file;
+  }
+};
+
+/** Drive file id from a share link ("…/file/d/<id>/view", "open?id=<id>", "uc?id=<id>"). */
+export const googleDriveFileId = (url: string): string | null => {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)drive\.google\.com$|(^|\.)docs\.google\.com$|drive\.usercontent\.google\.com$/.test(u.hostname)) return null;
+    const m = u.pathname.match(/\/file\/d\/([\w-]{10,})/);
+    return m?.[1] || u.searchParams.get('id');
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * URL an <audio> element can stream: Drive share links (an HTML viewer page)
+ * become the direct file download. Works for files shared as "Anyone with
+ * the link"; a private Drive file can't be streamed by any app.
+ */
+export const playableAudioUrl = (url: string): string => {
+  const id = googleDriveFileId(url);
+  return id ? `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download` : url;
+};

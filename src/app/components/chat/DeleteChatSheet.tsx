@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, Trash2 } from '@/app/components/icons';
 import { RailCover } from '@/lib/railActions';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 /**
  * Bottom-sheet confirmation for removing a chat from the list. Lives at the
@@ -19,6 +20,7 @@ export const DeleteChatSheet: React.FC<{
   body?: string;
   confirmLabel?: string;
 }> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel = 'Delete' }) => {
+  const drag = useSheetDrag(onCancel);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
@@ -49,7 +51,9 @@ export const DeleteChatSheet: React.FC<{
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 360 }}
-            className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
+            {...drag.sheet}
+            onPointerDown={drag.handle.onPointerDown}
+            className="bw-rail-sheet touch-none fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
           >
             <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
@@ -59,7 +63,9 @@ export const DeleteChatSheet: React.FC<{
               </span>
               <span className="bw-body-sm text-sheet-foreground/70">
                 {body ??
-                  'It disappears from your list. The others keep the conversation, and it comes back if someone writes again.'}
+                  (chatName
+                    ? 'Every message is deleted for good, for both of you. This can\'t be undone.'
+                    : 'Your messages are deleted for good and the chat leaves your list. It can\'t be undone.')}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">

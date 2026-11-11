@@ -582,11 +582,13 @@ export const createChat = async (
       if (existingChat) {
         console.log('[createChat] Found existing direct chat:', existingChat.id);
         const targetUserId = data.participant_ids.find(id => id !== user.id) || allParticipants[1];
-        // Ensure both participants exist in chat_participants and un-clear for current user
+        // Ensure both participants exist in chat_participants. `cleared_at`
+        // stays: it is when this user deleted the chat, and messages before
+        // it must never come back (resetting it reloaded the whole history).
         await supabase
           .from('chat_participants')
           .upsert([
-            { chat_id: existingChat.id, user_id: user.id, cleared_at: null },
+            { chat_id: existingChat.id, user_id: user.id },
             { chat_id: existingChat.id, user_id: targetUserId },
           ], { onConflict: 'chat_id,user_id' });
 
@@ -605,11 +607,11 @@ export const createChat = async (
       
       if (existingBandChat) {
         console.log('[createChat] Found existing band chat:', existingBandChat.id);
-        // Ensure user is restored in chat_participants and cleared_at is reset
+        // Ensure user is in chat_participants (cleared_at kept: deleted history stays deleted)
         await supabase
           .from('chat_participants')
           .upsert(
-            { chat_id: existingBandChat.id, user_id: user.id, cleared_at: null },
+            { chat_id: existingBandChat.id, user_id: user.id },
             { onConflict: 'chat_id,user_id' }
           );
         return { data: existingBandChat, error: null };
@@ -627,11 +629,11 @@ export const createChat = async (
       
       if (existingEventChat) {
         console.log('[createChat] Found existing event chat:', existingEventChat.id);
-        // Ensure user is restored in chat_participants and cleared_at is reset
+        // Ensure user is in chat_participants (cleared_at kept: deleted history stays deleted)
         await supabase
           .from('chat_participants')
           .upsert(
-            { chat_id: existingEventChat.id, user_id: user.id, cleared_at: null },
+            { chat_id: existingEventChat.id, user_id: user.id },
             { onConflict: 'chat_id,user_id' }
           );
         return { data: existingEventChat, error: null };
@@ -770,11 +772,12 @@ export const sendMessage = async (
 
     if (chatError) throw chatError;
     
-    // Ensure the sender is an active participant and clear any deletion timestamp
+    // Ensure the sender is an active participant (keeping cleared_at: older
+    // messages stay deleted for them; the new message makes the chat reappear)
     await supabase
       .from('chat_participants')
       .upsert(
-        { chat_id: chatId, user_id: user.id, cleared_at: null },
+        { chat_id: chatId, user_id: user.id },
         { onConflict: 'chat_id,user_id' }
       );
 
@@ -1078,9 +1081,17 @@ export const deleteChat = async (
     const { data: { user } } = await getSafeUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Soft delete / clear for current user:
-    // Mark cleared_at timestamp so chat is hidden from chat hub until a new message arrives.
-    // The chat and message history are preserved, and the chat will reappear if texting again.
+    // Erase the history from the database (migration 067): every message of
+    // a direct chat, only your own in a band/event chat. Until 067 is applied
+    // the RPC is missing and only the per-user clear below happens.
+    const { error: rpcError } = await supabase.rpc('bw_delete_chat_history', { p_chat_id: chatId });
+    if (rpcError && !/bw_delete_chat_history|schema cache|does not exist|PGRST202/i.test(rpcError.message || '')) {
+      throw rpcError;
+    }
+
+    // Clear for the current user: the chat leaves the list and messages up
+    // to now never load again (cleared_at is never reset). A new message
+    // brings the chat back with only what was written after.
     const { error: partError } = await supabase
       .from('chat_participants')
       .upsert(

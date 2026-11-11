@@ -6,6 +6,7 @@ import { FormError, PillButton, PillField, Selector } from '@/app/components/bw/
 import { getSongs, createSong, type Song } from '@/lib/services/songs';
 import { useBand } from '@/lib/BandContext';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
+import { genresOf, parseGenres, songHasGenre } from '@/lib/songGenres';
 
 export interface PickedSong {
   id: string;
@@ -94,17 +95,14 @@ export const SongPicker: React.FC<SongPickerProps> = ({
     );
   }, [songs, search]);
 
-  const categories = useMemo(() => {
-    const cats = new Set<string>();
-    songs.forEach(s => { if (s.category) cats.add(s.category); });
-    return Array.from(cats).sort();
-  }, [songs]);
+  // Filter chips: the genre tags of the band's songs.
+  const categories = useMemo(() => genresOf(songs), [songs]);
 
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   const displayed = useMemo(() => {
     if (!filterCategory) return filtered;
-    return filtered.filter(s => s.category === filterCategory);
+    return filtered.filter(s => songHasGenre(s, filterCategory));
   }, [filtered, filterCategory]);
 
   const handleSelectSong = useCallback((song: Song) => {
@@ -298,7 +296,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                 {displayed.map(song => {
                   const isChecked = allSelected.has(song.id);
                   const inSet = selectedIds.includes(song.id) && !multiSelected.has(song.id);
-                  const subtitle = [song.artist || 'Unknown artist', song.category].filter(Boolean).join(' · ');
+                  const subtitle = [song.artist || 'Unknown artist', parseGenres(song.genre).join(', ')].filter(Boolean).join(' · ');
                   return (
                     <button
                       key={song.id}

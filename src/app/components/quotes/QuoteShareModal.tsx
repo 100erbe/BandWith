@@ -37,6 +37,7 @@ import { shareFile, saveFile, openExternal } from '@/lib/nativeFiles';
 import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
+import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
 
 export interface QuoteShareModalProps {
   isOpen: boolean;
@@ -483,6 +484,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
               <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
             </button>
           )}
+
+          <OnlineDepositLinks />
 
           {/* Share channels */}
           <section className="flex flex-col gap-2">

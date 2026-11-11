@@ -56,18 +56,22 @@ const WheelColumn: React.FC<{
   valueMin: number;
   valueMax: number;
 }> = ({ label, display, neighbour, onStep, valueNow, valueMin, valueMax }) => {
-  const dragRef = useRef<{ y: number; acc: number } | null>(null);
+  // The whole column (all five rows, the gaps and its full height in the
+  // card) drags; a touch that doesn't move taps the row under it.
+  const dragRef = useRef<{ y: number; acc: number; moved: number; tap: number | null } | null>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    dragRef.current = { y: e.clientY, acc: 0 };
+    const row = (e.target as HTMLElement).closest('[data-offset]') as HTMLElement | null;
+    dragRef.current = { y: e.clientY, acc: 0, moved: 0, tap: row ? Number(row.dataset.offset) : null };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d) return;
     // Dragging up brings later values into the centre.
-    d.acc += d.y - e.clientY;
+    const dy = d.y - e.clientY;
+    d.acc += dy;
+    d.moved += Math.abs(dy);
     d.y = e.clientY;
     while (Math.abs(d.acc) >= STEP_PX) {
       const dir = d.acc > 0 ? 1 : -1;
@@ -76,6 +80,11 @@ const WheelColumn: React.FC<{
     }
   };
   const endDrag = () => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (d && d.moved < 6 && d.tap) onStep(d.tap);
+  };
+  const cancelDrag = () => {
     dragRef.current = null;
   };
   const wheelAcc = useRef(0);
@@ -97,15 +106,9 @@ const WheelColumn: React.FC<{
   };
 
   const ghost = (offset: number) => (
-    <button
-      type="button"
-      tabIndex={-1}
-      aria-hidden
-      onClick={() => onStep(offset)}
-      className="h-6 bw-num text-muted-foreground cursor-pointer"
-    >
+    <span data-offset={offset} aria-hidden className="h-6 flex items-center bw-num text-muted-foreground cursor-pointer">
       {neighbour(offset)}
-    </button>
+    </span>
   );
 
   return (
@@ -120,10 +123,10 @@ const WheelColumn: React.FC<{
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerCancel={cancelDrag}
       onWheel={onWheel}
       onKeyDown={onKeyDown}
-      className="flex flex-col items-center gap-2 px-5 touch-none cursor-ns-resize rounded-2xl focus-visible:outline-2 focus-visible:outline-foreground"
+      className="flex-1 self-stretch flex flex-col items-center justify-center gap-2 px-5 py-2 touch-none cursor-ns-resize rounded-2xl focus-visible:outline-2 focus-visible:outline-foreground"
     >
       {ghost(-2)}
       {ghost(-1)}

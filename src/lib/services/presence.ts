@@ -52,21 +52,51 @@ function openChannel(userId: string) {
   presenceChannel = channel;
 }
 
+let backgroundedAt = 0;
+/** Re-tracks us every 30 s in the foreground: a frame that never left (e.g.
+ *  sent while iOS suspended the app) can't leave us shown offline for long. */
+let keepAlive: ReturnType<typeof setInterval> | null = null;
+
+function startKeepAlive() {
+  if (keepAlive) return;
+  keepAlive = setInterval(() => {
+    const ch = presenceChannel;
+    if (inForeground && activeUserId && ch && ch.state === 'joined') void track(ch, activeUserId);
+  }, 30_000);
+}
+
+function stopKeepAlive() {
+  if (keepAlive) clearInterval(keepAlive);
+  keepAlive = null;
+}
+
 /**
- * Back in the foreground: show ourselves online right away. If the socket died
- * in the background, reconnect now instead of waiting for the backoff timer;
- * the channel rejoins on open and the subscribe callback tracks us again.
+ * Back in the foreground: show ourselves online right away. After a real stay
+ * in the background the socket may look connected but be dead (iOS suspends
+ * the app), so the channel is rebuilt from scratch: reconnect if needed, join
+ * again and track on SUBSCRIBED. A short blip just re-tracks.
  */
 function onForeground() {
+  if (inForeground) return; // visibilitychange and appStateChange both fire
   inForeground = true;
   const userId = activeUserId;
   const channel = presenceChannel;
   if (!userId || !channel) return;
+  startKeepAlive();
 
   // The demo client has no realtime socket.
   const realtime = (supabase as { realtime?: typeof supabase.realtime }).realtime;
-  if (realtime && !realtime.isConnected()) {
-    realtime.connect();
+  const away = Date.now() - backgroundedAt;
+  if (realtime && (away > 5_000 || !realtime.isConnected())) {
+    presenceChannel = null;
+    supabase
+      .removeChannel(channel)
+      .catch(() => {})
+      .finally(() => {
+        if (activeUserId !== userId || presenceChannel) return;
+        if (!realtime.isConnected()) realtime.connect();
+        openChannel(userId);
+      });
     return;
   }
   if (channel.state === 'joined') void track(channel, userId);
@@ -74,7 +104,10 @@ function onForeground() {
 
 /** Going to the background: drop our presence now instead of on socket timeout. */
 function onBackground() {
+  if (!inForeground) return;
   inForeground = false;
+  backgroundedAt = Date.now();
+  stopKeepAlive();
   if (presenceChannel) void presenceChannel.untrack().catch(() => {});
 }
 
@@ -108,6 +141,7 @@ export function initPresence(userId: string) {
     try {
       bindLifecycle();
       openChannel(userId);
+      if (inForeground) startKeepAlive();
     } catch (err) {
       console.warn('[Presence] Realtime presence unavailable:', err);
     }
@@ -125,7 +159,10 @@ export function initPresence(userId: string) {
 }
 
 export function cleanupPresence() {
+  stopKeepAlive();
+  activeUserId = null;
   if (presenceChannel) {
+    void presenceChannel.untrack().catch(() => {});
     void supabase.removeChannel(presenceChannel);
     presenceChannel = null;
     activeUserId = null;

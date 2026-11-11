@@ -36,7 +36,8 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
   const [name, setName] = useState('');
   const [currentSongIds, setCurrentSongIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [hideAlreadyInList, setHideAlreadyInList] = useState(true);
+  // Songs already in the list stay visible, highlighted (tap again removes).
+  const [hideAlreadyInList, setHideAlreadyInList] = useState(false);
   const [selectedToAddIds, setSelectedToAddIds] = useState<string[]>([]); 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [overlayTab, setOverlayTab] = useState<'library' | 'add'>('library');
@@ -105,19 +106,20 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
   const groupedLibrary = useMemo(() => {
       const groups: Record<string, RehearsalSong[]> = {};
       filteredLibrary.forEach(song => {
-          const cat = song.category || 'Uncategorized';
+          const cat = song.category || 'Other';
           if (!groups[cat]) groups[cat] = [];
           groups[cat].push(song);
       });
       return groups;
   }, [filteredLibrary]);
 
+  // A tap adds the song to the list at once (or takes it out): the whole
+  // library stays on screen for picking several songs.
   const handleToggleSelectToAdd = (id: string) => {
-      setSelectedToAddIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+      setCurrentSongIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
   };
 
   const handleAddSelected = () => {
-      setCurrentSongIds(prev => [...prev, ...selectedToAddIds]);
       setSelectedToAddIds([]);
       setSearchQuery('');
       setIsSearchExpanded(false);
@@ -228,13 +230,13 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
   };
 
   const sheetTitle = isSearchExpanded ? 'Add songs' : initialTemplate ? 'Edit setlist' : 'New setlist';
-  const addCount = selectedToAddIds.length;
+  const addCount = currentSongIds.length;
 
   const footer = isSearchExpanded ? (
     <div className="dark">
       {overlayTab === 'library' ? (
-        <PillButton onClick={handleAddSelected} disabled={addCount === 0} icon={<Plus className="w-[18px] h-[18px]" />}>
-          Add {addCount} {addCount === 1 ? 'song' : 'songs'}
+        <PillButton onClick={handleAddSelected} icon={<Check className="w-[18px] h-[18px]" />}>
+          Done · {addCount} {addCount === 1 ? 'song' : 'songs'}
         </PillButton>
       ) : (
         <PillButton
@@ -400,7 +402,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                   <section key={category} className="flex flex-col gap-2">
                     <h5 className="bw-label-sm text-sheet-foreground/60">{category}</h5>
                     {songs.map((song) => {
-                      const isSelected = selectedToAddIds.includes(song.id);
+                      const isSelected = currentSongIds.includes(song.id);
                       return (
                         <button
                           key={song.id}
