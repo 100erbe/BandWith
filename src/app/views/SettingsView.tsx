@@ -8,6 +8,7 @@ import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import {
   Bell,
   Mail,
+  Sparkles,
   Play,
   ArrowLeft,
   ArrowUpRight,
@@ -133,12 +134,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const [pushEnabled, setPushEnabled] = useState(() => readLocalPref('push'));
   const [emailEnabled, setEmailEnabled] = useState(() => readLocalPref('email'));
+  const [productUpdatesEnabled, setProductUpdatesEnabled] = useState(() => readLocalPref('product_updates'));
   useEffect(() => {
     let cancelled = false;
     loadNotificationPrefs().then((prefs) => {
       if (cancelled || !prefs) return;
       if (prefs.push !== undefined) setPushEnabled(prefs.push);
       if (prefs.email !== undefined) setEmailEnabled(prefs.email);
+      if (prefs.product_updates !== undefined) setProductUpdatesEnabled(prefs.product_updates);
     });
     return () => { cancelled = true; };
   }, []);
@@ -163,6 +166,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (error) {
         setEmailEnabled(!val);
         setNotifError(`Couldn’t save email setting: ${error.message}`);
+      }
+    });
+  };
+
+  const handleToggleProductUpdates = (val: boolean) => {
+    setProductUpdatesEnabled(val);
+    setNotifError(null);
+    saveNotificationPref('product_updates', val).then(({ error }) => {
+      if (error) {
+        setProductUpdatesEnabled(!val);
+        setNotifError(`Couldn’t save product news setting: ${error.message}`);
       }
     });
   };
@@ -335,11 +349,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <IconTile>
           <Mail />
         </IconTile>
-        <RowText title="Email notifications" hint="Band invites by email" />
+        <RowText title="Email notifications" hint="Invites and new members by email" />
         <Toggle
           checked={emailEnabled}
           onCheckedChange={handleToggleEmail}
           aria-label="Email notifications"
+        />
+      </div>
+
+      <div className={cn(CARD, ROW)}>
+        <IconTile>
+          <Sparkles />
+        </IconTile>
+        <RowText
+          title="Product news"
+          hint={emailEnabled ? 'What’s new in BandWith, a few times a year' : 'Off while email notifications are off'}
+        />
+        <Toggle
+          checked={emailEnabled && productUpdatesEnabled}
+          disabled={!emailEnabled}
+          onCheckedChange={handleToggleProductUpdates}
+          aria-label="Product news emails"
         />
       </div>
 

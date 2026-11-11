@@ -31,7 +31,8 @@ type EmailType =
   | "onboarding_reminder"
   | "member_joined"
   | "invite_expired"
-  | "welcome";
+  | "welcome"
+  | "product_update";
 
 const TEMPLATE_FOR: Record<EmailType, EmailTemplateName> = {
   onboarding_invite: "band-invite",
@@ -39,6 +40,7 @@ const TEMPLATE_FOR: Record<EmailType, EmailTemplateName> = {
   member_joined: "member-joined",
   invite_expired: "invite-expired",
   welcome: "welcome",
+  product_update: "product-update",
 };
 
 interface EmailRequest {
@@ -107,6 +109,97 @@ interface DispatchData {
   recipientId?: string;
   memberUserId?: string;
   invitationId?: string;
+  issueId?: string;
+  userIds?: string[];
+}
+
+/** POST to Resend, waiting and retrying when rate limited (429). */
+async function resend(path: string, body: unknown) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`https://api.resend.com${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 429 && attempt < 3) {
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      continue;
+    }
+    if (!res.ok) {
+      console.error("Resend error:", await res.text());
+      throw new Error("Failed to send email");
+    }
+    return await res.json();
+  }
+}
+
+// ── Product updates (065) ──────────────────────────────────────────────────
+// Server only: bw_send_product_update() sends {issueId, userIds} in batches.
+const text = (value: unknown, max: number): string =>
+  String(value ?? "").replace(/\r\n?/g, "\n").replace(/[\t ]+/g, " ").trim().slice(0, max);
+const oneLine = (value: unknown, max: number): string => text(value, max).replace(/\s*\n\s*/g, " ");
+
+interface ProductUpdateRow {
+  issue_label: string;
+  preheader: string;
+  headline: string;
+  intro: string;
+  cta_label: string | null;
+  cta_url: string | null;
+  items: { title?: string; text?: string; url?: string }[] | null;
+}
+
+async function sendProductUpdate(admin: SupabaseClient, data: DispatchData) {
+  const { data: row } = await admin
+    .from("bw_product_updates")
+    .select("issue_label, preheader, headline, intro, cta_label, cta_url, items")
+    .eq("id", data?.issueId ?? "")
+    .maybeSingle();
+  const issue = row as ProductUpdateRow | null;
+  if (!issue) throw new HttpError(404, "Product update not found");
+
+  const linkOr = (url: unknown) => (url ? safeLink(url) : appUrl());
+  const items = Array.isArray(issue.items) ? issue.items : [];
+  const base: Record<string, string> = {
+    AppURL: appUrl(),
+    IssueLabel: oneLine(issue.issue_label, 40),
+    Preheader: oneLine(issue.preheader, 160),
+    Headline: text(issue.headline, 90), // line breaks become <br>
+    Intro: oneLine(issue.intro, 500),
+    CtaLabel: oneLine(issue.cta_label, 40) || "See what’s new",
+    CtaURL: linkOr(issue.cta_url),
+  };
+  [0, 1, 2].forEach((i) => {
+    const item = items[i] ?? {};
+    base[`Item${i + 1}Title`] = oneLine(item.title, 60);
+    base[`Item${i + 1}Text`] = oneLine(item.text, 300);
+    if (i < 2) base[`Item${i + 1}URL`] = linkOr(item.url);
+  });
+
+  const emails: unknown[] = [];
+  let skipped = 0;
+  for (const id of (Array.isArray(data.userIds) ? data.userIds : []).slice(0, 50)) {
+    const user = await authUser(admin, id);
+    const to = (user?.email ?? "").trim().toLowerCase();
+    const prefs = (await profileOf(admin, id))?.notification_preferences;
+    // Opt-out: the email switch or the product updates switch turned off.
+    if (!EMAIL_RE.test(to) || emailOff(prefs) || String(prefs?.product_updates) === "false") {
+      skipped++;
+      continue;
+    }
+    const { data: sig } = await admin.rpc("bw_unsubscribe_sig", { p_user: id });
+    if (typeof sig !== "string" || sig.length !== 64) {
+      skipped++;
+      continue;
+    }
+    const unsubscribeUrl = `${appUrl()}/unsubscribe.html?u=${encodeURIComponent(id)}&s=${sig}`;
+    const { subject, html } = renderEmail("product-update", { ...base, To: to, UnsubscribeURL: unsubscribeUrl });
+    emails.push({ from: FROM_EMAIL, to: [to], subject, html, headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` } });
+  }
+
+  if (emails.length) await resend("/emails/batch", emails);
+  console.log(`Product update: sent ${emails.length}, skipped ${skipped}`);
+  return { sent: emails.length, skipped };
 }
 
 interface InvitationRow {
@@ -295,6 +388,15 @@ serve(async (req) => {
     const template = TEMPLATE_FOR[type];
     if (!template) throw new HttpError(400, "Unsupported email type");
 
+    if (type === "product_update") {
+      if (!dispatchSecret) throw new HttpError(403, "Product updates are sent by the server only");
+      const result = await sendProductUpdate(admin, requestData as unknown as DispatchData);
+      return new Response(
+        JSON.stringify({ success: true, ...result }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     let rawData = requestData;
     if (dispatchSecret) {
       const resolved = await resolveDispatch(admin, type, requestData as unknown as DispatchData);
@@ -372,21 +474,7 @@ serve(async (req) => {
 
     console.log(`Sending ${type} email`);
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html }),
-    });
-
-    if (!res.ok) {
-      console.error("Resend error:", await res.text());
-      throw new Error("Failed to send email");
-    }
-
-    const result = await res.json();
+    const result = await resend("/emails", { from: FROM_EMAIL, to: [to], subject, html });
     console.log("Email sent:", result.id);
 
     return new Response(

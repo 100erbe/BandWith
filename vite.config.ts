@@ -10,6 +10,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    rollupOptions: {
+      // Second page: /unsubscribe.html (product news emails, migration 065).
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        unsubscribe: path.resolve(__dirname, 'unsubscribe.html'),
+      },
+    },
+  },
   server: {
     watch: {
       usePolling: true,

@@ -400,7 +400,7 @@ def product_update(variant="lime"):
                 ("Improved", False, "{{Item2Title}}", "{{Item2Text}}", "{{Item2URL}}"),
                 ("Fixed", False, "{{Item3Title}}", "{{Item3Text}}", None),
             ])]),
-            footer("You&rsquo;re getting this because you opted in to BandWith product news.", APP,
+            footer("You&rsquo;re getting this because you have a BandWith account. Turn product news off anytime with Unsubscribe, or in Settings &rarr; Notifications.", APP,
                    unsubscribe="{{UnsubscribeURL}}"),
         ],
     )
@@ -483,12 +483,13 @@ def write_ts_module():
         " * Fill a template. `vars` are RAW values: they are HTML-escaped here for the body.\n"
         " * Keys ending in \"URL\" must already be validated by the caller (allowed host, https).\n"
         " * Unknown placeholders are left empty so a missing value never leaks `{{Key}}`.\n"
+        " * Line breaks in a value become <br> (after escaping).\n"
         " */\n"
         "export function renderEmail(name: EmailTemplateName, vars: Record<string, string>): { subject: string; html: string } {\n"
         "  const t = EMAIL_TEMPLATES[name];\n"
         "  const value = (key: string) => vars[key] ?? \"\";\n"
         "  const html = t.html.replace(/\\{\\{([A-Za-z0-9]+)\\}\\}/g, (_m, key: string) =>\n"
-        "    key.endsWith(\"URL\") ? value(key).replace(/\"/g, \"%22\") : escapeHtml(value(key)));\n"
+        "    key.endsWith(\"URL\") ? value(key).replace(/\"/g, \"%22\") : escapeHtml(value(key)).replace(/\\n/g, \"<br>\"));\n"
         "  const subject = t.subject.replace(/\\{\\{([A-Za-z0-9]+)\\}\\}/g, (_m, key: string) => value(key))\n"
         "    .replace(/[\\r\\n]+/g, \" \").trim();\n"
         "  return { subject, html };\n"
