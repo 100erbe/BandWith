@@ -27,6 +27,7 @@ import { DotMeter, DotText, EventMark, SectionHeader, type EventKind } from '@/a
 import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { PlannerMode, type PlannerEvent } from '@/app/components/duo';
+import { keyboardSafeTap } from '@/lib/keyboardSafeTap';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -278,7 +279,17 @@ export const EventsView: React.FC<EventsViewProps> = ({
     onActivate: () => setSearchOpen(true),
   });
 
+  // The field is visible and focused as soon as the screen opens, so it's
+  // clear you can type right away (the tap that opened it raised the keyboard).
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const id = requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(id);
+  }, [searchOpen]);
+
   const closeSearch = () => {
+    (document.activeElement as HTMLElement | null)?.blur();
     setSearchOpen(false);
     setSearchTab('ALL');
     setEventSearch('');
@@ -1325,27 +1336,35 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 aria-label="Search events"
                 // iPhone Duo open: search stays on the leading page, the event
                 // you pick opens on the trailing page (Figma "Calendar search").
-                className="bw-pane-hub fixed inset-0 z-[81] bg-background text-foreground flex flex-col"
+                // Under the tab bar (z-80, like the other hub screens): you can
+                // still switch tab or create from here. Back closes the search.
+                className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground flex flex-col"
                 style={{ paddingTop: 'var(--safe-top)' }}
               >
-                {/* Top Bar */}
+                {/* Top Bar (on iPhone Duo the Back sits in the rail, tabs stay) */}
                 <div className="h-14 shrink-0 px-4 flex items-center gap-3 bw-status-clear">
-                  <NavBackButton label="Close search" size="sm" onClick={closeSearch} />
+                  <NavBackButton label="Close search" size="sm" onClick={closeSearch} keepTabs />
                   <h2 className="bw-h2 truncate">Search events</h2>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 pt-2 flex flex-col gap-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}>
-                  <div className="flex flex-col gap-2 empty:hidden">
-                    {!railOwnsChrome && <span className="bw-label-sm text-muted-foreground" aria-hidden="true">Search</span>}
-                    <SearchField
-                      value={eventSearch}
-                      onChange={setEventSearch}
-                      label="Search events"
-                      placeholder="Title, venue, city, client…"
-                      autoFocus
-                      onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
-                    />
-                  </div>
+                <div
+                  className="flex-1 overflow-y-auto px-4 pt-2 flex flex-col gap-4 bw-status-clear"
+                  style={{ paddingBottom: railOwnsChrome ? 'calc(var(--safe-bottom) + 48px)' : 'calc(var(--safe-bottom) + 112px)' }}
+                >
+                  {/* The field stays in the screen on every device: it's the screen's purpose. */}
+                  <SearchField
+                    inline
+                    inputRef={searchInputRef}
+                    value={eventSearch}
+                    onChange={setEventSearch}
+                    label="Search events"
+                    placeholder="Search title, venue, city, client…"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') closeSearch();
+                      if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+                    }}
+                  />
 
                   <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
                     {tabs.map((t) => (
@@ -1384,7 +1403,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                             <li key={String(ev.id || ev.eventId)}>
                               <button
                                 type="button"
-                                onClick={() => onEventClick(ev)}
+                                // Opens on the first tap even with the keyboard up.
+                                {...keyboardSafeTap(() => onEventClick(ev))}
                                 className="w-full flex items-center gap-4 p-3 rounded-[24px] bg-card text-left active:scale-[0.99] transition-transform cursor-pointer"
                               >
                                 <span

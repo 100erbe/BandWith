@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import Capacitor
+import UserNotifications
 
 /// Capacitor's bridge, plus the display regions iOS reserves on this device,
 /// exposed to the web app.
@@ -26,10 +27,14 @@ import Capacitor
 /// - Keep awake: the page sets `data-bw-keep-awake="1"` on :root (or posts
 ///   to `webkit.messageHandlers.bwKeepAwake`) and the idle timer stays off
 ///   until it is removed.
+/// - App badge: the page posts the unread count to
+///   `webkit.messageHandlers.bwBadge`; the icon shows it, and 0 also clears
+///   the delivered notifications from Notification Center.
 final class BandWithBridgeViewController: CAPBridgeViewController, WKScriptMessageHandler {
 
     private static let readyMessage = "bwRegionsReady"
     private static let keepAwakeMessage = "bwKeepAwake"
+    private static let badgeMessage = "bwBadge"
     private var lastPayload: String?
     /// UIHingeInteraction (iOS 27.1+), typed as its protocol so the stored
     /// property needs no availability annotation.
@@ -44,6 +49,7 @@ final class BandWithBridgeViewController: CAPBridgeViewController, WKScriptMessa
         guard let controller = webView?.configuration.userContentController else { return }
         controller.add(WeakScriptMessageHandler(self), name: Self.readyMessage)
         controller.add(WeakScriptMessageHandler(self), name: Self.keepAwakeMessage)
+        controller.add(WeakScriptMessageHandler(self), name: Self.badgeMessage)
         controller.addUserScript(WKUserScript(source: Self.bootstrapScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         installHingeObserver()
     }
@@ -70,9 +76,24 @@ final class BandWithBridgeViewController: CAPBridgeViewController, WKScriptMessa
             publishRegions(force: true)
         case Self.keepAwakeMessage:
             UIApplication.shared.isIdleTimerDisabled = Self.flag(message.body)
+        case Self.badgeMessage:
+            Self.setBadge((message.body as? NSNumber)?.intValue ?? 0)
         default:
             break
         }
+    }
+
+    /// The number on the app icon. Pushes set it from the server; the app
+    /// brings it back in line once notifications are read or deleted.
+    private static func setBadge(_ count: Int) {
+        let center = UNUserNotificationCenter.current()
+        let n = max(0, count)
+        if #available(iOS 16.0, *) {
+            center.setBadgeCount(n) { _ in }
+        } else {
+            DispatchQueue.main.async { UIApplication.shared.applicationIconBadgeNumber = n }
+        }
+        if n == 0 { center.removeAllDeliveredNotifications() }
     }
 
     private static func flag(_ body: Any) -> Bool {
