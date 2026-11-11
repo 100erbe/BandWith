@@ -1,98 +1,73 @@
 # BandWith Email Templates
 
-Beautiful, Swiss Editorial Modern email templates for BandWith.
+Every email BandWith sends, designed as one system that matches the app: big uppercase display type, mono labels, pill buttons with ↗, and the dot/dash pattern from the welcome screen.
 
-## Design System
+## The rule: Lime or Ink
 
-- **Background**: Pure black `#000000`
-- **Card**: Near-black `#0A0A0A` with subtle border `#1C1C1E`
-- **Primary accent**: Lime `#D4FB46`
-- **Typography**: SF Pro Display / System fonts
-- **Border radius**: 24px cards, 100px buttons, 12px secondary elements
+Every email uses the same structure. Only the hero card changes, and **intent** decides which one:
+
+| Hero | Used for | Look |
+|---|---|---|
+| **Lime** | Band moments: people joining, invites, news | Lime `#D5FB46` card, black type, white CTA |
+| **Ink** | Account and security: sign-in, passwords, codes, expiries | Ink `#050505` card, white type, lime CTA |
+
+Shared structure: page `#E5E3E0` → hero card (logo, pattern, mono kicker, headline, body, optional details table, CTA) → light info card `#F2F0ED` (fallback link, "not you?") → footer (motto, why you got it, Privacy · Terms, plus Unsubscribe on marketing).
+
+Type: `Neue Haas Grotesk Display Pro` → `Helvetica Neue` → Arial for display and text; `SF Mono` → Menlo → Consolas for labels. Email clients rarely load web fonts, so Helvetica Neue is what most people see.
 
 ## Templates
 
-| Template | File | Supabase Setting |
-|----------|------|------------------|
-| Email Confirmation | `confirm-signup.html` | Auth → Email Templates → Confirm signup |
-| Magic Link | `magic-link.html` | Auth → Email Templates → Magic Link |
-| Password Reset | `reset-password.html` | Auth → Email Templates → Reset Password |
-| Member Invite | `invite-member.html` | Custom (send via Edge Function) |
+### Supabase Auth (Go templates; paste in Dashboard → Authentication → Email Templates)
 
-## Setup Instructions
+| File | Supabase template | Hero | Variables |
+|---|---|---|---|
+| `confirm-signup.html` | Confirm signup | Lime | `{{ .ConfirmationURL }}` `{{ .Email }}` `{{ .SiteURL }}` |
+| `reset-password.html` | Reset password | Ink | `{{ .ConfirmationURL }}` `{{ .Email }}` `{{ .SiteURL }}` |
+| `magic-link.html` | Magic link | Ink | `{{ .ConfirmationURL }}` `{{ .Email }}` `{{ .SiteURL }}` |
+| `change-email.html` | Change email address | Ink | `{{ .ConfirmationURL }}` `{{ .Email }}` `{{ .NewEmail }}` `{{ .SiteURL }}` |
+| `reauthentication.html` | Reauthentication | Ink | `{{ .Token }}` `{{ .Email }}` `{{ .SiteURL }}` |
 
-### 1. Upload Logo to Supabase Storage
+### App emails (sent by the `send-email` Edge Function via Resend)
 
-1. Go to **Supabase Dashboard** → **Storage**
-2. Create a bucket called `assets` (make it **public**)
-3. Upload `Logo - full text White.png` as `logo-white.png`
-4. Copy the public URL (should be like `https://[project-id].supabase.co/storage/v1/object/public/assets/logo-white.png`)
+Placeholders are `{{Name}}`. Values must be HTML-escaped and links checked against the allowed hosts before they are substituted, as `send-email` already does.
 
-### 2. Update Template URLs
+| File | `send-email` type | Hero | Variables |
+|---|---|---|---|
+| `band-invite.html` | `onboarding_invite` | Lime | `BandName` `InviterName` `Role` `InviteURL` `To` `AppURL` |
+| `invite-reminder.html` | `onboarding_reminder` | Lime | `BandName` `InviterName` `Role` `InviteURL` `ExpiresIn` ("in 3 days") `ExpiresInLabel` ("In 3 days") `To` `AppURL` |
+| `member-joined.html` | `member_joined` (to admins) | Lime | `BandName` `NewMemberName` `NewMemberEmail` `AppURL` |
+| `invite-expired.html` | `invite_expired` (to the inviting admin) | Ink | `BandName` `InviteeName` `Role` `AppURL` |
+| `welcome.html` | `welcome` (after email confirmation) | Lime | `FirstName` `To` `AppURL` |
+| `product-update.html` | product news (broadcast) | Lime | `IssueLabel` `Preheader` `Headline` `Intro` `CtaLabel` `CtaURL` `Item1–3Title/Text` `Item1–2URL` `UnsubscribeURL` `AppURL` |
 
-In each template, replace the logo `src` attribute:
+`invite_expired`, `welcome` and product news are designed but not sent by any code yet. `onboarding_reminder` and `member_joined` exist in `send-email` but nothing calls them.
 
-```html
-<img src="https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/logo-white.png" ...
+## Logos
+
+Emails load two hosted PNGs (2× resolution, shown at 172px wide):
+
+- `assets/logo-mono-black.png` → Lime hero
+- `assets/logo-white-lime.png` → Ink hero
+
+They must be in the public `assets` bucket of Supabase Storage under the same names:
+`https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/<name>.png`
+
+## Editing
+
+The HTML files are generated. Edit `_source/build.py`, then:
+
+```bash
+cd supabase/email-templates/_source && python3 build.py
 ```
 
-With your actual Storage URL.
+It writes `out/<name>.html` (real) and `out/<name>.preview.html` (logos inlined, sample data). Copy the real files up one level. `board.py` lays previews side by side (desktop and 320px mobile) for review.
 
-### 3. Configure Email Templates in Supabase
+Checked at 640px and 320px widths. A media query shrinks the headline on phones and again under 375px.
 
-1. Go to **Supabase Dashboard** → **Authentication** → **Email Templates**
-2. For each template type:
-   - Click on the template name
-   - Toggle "Use custom template"
-   - Paste the HTML content from the corresponding file
-   - Click "Save"
+## Deliverability
 
-### 4. Configure SMTP (Production)
+- Send from a verified domain with SPF, DKIM and DMARC; set `EMAIL_FROM` once the domain is verified in Resend.
+- Use custom SMTP (Resend) in Supabase Auth so auth emails come from the same domain.
+- Before switching, test in Gmail (web and iOS), Apple Mail and Outlook.
 
-For production, set up a custom SMTP provider:
-
-1. Go to **Project Settings** → **Auth** → **SMTP Settings**
-2. Enable "Custom SMTP"
-3. Enter your SMTP credentials (Resend, SendGrid, Postmark, etc.)
-
-**Recommended providers:**
-- [Resend](https://resend.com) - Developer-friendly, great deliverability
-- [Postmark](https://postmarkapp.com) - Transactional email specialist
-- [SendGrid](https://sendgrid.com) - High volume
-
-### 5. Test Emails
-
-1. Create a test account with a real email
-2. Check that emails arrive in inbox (not spam)
-3. Click links to verify they work correctly
-
-## Template Variables
-
-### confirm-signup.html
-- `{{ .ConfirmationURL }}` - Email confirmation link
-
-### magic-link.html
-- `{{ .ConfirmationURL }}` - Magic link sign-in URL
-
-### reset-password.html
-- `{{ .ConfirmationURL }}` - Password reset link
-- `{{ .Email }}` - User's email address
-
-### invite-member.html (Custom)
-- `{{ .InviteURL }}` - Invitation link
-- `{{ .BandName }}` - Name of the band
-- `{{ .BandInitials }}` - Band initials (e.g., "TC")
-- `{{ .InviterName }}` - Name of person who sent invite
-- `{{ .Role }}` - Invited member's role (e.g., "Guitarist")
-
-## Email Deliverability Tips
-
-1. **Verify your domain** - Set up SPF, DKIM, and DMARC records
-2. **Use a subdomain** - e.g., `mail.bandwith.app` instead of `bandwith.app`
-3. **Keep it simple** - Avoid spam trigger words
-4. **Test everywhere** - Gmail, Outlook, Apple Mail, Yahoo
-5. **Monitor reputation** - Use tools like Mail-Tester.com
-
-## Preview
-
-Open the HTML files in a browser to preview them locally.
+Previous versions are in git history. Local working copies may also keep them in `_legacy/` (not committed).

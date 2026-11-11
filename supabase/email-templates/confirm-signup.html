@@ -1,191 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirm your BandWith account</title>
-  <!--[if mso]>
-  <style type="text/css">
-    table, td {border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;}
-    .button-td { padding: 0 !important; }
-    .button-a { padding: 18px 48px !important; }
-  </style>
-  <![endif]-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Confirm your email</title>
+<style>
+:root { color-scheme: light only; supported-color-schemes: light only; }
+body { margin:0; padding:0; background:#E5E3E0; -webkit-text-size-adjust:100%; }
+a { text-decoration:none; }
+@media (max-width:600px) {
+  .bw-wrap { padding:12px 8px 24px 8px !important; }
+  .bw-hero { padding:28px 24px 30px 24px !important; border-radius:28px !important; }
+  .bw-card { padding:22px 24px !important; }
+  .bw-h1 { font-size:40px !important; line-height:38px !important; }
+  .bw-code { font-size:34px !important; letter-spacing:0.14em !important; }
+}
+@media (max-width:374px) {
+  .bw-h1 { font-size:33px !important; line-height:32px !important; }
+}
+</style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  
-  <!-- Wrapper Table -->
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #000000;">
-    <tr>
-      <td align="center" style="padding: 48px 24px;">
-        
-        <!-- Main Container -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px;">
-          
-          <!-- Logo -->
-          <tr>
-            <td align="center" style="padding: 0 0 48px;">
-              <!-- Replace with your hosted logo URL -->
-              <img src="https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/logo-white.png" 
-                   alt="BANDWITH" 
-                   width="180" 
-                   style="display: block; border: 0; max-width: 180px; height: auto;"
-              />
-            </td>
-          </tr>
-          
-          <!-- Main Card -->
-          <tr>
-            <td style="background-color: #0A0A0A; border-radius: 24px; border: 1px solid #1C1C1E;">
-              
-              <!-- Card Content -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                
-                <!-- Header -->
-                <tr>
-                  <td style="padding: 48px 40px 0;">
-                    <!-- Eyebrow -->
-                    <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #D4FB46;">
-                      Welcome
-                    </p>
-                    <!-- Main Headline -->
-                    <h1 style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; color: #FFFFFF; letter-spacing: -0.02em;">
-                      Confirm your<br>email address
-                    </h1>
-                  </td>
-                </tr>
-                
-                <!-- Body Text -->
-                <tr>
-                  <td style="padding: 24px 40px 0;">
-                    <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #71717A;">
-                      Thanks for joining BandWith. To get started managing your band like a pro, please confirm your email by clicking the button below.
-                    </p>
-                  </td>
-                </tr>
-                
-                <!-- CTA Button -->
-                <tr>
-                  <td style="padding: 32px 40px;" class="button-td">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td>
-                          <a href="{{ .ConfirmationURL }}" 
-                             class="button-a"
-                             style="display: block; padding: 18px 32px; background-color: #D4FB46; color: #000000; text-decoration: none; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; text-align: center; mso-padding-alt: 18px 32px;">
-                            Confirm Email
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                
-                <!-- Divider -->
-                <tr>
-                  <td style="padding: 0 40px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td style="border-top: 1px solid #1C1C1E; height: 1px; line-height: 1px; font-size: 1px;">&nbsp;</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                
-                <!-- What's Next Section -->
-                <tr>
-                  <td style="padding: 32px 40px;">
-                    <p style="margin: 0 0 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #52525B;">
-                      What's next
-                    </p>
-                    
-                    <!-- Steps -->
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <!-- Step 1 -->
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #1C1C1E;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                            <tr>
-                              <td width="40" style="vertical-align: top;">
-                                <div style="width: 28px; height: 28px; background-color: #D4FB46; border-radius: 8px; text-align: center; line-height: 28px; font-size: 13px; font-weight: 800; color: #000000;">1</div>
-                              </td>
-                              <td style="vertical-align: middle;">
-                                <p style="margin: 0; font-size: 15px; font-weight: 600; color: #FFFFFF;">Create your band profile</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                      <!-- Step 2 -->
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #1C1C1E;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                            <tr>
-                              <td width="40" style="vertical-align: top;">
-                                <div style="width: 28px; height: 28px; background-color: #1C1C1E; border-radius: 8px; text-align: center; line-height: 28px; font-size: 13px; font-weight: 800; color: #71717A;">2</div>
-                              </td>
-                              <td style="vertical-align: middle;">
-                                <p style="margin: 0; font-size: 15px; font-weight: 600; color: #FFFFFF;">Invite your band members</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                      <!-- Step 3 -->
-                      <tr>
-                        <td style="padding: 12px 0;">
-                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                            <tr>
-                              <td width="40" style="vertical-align: top;">
-                                <div style="width: 28px; height: 28px; background-color: #1C1C1E; border-radius: 8px; text-align: center; line-height: 28px; font-size: 13px; font-weight: 800; color: #71717A;">3</div>
-                              </td>
-                              <td style="vertical-align: middle;">
-                                <p style="margin: 0; font-size: 15px; font-weight: 600; color: #FFFFFF;">Start managing gigs & rehearsals</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                
-              </table>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 40px 20px 0;">
-              <!-- Alternative Link -->
-              <p style="margin: 0 0 16px; font-size: 12px; line-height: 1.5; color: #3F3F46; text-align: center;">
-                If the button doesn't work, copy this link:
-              </p>
-              <p style="margin: 0 0 32px; font-size: 11px; line-height: 1.5; color: #D4FB46; text-align: center; word-break: break-all;">
-                {{ .ConfirmationURL }}
-              </p>
-              
-              <!-- Support -->
-              <p style="margin: 0 0 8px; font-size: 12px; color: #52525B; text-align: center;">
-                Questions? Email us at
-                <a href="mailto:support@bandwith.app" style="color: #D4FB46; text-decoration: none;">support@bandwith.app</a>
-              </p>
-              
-              <!-- Legal -->
-              <p style="margin: 24px 0 0; font-size: 11px; color: #27272A; text-align: center; line-height: 1.6;">
-                © 2026 BandWith. All rights reserved.<br>
-                If you didn't create this account, you can safely ignore this email.
-              </p>
-            </td>
-          </tr>
-          
-        </table>
-        <!-- End Main Container -->
-        
-      </td>
-    </tr>
-  </table>
-  <!-- End Wrapper -->
-  
+<body style="margin:0;padding:0;background:#E5E3E0;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">One tap and your BandWith account is ready.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#E5E3E0;">
+<tr><td class="bw-wrap" align="center" style="padding:32px 12px 40px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr><td class="bw-hero" style="background:#D5FB46;border-radius:32px;padding:36px 36px 40px 36px;">
+<img src="https://elvlzpowkohjbhxjasvd.supabase.co/storage/v1/object/public/assets/logo-mono-black.png" width="172" height="20" alt="BandWith" style="display:block;width:172px;height:auto;border:0;">
+<div style="height:44px;line-height:44px;font-size:0;">&nbsp;</div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px 0;"><tr><td width="44" height="8" style="width:44px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="64" height="8" style="width:64px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="52" height="8" style="width:52px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="30" height="8" style="width:30px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td></tr></table><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px 0;"><tr><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="36" height="8" style="width:36px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="58" height="8" style="width:58px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="44" height="8" style="width:44px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="8" height="8" style="width:8px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td><td width="26" height="8" style="width:26px;height:8px;background:#000000;border-radius:8px;font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+<div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+<div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;text-transform:uppercase;color:#000000;font-weight:500;">Confirm your email</div>
+<div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+<h1 class="bw-h1" style="margin:0;font-family:'Neue Haas Grotesk Display Pro','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:52px;line-height:48px;font-weight:700;letter-spacing:-0.02em;word-spacing:0.06em;text-transform:uppercase;color:#000000;word-wrap:break-word;">One tap<br>and you&rsquo;re in.</h1>
+<div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+<p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:17px;line-height:24px;color:#000000;">Confirm this address to finish setting up BandWith &mdash; gigs, rehearsals and your whole band in one calendar.</p>
+<div style="height:32px;line-height:32px;font-size:0;">&nbsp;</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:#FFFFFF;border-radius:999px;">
+<a href="{{ .ConfirmationURL }}" target="_blank" style="display:block;padding:20px 26px;font-family:'Neue Haas Grotesk Display Pro','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;letter-spacing:0.01em;text-transform:uppercase;color:#000000;text-decoration:none;">
+<span style="float:right;font-size:20px;line-height:20px;">&#8599;&#xFE0E;</span>Confirm email</a>
+</td></tr></table>
+</td></tr><tr><td style="height:10px;line-height:10px;font-size:0;">&nbsp;</td></tr>
+<tr><td class="bw-card" style="background:#F2F0ED;border-radius:24px;padding:26px 30px;"><div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;text-transform:uppercase;color:#5C5B5A;font-weight:500;">Button not working?</div><p style="margin:8px 0 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#000000;">Paste this link into your browser:<br><a href="{{ .ConfirmationURL }}" style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:12px;line-height:18px;color:#000000;text-decoration:underline;word-break:break-all;">{{ .ConfirmationURL }}</a></p><div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div><div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;text-transform:uppercase;color:#5C5B5A;font-weight:500;">Not you?</div><p style="margin:8px 0 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#000000;">If you didn&rsquo;t sign up for BandWith, ignore this email. No account is created until the address is confirmed.</p></td></tr><tr><td style="padding:34px 30px 8px 30px;">
+<div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;text-transform:uppercase;color:#000000;font-weight:500;">BandWith &mdash; your music, your schedule, your way</div>
+<p style="margin:10px 0 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:19px;color:#5C5B5A;">You&rsquo;re getting this because someone signed up for BandWith with {{ .Email }}.</p>
+<p style="margin:10px 0 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:19px;color:#5C5B5A;">
+<a href="{{ .SiteURL }}/legal/privacy.html" style="color:#000000;text-decoration:underline;">Privacy</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="{{ .SiteURL }}/legal/terms.html" style="color:#000000;text-decoration:underline;">Terms</a></p>
+</td></tr>
+</table>
+</td></tr></table>
 </body>
 </html>
