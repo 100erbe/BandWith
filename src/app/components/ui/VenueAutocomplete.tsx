@@ -13,6 +13,10 @@ export interface VenueAutocompleteProps {
   disabled?: boolean;
   autoFocus?: boolean;
   required?: boolean;
+  /** Title of the suggestion list (default "Suggested venues"). */
+  heading?: string;
+  /** id for the input, so an external <label htmlFor> can point at it. */
+  inputId?: string;
 }
 
 export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
@@ -25,6 +29,8 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
   disabled = false,
   autoFocus = false,
   required = false,
+  heading = 'Suggested venues',
+  inputId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<VenuePlace[]>([]);
@@ -149,6 +155,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
       <div className="relative flex items-center">
         <input
           ref={inputRef}
+          id={inputId}
           type="text"
           value={value}
           onChange={handleInputChange}
@@ -185,7 +192,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
           className="absolute z-50 left-0 right-0 top-full mt-2 p-2 bg-sheet text-sheet-foreground rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)] max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="px-3 pt-2 pb-2 flex items-center justify-between gap-3">
-            <span className="bw-label-sm text-sheet-foreground/85">Suggested venues</span>
+            <span className="bw-label-sm text-sheet-foreground/85">{heading}</span>
             <span className="bw-label-xs text-sheet-foreground/60">
               {suggestions[0]?.provider === 'google' ? 'Google Places' : 'OpenStreetMap'}
             </span>
