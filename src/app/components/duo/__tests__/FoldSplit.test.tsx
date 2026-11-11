@@ -81,7 +81,10 @@ describe('Laptop pose modes render with real-shaped data and empty states', () =
     expect(onGig).toHaveBeenCalled();
     cleanup();
     render(<BandDeskMode nextGig={null} isAdmin={false} actionItems={[]} />);
-    expect(screen.getByText('No gigs coming up')).toBeInTheDocument();
+    expect(screen.getByText('Nothing coming up')).toBeInTheDocument();
+    cleanup();
+    render(<BandDeskMode nextGig={{ kind: 'rehearsal', title: 'Band practice', date: '2030-01-03' }} isAdmin actionItems={[]} />);
+    expect(screen.getByLabelText('Next rehearsal: Band practice')).toBeInTheDocument();
   });
 
   it('PlannerMode', () => {

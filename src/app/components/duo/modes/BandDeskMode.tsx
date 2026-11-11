@@ -9,12 +9,15 @@ import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel, daysFromToday, hhmm, relativeDays } from './shared';
 
 /**
- * Band desk (Home in Laptop pose). Display: the next gig as a poster.
+ * Band desk (Home in Laptop pose). Display: the next gig as a poster (the
+ * next rehearsal, in its own colour, when no gig is confirmed).
  * Deck: what needs doing, the create buttons and a compact tab bar.
  */
 
 export interface DeskGig {
   id?: string;
+  /** The poster shows the next gig; with none confirmed, the next rehearsal. */
+  kind?: 'gig' | 'rehearsal';
   title: string;
   /** YYYY-MM-DD */
   date: string;
@@ -77,8 +80,8 @@ const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boo
     return (
       <div className="bw-fold-pad min-h-full flex items-center">
         <ModeEmpty
-          title={loading ? 'Loading your next gig…' : 'No gigs coming up'}
-          detail={loading ? undefined : 'Your next confirmed gig shows here.'}
+          title={loading ? 'Loading your next gig…' : 'Nothing coming up'}
+          detail={loading ? undefined : 'Your next gig or rehearsal shows here.'}
         />
       </div>
     );
@@ -90,19 +93,20 @@ const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boo
     { label: 'Start', value: hhmm(gig.start) },
   ].filter((t) => !!t.value);
   const place = [gig.venue, gig.city].filter(Boolean).join(', ');
-  const fee = isAdmin && gig.fee !== null && gig.fee !== undefined && gig.fee !== '' ? money(gig.fee) : null;
+  const kind = gig.kind ?? 'gig';
+  const fee = kind === 'gig' && isAdmin && gig.fee !== null && gig.fee !== undefined && gig.fee !== '' ? money(gig.fee) : null;
 
   return (
     // Hero card, edge to edge (Figma: hero cards run to the Display's edges).
     <article
-      className="min-h-full flex flex-col"
-      style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
-      aria-label={`Next gig: ${gig.title}`}
+      className="bw-fold-hero min-h-full flex flex-col"
+      style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
+      aria-label={`Next ${kind}: ${gig.title}`}
     >
-      <div className="bw-fold-pad flex-1 flex flex-col gap-4 pt-4 pb-5">
+      <div className="bw-fold-pad flex-1 flex flex-col gap-4 pb-5">
         <p className="flex items-center gap-2 bw-label-sm uppercase">
-          <EventMark kind="gig" bare size={20} />
-          <span>Next gig{when ? ` · ${when}` : ''}</span>
+          <EventMark kind={kind} bare size={20} />
+          <span>Next {kind}{when ? ` · ${when}` : ''}</span>
         </p>
         <h1 className="bw-display-lg line-clamp-2 [overflow-wrap:anywhere]">{gig.title}</h1>
         <p className="bw-h3">

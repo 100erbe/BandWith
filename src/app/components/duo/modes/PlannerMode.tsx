@@ -137,22 +137,28 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
     { label: 'Free weekends', value: String(stats.freeWeekends) },
   ];
 
+  const weeks = cells.length / 7;
   const display = (
-    <div className="bw-fold-pad flex flex-col gap-3 pt-3 pb-4">
-      <div className="flex items-end justify-between gap-4">
-        <h1 className="bw-h1">{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h1>
-      </div>
-      <dl className="grid gap-3" style={{ gridTemplateColumns: `repeat(${counts.length}, minmax(0, 1fr))` }}>
+    // The whole month sits above the fold: compact counts under the title,
+    // and the weeks share the height that is left (Figma "Planner").
+    <div className="bw-fold-pad h-full min-h-fit flex flex-col gap-2 pt-3 pb-3">
+      <h1 className="bw-h1 truncate">{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h1>
+      <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         {counts.map((c) => (
-          <div key={c.label} className="flex flex-col gap-0.5 min-w-0">
-            <dt className="bw-label-sm uppercase text-muted-foreground truncate">{c.label}</dt>
-            <dd className="bw-value-md truncate">{c.value}</dd>
+          <div key={c.label} className="flex items-baseline gap-1.5 min-w-0">
+            <dd className="bw-h3 tabular-nums">{c.value}</dd>
+            <dt className="bw-label-sm uppercase text-muted-foreground">{c.label}</dt>
           </div>
         ))}
       </dl>
-      <div role="grid" aria-label="Month" className="grid grid-cols-7 gap-1">
+      <div
+        role="grid"
+        aria-label="Month"
+        className="flex-1 grid grid-cols-7 gap-x-1 gap-y-0.5"
+        style={{ gridTemplateRows: `auto repeat(${weeks}, minmax(28px, 1fr))` }}
+      >
         {WEEKDAYS.map((w) => (
-          <span key={w} role="columnheader" className="bw-label-xs uppercase text-muted-foreground text-center">
+          <span key={w} role="columnheader" className="bw-label-xs uppercase text-muted-foreground text-center pb-0.5">
             {w}
           </span>
         ))}
@@ -171,8 +177,8 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
               aria-label={`${dayLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}${list.length ? `, ${list.length} ${list.length === 1 ? 'event' : 'events'}` : ''}`}
               onClick={() => select(d)}
               className={cn(
-                'h-11 rounded-[12px] flex flex-col items-center justify-center gap-1 cursor-pointer',
-                isSel ? 'bg-surface-inverse text-surface-inverse-foreground' : isToday ? 'ring-[1.5px] ring-foreground' : '',
+                'h-full max-h-11 self-center rounded-[12px] flex flex-col items-center justify-center gap-0.5 cursor-pointer',
+                isSel ? 'bg-surface-inverse text-surface-inverse-foreground' : isToday ? 'ring-[1.5px] ring-inset ring-foreground' : '',
               )}
             >
               <span className="bw-label-md leading-none">{Number(d.slice(8, 10))}</span>
