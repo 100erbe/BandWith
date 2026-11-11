@@ -243,6 +243,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     }
     if (!isOpen) {
       setFilter('all');
+      // A row left swiped open closes with the inbox.
+      setOpenRowId(null);
+      setConfirmClear(false);
     }
   }, [isOpen, notification]);
 
