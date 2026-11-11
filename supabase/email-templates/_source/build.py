@@ -270,10 +270,10 @@ def member_joined(variant="lime"):
         "{{NewMemberName}} joined {{BandName}}",
         "{{NewMemberName}} just joined {{BandName}}.",
         [
-            hero(variant, "New member", "{{NewMemberName}}<br>is in.",
+            hero(variant, "New member", "{{HeroName}}<br>is in.",
                  "{{NewMemberName}} just joined {{BandName}}. They can now see your gigs, rehearsals and setlists.",
                  "Open BandWith", APP,
-                 details([("Band", "{{BandName}}"), ("New member", "{{NewMemberName}}"), ("Email", "{{NewMemberEmail}}")])),
+                 details([("Band", "{{BandName}}"), ("New member", "{{NewMemberName}}")])),
             info_card([
                 info_block("Need to change something?",
                            "You can update their role or remove them anytime from the band&rsquo;s member list in the app."),
@@ -308,7 +308,7 @@ def welcome(variant="lime"):
         "Welcome to BandWith",
         "Your music, your schedule, your way. Here&rsquo;s how to get going.",
         [
-            hero(variant, "Welcome, {{FirstName}}", "Your music.<br>Your schedule.<br>Your way.",
+            hero(variant, "Welcome{{NameSuffix}}", "Your music.<br>Your schedule.<br>Your way.",
                  "Your account is ready. Gigs, rehearsals, quotes and setlists now live in one calendar your whole band can see.",
                  "Open BandWith", APP,
                  chips(["Shared calendars", "Automated quotes", "Rehearsal costs", "Setlist builder"])),
@@ -439,7 +439,7 @@ def preview(html):
     for k, v in {"BandName": "The Night Shift", "InviterName": "Marco Rossi", "Role": "Drums",
                  "InviteURL": PUBLIC_URL + "/?invite=k3x9q2…", "AppURL": PUBLIC_URL,
                  "To": "alex@example.com", "ExpiresIn": "in 3 days", "ExpiresInLabel": "In 3 days",
-                 "NewMemberName": "Alex Bianchi", "FirstName": "Alex", "IssueLabel": "November 2026",
+                 "NewMemberName": "Alex Bianchi", "HeroName": "Alex Bianchi", "FirstName": "Alex", "NameSuffix": ", Alex", "IssueLabel": "November 2026",
                  "Preheader": "Setlists that time themselves, faster quotes and a calmer calendar.",
                  "Headline": "Setlists that<br>time themselves.",
                  "Intro": "This month: the setlist builder adds up your set length as you go, quotes go out faster, and the calendar got a little calmer.",

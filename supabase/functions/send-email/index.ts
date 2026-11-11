@@ -8,11 +8,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   activeBandIds,
   adminClient,
+  Caller,
   corsHeaders,
   HttpError,
   requireBandAdmin,
   requireCaller,
 } from "../_shared/auth.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EmailTemplateName, renderEmail } from "../_shared/email-templates.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -97,6 +99,87 @@ const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ── Database-triggered emails ───────────────────────────────────────────────
+// Triggers only send ids; everything shown in the email is looked up here.
+interface DispatchData {
+  userId?: string;
+  bandId?: string;
+  recipientId?: string;
+  memberUserId?: string;
+}
+
+async function authUser(admin: SupabaseClient, id: string | undefined) {
+  if (!id) return null;
+  const { data, error } = await admin.auth.admin.getUserById(id);
+  return error ? null : data.user;
+}
+
+async function profileOf(admin: SupabaseClient, id: string) {
+  const { data } = await admin
+    .from("profiles")
+    .select("full_name, notification_preferences")
+    .eq("id", id)
+    .maybeSingle();
+  return data as { full_name: string | null; notification_preferences: Record<string, unknown> | null } | null;
+}
+
+const metaName = (meta: Record<string, unknown> | undefined) =>
+  String(meta?.full_name ?? meta?.name ?? "").trim();
+
+/**
+ * The person's real name, or "" when there is none. Sign-up stores the part of
+ * the address before the @ as full_name when no name was given (002
+ * handle_new_user), so a "name" equal to that is not a name.
+ * Rule for every email: show the name; only without one, show the address.
+ */
+const realName = (candidates: (string | null | undefined)[], email: string | null | undefined): string => {
+  const local = (email ?? "").split("@")[0].trim().toLowerCase();
+  for (const c of candidates) {
+    const n = (c ?? "").trim();
+    if (n && n.toLowerCase() !== local && n.toLowerCase() !== (email ?? "").toLowerCase()) return n;
+  }
+  return "";
+};
+
+async function nameOf(admin: SupabaseClient, id: string, email: string | null | undefined, meta?: Record<string, unknown>) {
+  const profile = await profileOf(admin, id);
+  return { name: realName([profile?.full_name, metaName(meta)], email), profile };
+}
+
+async function resolveDispatch(
+  admin: SupabaseClient,
+  type: EmailType,
+  data: DispatchData,
+): Promise<EmailRequest["data"] | { skip: string }> {
+  if (type === "welcome") {
+    const user = await authUser(admin, data?.userId);
+    if (!user?.email) return { skip: "user has no email" };
+    const { name } = await nameOf(admin, user.id, user.email, user.user_metadata);
+    return { to: user.email, firstName: name.split(/\s+/)[0] };
+  }
+
+  if (type === "member_joined") {
+    const { bandId, recipientId, memberUserId } = data ?? {};
+    if (!bandId || !recipientId || !memberUserId) return { skip: "missing ids" };
+    try {
+      await requireBandAdmin(admin, recipientId, bandId); // admins only
+    } catch {
+      return { skip: "recipient is not an admin" };
+    }
+    const recipient = await authUser(admin, recipientId);
+    if (!recipient?.email) return { skip: "recipient has no email" };
+    const recipientProfile = await profileOf(admin, recipientId);
+    if (String(recipientProfile?.notification_preferences?.email) === "false") {
+      return { skip: "recipient turned email off" };
+    }
+    const member = await authUser(admin, memberUserId);
+    const { name: memberName } = await nameOf(admin, memberUserId, member?.email, member?.user_metadata);
+    return { to: recipient.email, bandId, newMemberName: memberName, newMemberEmail: member?.email ?? "" };
+  }
+
+  return { skip: "type cannot be sent by the database" };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -104,7 +187,18 @@ serve(async (req) => {
 
   try {
     const admin = adminClient();
-    const caller = await requireCaller(req, admin);
+
+    // Database triggers (migration 063) call with a DB-generated secret instead
+    // of a user token; the function asks the database whether it matches.
+    const dispatchSecret = req.headers.get("x-bw-dispatch-secret");
+    let caller: Caller;
+    if (dispatchSecret) {
+      const { data: ok, error } = await admin.rpc("bw_verify_email_dispatch_secret", { p_secret: dispatchSecret });
+      if (error || ok !== true) throw new HttpError(401, "Invalid dispatch secret");
+      caller = { kind: "service" };
+    } else {
+      caller = await requireCaller(req, admin);
+    }
 
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
@@ -115,9 +209,22 @@ serve(async (req) => {
       );
     }
 
-    const { type, data: rawData } = (await req.json()) as EmailRequest;
+    const { type, data: requestData } = (await req.json()) as EmailRequest;
     const template = TEMPLATE_FOR[type];
     if (!template) throw new HttpError(400, "Unsupported email type");
+
+    let rawData = requestData;
+    if (dispatchSecret) {
+      const resolved = await resolveDispatch(admin, type, requestData as unknown as DispatchData);
+      if ("skip" in resolved) {
+        console.log(`Skipped ${type} email: ${resolved.skip}`);
+        return new Response(
+          JSON.stringify({ success: true, skipped: resolved.skip }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      rawData = resolved;
+    }
 
     const to = typeof rawData?.to === "string" ? rawData.to.trim().toLowerCase() : "";
     if (!EMAIL_RE.test(to)) throw new HttpError(400, "Missing or invalid recipient email");
@@ -129,7 +236,9 @@ serve(async (req) => {
       if (caller.kind === "user" && (caller.email ?? "").toLowerCase() !== to) {
         throw new HttpError(403, "Welcome emails can only be sent to your own address");
       }
-      vars.FirstName = clean(rawData?.firstName, "there");
+      // Name first; without one, the address.
+      const firstName = clean(realName([rawData?.firstName], to)) || to;
+      vars.NameSuffix = `, ${firstName}`;
     } else {
       // Every band email: authorise against the band and use its real name.
       const bandId = rawData?.bandId;
@@ -148,7 +257,14 @@ serve(async (req) => {
       vars.Role = clean(rawData.role, "Musician");
 
       if (type === "onboarding_invite" || type === "onboarding_reminder") {
-        vars.InviterName = clean(rawData.inviterName, "Your bandmate");
+        // A signed-in admin is the inviter: read their name here rather than
+        // trusting the app, with the same name-or-address rule.
+        let inviter = clean(rawData.inviterName);
+        if (caller.kind === "user") {
+          const me = await authUser(admin, caller.id);
+          inviter = clean((await nameOf(admin, caller.id, me?.email, me?.user_metadata)).name) || clean(me?.email);
+        }
+        vars.InviterName = inviter || "Your bandmate";
         vars.InviteURL = safeLink(rawData.inviteUrl);
       }
       if (type === "onboarding_reminder") {
@@ -157,8 +273,12 @@ serve(async (req) => {
         vars.ExpiresInLabel = capitalise(expiresIn(days));
       }
       if (type === "member_joined") {
-        vars.NewMemberName = clean(rawData.newMemberName, "A new member");
-        vars.NewMemberEmail = clean(rawData.newMemberEmail);
+        // Name first; without one, the address. The big headline can't fit an
+        // address, so there it falls back to "A new member".
+        const name = clean(realName([rawData.newMemberName], rawData.newMemberEmail));
+        const email = clean(rawData.newMemberEmail);
+        vars.NewMemberName = name || email || "A new member";
+        vars.HeroName = name || "A new member";
       }
       if (type === "invite_expired") {
         vars.InviteeName = clean(rawData.inviteeName, "your invitee");
