@@ -45,7 +45,8 @@ export type InviteErrorCode =
   | 'invite_email_mismatch'
   | 'not_authenticated'
   | 'invalid_code'
-  | 'network';
+  | 'network'
+  | 'server';
 
 export class InviteError extends Error {
   constructor(public code: InviteErrorCode, message?: string) {
@@ -66,6 +67,8 @@ export function inviteErrorMessage(code: InviteErrorCode, email?: string): strin
       return `This invite was sent to a different email. Sign in with ${email || 'that email'} to join.`;
     case 'not_authenticated':
       return 'Sign in to join the band.';
+    case 'server':
+      return 'Something went wrong on our side. Try again in a moment.';
     default:
       return 'We couldn’t check the invite. Check your connection and try again.';
   }
@@ -79,8 +82,15 @@ function toInviteError(error: { message?: string } | null | undefined): InviteEr
     'invite_email_mismatch',
     'not_authenticated',
   ];
-  const code = known.find((c) => msg.includes(c)) ?? 'network';
-  return new InviteError(code);
+  const knownCode = known.find((c) => msg.includes(c));
+  if (knownCode) return new InviteError(knownCode);
+  // Only a failed request is a connection problem; a database error is not,
+  // and calling it one sent people checking their Wi-Fi for a server bug.
+  const offline =
+    (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+    /failed to fetch|load failed|network|timed? ?out|fetch/i.test(msg);
+  if (!offline) console.warn('[Invite] Unexpected server error:', msg);
+  return new InviteError(offline ? 'network' : 'server');
 }
 
 interface PreviewRow {
