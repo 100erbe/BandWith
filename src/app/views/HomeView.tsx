@@ -406,17 +406,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const deskNextGig = useMemo<DeskGig | null>(() => {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const gig = (dashboardData?.upcomingEvents || [])
+    const upcoming = (dashboardData?.upcomingEvents || [])
       .filter((e: any) => {
-        const type = (e.event_type || e.eventType || '').toLowerCase();
-        const s = (e.status || '').toLowerCase();
         const d = String(e.event_date || e.date || '').slice(0, 10);
-        return type !== 'rehearsal' && (s === 'confirmed' || s === 'completed') && !!d && d >= todayStr;
+        return !!d && d >= todayStr && (e.status || '').toLowerCase() !== 'cancelled';
       })
       .sort((a: any, b: any) =>
         String(a.event_date || a.date).slice(0, 10).localeCompare(String(b.event_date || b.date).slice(0, 10)) ||
         String(a.start_time || a.time || '').localeCompare(String(b.start_time || b.time || '')),
-      )[0];
+      );
+    const isRehearsal = (e: any) => (e.event_type || e.eventType || '').toLowerCase() === 'rehearsal';
+    // The next confirmed gig; with none, the next rehearsal (Figma "Band desk":
+    // the Display is never an empty grey page while something is planned).
+    const gig =
+      upcoming.find((e: any) => !isRehearsal(e) && ['confirmed', 'completed'].includes((e.status || '').toLowerCase())) ||
+      upcoming.find(isRehearsal);
     if (!gig) return null;
     const id = String(gig.eventId || gig.id);
     const lineup = (eventMembersMap?.[id] || [])
@@ -426,6 +430,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     const fee = Number(gig.fee);
     return {
       id,
+      kind: isRehearsal(gig) ? 'rehearsal' : 'gig',
       title: gig.title || APP_COPY.home.nextEvents.untitledEvent,
       date: String(gig.event_date || gig.date).slice(0, 10),
       venue: gig.venue_name || gig.venueName || (typeof gig.location === 'string' && gig.location !== 'TBD' ? gig.location : null) || null,

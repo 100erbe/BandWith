@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/app/components/ui/utils';
 import { usePosture } from '@/lib/posture';
@@ -46,24 +46,43 @@ export const FoldSplit: React.FC<FoldSplitProps> = ({
   zIndex,
 }) => {
   const { posture, fold } = usePosture();
-  if (posture !== 'tabletop' || !fold || fold.orientation !== 'horizontal') return null;
-  if (typeof document === 'undefined') return null;
+  const active = posture === 'tabletop' && !!fold && fold.orientation === 'horizontal';
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  // Mount next to the caller's own layers. iOS WebKit makes the app scroller
+  // (#root, -webkit-overflow-scrolling) its own stacking context, so a split
+  // on <body> would sit above every layer inside it: the Duo rail, sheets,
+  // event detail. Callers that already render at the top of the document
+  // (portals to <body>) keep the split there.
+  useLayoutEffect(() => {
+    if (!active) return;
+    const anchor = anchorRef.current;
+    const root = document.getElementById('root');
+    setHost(anchor && root && root.contains(anchor) ? root : document.body);
+  }, [active]);
+  if (!active || typeof document === 'undefined') return null;
   const stage = variant === 'stage';
-  return createPortal(
-    <div
-      className={cn('bw-fold-split', stage && 'bw-fold-split--stage dark', className)}
-      data-variant={variant}
-      style={zIndex !== undefined ? { zIndex } : undefined}
-    >
-      <section className="bw-fold-display" aria-label={displayLabel}>
-        {display}
-      </section>
-      <div className="bw-fold-band" aria-hidden="true" />
-      <section className="bw-fold-deck" aria-label={deckLabel}>
-        {deck}
-      </section>
-    </div>,
-    document.body,
+  return (
+    <>
+      <span ref={anchorRef} hidden />
+      {host &&
+        createPortal(
+          <div
+            className={cn('bw-fold-split', stage && 'bw-fold-split--stage dark', className)}
+            data-variant={variant}
+            style={zIndex !== undefined ? { zIndex } : undefined}
+          >
+            <section className="bw-fold-display" aria-label={displayLabel}>
+              {display}
+            </section>
+            <div className="bw-fold-band" aria-hidden="true" />
+            <section className="bw-fold-deck" aria-label={deckLabel}>
+              {deck}
+            </section>
+          </div>,
+          host,
+        )}
+    </>
   );
 };
 

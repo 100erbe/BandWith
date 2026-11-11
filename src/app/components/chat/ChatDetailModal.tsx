@@ -483,8 +483,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="bw-pane-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
+      className="bw-pane-detail bw-chat-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
     >
+      {/* Header and messages; in Laptop pose they fill the Display (index.css). */}
+      <div className="bw-chat-top flex-1 min-h-0 flex flex-col">
       {/* ── Header ── */}
       <div
         className="relative flex items-center gap-3 px-4 pb-3 bg-background shrink-0 bw-status-clear"
@@ -683,6 +685,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
           </div>
         )}
       </div>
+      </div>
+
+      {/* Laptop pose: the fold stays empty; the composer opens the Deck. */}
+      <div className="bw-chat-fold hidden" aria-hidden="true" />
 
       {/* ── Composer ── */}
       <div

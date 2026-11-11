@@ -209,6 +209,10 @@
   padding-right: 0 !important;
   padding-left: 0 !important;
 }
+/* Full-screen layers keep their bottom actions above the Deck bar. */
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-pane-detail {
+  padding-bottom: var(--content-bottom-clearance) !important;
+}
 :root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-rail-sheet,
 :root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-rail-clear {
   right: 0 !important;
@@ -261,6 +265,18 @@
   padding-bottom: var(--content-bottom-clearance) !important;
 }
 
+/* Chat in Laptop pose: header and messages on the Display, the composer at
+   the top of the Deck (the keyboard covers the rest, like a laptop's), the
+   bar on the Deck's bottom edge. Both halves give way if the keyboard leaves
+   too little room. */
+[data-bw-posture="tabletop"] .bw-chat-detail .bw-chat-top {
+  flex: 0 1 var(--bw-display-h);
+}
+[data-bw-posture="tabletop"] .bw-chat-detail .bw-chat-fold {
+  display: block;
+  flex: 0 1 calc(var(--bw-deck-top) - var(--bw-display-h));
+}
+
 /* FoldSplit (src/app/components/duo/FoldSplit.tsx). */
 .bw-fold-split {
   position: fixed;
@@ -298,6 +314,30 @@
 .bw-fold-display .bw-fold-pad {
   padding-left: max(20px, var(--bw-status-clear-left, 0px));
   padding-right: max(20px, var(--bw-status-clear-x, 0px));
+}
+/* Laptop pose on iPhone Duo: the clock is a block in the Display's top
+   corner (deviceRegions.ts sets data-bw-status-block). The Display starts at
+   the block's top and runs full width; only its first row clears the clock. */
+:root[data-bw-status-block] .bw-fold-display {
+  padding-top: var(--bw-display-top, var(--safe-top, 0px));
+}
+:root[data-bw-status-block] .bw-fold-display .bw-fold-pad {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+:root[data-bw-status-block]:not([data-bw-rail-edge="left"]) .bw-fold-display .bw-fold-pad > :first-child {
+  padding-inline-end: max(0px, calc(var(--bw-display-head-x, 0px) - 12px));
+}
+:root[data-bw-status-block][data-bw-rail-edge="left"] .bw-fold-display .bw-fold-pad > :first-child {
+  padding-inline-start: max(0px, calc(var(--bw-display-head-x, 0px) - 12px));
+}
+/* A hero card (BandDeskMode poster) bleeds to the top edge too; its text
+   keeps the Display's top inset. */
+:root .bw-fold-split .bw-fold-display:has(> .bw-fold-hero) {
+  padding-top: 0;
+}
+.bw-fold-display > .bw-fold-hero > .bw-fold-pad {
+  padding-top: calc(var(--bw-display-top, var(--safe-top, 0px)) + 16px);
 }
 /* The band at the fold stays empty and swallows taps. */
 .bw-fold-band {

@@ -152,6 +152,19 @@ export function installDuoLayout(): void {
       root.style.setProperty('--bw-pane-trailing-x', `${trailingX}px`);
       root.style.setProperty('--bw-pane-trailing-w', `${Math.max(0, vw - railRight - trailingX)}px`);
     }
+    // Laptop pose: the clock is a small block in the Display's top corner,
+    // not a full-height column. The Display then runs edge to edge from the
+    // block's top; only its first row steps aside for the clock.
+    const hfold = result.posture === 'tabletop' && result.fold?.orientation === 'horizontal' ? result.fold : null;
+    const block = !!s && !!hfold && !!railEdge && s.y + s.h <= hfold.y / 2;
+    root.toggleAttribute('data-bw-status-block', block);
+    if (block && s) {
+      root.style.setProperty('--bw-display-top', `${Math.max(8, Math.round(s.y))}px`);
+      root.style.setProperty('--bw-display-head-x', `${Math.round(railEdge === 'left' ? s.x + s.w : vw - s.x)}px`);
+    } else {
+      root.style.removeProperty('--bw-display-top');
+      root.style.removeProperty('--bw-display-head-x');
+    }
     updatePosture(result);
     window.dispatchEvent(new CustomEvent('bwlayout'));
   };
