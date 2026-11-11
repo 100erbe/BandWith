@@ -43,9 +43,13 @@
       * { -ms-overflow-style: none; scrollbar-width: none; }
       :root { color-scheme: light; }
       :root.dark { color-scheme: dark; }
+      /* No -webkit-overflow-scrolling here: iOS scrolls with momentum by
+         default, and that property turns #root into its own stacking
+         context, so layers portaled to <body> (quotes, pricing, sheets)
+         covered the iPhone Duo rail and its Back / Close. */
       #root {
         height: 100%; overflow-y: scroll; overflow-x: hidden;
-        -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;
+        overscroll-behavior-y: contain;
       }
       /* 16px stops iOS zooming on focus. The radius reset sits in the base
          layer so Tailwind's rounded-* utilities can still override it. */

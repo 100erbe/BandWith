@@ -3174,13 +3174,15 @@ export default function AuthenticatedApp() {
 
       <React.Suspense fallback={null}>
         <AnimatePresence>
+          {/* z-185 like the views inside: under the iPhone Duo rail (190),
+              where live mode puts its Exit. */}
           {rehearsalViewMode === "live" && expandedCard === "rehearsal" && (
-            <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+            <motion.div key="rehearsal-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[185]">
               <RehearsalLiveView onClose={() => setRehearsalViewMode("overview")} onFinish={() => setRehearsalViewMode("post")} />
             </motion.div>
           )}
           {rehearsalViewMode === "post" && expandedCard === "rehearsal" && (
-            <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200]">
+            <motion.div key="rehearsal-post" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[185]">
               <RehearsalPostView onClose={() => setRehearsalViewMode("overview")} />
             </motion.div>
           )}
@@ -3647,6 +3649,7 @@ export default function AuthenticatedApp() {
             event={selectedEvent}
             currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
+            onOpenBandSettings={isAdmin ? () => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); } : undefined}
             userResponse={selectedEventMembership?.status === "confirmed" ? "accepted" : selectedEventMembership?.status === "declined" ? "declined" : selectedEventMembership?.status === "maybe" ? "maybe" : selectedEventMembership?.status === "pending" ? "pending" : "accepted"}
             onAccept={handleEventAccept}
             onDecline={handleEventDecline}

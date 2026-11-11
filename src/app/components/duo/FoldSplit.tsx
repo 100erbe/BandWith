@@ -49,11 +49,10 @@ export const FoldSplit: React.FC<FoldSplitProps> = ({
   const active = posture === 'tabletop' && !!fold && fold.orientation === 'horizontal';
   const anchorRef = useRef<HTMLSpanElement>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
-  // Mount next to the caller's own layers. iOS WebKit makes the app scroller
-  // (#root, -webkit-overflow-scrolling) its own stacking context, so a split
-  // on <body> would sit above every layer inside it: the Duo rail, sheets,
-  // event detail. Callers that already render at the top of the document
-  // (portals to <body>) keep the split there.
+  // Mount next to the caller's own layers: inside #root for callers in the
+  // app tree, on <body> for callers already portaled there. (#root no longer
+  // sets -webkit-overflow-scrolling, which made it its own stacking context
+  // in iOS WebKit, so both hosts now stack by z-index alone.)
   useLayoutEffect(() => {
     if (!active) return;
     const anchor = anchorRef.current;
