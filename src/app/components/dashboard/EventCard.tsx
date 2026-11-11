@@ -38,7 +38,7 @@ export interface EventData {
   memberUserIds?: string[];
   memberFeeMap?: Record<string, string>;
   /** DB financial/contact fields (events table) */
-  paymentStatus?: 'pending' | 'partial' | 'paid';
+  paymentStatus?: 'pending' | 'partial' | 'paid' | 'tbd';
   depositAmount?: number;
   depositPaid?: boolean;
   dressCode?: string;

@@ -125,6 +125,15 @@
 [data-bw-rail-host] .bw-rail-clear {
   right: var(--bw-rail-w) !important;
 }
+/* The rail's column is also the system's safe area: a layer that already
+   stops at the rail must not pad that safe area again (expanded dashboard
+   cards lost another 84pt on the closed iPhone Duo). */
+[data-bw-rail-host][data-bw-rail-edge="right"] .bw-rail-clear.bw-safe-x {
+  padding-right: 0 !important;
+}
+[data-bw-rail-host][data-bw-rail-edge="left"] .bw-rail-clear.bw-safe-x {
+  padding-left: 0 !important;
+}
 [data-bw-rail-host][data-bw-two-pane] .bw-rail-sheet {
   left: var(--bw-pane-trailing-x) !important;
 }

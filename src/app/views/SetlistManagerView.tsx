@@ -17,7 +17,9 @@ import {
   CheckCircle2,
   FileText,
   Upload,
+  BookOpen,
 } from '@/app/components/icons';
+import { openLyrics } from '@/lib/lyrics';
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {
@@ -281,7 +283,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     // A recording (uploaded file, Drive or any audio link) plays in the app's
     // mini player; only Spotify / YouTube open outside.
     if (song.audio_url) {
-      void playTrack({ id: song.id, title: song.title, artist: song.artist }, song.audio_url);
+      void playTrack({ id: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics }, song.audio_url);
       return;
     }
     const opened = await openSongResource([
@@ -443,6 +445,37 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
     }
     setSetlistEditorLoading(false);
   }, []);
+
+  // Setlist → PDF (share sheet on phones, download on the web).
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const handleExportSetlistPdf = async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const [{ generateSetlistPdf }, { shareFile }] = await Promise.all([
+        import('@/lib/services/setlistPdf'),
+        import('@/lib/nativeFiles'),
+      ]);
+      const name = editingSetlistName.trim() || 'Setlist';
+      const { blob, fileName } = generateSetlistPdf({
+        name,
+        bandName: selectedBand?.name,
+        songs: editorRows.map(({ fullIndex, song }) => ({
+          title: song.title,
+          artist: song.artist,
+          key: song.key,
+          bpm: song.bpm,
+          durationSeconds: song.duration_seconds,
+          setNumber: editorSets[fullIndex] ?? 1,
+        })),
+      });
+      await shareFile(blob, fileName, { title: `${name} · setlist`, dialogTitle: 'Export setlist' });
+    } catch {
+      setEditorError('Could not export the setlist PDF. Try again.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const closeSetlistEditor = () => {
     setEditingSetlistId(null);
@@ -789,6 +822,9 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                             <RowMenu
                               items={[
                                 ...(canPlay ? [{ label: 'Play', icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
+                                ...(song.lyrics?.trim()
+                                  ? [{ label: 'Lyrics', icon: <BookOpen className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '' }); } }]
+                                  : []),
                                 ...(hasChart ? [{ label: 'Open chart', icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: 'Edit', icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
                                 ...(isAdmin && song.status !== 'ready'
@@ -932,7 +968,17 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                     overline={`Setlist · ${plural(editorSongs.length, 'song')}`}
                     title={editingSetlistName.trim() || 'Setlist'}
                     titleSize="h1"
-                    actions={<IconButton label="Delete setlist" icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />}
+                    actions={
+                      <div className="flex items-center gap-2">
+                        <IconButton
+                          label="Export setlist as PDF"
+                          icon={exportingPdf ? <Loader2 className="animate-spin" /> : <FileText />}
+                          onClick={handleExportSetlistPdf}
+                          disabled={exportingPdf || editorRows.length === 0}
+                        />
+                        <IconButton label="Delete setlist" icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />
+                      </div>
+                    }
                   />
 
                   <div className="px-4 pt-6 pb-8 flex flex-col gap-6 max-w-2xl mx-auto w-full">

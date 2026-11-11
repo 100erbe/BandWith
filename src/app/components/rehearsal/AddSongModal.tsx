@@ -11,6 +11,7 @@ import {
   Youtube,
   FileMusic,
   StickyNote,
+  BookOpen,
   Link as LinkIcon,
   Disc3,
 } from '@/app/components/icons';
@@ -86,6 +87,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [chartUrl, setChartUrl] = useState('');
   const [chordsUrl, setChordsUrl] = useState('');
   const [notes, setNotes] = useState('');
+  const [lyrics, setLyrics] = useState('');
   const [bpm, setBpm] = useState('');
   const [key, setKey] = useState('');
   // Duration as minutes + seconds (number pads have no ":").
@@ -115,6 +117,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setDurSec(d.sec);
     setYoutubeUrl(song.youtube_url || '');
     setNotes(song.notes || '');
+    setLyrics(song.lyrics || '');
     setGenres(parseGenres(song.genre));
     setExistingAudio(song.audio_url || undefined);
     setExistingChart(song.chart_url || undefined);
@@ -219,6 +222,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         chart_url: chartRef,
         youtube_url: youtube,
         notes: noteText || undefined,
+        // Editing to empty clears them.
+        lyrics: lyrics.trim() ? lyrics.replace(/\s+$/, '').slice(0, 20000) : isEdit ? '' : undefined,
         bpm: bpm ? parseInt(bpm) : undefined,
         key: key || undefined,
         duration_seconds: durationSeconds || undefined,
@@ -272,6 +277,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setChartUrl('');
     setChordsUrl('');
     setNotes('');
+    setLyrics('');
     setBpm('');
     setKey('');
     setDurMin('');
@@ -557,6 +563,21 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   rows={4}
                   className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[96px] resize-none"
                 />
+              </label>
+
+              <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
+                <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
+                  <BookOpen className="w-4 h-4" />
+                  Lyrics · text, Markdown or JSON
+                </span>
+                <textarea
+                  value={lyrics}
+                  onChange={(e) => setLyrics(e.target.value)}
+                  placeholder={'# Verse 1\nFirst line…\n\n[Chorus]\n…'}
+                  rows={6}
+                  className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[140px] resize-y font-mono text-[15px]"
+                />
+                <span className="bw-body-sm text-muted-foreground">Read them in the app from the song menu or the player.</span>
               </label>
 
               {error && <FormError>{error}</FormError>}

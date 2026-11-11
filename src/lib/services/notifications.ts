@@ -672,6 +672,10 @@ export const notifyEventMembersCreated = async (
     venue?: string;
     fee?: number;
     memberFees?: Record<string, number>;
+    /** The fee is still to be discussed ("Fee TBD"). */
+    feeTbd?: boolean;
+    /** Quote stage: asks for availability before the client confirms. */
+    tentative?: boolean;
   }
 ): Promise<{ error: Error | null }> => {
   try {
@@ -706,14 +710,20 @@ export const notifyEventMembersCreated = async (
     });
     
     // Build per-member notification body (shows their personal fee, not total)
+    const tentative = !!additionalData?.tentative;
     const buildBody = (userId: string) => {
-      let b = `${creatorName} scheduled "${eventTitle}" for ${formattedDate} at ${eventTime}.`;
+      let b = tentative
+        ? `${creatorName} is quoting "${eventTitle}" for ${formattedDate} at ${eventTime}. Not confirmed yet: the client hasn't accepted.`
+        : `${creatorName} scheduled "${eventTitle}" for ${formattedDate} at ${eventTime}.`;
       if (additionalData?.venue) b += ` @ ${additionalData.venue}`;
       const personalFee = additionalData?.memberFees?.[userId];
-      if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
+      if (additionalData?.feeTbd && eventType !== 'rehearsal') {
+        b += ' | Fee: to be discussed';
+      } else if (personalFee && personalFee > 0 && eventType !== 'rehearsal') {
         b += ` | Your fee: ${getActiveSymbol()}${personalFee.toLocaleString()}`;
       }
-      if (config.requiresRsvp) b += ' Confirm your availability.';
+      if (tentative) b += ' Are you available?';
+      else if (config.requiresRsvp) b += ' Confirm your availability.';
       return b;
     };
     
@@ -721,7 +731,7 @@ export const notifyEventMembersCreated = async (
     const notifications = userIds.map(userId => ({
       user_id: userId,
       type: 'event_invite' as NotificationType,
-      title: `New ${config.label}`,
+      title: tentative ? `Availability check: ${eventTitle}` : `New ${config.label}`,
       body: buildBody(userId),
       band_id: bandId,
       data: { 
@@ -735,7 +745,9 @@ export const notifyEventMembersCreated = async (
         venue: additionalData?.venue,
         fee: additionalData?.fee,
         member_fee: additionalData?.memberFees?.[userId] ?? undefined,
-        requires_rsvp: config.requiresRsvp,
+        requires_rsvp: tentative || config.requiresRsvp,
+        ...(tentative ? { tentative: true } : {}),
+        ...(additionalData?.feeTbd ? { fee_tbd: true } : {}),
       },
       primary_action: 'accept' as NotificationAction,
       secondary_action: 'decline' as NotificationAction,

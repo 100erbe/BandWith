@@ -33,7 +33,7 @@ export interface Event {
   currency?: string;
   deposit_amount?: number;
   deposit_paid?: boolean;
-  payment_status?: 'pending' | 'partial' | 'paid';
+  payment_status?: 'pending' | 'partial' | 'paid' | 'tbd';
   
   // Details
   dress_code?: string;

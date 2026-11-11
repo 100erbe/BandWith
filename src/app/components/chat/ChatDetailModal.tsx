@@ -28,6 +28,20 @@ import { markChatNotificationsAsRead } from '@/lib/services/notifications';
 import { setActiveChat } from '@/lib/services/activeChatTracker';
 import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
+import { Capacitor } from '@capacitor/core';
+
+/**
+ * Chat keyboard: it stays up while you read and tap around the chat. It
+ * closes with a swipe down on the messages (like iMessage), with Back on
+ * Android, or when you leave the chat.
+ */
+const hideChatKeyboard = () => {
+  const a = document.activeElement as HTMLElement | null;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) a.blur();
+  if (Capacitor.isNativePlatform()) {
+    import('@capacitor/keyboard').then(({ Keyboard }) => Keyboard.hide()).catch(() => {});
+  }
+};
 import { personName } from '@/lib/personName';
 
 interface ChatDetailModalProps {
@@ -89,6 +103,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const swipeStartY = useRef<number | null>(null);
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -484,7 +499,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
       className="bw-pane-detail bw-chat-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
-      data-keep-keyboard="android"
+      data-keep-keyboard=""
     >
       {/* Header and messages; in Laptop pose they fill the Display (index.css). */}
       <div className="bw-chat-top flex-1 min-h-0 flex flex-col">
@@ -570,8 +585,24 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         onConfirm={handleDeleteChat}
       />
 
-      {/* ── Messages ── */}
-      <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 bg-background">
+      {/* ── Messages ── (swipe down to hide the keyboard) */}
+      <div
+        className="flex-1 overflow-y-auto px-4 pt-2 pb-4 bg-background"
+        onTouchStart={(e) => {
+          swipeStartY.current = e.touches[0]?.clientY ?? null;
+        }}
+        onTouchMove={(e) => {
+          const y0 = swipeStartY.current;
+          const y = e.touches[0]?.clientY;
+          if (y0 != null && y != null && y - y0 > 36) {
+            swipeStartY.current = null;
+            hideChatKeyboard();
+          }
+        }}
+        onTouchEnd={() => {
+          swipeStartY.current = null;
+        }}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

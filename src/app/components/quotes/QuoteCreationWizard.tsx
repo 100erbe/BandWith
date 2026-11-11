@@ -380,7 +380,7 @@ const LedgerRow: React.FC<{ label: string; value: string; tone?: 'success' }> = 
 interface QuoteCreationWizardProps {
   onClose: () => void;
   /** `share`: the user tapped Share, open the PDF/share sheet after saving. */
-  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean }) => void;
+  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean; askAvailability?: boolean }) => void;
   initialEventId?: string;
   initialEventTitle?: string;
   initialClientName?: string;
@@ -447,6 +447,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   const isEditing = Boolean(initialData?.id || initialData?.quoteNumber);
+  // Ask the lineup for availability now (RSVP), before the client accepts.
+  const [askAvailability, setAskAvailability] = useState(false);
 
   // Accordion state for Edit mode (all 5 sections)
   const [expandedEditSections, setExpandedEditSections] = useState<Record<string, boolean>>({
@@ -1512,7 +1514,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       updatedAt: new Date().toISOString(),
       eventTitle: finalEventName,
     };
-    onCreate(quoteData, { share: sendImmediately });
+    onCreate(quoteData, { share: sendImmediately, askAvailability: !isEditing && askAvailability });
   };
 
   const activeCatalogServices = useMemo(
@@ -2705,6 +2707,31 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {renderReviewDrawer('billing', 'Billing, discounts, VAT & deposit', billingSummary, renderBillingControls())}
       {renderReviewDrawer('logistics', 'Production & travel', logisticsSummary, renderLogisticsAndCustomItemsControls())}
       {renderReviewDrawer('proposal_terms', 'Multi-option proposal & terms', proposalSummary, renderProposalAndTermsControls())}
+
+      {!isEditing && allMusicians.length > 0 && (
+        <section className="rounded-[16px] bg-card p-4 flex flex-col gap-3">
+          <div
+            onClick={() => setAskAvailability(v => !v)}
+            className="flex items-center justify-between gap-3 cursor-pointer"
+          >
+            <span className="flex flex-col gap-1 min-w-0">
+              <span className="bw-label-sm text-muted-foreground">Lineup availability</span>
+              <span className="bw-label-md">Ask the lineup now</span>
+            </span>
+            <Toggle
+              checked={askAvailability}
+              onCheckedChange={() => setAskAvailability(v => !v)}
+              onClick={e => e.stopPropagation()}
+              aria-label="Ask the lineup for availability now"
+            />
+          </div>
+          <span className="bw-body-sm text-muted-foreground">
+            {askAvailability
+              ? 'When you save, the musicians get an availability check (RSVP) for this date, marked as not confirmed yet.'
+              : 'Musicians are asked once the client accepts. Turn this on to check their availability now.'}
+          </span>
+        </section>
+      )}
     </div>
   );
 

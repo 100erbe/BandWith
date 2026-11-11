@@ -11,6 +11,8 @@ export interface PlayerTrack {
   id: string;
   title: string;
   artist?: string | null;
+  /** Shown in the lyrics reader from the mini player. */
+  lyrics?: string | null;
 }
 
 export interface PlayerState {

@@ -34,7 +34,8 @@ export interface EventItem {
   quoteId?: string;
   is_recurring?: boolean;
   recurrence_rule?: any;
-  paymentStatus?: 'pending' | 'partial' | 'paid';
+  /** 'tbd': the fee is still to be discussed (the date is confirmed anyway). */
+  paymentStatus?: 'pending' | 'partial' | 'paid' | 'tbd';
   depositAmount?: number;
   depositPaid?: boolean;
   dressCode?: string;

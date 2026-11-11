@@ -37,6 +37,7 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, money, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
 import type { RsvpStatus } from '@/app/components/notifications/EventRSVPSheet';
+import { AskDeputySheet } from '@/app/components/band/AskDeputySheet';
 import { KeyValueRow, LINK_CLASS, MemberRow, SectionTitle, type ResolvedMember } from '@/app/components/event/parts';
 import { useEventMembers } from '@/app/components/event/useEventMembers';
 import { useLinkedQuote, QuoteSummaryCard, QuoteLineItems, QuoteClientSection } from '@/app/components/event/QuoteSections';
@@ -262,6 +263,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
   const [activeSheet, setActiveSheet] = useState<ActiveSheetType>(null);
+  /** Member who declined, being replaced by a deputy ("Find a deputy"). */
+  const [deputyFor, setDeputyFor] = useState<ResolvedMember | null>(null);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [isShareQuoteOpen, setIsShareQuoteOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -389,6 +392,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   // Only real event_members rows: no invented "Member N" rows or even splits.
   const resolvedMembers: ResolvedMember[] = dbMembers || [];
+  // A member said no: the admin can ask one of the band's deputies instead.
+  const canFindDeputy = isAdmin && !isPast && !isRehearsal && !isPersonalGig && !!event.band_id;
   const activeMembers = resolvedMembers.filter((m) => m.status !== 'declined');
 
   const myResolvedFee = useMemo(() => {
@@ -600,7 +605,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   // ─── Money ───
   const bandFeeNum = parseAmount(event.price);
   const feeCardLabel = isAdmin ? 'Band fee' : 'Your fee';
-  const feeExactValue = isAdmin
+  // "Fee TBD": the date is confirmed, the money is still being agreed.
+  const feeTbd = event.paymentStatus === 'tbd';
+  const feeExactValue = feeTbd
+    ? 'TBD'
+    : isAdmin
     ? formatCurrencyExact(event.price)
     : myResolvedFee != null
       ? formatCurrencyExact(myResolvedFee)
@@ -989,6 +998,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       <DotText text={feeExactValue} size={32} label={feeExactValue} />
                     </div>
                     {isAdmin && depositDue && <Tag variant="accent">DEPOSIT DUE</Tag>}
+                    {feeTbd && <Tag variant="subtle">To be discussed</Tag>}
                   </div>
                   {isAdmin && (activeMembers.length > 0 || depositAmount > 0 || (myResolvedFee != null && myResolvedFee > 0)) && (
                     <div className="flex flex-col gap-3">
@@ -1025,7 +1035,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     <PaidToggleRow
                       key={event.eventId}
                       eventId={event.eventId}
-                      initial={event.paymentStatus}
+                      initial={event.paymentStatus === 'tbd' ? 'pending' : event.paymentStatus}
                       onSaved={onEventUpdated}
                     />
                   </div>
@@ -1588,6 +1598,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         {(isAdmin || m.userId === currentUserId) && m.fee > 0 && m.status !== 'declined' && (
                           <span className="bw-label-md shrink-0">{formatCurrencyExact(m.fee)}</span>
                         )}
+                        {canFindDeputy && m.status === 'declined' && (
+                          <PillButton size="sm" variant="white" fullWidth={false} className="shrink-0" onClick={() => setDeputyFor(m)}>
+                            Find a deputy
+                          </PillButton>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1714,6 +1729,29 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           </div>
         </BwSheet>
       </motion.div>
+
+      {canFindDeputy && (
+        <AskDeputySheet
+          open={!!deputyFor}
+          onClose={() => setDeputyFor(null)}
+          formatFee={(n) => formatCurrencyExact(n)}
+          member={
+            deputyFor && {
+              name: deputyFor.name,
+              role: deputyFor.role,
+              feeLabel: deputyFor.fee > 0 ? formatCurrencyExact(deputyFor.fee) : null,
+            }
+          }
+          ctx={{
+            bandId: event.band_id!,
+            bandName: bands.find((b) => b.id === event.band_id)?.name || event.band_name || selectedBand?.name || 'the band',
+            eventTitle: event.title,
+            dateLabel: heroDate ? heroDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'date to be confirmed',
+            timeLabel: event.time ? formatEventTime(event.time) : null,
+            venue: venueName !== 'TBD' ? venueName : null,
+          }}
+        />
+      )}
 
       <QuoteShareModal
         isOpen={isShareQuoteOpen}

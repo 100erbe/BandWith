@@ -319,7 +319,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       />
 
       <div
-        className="flex-1 flex flex-col gap-8 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
+        className="@container flex-1 flex flex-col gap-8 px-4 pt-2 max-w-[1100px] w-full mx-auto bg-background text-foreground"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
         onClick={() => setActiveChartId(null)}
       >
@@ -394,10 +394,10 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         </motion.section>
 
         {/* Quote list */}
-        <section className="flex flex-col gap-4">
-          <h2 className="bw-label-md text-foreground">All quotes</h2>
+        <section className="grid grid-cols-1 @min-[640px]:grid-cols-2 @min-[960px]:grid-cols-3 gap-4 items-stretch">
+          <h2 className="bw-label-md text-foreground col-span-full">All quotes</h2>
           {quotes.length === 0 ? (
-            <Card className="items-center text-center py-8 gap-1">
+            <Card className="col-span-full items-center text-center py-8 gap-1">
               <h3 className="bw-h3">No quotes yet</h3>
               <p className="bw-body-sm text-muted-foreground">Create your first quote to get started.</p>
             </Card>
@@ -414,7 +414,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.04 }}
                 className={
-                  'w-full rounded-[24px] p-4 flex flex-col gap-3 text-left active:scale-[0.99] transition-transform ' +
+                  'w-full h-full rounded-[24px] p-4 flex flex-col justify-between gap-3 text-left active:scale-[0.99] transition-transform ' +
                   (accepted ? 'bg-accent-quote text-accent-quote-foreground' : 'bg-card text-card-foreground')
                 }
               >

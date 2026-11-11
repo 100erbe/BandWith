@@ -51,6 +51,7 @@ import { syncAppBadge } from "@/lib/services/appBadge";
 import { ErrorState } from "@/app/components/ui/ErrorState";
 import { LeadingCompanionSlot } from "@/app/components/duo";
 import { MiniPlayer } from "@/app/components/ui/MiniPlayer";
+import { LyricsViewer } from "@/app/components/ui/LyricsViewer";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -237,9 +238,9 @@ export default function AuthenticatedApp() {
           (e) => {
             const t = e.target as HTMLElement;
             const a = document.activeElement as HTMLElement;
-            // Areas marked data-keep-keyboard (the chat composer) keep it up;
-            // "android" keeps it up across the whole area there, where the
-            // system Back closes it (iOS has no Back, so a tap elsewhere does).
+            // Areas marked data-keep-keyboard (the chat) keep it up: there it
+            // closes with a swipe down on the messages or Android Back.
+            // data-keep-keyboard="android" keeps it up on Android only.
             const keep = t.closest?.('[data-keep-keyboard]') as HTMLElement | null;
             if (keep && (keep.dataset.keepKeyboard !== 'android' || Capacitor.getPlatform() === 'android')) return;
             if (
@@ -2379,6 +2380,12 @@ export default function AuthenticatedApp() {
         venue_city: venueCity || null,
         client_name: clientName || null,
         fee: parseFloat(price) || 0,
+        // "Fee TBD" (wizard toggle): confirmed date, money still to agree.
+        ...(!isRehearsalWizard && data.feeTbd
+          ? { payment_status: 'tbd' }
+          : !isRehearsalWizard && data._wasFeeTbd
+            ? { payment_status: 'pending' }
+            : {}),
         notes: data.notes || null,
         indoor_outdoor: data.setting || null,
         is_recurring: isRehearsalWizard
@@ -2623,7 +2630,7 @@ export default function AuthenticatedApp() {
           if (addedOnEdit.length > 0 && user?.id) {
             try {
               const creatorName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Someone");
-              await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, fee: parseFloat(price) || undefined });
+              await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, fee: parseFloat(price) || undefined, feeTbd: !!data.feeTbd });
             } catch (err) { console.error("Notify error:", err); }
           }
           const memberFailed = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
@@ -2658,7 +2665,7 @@ export default function AuthenticatedApp() {
               const invitedIds = data.audienceIds?.length > 0 ? data.audienceIds : data.members?.map((m: any) => m.id) || [];
               const perMemberFees: Record<string, number> = {};
               (data.members || []).forEach((m: any) => { if (m.id && m.fee) perMemberFees[m.id] = parseFloat(m.fee) || 0; });
-              await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, fee: parseFloat(price) || undefined, memberFees: perMemberFees });
+              await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, fee: parseFloat(price) || undefined, memberFees: perMemberFees, feeTbd: !!data.feeTbd });
               const invitedCount = invitedIds.length > 0 ? invitedIds.filter((id: string) => id !== user.id).length : (realBand.member_count || 1) - 1;
               if (invitedCount > 0) await notifyEventPendingConfirmations(user.id, realBand.id, saved.id, title || "Event", eventType, invitedCount);
             } catch (err) { console.error("Notify error:", err); }
@@ -3485,6 +3492,29 @@ export default function AuthenticatedApp() {
                   setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}`, type: 'error' });
                 } else {
                   setSaveToast({ message: `Quote ${savedQuote.quote_number} saved`, type: 'success' });
+                  // Quote-stage RSVP: ask the lineup before the client confirms.
+                  if (opts?.askAvailability && createdEventId && user?.id) {
+                    const feeByUser: Record<string, number> = {};
+                    const invited = (Array.isArray(q.musicians) ? q.musicians : [])
+                      .map((m: any) => {
+                        const bm = realBand.members?.find((x: any) => x.id === m.id || x.user_id === m.id);
+                        const uid = bm?.user_id || m.user_id || null;
+                        if (uid) feeByUser[uid] = Number(m.rate || m.customFee || 0);
+                        return uid;
+                      })
+                      .filter((uid: string | null): uid is string => !!uid && uid !== user.id);
+                    if (invited.length > 0) {
+                      const creatorName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Someone");
+                      const { error: rsvpErr } = await notifyEventMembersCreated(
+                        realBand.id, createdEventId, q.eventName || q.clientName || 'Quote', q.eventDate || todayLocal(),
+                        q.eventTimeStart || '20:00', q.eventType || 'other', user.id, creatorName, invited,
+                        { venue: q.venueName, memberFees: feeByUser, tentative: true }
+                      );
+                      setSaveToast(rsvpErr
+                        ? { message: `Quote ${savedQuote.quote_number} saved, but the availability check wasn't sent.`, type: 'error' }
+                        : { message: `Quote ${savedQuote.quote_number} saved · availability asked to ${invited.length}`, type: 'success' });
+                    }
+                  }
                   if (wantsShare) {
                     setSharingQuote({ ...q, id: savedQuote.id, quoteNumber: savedQuote.quote_number, status: 'DRAFT' });
                   }
@@ -3843,6 +3873,7 @@ export default function AuthenticatedApp() {
 
       <LeadingCompanionSlot />
       <MiniPlayer />
+      <LyricsViewer />
       <AnimatePresence>
         {saveToast && (
           saveToast.minimal ? (

@@ -248,7 +248,15 @@ export const buildSeed = (): DemoDB => {
     { id: id(1900), user_id: IDS.me, path: 'creator', current_step: 6, completed_steps: ['account', 'profile', 'band', 'members', 'songs', 'done'], skipped_steps: [], checklist_dismissed: true, started_at: created, completed_at: created, duration_seconds: 240 },
   ];
 
+  // Fictional session players (no real people or numbers).
+  const band_deputies: Row[] = [
+    { id: id(2000), band_id: IDS.band, name: 'Sam Keller', instrument: 'Bass', phone: '+10000000001', email: 'sam@example.com', notes: 'Reads charts', default_fee: 180, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(2001), band_id: IDS.band, name: 'Noa Brandt', instrument: 'Drums', phone: '+10000000002', email: null, notes: null, default_fee: 200, created_by: IDS.me, created_at: created, updated_at: created },
+    { id: id(2002), band_id: IDS.band, name: 'Ivo Marsh', instrument: 'Keys', phone: null, email: 'ivo@example.com', notes: 'Own rig', default_fee: null, created_by: IDS.me, created_at: created, updated_at: created },
+  ];
+
   return {
+    band_deputies, event_drafts: [],
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
     rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,

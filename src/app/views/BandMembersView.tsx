@@ -31,6 +31,7 @@ import { DotText } from '@/app/components/bw';
 import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { personName } from '@/lib/personName';
+import { DeputiesSection } from '@/app/components/band/DeputiesSection';
 
 /** Small stat card (Figma: label + 24pt dot value). */
 const StatCard: React.FC<{ label: string; value: number; delay: number }> = ({ label, value, delay }) => (
@@ -449,6 +450,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             </ul>
           </>
         )}
+        {isAdmin && !loading && selectedBand?.id && <DeputiesSection bandId={selectedBand.id} bandName={selectedBand.name} />}
       </div>
 
       {/* Primary CTA (Figma Button, lime) */}

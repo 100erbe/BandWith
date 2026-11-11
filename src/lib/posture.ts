@@ -63,6 +63,8 @@ export const DUO_BOOK_MIN_W = 860;
 /** Anything else (tablets, foldables in a WebView): wide and tall enough for two panes. */
 export const BOOK_MIN_W = 900;
 export const BOOK_MIN_H = 600;
+/** Large tablets (iPad Pro, iPad Air 13") also split when held upright. */
+export const BOOK_PORTRAIT_MIN_W = 960;
 
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 const validRect = (r: Rect | null | undefined): r is Rect =>
@@ -112,7 +114,8 @@ export function computePosture(input: PostureInput): PostureResult {
 
   const landscape = vw > vh;
   const wideDuo = !!status && landscape && vw >= DUO_BOOK_MIN_W;
-  const wideOther = !status && landscape && vw >= BOOK_MIN_W && vh >= BOOK_MIN_H;
+  const wideOther =
+    !status && ((landscape && vw >= BOOK_MIN_W && vh >= BOOK_MIN_H) || (!landscape && vw >= BOOK_PORTRAIT_MIN_W));
   const win = input.window;
   const scr = input.screen;
   const isSplit =
