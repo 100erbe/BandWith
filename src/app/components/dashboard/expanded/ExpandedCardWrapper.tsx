@@ -87,7 +87,7 @@ export const ExpandedCardWrapper: React.FC<ExpandedCardWrapperProps> = ({
       
       {/* Content Container - fades in as card expands */}
       <motion.div
-        className="bw-rail-clear absolute inset-0 overflow-y-auto overflow-x-hidden flex flex-col"
+        className="bw-rail-clear bw-safe-x absolute inset-0 overflow-y-auto overflow-x-hidden flex flex-col"
         style={{ 
           willChange: 'opacity',
           paddingTop: 'var(--safe-top)',

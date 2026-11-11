@@ -148,6 +148,13 @@ describe('computePosture', () => {
     expect(computePosture({ viewport: { w: 915, h: 412 } }).detected).toBe(false);
   });
 
+  it('large tablet held upright gets the book split, a smaller one does not', () => {
+    expect(computePosture({ viewport: { w: 1024, h: 1366 } })).toMatchObject({ posture: 'book', twoPane: true });
+    expect(computePosture({ viewport: { w: 820, h: 1180 } })).toMatchObject({ posture: 'closed', twoPane: false });
+    // The Duo's Laptop pose is never mistaken for a tablet.
+    expect(computePosture({ viewport: { w: 669, h: 951 } }).twoPane).toBe(false);
+  });
+
   it('web: viewport segments give the book split and tabletop', () => {
     const book = computePosture({
       viewport: { w: 841, h: 701 },

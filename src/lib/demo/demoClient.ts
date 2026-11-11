@@ -36,6 +36,9 @@ const getDB = (): DemoDB => {
   if (raw) {
     try {
       db = JSON.parse(raw) as DemoDB;
+      // Tables added to the seed after this demo was saved start seeded.
+      const seed = buildSeed();
+      for (const t of Object.keys(seed)) if (!(t in db)) db[t] = seed[t];
       return db;
     } catch {
       /* corrupt: reseed */

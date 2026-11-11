@@ -962,7 +962,7 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
 /**
  * Packs an array of JPEG Data URLs into a standards-compliant multi-page PDF 1.4 Blob.
  */
-const buildPdfBlobFromJpegDataUrls = (jpegDataUrls: string[]): Blob => {
+export const buildPdfBlobFromJpegDataUrls = (jpegDataUrls: string[]): Blob => {
   const pageImages = jpegDataUrls.map((dataUrl) => {
     const base64 = dataUrl.split(',')[1] || '';
     const binary = atob(base64);

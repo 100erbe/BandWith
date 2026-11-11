@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Loader2, Music, Pause, Play, Square } from '@/app/components/icons';
+import { BookOpen, Loader2, Music, Pause, Play, Square } from '@/app/components/icons';
+import { openLyrics } from '@/lib/lyrics';
 import { IconButton } from '@/app/components/bw/Screen';
 import { openSongResource } from '@/lib/services/songFiles';
 import { seekTo, stopPlayer, togglePlay, usePlayer } from '@/lib/audioPlayer';
@@ -66,6 +67,17 @@ export const MiniPlayer: React.FC = () => {
                 disabled={busy || p.status === 'error'}
                 icon={busy ? <Loader2 className="animate-spin" /> : p.status === 'playing' ? <Pause /> : <Play />}
                 onClick={togglePlay}
+              />
+            )}
+            {p.track.lyrics?.trim() && (
+              <IconButton
+                label="Lyrics"
+                variant="sheet"
+                size="sm"
+                icon={<BookOpen />}
+                onClick={() =>
+                  openLyrics({ songId: p.track!.id, title: p.track!.title, artist: p.track!.artist, lyrics: p.track!.lyrics || '' })
+                }
               />
             )}
             <IconButton label="Stop" variant="sheet" size="sm" icon={<Square />} onClick={stopPlayer} />

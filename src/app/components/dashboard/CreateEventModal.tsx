@@ -139,6 +139,7 @@ interface CreateEventModalProps {
     loadInTime?: string;
     soundcheckTime?: string;
     eventType?: string;
+    paymentStatus?: string;
     members?: string[];
     memberUserIds?: string[];
     memberFeeMap?: Record<string, string>;
@@ -719,6 +720,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [notes, setNotes] = useState<string>(() => editingEvent?.notes || ds?.notes || '');
   // The extra band fee isn't stored on its own: the event fee is members +
   // extra, so when editing it is what the saved fee has beyond the members.
+  // "Fee TBD": confirm the date before the money is agreed (events.payment_status = 'tbd').
+  const wasFeeTbd = editingEvent?.paymentStatus === 'tbd';
+  const [feeTbd, setFeeTbd] = useState<boolean>(() => wasFeeTbd || !!ds?.feeTbd);
   const [extraBandFee, setExtraBandFee] = useState<string>(() => {
     if (!editingEvent) return ds?.extraBandFee ?? '';
     const total = parseFloat(String(editingEvent.price || '').replace(/[^0-9.]/g, '')) || 0;
@@ -848,7 +852,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       return {
         id: member?.user_id || id,
         memberId: id,
-        fee: memberFees[id] || '0',
+        fee: feeTbd ? '0' : memberFees[id] || '0',
         name: member?.name || 'Unknown',
         role: member?.role || 'Member',
       };
@@ -859,7 +863,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         ...details,
         title: fallbackTitle,
         time: details.startTime,
-        pay: String(grandTotalFee || details.pay || '0'),
+        pay: feeTbd ? '0' : String(grandTotalFee || details.pay || '0'),
       },
       eventType: (eventType || (modalCategory === 'quote' ? 'wedding' : 'club')) as EventType,
       _originalEventType: editingEvent?.eventType || eventType || 'club',
@@ -874,6 +878,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         : tasks,
       _originalTaskIds: originalTaskIds,
       notes,
+      feeTbd: modalCategory === 'gig' ? feeTbd : false,
+      _wasFeeTbd: wasFeeTbd,
       status: modalCategory === 'quote' ? 'tentative' : 'confirmed',
       ...(isEditing && editingEvent
         ? { _editing: true, _editingEventId: editingEvent.eventId, _editingLocalId: editingEvent.id }
@@ -899,6 +905,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     newTaskText,
     notes,
     extraBandFee,
+    feeTbd,
   };
   const typedSnapshot = JSON.stringify({
     eventType,
@@ -911,6 +918,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     newTaskText: newTaskText.trim(),
     notes: notes.trim(),
     extraBandFee,
+    feeTbd,
   });
   const baselineRef = useRef<string | null>(null);
   if (baselineRef.current === null) baselineRef.current = typedSnapshot;
@@ -1296,7 +1304,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         const isSelected = selectedMembers.includes(member.id);
         const isCurrentUser = member.id === currentUserMemberId;
         const isLocked = isSelected && isCurrentUser;
-        const showFee = isSelected && isAdmin;
+        const showFee = isSelected && isAdmin && !feeTbd;
 
         return (
           <div key={member.id} className="flex items-center gap-3 py-2 min-h-[57px]">
@@ -1344,6 +1352,21 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const renderExtraFee = () =>
     isAdmin && (
       <div className="flex flex-col gap-3">
+        {modalCategory === 'gig' && (
+          <Selector
+            selected={feeTbd}
+            onClick={() => setFeeTbd(v => !v)}
+            aria-pressed={feeTbd}
+          >
+            Fee to be discussed (TBD)
+          </Selector>
+        )}
+        {feeTbd && (
+          <span className="bw-body-sm text-muted-foreground">
+            The gig is confirmed on the calendar; set the fees once the deal is closed.
+          </span>
+        )}
+        {!feeTbd && <>
         <PillField
           label="Extra band fee / services"
           type="number"
@@ -1371,6 +1394,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             ))}
           </div>
         )}
+        </>}
       </div>
     );
 
