@@ -1,6 +1,7 @@
 import { Quote, QuotePackageOption } from '@/app/data/quotes';
 import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
+import { formatDistance } from '@/lib/units';
 import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
 import { ONLINE_DEPOSITS_ENABLED } from './pricing';
 
@@ -359,8 +360,9 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
 
   // Row 5+: Separate Travel / Accommodation / Meals Fees (when itemized)
   if (!quote.travelIncluded && (quote.travelFee || 0) > 0) {
+    // The quote keeps the one-way distance; the fee covers the round trip.
     const distNote = quote.travelDistanceKm
-      ? `${quote.travelDistanceKm} km roundtrip`
+      ? `${formatDistance(quote.travelDistanceKm * 2)} round trip`
       : 'Transport & mileage';
     drawServiceItem(
       'TRAVEL & LOGISTICS',

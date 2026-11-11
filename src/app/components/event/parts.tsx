@@ -59,8 +59,17 @@ export const MEMBER_STATUS: Record<ResolvedMember['status'], { label: string; co
   declined: { label: 'DECLINED', color: 'var(--destructive-solid)' },
 };
 
-export const MemberRow: React.FC<{ member: ResolvedMember }> = ({ member }) => {
-  const status = MEMBER_STATUS[member.status] || MEMBER_STATUS.pending;
+/** A quote's availability check: the answer is about the date only. */
+const AVAILABILITY_LABEL: Record<ResolvedMember['status'], string> = {
+  confirmed: 'FREE',
+  pending: 'NO ANSWER',
+  maybe: 'MAYBE',
+  declined: 'NOT FREE',
+};
+
+export const MemberRow: React.FC<{ member: ResolvedMember; availability?: boolean }> = ({ member, availability }) => {
+  const base = MEMBER_STATUS[member.status] || MEMBER_STATUS.pending;
+  const status = availability ? { ...base, label: AVAILABILITY_LABEL[member.status] || base.label } : base;
   const declined = member.status === 'declined';
   return (
     <span className="flex items-center gap-3 flex-1 min-w-0 w-full">

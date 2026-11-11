@@ -10,6 +10,7 @@ import {
 } from '@/app/components/icons';
 import { cn } from './utils';
 import { parseLocalDate } from '@/lib/dates';
+import { formatSpeed, useDistanceUnit } from '@/lib/units';
 
 export type WeatherCondition = 'sun' | 'cloud' | 'rain';
 
@@ -173,6 +174,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   textColor,
   className,
 }) => {
+  const distanceUnit = useDistanceUnit();
   const [state, setState] = useState<WidgetState>({ status: 'loading' });
 
   useEffect(() => {
@@ -296,7 +298,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
               <Droplet className="w-2.5 h-2.5 shrink-0" strokeWidth={1.5} />
               {state.data.precipitationProbability}%
               <Wind className="w-2.5 h-2.5 shrink-0 ml-1" strokeWidth={1.5} />
-              {state.data.windSpeed} km/h
+              {formatSpeed(state.data.windSpeed, distanceUnit)}
             </span>
           </div>
         </div>

@@ -25,6 +25,7 @@ import {
   Download,
   Smartphone,
   FileText,
+  Navigation,
 } from '@/app/components/icons';
 import { LegalSheet, type LegalDoc } from '@/app/components/legal/LegalSheet';
 import { deleteMyAccount } from '@/lib/services/account';
@@ -33,8 +34,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import { cn } from '@/app/components/ui/utils';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { usePosture, useLaptopPoseEnabled, setLaptopPoseEnabled } from '@/lib/posture';
+import { setDistanceUnit, useDistanceUnit } from '@/lib/units';
 
-type SettingsSection = 'notifications' | 'appearance' | 'privacy' | 'duo' | 'help' | 'about' | 'language';
+type SettingsSection = 'notifications' | 'appearance' | 'units' | 'privacy' | 'duo' | 'help' | 'about' | 'language';
 
 interface SettingsViewProps {
   onClose: () => void;
@@ -88,6 +90,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // status column); ordinary phones never see it.
   const { detected: postureDetected } = usePosture();
   const laptopPoseEnabled = useLaptopPoseEnabled();
+  const distanceUnit = useDistanceUnit();
 
   const SECTIONS: {
     id: SettingsSection;
@@ -98,6 +101,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }[] = [
     { id: 'notifications', label: 'Notifications', hint: 'Push and email', icon: Bell },
     { id: 'appearance', label: 'Appearance', hint: 'Light, dark or system', value: themeLabel, icon: Sun },
+    { id: 'units', label: 'Units', hint: 'Distances in km or miles', value: distanceUnit === 'mi' ? 'Miles' : 'Kilometres', icon: Navigation },
     { id: 'privacy', label: 'Privacy & account', hint: 'Gig privacy, export, delete account', icon: Lock },
     ...(postureDetected
       ? [{ id: 'duo' as const, label: 'iPhone Duo', hint: 'Laptop pose', value: laptopPoseEnabled ? 'On' : 'Off', icon: Smartphone }]
@@ -291,6 +295,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     switch (section) {
       case 'notifications': return 'Notifications';
       case 'appearance': return 'Appearance';
+      case 'units': return 'Units';
       case 'privacy': return 'Privacy & account';
       case 'duo': return 'iPhone Duo';
       case 'help': return 'Help & support';
@@ -412,6 +417,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </Selector>
         ))}
       </div>
+    </div>
+  );
+
+  const renderUnitsSection = () => (
+    <div className={cn(CARD, 'p-4 flex flex-col gap-3')}>
+      <span className="bw-label-sm text-muted-foreground">Distance</span>
+      <div role="group" aria-label="Distance unit" className="flex items-center gap-2">
+        {[
+          { id: 'km' as const, label: 'Kilometres' },
+          { id: 'mi' as const, label: 'Miles' },
+        ].map((u) => (
+          <Selector
+            key={u.id}
+            size="md"
+            selected={distanceUnit === u.id}
+            onClick={() => setDistanceUnit(u.id)}
+            className="flex-1 min-w-0 justify-center"
+          >
+            {u.label}
+          </Selector>
+        ))}
+      </div>
+      <p className="bw-body-sm text-muted-foreground">
+        Travel distances and rates in quotes and pricing, and wind speed in the weather. Saved quotes and prices don't change, only
+        how they're shown on this device.
+      </p>
     </div>
   );
 
@@ -557,6 +588,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {section === null && renderMenu()}
       {section === 'notifications' && renderNotificationsSection()}
       {section === 'appearance' && renderAppearanceSection()}
+      {section === 'units' && renderUnitsSection()}
       {section === 'privacy' && renderPrivacySection()}
       {section === 'duo' && renderDuoSection()}
       {section === 'help' && renderHelpSection()}

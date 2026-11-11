@@ -2,7 +2,7 @@ import { handleBackFromStack } from '@/lib/backStack';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { uuidToNumericId } from '@/lib/numericId';
 import { AnimatePresence, motion } from "motion/react";
-import { Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X } from '@/app/components/icons';
+import { Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X, XCircle, EyeOff } from '@/app/components/icons';
 import { cn } from "@/app/components/ui/utils";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
@@ -765,7 +765,18 @@ export default function AuthenticatedApp() {
     const matches = (e: EventData) => !q || e.title.toLowerCase().includes(q) || (e.location || '').toLowerCase().includes(q);
     const isQuoteDraft = (e: EventData) =>
       (!!e.quoteId && draftQuoteIds.has(e.quoteId)) || (!!e.eventId && draftQuoteIds.has(e.eventId));
-    const base: EventData[] = visuallyFilteredEvents.map((e) => (isQuoteDraft(e) ? { ...e, draftOf: 'quote' as const } : e));
+    // The quote's own status on its card (SENT, VIEWED…), same as its detail.
+    const quoteStatusOf = (e: EventData) => {
+      const q = (realQuotes || []).find(
+        (x) => (e.quoteId && x.id === e.quoteId) || (e.eventId && x.converted_to_event_id === e.eventId),
+      );
+      return q?.status ? String(q.status).toLowerCase() : undefined;
+    };
+    const base: EventData[] = visuallyFilteredEvents.map((e) => {
+      const qs = e.status === 'QUOTE' ? quoteStatusOf(e) : undefined;
+      const withStatus = qs ? { ...e, quoteStatus: qs } : e;
+      return isQuoteDraft(e) ? { ...withStatus, draftOf: 'quote' as const } : withStatus;
+    });
     if (wantDrafts) {
       const have = new Set(base.map((e) => e.eventId));
       events
@@ -808,7 +819,7 @@ export default function AuthenticatedApp() {
       })
       .filter(matches);
     return local.length ? [...base, ...local] : base;
-  }, [isAdmin, selectedBandPill, eventFilter, eventSearch, visuallyFilteredEvents, events, draftQuoteIds, myEventDrafts]);
+  }, [isAdmin, selectedBandPill, eventFilter, eventSearch, visuallyFilteredEvents, events, draftQuoteIds, myEventDrafts, realQuotes]);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const previewDraft = previewDraftId ? myEventDrafts.find((d) => d.id === previewDraftId) || null : null;
 
@@ -826,7 +837,89 @@ export default function AuthenticatedApp() {
   eventsRef.current = events;
   const handleEventCardClickRef = useRef<(event: EventData) => void>(() => {});
 
-  const [eventLoadError, setEventLoadError] = useState<{ id: string; message?: string } | null>(null);
+  /**
+   * An event a notification points at that isn't on the user's calendar:
+   * 'gone' (deleted / cancelled), 'hidden' (back to a quote, or declined),
+   * or 'error' (couldn't check: offline). Only 'error' offers Try again.
+   */
+  const [eventLoadError, setEventLoadError] = useState<
+    { id: string; kind: 'gone' | 'hidden' | 'error'; title?: string; message?: string } | null
+  >(null);
+  const missingCtxRef = useRef({ userId: user?.id, isAdminOfBand, eventMembersMap, bandLookup });
+  missingCtxRef.current = { userId: user?.id, isAdminOfBand, eventMembersMap, bandLookup };
+  /** Works out why an event isn't in the list, or opens it when it can. */
+  const explainMissingEvent = useCallback(async (eventDbId: string) => {
+    const { userId, isAdminOfBand: adminOf, eventMembersMap: membersMap, bandLookup: bands } = missingCtxRef.current;
+    const { data: row, error } = await supabase.from('events').select('*').eq('id', eventDbId).maybeSingle();
+    if (error) {
+      setEventLoadError({ id: eventDbId, kind: 'error', message: error.message });
+      return;
+    }
+    const dayOf = (d?: string | null) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+      return m
+        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+        : null;
+    };
+    if (!row) {
+      // Deleted: name it from the notifications the user got about it.
+      let info: Record<string, any> = {};
+      let cancelled = false;
+      if (userId) {
+        const { data: notes } = await supabase
+          .from('notifications')
+          .select('type, data')
+          .eq('user_id', userId)
+          .filter('data->>event_id', 'eq', eventDbId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        for (const n of notes || []) {
+          const d = (n.data || {}) as Record<string, any>;
+          if (n.type === 'event_cancelled' || d.deleted) cancelled = true;
+          info = { ...d, ...info, event_title: info.event_title || d.event_title, event_date: info.event_date || d.event_date };
+        }
+      }
+      const isRehearsal = info.event_type === 'rehearsal';
+      const what = isRehearsal ? 'rehearsal' : 'gig';
+      const name = info.event_title ? `“${info.event_title}”` : `This ${what}`;
+      const day = dayOf(info.event_date);
+      setEventLoadError({
+        id: eventDbId,
+        kind: 'gone',
+        title: cancelled ? `${isRehearsal ? 'Rehearsal' : 'Gig'} cancelled` : `${isRehearsal ? 'Rehearsal' : 'Event'} removed`,
+        message: `${name}${day ? ` on ${day}` : ''} was ${cancelled ? 'cancelled' : 'deleted'} by an admin, so it's no longer on the calendar. Nothing else to do.`,
+      });
+      return;
+    }
+    const s = String(row.status || '').toLowerCase();
+    const asQuote =
+      (row.quote_id || row.event_type === 'quote' || ['tentative', 'quoted', 'quote'].includes(s)) && s !== 'confirmed' && s !== 'completed';
+    const admin = adminOf(row.band_id);
+    const mine = userId ? (membersMap[row.id] || []).find((m) => m.userId === userId) : undefined;
+    if (!admin && row.band_id && asQuote) {
+      setEventLoadError({
+        id: eventDbId,
+        kind: 'hidden',
+        title: 'Not confirmed yet',
+        message: `“${row.title || 'This gig'}”${dayOf(row.event_date) ? ` on ${dayOf(row.event_date)}` : ''} went back to being a quote. It comes back to your calendar as soon as an admin confirms it as a gig.`,
+      });
+      return;
+    }
+    if (!admin && mine?.status === 'declined') {
+      setEventLoadError({
+        id: eventDbId,
+        kind: 'hidden',
+        title: "You can't make it",
+        message: `You declined “${row.title || 'this event'}”, so it's not on your calendar. Ask an admin if you'd like to join after all.`,
+      });
+      return;
+    }
+    // On the server but not in the list yet (another band, still loading): open it.
+    const item = eventToEventItem(row as Event);
+    item.band_id = row.band_id || undefined;
+    item.band_name = row.band_id ? bands[row.band_id] : 'Personal';
+    handleEventCardClickRef.current(item);
+  }, []);
   const navigateToEvent = useCallback(async (eventDbId: string) => {
     setActiveTab("Events");
     setEventLoadError(null);
@@ -838,17 +931,20 @@ export default function AuthenticatedApp() {
         try {
           await refetchEvents();
         } catch (err: any) {
-          setEventLoadError({ id: eventDbId, message: err?.message });
+          setEventLoadError({ id: eventDbId, kind: 'error', message: err?.message });
           return;
         }
         setTimeout(() => {
           const evRetry = eventsRef.current.find(e => e.eventId === eventDbId);
           if (evRetry) handleEventCardClickRef.current(evRetry);
-          else setEventLoadError({ id: eventDbId });
+          else
+            void explainMissingEvent(eventDbId).catch((err: any) =>
+              setEventLoadError({ id: eventDbId, kind: 'error', message: err?.message }),
+            );
         }, 500);
       }
     }, 200);
-  }, [refetchEvents]);
+  }, [refetchEvents, explainMissingEvent]);
 
   // ═══ Several bands: act in the band an item belongs to ═══
   // Viewing works from any band; changing something of another band asks to
@@ -2043,6 +2139,18 @@ export default function AuthenticatedApp() {
           .select('id');
         if (error) throw error;
         if (!deleted?.length) throw new Error('Only band admins can delete this event.');
+        // The quote that holds this date: deleting a quote deletes it too (no
+        // orphan draft left in Quotes); deleting a gig keeps the quote as a
+        // record but drops its link to the gone event.
+        const linkFilter = `converted_to_event_id.eq.${selectedEvent.eventId}${
+          selectedEvent.quoteId ? `,id.eq.${selectedEvent.quoteId}` : ''
+        }`;
+        if (String(selectedEvent.status).toUpperCase() === 'QUOTE') {
+          await supabase.from('quotes').delete().or(linkFilter);
+          refetchExpandedQuotes?.();
+        } else {
+          await supabase.from('quotes').update({ converted_to_event_id: null }).eq('converted_to_event_id', selectedEvent.eventId);
+        }
       }
       setSaveToast({ message: 'Event deleted', type: 'success' });
       refetchEvents();
@@ -2180,15 +2288,23 @@ export default function AuthenticatedApp() {
 
       if (eventErr) throw eventErr;
 
-      // Revert linked quote in quotes table
-      await supabase
+      // Revert the linked quote to where it was before the client's yes: a
+      // quote already sent (or opened) stays Sent / Viewed, only a quote never
+      // shared goes back to Draft.
+      const { data: linkedQuotes } = await supabase
         .from('quotes')
-        .update({
-          status: 'draft',
-          responded_at: null,
-          response_type: null,
-        })
+        .select('id, sent_at, viewed_at')
         .or(`converted_to_event_id.eq.${ev.eventId},id.eq.${ev.eventId}`);
+      for (const q of linkedQuotes || []) {
+        await supabase
+          .from('quotes')
+          .update({
+            status: q.viewed_at ? 'viewed' : q.sent_at ? 'sent' : 'draft',
+            responded_at: null,
+            response_type: null,
+          })
+          .eq('id', q.id);
+      }
 
       // Optimistically update the open detail modal so it transforms back into a quote
       setSelectedEvent(prev => {
@@ -2201,7 +2317,7 @@ export default function AuthenticatedApp() {
         };
       });
 
-      setSaveToast({ message: 'Reverted back to Quote', type: 'info' });
+      setSaveToast({ message: 'Back to a quote: confirm it as a gig again when the client says yes', type: 'info' });
 
       // If user was on Gigs filter, switch back to Quotes
       if (eventFilter === 'GIGS') {
@@ -3851,11 +3967,21 @@ export default function AuthenticatedApp() {
 
       {eventLoadError && (
         <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center px-6" style={{ paddingTop: 'var(--safe-top)' }}>
-          <ErrorState
-            body={eventLoadError.message || "This event may have been deleted, or you no longer have access to it."}
-            onRetry={() => { const id = eventLoadError.id; setEventLoadError(null); navigateToEvent(id); }}
-            onBack={() => setEventLoadError(null)}
-          />
+          {eventLoadError.kind === 'error' ? (
+            <ErrorState
+              body={eventLoadError.message || "Check your connection and try again."}
+              onRetry={() => { const id = eventLoadError.id; setEventLoadError(null); navigateToEvent(id); }}
+              onBack={() => setEventLoadError(null)}
+            />
+          ) : (
+            <ErrorState
+              title={eventLoadError.title}
+              body={eventLoadError.message}
+              icon={eventLoadError.kind === 'gone' ? <XCircle className="w-7 h-7" /> : <EyeOff className="w-7 h-7 text-foreground" />}
+              onBack={() => setEventLoadError(null)}
+              backLabel="OK"
+            />
+          )}
         </div>
       )}
 
