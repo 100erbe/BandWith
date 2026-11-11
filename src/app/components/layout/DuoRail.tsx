@@ -231,6 +231,10 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
           if (fieldOpen && !searchBtnRef.current?.contains(e.target as Node)) setFieldOpen(false);
         }}
       >
+        {/* Equal spacers keep the group centred as in Figma; their minimum heights
+            (deviceRegions) step it away from the clock / camera block, top or
+            bottom, only when the two would meet. */}
+        {!onDeck && <span aria-hidden style={{ flex: '1 1 0', minHeight: 'var(--bw-rail-clear-top, 0px)' }} />}
         <AnimatePresence initial={false}>
           {tabsVisible && (
             <motion.nav
@@ -338,6 +342,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
             </button>
           </motion.div>
         </AnimatePresence>
+        {!onDeck && <span aria-hidden style={{ flex: '1 1 0', minHeight: 'var(--bw-rail-clear-bottom, 0px)' }} />}
       </div>
 
       {/* Duo/Rail Search Field. Always mounted so the Search tap can focus it
