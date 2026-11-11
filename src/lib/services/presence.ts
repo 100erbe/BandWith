@@ -63,8 +63,10 @@ function onForeground() {
   const channel = presenceChannel;
   if (!userId || !channel) return;
 
-  if (!supabase.realtime.isConnected()) {
-    supabase.realtime.connect();
+  // The demo client has no realtime socket.
+  const realtime = (supabase as { realtime?: typeof supabase.realtime }).realtime;
+  if (realtime && !realtime.isConnected()) {
+    realtime.connect();
     return;
   }
   if (channel.state === 'joined') void track(channel, userId);

@@ -423,6 +423,21 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     },
   );
 
+  // iPhone Duo: the "…" menu (member rehearsal options) joins the rail's Side
+  // Actions like every other header action, instead of sitting by the camera.
+  const optionsMenuAvailable =
+    isRehearsal && !isAdmin && !isPersonalGig && !isPast && !!onDecline && userResponse !== 'declined';
+  const optionsInRail = useRailAction(
+    optionsMenuAvailable
+      ? () => {
+          haptic.tap();
+          setConfirmDrop(false);
+          setOptionsOpen(true);
+        }
+      : undefined,
+    { label: 'More options', icon: <MoreHorizontal />, pane: true },
+  );
+
   if (!isAdmin && !isPersonalGig && (eventType === 'quote' || userResponse === 'declined')) {
     return null;
   }
@@ -734,7 +749,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     <Play className="w-6 h-6" />
                   </button>
                 )}
-                {showOptionsMenu && (
+                {showOptionsMenu && !optionsInRail && (
                   <IconButton
                     label="More options"
                     icon={<MoreHorizontal />}
