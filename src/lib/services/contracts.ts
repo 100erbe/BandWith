@@ -46,7 +46,11 @@ export interface NewContractInput {
   /** "Valid until" (YYYY-MM-DD). */
   expiresOn?: string;
   content?: string;
+  /** Band event the document belongs to (optional). */
+  eventId?: string | null;
 }
+
+export type ContractEdits = Omit<NewContractInput, 'bandId'>;
 
 type Result<T> = { data: T | null; error: Error | null };
 
@@ -121,6 +125,7 @@ export async function createContract(input: NewContractInput): Promise<Result<Co
       event_date: blankToNull(input.eventDate),
       expires_at: blankToNull(input.expiresOn),
       content: blankToNull(input.content),
+      event_id: input.eventId || null,
     })
     .select()
     .single();
@@ -137,6 +142,85 @@ export async function updateContract(id: string, patch: Partial<Contract>): Prom
   if (!row) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
   return { data: row as Contract, error: null };
 }
+
+/** Saves the edit form; same checks as on creation. */
+export async function saveContractEdits(id: string, input: ContractEdits): Promise<Result<Contract>> {
+  const title = input.title.trim();
+  const clientName = input.clientName.trim();
+  if (!title || !clientName) return { data: null, error: new Error('Add a title and a client.') };
+  const email = blankToNull(input.clientEmail);
+  if (email && !isValidEmail(email)) return { data: null, error: new Error('Enter a valid client email.') };
+  return updateContract(id, {
+    type: input.type,
+    title,
+    client_name: clientName,
+    client_email: email,
+    event_name: blankToNull(input.eventName),
+    event_date: blankToNull(input.eventDate),
+    expires_at: blankToNull(input.expiresOn),
+    content: blankToNull(input.content),
+    event_id: input.eventId || null,
+  });
+}
+
+/** Upcoming band events a document can be linked to (gigs, no rehearsals). */
+export interface LinkableEvent {
+  id: string;
+  title: string;
+  event_date: string | null;
+  client_name: string | null;
+  client_email: string | null;
+  venue_name: string | null;
+}
+
+export async function listLinkableEvents(bandId: string, fromDate = todayLocal()): Promise<LinkableEvent[]> {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('id, title, event_date, client_name, client_email, venue_name, event_type')
+      .eq('band_id', bandId)
+      .gte('event_date', fromDate)
+      .order('event_date', { ascending: true })
+      .limit(20);
+    if (error || !data) return [];
+    return (data as any[])
+      .filter((e) => e.event_type !== 'rehearsal')
+      .slice(0, 12)
+      .map((e) => ({
+        id: e.id,
+        title: e.title || 'Untitled event',
+        event_date: e.event_date ?? null,
+        client_name: e.client_name ?? null,
+        client_email: e.client_email ?? null,
+        venue_name: e.venue_name ?? null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Starting text for "Notes & terms"; the band edits it to fit the gig. */
+export const STANDARD_TERMS: Record<ContractType, string> = {
+  contract: [
+    'Performance: the band performs live at the event on the date and times agreed.',
+    'Fee & payment: a deposit confirms the booking; the balance is due on the event date. The deposit is non-refundable if the client cancels.',
+    'Cancellation: if the client cancels less than 30 days before the event, the full fee is due.',
+    'Venue: the client provides safe access for load-in, a stage area, power near the stage and a secure place for equipment.',
+    'Hospitality: meals and soft drinks for the band and crew, plus parking for the band vehicles.',
+    'Breaks & overtime: sets include short breaks; extra time on the day is charged at the agreed rate.',
+    'Recordings: no professional audio or video recording without the band’s written consent.',
+    'Force majeure: neither party is liable for cancellations caused by events beyond their control.',
+  ].join('\n\n'),
+  rider: [
+    'Stage: minimum 6 × 4 m, level and covered if outdoors.',
+    'Power: two separate 16 A outlets on the stage, on a circuit not shared with catering or lighting.',
+    'Sound: PA suited to the room with monitor mixes for each musician, or time to set up the band’s own system.',
+    'Times: access for load-in and setup 2 hours before the start; soundcheck before guests arrive.',
+    'Backstage: a private, lockable room with mirror, seating and water.',
+    'Hospitality: meals and soft drinks for the band and crew.',
+    'Parking: spaces for the band vehicles close to the loading point.',
+  ].join('\n\n'),
+};
 
 export const markContractSent = (id: string, clientEmail?: string | null, now = new Date()) =>
   updateContract(id, {

@@ -1,5 +1,5 @@
 import { Quote, QuotePackageOption } from '@/app/data/quotes';
-import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER } from '@/lib/services/pricing';
+import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
 import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
 
@@ -560,9 +560,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   }
 
   // Optional Payment / Bank Details Block
-  const hasBankDetails = Boolean(
-    settings.bank_iban || settings.bank_account_holder || settings.bank_name
-  );
+  const hasBankDetails = hasBankAccount(settings);
   if (quote.showBankDetailsOnPdf !== false && hasBankDetails) {
     y += 52;
     ctx.fillStyle = '#f8fafc';
@@ -576,16 +574,13 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     ctx.fillStyle = '#334155';
     ctx.fillText('PAYMENT & BANK TRANSFER DETAILS', leftMargin + 24, y + 20);
 
-    const bankParts = [
-      settings.bank_account_holder ? `Beneficiary: ${settings.bank_account_holder}` : '',
-      settings.bank_iban ? `IBAN: ${settings.bank_iban}` : '',
-      settings.bank_bic_swift ? `BIC/SWIFT: ${settings.bank_bic_swift}` : '',
-      settings.bank_name ? `Bank: ${settings.bank_name}` : '',
-    ].filter(Boolean);
+    const bankParts = bankDetailParts(settings);
 
     ctx.font = '400 19px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#475569';
-    ctx.fillText(bankParts.join('   •   '), leftMargin + 24, y + 54);
+    // Two lines max, so longer US / international details still fit the box.
+    const bankLines = wrapTextLines(ctx, bankParts.join('   •   '), contentWidth - 48);
+    bankLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, leftMargin + 24, y + 54 + i * 28));
   }
 
   // Client Notes (if present)
@@ -910,7 +905,9 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   const contactLine = [
     settings.contact_email || quote.clientEmail || '',
     settings.website ? `Website: ${settings.website}` : '',
-    settings.bank_iban && quote.showBankDetailsOnPdf !== false ? `IBAN: ${settings.bank_iban}` : '',
+    hasBankAccount(settings) && quote.showBankDetailsOnPdf !== false
+      ? bankDetailParts(settings).find((p) => /^(IBAN|Account):/.test(p)) || ''
+      : '',
   ]
     .filter(Boolean)
     .join('          ');

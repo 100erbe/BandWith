@@ -18,6 +18,7 @@ describe('notificationTarget', () => {
     expect(notificationTarget('payment_received', {})).toEqual({ screen: 'finance' });
     expect(notificationTarget('invite_received', {})).toEqual({ screen: 'invites' });
     expect(notificationTarget('member_joined', {})).toEqual({ screen: 'bandMembers' });
+    expect(notificationTarget('song_added', {})).toEqual({ screen: 'repertoire' });
   });
 
   it('has no screen for someone removed from a band or unknown types', () => {

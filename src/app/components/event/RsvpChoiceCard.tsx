@@ -14,7 +14,8 @@ const toStatus: Record<RsvpAnswer, RsvpStatus | null> = {
 
 /**
  * Rehearsal RSVP card (Figma 22:895): always shown to invited members, the
- * current answer selected, GOING / MAYBE / CAN'T.
+ * current answer selected, GOING / MAYBE / CAN'T. Once answered it shrinks to
+ * one line ("Going ✓" + Change) so the event details move up.
  */
 export const RsvpChoiceCard: React.FC<{
   title: string;
@@ -27,6 +28,7 @@ export const RsvpChoiceCard: React.FC<{
 }> = ({ title, current, onChoose, allowMaybe, caption }) => {
   const [busy, setBusy] = useState<RsvpStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const selected = toStatus[current];
 
   const choose = async (status: RsvpStatus) => {
@@ -35,6 +37,7 @@ export const RsvpChoiceCard: React.FC<{
     setError(null);
     try {
       await onChoose(status);
+      setEditing(false);
     } catch (e: any) {
       setError(e?.message || 'Could not save your answer. Please try again.');
     } finally {
@@ -47,6 +50,30 @@ export const RsvpChoiceCard: React.FC<{
     ...(allowMaybe ? [{ value: 'maybe' as const, label: 'MAYBE' }] : []),
     { value: 'declined', label: "CAN'T" },
   ];
+
+  const answered = options.find((o) => o.value === selected);
+  if (answered && !editing && !busy && !error) {
+    const tone =
+      answered.value === 'confirmed' ? 'bg-success text-success-foreground'
+        : answered.value === 'declined' ? 'bg-destructive-solid text-white'
+          : 'bg-sheet-foreground/15 text-sheet-foreground';
+    return (
+      <section
+        className="dark bg-sheet text-sheet-foreground rounded-[16px] pl-5 pr-3 py-3 flex items-center gap-3"
+        aria-label="Your RSVP"
+      >
+        <span className="bw-label-sm shrink-0">Your RSVP</span>
+        <span className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full bw-button-sm ${tone}`}>
+          {answered.value === 'confirmed' && <Check className="w-4 h-4" aria-hidden />}
+          {answered.value === 'confirmed' ? 'Going' : answered.value === 'maybe' ? 'Maybe' : "Can't make it"}
+        </span>
+        <span className="flex-1" />
+        <PillButton variant="outline" size="sm" fullWidth={false} onClick={() => setEditing(true)}>
+          Change
+        </PillButton>
+      </section>
+    );
+  }
 
   return (
     <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">

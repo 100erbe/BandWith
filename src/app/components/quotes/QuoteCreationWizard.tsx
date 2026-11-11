@@ -63,6 +63,7 @@ import {
   type BandPricingSettings,
   type CustomService,
   type LineupPackagePreset,
+  maskedBankAccount,
 } from '@/lib/services/pricing';
 import { calculateTravelDistance, venueFields } from '@/lib/services/location';
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
@@ -1801,7 +1802,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           // never appends to a pre-filled value.
           setClientName(val);
         }}
-        placeholder="Paolo Rossi"
+        placeholder="Client full name"
         autoComplete="off"
       />
       <PillField
@@ -1853,7 +1854,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           icon={<Phone className="w-5 h-5" />}
           value={clientPhone}
           onChange={e => setClientPhone(e.target.value)}
-          placeholder="+39 333 1234567"
+          placeholder="Phone with country code"
           className="min-w-0"
         />
       </div>
@@ -2000,11 +2001,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   );
 
   // Shared Inner Controls for Drawer 1: Billing, Discounts, VAT & Deposit
-  const maskedIban = (() => {
-    const iban = (pricingSettings.bank_iban || '').replace(/\s+/g, '');
-    if (!iban) return null;
-    return iban.length > 8 ? `${iban.slice(0, 4)} ${iban.slice(4, 8)} •••• ${iban.slice(-4)}` : iban;
-  })();
+  const maskedIban = maskedBankAccount(pricingSettings);
 
   const renderBillingControls = () => (
     <div className="flex flex-col gap-4">
@@ -2136,7 +2133,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       </div>
       <span className="bw-body-sm text-muted-foreground -mt-2">Valid until {validUntilDate}</span>
 
-      {/* VAT exempt + show IBAN */}
+      {/* VAT exempt + show bank details */}
       <div className="flex flex-col gap-2">
         <div
           onClick={() => setVatExempt(!vatExempt)}
@@ -2153,14 +2150,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
         >
           <span className="flex flex-col gap-1 min-w-0">
-            <span className="bw-body-lg">Show IBAN on PDF</span>
-            <span className="bw-body-sm text-muted-foreground truncate">{maskedIban || 'Add your IBAN in pricing settings'}</span>
+            <span className="bw-body-lg">Show bank details on PDF</span>
+            <span className="bw-body-sm text-muted-foreground truncate">{maskedIban || 'Add your bank account in Branding & payment'}</span>
           </span>
           <Toggle
             checked={showBankDetailsOnPdf}
             onCheckedChange={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
             onClick={e => e.stopPropagation()}
-            aria-label="Show IBAN on PDF"
+            aria-label="Show bank details on PDF"
           />
         </div>
       </div>
@@ -2745,7 +2742,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               icon={<Phone className="w-5 h-5" />}
               value={clientPhone}
               onChange={e => setClientPhone(e.target.value)}
-              placeholder="+39 333 1234567"
+              placeholder="Phone with country code"
             />
           </div>
         </div>

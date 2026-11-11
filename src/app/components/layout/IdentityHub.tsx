@@ -28,6 +28,7 @@ import { DotText, Toggle } from '@/app/components/bw';
 import { HeaderAction, IconButton, Tag, ListRow } from '@/app/components/bw/Screen';
 import { useRailCover, useRailOwnsChrome } from '@/lib/railActions';
 import { PillButton, PillField } from '@/app/components/bw/Form';
+import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
 import { Band } from '@/app/data/bands';
 import { NotificationItem } from '@/app/data/notifications';
 import { useAuth } from '@/lib/AuthContext';
@@ -137,6 +138,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   const [editBandName, setEditBandName] = useState('');
   const [editBandDescription, setEditBandDescription] = useState('');
   const [editBandCity, setEditBandCity] = useState('');
+  // Coordinates of the picked suggestion (travel fees use them); null when typed by hand.
+  const [editBandCoords, setEditBandCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [editBandLogoUrl, setEditBandLogoUrl] = useState('');
   const [uploadingBandLogo, setUploadingBandLogo] = useState(false);
   const [savingBandDetails, setSavingBandDetails] = useState(false);
@@ -193,6 +196,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           band_id: activeBandDetails.id,
           band_logo_url: editBandLogoUrl || currentPricing.band_logo_url || '',
           band_origin_address: editBandCity.trim() || currentPricing.band_origin_address || '',
+          ...(editBandCoords
+            ? { band_origin_lat: editBandCoords.lat, band_origin_lng: editBandCoords.lng }
+            : {}),
         });
         await refreshBands();
         onBandUpdated?.();
@@ -618,14 +624,35 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                         placeholder="e.g. Bandazz"
                       />
 
-                      <PillField
-                        id="hub-band-city"
-                        label="Home base city"
-                        type="text"
-                        value={editBandCity}
-                        onChange={(e) => setEditBandCity(e.target.value)}
-                        placeholder="e.g. Milan, Italy"
-                      />
+                      {/* Home base city with place suggestions (same search as venues). */}
+                      <div className="flex flex-col gap-2 w-full">
+                        <label htmlFor="hub-band-city" className="bw-label-sm text-muted-foreground">
+                          Home base city
+                        </label>
+                        <div className="flex items-center gap-3 h-[52px] px-4 rounded-full border bg-field border-border text-foreground focus-within:border-2 focus-within:border-foreground">
+                          <VenueAutocomplete
+                            inputId="hub-band-city"
+                            value={editBandCity}
+                            onChange={(val) => {
+                              setEditBandCity(val);
+                              setEditBandCoords(null);
+                            }}
+                            onSelect={(place) => {
+                              setEditBandCity(
+                                [place.city || place.name, place.country].filter(Boolean).join(', ') || place.name,
+                              );
+                              setEditBandCoords(
+                                typeof place.latitude === 'number' && typeof place.longitude === 'number'
+                                  ? { lat: place.latitude, lng: place.longitude }
+                                  : null,
+                              );
+                            }}
+                            heading="Suggested places"
+                            placeholder="Start typing a city"
+                            className="text-[18px] font-medium normal-case"
+                          />
+                        </div>
+                      </div>
 
                       <PillField
                         id="hub-band-bio"
@@ -849,7 +876,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 <CurrencyIcon aria-hidden className="w-6 h-6 shrink-0" />
                 <span className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="bw-label-md">Pricing, fees & services</span>
-                  <span className="bw-body-sm">Logo, IBAN, musician fees & quote services</span>
+                  <span className="bw-body-sm">Logo, bank account, musician fees & quote services</span>
                 </span>
                 <ArrowUpRight aria-hidden className="w-5 h-5 shrink-0" />
               </button>

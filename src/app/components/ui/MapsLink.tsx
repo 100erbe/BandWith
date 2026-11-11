@@ -100,10 +100,18 @@ const ChooserSheet: React.FC<{ query: string }> = ({ query }) => {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 32, stiffness: 360 }}
-        className="bw-rail-sheet fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
+        // Swipe down to dismiss, like the system sheets.
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.7 }}
+        dragSnapToOrigin
+        onDragEnd={(_, info) => {
+          if (info.offset.y > 80 || info.velocity.y > 500) closeMaps();
+        }}
+        className="bw-rail-sheet touch-none fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
       >
-        <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
+        <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85 cursor-grab" aria-hidden />
         <div className="flex flex-col gap-1">
           <span className="bw-label-sm text-sheet-foreground/70">Open in Maps</span>
           <span className="flex items-start gap-2 bw-label-md [overflow-wrap:anywhere]">

@@ -12,10 +12,13 @@ import {
   ScrollText,
   FileSignature,
   RefreshCw,
+  Pencil,
+  Sparkles,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { todayLocal } from '@/lib/dates';
-import { shareFile, openExternal } from '@/lib/nativeFiles';
+import { shareFile, openExternal, saveFile } from '@/lib/nativeFiles';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import {
   STATUS_LABEL,
   buildContractPdf,
@@ -30,6 +33,10 @@ import {
   isRider,
   isValidEmail,
   listContracts,
+  listLinkableEvents,
+  saveContractEdits,
+  STANDARD_TERMS,
+  type LinkableEvent,
   mailtoUrl,
   markContractSent,
   markContractSigned,
@@ -113,8 +120,14 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
   const [formEventDate, setFormEventDate] = useState('');
   const [formValidUntil, setFormValidUntil] = useState('');
   const [formNotes, setFormNotes] = useState('');
+  const [formEventId, setFormEventId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** Set when the form edits an existing document. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [linkableEvents, setLinkableEvents] = useState<LinkableEvent[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<Contract | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Send to client sheet
   const [sendingId, setSendingId] = useState<string | null>(null);
@@ -138,8 +151,63 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setFormEventDate('');
     setFormValidUntil('');
     setFormNotes('');
+    setFormEventId(null);
+    setEditingId(null);
     setFormError(null);
   };
+
+  const openCreate = () => {
+    resetForm();
+    setShowCreateModal(true);
+  };
+
+  const openEdit = (contract: Contract) => {
+    setMenuOpenId(null);
+    setViewingId(null);
+    resetForm();
+    setEditingId(contract.id);
+    setFormType(isRider(contract) ? 'rider' : 'contract');
+    setFormTitle(contract.title);
+    setFormEventName(contract.event_name ?? '');
+    setFormClientName(contract.client_name ?? '');
+    setFormClientEmail(contract.client_email ?? '');
+    setFormEventDate(contract.event_date?.slice(0, 10) ?? '');
+    setFormValidUntil(contract.expires_at?.slice(0, 10) ?? '');
+    setFormNotes(contract.content ?? '');
+    setFormEventId(contract.event_id ?? null);
+    setShowCreateModal(true);
+  };
+
+  /** Picking a band event fills what the document needs from it. */
+  const linkEvent = (ev: LinkableEvent | null) => {
+    if (!ev) {
+      setFormEventId(null);
+      return;
+    }
+    setFormEventId(ev.id);
+    setFormEventName(ev.title);
+    if (ev.event_date) setFormEventDate(ev.event_date.slice(0, 10));
+    const client = ev.client_name || ev.venue_name;
+    if (client) setFormClientName(client);
+    if (ev.client_email) setFormClientEmail(ev.client_email);
+    if (!formTitle.trim()) setFormTitle(`${formType === 'rider' ? 'Technical rider' : 'Performance agreement'} · ${ev.title}`);
+  };
+
+  // Upcoming gigs to link, loaded when the form opens.
+  useEffect(() => {
+    if (!showCreateModal) return;
+    let alive = true;
+    listLinkableEvents(bandId).then((rows) => alive && setLinkableEvents(rows));
+    return () => {
+      alive = false;
+    };
+  }, [showCreateModal, bandId]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   const replaceContract = (row: Contract) => setContracts((prev) => prev.map((c) => (c.id === row.id ? row : c)));
 
@@ -149,8 +217,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     if (!formTitle.trim() || !formClientName.trim() || emailError || saving) return;
     setSaving(true);
     setFormError(null);
-    const { data, error } = await createContract({
-      bandId,
+    const fields = {
       type: formType,
       title: formTitle,
       clientName: formClientName,
@@ -159,13 +226,20 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       eventDate: formEventDate,
       expiresOn: formValidUntil,
       content: formNotes,
-    });
+      eventId: formEventId,
+    };
+    const { data, error } = editingId ? await saveContractEdits(editingId, fields) : await createContract({ bandId, ...fields });
     setSaving(false);
     if (error || !data) {
-      setFormError(error?.message || 'Could not create the document.');
+      setFormError(error?.message || (editingId ? 'Could not save the changes.' : 'Could not create the document.'));
       return;
     }
-    setContracts((prev) => [data, ...prev]);
+    if (editingId) {
+      replaceContract(data);
+      setNotice('Changes saved');
+    } else {
+      setContracts((prev) => [data, ...prev]);
+    }
     resetForm();
     setShowCreateModal(false);
   };
@@ -225,6 +299,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setActionError(null);
     const { error } = await deleteContract(contract.id);
     setBusy(null);
+    setPendingDelete(null);
     if (error) {
       setActionError(`Couldn't delete "${contract.title}". ${error.message}`);
       return;
@@ -246,7 +321,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setActionError(null);
     try {
       const blob = buildContractPdf(contract, { bandName });
-      await shareFile(blob, contractFileName(contract), { title: contract.title });
+      const { result, location } = await saveFile(blob, contractFileName(contract));
+      if (result === 'saved') setNotice(`PDF saved to ${location}`);
+      else if (result === 'downloaded') setNotice('PDF downloaded');
     } catch (err) {
       setActionError(`Couldn't export "${contract.title}". ${errorMessage(err)}`);
     } finally {
@@ -359,10 +436,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
             label="Create document"
             variant="filled"
             icon={<Plus />}
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
+            onClick={openCreate}
           />
         }
       />
@@ -389,6 +463,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
         )}
 
         {actionError && !viewingContract && <FormError>{actionError}</FormError>}
+        {notice && !viewingContract && (
+          <p role="status" className="bw-body-sm text-success">{notice}</p>
+        )}
 
         {/* Documents */}
         {loading ? (
@@ -419,10 +496,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               size="md"
               fullWidth={false}
               icon={<Plus className="w-4 h-4" />}
-              onClick={() => {
-                resetForm();
-                setShowCreateModal(true);
-              }}
+              onClick={openCreate}
             >
               Create first document
             </PillButton>
@@ -497,6 +571,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                           { label: 'Download PDF', icon: <Download className="w-4 h-4" />, run: () => handleDownloadPdf(contract) },
                           ...(contract.status !== 'signed'
                             ? [
+                                { label: 'Edit', icon: <Pencil className="w-4 h-4" />, run: () => openEdit(contract) },
                                 {
                                   label: contract.sent_at ? 'Resend to client' : 'Send to client',
                                   icon: <Send className="w-4 h-4" />,
@@ -505,7 +580,15 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                                 { label: 'Mark as signed', icon: <FileSignature className="w-4 h-4" />, run: () => handleMarkSigned(contract) },
                               ]
                             : []),
-                          { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDelete(contract), danger: true },
+                          {
+                            label: 'Delete',
+                            icon: <Trash2 className="w-4 h-4" />,
+                            run: () => {
+                              setMenuOpenId(null);
+                              setPendingDelete(contract);
+                            },
+                            danger: true,
+                          },
                         ].map((item) => (
                           <button
                             key={item.label}
@@ -544,8 +627,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
             <ScreenHeader
                 pane
               onBack={() => !saving && setShowCreateModal(false)}
-              overline="New document"
-              title={`Create ${formType === 'contract' ? 'contract' : 'rider'}`}
+              overline={editingId ? 'Edit document' : 'New document'}
+              title={editingId ? (formType === 'contract' ? 'Edit contract' : 'Edit rider') : `Create ${formType === 'contract' ? 'contract' : 'rider'}`}
               titleSize="h1"
             />
 
@@ -565,6 +648,29 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   </Selector>
                 </div>
               </fieldset>
+
+              {(linkableEvents.length > 0 || formEventId) && (
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="bw-label-sm text-muted-foreground mb-2">For a band event</legend>
+                  <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 [scrollbar-width:none]">
+                    <Selector size="md" selected={!formEventId} onClick={() => linkEvent(null)} className="shrink-0">
+                      None
+                    </Selector>
+                    {formEventId && !linkableEvents.some((e) => e.id === formEventId) && (
+                      <Selector size="md" selected className="shrink-0">
+                        {formEventName || 'Linked event'}
+                      </Selector>
+                    )}
+                    {linkableEvents.map((ev) => (
+                      <Selector key={ev.id} size="md" selected={formEventId === ev.id} onClick={() => linkEvent(ev)} className="shrink-0 max-w-[260px]">
+                        <span className="truncate">{ev.title}</span>
+                        {ev.event_date && <span className="opacity-60 shrink-0">{formatContractDate(ev.event_date)}</span>}
+                      </Selector>
+                    ))}
+                  </div>
+                  <p className="bw-body-sm text-muted-foreground">Fills in the event, date and client from the gig.</p>
+                </fieldset>
+              )}
 
               <PillField
                 label="Document title *"
@@ -601,15 +707,27 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="contract-notes" className="bw-label-sm text-muted-foreground">
-                  Additional notes & terms
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="contract-notes" className="bw-label-sm text-muted-foreground">
+                    {formType === 'rider' ? 'Requirements & notes' : 'Notes & terms'}
+                  </label>
+                  {!formNotes.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setFormNotes(STANDARD_TERMS[formType])}
+                      className="inline-flex items-center gap-1.5 h-9 bw-button-sm text-foreground"
+                    >
+                      <Sparkles className="w-4 h-4" aria-hidden />
+                      {formType === 'rider' ? 'Use standard rider' : 'Use standard terms'}
+                    </button>
+                  )}
+                </div>
                 <textarea
                   id="contract-notes"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="Technical specifications, load-in requirements, hospitality…"
-                  rows={5}
+                  rows={formNotes.length > 200 ? 12 : 5}
                   className="w-full px-4 py-3.5 rounded-[24px] bg-field border border-border bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-2 focus:border-foreground resize-none"
                 />
               </div>
@@ -623,7 +741,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   disabled={!formTitle.trim() || !formClientName.trim() || !!emailError}
                   icon={<FileText className="w-[18px] h-[18px]" />}
                 >
-                  Create {formType === 'contract' ? 'contract' : 'rider'}
+                  {editingId ? 'Save changes' : `Create ${formType === 'contract' ? 'contract' : 'rider'}`}
                 </PillButton>
               </div>
             </div>
@@ -658,16 +776,27 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                 )}
               </div>
               {viewingContract.status !== 'signed' && (
-                <PillButton
-                  variant="outline"
-                  className={SHEET_OUTLINE}
-                  icon={<FileSignature className="w-[18px] h-[18px]" />}
-                  loading={isBusy(viewingContract.id, 'sign')}
-                  disabled={!!busy}
-                  onClick={() => handleMarkSigned(viewingContract)}
-                >
-                  Mark as signed
-                </PillButton>
+                <div className="flex gap-2">
+                  <PillButton
+                    variant="outline"
+                    className={SHEET_OUTLINE}
+                    icon={<Pencil className="w-[18px] h-[18px]" />}
+                    disabled={!!busy}
+                    onClick={() => openEdit(viewingContract)}
+                  >
+                    Edit
+                  </PillButton>
+                  <PillButton
+                    variant="outline"
+                    className={SHEET_OUTLINE}
+                    icon={<FileSignature className="w-[18px] h-[18px]" />}
+                    loading={isBusy(viewingContract.id, 'sign')}
+                    disabled={!!busy}
+                    onClick={() => handleMarkSigned(viewingContract)}
+                  >
+                    Mark as signed
+                  </PillButton>
+                </div>
               )}
             </div>
           )
@@ -676,6 +805,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
         {viewingContract && (
           <div className="flex flex-col gap-2">
             {actionError && <FormError>{actionError}</FormError>}
+            {notice && <p role="status" className="bw-body-sm text-success">{notice}</p>}
             {viewingContract.event_name && <SheetInfo label="Event">{viewingContract.event_name}</SheetInfo>}
             <div className="grid grid-cols-2 gap-2">
               <SheetInfo label="Client" className="[&>div:last-child]:truncate">{viewingContract.client_name || '—'}</SheetInfo>
@@ -765,6 +895,15 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
           </div>
         )}
       </BwSheet>
+
+      <DeleteChatSheet
+        open={!!pendingDelete}
+        title={pendingDelete ? `Delete "${pendingDelete.title}"?` : undefined}
+        body="The document is removed for the whole band. Copies already sent to the client are not affected."
+        deleting={!!pendingDelete && isBusy(pendingDelete.id, 'delete')}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && handleDelete(pendingDelete)}
+      />
     </motion.div>
   );
 };

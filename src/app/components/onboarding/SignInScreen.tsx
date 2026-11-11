@@ -304,21 +304,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           }
         />
 
-        <div className="flex items-center justify-between -mx-3">
-          {canUseBiometric ? (
-            <PillButton
-              variant="ghost"
-              size="sm"
-              fullWidth={false}
-              onClick={() => handleBiometricLogin()}
-              disabled={loading}
-              icon={<BiometryIcon className="w-[14px] h-[14px]" strokeWidth={2} />}
-            >
-              Use {biometryName}
-            </PillButton>
-          ) : (
-            <span />
-          )}
+        <div className="flex items-center justify-end -mx-3">
           <PillButton variant="ghost" size="sm" fullWidth={false} onClick={onForgotPassword} className="text-muted-foreground">
             Forgot password?
           </PillButton>
@@ -332,6 +318,18 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         >
           Sign in
         </PillButton>
+
+        {/* Full-size biometric sign-in, as easy to hit as the main button. */}
+        {canUseBiometric && (
+          <PillButton
+            variant="outline"
+            onClick={() => handleBiometricLogin()}
+            disabled={loading}
+            icon={<BiometryIcon className="w-6 h-6" strokeWidth={1.75} />}
+          >
+            Use {biometryName}
+          </PillButton>
+        )}
 
         {onCreateAccount && (
           <p className="bw-body-sm text-muted-foreground">

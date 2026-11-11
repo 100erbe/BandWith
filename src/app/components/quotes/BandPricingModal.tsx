@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useSystemBack } from '@/lib/backStack';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check,
@@ -27,6 +29,8 @@ import type { PerformanceType } from '@/app/data/quotes';
 import {
   DEFAULT_BAND_PRICING,
   DEFAULT_QUOTE_DISCLAIMER,
+  bankRegionOf,
+  type BankRegion,
   WEDDING_SERVICE_PRESETS,
   CLUB_ROCK_SERVICE_PRESETS,
   CORPORATE_JAZZ_PRESETS,
@@ -424,6 +428,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
     return calculateTravelFeeFromSettings(80, sampleMusiciansCount, settings);
   }, [settings, sampleMusiciansCount]);
 
+  useSystemBack(isOpen, onClose);
+
   if (!isOpen) return null;
 
   if (!isAdmin) {
@@ -467,6 +473,8 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
     setSaving(false);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
+    // An open quote PDF preview re-renders with the new branding / bank details.
+    window.dispatchEvent(new CustomEvent('bw:band-pricing-saved'));
     if (onSaved) onSaved(saved);
   };
 
@@ -651,13 +659,15 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
       : `${sampleMusiciansCount} ${sampleMusiciansCount === 1 ? 'musician' : 'musicians'} · 80 km`;
   const sampleNet = `${currencySymbol}${sampleQuote.netTotal.toLocaleString()}`;
 
-  return (
+  // Portaled above everything (z-130), so it also opens on top of a quote
+  // detail / PDF sheet when reached from "Complete your band branding".
+  return createPortal(
     <motion.div
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
-      className="bw-pane-detail fixed inset-0 z-[110] bg-background text-foreground flex flex-col overflow-hidden"
+      className="bw-pane-detail fixed inset-0 z-[130] bg-background text-foreground flex flex-col overflow-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -1255,7 +1265,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                             band_origin_lng: place.longitude,
                           });
                         }}
-                        placeholder="Milan, Italy or rehearsal studio"
+                        placeholder="City or rehearsal studio"
                         className="border-0 pb-0 text-lg font-medium normal-case placeholder:text-muted-foreground/60"
                       />
                     </div>
@@ -1655,10 +1665,10 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 hint="Band name, tagline, logo and authorised signer shown in the app and on exported A4 quote PDFs."
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <PillField label="Band name" placeholder="The Midnight Quartet" value={bandName} onChange={(e) => setBandName(e.target.value)} />
+                  <PillField label="Band name" placeholder="Your band name" value={bandName} onChange={(e) => setBandName(e.target.value)} />
                   <PillField
                     label="Band bio / tagline"
-                    placeholder="5-piece soul & funk collective"
+                    placeholder="e.g. 5-piece soul & funk band"
                     value={bandDescription}
                     onChange={(e) => setBandDescription(e.target.value)}
                   />
@@ -1704,13 +1714,13 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <PillField
                     label="Signer full name"
-                    placeholder="Gabriel Rodriguez"
+                    placeholder="Full name"
                     value={settings.signer_name || ''}
                     onChange={(e) => setSettings({ ...settings, signer_name: e.target.value })}
                   />
                   <PillField
                     label="Signer role / title (optional)"
-                    placeholder="Musical director / bandleader"
+                    placeholder="e.g. Bandleader"
                     value={settings.signer_role || ''}
                     onChange={(e) => setSettings({ ...settings, signer_role: e.target.value })}
                   />
@@ -1799,38 +1809,88 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                 </Card>
               </Section>
 
-              <Section title="2. Payment & bank transfer" hint="Bank coordinates and payment terms printed on quotes when payment details are enabled.">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <PillField
-                    label="Account holder / beneficiary"
-                    placeholder="Luxe Music Production S.L."
-                    value={settings.bank_account_holder || ''}
-                    onChange={(e) => setSettings({ ...settings, bank_account_holder: e.target.value })}
-                  />
-                  <PillField
-                    label="IBAN"
-                    placeholder="IT60 X054 2811 1010 0000 0123 456"
-                    className="[&_input]:font-mono"
-                    value={settings.bank_iban || ''}
-                    onChange={(e) => setSettings({ ...settings, bank_iban: e.target.value })}
-                  />
-                  <PillField
-                    label="Bank name (optional)"
-                    placeholder="Intesa Sanpaolo / Revolut Business"
-                    value={settings.bank_name || ''}
-                    onChange={(e) => setSettings({ ...settings, bank_name: e.target.value })}
-                  />
-                  <PillField
-                    label="BIC / SWIFT (optional)"
-                    placeholder="BCITITMM"
-                    className="[&_input]:font-mono"
-                    value={settings.bank_bic_swift || ''}
-                    onChange={(e) => setSettings({ ...settings, bank_bic_swift: e.target.value })}
-                  />
-                </div>
+              <Section title="2. Payment & bank account" hint="Printed on quotes when bank details are enabled. Pick the format your bank uses.">
+                {(() => {
+                  const region = bankRegionOf(settings);
+                  const setRegion = (r: BankRegion) => setSettings({ ...settings, bank_region: r });
+                  return (
+                    <>
+                      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Bank account format">
+                        <Selector size="md" selected={region === 'eu'} onClick={() => setRegion('eu')}>
+                          Europe · IBAN
+                        </Selector>
+                        <Selector size="md" selected={region === 'us'} onClick={() => setRegion('us')}>
+                          USA · ABA routing
+                        </Selector>
+                        <Selector size="md" selected={region === 'other'} onClick={() => setRegion('other')}>
+                          Other · SWIFT
+                        </Selector>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <PillField
+                          label="Account holder"
+                          placeholder="Name on the bank account"
+                          autoComplete="off"
+                          value={settings.bank_account_holder || ''}
+                          onChange={(e) => setSettings({ ...settings, bank_account_holder: e.target.value })}
+                        />
+                        {region === 'eu' ? (
+                          <PillField
+                            label="IBAN"
+                            placeholder="Starts with the country code (ES, IT, DE…)"
+                            autoComplete="off"
+                            autoCapitalize="characters"
+                            className="[&_input]:font-mono [&_input::placeholder]:font-sans"
+                            value={settings.bank_iban || ''}
+                            onChange={(e) => setSettings({ ...settings, bank_iban: e.target.value.toUpperCase() })}
+                          />
+                        ) : (
+                          <PillField
+                            label="Account number"
+                            placeholder={region === 'us' ? 'Checking or savings account' : 'Bank account number'}
+                            autoComplete="off"
+                            inputMode={region === 'us' ? 'numeric' : undefined}
+                            className="[&_input]:font-mono [&_input::placeholder]:font-sans"
+                            value={settings.bank_account_number || ''}
+                            onChange={(e) => setSettings({ ...settings, bank_account_number: e.target.value })}
+                          />
+                        )}
+                        {region === 'us' && (
+                          <PillField
+                            label="Routing number (ABA)"
+                            placeholder="9 digits"
+                            autoComplete="off"
+                            inputMode="numeric"
+                            maxLength={9}
+                            className="[&_input]:font-mono [&_input::placeholder]:font-sans"
+                            value={settings.bank_routing_number || ''}
+                            onChange={(e) =>
+                              setSettings({ ...settings, bank_routing_number: e.target.value.replace(/\D/g, '').slice(0, 9) })
+                            }
+                          />
+                        )}
+                        <PillField
+                          label={region === 'eu' ? 'BIC (optional)' : region === 'us' ? 'SWIFT, for international wires (optional)' : 'SWIFT / BIC'}
+                          placeholder="8 or 11 characters"
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          className="[&_input]:font-mono [&_input::placeholder]:font-sans"
+                          value={settings.bank_bic_swift || ''}
+                          onChange={(e) => setSettings({ ...settings, bank_bic_swift: e.target.value.toUpperCase() })}
+                        />
+                        <PillField
+                          label="Bank name (optional)"
+                          placeholder="Your bank"
+                          value={settings.bank_name || ''}
+                          onChange={(e) => setSettings({ ...settings, bank_name: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
                 <PillField
-                  label="Default payment terms note"
-                  placeholder="30% deposit on booking; 70% balance on the event date"
+                  label="Default payment terms"
+                  placeholder="e.g. Deposit on booking, balance on the event date"
                   value={settings.default_payment_terms || ''}
                   onChange={(e) => setSettings({ ...settings, default_payment_terms: e.target.value })}
                 />
@@ -1848,25 +1908,25 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                   <PillField
                     label="Contact phone / WhatsApp"
                     type="tel"
-                    placeholder="+39 333 123 4567"
+                    placeholder="Phone with country code"
                     value={settings.contact_phone || ''}
                     onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })}
                   />
                   <PillField
                     label="Website / portfolio (optional)"
-                    placeholder="www.yourband.com"
+                    placeholder="yourband.com"
                     value={settings.website || ''}
                     onChange={(e) => setSettings({ ...settings, website: e.target.value })}
                   />
                   <PillField
                     label="Legal / company name (optional)"
-                    placeholder="Luxe Live Entertainment S.r.l."
+                    placeholder="Registered company name"
                     value={settings.legal_company_name || ''}
                     onChange={(e) => setSettings({ ...settings, legal_company_name: e.target.value })}
                   />
                   <PillField
                     label="Tax / VAT ID (optional)"
-                    placeholder="IT12345678901"
+                    placeholder="VAT number, EIN or tax ID"
                     value={settings.tax_vat_id || ''}
                     onChange={(e) => setSettings({ ...settings, tax_vat_id: e.target.value })}
                   />
@@ -1922,6 +1982,7 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
           </PillButton>
         </div>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 };

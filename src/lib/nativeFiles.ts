@@ -82,6 +82,39 @@ export const shareFile = async (
   return 'downloaded';
 };
 
+/**
+ * Saves a generated file on the device (the "Download" action, distinct from Share).
+ * - iOS: app Documents folder, visible in Files › On My iPhone › BandWith.
+ * - Android: the public Documents/BandWith folder.
+ * - Web: a normal browser download.
+ * Resolves where it went; falls back to the share sheet if the write fails.
+ */
+export const saveFile = async (
+  blob: Blob,
+  fileName: string
+): Promise<{ result: 'saved' | 'downloaded' | FileShareResult; location?: string }> => {
+  const name = safeName(fileName);
+  if (!Capacitor.isNativePlatform()) {
+    downloadBlobOnWeb(blob, name);
+    return { result: 'downloaded' };
+  }
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
+  const data = await blobToBase64(blob);
+  const isIOS = Capacitor.getPlatform() === 'ios';
+  try {
+    await Filesystem.writeFile({
+      path: isIOS ? name : `BandWith/${name}`,
+      data,
+      directory: Directory.Documents,
+      recursive: true,
+    });
+    return { result: 'saved', location: isIOS ? 'Files › BandWith' : 'Documents › BandWith' };
+  } catch (err) {
+    console.warn('[nativeFiles] Save failed, falling back to the share sheet:', err);
+    return { result: await shareFile(blob, name, { dialogTitle: 'Save PDF' }) };
+  }
+};
+
 /** Opens an external URL (wa.me, mailto:, https) outside the app on native. */
 export const openExternal = async (url: string) => {
   if (Capacitor.isNativePlatform()) {

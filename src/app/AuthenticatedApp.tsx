@@ -1,7 +1,8 @@
+import { handleBackFromStack } from '@/lib/backStack';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { uuidToNumericId } from '@/lib/numericId';
 import { AnimatePresence, motion } from "motion/react";
-import { Play, LogOut, Truck, Volume2, Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X } from '@/app/components/icons';
+import { Loader2, MessageSquare, Music, ChevronLeft, Plus, CheckCircle2, AlertCircle, Info, X } from '@/app/components/icons';
 import { cn } from "@/app/components/ui/utils";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
@@ -132,6 +133,7 @@ import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 import { personName, personFirstName, personInitials } from "@/lib/personName";
+import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -837,6 +839,8 @@ export default function AuthenticatedApp() {
         window.dispatchEvent(new CustomEvent("bw:refresh-invites"));
       } else if (d.screen === "bandMembers") {
         setShowBandMembers(true);
+      } else if (d.screen === "repertoire") {
+        setShowSetlistManager(true);
       } else if (d.screen === "home") setActiveTab("Home");
     };
     window.addEventListener("push-navigate", handler);
@@ -1060,28 +1064,6 @@ export default function AuthenticatedApp() {
       });
     }
   }, [realNotifications, unreadCount, refetchNotifications]);
-
-  const [rehearsalDetails, setRehearsalDetails] = useState<{ [key: number]: any }>({
-    105: {
-      setlist: [
-        { id: "s1", title: "Giant Steps", key: "Eb", bpm: 280, duration: "4:30" },
-        { id: "s2", title: "Nardis", key: "Em", bpm: 140, duration: "6:15" },
-        { id: "s3", title: "So What", key: "Dm", bpm: 135, duration: "9:00" },
-        { id: "s4", title: "Spain", key: "Bm", bpm: 110, duration: "5:45" },
-      ],
-      tasks: [
-        { label: "Bring Chart for 'Spain'", assigned: "You", done: false },
-        { label: "Confirm Drum Kit", assigned: "Marco", done: true },
-        { label: "Send Setlist PDF", assigned: "Gianluca", done: true },
-      ],
-      timeline: [
-        { time: "19:00", label: "In", icon: Truck },
-        { time: "19:30", label: "Sound", icon: Volume2 },
-        { time: "20:00", label: "Start", icon: Play, active: true },
-        { time: "22:00", label: "End", icon: LogOut },
-      ],
-    },
-  });
 
   // Computed values
   const notificationGroups = useMemo(() => {
@@ -1322,7 +1304,6 @@ export default function AuthenticatedApp() {
   }, [events, eventMembersMap, user?.id, realBand?.id, isAdminOfBand]);
 
   const currentRehearsal = upcomingRehearsals[rehearsalIndex] || upcomingRehearsals[0];
-  const currentDetails = currentRehearsal ? rehearsalDetails[currentRehearsal.id] || rehearsalDetails[105] : null;
 
   const memoizedBandMembers = useMemo(() => {
     if (!realBand?.members) return [];
@@ -1357,7 +1338,9 @@ export default function AuthenticatedApp() {
       });
     };
     fetchCounts();
-  }, [realBand?.id]);
+    // Recount when a library screen closes or the hub opens, so the numbers
+    // follow what was just added or removed.
+  }, [realBand?.id, isIdentityOpen, isControlDeckOpen, showInventory, showContracts, showTaskTemplates, showSetlistManager]);
 
   useEffect(() => {
     if (rehearsalIndex >= upcomingRehearsals.length && upcomingRehearsals.length > 0) setRehearsalIndex(upcomingRehearsals.length - 1);
@@ -1551,7 +1534,7 @@ export default function AuthenticatedApp() {
     refetchNotifications?.();
   };
 
-  const [createEventInitialTasks, setCreateEventInitialTasks] = useState<{ title: string; templateId?: string }[] | undefined>(undefined);
+  const [createEventInitialTasks, setCreateEventInitialTasks] = useState<{ title: string; templateId?: string; dueOffset?: number }[] | undefined>(undefined);
   const handleCreateEvent = (type: CreateEventType) => {
     if (type === 'personal') {
       setEditingPersonalGig(null);
@@ -1698,6 +1681,10 @@ export default function AuthenticatedApp() {
 
     const handlerPromise = App.addListener('backButton', () => {
       const s = backNavStateRef.current;
+
+      // 0. Screens that go back one level themselves (Settings sub-sections,
+      //    the quote PDF sheet, pricing tabs…) get the press first.
+      if (handleBackFromStack()) return;
 
       // 1. Transient Notifications & Popups
       if (s.urgentNotification) {
@@ -2368,6 +2355,12 @@ export default function AuthenticatedApp() {
         event_date: date,
         start_time: timeFinal,
         end_time: endTime || null,
+        ...(!isRehearsalWizard
+          ? {
+              load_in_time: data.details?.loadInTime || null,
+              soundcheck_time: data.details?.soundcheckTime || null,
+            }
+          : {}),
         venue_name: venueFinal,
         venue: venueFinal,
         venue_address: fullAddress,
@@ -2382,6 +2375,33 @@ export default function AuthenticatedApp() {
         recurrence_rule: (data.recurrence && data.recurrence !== 'once')
           ? { frequency: data.recurrence === 'biweekly' ? 'weekly' : data.recurrence, interval: data.recurrence === 'biweekly' ? 2 : 1 }
           : (data.recurrence_rule || null),
+      };
+
+      // Event to-dos (create modal, template or rehearsal wizard). Ids count
+      // as saved only when the form loaded them from this event.
+      const persistTasks = async (eventId: string): Promise<boolean> => {
+        const originalTaskIds: string[] = Array.isArray(data._originalTaskIds) ? data._originalTaskIds : [];
+        const knownUserIds = new Set((realBand?.members || []).map((m: any) => m.user_id).filter(Boolean));
+        const drafts: EventTaskDraft[] = (Array.isArray(data.tasks) ? data.tasks : []).map((t: any) => {
+          const assignees: string[] = Array.isArray(t.assignedTo) ? t.assignedTo : [];
+          const single = assignees.length === 1 && knownUserIds.has(assignees[0]) ? assignees[0] : null;
+          return {
+            id: t.id && originalTaskIds.includes(t.id) ? t.id : undefined,
+            title: String(t.title ?? t.text ?? ''),
+            dueOffset: typeof t.dueOffset === 'number' ? t.dueOffset : undefined,
+            assignedTo: single,
+            notes: typeof t.notes === 'string' ? t.notes : null,
+          };
+        });
+        if (drafts.length === 0 && originalTaskIds.length === 0) return true;
+        try {
+          const { error } = await syncEventTasks(eventId, drafts, date, originalTaskIds);
+          if (error) console.error('Task persist error:', error);
+          return !error;
+        } catch (err) {
+          console.error('Task persist error:', err);
+          return false;
+        }
       };
 
       let addedOnEdit: string[] = [];
@@ -2584,6 +2604,7 @@ export default function AuthenticatedApp() {
         const { error } = await withFastTimeout(updateEvent(data._editingEventId, eventData), 4500);
         if (!error) {
           const memberResult = await persistMembers(data._editingEventId, true);
+          const tasksSaved = await persistTasks(data._editingEventId);
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [data._editingEventId]: optimisticMembers }));
           }
@@ -2599,6 +2620,8 @@ export default function AuthenticatedApp() {
             setSaveToast({ message: 'Event updated, but there was a problem saving members.', type: 'error' });
           } else if (setlistFailed) {
             setSaveToast({ message: 'Event updated, but the setlist was not saved.', type: 'error' });
+          } else if (!tasksSaved) {
+            setSaveToast({ message: 'Event updated, but the tasks were not saved.', type: 'error' });
           } else {
             setSaveToast({ message: 'Event updated!', type: 'success' });
           }
@@ -2612,6 +2635,7 @@ export default function AuthenticatedApp() {
         const { data: saved, error } = await withFastTimeout(createEvent({ ...eventData, id: newEventId }), 4500);
         if (!error && saved) {
           const memberResult = await persistMembers(saved.id, false);
+          const tasksSaved = await persistTasks(saved.id);
           // Optimistic update
           if (optimisticMembers.length > 0) {
             setEventMembersMap(prev => ({ ...prev, [saved.id]: optimisticMembers }));
@@ -2633,6 +2657,8 @@ export default function AuthenticatedApp() {
             setSaveToast({ message: 'Event created, but there was a problem saving members.', type: 'error' });
           } else if (setlistFailed) {
             setSaveToast({ message: 'Event created, but the setlist was not saved.', type: 'error' });
+          } else if (!tasksSaved) {
+            setSaveToast({ message: 'Event created, but the tasks were not saved.', type: 'error' });
           } else {
             setSaveToast({ message: 'Event created!', type: 'success' });
           }
@@ -3090,7 +3116,7 @@ export default function AuthenticatedApp() {
           {isAdmin && expandedCard === "quotes" && <QuotesExpanded key="quotes-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} realQuotes={realQuotes} quoteStats={quotesStats} loading={quotesLoading} onShowToast={(msg, type) => setSaveToast({ message: msg, type })} onQuotesChanged={() => { refetchExpandedQuotes(); refetchDashboard?.(); }} onOpenBandSettings={() => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); }} />}
           {expandedCard === "confirmed" && <ConfirmedExpanded key="confirmed-expanded" bandId={realBand?.id || selectedBand.id.toString()} onClose={() => setExpandedCard(null)} events={myConfirmedEvents} loading={confirmedEventsLoading} />}
           {expandedCard === "rehearsal" && currentRehearsal ? (
-            <RehearsalExpanded key="rehearsal-expanded" upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} currentDetails={currentDetails} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
+            <RehearsalExpanded key="rehearsal-expanded" upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} rehearsalIndex={rehearsalIndex} setRehearsalIndex={setRehearsalIndex} rehearsalViewMode={rehearsalViewMode} setRehearsalViewMode={setRehearsalViewMode} isLive={isLive} onClose={() => setExpandedCard(null)} onDecline={handleRehearsalDecline} />
           ) : expandedCard === "rehearsal" ? (
             <ExpandedCardWrapper key="expanded-card-wrapper" backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
               <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3">
@@ -3174,7 +3200,7 @@ export default function AuthenticatedApp() {
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
           {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} onUseTemplate={(template) => {
             setShowTaskTemplates(false);
-            setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id })));
+            setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
             handleCreateEvent(template.category === 'rehearsal' ? 'rehearsal' : 'gig');
           }} />}
           {showPastEvents && (

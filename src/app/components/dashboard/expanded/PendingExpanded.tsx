@@ -49,6 +49,10 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         price: event.fee ? Number(event.fee).toLocaleString() : '0',
         time: (event.time || event.start_time || '').slice(0, 5),
         location: event.venue || event.venue_name || 'TBD',
+        // Full address for Maps / "Copy address" (the name alone isn't enough).
+        mapQuery: [event.venue || event.venue_name, (event as any).venue_address || (event as any).venue_city]
+          .filter(Boolean)
+          .join(', '),
         rawStatus: event.status || '',
         eventType: (event as any).event_type || '',
         contractSigned: event.contract_signed || false
@@ -159,7 +163,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                       <span className="bw-num shrink-0 whitespace-nowrap">{sym()}{event.price}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <MapsLink pin query={event.location} className="bw-label-md">
+                      <MapsLink pin query={event.mapQuery || event.location} className="bw-label-md">
                         {event.location}
                       </MapsLink>
                       <span className="bw-label-md shrink-0">{event.time || 'Time TBD'}</span>

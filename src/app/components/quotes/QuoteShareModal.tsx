@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import { useSystemBack } from '@/lib/backStack';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,6 +23,7 @@ import {
   BandPricingSettings,
   DEFAULT_BAND_PRICING,
   getBandPricing,
+  hasBankAccount,
 } from '@/lib/services/pricing';
 import {
   generateQuotePdf,
@@ -30,7 +33,7 @@ import {
 import { parseLocalDate } from '@/lib/dates';
 import { currencySymbol } from '@/lib/currency';
 import { isUuid, sendQuote } from '@/lib/services/quotes';
-import { shareFile, downloadBlobOnWeb, openExternal } from '@/lib/nativeFiles';
+import { shareFile, saveFile, openExternal } from '@/lib/nativeFiles';
 import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
@@ -104,6 +107,16 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   }, [bandId, bandName, quoteKey]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const onPricingSaved = () => {
+      setUploadedUrl(null);
+      loadAndGenerate();
+    };
+    window.addEventListener('bw:band-pricing-saved', onPricingSaved);
+    return () => window.removeEventListener('bw:band-pricing-saved', onPricingSaved);
+  }, [isOpen, loadAndGenerate]);
+
+  useEffect(() => {
     if (isOpen) {
       setUploadedUrl(null);
       sentRef.current = false;
@@ -122,6 +135,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       .finally(() => { if (!cancelled) setIsUploading(false); });
     return () => { cancelled = true; };
   }, [isOpen, pdfResult, canUpload, bandId, quote.quoteNumber, uploadedUrl]);
+
+  useSystemBack(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -211,15 +226,18 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
 
   const handleNativeShare = () => sharePdf({ markAsSent: true, withText: true });
 
-  const handleDownload = () => {
+  /** Download = save the file on the device (Share opens the system sheet). */
+  const handleDownload = async () => {
     if (!pdfResult) return;
-    if (Capacitor.isNativePlatform()) {
-      // "Save to Files" lives in the system sheet on iOS and Android.
-      void sharePdf({ markAsSent: false, withText: false });
-      return;
+    try {
+      const { result, location } = await saveFile(pdfResult.pdfBlob, pdfResult.fileName);
+      if (result === 'saved') flash(`PDF saved to ${location}`);
+      else if (result === 'downloaded') flash('PDF downloaded');
+      else if (result === 'shared') flash('PDF ready');
+    } catch (err) {
+      console.error('[QuoteShareModal] Save failed:', err);
+      flash('Could not save the PDF. Try Share instead.', 'error');
     }
-    downloadBlobOnWeb(pdfResult.pdfBlob, pdfResult.fileName);
-    flash('PDF downloaded');
   };
 
   const handleWhatsAppShare = () => {
@@ -266,16 +284,11 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     }
   };
 
-  const missingBranding = !settings.band_logo_url || !settings.bank_iban;
+  const missingBranding = !settings.band_logo_url || !hasBankAccount(settings);
 
-  // This sheet sits at z-[120]: close it before handing off to Band settings
-  // so the pricing/branding screen is never stacked underneath it.
-  const openBandSettings = onOpenBandSettings
-    ? () => {
-        onClose();
-        onOpenBandSettings();
-      }
-    : undefined;
+  // Band settings open on top of this sheet (BandPricingModal is portaled
+  // above it); saving there re-renders the PDF here with the new branding.
+  const openBandSettings = onOpenBandSettings;
   const pageCount = pdfResult?.pageDataUrls.length ?? 0;
 
   const shareChannels: {
@@ -313,7 +326,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'download',
       title: 'Download PDF',
-      subtitle: 'Save to Files',
+      subtitle: Capacitor.isNativePlatform() ? 'Save a copy on this device' : 'Save to your computer',
       icon: <Download />,
       onClick: handleDownload,
       disabled: isGenerating || !pdfResult,
@@ -328,7 +341,9 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     },
   ];
 
-  return (
+  // Portaled to <body>: some callers render it inside a scrolling pane, where
+  // WKWebView clips fixed children (the Done bar could end up untappable).
+  return createPortal(
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -462,7 +477,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                 <span className="bw-body-sm text-muted-foreground">
                   {!settings.band_logo_url
                     ? 'Add logo and signature to the PDF'
-                    : 'Add your IBAN / payment details to show bank transfer info on the quote.'}
+                    : 'Add your bank account to show transfer details on the quote.'}
                 </span>
               </span>
               <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
@@ -514,6 +529,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
           </PillButton>
         </div>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 };
