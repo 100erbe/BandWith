@@ -197,6 +197,70 @@
   bottom: calc(var(--bw-display-bottom-inset) + 12px) !important;
 }
 
+/* Duo in Laptop pose: the rail lies along the Deck's bottom edge (DuoRail),
+   so no layer keeps an empty rail column. Headers still clear the clock on
+   the Display; sheets keep their last row above the bar. */
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-pane-main {
+  padding-right: 16px !important;
+  padding-left: 16px !important;
+}
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .fixed.inset-0:not(.bw-pane-detail):not(.z-\[9999\]),
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-pane-detail {
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-rail-sheet,
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-rail-clear {
+  right: 0 !important;
+  left: 0 !important;
+}
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-rail-sheet:not(.inset-0) {
+  padding-bottom: var(--content-bottom-clearance) !important;
+}
+:root[data-bw-rail-host][data-bw-posture="tabletop"] header,
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-status-clear {
+  padding-inline-end: max(1rem, var(--bw-status-clear-x, 0px));
+}
+:root[data-bw-rail-host][data-bw-posture="tabletop"][data-bw-status-edge="left"] header,
+:root[data-bw-rail-host][data-bw-posture="tabletop"][data-bw-status-edge="left"] .bw-status-clear {
+  padding-inline-end: 1rem;
+  padding-inline-start: max(1rem, var(--bw-status-clear-left, 0px));
+}
+
+/* Event detail in Laptop pose ("same thing, new shape"): the event-colour
+   hero fills the Display edge to edge, the rest (RSVP, times, lineup,
+   actions) scrolls on its own on the Deck. Nothing crosses the fold. */
+[data-bw-posture="tabletop"] .bw-event-detail {
+  background-color: var(--color-background) !important;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-scroll {
+  position: absolute;
+  top: var(--bw-deck-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-background);
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-hero {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--bw-display-h);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-hero > div {
+  padding-bottom: 20px;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-sheet {
+  margin-top: 0;
+  border-radius: 0;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-sheet > div {
+  padding-bottom: var(--content-bottom-clearance) !important;
+}
+
 /* FoldSplit (src/app/components/duo/FoldSplit.tsx). */
 .bw-fold-split {
   position: fixed;
@@ -207,8 +271,8 @@
   /* Over the page, under the floating tab bar (z-80), sheets and the rail.
      Modes shown over a modal layer pass a higher z-index. */
   z-index: 70;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
 }
 .bw-fold-split--stage {
   z-index: 125;
@@ -248,15 +312,11 @@
   bottom: 0;
   padding-bottom: var(--safe-bottom, 0px);
 }
-/* Without the Duo rail the floating tab bar stays on the Deck's bottom edge. */
-:root:not([data-bw-rail]) .bw-fold-split:not(.bw-fold-split--stage) .bw-fold-deck {
+/* The tab bar (floating bar, or the Duo rail laid flat) sits on the Deck's
+   bottom edge: the Deck runs edge to edge and keeps its last row clear of it. */
+.bw-fold-split:not(.bw-fold-split--stage) .bw-fold-deck,
+[data-bw-rail-host] .bw-fold-split--stage .bw-fold-deck {
   padding-bottom: var(--content-bottom-clearance, calc(var(--safe-bottom, 0px) + 100px));
-}
-[data-bw-rail][data-bw-rail-edge="right"] .bw-fold-deck {
-  right: var(--bw-rail-w);
-}
-[data-bw-rail][data-bw-rail-edge="left"] .bw-fold-deck {
-  left: var(--bw-rail-w);
 }
 .bw-fold-split--stage .bw-fold-deck {
   background: #0d0d0d;
@@ -287,11 +347,11 @@
   z-index: 118;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
   padding-top: var(--safe-top, 0px);
   padding-bottom: var(--safe-bottom, 0px);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--color-border);
 }
 [data-bw-rail-edge="left"] .bw-leading-companion {
   padding-left: var(--bw-rail-w);

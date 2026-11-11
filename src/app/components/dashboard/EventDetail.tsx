@@ -720,11 +720,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           )}
           style={{ height: 'var(--safe-top)' }}
         />
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" onScroll={handleScroll}>
+        <div className="bw-ed-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain" onScroll={handleScroll}>
           {/* ═══ HERO (event colour, full-bleed) ═══ */}
           <header
             ref={heroRef}
-            className="w-full"
+            className="bw-ed-hero w-full"
             style={{ backgroundColor: theme.accentColor, color: theme.accentFg }}
           >
             <div
@@ -875,7 +875,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           </header>
 
           {/* ═══ CONTENT SHEET ═══ */}
-          <div className="relative -mt-8 rounded-t-[32px] bg-background">
+          <div className="bw-ed-sheet relative -mt-8 rounded-t-[32px] bg-background">
             <div
               className="max-w-[640px] mx-auto w-full px-4 pt-6 flex flex-col gap-6"
               style={{ paddingBottom: 'calc(var(--safe-bottom) + 48px)' }}

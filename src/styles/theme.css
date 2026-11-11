@@ -196,6 +196,11 @@
 :root[data-bw-rail-host] {
   --content-bottom-clearance: calc(var(--safe-bottom) + 40px);
 }
+/* Laptop pose: the rail lies along the Deck's bottom edge (DuoRail), so
+   content clears a 48pt bar instead. */
+:root[data-bw-rail-host][data-bw-posture="tabletop"] {
+  --content-bottom-clearance: calc(max(12px, calc(var(--safe-bottom) - 4px)) + 64px);
+}
 
 /* Software keyboard open (src/lib/keyboardInsets.ts): with resize 'native' the
    web view already ends at the keyboard, so the home-indicator / navigation-bar
