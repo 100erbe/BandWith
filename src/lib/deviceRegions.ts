@@ -143,6 +143,19 @@ export function installDuoLayout(): void {
     else root.removeAttribute('data-bw-rail-edge');
     root.toggleAttribute('data-bw-two-pane', twoPane);
     root.style.setProperty('--bw-rail-w', `${rail}px`);
+    // The rail lives in the system column but must stay clear of the clock /
+    // camera block, wherever the device puts it: at the top (portrait, open)
+    // or at the bottom (closed, turned over). DuoRail keeps its group centred
+    // as in Figma and only steps it away from the block when they would meet.
+    // A column that runs the full height has no block to avoid.
+    if (rail > 0 && s && s.h < vh * 0.6) {
+      const atBottom = s.y + s.h / 2 > vh / 2;
+      root.style.setProperty('--bw-rail-clear-top', atBottom ? '0px' : `${Math.max(0, Math.round(s.y + s.h + 8 - 40))}px`);
+      root.style.setProperty('--bw-rail-clear-bottom', atBottom ? `${Math.max(0, Math.round(vh - s.y + 8))}px` : '0px');
+    } else {
+      root.style.removeProperty('--bw-rail-clear-top');
+      root.style.removeProperty('--bw-rail-clear-bottom');
+    }
     if (twoPane) {
       const railLeft = railEdge === 'left' ? rail : 0;
       const railRight = railEdge === 'right' ? rail : 0;
@@ -170,10 +183,28 @@ export function installDuoLayout(): void {
     updatePosture(result);
     window.dispatchEvent(new CustomEvent('bwlayout'));
   };
-  window.addEventListener('bwregions', update);
-  window.addEventListener('resize', update);
+  // Turning the phone, the native regions and the web view's new size arrive
+  // in either order, so the last event can see a stale half (open landscape
+  // stayed single-pane, the rail kept the old column). Settle once more after
+  // the burst.
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  let settleLate: ReturnType<typeof setTimeout> | undefined;
+  const schedule = () => {
+    update();
+    clearTimeout(settle);
+    clearTimeout(settleLate);
+    settle = setTimeout(update, 150);
+    settleLate = setTimeout(update, 600);
+  };
+  window.addEventListener('bwregions', schedule);
+  window.addEventListener('resize', schedule);
   try {
-    devicePostureApi()?.addEventListener('change', update);
+    screen.orientation?.addEventListener('change', schedule);
+  } catch {
+    /* no Screen Orientation API */
+  }
+  try {
+    devicePostureApi()?.addEventListener('change', schedule);
   } catch {
     /* no Device Posture API */
   }

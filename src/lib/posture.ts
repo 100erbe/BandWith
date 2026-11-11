@@ -104,13 +104,22 @@ export function computePosture(input: PostureInput): PostureResult {
   const fold = foldFromDivision(input.division) ?? foldFromSegments(input.segments, input.viewport);
 
   // An older native shell sends no edge: its column is always the trailing one.
+  // A small block in a corner (the closed Duo's clock + camera, 84×82, is
+  // reported as a "top" or "bottom" band when the phone is turned) is the
+  // system column of that side too: the rail takes it and steps around it.
+  const cornerSide = (): 'left' | 'right' | null => {
+    if (!status || (status.edge !== 'top' && status.edge !== 'bottom') || status.w > vw * 0.3 || status.h < status.w * 0.6) return null;
+    if (status.x <= 1) return 'left';
+    if (status.x + status.w >= vw - 1) return 'right';
+    return null;
+  };
   const railEdge: PostureResult['railEdge'] = !status
     ? null
     : status.edge === 'left'
       ? 'left'
       : status.edge === undefined || status.edge === 'right'
         ? 'right'
-        : null;
+        : cornerSide();
 
   const landscape = vw > vh;
   const wideDuo = !!status && landscape && vw >= DUO_BOOK_MIN_W;

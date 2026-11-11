@@ -136,8 +136,18 @@ const writeTomb = (ids: string[]) => {
 };
 
 /** Merge this user's cloud drafts with the device's (newest wins). */
-export async function syncEventDrafts(userId: string | null | undefined): Promise<void> {
-  if (!userId || remoteMissing || !UUID.test(userId)) return;
+const inFlight = new Map<string, Promise<void>>();
+export function syncEventDrafts(userId: string | null | undefined): Promise<void> {
+  if (!userId || remoteMissing || !UUID.test(userId)) return Promise.resolve();
+  // Several screens ask at once (home, calendar, templates): one request.
+  const running = inFlight.get(userId);
+  if (running) return running;
+  const p = runSync(userId).finally(() => inFlight.delete(userId));
+  inFlight.set(userId, p);
+  return p;
+}
+
+async function runSync(userId: string): Promise<void> {
   try {
     const pending: string[] = [];
     for (const id of readTomb()) if (!(await deleteRemote(id))) pending.push(id);
@@ -222,11 +232,23 @@ export function useEventDrafts(userId: string | null | undefined, bandId?: strin
     refresh();
     // Pull drafts saved on the user's other devices.
     void syncEventDrafts(userId);
+    // Coming back to the app (or the tab) pulls again, so a draft saved on
+    // another device shows up without reopening the screen.
+    let last = Date.now();
+    const pull = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 5000) return;
+      last = Date.now();
+      void syncEventDrafts(userId);
+    };
     window.addEventListener(CHANGED, refresh);
     window.addEventListener('storage', refresh);
+    document.addEventListener('visibilitychange', pull);
+    window.addEventListener('focus', pull);
     return () => {
       window.removeEventListener(CHANGED, refresh);
       window.removeEventListener('storage', refresh);
+      document.removeEventListener('visibilitychange', pull);
+      window.removeEventListener('focus', pull);
     };
   }, [userId, bandId]);
   return drafts;

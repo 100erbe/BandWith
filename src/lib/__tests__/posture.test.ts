@@ -73,6 +73,13 @@ describe('computePosture', () => {
     expect(computePosture({ viewport: portraitPhone, status: { x: 300, y: 0, w: 93, h: 30, edge: 'top' } }).railEdge).toBeNull();
   });
 
+  it('the closed Duo turned over: the clock + camera corner block is a column of its side', () => {
+    const closedLandscape = { w: 678, h: 466 };
+    expect(computePosture({ viewport: closedLandscape, status: { x: 0, y: 0, w: 84, h: 82, edge: 'top' } }).railEdge).toBe('left');
+    expect(computePosture({ viewport: closedLandscape, status: { x: 594, y: 384, w: 84, h: 82, edge: 'bottom' } }).railEdge).toBe('right');
+    expect(computePosture({ viewport: closedLandscape, status: { x: 300, y: 0, w: 84, h: 82, edge: 'top' } }).railEdge).toBeNull();
+  });
+
   it('Duo open landscape with a vertical division: book, two panes', () => {
     const r = computePosture({
       viewport: { w: 900, h: 669 },
