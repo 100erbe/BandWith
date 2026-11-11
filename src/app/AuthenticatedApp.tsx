@@ -12,7 +12,8 @@ import { useBand } from "@/lib/BandContext";
 import { useScrollDirection } from "@/app/hooks/useScrollDirection";
 import { syncSystemBarsAppearance } from "@/lib/systemBars";
 import { haptic } from "@/lib/haptics";
-import type { EventDraft } from "@/lib/wizardDrafts";
+import { deleteEventDraft, useEventDrafts, type EventDraft } from "@/lib/wizardDrafts";
+import { DraftPreviewSheet } from "@/app/components/drafts/DraftPreviewSheet";
 import { supabase } from "@/lib/supabase";
 import { getPermissions, type UserRole } from "@/lib/permissions";
 import {
@@ -671,6 +672,24 @@ export default function AuthenticatedApp() {
   }, [masterEventsList, eventMembersMap, isAdminOfBand, user?.id, bandLookup, realBand?.name]);
 
   // ═══ INSTANT CLIENT-SIDE FILTERING (band pill + status + search + optimistic) ═══
+  // To-do lists → "Add to an existing one": the band's upcoming gigs,
+  // rehearsals and quotes (saved online, so they have tasks).
+  const templateTargetEvents = useMemo(() => {
+    const today = todayLocal();
+    return (events || [])
+      .filter((e: any) => (!realBand?.id || e.band_id === realBand.id) && !e._isPendingSync)
+      .map((e: any) => {
+        const id = String(e.eventId || e.id || '');
+        const date = String(e.date || '').slice(0, 10);
+        const kind: 'gig' | 'rehearsal' | 'quote' =
+          e.eventType === 'rehearsal' || e.status === 'REHEARSAL' ? 'rehearsal' : e.status === 'TENTATIVE' || e.status === 'QUOTE' || e.eventType === 'quote' ? 'quote' : 'gig';
+        return { id, title: e.title || 'Untitled', date, kind };
+      })
+      .filter((e) => /^[0-9a-f-]{36}$/i.test(e.id) && (!e.date || e.date >= today))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 60);
+  }, [events, realBand?.id]);
+
   const visuallyFilteredEvents = useMemo(() => {
     let result = events;
     // Band pill filter
@@ -722,6 +741,76 @@ export default function AuthenticatedApp() {
     }
     return result;
   }, [events, selectedBandPill, eventFilter, eventSearch, optimisticallyHiddenEventIds, eventMembersMap, user?.id, isAdminOfBand]);
+
+  // ── Drafts in the calendar ──────────────────────────────────
+  // The admin's saved gig / rehearsal drafts and quotes not shared yet show
+  // on their day (desaturated, "only you"); undated ones under Drafts.
+  const myEventDrafts = useEventDrafts(isAdmin && realBand?.id ? user?.id : null, realBand?.id ?? null);
+  // Quotes not shared yet, by quote id and by the tentative event they hold.
+  const draftQuoteIds = useMemo(() => {
+    const ids = new Set<string>();
+    (realQuotes || [])
+      .filter((q) => String(q.status).toLowerCase() === 'draft')
+      .forEach((q) => {
+        ids.add(q.id);
+        if (q.converted_to_event_id) ids.add(q.converted_to_event_id);
+      });
+    return ids;
+  }, [realQuotes]);
+  const calendarEvents = useMemo(() => {
+    if (!isAdmin || selectedBandPill === 'personal') return visuallyFilteredEvents;
+    const f = String(eventFilter).toUpperCase();
+    const wantDrafts = f === 'DRAFTS' || f === 'DRAFT';
+    const q = eventSearch.trim().toLowerCase();
+    const matches = (e: EventData) => !q || e.title.toLowerCase().includes(q) || (e.location || '').toLowerCase().includes(q);
+    const isQuoteDraft = (e: EventData) =>
+      (!!e.quoteId && draftQuoteIds.has(e.quoteId)) || (!!e.eventId && draftQuoteIds.has(e.eventId));
+    const base: EventData[] = visuallyFilteredEvents.map((e) => (isQuoteDraft(e) ? { ...e, draftOf: 'quote' as const } : e));
+    if (wantDrafts) {
+      const have = new Set(base.map((e) => e.eventId));
+      events
+        .filter((e) => isQuoteDraft(e) && !have.has(e.eventId) && matches(e))
+        .forEach((e) => base.push({ ...e, draftOf: 'quote' as const }));
+    }
+    const local = myEventDrafts
+      .map((d): EventData => {
+        const st = (d.state || {}) as Record<string, any>;
+        const isReh = d.eventType === 'rehearsal';
+        const time = isReh ? st.data?.time : st.details?.startTime;
+        const endTime = isReh ? st.endTime : st.details?.endTime;
+        let h = 7;
+        for (let i = 0; i < d.id.length; i++) h = (h * 31 + d.id.charCodeAt(i)) | 0;
+        return {
+          id: -Math.abs(h || 1),
+          eventId: `draft:${d.id}`,
+          band_id: d.bandId || undefined,
+          title: d.title || (isReh ? 'Untitled rehearsal' : 'Untitled gig'),
+          status: isReh ? 'REHEARSAL' : 'CONFIRMED',
+          date: d.date || '',
+          // An undated draft's time is only the wizard's default.
+          time: d.date && typeof time === 'string' ? time : '',
+          endTime: d.date && typeof endTime === 'string' && endTime ? endTime : undefined,
+          location: d.venue || '',
+          price: '',
+          members: [],
+          color: '',
+          eventType: isReh ? 'rehearsal' : d.eventType || undefined,
+          draftOf: isReh ? 'rehearsal' : 'gig',
+          draftId: d.id,
+        };
+      })
+      .filter((e) => {
+        if (!e.date && !wantDrafts) return false; // undated drafts live under Drafts
+        if (f === 'ALL' || wantDrafts) return true;
+        if (f === 'GIGS' || f === 'CONFIRMED') return e.draftOf === 'gig';
+        if (f.startsWith('REHEARSAL')) return e.draftOf === 'rehearsal';
+        return false;
+      })
+      .filter(matches);
+    return local.length ? [...base, ...local] : base;
+  }, [isAdmin, selectedBandPill, eventFilter, eventSearch, visuallyFilteredEvents, events, draftQuoteIds, myEventDrafts]);
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
+  const previewDraft = previewDraftId ? myEventDrafts.find((d) => d.id === previewDraftId) || null : null;
 
   const userFeeMap = useMemo(() => {
     if (isAdmin || !user?.id) return {};
@@ -1545,6 +1634,15 @@ export default function AuthenticatedApp() {
   const [createEventInitialTasks, setCreateEventInitialTasks] = useState<{ title: string; templateId?: string; dueOffset?: number }[] | undefined>(undefined);
   // "New gig" reopened from Drafts on the home screen (lib/wizardDrafts).
   const [activeEventDraft, setActiveEventDraft] = useState<EventDraft | null>(null);
+  const openEventDraft = (d: EventDraft) => {
+    setPreviewDraftId(null);
+    setCreateEventInitialDate(null);
+    setEditingEventData(null);
+    setCreateEventInitialTasks(undefined);
+    setActiveEventDraft(d);
+    setCreateEventType(d.eventType === 'rehearsal' ? 'rehearsal' : null);
+    setIsCreateEventOpen(true);
+  };
   useEffect(() => {
     if (!isCreateEventOpen) setActiveEventDraft(null);
   }, [isCreateEventOpen]);
@@ -2121,6 +2219,11 @@ export default function AuthenticatedApp() {
   };
 
   const handleEventCardClick = async (event: EventData) => {
+    // A saved draft: its own sheet (only the author has it).
+    if (event.draftId) {
+      setPreviewDraftId(event.draftId);
+      return;
+    }
     // If not admin, verify user is added to this event before opening
     if (!isAdmin && user?.id && event.eventId) {
       const cached = eventMembersMap[event.eventId] || [];
@@ -3046,14 +3149,14 @@ export default function AuthenticatedApp() {
             onCreateGig={() => { setCreateEventInitialDate(null); setEditingEventData(null); if (!isAdmin || isSolo) { setEditingPersonalGig(null); setShowPersonalGigModal(true); } else { setCreateEventType(null); setIsCreateEventOpen(true); } }}
             onCreateRehearsal={isSolo ? undefined : () => { setCreateEventInitialDate(null); setEditingEventData(null); handleCreateEvent('rehearsal'); }}
             onCreateQuote={isAdmin && !isSolo ? () => { setCreateEventInitialDate(null); setEditingEventData(null); setCreateEventType('quote'); setIsCreateEventOpen(true); } : undefined}
-            onOpenEventDraft={(d) => { setCreateEventInitialDate(null); setEditingEventData(null); setCreateEventInitialTasks(undefined); setActiveEventDraft(d); setCreateEventType(null); setIsCreateEventOpen(true); }}
+            onOpenEventDraft={openEventDraft}
             />
           )}
           {activeTab === "Chat" && !isSolo && (
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: 'Could not delete the chat. Try again.', type: 'error' }); else refetchChats?.(); }} />
           )}
           {activeTab === "Events" && (
-            <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
+            <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={calendarEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
               if (date) {
                 setCreateEventInitialDate(date);
               } else {
@@ -3220,10 +3323,10 @@ export default function AuthenticatedApp() {
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} onUseTemplate={(template) => {
+          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} events={templateTargetEvents} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
             setShowTaskTemplates(false);
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
-            handleCreateEvent(template.category === 'rehearsal' ? 'rehearsal' : 'gig');
+            handleCreateEvent(kind);
           }} />}
           {showPastEvents && (
             <PastEventsView
@@ -3389,9 +3492,21 @@ export default function AuthenticatedApp() {
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             />
           )}
-          <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); }} onCreate={async (q, opts) => {
+          <DraftPreviewSheet
+            draft={previewDraft}
+            onClose={() => setPreviewDraftId(null)}
+            onContinue={openEventDraft}
+            onDelete={(d) => {
+              deleteEventDraft(d.id);
+              setPreviewDraftId(null);
+              setSaveToast({ message: 'Draft deleted', type: 'success' });
+            }}
+          />
+          <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); }} onCreate={async (q, opts) => {
             setIsCreateEventOpen(false);
             setCreateEventInitialDate(null);
+            const templateTasks = createEventInitialTasks;
+            setCreateEventInitialTasks(undefined);
             // The share sheet / PDF opens only after the quote is saved, so it
             // carries the number assigned by the database.
             const wantsShare = !!opts?.share;
@@ -3492,6 +3607,16 @@ export default function AuthenticatedApp() {
                   setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}`, type: 'error' });
                 } else {
                   setSaveToast({ message: `Quote ${savedQuote.quote_number} saved`, type: 'success' });
+                  // Started from a to-do list: the quote's event gets its tasks.
+                  if (templateTasks?.length && createdEventId) {
+                    const { error: taskErr } = await syncEventTasks(
+                      createdEventId,
+                      templateTasks.map((t) => ({ title: t.title, dueOffset: t.dueOffset })),
+                      q.eventDate || todayLocal(),
+                      [],
+                    );
+                    if (taskErr) setSaveToast({ message: `Quote saved, but the to-do list was not added: ${taskErr.message}`, type: 'error' });
+                  }
                   // Quote-stage RSVP: ask the lineup before the client confirms.
                   if (opts?.askAvailability && createdEventId && user?.id) {
                     const feeByUser: Record<string, number> = {};

@@ -1000,6 +1000,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         editingEvent={editingEvent}
         onOpenPollBuilder={onOpenPollBuilder}
         existingEvents={existingEvents}
+        draft={draft}
+        initialTasks={initialTasks}
       />
     );
   }

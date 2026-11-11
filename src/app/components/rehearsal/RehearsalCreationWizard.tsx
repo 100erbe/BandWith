@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowUpRight, Plus, AlertCircle,
@@ -30,6 +30,9 @@ import {
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
+import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
+import { saveEventDraft, deleteEventDraft, newDraftId, type EventDraft } from '@/lib/wizardDrafts';
+import { useSystemBack } from '@/lib/backStack';
 
 import { RehearsalProposeSongModal } from './RehearsalProposeSongModal';
 import { RehearsalAddTaskModal } from './RehearsalAddTaskModal';
@@ -122,6 +125,10 @@ interface Props {
   onOpenPollBuilder?: () => void;
   /** Band calendar, so the date picker can mark busy days and suggest a free one. */
   existingEvents?: PickerSourceEvents;
+  /** Reopen an unfinished "New rehearsal" saved as a draft (lib/wizardDrafts). */
+  draft?: EventDraft | null;
+  /** To-dos to start with (a to-do list template). */
+  initialTasks?: { title: string; templateId?: string; dueOffset?: number }[];
 }
 
 type PickerSourceEvents = Parameters<typeof toDatePickerEvents>[0];
@@ -323,7 +330,7 @@ const RehearsalAccordionCard: React.FC<{
   </div>
 );
 
-export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder, existingEvents }) => {
+export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder, existingEvents, draft, initialTasks }) => {
   const pickerEvents = useMemo(
     () => toDatePickerEvents(existingEvents, editingEvent?.eventId),
     [existingEvents, editingEvent?.eventId]
@@ -331,7 +338,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand, isAdmin } = useBand();
   const isEditing = !!editingEvent;
-  const [step, setStep] = useState(0);
+  // A draft restores the wizard where it was left (creation only).
+  const ds = (!editingEvent && draft?.state ? draft.state : null) as Record<string, any> | null;
+  const [step, setStep] = useState<number>(() => (typeof ds?.step === 'number' ? Math.min(Math.max(ds.step, 0), 2) : 0));
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -406,7 +415,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     fetchSongData();
   }, [selectedBand?.id]);
 
-  const [endTime, setEndTime] = useState(editingEvent?.endTime || '22:00');
+  const [endTime, setEndTime] = useState<string>((typeof ds?.endTime === 'string' && ds.endTime) || editingEvent?.endTime || '22:00');
   const [checklistChecked, setChecklistChecked] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRosterExpanded, setIsRosterExpanded] = useState(false);
@@ -421,7 +430,29 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     ((editingEvent as any)?.is_recurring ? 'weekly' : 'once')
   ) as RecurrenceType;
 
-  const [data, setData] = useState<RehearsalState>({
+  // Restored draft, or the to-dos of a template ("Use this list").
+  const withDraft = (base: RehearsalState): RehearsalState => {
+    if (ds?.data && typeof ds.data === 'object') return { ...base, ...(ds.data as Partial<RehearsalState>) };
+    if (!editingEvent && initialTasks?.length) {
+      const stamp = Date.now().toString(36);
+      return {
+        ...base,
+        tasks: initialTasks
+          .filter((t) => t.title?.trim())
+          .map((t, i) => ({
+            id: `task-tpl-${stamp}-${i}`,
+            text: t.title.trim(),
+            completed: false,
+            assignedTo: ['all'],
+            type: 'prepare' as const,
+            dueOffset: t.dueOffset,
+          })),
+      };
+    }
+    return base;
+  };
+
+  const [data, setData] = useState<RehearsalState>(() => withDraft({
     type: 'full_band',
     title: editingEvent?.title || '',
     location: editingEvent?.location || '',
@@ -446,7 +477,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     bandChecklist: ['PA System Check', 'Extension Cords', 'Backup Cables', 'First Aid Kit'],
     reminderTime: '1_day',
     status: 'scheduled',
-  });
+  }));
 
   const activeAccentColor = useMemo(() => getRehearsalAccentColor(data.type), [data.type]);
 
@@ -501,7 +532,59 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       } : {}),
     };
     onCreate(submitData);
+    deleteEventDraft(draft?.id);
   };
+
+  // ── Drafts ──────────────────────────────────────────────────
+  // What the user typed (the roster and the duration fill in by themselves).
+  const typedSnapshot = JSON.stringify({ ...data, members: undefined, duration: undefined, endTime });
+  const baselineRef = useRef<string | null>(null);
+  if (baselineRef.current === null) baselineRef.current = typedSnapshot;
+  const initialDateRef = useRef(data.date);
+  const isDirty = typedSnapshot !== baselineRef.current;
+  const draftsEnabled = !isEditing && !!currentUserId;
+  const [leaveOpen, setLeaveOpen] = useState(false);
+
+  const requestCloseRef = useRef<() => void>(onClose);
+  requestCloseRef.current = () => {
+    if (draftsEnabled && isDirty) setLeaveOpen(true);
+    else onClose();
+  };
+  const requestClose = useCallback(() => requestCloseRef.current(), []);
+
+  const handleSaveDraft = () => {
+    if (!currentUserId) return;
+    // The date counts once the user picked it (or saw it on step 2):
+    // otherwise it is only tomorrow's default and the draft stays undated.
+    const dated = !!data.date && (data.date !== initialDateRef.current || step >= 1 || !!ds?.dated);
+    saveEventDraft({
+      id: draft?.id || newDraftId(),
+      userId: currentUserId,
+      bandId: selectedBand?.id ?? null,
+      title: getEffectiveTitle(),
+      date: dated ? data.date : undefined,
+      venue: data.location || undefined,
+      eventType: 'rehearsal',
+      state: { step, data, endTime, dated },
+    });
+    setLeaveOpen(false);
+    onClose();
+  };
+
+  const handleDiscardDraft = () => {
+    // Reopened from a draft: throwing it away removes it from Drafts too.
+    deleteEventDraft(draft?.id);
+    setLeaveOpen(false);
+    onClose();
+  };
+
+  // Android Back: the leave sheet first, then the step before, then close.
+  useSystemBack(!isEditing, () => {
+    if (leaveOpen) setLeaveOpen(false);
+    else if (step > 0) setStep(step - 1);
+    else requestClose();
+    return true;
+  });
 
   const handleNext = () => {
     if (step < STEPS.length - 1) setStep(step + 1);
@@ -509,7 +592,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   };
   const handleBack = () => {
     if (step > 0) setStep(step - 1);
-    else onClose();
+    else requestClose();
   };
 
   const editingWarnings = useMemo(() => {
@@ -1750,7 +1833,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   // iPhone Duo: the wizard's close sits in the system column under the clock
   // (Figma "Closed · Rehearsal / New – 1 Session & roster").
-  const closeInRail = useRailAction(isEditing ? undefined : onClose, {
+  const closeInRail = useRailAction(isEditing ? undefined : requestClose, {
     label: 'Close rehearsal wizard',
     icon: <X />,
     pane: true,
@@ -1830,7 +1913,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <NavBackButton pane label={step > 0 ? 'Back' : 'Cancel'} onClick={handleBack} />
             <h2 className="flex-1 min-w-0 bw-h1 truncate">New rehearsal</h2>
             {!closeInRail && (
-              <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={onClose} />
+              <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={requestClose} />
             )}
           </div>
           <WizardSteps current={step} steps={STEPS} maxAccessibleStep={maxAccessibleStep} onSelectStep={(s) => setStep(s)} />
@@ -1846,7 +1929,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* CTA bar */}
         <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
           <div className="grid grid-cols-[2fr_3fr] gap-3">
-            <PillButton variant="outline" onClick={step > 0 ? handleBack : onClose}>
+            <PillButton variant="outline" onClick={step > 0 ? handleBack : requestClose}>
               {step > 0 ? 'Back' : 'Cancel'}
             </PillButton>
             {step < STEPS.length - 1 ? (
@@ -1863,6 +1946,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         </div>
       </motion.div>
       {modals}
+      {draftsEnabled && (
+        <LeaveWizardSheet
+          open={leaveOpen}
+          what="rehearsal"
+          onSaveDraft={handleSaveDraft}
+          onDiscard={handleDiscardDraft}
+          onKeepEditing={() => setLeaveOpen(false)}
+          discardLabel={draft ? 'Delete draft' : undefined}
+        />
+      )}
     </>
   );
 };

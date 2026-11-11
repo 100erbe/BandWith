@@ -39,7 +39,7 @@ export const LeaveWizardSheet: React.FC<{
     }
   >
     <p className="bw-body-md text-muted-foreground">
-      {draftHint ?? 'You can pick it up later from Drafts on the home screen.'}
+      {draftHint ?? 'Only you can see drafts, members get nothing until you create it. Pick it up later from Drafts on the home screen, or from its day in the calendar.'}
     </p>
   </BwSheet>
 );

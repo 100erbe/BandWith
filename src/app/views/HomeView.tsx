@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpRight, MapPin } from '@/app/components/icons';
+import { ArrowUpRight, EyeOff, MapPin } from '@/app/components/icons';
 import { Metric, DotText, SectionHeader, ActionTile, UpcomingRow, eventKindOf, PillButton, Card } from '@/app/components/bw';
 import { cn } from '@/app/components/ui/utils';
 import { HomeSkeleton } from '@/app/components/ui/HomeSkeleton';
@@ -813,7 +813,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
       </motion.div>
 
-      {/* ═══ DRAFTS (unfinished gigs and quotes, desaturated) ═══ */}
+      {/* ═══ DRAFTS (unfinished gigs, rehearsals and quotes: their own colours, desaturated) ═══ */}
       {(() => {
         const quoteDrafts = isAdmin
           ? (dashboardData?.recentQuotes || []).filter((q: any) => String(q?.status || '').toLowerCase() === 'draft')
@@ -834,30 +834,39 @@ export const HomeView: React.FC<HomeViewProps> = ({
             : `Draft · saved ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`;
         };
         return (
-          <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+          <motion.div variants={dashboardItemVariants} className="@container flex flex-col gap-4" aria-label="Drafts">
             <SectionHeader title="Drafts" />
-            <div className="flex flex-col gap-4 grayscale opacity-60">
-              {eventDrafts.map((d) => (
-                <UpcomingRow
-                  key={d.id}
-                  kind="gig"
-                  typeLabel="Gig · Draft"
-                  title={d.title || 'New gig'}
-                  meta={[saved(d.savedAt), d.venue].filter(Boolean).join(' · ')}
-                  {...tile(d.date)}
-                  onClick={() => onOpenEventDraft?.(d)}
-                />
-              ))}
+            <p className="bw-body-sm text-muted-foreground -mt-1 flex items-start gap-2">
+              <EyeOff className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
+              <span>Only you can see these. Members get nothing until you create them. Dated drafts are on the calendar too.</span>
+            </p>
+            <div className="grid grid-cols-1 @min-[640px]:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+              {eventDrafts.map((d) => {
+                const isReh = d.eventType === 'rehearsal';
+                return (
+                  <div key={d.id} className="saturate-[0.3]">
+                    <UpcomingRow
+                      kind={isReh ? 'rehearsal' : 'gig'}
+                      typeLabel={isReh ? 'Rehearsal · Draft' : 'Gig · Draft'}
+                      title={d.title || (isReh ? 'New rehearsal' : 'New gig')}
+                      meta={[saved(d.savedAt), d.venue, d.date ? null : 'No date'].filter(Boolean).join(' · ')}
+                      {...tile(d.date)}
+                      onClick={() => onOpenEventDraft?.(d)}
+                    />
+                  </div>
+                );
+              })}
               {quoteDrafts.map((q: any) => (
-                <UpcomingRow
-                  key={q.id}
-                  kind="quote"
-                  typeLabel="Quote · Draft"
-                  title={q.event_name || q.client_name || 'New quote'}
-                  meta={[q.quote_number, q.client_name].filter(Boolean).join(' · ') || 'Draft'}
-                  {...tile(q.event_date)}
-                  onClick={() => setExpandedCard('quotes')}
-                />
+                <div key={q.id} className="saturate-[0.3]">
+                  <UpcomingRow
+                    kind="quote"
+                    typeLabel="Quote · Draft"
+                    title={q.event_name || q.client_name || 'New quote'}
+                    meta={[q.quote_number, q.client_name].filter(Boolean).join(' · ') || 'Draft'}
+                    {...tile(q.event_date)}
+                    onClick={() => setExpandedCard('quotes')}
+                  />
+                </div>
               ))}
             </div>
           </motion.div>

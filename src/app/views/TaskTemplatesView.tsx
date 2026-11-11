@@ -29,6 +29,7 @@ import {
   type TemplateTask,
 } from '@/lib/services/taskTemplates';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
+import { UseTemplateSheet, type TemplateTargetEvent, type TemplateTargetKind } from '@/app/components/templates/UseTemplateSheet';
 
 export type { TaskTemplate, TemplateTask } from '@/lib/services/taskTemplates';
 
@@ -41,7 +42,12 @@ interface TaskTemplatesViewProps {
    * "Use this template" in the details sheet. The parent opens the matching
    * create flow pre-filled with `template.tasks`. The sheet closes either way.
    */
-  onUseTemplate?: (template: TaskTemplate) => void;
+  onUseTemplate?: (template: TaskTemplate, kind: TemplateTargetKind) => void;
+  /** The band's upcoming gigs, rehearsals and quotes ("Add to an existing one"). */
+  events?: TemplateTargetEvent[];
+  userId?: string | null;
+  /** Feedback after the tasks were added to an existing event or draft. */
+  onNotify?: (message: string) => void;
 }
 
 /** Category tag colours follow the event palette (Figma: Templates / Task templates). */
@@ -54,7 +60,7 @@ const CATEGORIES: Record<TemplateCategory, { label: string; tag: TagStyle }> = {
   other: { label: 'Other', tag: 'subtle' },
 };
 
-export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate }) => {
+export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate, events = [], userId, onNotify }) => {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -63,6 +69,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
   const [seeding, setSeeding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(null);
+  /** "Use this list" choices (new gig / rehearsal / quote, or add to one). */
+  const [usingTemplate, setUsingTemplate] = useState<TaskTemplate | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
@@ -220,7 +228,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
   const handleUseTemplate = () => {
     const template = selectedTemplate;
     setSelectedTemplate(null);
-    if (template) onUseTemplate?.(template);
+    if (template) setUsingTemplate(template);
   };
 
   const formatDueOffset = (offset?: number | null) => {
@@ -395,9 +403,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       </div>
 
       {/* Template details (Figma Sheet, Style=Dark) */}
+      {/* Portal: inside this screen (its own z-70 layer, a scroller) the sheet
+          sat under other layers and iOS gave its X and drag no touches. */}
       <BwSheet
         open={!!selectedTemplate}
         onClose={() => setSelectedTemplate(null)}
+        portal
+        zIndex={110}
         overline="To-do list"
         title={selectedTemplate?.name ?? ''}
         footer={
@@ -553,6 +565,24 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           </motion.div>
         )}
       </AnimatePresence>
+
+      <UseTemplateSheet
+        open={!!usingTemplate}
+        onClose={() => setUsingTemplate(null)}
+        template={usingTemplate}
+        events={events}
+        userId={userId}
+        bandId={bandId}
+        onNew={(kind) => {
+          const t = usingTemplate;
+          setUsingTemplate(null);
+          if (t) onUseTemplate?.(t, kind);
+        }}
+        onAdded={(message) => {
+          setUsingTemplate(null);
+          onNotify?.(message);
+        }}
+      />
 
       <DeleteChatSheet
         open={!!pendingDelete}

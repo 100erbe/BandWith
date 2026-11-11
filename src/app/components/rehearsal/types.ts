@@ -102,6 +102,8 @@ export interface RehearsalTask {
   notes?: string;
   isRecurring?: boolean;
   completed: boolean;
+  /** Days before the event it is due (from a to-do list template). */
+  dueOffset?: number;
 }
 
 export interface RehearsalState {

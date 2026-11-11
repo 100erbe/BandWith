@@ -45,6 +45,10 @@ export interface EventItem {
   venueCoordinates?: { lat: number; lng: number };
   indoorOutdoor?: 'indoor' | 'outdoor' | 'hybrid';
   _isPendingSync?: boolean;
+  /** A saved draft shown in the calendar (only its author sees it). */
+  draftOf?: 'gig' | 'rehearsal' | 'quote';
+  /** lib/wizardDrafts id, for gig and rehearsal drafts. */
+  draftId?: string;
 }
 
 export interface PendingEvent {

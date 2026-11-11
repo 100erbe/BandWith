@@ -24,6 +24,8 @@ export interface PlannerEvent {
   venue?: string | null;
   /** Gig fee, counted in the month total for admins. */
   fee?: number | null;
+  /** A saved draft (only its author sees it): desaturated, not counted. */
+  draft?: boolean;
 }
 
 export interface PlannerModeProps {
@@ -65,9 +67,9 @@ export function monthStats(events: PlannerEvent[], month: Date): MonthStats {
     if (!busy.has(toLocalDateString(day)) && !busy.has(toLocalDateString(sun))) freeWeekends++;
   }
   return {
-    gigs: inMonth.filter((e) => e.kind === 'gig').length,
-    rehearsals: inMonth.filter((e) => e.kind === 'rehearsal').length,
-    fees: inMonth.reduce((sum, e) => sum + (e.kind === 'gig' && typeof e.fee === 'number' && Number.isFinite(e.fee) ? e.fee : 0), 0),
+    gigs: inMonth.filter((e) => e.kind === 'gig' && !e.draft).length,
+    rehearsals: inMonth.filter((e) => e.kind === 'rehearsal' && !e.draft).length,
+    fees: inMonth.reduce((sum, e) => sum + (e.kind === 'gig' && !e.draft && typeof e.fee === 'number' && Number.isFinite(e.fee) ? e.fee : 0), 0),
     freeWeekends,
   };
 }
@@ -232,16 +234,18 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
                   }}
                   className="w-full min-h-14 flex items-center gap-3 rounded-[16px] bg-muted px-3 py-2 text-left cursor-pointer disabled:cursor-default"
                 >
-                  <EventMark kind={e.kind} size={24} />
+                  <span className={e.draft ? 'saturate-[0.3] opacity-70' : undefined}>
+                    <EventMark kind={e.kind} size={24} />
+                  </span>
                   <span className="flex-1 min-w-0 flex flex-col">
                     <span className="bw-body-md font-semibold truncate">{e.title}</span>
-                    {(e.venue || e.time) && (
+                    {(e.venue || e.time || e.draft) && (
                       <span className="bw-body-sm text-muted-foreground truncate">
-                        {[hhmm(e.time), e.venue].filter(Boolean).join(' · ')}
+                        {[e.draft ? 'Draft · only you' : null, hhmm(e.time), e.venue].filter(Boolean).join(' · ')}
                       </span>
                     )}
                   </span>
-                  {isAdmin && e.kind === 'gig' && typeof e.fee === 'number' && e.fee > 0 && (
+                  {isAdmin && e.kind === 'gig' && !e.draft && typeof e.fee === 'number' && e.fee > 0 && (
                     <span className="bw-label-md shrink-0">{money(e.fee)}</span>
                   )}
                 </button>

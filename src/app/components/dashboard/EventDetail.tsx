@@ -587,7 +587,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const statusChips: string[] = [];
   if (isPersonalGig) statusChips.push('ONLY YOU');
   else if (isRehearsal) statusChips.push(rehearsalCadence(event.is_recurring, event.recurrence_rule, event.date));
-  else if (isQuote) statusChips.push((linkedQuote?.status || event.quoteStatus || 'pending').toUpperCase());
+  else if (isQuote) {
+    const qs = String(linkedQuote?.status || event.quoteStatus || 'pending');
+    statusChips.push(qs.toUpperCase());
+    // A quote not shared yet: on the admins' calendar only.
+    if (qs.toLowerCase() === 'draft' && !isPast) statusChips.push('HIDDEN FROM MEMBERS');
+  }
   else if (eventType === 'gig' && !isPast) statusChips.push((event.status || 'CONFIRMED').toUpperCase());
   const showPendingChip = !isPast && !isPersonalGig && isPending && (eventType === 'gig' || isRehearsal);
 
