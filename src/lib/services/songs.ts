@@ -2,7 +2,8 @@ import { supabase, getSafeUser } from '../supabase';
 import { removeSongFiles } from './songFiles';
 
 // Types
-export type SongStatus = 'learning' | 'ready' | 'archived';
+/** 'suggested': proposed by a member; an admin moves it to learning / ready. */
+export type SongStatus = 'suggested' | 'learning' | 'ready' | 'archived';
 export type SongPriority = 'high' | 'medium' | 'low';
 
 export interface Song {
@@ -306,6 +307,32 @@ export const getSetlists = async (
     const { data, error } = await query;
 
     if (error) throw error;
+
+    // Live totals: the stored song_count / total_duration_seconds can be stale
+    // (the duration was never written), so count from the setlist's songs.
+    const ids = (data || []).map((s: Setlist) => s.id);
+    if (ids.length > 0) {
+      const { data: rows, error: rowsError } = await supabase
+        .from('setlist_songs')
+        .select('setlist_id, song:songs (duration_seconds)')
+        .in('setlist_id', ids);
+      if (!rowsError && rows) {
+        const totals = new Map<string, { count: number; seconds: number }>();
+        for (const r of rows as Array<{ setlist_id: string; song?: { duration_seconds?: number | null } | null }>) {
+          const t = totals.get(r.setlist_id) || { count: 0, seconds: 0 };
+          t.count += 1;
+          t.seconds += r.song?.duration_seconds || 0;
+          totals.set(r.setlist_id, t);
+        }
+        return {
+          data: (data || []).map((s: Setlist) => {
+            const t = totals.get(s.id);
+            return { ...s, song_count: t?.count ?? 0, total_duration_seconds: t?.seconds ?? 0 };
+          }),
+          error: null,
+        };
+      }
+    }
 
     return { data, error: null };
   } catch (error: any) {

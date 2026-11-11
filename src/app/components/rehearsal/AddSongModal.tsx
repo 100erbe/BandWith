@@ -28,6 +28,10 @@ import {
   validateSongFile,
 } from '@/lib/services/songFiles';
 import { supabase } from '@/lib/supabase';
+import { useBand } from '@/lib/BandContext';
+import { useAuth } from '@/lib/AuthContext';
+import { personName } from '@/lib/personName';
+import { notifySongAdded } from '@/lib/services/notifications';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -38,7 +42,14 @@ interface AddSongModalProps {
   song?: Song | null;
 }
 
-type StepType = 'source' | 'details' | 'extras';
+// 1. Song (title + artist, the only required part) → 2. Details → 3. Files & links.
+type StepType = 'details' | 'more' | 'extras';
+
+/** "245" seconds → { min: '4', sec: '05' }. */
+const splitDuration = (seconds?: number | null) =>
+  seconds && seconds > 0
+    ? { min: String(Math.floor(seconds / 60)), sec: String(Math.round(seconds % 60)).padStart(2, '0') }
+    : { min: '', sec: '' };
 
 interface Folder {
   id: string;
@@ -54,7 +65,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   song,
 }) => {
   const isEdit = !!song;
-  const [step, setStep] = useState<StepType>('source');
+  const { isAdmin } = useBand();
+  const { profile, user } = useAuth();
+  const [step, setStep] = useState<StepType>('details');
   
   // Basic info
   const [title, setTitle] = useState('');
@@ -77,7 +90,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [notes, setNotes] = useState('');
   const [bpm, setBpm] = useState('');
   const [key, setKey] = useState('');
-  const [duration, setDuration] = useState('');
+  // Duration as minutes + seconds (number pads have no ":").
+  const [durMin, setDurMin] = useState('');
+  const [durSec, setDurSec] = useState('');
   
   // Status
   const [saving, setSaving] = useState(false);
@@ -97,13 +112,14 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setArtist(song.artist || '');
     setBpm(song.bpm ? String(song.bpm) : '');
     setKey(song.key || '');
-    setDuration(song.duration_seconds ? String(Math.round(song.duration_seconds / 60)) : '');
+    const d = splitDuration(song.duration_seconds);
+    setDurMin(d.min);
+    setDurSec(d.sec);
     setYoutubeUrl(song.youtube_url || '');
     setNotes(song.notes || '');
     setExistingAudio(song.audio_url || undefined);
     setExistingChart(song.chart_url || undefined);
     setChartUrl(song.chart_url && !isStoredSongFile(song.chart_url) ? song.chart_url : '');
-    setStep('details');
   }, [isOpen, song?.id]);
 
   const loadFolders = async () => {
@@ -209,6 +225,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         .filter(Boolean)
         .join('\n');
 
+      const mins = parseInt(durMin || '0', 10) || 0;
+      const secs = Math.min(59, parseInt(durSec || '0', 10) || 0);
+      const durationSeconds = mins * 60 + secs;
+
       const payload: Partial<Song> = {
         title: title.trim(),
         artist: artist.trim() || undefined,
@@ -219,14 +239,24 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         notes: noteText || undefined,
         bpm: bpm ? parseInt(bpm) : undefined,
         key: key || undefined,
-        duration_seconds: duration ? Math.round(parseFloat(duration) * 60) : undefined,
+        duration_seconds: durationSeconds || undefined,
       };
 
-      const { error: songError } = isEdit && song
+      // Members suggest songs; an admin moves them to Learning / Ready.
+      const suggested = !isEdit && !isAdmin;
+      const { data: savedSong, error: songError } = isEdit && song
         ? await updateSong(song.id, payload)
-        : await createSong({ ...payload, band_id: bandId, status: 'ready', priority: 'medium' });
+        : await createSong({ ...payload, band_id: bandId, status: suggested ? 'suggested' : 'ready', priority: 'medium' });
 
       if (songError) throw songError;
+      if (!isEdit) {
+        // Inbox note to the rest of the band (no push).
+        void notifySongAdded(
+          bandId,
+          { id: savedSong?.id, title: payload.title || title.trim(), artist: payload.artist },
+          { suggested, byName: personName(profile ? { ...profile, email: profile.email ?? user?.email } : { email: user?.email }, '') },
+        );
+      }
       uploaded.length = 0; // saved: the new files now belong to the song
       await removeSongFiles(replaced);
 
@@ -246,7 +276,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   };
 
   const handleClose = () => {
-    setStep('source');
+    setStep('details');
     setTitle('');
     setArtist('');
     setAudioFile(null);
@@ -260,35 +290,32 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setNotes('');
     setBpm('');
     setKey('');
-    setDuration('');
+    setDurMin('');
+    setDurSec('');
     setError(null);
     setSuccess(false);
     onClose();
   };
 
-  const canProceed = () => {
-    if (step === 'source') return true;
-    if (step === 'details') return title.trim().length > 0;
-    return true;
-  };
+  const canProceed = () => title.trim().length > 0;
 
   const nextStep = () => {
-    if (step === 'source') setStep('details');
-    else if (step === 'details') setStep('extras');
+    if (step === 'details') setStep('more');
+    else if (step === 'more') setStep('extras');
     else handleSubmit();
   };
 
   const prevStep = () => {
-    if (step === 'extras') setStep('details');
-    else if (step === 'details') setStep('source');
+    if (step === 'extras') setStep('more');
+    else if (step === 'more') setStep('details');
     else handleClose();
   };
 
   const getStepInfo = () => {
     switch (step) {
-      case 'source': return { num: '01', title: 'Files', subtitle: 'Add a recording and/or a chart (optional).' };
-      case 'details': return { num: '02', title: 'Details', subtitle: 'Song information' };
-      case 'extras': return { num: '03', title: 'Resources', subtitle: 'Links & notes' };
+      case 'details': return { num: '01', title: 'Song', subtitle: 'Title and artist are all you need. The rest is optional.' };
+      case 'more': return { num: '02', title: 'Details · optional', subtitle: 'Duration, tempo, key and folder.' };
+      case 'extras': return { num: '03', title: 'Files & links · optional', subtitle: 'A recording, a chart, links and notes.' };
     }
   };
 
@@ -299,7 +326,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   if (!isOpen) return null;
 
   const stepInfo = getStepInfo();
-  const STEP_ORDER: StepType[] = ['source', 'details', 'extras'];
+  const STEP_ORDER: StepType[] = ['details', 'more', 'extras'];
   const stepIndex = STEP_ORDER.indexOf(step);
 
   return (
@@ -315,7 +342,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       {/* Header: Top Bar + wizard steps */}
       <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
         <div className="flex items-center gap-3 min-h-11">
-          <NavBackButton pane label={step === 'source' ? 'Cancel' : 'Back'} onClick={prevStep} />
+          <NavBackButton pane label={step === 'details' ? 'Cancel' : 'Back'} onClick={prevStep} />
           <h2 id="add-song-title" className="flex-1 min-w-0 bw-h1 truncate">
             {isEdit ? 'Edit song' : 'Add song'}
           </h2>
@@ -342,57 +369,6 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pt-3 pb-8 max-w-2xl mx-auto w-full">
         <AnimatePresence mode="wait">
-          {step === 'source' && (
-            <motion.div
-              key="source"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col gap-5"
-            >
-              <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
-
-              {/* Audio */}
-              <FileSlot
-                label="Recording"
-                hint="MP3, M4A, WAV · max 50 MB"
-                file={audioFile}
-                existing={existingAudio && isStoredSongFile(existingAudio) ? 'Recording uploaded' : undefined}
-                onClear={() => {
-                  setAudioFile(null);
-                  setExistingAudio(undefined);
-                }}
-              />
-              {/* Chart */}
-              <FileSlot
-                label="Chart / sheet music"
-                hint="PDF or photo · max 20 MB"
-                file={chartFile}
-                existing={existingChart && isStoredSongFile(existingChart) ? 'Chart uploaded' : undefined}
-                onClear={() => {
-                  setChartFile(null);
-                  setExistingChart(undefined);
-                }}
-              />
-
-              <label className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
-                <input type="file" multiple accept={SONG_FILE_ACCEPT} onChange={handleFileChange} className="hidden" />
-                <Plus className="w-[18px] h-[18px]" />
-                Choose files
-              </label>
-
-              <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
-                <Cloud className="w-5 h-5 shrink-0 mt-0.5" aria-hidden />
-                <p className="bw-body-sm text-muted-foreground">
-                  Files on iCloud Drive, Google Drive or Dropbox: tap <span className="text-foreground">Choose files</span>,
-                  then <span className="text-foreground">Browse</span> and pick the app under Locations. Files are stored
-                  privately for your band.
-                </p>
-              </div>
-              {error && <FormError>{error}</FormError>}
-            </motion.div>
-          )}
-
           {step === 'details' && (
             <motion.div
               key="details"
@@ -402,13 +378,76 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               className="flex flex-col gap-4"
             >
               <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
-              <PillField label="Song title *" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Superstition" />
+              <PillField
+                label="Song title *"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && canProceed() && nextStep()}
+                placeholder="e.g. Superstition"
+                autoFocus={!isEdit}
+                enterKeyHint="next"
+              />
               <PillField label="Original artist" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="e.g. Stevie Wonder" />
+              {!isEdit && !isAdmin && (
+                <p className="bw-body-sm text-muted-foreground">
+                  Your song is added as <span className="text-foreground">Suggested</span>: an admin moves it to Learning or Ready.
+                </p>
+              )}
+              {error && <FormError>{error}</FormError>}
+            </motion.div>
+          )}
 
-              <div className="grid grid-cols-3 gap-3">
-                <PillField label="BPM" type="number" inputMode="numeric" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="120" />
+          {step === 'more' && (
+            <motion.div
+              key="more"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col gap-4"
+            >
+              <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
+
+              {/* Duration: minutes : seconds (numeric pads have no colon key) */}
+              <fieldset className="flex flex-col gap-2">
+                <legend className="bw-label-sm text-muted-foreground mb-2">Duration</legend>
+                <div className="flex items-center gap-2">
+                  <PillField
+                    label="Minutes"
+                    hideLabel
+                    className="w-24"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    value={durMin}
+                    onChange={(e) => setDurMin(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                    placeholder="4"
+                    trailing={<span className="bw-label-xs text-muted-foreground">min</span>}
+                  />
+                  <span className="bw-h2" aria-hidden>:</span>
+                  <PillField
+                    label="Seconds"
+                    hideLabel
+                    className="w-24"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    value={durSec}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      setDurSec(v && parseInt(v, 10) > 59 ? '59' : v);
+                    }}
+                    onBlur={() => durSec.length === 1 && setDurSec(`0${durSec}`)}
+                    placeholder="00"
+                    trailing={<span className="bw-label-xs text-muted-foreground">sec</span>}
+                  />
+                </div>
+              </fieldset>
+
+              <div className="grid grid-cols-2 gap-3">
+                <PillField label="BPM" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} value={bpm} onChange={(e) => setBpm(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="120" />
                 <PillField label="Key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="C maj" />
-                <PillField label="Min" type="number" inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="4" />
               </div>
 
               {/* Folder */}
@@ -447,6 +486,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   </div>
                 )}
               </fieldset>
+              {error && <FormError>{error}</FormError>}
             </motion.div>
           )}
 
@@ -459,6 +499,43 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               className="flex flex-col gap-4"
             >
               <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
+              {/* Audio */}
+              <FileSlot
+                label="Recording"
+                hint="MP3, M4A, WAV · max 50 MB"
+                file={audioFile}
+                existing={existingAudio && isStoredSongFile(existingAudio) ? 'Recording uploaded' : undefined}
+                onClear={() => {
+                  setAudioFile(null);
+                  setExistingAudio(undefined);
+                }}
+              />
+              {/* Chart */}
+              <FileSlot
+                label="Chart / sheet music"
+                hint="PDF or photo · max 20 MB"
+                file={chartFile}
+                existing={existingChart && isStoredSongFile(existingChart) ? 'Chart uploaded' : undefined}
+                onClear={() => {
+                  setChartFile(null);
+                  setExistingChart(undefined);
+                }}
+              />
+
+              <label className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
+                <input type="file" multiple accept={SONG_FILE_ACCEPT} onChange={handleFileChange} className="hidden" />
+                <Plus className="w-[18px] h-[18px]" />
+                Choose files
+              </label>
+
+              <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
+                <Cloud className="w-5 h-5 shrink-0 mt-0.5" aria-hidden />
+                <p className="bw-body-sm text-muted-foreground">
+                  Files on iCloud Drive, Google Drive or Dropbox: tap <span className="text-foreground">Choose files</span>,
+                  then <span className="text-foreground">Browse</span> and pick the app under Locations. Files are stored
+                  privately for your band.
+                </p>
+              </div>
               <PillField
                 type="url"
                 label="YouTube video"
@@ -505,10 +582,18 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       </div>
 
       {/* CTA bar */}
-      <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-        <div className="max-w-2xl mx-auto grid grid-cols-[2fr_3fr] gap-3">
+      <div className="shrink-0 px-4 pt-3 bg-background flex flex-col gap-2" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        {/* The optional steps can be skipped: save with what's there. */}
+        {step !== 'extras' && !success && (
+          <div className="max-w-2xl mx-auto w-full flex justify-center">
+            <PillButton variant="ghost" size="sm" fullWidth={false} onClick={handleSubmit} disabled={!canProceed() || saving}>
+              {isEdit ? 'Save now' : 'Add song now'}
+            </PillButton>
+          </div>
+        )}
+        <div className="max-w-2xl mx-auto w-full grid grid-cols-[2fr_3fr] gap-3">
           <PillButton variant="outline" onClick={prevStep}>
-            {step === 'source' ? 'Cancel' : 'Back'}
+            {step === 'details' ? 'Cancel' : 'Back'}
           </PillButton>
           <PillButton
             onClick={nextStep}

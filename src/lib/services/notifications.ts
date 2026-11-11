@@ -1053,6 +1053,46 @@ export const notifyBandMembers = async (
   }
 };
 
+/**
+ * In-app (Inbox only, no push) note to the rest of the band that a song was
+ * added to the repertoire, or suggested by a member for the admins to review.
+ */
+export const notifySongAdded = async (
+  bandId: string,
+  song: { id?: string; title: string; artist?: string },
+  opts: { suggested: boolean; byName?: string }
+): Promise<{ error: Error | null }> => {
+  try {
+    const { data: { user } } = await getSafeUser();
+    const { data: members, error: membersError } = await supabase
+      .from('band_members')
+      .select('user_id')
+      .eq('band_id', bandId)
+      .eq('is_active', true);
+    if (membersError) throw membersError;
+    const userIds = (members || []).map((m) => m.user_id).filter((id) => id && id !== user?.id);
+    if (userIds.length === 0) return { error: null };
+    const who = opts.byName?.trim() || 'A bandmate';
+    const label = song.artist ? `"${song.title}" by ${song.artist}` : `"${song.title}"`;
+    return createBulkNotifications(
+      userIds.map((user_id) => ({
+        user_id,
+        type: 'song_added' as const,
+        title: opts.suggested ? 'Song suggested' : 'New song in the repertoire',
+        body: opts.suggested
+          ? `${who} suggested ${label}. Admins can move it to Learning or Ready.`
+          : `${who} added ${label}.`,
+        band_id: bandId,
+        data: { song_id: song.id, band_id: bandId, suggested: opts.suggested },
+      })),
+      { sendPush: false }
+    );
+  } catch (error: any) {
+    console.error('Error notifying song added:', error);
+    return { error };
+  }
+};
+
 // Send push notifications to specific users via Edge Function
 export const sendPushToUsers = async (
   userIds: string[],

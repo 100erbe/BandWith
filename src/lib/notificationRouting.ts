@@ -9,7 +9,8 @@ export type NotificationTarget =
   | { screen: 'quotes' }
   | { screen: 'finance' }
   | { screen: 'invites' }
-  | { screen: 'bandMembers' };
+  | { screen: 'bandMembers' }
+  | { screen: 'repertoire' };
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() ? v : typeof v === 'number' ? String(v) : undefined;
@@ -41,6 +42,7 @@ export function notificationTarget(
   if (t.startsWith('quote_')) return { screen: 'quotes' };
   if (t.startsWith('payment_')) return { screen: 'finance' };
   if (t === 'invite_received' || t === 'band_invite') return { screen: 'invites' };
+  if (t === 'song_added') return { screen: 'repertoire' };
   if (t === 'member_joined' || t === 'member_left') {
     // Someone removed from a band can no longer open its member list.
     return d.removed ? null : { screen: 'bandMembers' };
@@ -63,6 +65,8 @@ export function notificationTargetLabel(target: NotificationTarget): string {
       return 'View invite';
     case 'bandMembers':
       return 'Open members';
+    case 'repertoire':
+      return 'Open repertoire';
   }
 }
 

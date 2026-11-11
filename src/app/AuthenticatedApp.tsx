@@ -838,6 +838,8 @@ export default function AuthenticatedApp() {
         window.dispatchEvent(new CustomEvent("bw:refresh-invites"));
       } else if (d.screen === "bandMembers") {
         setShowBandMembers(true);
+      } else if (d.screen === "repertoire") {
+        setShowSetlistManager(true);
       } else if (d.screen === "home") setActiveTab("Home");
     };
     window.addEventListener("push-navigate", handler);

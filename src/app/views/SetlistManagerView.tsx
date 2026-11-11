@@ -21,7 +21,7 @@ import {
 import { cn } from '@/app/components/ui/utils';
 import { useBand } from '@/lib/BandContext';
 import {
-  getSongs, createSong, deleteSong,
+  getSongs, createSong, deleteSong, updateSong,
   getSetlists, getSetlist, createSetlist, updateSetlist, deleteSetlist,
   replaceSetlistSongs, seedRepertoireSongs, bulkCreateSongs
 } from '@/lib/services/songs';
@@ -259,6 +259,18 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
       return;
     }
     setSongs(prev => prev.filter(s => s.id !== songId));
+  };
+
+  /** Admins move a suggested song to Learning / Ready (and back). */
+  const handleSetSongStatus = async (song: Song, status: Song['status']) => {
+    setActionMenuId(null);
+    const previous = song.status;
+    setSongs((prev) => prev.map((s) => (s.id === song.id ? { ...s, status } : s)));
+    const { error } = await updateSong(song.id, { status });
+    if (error) {
+      setSongs((prev) => prev.map((s) => (s.id === song.id ? { ...s, status: previous } : s)));
+      setNotice({ text: errorText(error, 'Could not update the song'), error: true });
+    }
   };
 
   const handlePlaySong = async (song: Song) => {
@@ -522,6 +534,24 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
   const editorMultiSet = useMemo(() => new Set(editorSets).size > 1, [editorSets]);
   const editorSetNumbers = useMemo(() => compactSets(editorSets), [editorSets]);
 
+  /** Running time of the setlist (and of each set), plus songs with no duration. */
+  const editorTotals = useMemo(() => {
+    const perSet = new Map<number, { count: number; seconds: number }>();
+    let seconds = 0;
+    let missing = 0;
+    for (const { fullIndex, song } of editorRows) {
+      const d = song.duration_seconds || 0;
+      seconds += d;
+      if (!d) missing += 1;
+      const n = editorSetNumbers[fullIndex] ?? 1;
+      const t = perSet.get(n) || { count: 0, seconds: 0 };
+      t.count += 1;
+      t.seconds += d;
+      perSet.set(n, t);
+    }
+    return { seconds, missing, perSet: [...perSet.entries()].sort((a, b) => a[0] - b[0]) };
+  }, [editorRows, editorSetNumbers]);
+
   // Reorder moves songs; set sizes stay put, so a song dragged across a
   // boundary joins the set it lands in.
   const handleEditorReorder = (nextVisible: EditorItem[]) => {
@@ -730,7 +760,11 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                             className="flex-1 min-w-0 flex items-center gap-3 text-left"
                           >
                             <span className="flex-1 min-w-0 flex flex-col gap-1">
-                              <span className="bw-label-md truncate">{song.title}</span>
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="bw-label-md truncate">{song.title}</span>
+                                {song.status === 'suggested' && <Tag variant="outline">Suggested</Tag>}
+                                {song.status === 'learning' && <Tag>Learning</Tag>}
+                              </span>
                               <span className="bw-body-sm text-muted-foreground truncate">
                                 {[song.artist, song.key].filter(Boolean).join(' · ') || 'Unknown artist'}
                               </span>
@@ -748,6 +782,12 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 ...(canPlay ? [{ label: 'Play', icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
                                 ...(hasChart ? [{ label: 'Open chart', icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: 'Edit', icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
+                                ...(isAdmin && song.status !== 'ready'
+                                  ? [{ label: 'Mark as ready', icon: <CheckCircle2 className="w-4 h-4" />, run: () => handleSetSongStatus(song, 'ready') }]
+                                  : []),
+                                ...(isAdmin && song.status !== 'learning'
+                                  ? [{ label: song.status === 'suggested' ? 'Approve · learning' : 'Back to learning', icon: <Music2 className="w-4 h-4" />, run: () => handleSetSongStatus(song, 'learning') }]
+                                  : []),
                                 ...(isAdmin
                                   ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDeleteSong(song.id), danger: true }]
                                   : []),
@@ -977,7 +1017,28 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
 
                     {/* Setlist order */}
                     <section className="flex flex-col gap-3">
-                      <h2 className="bw-label-sm text-muted-foreground">Setlist order ({plural(editorSongs.length, 'song')})</h2>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h2 className="bw-label-sm text-muted-foreground">Setlist order ({plural(editorSongs.length, 'song')})</h2>
+                        {editorSongs.length > 0 && (
+                          <span className="bw-label-md shrink-0" aria-label={`Total running time ${formatClock(editorTotals.seconds)}`}>
+                            Total {formatClock(editorTotals.seconds)}
+                          </span>
+                        )}
+                      </div>
+                      {editorMultiSet && editorTotals.perSet.length > 1 && (
+                        <div className="flex flex-wrap gap-2">
+                          {editorTotals.perSet.map(([n, t]) => (
+                            <Tag key={n} className="h-6 px-2.5">
+                              Set {n} · {plural(t.count, 'song')} · {formatClock(t.seconds)}
+                            </Tag>
+                          ))}
+                        </div>
+                      )}
+                      {editorTotals.missing > 0 && (
+                        <p className="bw-body-sm text-muted-foreground">
+                          {plural(editorTotals.missing, 'song')} without a duration: add it with Edit for an exact total.
+                        </p>
+                      )}
                       {editorSongs.length === 0 ? (
                         <Card className="items-center text-center py-10 gap-3">
                           <ListMusic className="w-10 h-10 text-muted-foreground" />
