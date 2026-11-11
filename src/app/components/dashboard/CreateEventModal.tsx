@@ -42,6 +42,7 @@ import { RehearsalCreationWizard } from '@/app/components/rehearsal/RehearsalCre
 import { useBand } from '@/lib/BandContext';
 import { getSongs, getSetlists, getSetlist, type Song, type Setlist } from '@/lib/services/songs';
 import { supabase } from '@/lib/supabase';
+import { listEventTasks } from '@/lib/services/eventTasks';
 import { getBandPricing, DEFAULT_BAND_PRICING, type BandPricingSettings } from '@/lib/services/pricing';
 import { todayLocal } from '../../../lib/dates';
 import { useLeadingCompanion } from '@/app/components/duo';
@@ -115,7 +116,7 @@ interface CreateEventModalProps {
   /** Band calendar, so the date picker can mark busy days and suggest a free one. */
   existingEvents?: EventData[];
   /** Tasks preloaded from a task template ("Use this template"). */
-  initialTasks?: { title: string; templateId?: string }[];
+  initialTasks?: { title: string; templateId?: string; dueOffset?: number }[];
   editingEvent?: {
     id: number;
     eventId?: string;
@@ -675,9 +676,29 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       title: t.title,
       completed: false,
       templateId: t.templateId,
+      dueOffset: t.dueOffset,
     })),
   );
   const [newTaskText, setNewTaskText] = useState('');
+  // Editing: show the tasks already saved on the event, so they can be
+  // renamed or removed (ids kept to sync on save).
+  const [originalTaskIds, setOriginalTaskIds] = useState<string[]>([]);
+  const editingEventId: string | undefined = editingEvent?.eventId;
+  useEffect(() => {
+    if (!isEditing || !editingEventId) return;
+    let cancelled = false;
+    listEventTasks(editingEventId).then(({ data }) => {
+      if (cancelled || data.length === 0) return;
+      setOriginalTaskIds(data.map(t => t.id));
+      setTasks(prev => [
+        ...data.map(t => ({ uid: `t-saved-${t.id}`, id: t.id, title: t.title, completed: t.is_completed })),
+        ...prev.filter(t => !t.id),
+      ]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditing, editingEventId]);
   const [notes, setNotes] = useState(editingEvent?.notes || '');
   // The extra band fee isn't stored on its own: the event fee is members +
   // extra, so when editing it is what the saved fee has beyond the members.
@@ -830,7 +851,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       members: membersWithUserIds,
       audienceIds: membersWithUserIds.map(m => m.id),
       setlist,
-      tasks,
+      // A task typed but not yet added with the button still counts.
+      tasks: newTaskText.trim()
+        ? [...tasks, { uid: `t-${Date.now()}`, title: newTaskText.trim(), completed: false }]
+        : tasks,
+      _originalTaskIds: originalTaskIds,
       notes,
       status: modalCategory === 'quote' ? 'tentative' : 'confirmed',
       ...(isEditing && editingEvent
@@ -1818,6 +1843,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                       title: t.title,
                       completed: false,
                       templateId: tpl.id,
+                      dueOffset: t.dueOffset ?? t.due_offset,
                     }));
                     setTasks(loaded);
                   }}

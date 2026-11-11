@@ -28,6 +28,7 @@ import {
   type TemplateCategory,
   type TemplateTask,
 } from '@/lib/services/taskTemplates';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 
 export type { TaskTemplate, TemplateTask } from '@/lib/services/taskTemplates';
 
@@ -118,11 +119,18 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setFormTasks(formTasks.filter(t => t.id !== taskId));
   };
 
+  // A task typed in the field but not yet added with "Add task" is saved too.
+  const pendingTask: TaskItem | null = newTaskTitle.trim()
+    ? { id: 'pending', title: newTaskTitle.trim(), dueOffset: newTaskOffset, required: newTaskRequired }
+    : null;
+  const tasksToSave = pendingTask ? [...formTasks, pendingTask] : formTasks;
+
   const handleSaveTemplate = async () => {
-    if (!formName.trim() || formTasks.length === 0 || saving) return;
+    if (!formName.trim() || tasksToSave.length === 0 || saving) return;
     setSaving(true);
     setFormError(null);
-    const input = { name: formName, description: formDescription, category: formCategory, tasks: formTasks };
+    const tasks = tasksToSave.map((t) => (t.id === 'pending' ? { ...t, id: crypto.randomUUID() } : t));
+    const input = { name: formName, description: formDescription, category: formCategory, tasks };
     const { data, error } = editingId ? await updateTemplate(editingId, input) : await createTemplate(bandId, input);
     setSaving(false);
     if (error || !data) {
@@ -180,6 +188,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setTemplates((prev) => [data, ...prev]);
   };
 
+  const [pendingDelete, setPendingDelete] = useState<TaskTemplate | null>(null);
+
   const handleDelete = async (template: TaskTemplate) => {
     setMenuOpenId(null);
     if (busyId) return;
@@ -187,11 +197,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setListError(null);
     const { error } = await deleteTemplate(template.id);
     setBusyId(null);
+    setPendingDelete(null);
     if (error) {
       setListError(`Couldn't delete "${template.name}". ${error.message}`);
       return;
     }
     setTemplates((prev) => prev.filter((t) => t.id !== template.id));
+    setSelectedTemplate((cur) => (cur && cur.id === template.id ? null : cur));
   };
 
   const handleEdit = (template: TaskTemplate) => {
@@ -355,7 +367,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                           { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, run: () => handleDuplicate(template) },
                           { label: 'Edit', icon: <Edit2 className="w-4 h-4" />, run: () => handleEdit(template) },
                           ...(!template.is_default
-                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => handleDelete(template), danger: true }]
+                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => { setMenuOpenId(null); setPendingDelete(template); }, danger: true }]
                             : []),
                         ].map((item) => (
                           <button
@@ -529,18 +541,27 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                 <PillButton
                   onClick={handleSaveTemplate}
                   loading={saving}
-                  disabled={!formName.trim() || formTasks.length === 0}
+                  disabled={!formName.trim() || tasksToSave.length === 0}
                   icon={<CheckSquare className="w-[18px] h-[18px]" />}
                 >
                   {editingId
                     ? 'Save changes'
-                    : `Create template (${formTasks.length} ${formTasks.length === 1 ? 'task' : 'tasks'})`}
+                    : `Create template (${tasksToSave.length} ${tasksToSave.length === 1 ? 'task' : 'tasks'})`}
                 </PillButton>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <DeleteChatSheet
+        open={!!pendingDelete}
+        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : undefined}
+        body="The template is removed for the whole band. Events already created keep their tasks."
+        deleting={!!pendingDelete && busyId === pendingDelete.id}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && handleDelete(pendingDelete)}
+      />
     </motion.div>
   );
 };

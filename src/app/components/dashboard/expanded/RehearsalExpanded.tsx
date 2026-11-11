@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowUpRight,
@@ -18,18 +18,17 @@ import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { EventItem } from '@/app/data/events';
 import { RehearsalViewMode } from '@/app/types';
+import { useEventTasks } from '@/lib/services/eventTasks';
+import { getSetlist } from '@/lib/services/songs';
 import { MapsLink } from '@/app/components/ui/MapsLink';
 
-interface RehearsalDetails {
-  setlist: Array<{ id: string; title: string; key?: string; bpm?: number; duration?: string }>;
-  tasks: Array<{ label?: string; text?: string; assigned?: string; assignee?: string; done?: boolean; completed?: boolean }>;
-  timeline: Array<{ time: string; label: string; icon: any; active?: boolean }>;
-}
+type RehearsalSong = { id: string; title: string; key?: string; bpm?: number; duration?: string };
+
+const hhmm = (t?: string) => (t ? t.slice(0, 5) : '');
 
 interface RehearsalExpandedProps {
   upcomingRehearsals: EventItem[];
   currentRehearsal: EventItem;
-  currentDetails: RehearsalDetails | null;
   rehearsalIndex: number;
   setRehearsalIndex: (index: number | ((prev: number) => number)) => void;
   rehearsalViewMode: RehearsalViewMode;
@@ -58,7 +57,6 @@ const VIEW_TITLE: Partial<Record<RehearsalViewMode, string>> = {
 export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
   upcomingRehearsals,
   currentRehearsal,
-  currentDetails,
   rehearsalIndex,
   setRehearsalIndex,
   rehearsalViewMode,
@@ -82,8 +80,47 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
     }
   };
 
-  const pendingTasks = currentDetails?.tasks?.filter((t: any) => !(t.done || t.completed)).length || 0;
-  const songCount = currentDetails?.setlist?.length || 0;
+  // Real data of the rehearsal shown: its saved tasks and setlist.
+  const { tasks, toggle: toggleTask, error: tasksError } = useEventTasks(currentRehearsal?.eventId);
+  const setlistId = currentRehearsal?.setlistId;
+  const [setlist, setSetlist] = useState<RehearsalSong[]>([]);
+  useEffect(() => {
+    if (!setlistId) {
+      setSetlist([]);
+      return;
+    }
+    let cancelled = false;
+    getSetlist(setlistId).then(({ data }) => {
+      if (cancelled) return;
+      setSetlist(
+        (data?.songs || []).map((row: any) => {
+          const secs = row.song?.duration_seconds;
+          return {
+            id: row.id,
+            title: row.song?.title || 'Untitled song',
+            key: row.song?.key || undefined,
+            bpm: row.song?.bpm || undefined,
+            duration: typeof secs === 'number' && secs > 0 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : undefined,
+          };
+        }),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [setlistId]);
+
+  const timeline = useMemo(() => {
+    const steps: { time: string; label: string; active?: boolean }[] = [];
+    if (currentRehearsal?.loadInTime) steps.push({ time: hhmm(currentRehearsal.loadInTime), label: 'Load-in' });
+    if (currentRehearsal?.soundcheckTime) steps.push({ time: hhmm(currentRehearsal.soundcheckTime), label: 'Soundcheck' });
+    if (currentRehearsal?.time) steps.push({ time: hhmm(currentRehearsal.time), label: 'Start', active: true });
+    if (currentRehearsal?.endTime) steps.push({ time: hhmm(currentRehearsal.endTime), label: 'End' });
+    return steps;
+  }, [currentRehearsal?.loadInTime, currentRehearsal?.soundcheckTime, currentRehearsal?.time, currentRehearsal?.endTime]);
+
+  const pendingTasks = tasks.filter((t) => !t.is_completed).length;
+  const songCount = setlist.length;
 
   return (
     <ExpandedCardWrapper
@@ -236,18 +273,19 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               </div>
 
               {/* Timeline strip */}
-              {currentDetails?.timeline && currentDetails.timeline.length > 0 && (
+              {timeline.length > 1 && (
                 <Card>
                   <span className="bw-label-sm text-muted-foreground">Timeline</span>
                   <div className="relative flex justify-between items-start">
                     <span className="absolute top-[5px] left-1 right-1 h-px bg-border" aria-hidden="true" />
-                    {currentDetails.timeline.map((step: any, i: number) => (
+                    {timeline.map((step, i) => (
                       <span key={i} className="relative flex flex-col items-center gap-2 min-w-0">
                         <span
                           className={cn('w-2.5 h-2.5 rounded-full', step.active ? 'bg-accent-rehearsal' : 'bg-foreground/25')}
                           aria-hidden="true"
                         />
                         <span className={cn('bw-label-xs tabular-nums', !step.active && 'text-muted-foreground')}>{step.time}</span>
+                        <span className="bw-label-xs text-muted-foreground">{step.label}</span>
                       </span>
                     ))}
                   </div>
@@ -308,10 +346,10 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 </Card>
               ) : (
                 <Card className="gap-0 py-2">
-                  {currentDetails!.setlist.map((song: any, i: number) => {
+                  {setlist.map((song, i) => {
                     const meta = [song.key, song.bpm ? `${song.bpm} BPM` : null].filter(Boolean).join(' · ');
                     return (
-                      <div key={i} className={cn('flex items-center gap-3 py-3', i > 0 && 'border-t border-border')}>
+                      <div key={song.id} className={cn('flex items-center gap-3 py-3', i > 0 && 'border-t border-border')}>
                         <span className="bw-label-sm text-muted-foreground w-6 shrink-0 tabular-nums">{String(i + 1).padStart(2, '0')}</span>
                         <span className="flex-1 min-w-0 flex flex-col gap-1">
                           <span className="bw-body-lg truncate">{song.title}</span>
@@ -336,27 +374,32 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               className="flex flex-col gap-4"
             >
               <span className="bw-label-sm text-muted-foreground">{pendingTasks} pending</span>
-              {(currentDetails?.tasks?.length || 0) === 0 ? (
+              {tasksError && <p role="alert" className="bw-body-sm text-destructive">{tasksError}</p>}
+              {tasks.length === 0 ? (
                 <Card className="items-center text-center py-8">
                   <h3 className="bw-h3">No tasks</h3>
+                  <p className="bw-body-sm text-muted-foreground">Add them when you create or edit the rehearsal.</p>
                 </Card>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {currentDetails!.tasks.map((task: any, i: number) => {
-                    const isDone = task.done || task.completed;
-                    const who = task.assigned || task.assignee;
-                    return (
-                      <div key={i} className="flex items-center gap-3 p-4 rounded-[16px] bg-card text-card-foreground">
-                        <DotCheckbox checked={isDone} activeColor="var(--accent-rehearsal)" inactiveColor="var(--border)" />
-                        <span className="flex-1 min-w-0 flex flex-col gap-1">
-                          <span className={cn('bw-body-lg [overflow-wrap:anywhere]', isDone && 'text-muted-foreground line-through')}>
-                            {task.label || task.text}
-                          </span>
-                          {who && <span className="bw-body-sm text-muted-foreground truncate">Assigned to {who}</span>}
+                  {tasks.map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={task.is_completed}
+                      onClick={() => toggleTask(task.id)}
+                      className="flex items-center gap-3 p-4 rounded-[16px] bg-card text-card-foreground text-left active:scale-[0.99] transition-transform"
+                    >
+                      <DotCheckbox checked={task.is_completed} activeColor="var(--accent-rehearsal)" inactiveColor="var(--border)" />
+                      <span className="flex-1 min-w-0 flex flex-col gap-1">
+                        <span className={cn('bw-body-lg [overflow-wrap:anywhere]', task.is_completed && 'text-muted-foreground line-through')}>
+                          {task.title}
                         </span>
-                      </div>
-                    );
-                  })}
+                        {task.notes && <span className="bw-body-sm text-muted-foreground truncate">{task.notes}</span>}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </motion.div>

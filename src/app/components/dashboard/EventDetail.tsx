@@ -48,6 +48,8 @@ import {
   findBandConflict,
 } from '@/app/components/event/PersonalGigParts';
 import { FeePayoutsContent } from '@/app/components/event/FeePayoutsContent';
+import { DotCheckbox } from '@/app/components/ui/DotCheckbox';
+import { useEventTasks } from '@/lib/services/eventTasks';
 import {
   dayBefore,
   daysUntil,
@@ -310,6 +312,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
       onClose();
     }
   }, [isAdmin, isPersonalGig, eventType, userResponse, onClose]);
+
+  // Event to-dos (from the create form or a task template).
+  const { tasks: eventTasks, toggle: toggleEventTask, error: eventTasksError } = useEventTasks(
+    isPersonalGig ? null : event.eventId,
+  );
+  const tasksDone = eventTasks.filter((t) => t.is_completed).length;
 
   // Fetch setlist songs
   useEffect(() => {
@@ -1200,6 +1208,45 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       No songs picked for this rehearsal yet.
                     </button>
                   )}
+                </section>
+              )}
+
+              {/* ─── TASKS (band events with saved to-dos) ─── */}
+              {!isPersonalGig && eventTasks.length > 0 && (
+                <section className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-1">
+                    <SectionTitle title="TASKS" />
+                    <span className="bw-label-sm text-muted-foreground">{tasksDone} of {eventTasks.length} done</span>
+                  </div>
+                  {eventTasksError && <p role="alert" className="bw-body-sm text-destructive">{eventTasksError}</p>}
+                  <div className="bg-card rounded-[16px] px-4 py-1 flex flex-col">
+                    {eventTasks.map((task, i) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={task.is_completed}
+                        onClick={() => { haptic.tap(); toggleEventTask(task.id); }}
+                        className={cn('flex items-center gap-3 py-3 text-left cursor-pointer', i > 0 && 'border-t border-border')}
+                      >
+                        <DotCheckbox
+                          checked={task.is_completed}
+                          activeColor={isRehearsal ? 'var(--accent-rehearsal)' : 'var(--foreground)'}
+                          inactiveColor="var(--border)"
+                        />
+                        <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                          <span className={cn('bw-body-md [overflow-wrap:anywhere]', task.is_completed && 'text-muted-foreground line-through')}>
+                            {task.title}
+                          </span>
+                          {task.due_date && (
+                            <span className="bw-label-xs text-muted-foreground">
+                              Due {parseLocalDate(task.due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </section>
               )}
 
