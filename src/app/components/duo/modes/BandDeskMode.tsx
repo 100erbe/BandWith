@@ -65,6 +65,8 @@ export interface BandDeskModeProps {
   actionItems: DeskActionItem[];
   /** Data still loading: the poster says so instead of "no gigs". */
   loading?: boolean;
+  /** Opens the event on the poster (the same as tapping it on Home). */
+  onOpenGig?: () => void;
   onCreateGig?: () => void;
   onCreateRehearsal?: () => void;
   onCreateQuote?: () => void;
@@ -75,7 +77,12 @@ export interface BandDeskModeProps {
   zIndex?: number;
 }
 
-const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boolean }> = ({ gig, isAdmin, loading }) => {
+const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boolean; onOpen?: () => void }> = ({
+  gig,
+  isAdmin,
+  loading,
+  onOpen,
+}) => {
   if (!gig) {
     return (
       <div className="bw-fold-pad min-h-full flex items-center">
@@ -99,7 +106,7 @@ const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boo
   return (
     // Hero card, edge to edge (Figma: hero cards run to the Display's edges).
     <article
-      className="bw-fold-hero min-h-full flex flex-col"
+      className="bw-fold-hero relative min-h-full flex flex-col"
       style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
       aria-label={`Next ${kind}: ${gig.title}`}
     >
@@ -135,6 +142,17 @@ const GigPoster: React.FC<{ gig: DeskGig | null; isAdmin: boolean; loading?: boo
           )}
         </div>
       </div>
+      {onOpen && (
+        <button
+          type="button"
+          aria-label={`Open ${gig.title}`}
+          onClick={() => {
+            haptic.tap();
+            onOpen();
+          }}
+          className="absolute inset-0 cursor-pointer active:bg-black/5 transition-colors"
+        />
+      )}
     </article>
   );
 };
@@ -144,6 +162,7 @@ export const BandDeskMode: React.FC<BandDeskModeProps> = ({
   isAdmin,
   actionItems,
   loading,
+  onOpenGig,
   onCreateGig,
   onCreateRehearsal,
   onCreateQuote,
@@ -228,7 +247,7 @@ export const BandDeskMode: React.FC<BandDeskModeProps> = ({
       zIndex={zIndex}
       displayLabel="Next gig"
       deckLabel="Band desk"
-      display={<GigPoster gig={nextGig} isAdmin={isAdmin} loading={loading} />}
+      display={<GigPoster gig={nextGig} isAdmin={isAdmin} loading={loading} onOpen={onOpenGig} />}
       deck={deck}
     />
   );

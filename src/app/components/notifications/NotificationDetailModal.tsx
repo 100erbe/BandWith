@@ -742,8 +742,11 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             </div>
           </div>
 
-          {/* ═══ CTA BAR ═══ */}
-          <div className="shrink-0 bg-background px-4 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+          {/* ═══ CTA BAR ═══ (Laptop pose: Close is already in the Deck bar) */}
+          <div
+            className={cn('shrink-0 bg-background px-4 pt-3', isListView && 'bw-tabletop-hidden')}
+            style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
+          >
             <div className="max-w-xl mx-auto w-full">
               {isListView ? (
                 <PillButton variant="dark" onClick={handleClose}>

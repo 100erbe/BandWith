@@ -103,7 +103,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     refreshBands,
   } = useBand();
 
-  const topInset = 'max(var(--safe-top), 12px)';
+  // --bw-head-top: Laptop pose on iPhone Duo starts top bars beside the clock
+  // block instead of below it (index.css); elsewhere it is unset.
+  const topInset = 'max(var(--bw-head-top, var(--safe-top)), 12px)';
 
   // iPhone Duo: the profile covers the screen beneath, so its Back/Search
   // leave the rail; the hub keeps its own close (Figma "Identity / Who you are").
@@ -376,7 +378,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 }}
                 transition={HEADER_SPRING}
                 style={{ willChange: 'height' }}
-                className="max-w-xl mx-auto w-full relative overflow-hidden"
+                className="max-w-[34rem] mx-auto w-full relative overflow-hidden"
               >
                 <div className="flex flex-col pr-14 pt-2">
                   <motion.span

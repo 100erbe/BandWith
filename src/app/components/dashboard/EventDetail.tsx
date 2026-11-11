@@ -691,6 +691,42 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     </span>
   );
 
+  // Time tiles (none on quotes). Laptop pose shows them on the Display with
+  // the title (index.css: .bw-ed-times-hero), the rest of the time on the sheet.
+  const timeTiles = !isQuote ? (
+    <div className="grid grid-cols-3 gap-2">
+      {isPersonalGig ? (
+        <>
+          <TimeTile label="CALL" value={loadInTime} />
+          <TimeTile label="START" value={showTime} />
+          <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
+        </>
+      ) : eventType === 'gig' ? (
+        <>
+          <TimeTile label="LOAD IN" value={loadInTime} />
+          <TimeTile label="SOUNDCHECK" value={soundCheckTime} />
+          <TimeTile label="SHOW" value={showTime} />
+        </>
+      ) : isRehearsal ? (
+        <>
+          <TimeTile label="START" value={showTime} />
+          <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
+          <TimeTile label="ROOM" value={roomLabel || 'TBD'} text />
+        </>
+      ) : (
+        <>
+          <TimeTile label="SHOW TIME" value={showTime} />
+          <TimeTile label="SETTING" value={event.indoorOutdoor?.toUpperCase() || 'TBD'} text />
+          <TimeTile
+            label={event.guests ? 'GUESTS' : 'STATUS'}
+            value={event.guests ? `${event.guests} PAX` : eventType.toUpperCase()}
+            text
+          />
+        </>
+      )}
+    </div>
+  ) : null;
+
   return (
     <>
       <motion.div
@@ -715,7 +751,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           ref={scrimRef}
           aria-hidden
           className={cn(
-            'pointer-events-none absolute inset-x-0 top-0 z-10 bg-background/85 backdrop-blur-md transition-opacity duration-200',
+            'bw-ed-scrim pointer-events-none absolute inset-x-0 top-0 z-10 bg-background/85 backdrop-blur-md transition-opacity duration-200',
             heroUnderBar ? 'opacity-0' : 'opacity-100',
           )}
           style={{ height: 'var(--safe-top)' }}
@@ -871,6 +907,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   )}
                 </div>
               </div>
+              {timeTiles && <div className="bw-ed-times-hero">{timeTiles}</div>}
             </div>
           </header>
 
@@ -908,40 +945,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 />
               )}
 
-              {/* ─── TIME TILES (none on quotes) ─── */}
-              {!isQuote && (
-                <div className="grid grid-cols-3 gap-2">
-                  {isPersonalGig ? (
-                    <>
-                      <TimeTile label="CALL" value={loadInTime} />
-                      <TimeTile label="START" value={showTime} />
-                      <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
-                    </>
-                  ) : eventType === 'gig' ? (
-                    <>
-                      <TimeTile label="LOAD IN" value={loadInTime} />
-                      <TimeTile label="SOUNDCHECK" value={soundCheckTime} />
-                      <TimeTile label="SHOW" value={showTime} />
-                    </>
-                  ) : isRehearsal ? (
-                    <>
-                      <TimeTile label="START" value={showTime} />
-                      <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
-                      <TimeTile label="ROOM" value={roomLabel || 'TBD'} text />
-                    </>
-                  ) : (
-                    <>
-                      <TimeTile label="SHOW TIME" value={showTime} />
-                      <TimeTile label="SETTING" value={event.indoorOutdoor?.toUpperCase() || 'TBD'} text />
-                      <TimeTile
-                        label={event.guests ? 'GUESTS' : 'STATUS'}
-                        value={event.guests ? `${event.guests} PAX` : eventType.toUpperCase()}
-                        text
-                      />
-                    </>
-                  )}
-                </div>
-              )}
+              {/* ─── TIME TILES ─── */}
+              {timeTiles && <div className="bw-ed-times-sheet">{timeTiles}</div>}
 
               {/* ─── PERSONAL GIG: conflict + privacy ─── */}
               {isPersonalGig && bandConflict && (

@@ -85,6 +85,13 @@ describe('Laptop pose modes render with real-shaped data and empty states', () =
     cleanup();
     render(<BandDeskMode nextGig={{ kind: 'rehearsal', title: 'Band practice', date: '2030-01-03' }} isAdmin actionItems={[]} />);
     expect(screen.getByLabelText('Next rehearsal: Band practice')).toBeInTheDocument();
+    // Without a handler the poster is not a button.
+    expect(screen.queryByLabelText('Open Band practice')).toBeNull();
+    cleanup();
+    const onOpen = vi.fn();
+    render(<BandDeskMode nextGig={{ title: 'Blue Note', date: '2030-01-05' }} isAdmin actionItems={[]} onOpenGig={onOpen} />);
+    screen.getByLabelText('Open Blue Note').click();
+    expect(onOpen).toHaveBeenCalled();
   });
 
   it('PlannerMode', () => {
@@ -104,6 +111,7 @@ describe('Laptop pose modes render with real-shaped data and empty states', () =
   it('FindADateMode', () => {
     tabletop();
     const onLock = vi.fn();
+    const onClose = vi.fn();
     render(
       <FindADateMode
         poll={{
@@ -120,11 +128,15 @@ describe('Laptop pose modes render with real-shaped data and empty states', () =
         isAdmin
         onToggleVote={() => {}}
         onLock={onLock}
+        onClose={onClose}
       />,
     );
     expect(screen.getByText('2 of 3 voted')).toBeInTheDocument();
     screen.getByText(/^Lock /).closest('button')!.click();
     expect(onLock).toHaveBeenCalledWith('o1');
+    // The sheet's own X is under the split, so admins close from the Deck.
+    screen.getByRole('button', { name: 'Close' }).click();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('FloorWedgeMode keeps the screen awake while mounted', () => {

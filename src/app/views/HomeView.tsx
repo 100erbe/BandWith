@@ -489,6 +489,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       isAdmin={!!isAdmin}
       actionItems={deskActionItems}
       loading={!!dashboardLoading && !deskNextGig}
+      onOpenGig={deskNextGig?.id && onSelectEvent ? () => onSelectEvent(deskNextGig.id!) : undefined}
       onCreateGig={onCreateGig}
       onCreateRehearsal={onCreateRehearsal}
       onCreateQuote={onCreateQuote}

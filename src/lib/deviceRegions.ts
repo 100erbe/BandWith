@@ -161,9 +161,11 @@ export function installDuoLayout(): void {
     if (block && s) {
       root.style.setProperty('--bw-display-top', `${Math.max(8, Math.round(s.y))}px`);
       root.style.setProperty('--bw-display-head-x', `${Math.round(railEdge === 'left' ? s.x + s.w : vw - s.x)}px`);
+      root.style.setProperty('--bw-status-bottom', `${Math.round(s.y + s.h)}px`);
     } else {
       root.style.removeProperty('--bw-display-top');
       root.style.removeProperty('--bw-display-head-x');
+      root.style.removeProperty('--bw-status-bottom');
     }
     updatePosture(result);
     window.dispatchEvent(new CustomEvent('bwlayout'));

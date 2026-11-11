@@ -169,8 +169,8 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
           </PillButton>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3">
+        {/* Footer (stays in view when the card scrolls, e.g. Laptop pose) */}
+        <div className="bw-dialog-footer flex items-center justify-between gap-3">
           <div className="flex items-center gap-1" aria-hidden>
             {TOUR_STEPS.map((_, i) => (
               <span

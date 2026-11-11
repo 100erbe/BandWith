@@ -191,6 +191,25 @@
 [data-bw-posture="tabletop"] .bw-deck-only:not(.inset-0) {
   max-height: var(--bw-deck-h) !important;
 }
+/* Centered dialogs (admin tour, confirmations): the scrim dims both halves,
+   the card sits on the Deck between the fold and the bar, where the thumbs
+   are, and scrolls if it is taller than that. */
+[data-bw-posture="tabletop"] .bw-pane-dialog.flex {
+  padding-top: calc(var(--bw-deck-top) + 8px) !important;
+  padding-bottom: var(--content-bottom-clearance) !important;
+}
+[data-bw-posture="tabletop"] .bw-pane-dialog.flex > * {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-bw-posture="tabletop"] .bw-pane-dialog .bw-dialog-footer {
+  position: sticky;
+  bottom: -24px;
+  margin: 0 -24px -24px;
+  padding: 12px 24px 24px;
+  background: var(--color-sheet);
+}
 /* Toasts and alerts sit at the bottom of the Display, above the fold band. */
 [data-bw-posture="tabletop"] .bw-toast,
 [data-bw-posture="tabletop"] [data-sonner-toaster] {
@@ -231,22 +250,51 @@
   padding-inline-start: max(1rem, var(--bw-status-clear-left, 0px));
 }
 
+/* With the clock as a corner block (data-bw-status-block), top bars start at
+   the block's top instead of below it: their trailing side already clears
+   the clock (rule above) and they are at least as tall as the block, so
+   whatever follows them never runs under it. */
+:root[data-bw-rail-host][data-bw-status-block] {
+  --bw-head-top: calc(var(--bw-display-top, 8px) + var(--offline-h, 0px));
+}
+:root[data-bw-rail-host][data-bw-status-block] header {
+  --safe-top: var(--bw-head-top);
+  --wizard-header-pt: calc(var(--bw-head-top) + 16px);
+  min-height: var(--bw-status-bottom, 0px);
+}
+/* The clock clearance narrows the header, so a centered column inside it
+   would start further left than the same column in the body below. Keep the
+   body's left edge (px-4 page + the column's own centering). */
+:root[data-bw-rail-host][data-bw-status-block]:not([data-bw-status-edge="left"]) header > .mx-auto.max-w-xl {
+  margin-left: max(0px, calc((100vw - 2rem - 36rem) / 2));
+  margin-right: 0;
+}
+:root[data-bw-rail-host][data-bw-status-block]:not([data-bw-status-edge="left"]) header > .mx-auto.max-w-2xl {
+  margin-left: max(0px, calc((100vw - 2rem - 42rem) / 2));
+  margin-right: 0;
+}
+:root[data-bw-rail-host][data-bw-status-block]:not([data-bw-status-edge="left"]) header > .mx-auto.max-w-\[640px\] {
+  margin-left: max(0px, calc((100vw - 2rem - 640px) / 2));
+  margin-right: 0;
+}
+
 /* Event detail in Laptop pose ("same thing, new shape"): the event-colour
    hero fills the Display edge to edge, the rest (RSVP, times, lineup,
    actions) scrolls on its own on the Deck. Nothing crosses the fold. */
 [data-bw-posture="tabletop"] .bw-event-detail {
   background-color: var(--color-background) !important;
 }
+/* The page scroller stops scrolling here: on iOS a fixed child of a
+   scrolling box is clipped to it, so the hero and the sheet are placed
+   against the detail layer instead and the sheet scrolls on its own. */
 [data-bw-posture="tabletop"] .bw-event-detail .bw-ed-scroll {
-  position: absolute;
-  top: var(--bw-deck-top);
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--color-background);
+  overflow: visible !important;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-scrim {
+  display: none;
 }
 [data-bw-posture="tabletop"] .bw-event-detail .bw-ed-hero {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -255,11 +303,51 @@
   overscroll-behavior: contain;
 }
 [data-bw-posture="tabletop"] .bw-event-detail .bw-ed-hero > div {
+  min-height: 100%;
   padding-bottom: 20px;
 }
+/* Only the title row steps aside for the clock block; the rows under it run
+   the full width (like the Display of the Band desk). */
+:root[data-bw-status-block]:not([data-bw-status-edge="left"]) .bw-event-detail header.bw-ed-hero {
+  padding-inline-end: 0;
+}
+:root[data-bw-status-block]:not([data-bw-status-edge="left"]) .bw-event-detail header.bw-ed-hero > .mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+:root[data-bw-status-block]:not([data-bw-status-edge="left"]) .bw-event-detail .bw-ed-hero > div > :nth-child(2) {
+  padding-inline-end: max(0px, calc(var(--bw-display-head-x, 0px) - 16px));
+}
+/* The time tiles move up to the Display, under the title, tinted like the
+   hero's chips. */
+.bw-ed-times-hero {
+  display: none;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-times-hero {
+  display: block;
+  margin-top: auto;
+}
+[data-bw-posture="tabletop"] .bw-event-detail .bw-ed-times-sheet {
+  display: none;
+}
+[data-bw-posture="tabletop"] .bw-ed-times-hero .bg-card {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+[data-bw-posture="tabletop"] .bw-ed-times-hero .text-muted-foreground {
+  color: inherit;
+  opacity: 0.7;
+}
 [data-bw-posture="tabletop"] .bw-event-detail .bw-ed-sheet {
+  position: absolute;
+  top: var(--bw-deck-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
   margin-top: 0;
   border-radius: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-background);
 }
 [data-bw-posture="tabletop"] .bw-event-detail .bw-ed-sheet > div {
   padding-bottom: var(--content-bottom-clearance) !important;
@@ -275,6 +363,19 @@
 [data-bw-posture="tabletop"] .bw-chat-detail .bw-chat-fold {
   display: block;
   flex: 0 1 calc(var(--bw-deck-top) - var(--bw-display-h));
+}
+
+/* Controls the Deck bar already offers in Laptop pose (e.g. a second Close). */
+:root[data-bw-rail-host][data-bw-posture="tabletop"] .bw-tabletop-hidden {
+  display: none !important;
+}
+
+/* Hubs (Identity, Members, Setlists…) sit in the page layer or next to it at
+   z-60/70, under a page's own split (Band desk, Planner: z-70, last in
+   #root). While a hub is open it fills the screen, so the page split steps
+   aside. Splits shown over modal layers set their own z-index and stay. */
+:root[data-bw-posture="tabletop"]:has(.bw-pane-hub) .bw-fold-split:not([style*="z-index"]) {
+  display: none;
 }
 
 /* FoldSplit (src/app/components/duo/FoldSplit.tsx). */

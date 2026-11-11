@@ -39,6 +39,8 @@ export interface FindADateModeProps {
   locking?: boolean;
   /** Member: finished voting. */
   onDone?: () => void;
+  /** Closes the poll (admins, whose Deck shows Lock instead of Done). */
+  onClose?: () => void;
   /** See FoldSplit. Default 186: over the poll modal (120) and vote sheet (184/185), under the rail. */
   zIndex?: number;
 }
@@ -73,6 +75,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
   onLock,
   locking,
   onDone,
+  onClose,
   zIndex = 186,
 }) => {
   const options = useMemo(() => sortOptions(poll?.options ?? []), [poll?.options]);
@@ -121,7 +124,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="bw-label-sm uppercase text-muted-foreground">Find a date</p>
-          <h1 className="bw-h2 truncate">{poll.title || 'Rehearsal'}</h1>
+          <h1 className="bw-h2 line-clamp-2 [overflow-wrap:anywhere]">{poll.title || 'Rehearsal'}</h1>
         </div>
         <p className="bw-label-md shrink-0" aria-live="polite">
           {voters} of {total} voted
@@ -213,18 +216,26 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
       )}
       <div className="mt-auto flex flex-col gap-2">
         {isAdmin && onLock ? (
-          <DeckButton
-            tone="accent"
-            disabled={!best || !canVote || locking}
-            onClick={() => {
-              if (!best) return;
-              haptic.medium();
-              onLock(best.id);
-            }}
-          >
-            <Lock className="w-5 h-5" />
-            {best ? `Lock ${dayLabel(best.proposed_date)}` : 'Lock a date'}
-          </DeckButton>
+          // The sheet's own X is under the split: Close sits next to Lock.
+          <div className={cn('grid gap-2', onClose ? 'grid-cols-[2fr_3fr]' : 'grid-cols-1')}>
+            {onClose && (
+              <DeckButton tone="outline" onClick={() => { haptic.tap(); onClose(); }}>
+                Close
+              </DeckButton>
+            )}
+            <DeckButton
+              tone="accent"
+              disabled={!best || !canVote || locking}
+              onClick={() => {
+                if (!best) return;
+                haptic.medium();
+                onLock(best.id);
+              }}
+            >
+              <Lock className="w-5 h-5" />
+              {best ? `Lock ${dayLabel(best.proposed_date)}` : 'Lock a date'}
+            </DeckButton>
+          </div>
         ) : onDone ? (
           <DeckButton tone="inverse" onClick={() => { haptic.tap(); onDone(); }}>
             <Check className="w-5 h-5" /> Done
