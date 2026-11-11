@@ -570,6 +570,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           time: ev.time || null,
           venue: ev.venueName || (ev.location && ev.location !== 'TBD' ? ev.location : null),
           fee: Number.isFinite(fee) && fee > 0 ? fee : null,
+          draft: !!ev.draftOf,
         });
       });
     });
@@ -709,6 +710,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const isGig = status === 'CONFIRMED' || status === 'COMPLETED';
     const isQuote = status === 'QUOTED' || status === 'QUOTE';
     const isDraft = !isRehearsal && !isGig && !isQuote;
+    // A saved draft (gig / rehearsal) or a quote not shared yet: the type's
+    // colour, desaturated and dashed, and "only you".
+    const draftOf = event.draftOf;
     const memberCount = event.members?.length || 0;
 
     let typeLabel = event.band_id ? 'GIG' : 'PERSONAL';
@@ -736,7 +740,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const cardFg = isDraft && !isPast ? 'var(--fg)' : `var(--accent-${kind}-fg)`;
     const dimFg = `color-mix(in srgb, ${cardFg} 22%, transparent)`;
     const chipBg = `color-mix(in srgb, ${cardFg} 12%, transparent)`;
-    const statusChip = isPast ? 'PAST' : secondaryTags[0] || (isGig ? 'CONFIRMED' : isDraft ? 'DRAFT' : '');
+    const statusChip = isPast ? 'PAST' : draftOf ? (draftOf === 'quote' ? 'DRAFT · NOT SHARED' : 'DRAFT · ONLY YOU') : secondaryTags[0] || (isGig ? 'CONFIRMED' : isDraft ? 'DRAFT' : '');
     const issues = [...warnings, ...(isAdmin ? suggestions : [])];
     const venue = event.location?.split(',')[0] || event.clientName || 'TBD';
     const address = event.venueAddress || event.location?.split(',').slice(1).join(',').trim();
@@ -765,11 +769,18 @@ export const EventsView: React.FC<EventsViewProps> = ({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEventClick(event); } }}
+        aria-label={draftOf ? `${event.title}, draft, only you can see it` : undefined}
         className={cn(
           'relative flex flex-col gap-4 rounded-[24px] p-5 cursor-pointer active:scale-[0.99] transition-transform',
           isPast && 'opacity-85'
         )}
-        style={{ backgroundColor: cardBg, color: cardFg }}
+        style={{
+          backgroundColor: cardBg,
+          color: cardFg,
+          ...(draftOf
+            ? { filter: 'saturate(0.3)', outline: `2px dashed color-mix(in srgb, ${cardFg} 45%, transparent)`, outlineOffset: -6 }
+            : null),
+        }}
         onClick={() => onEventClick(event)}
       >
         {/* Top: chips + title, open button (Figma "Event Card") */}
@@ -793,7 +804,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Sync
                 </span>
               )}
-              {!isPast && issues.length > 0 && (
+              {!isPast && !draftOf && issues.length > 0 && (
                 <div className="relative">
                   <button
                     type="button"
@@ -910,13 +921,19 @@ export const EventsView: React.FC<EventsViewProps> = ({
           const isPastDay = dateKeyStr < todayStr;
 
           let style: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, var(--fg) 8%, transparent)', color: 'var(--fg)' };
+          // Real events lead the day; a day with only drafts is desaturated and dashed.
+          const onlyDrafts = hasEvents && eventsOnDay.every((e) => !!e.draftOf);
           if (hasEvents) {
-            const primary = eventsOnDay[0];
+            const primary = eventsOnDay.find((e) => !e.draftOf) || eventsOnDay[0];
             const k = calendarKind(primary, isPastDay);
             style = { backgroundColor: `var(--accent-${k})`, color: `var(--accent-${k}-fg)` };
             if (multipleEvents) {
-              const colors = [...new Set(eventsOnDay.map((e) => `var(--accent-${calendarKind(e, isPastDay)})`))];
+              const ordered = [primary, ...eventsOnDay.filter((e) => e !== primary)];
+              const colors = [...new Set(ordered.map((e) => `var(--accent-${calendarKind(e, isPastDay)})`))];
               if (colors.length > 1) style = { ...style, background: `linear-gradient(135deg, ${colors[0]} 50%, ${colors[1]} 50%)` };
+            }
+            if (onlyDrafts) {
+              style = { ...style, filter: 'saturate(0.3)', outline: '1.5px dashed currentColor', outlineOffset: -3 };
             }
           } else if (isToday) {
             style = { backgroundColor: 'var(--surface-inverse)', color: 'var(--surface-inverse-fg)' };
@@ -927,7 +944,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               key={`${year}-${month}-${day}`}
               type="button"
               disabled={!isInteractive}
-              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length} event${eventsOnDay.length > 1 ? 's' : ''}` : ''}${isToday ? ', today' : ''}`}
+              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length} event${eventsOnDay.length > 1 ? 's' : ''}` : ''}${onlyDrafts ? ', draft' : ''}${isToday ? ', today' : ''}`}
               aria-current={isToday ? 'date' : undefined}
               onClick={() => {
                 if (!isInteractive) return;
@@ -1225,6 +1242,16 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 <span className="bw-label-sm text-muted-foreground">{k}</span>
               </span>
             ))}
+            {/* Drafts: their type's colour, desaturated and dashed (admins only). */}
+            {isAdmin && filteredAllEvents.some((e) => !!e.draftOf) && (
+              <span className="flex items-center gap-2">
+                <span
+                  className="w-5 h-5 rounded-[6px] bg-[var(--accent-gig)] [filter:saturate(0.3)] outline-[1.5px] outline-dashed outline-offset-[-3px] outline-[var(--accent-gig-fg)]"
+                  aria-hidden="true"
+                />
+                <span className="bw-label-sm text-muted-foreground">draft · only you</span>
+              </span>
+            )}
           </div>
 
           {/* ═══ SECTION HEADER ═══ */}

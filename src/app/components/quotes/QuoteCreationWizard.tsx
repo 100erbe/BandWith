@@ -3147,7 +3147,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <LeaveWizardSheet
         open={leaveOpen}
         what="quote"
-        draftHint="It's saved as a draft quote: find it under Drafts on the home screen and in Quotes."
+        draftHint="Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
         onSaveDraft={() => {
           setLeaveOpen(false);
           handleCreate(false);
