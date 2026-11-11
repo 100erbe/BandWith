@@ -30,6 +30,7 @@ import type { BandMember } from '@/lib/services/bands';
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
+import { personName } from '@/lib/personName';
 
 /** Small stat card (Figma: label + 24pt dot value). */
 const StatCard: React.FC<{ label: string; value: number; delay: number }> = ({ label, value, delay }) => (
@@ -371,7 +372,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
             <ul className="flex flex-col gap-4" aria-label="All members">
               {members.map((member, i) => {
-                const name = member.stage_name || member.profile?.full_name || 'Unknown';
+                const name = member.stage_name || personName(member.profile, 'Unknown');
                 const open = actionMenuId === member.id;
                 const roleLabel = member.role === 'admin' ? 'Admin' : member.role === 'member' ? 'Member' : member.role;
                 return (
@@ -390,7 +391,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     >
                       <Avatar
                         src={member.profile?.avatar_url}
-                        alt={member.profile?.full_name || 'Member'}
+                        alt={personName(member.profile)}
                         initials={getInitials(member)}
                         accent={member.role === 'admin'}
                       />
@@ -480,7 +481,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         }
       >
         <p className="bw-body-md text-sheet-foreground/80">
-          {pendingRemoval?.profile?.full_name || 'This member'} loses access to the band's events, chats and repertoire. You can invite them again later.
+          {personName(pendingRemoval?.profile, 'This member')} loses access to the band's events, chats and repertoire. You can invite them again later.
         </p>
       </BwSheet>
 

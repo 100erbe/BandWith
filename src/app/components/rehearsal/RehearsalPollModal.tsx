@@ -11,6 +11,7 @@ import {
   type RehearsalPoll,
 } from '@/lib/services/rehearsalPolls';
 import { toLocalDateString } from '../../../lib/dates';
+import { personName } from '@/lib/personName';
 
 interface TimeSlotDraft {
   id: string;
@@ -285,7 +286,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                 <div className="flex flex-col gap-1 min-w-0">
                   <p className="bw-body-sm">
                     <span className="font-semibold">
-                      From {initialProposal.creator_profile?.full_name || 'Band member'}:
+                      From {personName(initialProposal.creator_profile, 'Band member')}:
                     </span>{' '}
                     <span className="text-muted-foreground">{initialProposal.title}</span>
                   </p>

@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { createEvent } from './events';
 import { createBulkNotifications } from './notifications';
+import { personName } from '@/lib/personName';
 
 export interface RehearsalPollOption {
   id: string;
@@ -165,7 +166,7 @@ export const createMemberRehearsalProposal = async ({
       .eq('id', userId)
       .maybeSingle();
 
-    const creatorName = creatorProfile?.full_name || creatorProfile?.email || 'A band member';
+    const creatorName = personName(creatorProfile, 'A band member');
 
     // Query all active band admins
     const { data: admins, error: adminError } = await supabase

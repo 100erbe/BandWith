@@ -35,6 +35,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
+import { personName, personInitials, hasRealName } from '@/lib/personName';
 
 interface NotificationGroup {
   type: string;
@@ -271,16 +272,11 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           ? 'Email alerts enabled'
           : 'Alerts off';
 
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const displayName = personName({ full_name: profile?.full_name, email: user?.email }, 'User');
   const displayEmail = user?.email || 'No email attached';
-  const displayInitials = profile?.full_name
-    ? profile.full_name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.email?.substring(0, 2).toUpperCase() || 'BW';
+  // No name yet: the address stands in for it, and the card asks for a name.
+  const missingName = !hasRealName({ full_name: profile?.full_name, email: user?.email });
+  const displayInitials = personInitials({ full_name: profile?.full_name, email: user?.email }, 'BW');
 
   const roleLabel = selectedBand.role || (profile?.role ? profile.role.toUpperCase() : 'MEMBER');
   const isAdmin = isBandAdmin || roleLabel === 'ADMIN';
@@ -439,8 +435,24 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   </div>
                 )}
                 <div className="flex flex-col min-w-0 flex-1 gap-1">
-                  <h2 className="bw-h2 text-foreground line-clamp-2 break-words">{displayName}</h2>
-                  <span className="bw-body-sm text-muted-foreground truncate">{displayEmail}</span>
+                  <h2
+                    className={cn(
+                      'text-foreground line-clamp-2',
+                      // An address in big uppercase type breaks mid-word: show it as text.
+                      missingName ? 'bw-body-lg font-semibold [overflow-wrap:anywhere]' : 'bw-h2 break-words'
+                    )}
+                  >
+                    {missingName && displayName.includes('@') ? (
+                      <>
+                        {displayName.slice(0, displayName.indexOf('@'))}
+                        <wbr />
+                        {displayName.slice(displayName.indexOf('@'))}
+                      </>
+                    ) : (
+                      displayName
+                    )}
+                  </h2>
+                  <span className="bw-body-sm text-muted-foreground truncate">{missingName ? 'No name yet' : displayEmail}</span>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Tag variant={isAdmin ? 'accent' : 'subtle'}>{myInstrument || roleLabel}</Tag>
                   </div>
@@ -456,6 +468,19 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   <span>Edit</span>
                 </button>
               </div>
+              {missingName && (
+                <button
+                  type="button"
+                  onClick={() => onEditProfile?.()}
+                  className="mt-4 w-full rounded-[16px] bg-accent text-accent-foreground px-4 py-3 flex items-center justify-between gap-3 text-left active:scale-[0.99] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex flex-col gap-0.5 min-w-0">
+                    <span className="bw-label-md">Add your name</span>
+                    <span className="bw-body-sm opacity-80">Your band sees your email until you do.</span>
+                  </span>
+                  <ArrowUpRight aria-hidden className="w-4 h-4 shrink-0" />
+                </button>
+              )}
             </section>
 
             {/* ═══ 2. CURRENT BAND & LINEUP ═══ */}
@@ -648,10 +673,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   <span className="flex items-center shrink-0" aria-hidden>
                     {rosterMembers.slice(0, 4).map((m) => {
                       const mName =
-                        m.stage_name ||
-                        m.profile?.full_name ||
-                        m.profile?.email?.split('@')[0] ||
-                        'M';
+                        m.stage_name || personName(m.profile, 'M');
                       const mInitials = initialsOf(mName, 'M');
                       return m.profile?.avatar_url ? (
                         <img

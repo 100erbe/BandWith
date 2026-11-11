@@ -39,6 +39,7 @@ import { RehearsalTaskDetailModal } from './RehearsalTaskDetailModal';
 import { RehearsalReviewSetlistModal } from './RehearsalReviewSetlistModal';
 import { toLocalDateString } from '../../../lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { personName, personInitials } from '@/lib/personName';
 
 interface TaskTemplateDB {
   id: string;
@@ -343,14 +344,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     if (!selectedBand?.members) return [];
     return selectedBand.members.map(m => ({
       id: m.user_id,
-      name: m.profile?.full_name || m.profile?.email?.split('@')[0] || 'Unknown',
+      name: personName(m.profile, 'Unknown'),
       role: m.instrument || m.role || 'Member',
-      initials: (m.profile?.full_name || m.profile?.email || 'U')
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2),
+      initials: personInitials(m.profile, 'U'),
       fee: m.default_fee?.toString() || '0',
       status: 'confirmed' as const,
     }));

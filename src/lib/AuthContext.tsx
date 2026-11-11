@@ -10,6 +10,7 @@ import { supabase, getSafeUser, signIn, signUp, signOut, resetPassword, signInWi
 import { Capacitor } from '@capacitor/core';
 import { clearOfflineCache, getOfflineItem, setOfflineItem, getCacheKey } from './offline/storage';
 import { unregisterPushToken } from './services/pushNotifications';
+import { realName } from '@/lib/personName';
 
 export type SubTier = 'free_member' | 'single_band' | 'multi_band' | 'unlimited';
 
@@ -106,7 +107,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const fallbackProfile: Profile = {
             id: user.id,
             email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            // No name yet: leave it empty (the app shows the address and asks for a name).
+            full_name: realName(user.user_metadata?.full_name, user.email) || null,
             avatar_url: user.user_metadata?.avatar_url || null,
             role: 'member',
             instrument: null,

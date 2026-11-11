@@ -7,6 +7,7 @@ import { DotText } from '@/app/components/bw/DotText';
 import { setStatusBarTone } from '@/lib/systemBars';
 import { parseLocalDate } from '@/lib/dates';
 import { FIT, FitText } from '@/app/components/bw/FitText';
+import { personName } from '@/lib/personName';
 
 export interface InviteData {
   id: string;
@@ -57,9 +58,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
   const bandName = inviteData?.band?.name || 'Unknown Band';
   const bandLogo = inviteData?.band?.logo_url;
   const inviterName =
-    inviteData?.inviter?.full_name ||
-    inviteData?.inviter?.email?.split('@')[0] ||
-    'A band admin';
+    personName(inviteData?.inviter, 'A band admin');
   const memberRole = inviteData?.role === 'admin' ? 'Admin' : 'Member';
   const memberCount = inviteData?.member_count || 0;
 

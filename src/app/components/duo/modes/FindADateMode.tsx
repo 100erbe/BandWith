@@ -6,6 +6,7 @@ import { haptic } from '@/lib/haptics';
 import type { RehearsalPoll, RehearsalPollOption } from '@/lib/services/rehearsalPolls';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel, hhmm, initialsOf } from './shared';
+import { personName } from '@/lib/personName';
 
 /**
  * Find a date (an open rehearsal poll in Laptop pose). Display: members ×
@@ -82,7 +83,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
     for (const o of options) {
       for (const v of o.votes ?? []) {
         if (!seen.has(v.user_id)) {
-          seen.set(v.user_id, { id: v.user_id, name: v.profile?.full_name || v.profile?.email || 'Member' });
+          seen.set(v.user_id, { id: v.user_id, name: personName(v.profile) });
         }
       }
     }

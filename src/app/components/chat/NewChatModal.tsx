@@ -15,6 +15,7 @@ import { getEvents } from '@/lib/services/events';
 import { supabase } from '@/lib/supabase';
 import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
+import { personName, personFirstName, personInitials } from '@/lib/personName';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -197,8 +198,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           participant_ids: [selectedMember.id],
         });
         if (createError) throw createError;
-        const memberName = selectedMember.full_name || selectedMember.email.split('@')[0] || 'User';
-        const memberInitials = memberName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+        const memberName = personName(selectedMember, 'User');
+        const memberInitials = personInitials(selectedMember, 'U');
         if (data) onChatCreated(data.id, {
           type: 'direct',
           name: memberName,
@@ -414,7 +415,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                     {member.avatar_url ? (
                                       <img
                                         src={member.avatar_url}
-                                        alt={member.full_name || member.email}
+                                        alt={personName(member, '')}
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
                                           e.currentTarget.style.display = 'none';
@@ -426,7 +427,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                   </div>
                                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                                     <p className="bw-label-md text-foreground truncate">
-                                      {member.full_name || member.email}
+                                      {personName(member, '')}
                                     </p>
                                     <p className="bw-body-sm text-foreground/85 truncate">
                                       {member.instrument || member.role || 'Member'}
@@ -555,7 +556,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
             >
               <span>
                 {chatType === 'direct' && selectedMember
-                  ? `Message ${selectedMember.full_name?.split(' ')[0] || 'User'}`
+                  ? `Message ${personFirstName(selectedMember, 'User')}`
                   : chatType === 'band' && selectedBandChat
                   ? `Open ${selectedBandChat.name} chat`
                   : chatType === 'event' && selectedEvent

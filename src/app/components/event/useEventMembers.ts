@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { initialsOf, type ResolvedMember } from './parts';
+import { personName } from '@/lib/personName';
 
 interface BandLike {
   id?: string;
@@ -81,7 +82,7 @@ export function useEventMembers({
       targetBand?.members?.forEach((bm: any) => {
         if (!bm.user_id) return;
         roster.set(bm.user_id, {
-          name: bm.profile?.full_name || bm.profile?.email?.split('@')[0] || '',
+          name: personName(bm.profile, ''),
           instrument: bm.instrument || undefined,
           isAdmin: bm.role === 'admin',
           defaultFee: Number(bm.default_fee || 0),
@@ -94,7 +95,7 @@ export function useEventMembers({
       if (missing.length > 0) {
         const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', missing);
         (profiles || []).forEach((p: any) => {
-          const n = p.full_name || p.email?.split('@')[0];
+          const n = personName(p, '');
           if (n) profileNames.set(p.id, n);
         });
         if (cancelled) return;
