@@ -849,7 +849,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 <CurrencyIcon aria-hidden className="w-6 h-6 shrink-0" />
                 <span className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="bw-label-md">Pricing, fees & services</span>
-                  <span className="bw-body-sm">Logo, IBAN, musician fees & quote services</span>
+                  <span className="bw-body-sm">Logo, bank account, musician fees & quote services</span>
                 </span>
                 <ArrowUpRight aria-hidden className="w-5 h-5 shrink-0" />
               </button>

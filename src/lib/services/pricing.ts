@@ -99,7 +99,13 @@ export interface BandPricingSettings {
   signer_name?: string;
   signer_role?: string;
   bank_account_holder?: string;
+  /** Which bank format the band uses: EU (IBAN + BIC), US (account + ABA routing), other (account + SWIFT). */
+  bank_region?: BankRegion;
   bank_iban?: string;
+  /** Account number (US / other regions). */
+  bank_account_number?: string;
+  /** US ABA routing number (9 digits). */
+  bank_routing_number?: string;
   bank_name?: string;
   bank_bic_swift?: string;
   default_payment_terms?: string;
@@ -109,6 +115,48 @@ export interface BandPricingSettings {
   legal_company_name?: string;
   tax_vat_id?: string;
   legal_address?: string;
+}
+
+export type BankRegion = 'eu' | 'us' | 'other';
+
+/** The band's bank format; older settings with only an IBAN count as EU. */
+export function bankRegionOf(s: Partial<BandPricingSettings>): BankRegion {
+  if (s.bank_region === 'eu' || s.bank_region === 'us' || s.bank_region === 'other') return s.bank_region;
+  if (s.bank_iban) return 'eu';
+  if (s.currency === 'USD') return 'us';
+  return 'eu';
+}
+
+/** The account identifier for the band's region (IBAN in the EU, account number elsewhere). */
+export function bankAccountId(s: Partial<BandPricingSettings>): string {
+  const region = bankRegionOf(s);
+  return ((region === 'eu' ? s.bank_iban : s.bank_account_number) || '').trim();
+}
+
+/** True when there is enough to pay by bank transfer. */
+export function hasBankAccount(s: Partial<BandPricingSettings>): boolean {
+  return Boolean(bankAccountId(s));
+}
+
+/** "Label: value" lines for quote PDFs, in the band's bank format. */
+export function bankDetailParts(s: Partial<BandPricingSettings>): string[] {
+  const region = bankRegionOf(s);
+  const account = bankAccountId(s);
+  return [
+    s.bank_account_holder ? `Beneficiary: ${s.bank_account_holder}` : '',
+    account ? `${region === 'eu' ? 'IBAN' : 'Account'}: ${account}` : '',
+    region === 'us' && s.bank_routing_number ? `Routing (ABA): ${s.bank_routing_number}` : '',
+    s.bank_bic_swift ? `${region === 'eu' ? 'BIC' : 'SWIFT'}: ${s.bank_bic_swift}` : '',
+    s.bank_name ? `Bank: ${s.bank_name}` : '',
+  ].filter(Boolean);
+}
+
+/** Masked account for compact UI ("IT60 X054 •••• 3456"). */
+export function maskedBankAccount(s: Partial<BandPricingSettings>): string | null {
+  const id = bankAccountId(s).replace(/\s+/g, '');
+  if (!id) return null;
+  if (bankRegionOf(s) === 'eu') return id.length > 8 ? `${id.slice(0, 4)} ${id.slice(4, 8)} •••• ${id.slice(-4)}` : id;
+  return id.length > 4 ? `•••• ${id.slice(-4)}` : id;
 }
 
 export const DEFAULT_QUOTE_DISCLAIMER =
@@ -348,6 +396,8 @@ export const DEFAULT_BAND_PRICING: BandPricingSettings = {
   signer_role: '',
   bank_account_holder: '',
   bank_iban: '',
+  bank_account_number: '',
+  bank_routing_number: '',
   bank_name: '',
   bank_bic_swift: '',
   default_payment_terms: '30% deposit upon booking; 70% balance due on event date.',

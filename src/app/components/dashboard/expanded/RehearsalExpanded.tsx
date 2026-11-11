@@ -208,7 +208,18 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 <div className="flex items-end justify-between gap-3">
                   <span className="flex flex-col gap-1 min-w-0">
                     {currentRehearsal.location && (
-                      <MapsLink pin query={currentRehearsal.location} className="bw-label-md">
+                      <MapsLink
+                        pin
+                        query={[
+                          currentRehearsal.location,
+                          currentRehearsal.venueAddress && currentRehearsal.venueAddress !== currentRehearsal.location
+                            ? currentRehearsal.venueAddress
+                            : currentRehearsal.venueCity,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                        className="bw-label-md"
+                      >
                         {currentRehearsal.location}
                       </MapsLink>
                     )}
