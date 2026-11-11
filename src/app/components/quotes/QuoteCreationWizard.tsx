@@ -64,7 +64,7 @@ import {
   type CustomService,
   type LineupPackagePreset,
 } from '@/lib/services/pricing';
-import { calculateTravelDistance } from '@/lib/services/location';
+import { calculateTravelDistance, venueFields } from '@/lib/services/location';
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 
@@ -1882,8 +1882,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               value={venueName}
               onChange={val => setVenueName(val)}
               onSelect={place => {
-                setVenueName(place.name);
-                if (place.address) setVenueAddress(place.address);
+                const { location, isNamedPlace } = venueFields(place);
+                setVenueName(location);
+                // The street is the venue itself when the pick is just an address.
+                setVenueAddress(isNamedPlace ? place.address || '' : '');
                 if (place.city) setVenueCity(place.city);
                 if (place.country) setVenueCountry(place.country);
                 handleCalculateDistance(place.fullAddress || place.address || place.name || place.city || '');

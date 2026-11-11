@@ -12,6 +12,7 @@ import { Card, IconButton, NavBackButton, PillButton, PillField, Selector, Tag }
 import { useRailAction } from '@/lib/railActions';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { venueFields } from '@/lib/services/location';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker, toDatePickerEvents } from '@/app/components/ui/DatePicker';
 import {
@@ -880,12 +881,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         value={data.location}
         onChange={val => setData(prev => ({ ...prev, location: val }))}
         onSelect={place => {
-          const formatted = place.fullAddress || [place.address, place.city, place.postcode, place.country].filter(Boolean).join(', ');
-          setData(prev => ({
-            ...prev,
-            location: place.name,
-            ...(formatted ? { address: formatted } : {}),
-          }));
+          // Location = venue (or street), Address = the rest: never the same text twice.
+          const { location, address } = venueFields(place);
+          setData(prev => ({ ...prev, location, address }));
         }}
         placeholder={placeholder}
         className="border-0 pb-0 h-11 text-lg font-medium normal-case tracking-normal text-foreground placeholder:text-muted-foreground/60"
