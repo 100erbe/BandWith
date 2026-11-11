@@ -305,3 +305,54 @@ export async function calculateTravelDistance(
     provider: 'haversine',
   };
 }
+
+const normPlace = (s?: string): string =>
+  (s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/** One of the two texts contains the other (ignoring case, accents, punctuation). */
+const overlaps = (a?: string, b?: string): boolean => {
+  const x = normPlace(a);
+  const y = normPlace(b);
+  return !!x && !!y && (x.includes(y) || y.includes(x));
+};
+
+export interface VenueFields {
+  /** What goes in the Location / venue field: the venue name, or the street when the pick is just an address. */
+  location: string;
+  /** The rest of the postal address, never repeating what `location` already says. */
+  address: string;
+  /** The pick is a named place (venue, studio, club), not only an address. */
+  isNamedPlace: boolean;
+}
+
+/**
+ * Splits a picked place into the Location and Address fields so the two
+ * complement each other ("Blackbox Studios" + "Via Ventura 4, 20134 Milano,
+ * Italy") instead of repeating the same text.
+ */
+export function venueFields(place: VenuePlace): VenueFields {
+  const name = (place.name || '').trim();
+  const street = place.address?.trim();
+  const isNamedPlace = !!name && !overlaps(name, street) && normPlace(name) !== normPlace(place.city);
+  const location = isNamedPlace ? name : street || name;
+
+  const locality = [place.postcode, place.city].filter(Boolean).join(' ');
+  let parts: string[] = [isNamedPlace ? street : undefined, locality, place.country].filter(
+    (p): p is string => !!p && !!p.trim(),
+  );
+  if (parts.length === 0 && place.fullAddress) {
+    parts = place.fullAddress.split(',').map((p) => p.trim()).filter(Boolean);
+  }
+
+  const seen = new Set<string>([normPlace(location), normPlace(name)]);
+  const address = parts
+    .filter((p) => {
+      const key = normPlace(p);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(', ');
+
+  return { location, address, isNamedPlace };
+}

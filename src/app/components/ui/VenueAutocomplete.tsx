@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { MapPin, Loader2 } from '@/app/components/icons';
 import { cn } from './utils';
-import { searchVenues, getGooglePlaceDetails, type VenuePlace } from '@/lib/services/location';
+import { searchVenues, getGooglePlaceDetails, venueFields, type VenuePlace } from '@/lib/services/location';
 
 export interface VenueAutocompleteProps {
   value: string;
@@ -108,7 +108,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
         console.warn('[VenueAutocomplete] Could not fetch place details:', err);
       }
     }
-    onChange(selectedPlace.name);
+    onChange(venueFields(selectedPlace).location);
     onSelect(selectedPlace);
     setIsOpen(false);
     setSuggestions([]);
@@ -193,7 +193,8 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
           <div className="flex flex-col gap-1">
             {suggestions.map((item, idx) => {
               const isSelected = idx === highlightedIndex;
-              const subtext = [item.address, item.city, item.country].filter(Boolean).join(', ');
+              // Same split the form gets: title = Location, subtext = Address.
+              const { location: title, address: subtext } = venueFields(item);
 
               return (
                 <button
@@ -210,7 +211,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
                 >
                   <MapPin className="w-5 h-5 shrink-0 text-sheet-foreground/85" aria-hidden />
                   <span className="flex-1 min-w-0 flex flex-col">
-                    <span className="bw-label-md text-sheet-foreground truncate">{item.name}</span>
+                    <span className="bw-label-md text-sheet-foreground truncate">{title}</span>
                     {subtext && <span className="bw-body-sm text-sheet-foreground/70 truncate">{subtext}</span>}
                   </span>
                   <span className="bw-label-xs text-sheet-foreground/60 shrink-0">

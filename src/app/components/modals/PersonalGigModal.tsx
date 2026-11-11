@@ -7,6 +7,7 @@ import { PillButton, PillField, FormError } from '@/app/components/bw/Form';
 import { DatePicker } from '@/app/components/ui/DatePicker';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { venueFields } from '@/lib/services/location';
 import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services/events';
 import { enqueueMutation } from '@/lib/offline/syncQueue';
 import { isOfflineError, reportNetworkStatus, getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
@@ -350,7 +351,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                 <VenueAutocomplete
                   value={venueName}
                   onChange={setVenueName}
-                  onSelect={(place) => setVenueName(place.name)}
+                  onSelect={(place) => setVenueName(venueFields(place).location)}
                   placeholder="Search venue…"
                   className="h-[50px] border-0 pb-0 bw-body-lg normal-case font-medium text-foreground placeholder:text-muted-foreground/60"
                 />

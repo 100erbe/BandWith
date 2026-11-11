@@ -34,6 +34,7 @@ import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
 import { getEventAccentColor } from '@/app/components/ui/WizardAccentRail';
 import { PeekingScrollContainer } from '@/app/components/ui/PeekingScrollContainer';
 import { VenueAutocomplete } from '@/app/components/ui/VenueAutocomplete';
+import { venueFields } from '@/lib/services/location';
 import { TimePicker } from '@/app/components/ui/TimePicker';
 import { DatePicker, toDatePickerEvents } from '@/app/components/ui/DatePicker';
 import type { EventData } from '@/app/components/dashboard/EventCard';
@@ -1254,10 +1255,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           value={details.venue}
           onChange={val => setDetails(prev => ({ ...prev, venue: val }))}
           onSelect={place => {
+            const { location, isNamedPlace } = venueFields(place);
             setDetails(prev => ({
               ...prev,
-              venue: place.name,
-              ...(place.address ? { address: place.address } : {}),
+              venue: location,
+              // The street is the venue itself when the pick is just an address.
+              address: isNamedPlace ? place.address || '' : '',
               ...(place.city ? { city: place.city } : {}),
               ...(place.state ? { province: place.state } : {}),
               ...(place.postcode ? { zip: place.postcode } : {}),
