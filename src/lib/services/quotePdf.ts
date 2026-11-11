@@ -2,6 +2,7 @@ import { Quote, QuotePackageOption } from '@/app/data/quotes';
 import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
 import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
+import { ONLINE_DEPOSITS_ENABLED } from './pricing';
 
 export interface QuotePdfGenerationResult {
   pdfBlob: Blob;
@@ -556,6 +557,16 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     ctx.fillStyle = '#111111';
     const depText = `Initial Payment: ${depositPct}% = ${formatMoney(depositAmount, sym)} (to be paid in advance.)`;
     ctx.fillText(depText, rightMargin, y);
+    // Online deposit links (Stripe / PayPal): off for the whole alpha.
+    const payLinks = ONLINE_DEPOSITS_ENABLED
+      ? [settings.stripe_payment_link && `Card: ${settings.stripe_payment_link}`, settings.paypal_link && `PayPal: ${settings.paypal_link}`].filter(Boolean)
+      : [];
+    if (payLinks.length) {
+      y += 34;
+      ctx.font = '400 19px "Inter", "Helvetica Neue", Arial, sans-serif';
+      ctx.fillStyle = '#444444';
+      ctx.fillText(`Pay the deposit online · ${payLinks.join('  ·  ')}`, rightMargin, y);
+    }
     ctx.textAlign = 'left';
   }
 

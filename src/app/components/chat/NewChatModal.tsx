@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
 import { personName, personFirstName, personInitials } from '@/lib/personName';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -40,6 +41,7 @@ interface EventWithBand extends Event {
 type ChatTypeOption = 'direct' | 'band' | 'event';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreated }) => {
+  const drag = useSheetDrag(onClose);
   const [chatType, setChatType] = useState<ChatTypeOption>('direct');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -291,9 +293,10 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           paddingBottom: 'calc(var(--safe-bottom) + 16px)',
         }}
         onClick={e => e.stopPropagation()}
+        {...drag.sheet}
       >
         {/* Sheet header: grabber, overline, title, close */}
-        <div className="flex flex-col items-center gap-3 px-5 pt-3 pb-2 shrink-0">
+        <div className="flex flex-col items-center gap-3 px-5 pt-3 pb-2 shrink-0" {...drag.handle}>
           <div className="w-10 h-[5px] rounded-[3px] bg-foreground/85" aria-hidden="true" />
           <div className="flex items-center gap-3 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-1">

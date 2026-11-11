@@ -47,6 +47,7 @@ import {
   type TravelCalcMode,
   type BandMarkupType,
 } from '@/lib/services/pricing';
+import { ONLINE_DEPOSITS_ENABLED } from '@/lib/services/pricing';
 
 export type PricingModalTabType = 'branding' | 'rates' | 'production' | 'services' | 'commercial';
 
@@ -1894,6 +1895,34 @@ export const BandPricingModal: React.FC<BandPricingModalProps> = ({
                   value={settings.default_payment_terms || ''}
                   onChange={(e) => setSettings({ ...settings, default_payment_terms: e.target.value })}
                 />
+                {/* Online deposits: in place, switched off for the alpha */}
+                <div className="flex flex-col gap-3 pt-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="bw-label-sm text-muted-foreground">Online deposit links</span>
+                    {!ONLINE_DEPOSITS_ENABLED && <Tag variant="subtle">Coming soon</Tag>}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <PillField
+                      label="Stripe payment link"
+                      placeholder="https://buy.stripe.com/…"
+                      disabled={!ONLINE_DEPOSITS_ENABLED}
+                      value={settings.stripe_payment_link || ''}
+                      onChange={(e) => setSettings({ ...settings, stripe_payment_link: e.target.value })}
+                    />
+                    <PillField
+                      label="PayPal link"
+                      placeholder="https://paypal.me/…"
+                      disabled={!ONLINE_DEPOSITS_ENABLED}
+                      value={settings.paypal_link || ''}
+                      onChange={(e) => setSettings({ ...settings, paypal_link: e.target.value })}
+                    />
+                  </div>
+                  {!ONLINE_DEPOSITS_ENABLED && (
+                    <p className="bw-body-sm text-muted-foreground">
+                      Clients will pay the deposit by card or PayPal from the quote and its PDF. This turns on after the alpha.
+                    </p>
+                  )}
+                </div>
               </Section>
 
               <Section title="3. Band contact & legal details" hint="Contact details and optional fiscal information for agency or corporate quotes.">

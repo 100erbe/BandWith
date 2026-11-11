@@ -139,7 +139,9 @@ export const OnboardingSheet: React.FC<{
   closeLabel?: string;
   labelledBy?: string;
   closeIcon: React.ReactNode;
-}> = ({ title, overline, onClose, children, closeLabel = 'Close', labelledBy, closeIcon }) => (
+  /** Pointer handlers that start a swipe-down (useSheetDrag's `handle`). */
+  handleProps?: React.HTMLAttributes<HTMLDivElement>;
+}> = ({ title, overline, onClose, children, closeLabel = 'Close', labelledBy, closeIcon, handleProps }) => (
   <div
     role="dialog"
     aria-modal="true"
@@ -147,6 +149,7 @@ export const OnboardingSheet: React.FC<{
     className="dark relative w-full max-w-md bg-sheet text-foreground rounded-t-[24px] px-4 pt-2 max-h-[85vh] overflow-y-auto"
     style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
   >
+    <div {...handleProps}>
     <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/40" aria-hidden />
     <div className="flex items-start justify-between gap-3 mb-5">
       <div className="flex flex-col gap-1 min-w-0">
@@ -163,6 +166,7 @@ export const OnboardingSheet: React.FC<{
       >
         <span className="flex items-center justify-center w-9 h-9 rounded-full border-[1.5px] border-foreground">{closeIcon}</span>
       </button>
+    </div>
     </div>
     {children}
   </div>

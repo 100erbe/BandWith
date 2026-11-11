@@ -4,6 +4,7 @@ import { Mail, X, Users, Plus, Send } from '@/app/components/icons';
 import { useOnboarding, MemberInvite, INSTRUMENTS } from '@/lib/OnboardingContext';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, DotMatrixRadio, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 interface InviteMembersProps {
   onBack: () => void;
@@ -14,6 +15,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
   onBack,
   onComplete,
 }) => {
+  const inviteDrag = useSheetDrag(() => setShowModal(false));
   const { invites, addInvite, removeInvite, path } = useOnboarding();
 
   const [emailInput, setEmailInput] = useState('');
@@ -228,9 +230,11 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25 }}
+              {...inviteDrag.sheet}
             >
               <OnboardingSheet
                 overline={currentInvite.email}
+                handleProps={inviteDrag.handle}
                 title="Invite details"
                 labelledBy="invite-details-title"
                 onClose={() => setShowModal(false)}

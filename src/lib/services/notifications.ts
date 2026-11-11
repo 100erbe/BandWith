@@ -27,6 +27,8 @@ export type NotificationType =
   | 'payment_received'
   | 'payment_due'
   | 'payment_overdue'
+  // Your own fee on an event changed (migration 068)
+  | 'fee_changed'
   // Members
   | 'member_joined'
   | 'member_left'
@@ -96,7 +98,7 @@ export type NotificationCategory = 'invites' | 'events' | 'finance' | 'members' 
 export const getNotificationCategory = (type: NotificationType): NotificationCategory => {
   if (type.startsWith('invite_')) return 'invites';
   if (type.startsWith('event_') || type.startsWith('rehearsal_')) return 'events';
-  if (type.startsWith('quote_') || type.startsWith('payment_')) return 'finance';
+  if (type.startsWith('quote_') || type.startsWith('payment_') || type === 'fee_changed') return 'finance';
   if (type.startsWith('member_')) return 'members';
   if (type.startsWith('song_') || type.startsWith('setlist_') || type.startsWith('task_')) return 'content';
   return 'system';
@@ -126,6 +128,7 @@ export const getNotificationIcon = (type: NotificationType): string => {
     payment_received: 'dollar-sign',
     payment_due: 'credit-card',
     payment_overdue: 'alert-circle',
+    fee_changed: 'dollar-sign',
     // Members
     member_joined: 'user-plus',
     member_left: 'user-minus',
@@ -377,19 +380,19 @@ export const createNotification = async (
   options?: { sendPush?: boolean }
 ): Promise<{ data: Notification | null; error: Error | null }> => {
   try {
-    const { data, error } = await supabase
+    // No `.select()`: reading the row back needs SELECT rights on it, and a
+    // notification for someone else (e.g. a member alerting the band admin)
+    // is only readable by its recipient, so the insert failed RLS.
+    const { error } = await supabase
       .from('notifications')
       .insert({
         user_id: userId,
         ...withPushFlag(notification, options?.sendPush),
-      })
-      .select()
-      .single();
+      });
 
     if (error) throw error;
 
-
-    return { data, error: null };
+    return { data: null, error: null };
   } catch (error: any) {
     return { data: null, error };
   }

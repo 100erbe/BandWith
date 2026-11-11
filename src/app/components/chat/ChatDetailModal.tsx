@@ -484,6 +484,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
       className="bw-pane-detail bw-chat-detail fixed inset-0 z-[80] bg-background text-foreground flex flex-col"
+      data-keep-keyboard="android"
     >
       {/* Header and messages; in Laptop pose they fill the Display (index.css). */}
       <div className="bw-chat-top flex-1 min-h-0 flex flex-col">
@@ -727,7 +728,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               )}
             </AnimatePresence>
             
-            <div className="px-4 pt-3 flex items-center gap-3">
+            {/* Touches here keep the keyboard up (see AuthenticatedApp's
+                touchstart handler): sending a message doesn't close it. */}
+            <div className="px-4 pt-3 flex items-center gap-3" data-keep-keyboard="">
               <div className="flex-1 relative min-w-0">
                 <AnimatePresence>
                   {showMentionSuggestions && filteredParticipants.length > 0 && (
@@ -781,6 +784,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 // composer moved down and the click missed, so it took two taps.
                 // Keep the focus on the input and send on the touch itself.
                 onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
                 onTouchEnd={(e) => {
                   e.preventDefault();
                   const t = e.changedTouches[0];

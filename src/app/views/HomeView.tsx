@@ -14,6 +14,7 @@ import { APP_COPY } from '@/app/constants/copy';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
+import { useEventDrafts, type EventDraft } from '@/lib/wizardDrafts';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { openMaps } from '@/app/components/ui/MapsLink';
 import { BandDeskMode, type DeskActionItem, type DeskGig } from '@/app/components/duo';
@@ -78,6 +79,8 @@ interface HomeViewProps {
   onCreateRehearsal?: () => void;
   onCreateQuote?: () => void;
   onCreateTask?: () => void;
+  /** Reopens an unfinished "New gig" saved as a draft. */
+  onOpenEventDraft?: (draft: EventDraft) => void;
 }
 
 const formatEventTime = (timeStr?: string): string => {
@@ -211,11 +214,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onCreateRehearsal,
   onCreateQuote,
   onCreateTask,
+  onOpenEventDraft,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
   // Use the band context for role, fall back to prop for backwards compatibility
-  const { isAdmin: isAdminFromContext } = useBand();
+  const { isAdmin: isAdminFromContext, selectedBand: contextBand } = useBand();
   const isAdmin = isAdminFromContext ?? _isAdminProp;
+  // Unfinished wizards: gigs saved on this device, quotes saved as DRAFT.
+  const eventDrafts = useEventDrafts(isAdmin && !isSolo ? currentUserId : null, contextBand?.id ?? null);
 
 
 
@@ -526,10 +532,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
   })();
 
   const QUICK_LABELS: Record<string, string> = {
-    'Setlist & Repertoire': 'Setlist',
+    'Setlist & Repertoire': 'Repertoire',
     'Band Members': 'Members',
     Inventory: 'Gear list',
-    'Task Templates': 'Templates',
+    'Task Templates': 'To-do lists',
     'Contracts & Riders': 'Contracts',
   };
 
@@ -806,6 +812,57 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
       </motion.div>
+
+      {/* ═══ DRAFTS (unfinished gigs and quotes, desaturated) ═══ */}
+      {(() => {
+        const quoteDrafts = isAdmin
+          ? (dashboardData?.recentQuotes || []).filter((q: any) => String(q?.status || '').toLowerCase() === 'draft')
+          : [];
+        if (eventDrafts.length === 0 && quoteDrafts.length === 0) return null;
+        const tile = (raw?: string) => {
+          const d = raw ? parseLocalDate(raw) : null;
+          const ok = d && !isNaN(d.getTime());
+          return {
+            day: ok ? d!.getDate() : '–',
+            month: ok ? d!.toLocaleDateString('en-US', { month: 'short' }) : APP_COPY.home.nextEvents.tbd,
+          };
+        };
+        const saved = (iso: string) => {
+          const d = new Date(iso);
+          return isNaN(d.getTime())
+            ? 'Draft'
+            : `Draft · saved ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`;
+        };
+        return (
+          <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
+            <SectionHeader title="Drafts" />
+            <div className="flex flex-col gap-4 grayscale opacity-60">
+              {eventDrafts.map((d) => (
+                <UpcomingRow
+                  key={d.id}
+                  kind="gig"
+                  typeLabel="Gig · Draft"
+                  title={d.title || 'New gig'}
+                  meta={[saved(d.savedAt), d.venue].filter(Boolean).join(' · ')}
+                  {...tile(d.date)}
+                  onClick={() => onOpenEventDraft?.(d)}
+                />
+              ))}
+              {quoteDrafts.map((q: any) => (
+                <UpcomingRow
+                  key={q.id}
+                  kind="quote"
+                  typeLabel="Quote · Draft"
+                  title={q.event_name || q.client_name || 'New quote'}
+                  meta={[q.quote_number, q.client_name].filter(Boolean).join(' · ') || 'Draft'}
+                  {...tile(q.event_date)}
+                  onClick={() => setExpandedCard('quotes')}
+                />
+              ))}
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* ═══ QUICK ACTIONS ═══ */}
       {filteredQuickActions.length > 0 && (

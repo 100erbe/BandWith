@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { findCalendarEvent, findEventConflicts } from '@/lib/eventConflicts';
 import { cn } from '@/app/components/ui/utils';
 import { formatDayShort, formatTime12, parseAmount } from '@/app/components/event/format';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 export type RsvpStatus = 'confirmed' | 'maybe' | 'declined';
 
@@ -64,6 +65,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   currentUserId,
   initialStatus,
 }) => {
+  const drag = useSheetDrag(onClose);
   useCurrency(); // re-render money labels when the band currency changes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [choice, setChoice] = useState<RsvpStatus | null>(initialStatus ?? null);
@@ -204,9 +206,10 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           paddingBottom: 'calc(16px + var(--safe-bottom))',
           ...maskStyle,
         }}
+        {...drag.sheet}
       >
         {/* Sheet header */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3" {...drag.handle}>
           <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">

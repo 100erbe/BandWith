@@ -22,6 +22,7 @@ import {
   SONG_FILE_ACCEPT,
   classifySongFile,
   isStoredSongFile,
+  normalizeSongFile,
   removeSongFiles,
   safeHttpsUrl,
   uploadSongFile,
@@ -32,6 +33,7 @@ import { useBand } from '@/lib/BandContext';
 import { useAuth } from '@/lib/AuthContext';
 import { personName } from '@/lib/personName';
 import { notifySongAdded } from '@/lib/services/notifications';
+import { genresOf, joinGenres, parseGenres } from '@/lib/songGenres';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -51,12 +53,6 @@ const splitDuration = (seconds?: number | null) =>
     ? { min: String(Math.floor(seconds / 60)), sec: String(Math.round(seconds % 60)).padStart(2, '0') }
     : { min: '', sec: '' };
 
-interface Folder {
-  id: string;
-  name: string;
-  color?: string;
-}
-
 export const AddSongModal: React.FC<AddSongModalProps> = ({
   isOpen,
   onClose,
@@ -72,10 +68,12 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   // Basic info
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  // Genre tags (songs.genre, comma-separated): the band's genres to pick
+  // from, plus any new one typed here.
+  const [genres, setGenres] = useState<string[]>([]);
+  const [bandGenres, setBandGenres] = useState<string[]>([]);
+  const [showNewGenre, setShowNewGenre] = useState(false);
+  const [newGenre, setNewGenre] = useState('');
   
   // Files (uploaded to the band's private storage on save)
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -101,7 +99,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadFolders();
+      loadGenres();
     }
   }, [isOpen, bandId]);
 
@@ -117,32 +115,39 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setDurSec(d.sec);
     setYoutubeUrl(song.youtube_url || '');
     setNotes(song.notes || '');
+    setGenres(parseGenres(song.genre));
     setExistingAudio(song.audio_url || undefined);
     setExistingChart(song.chart_url || undefined);
     setChartUrl(song.chart_url && !isStoredSongFile(song.chart_url) ? song.chart_url : '');
   }, [isOpen, song?.id]);
 
-  const loadFolders = async () => {
+  const loadGenres = async () => {
     try {
-      const { data } = await supabase
-        .from('song_folders')
-        .select('*')
-        .eq('band_id', bandId)
-        .order('name');
-      
-      setFolders(data || []);
-      if (song?.category) {
-        const match = (data || []).find((f: Folder) => f.name === song.category);
-        if (match) setSelectedFolder(match.id);
-      }
+      const { data } = await supabase.from('songs').select('genre').eq('band_id', bandId).not('genre', 'is', null);
+      setBandGenres(genresOf((data || []) as Array<{ genre?: string | null }>));
     } catch {
-      setFolders([]);
+      setBandGenres([]);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files || []);
+  const toggleGenre = (g: string) =>
+    setGenres((prev) => (prev.some((x) => x.toLowerCase() === g.toLowerCase()) ? prev.filter((x) => x.toLowerCase() !== g.toLowerCase()) : [...prev, g]));
+
+  const handleAddGenre = () => {
+    const added = parseGenres(newGenre);
+    if (added.length) {
+      setGenres((prev) => parseGenres([...prev, ...added].join(',')));
+      setBandGenres((prev) => genresOf([{ genre: [...prev, ...added].join(',') }]));
+    }
+    setNewGenre('');
+    setShowNewGenre(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = Array.from(e.target.files || []);
     e.target.value = '';
+    // Files from Drive & co. can come without extension/type: read them.
+    const picked = await Promise.all(raw.map(normalizeSongFile));
     for (const f of picked) {
       const problem = validateSongFile(f);
       if (problem) {
@@ -154,29 +159,6 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       else setChartFile(f);
       if (!title) setTitle(f.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim());
     }
-  };
-
-  const handleCreateFolder = async () => {
-    const name = newFolderName.trim().toUpperCase();
-    if (!name) return;
-    const existing = folders.find((f) => f.name === name);
-    if (existing) {
-      setSelectedFolder(existing.id);
-    } else {
-      const { data, error: folderError } = await supabase
-        .from('song_folders')
-        .insert({ band_id: bandId, name })
-        .select('id, name, color')
-        .single();
-      if (folderError || !data) {
-        setError('Could not create the folder. Try again.');
-        return;
-      }
-      setFolders((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      setSelectedFolder(data.id);
-    }
-    setNewFolderName('');
-    setShowNewFolder(false);
   };
 
   const handleSubmit = async () => {
@@ -220,7 +202,6 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         replaced.push(existingChart);
       }
 
-      const selectedFolderObj = folders.find(f => f.name && f.id === selectedFolder);
       const noteText = [notes.trim(), chords && !notes.includes(chords) ? `Chords: ${chords}` : '']
         .filter(Boolean)
         .join('\n');
@@ -232,7 +213,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       const payload: Partial<Song> = {
         title: title.trim(),
         artist: artist.trim() || undefined,
-        category: selectedFolderObj?.name,
+        // Editing to no genre clears it.
+        genre: joinGenres(genres) ?? (isEdit ? '' : undefined),
         audio_url: audioRef,
         chart_url: chartRef,
         youtube_url: youtube,
@@ -283,7 +265,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setChartFile(null);
     setExistingAudio(undefined);
     setExistingChart(undefined);
-    setSelectedFolder(null);
+    setGenres([]);
+    setNewGenre('');
+    setShowNewGenre(false);
     setYoutubeUrl('');
     setChartUrl('');
     setChordsUrl('');
@@ -450,39 +434,39 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 <PillField label="Key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="C maj" />
               </div>
 
-              {/* Folder */}
+              {/* Genre tags: used to filter the library when building a setlist */}
               <fieldset className="flex flex-col gap-2 pt-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Folder / category</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">Genre</legend>
                 <div className="flex flex-wrap items-center gap-2">
-                  {folders.map((folder) => (
+                  {genresOf([{ genre: [...bandGenres, ...genres].join(',') }]).map((g) => (
                     <Selector
-                      key={folder.id}
+                      key={g}
                       size="md"
-                      selected={selectedFolder === folder.id}
-                      onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
+                      selected={genres.some((x) => x.toLowerCase() === g.toLowerCase())}
+                      onClick={() => toggleGenre(g)}
                     >
-                      {folder.name}
+                      {g}
                     </Selector>
                   ))}
-                  {!showNewFolder && (
-                    <Selector size="md" selected={false} onClick={() => setShowNewFolder(true)} className="border-dashed">
+                  {!showNewGenre && (
+                    <Selector size="md" selected={false} onClick={() => setShowNewGenre(true)} className="border-dashed">
                       <Plus className="w-3.5 h-3.5" />
-                      New
+                      Genre
                     </Selector>
                   )}
                 </div>
-                {showNewFolder && (
+                {showNewGenre && (
                   <div className="flex items-end gap-2">
                     <PillField
-                      label="New folder"
+                      label="New genre"
                       hideLabel
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                      placeholder="Folder name"
+                      value={newGenre}
+                      onChange={(e) => setNewGenre(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddGenre()}
+                      placeholder="e.g. Funk, Soul"
                       autoFocus
                     />
-                    <IconButton label="Create folder" icon={<Check />} variant="filled" className="mb-1" onClick={handleCreateFolder} />
+                    <IconButton label="Add genre" icon={<Check />} variant="filled" className="mb-1" onClick={handleAddGenre} />
                   </div>
                 )}
               </fieldset>

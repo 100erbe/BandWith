@@ -40,6 +40,7 @@ import { RehearsalReviewSetlistModal } from './RehearsalReviewSetlistModal';
 import { toLocalDateString } from '../../../lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { personName, personInitials } from '@/lib/personName';
+import { parseGenres } from '@/lib/songGenres';
 
 interface TaskTemplateDB {
   id: string;
@@ -59,7 +60,8 @@ function dbSongToRehearsalSong(song: Song): RehearsalSong {
     duration: secs > 0 ? `${m}:${String(s).padStart(2, '0')}` : '0:00',
     priority: song.priority || 'medium',
     type: 'song',
-    category: song.category,
+    // Library groups and filters by genre (first tag), then the old folder.
+    category: parseGenres(song.genre)[0] || song.category,
   };
 }
 
@@ -635,7 +637,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     if (!library.find(s => s.id === picked.id)) {
       setLibrary(prev => [rehearsalSong, ...prev]);
     }
-    setData(prev => ({
+    // A song is in the setlist once: picking one that's "In set" again is a no-op.
+    setData(prev => (prev.setlist.some(s => s.id === rehearsalSong.id) ? prev : {
       ...prev,
       setlist: [...prev.setlist, rehearsalSong],
     }));

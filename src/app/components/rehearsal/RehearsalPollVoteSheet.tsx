@@ -25,6 +25,7 @@ import { haptic } from '@/lib/haptics';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
 import { personName } from '@/lib/personName';
+import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -47,6 +48,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   onShowToast,
   onOpenAdminWizard,
 }) => {
+  const drag = useSheetDrag(onClose);
   const [poll, setPoll] = useState<RehearsalPoll | null>(null);
   const [loading, setLoading] = useState(true);
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);
@@ -300,9 +302,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
         // leading page while you vote (Figma "Open · Event detail / Rehearsal |
         // Rehearsal / Poll vote sheet").
         className="bw-rail-sheet bw-picker dark fixed bottom-0 left-0 right-0 z-[185] bg-sheet text-sheet-foreground rounded-t-[32px] max-h-[88vh] flex flex-col sm:max-w-lg sm:mx-auto sm:bottom-6 sm:rounded-[32px] sm:max-h-[82vh]"
+        {...drag.sheet}
       >
         {/* Sheet Header */}
-        <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3">
+        <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
           <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">

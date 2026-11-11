@@ -33,6 +33,8 @@ import { DatePicker } from '@/app/components/ui/DatePicker';
 import { DotText, Toggle } from '@/app/components/bw';
 import { HeaderAction, IconButton, NavBackButton, Tag } from '@/app/components/bw/Screen';
 import { RailCover, useRailAction } from '@/lib/railActions';
+import { useSystemBack } from '@/lib/backStack';
+import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { PillButton, PillField } from '@/app/components/bw/Form';
 import {
   Quote,
@@ -2955,7 +2957,30 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // ── EDIT MODE RENDER ────────────────────────────────────────
   // iPhone Duo: the wizard's close sits in the system column under the clock
   // (Figma "Closed · Quote / New – 1 Event & lineup").
-  const closeInRail = useRailAction(isEditing ? undefined : onClose, {
+  // Closing a new quote with something typed in asks to save it as a draft
+  // (status DRAFT, listed under Drafts on the home screen and in Quotes).
+  const typedSnapshot = JSON.stringify({
+    clientName, clientEmail, clientPhone, clientCompany, eventName, eventType, eventDate,
+    eventTimeStart, guestCount, venueName, venueAddress, venueCity,
+    customItems: customItems.length, discountValue, clientNotes,
+  });
+  const baselineRef = useRef<string | null>(null);
+  if (baselineRef.current === null) baselineRef.current = typedSnapshot;
+  const isDirty = typedSnapshot !== baselineRef.current;
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const requestCloseRef = useRef<() => void>(onClose);
+  requestCloseRef.current = () => {
+    if (!isEditing && isDirty) setLeaveOpen(true);
+    else onClose();
+  };
+  const requestClose = useCallback(() => requestCloseRef.current(), []);
+  useSystemBack(!isEditing, () => {
+    if (leaveOpen) setLeaveOpen(false);
+    else requestClose();
+    return true;
+  });
+
+  const closeInRail = useRailAction(isEditing ? undefined : requestClose, {
     label: 'Close quote wizard',
     icon: <X />,
     pane: true,
@@ -3035,10 +3060,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <NavBackButton
               pane
               label={isFirstStep ? 'Close quote wizard' : 'Previous step'}
-              onClick={isFirstStep ? onClose : handleBack}
+              onClick={isFirstStep ? requestClose : handleBack}
             />
             <h1 className="flex-1 min-w-0 bw-h2 truncate">New quote</h1>
-            {!closeInRail && <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={onClose} />}
+            {!closeInRail && <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={requestClose} />}
           </div>
           <InteractiveQuoteStepIndicator
             current={step}
@@ -3079,7 +3104,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                <PillButton variant="outline" onClick={isFirstStep ? onClose : handleBack}>
+                <PillButton variant="outline" onClick={isFirstStep ? requestClose : handleBack}>
                   {isFirstStep ? 'Cancel' : 'Back'}
                 </PillButton>
                 <PillButton onClick={handleNext} disabled={!canProceed}>
@@ -3092,6 +3117,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
       </div>
       {quoteDesk}
+      <LeaveWizardSheet
+        open={leaveOpen}
+        what="quote"
+        draftHint="It's saved as a draft quote: find it under Drafts on the home screen and in Quotes."
+        onSaveDraft={() => {
+          setLeaveOpen(false);
+          handleCreate(false);
+        }}
+        onDiscard={() => {
+          setLeaveOpen(false);
+          onClose();
+        }}
+        onKeepEditing={() => setLeaveOpen(false)}
+      />
     </motion.div>
   );
 };
