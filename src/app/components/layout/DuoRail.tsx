@@ -105,14 +105,22 @@ const motionFrom = (edge: 'left' | 'right') => {
   };
 };
 
+/** Laptop pose: the bar groups rise from the Deck's bottom edge. */
+const deckMotion = {
+  initial: { y: 24, opacity: 0 },
+  animate: { y: 0, opacity: 1 },
+  exit: { y: 24, opacity: 0 },
+  transition: { duration: 0.25, ease: [0.32, 0.72, 0, 1] as const },
+};
+
 export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, isProfileOpen, onProfile, profileLocked = false, showTabs }) => {
   useRailHost();
   const { actions, back, search, fullScreen, tone } = useRailSnapshot();
   const { railEdge } = useRailLayout();
   const onLeft = railEdge === 'left';
-  const containerMotion = motionFrom(railEdge);
   // Laptop pose: navigation lives on the Deck, never across the fold.
   const onDeck = usePosture().posture === 'tabletop';
+  const containerMotion = onDeck ? deckMotion : motionFrom(railEdge);
   // Tabs show on the main screens, sheets and the profile, not over full-screen layers.
   const tabsVisible = showTabs && !fullScreen;
   const { profile } = useAuth();
@@ -189,20 +197,35 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
         // below the rail group, so the bottom actions stay reachable; safe
         // centring keeps the top reachable too once it overflows.
         className={cn(
-          'fixed z-[190] flex flex-col items-center justify-center-safe gap-2 pointer-events-none',
-          'overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          'fixed z-[190] flex items-center gap-2 pointer-events-none',
+          onDeck
+            ? 'flex-row justify-center-safe overflow-x-auto overflow-y-hidden'
+            : 'flex-col justify-center-safe overflow-y-auto overflow-x-hidden',
+          'overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           tone === 'dark' && 'dark',
         )}
         // Figma "Duo" frames centre the rail group 20pt below the display's
         // middle (y 359 of 678 closed, 355 of 669 open), clear of the clock.
         // On the Deck the group centres in the bottom half instead.
-        style={{
-          top: onDeck ? 'var(--bw-deck-top, 0px)' : 0,
-          bottom: 0,
-          paddingTop: onDeck ? 8 : 40,
-          width: 'var(--bw-rail-w)',
-          ...(onLeft ? { left: 0 } : { right: 0 }),
-        }}
+        // Laptop pose (Figma "Duo · 11 Laptop pose"): the bar lies along the
+        // Deck's bottom edge, closest to the hands, never across the fold.
+        style={
+          onDeck
+            ? {
+                left: 0,
+                right: 0,
+                bottom: 0,
+                paddingInline: 12,
+                paddingBottom: 'max(12px, calc(var(--safe-bottom, 0px) - 4px))',
+              }
+            : {
+                top: 0,
+                bottom: 0,
+                paddingTop: 40,
+                width: 'var(--bw-rail-w)',
+                ...(onLeft ? { left: 0 } : { right: 0 }),
+              }
+        }
         // Any other rail button closes the search field.
         onPointerDownCapture={(e) => {
           if (fieldOpen && !searchBtnRef.current?.contains(e.target as Node)) setFieldOpen(false);
@@ -214,7 +237,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
               key="tabs"
               aria-label="Main"
               {...containerMotion}
-              className="bw-glass pointer-events-auto w-12 rounded-[24px] py-3 flex flex-col items-center gap-[14px]"
+              className={cn('bw-glass pointer-events-auto shrink-0 rounded-[24px] flex items-center gap-[14px]', onDeck ? 'h-12 px-3 flex-row' : 'w-12 py-3 flex-col')}
             >
               {tabs.slice(0, 2).map((t) => (
                 <Cell key={t.key} label={t.label} onClick={t.onClick} dot={t.isActive} active={t.isActive} badgeCount={t.badgeCount}>
@@ -246,7 +269,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
             role="toolbar"
             aria-label="Screen actions, search and profile"
             {...containerMotion}
-            className="bw-glass pointer-events-auto w-12 rounded-[24px] py-3 flex flex-col items-center gap-[14px]"
+            className={cn('bw-glass pointer-events-auto shrink-0 rounded-[24px] flex items-center gap-[14px]', onDeck ? 'h-12 px-3 flex-row' : 'w-12 py-3 flex-col')}
           >
             {back && (
               <Cell label={back.label} onClick={() => { haptic.tap(); back.run(); }}>
@@ -322,7 +345,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
       <motion.label
         aria-hidden={!fieldVisible}
         initial={false}
-        animate={fieldVisible ? { opacity: 1, x: 0, scaleX: 1 } : { opacity: 0, x: onLeft ? -24 : 24, scaleX: 0.92 }}
+        animate={fieldVisible ? { opacity: 1, x: 0, y: 0, scaleX: 1 } : onDeck ? { opacity: 0, x: 0, y: 16, scaleX: 1 } : { opacity: 0, x: onLeft ? -24 : 24, y: 0, scaleX: 0.92 }}
         transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
         className={cn(
           tone === 'dark' && 'dark',
@@ -330,7 +353,12 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
           onLeft ? 'origin-left' : 'origin-right',
           !fieldVisible && 'pointer-events-none',
         )}
-        style={{
+        style={onDeck ? {
+          // Above the Deck's bottom bar, across the Deck.
+          bottom: 'calc(max(12px, calc(var(--safe-bottom, 0px) - 4px)) + 56px)',
+          left: 12,
+          right: 12,
+        } : {
           top: fieldTop,
           ...(onLeft
             ? { left: 'calc(var(--bw-rail-w) / 2 + 24px + 8px)' }
