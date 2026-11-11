@@ -106,7 +106,44 @@ interface DispatchData {
   bandId?: string;
   recipientId?: string;
   memberUserId?: string;
+  invitationId?: string;
 }
+
+interface InvitationRow {
+  id: string;
+  band_id: string;
+  email: string;
+  role: string | null;
+  status: string;
+  invited_by: string | null;
+  expires_at: string | null;
+  token: string;
+}
+
+async function invitationOf(admin: SupabaseClient, id: string | undefined) {
+  if (!id) return null;
+  const { data } = await admin
+    .from("band_invitations")
+    .select("id, band_id, email, role, status, invited_by, expires_at, token")
+    .eq("id", id)
+    .maybeSingle();
+  return data as InvitationRow | null;
+}
+
+/** The profile behind an address, if that person already has an account. */
+async function profileByEmail(admin: SupabaseClient, email: string) {
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name, notification_preferences")
+    .ilike("email", email.replace(/[\\%_]/g, (c) => `\\${c}`))
+    .limit(1);
+  return (data?.[0] ?? null) as
+    | { id: string; full_name: string | null; notification_preferences: Record<string, unknown> | null }
+    | null;
+}
+
+const emailOff = (prefs: Record<string, unknown> | null | undefined) => String(prefs?.email) === "false";
+const roleLabel = (role: string | null) => (role === "admin" ? "Admin" : "Musician");
 
 async function authUser(admin: SupabaseClient, id: string | undefined) {
   if (!id) return null;
@@ -175,6 +212,51 @@ async function resolveDispatch(
     const member = await authUser(admin, memberUserId);
     const { name: memberName } = await nameOf(admin, memberUserId, member?.email, member?.user_metadata);
     return { to: recipient.email, bandId, newMemberName: memberName, newMemberEmail: member?.email ?? "" };
+  }
+
+  if (type === "onboarding_reminder") {
+    const inv = await invitationOf(admin, data?.invitationId);
+    if (!inv) return { skip: "invitation not found" };
+    if (inv.status !== "pending") return { skip: `invitation is ${inv.status}` };
+    const msLeft = inv.expires_at ? new Date(inv.expires_at).getTime() - Date.now() : 0;
+    if (msLeft <= 0) return { skip: "invitation expired" };
+    const invitee = await profileByEmail(admin, inv.email);
+    if (emailOff(invitee?.notification_preferences)) return { skip: "invitee turned email off" };
+    let inviterName = "";
+    if (inv.invited_by) {
+      const inviter = await authUser(admin, inv.invited_by);
+      inviterName = (await nameOf(admin, inv.invited_by, inviter?.email, inviter?.user_metadata)).name ||
+        (inviter?.email ?? "");
+    }
+    return {
+      to: inv.email,
+      bandId: inv.band_id,
+      inviterName,
+      inviteUrl: `${appUrl()}/?invite=${inv.token}`,
+      role: roleLabel(inv.role),
+      daysRemaining: Math.floor(msLeft / 86_400_000),
+    };
+  }
+
+  if (type === "invite_expired") {
+    const inv = await invitationOf(admin, data?.invitationId);
+    if (!inv) return { skip: "invitation not found" };
+    if (inv.status !== "pending") return { skip: `invitation is ${inv.status}` };
+    if (!inv.expires_at || new Date(inv.expires_at).getTime() > Date.now()) return { skip: "not expired" };
+    if (!inv.invited_by) return { skip: "no inviter" };
+    try {
+      await requireBandAdmin(admin, inv.invited_by, inv.band_id); // still an admin
+    } catch {
+      return { skip: "inviter is no longer an admin" };
+    }
+    const inviter = await authUser(admin, inv.invited_by);
+    if (!inviter?.email) return { skip: "inviter has no email" };
+    if (emailOff((await profileOf(admin, inv.invited_by))?.notification_preferences)) {
+      return { skip: "inviter turned email off" };
+    }
+    const invitee = await profileByEmail(admin, inv.email);
+    const inviteeName = realName([invitee?.full_name], inv.email) || inv.email;
+    return { to: inviter.email, bandId: inv.band_id, inviteeName, role: roleLabel(inv.role) };
   }
 
   return { skip: "type cannot be sent by the database" };
@@ -281,6 +363,7 @@ serve(async (req) => {
         vars.HeroName = name || "A new member";
       }
       if (type === "invite_expired") {
+        // Name first; without one, the address (resolveDispatch already did this).
         vars.InviteeName = clean(rawData.inviteeName, "your invitee");
       }
     }
