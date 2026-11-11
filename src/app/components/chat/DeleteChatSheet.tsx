@@ -14,7 +14,11 @@ export const DeleteChatSheet: React.FC<{
   deleting?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-}> = ({ open, chatName, deleting, onCancel, onConfirm }) => {
+  /** Other deletions reuse the sheet with their own wording. */
+  title?: string;
+  body?: string;
+  confirmLabel?: string;
+}> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel = 'Delete' }) => {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
@@ -51,10 +55,11 @@ export const DeleteChatSheet: React.FC<{
             <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
             <div className="flex flex-col gap-1">
               <span id="delete-chat-title" className="bw-label-md [overflow-wrap:anywhere]">
-                {chatName ? `Delete chat with ${chatName}?` : 'Delete this chat?'}
+                {title ?? (chatName ? `Delete chat with ${chatName}?` : 'Delete this chat?')}
               </span>
               <span className="bw-body-sm text-sheet-foreground/70">
-                It disappears from your list. The others keep the conversation, and it comes back if someone writes again.
+                {body ??
+                  'It disappears from your list. The others keep the conversation, and it comes back if someone writes again.'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -72,7 +77,7 @@ export const DeleteChatSheet: React.FC<{
                 className="flex items-center justify-center gap-2 min-h-12 rounded-full bg-destructive-solid text-white bw-button-sm disabled:opacity-60"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Trash2 className="w-4 h-4" aria-hidden />}
-                Delete
+                {confirmLabel}
               </button>
             </div>
           </motion.div>

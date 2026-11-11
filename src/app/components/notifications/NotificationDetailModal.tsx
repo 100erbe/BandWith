@@ -31,6 +31,9 @@ import { PillButton, Selector } from '@/app/components/bw/Form';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { findCalendarEvent, findEventConflicts, type CalendarEventLike } from '@/lib/eventConflicts';
 import { notificationBandId, notificationTarget, notificationTargetLabel } from '@/lib/notificationRouting';
+import { SwipeRow } from '@/app/components/bw/SwipeRow';
+import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
+import { haptic } from '@/lib/haptics';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -79,6 +82,8 @@ interface NotificationDetailModalProps {
    * band: each notification then says which band it comes from.
    */
   bandNames?: Record<string, string>;
+  /** Deletes every notification in the list ("Clear all"). */
+  onClearAll?: () => void;
 }
 
 const formatTime = (dateStr: string): string => {
@@ -216,7 +221,11 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onNavigate,
   calendarEvents,
   bandNames,
+  onClearAll,
 }) => {
+  // Swipe left on a row reveals Delete; one row open at a time.
+  const [openRowId, setOpenRowId] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   useCurrency(); // re-render money labels when the band currency changes
   /** Band a notification comes from, when the user is in several. */
   const bandOf = (n: NotificationData): string | null => {
@@ -367,8 +376,33 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           Mark read
                         </PillButton>
                       )}
+                      {onClearAll && (
+                        <PillButton
+                          variant="ghost"
+                          size="sm"
+                          fullWidth={false}
+                          icon={<Trash2 className="w-4 h-4" />}
+                          onClick={() => setConfirmClear(true)}
+                          aria-label="Clear all notifications"
+                          className="px-0"
+                        >
+                          Clear
+                        </PillButton>
+                      )}
                     </div>
                   )}
+                  <DeleteChatSheet
+                    open={confirmClear}
+                    title="Clear all notifications?"
+                    body={`This removes ${allNotifications.length === 1 ? 'the notification' : `all ${allNotifications.length} notifications`} from your list. You can't undo this.`}
+                    confirmLabel="Clear all"
+                    onCancel={() => setConfirmClear(false)}
+                    onConfirm={() => {
+                      setConfirmClear(false);
+                      haptic.delete();
+                      onClearAll?.();
+                    }}
+                  />
 
                   {displayedNotifications.length === 0 ? (
                     /* Figma: Inbox empty — centred icon tile, no card */
@@ -404,8 +438,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           .filter(Boolean)
                           .join(' · ');
 
-                        return (
-                          <li key={notif.id}>
+                        const row = (
                             <button
                               type="button"
                               onClick={() => {
@@ -443,6 +476,25 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                 <span className="w-2 h-2 mt-1 rounded-full bg-destructive shrink-0" aria-label="Unread" />
                               )}
                             </button>
+                        );
+                        return (
+                          <li key={notif.id}>
+                            {onDelete ? (
+                              <SwipeRow
+                                deleteLabel={`Delete notification: ${cleanNotificationTitle(notif.title)}`}
+                                open={openRowId === notif.id}
+                                onOpenChange={(o) => setOpenRowId(o ? notif.id : null)}
+                                onDelete={() => {
+                                  haptic.delete();
+                                  setOpenRowId(null);
+                                  onDelete(notif.id);
+                                }}
+                              >
+                                {row}
+                              </SwipeRow>
+                            ) : (
+                              row
+                            )}
                           </li>
                         );
                       })}

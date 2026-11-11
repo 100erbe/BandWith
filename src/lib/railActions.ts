@@ -24,6 +24,8 @@ export interface RailBack {
    * first) but never adds one where the screen beneath has none.
    */
   inherit?: boolean;
+  /** A tab-level screen (e.g. Search events): the tab bar stays visible. */
+  keepTabs?: boolean;
 }
 
 export interface RailSearch {
@@ -125,7 +127,7 @@ function emit() {
     tone: tones.length ? tones[tones.length - 1].tone : null,
     back,
     search,
-    fullScreen: backs.some((b) => !b.inherit && onFullPane(b.pane)) || covers.some((c) => c.hideTabs && onFullPane(c.pane)),
+    fullScreen: backs.some((b) => !b.inherit && !b.keepTabs && onFullPane(b.pane)) || covers.some((c) => c.hideTabs && onFullPane(c.pane)),
     hosted: hosts > 0,
   };
   listeners.forEach((l) => l());
@@ -174,6 +176,7 @@ export function useRailBack(
   enabled = true,
   pane = false,
   inherit = false,
+  keepTabs = false,
 ): boolean {
   const owns = useRailOwnsChrome();
   // A layer playing its exit animation has already been closed.
@@ -185,7 +188,7 @@ export function useRailBack(
   const active = owns && enabled && !!run && present;
   useEffect(() => {
     if (!active) return;
-    const entry: RailBack = { id: ++seq, label: labelRef.current, run: () => runRef.current?.(), pane, inherit };
+    const entry: RailBack = { id: ++seq, label: labelRef.current, run: () => runRef.current?.(), pane, inherit, keepTabs };
     backs = [...backs, entry];
     emit();
     return () => {

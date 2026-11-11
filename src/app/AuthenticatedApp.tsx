@@ -44,7 +44,8 @@ import {
 import type { EventMember, Event } from "@/lib/services/events";
 import { createSetlist, replaceSetlistSongs, updateSetlist } from "@/lib/services/songs";
 import { receiptFor, deleteChat as deleteChatService, createChat as createChatService } from "@/lib/services/chats";
-import { deleteNotification as deleteNotificationService, createNotification } from "@/lib/services/notifications";
+import { deleteNotification as deleteNotificationService, createNotification, getUnreadCount } from "@/lib/services/notifications";
+import { syncAppBadge } from "@/lib/services/appBadge";
 import { ErrorState } from "@/app/components/ui/ErrorState";
 import { LeadingCompanionSlot } from "@/app/components/duo";
 
@@ -406,7 +407,7 @@ export default function AuthenticatedApp() {
   const [urgentNotification, setUrgentNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [rsvpNotification, setRsvpNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
   const [pollNotification, setPollNotification] = useState<import('@/lib/services/notifications').Notification | null>(null);
-  const { notifications: realNotifications, refetch: refetchNotifications, setNotifications: setRealNotifications } = useNotifications({
+  const { notifications: realNotifications, loading: notificationsLoading, refetch: refetchNotifications, setNotifications: setRealNotifications } = useNotifications({
     limit: 20,
     onNewEventInvite: (notif) => {
       if (notif.data?.creator_id !== user?.id) {
@@ -417,6 +418,24 @@ export default function AuthenticatedApp() {
       setUrgentNotification(notif);
     },
   });
+
+  // App icon badge = the exact unread count on the server, refreshed whenever
+  // the list changes (read, deleted, new) and when the app comes back.
+  useEffect(() => {
+    if (!isNative || notificationsLoading) return;
+    let cancelled = false;
+    getUnreadCount().then(({ data }) => {
+      if (!cancelled && data !== null) syncAppBadge(data);
+    });
+    return () => { cancelled = true; };
+  }, [isNative, notificationsLoading, realNotifications]);
+  useEffect(() => {
+    if (!isNative) return;
+    const sub = App.addListener("resume", () => {
+      getUnreadCount().then(({ data }) => { if (data !== null) syncAppBadge(data); });
+    });
+    return () => { void sub.then((h) => h.remove()); };
+  }, [isNative]);
 
   // Check for initial unread event invite or rehearsal poll on mount (small non-intrusive pop up, prompt once per session)
   const hasPromptedInitialNotifs = useRef(false);
@@ -1002,7 +1021,22 @@ export default function AuthenticatedApp() {
     data?: Record<string, unknown>; band_id?: string; created_at: string; read: boolean;
   }>>([]);
 
-  const isNotificationsOpen = !!selectedNotification || selectedNotifications.length > 0;
+  // The inbox stays open while empty (after Clear or the last swipe), so it
+  // can show "No notifications yet" instead of not opening at all.
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const isNotificationsOpen = inboxOpen || !!selectedNotification || selectedNotifications.length > 0;
+
+  /** Deletes notifications for good (list, badge and other devices). */
+  const removeNotifications = useCallback((ids: string[]) => {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
+    Promise.all(unique.map((nid) => deleteNotificationService(nid))).then((results) => {
+      if (results.some((r) => r.error)) {
+        setSaveToast({ message: unique.length > 1 ? 'Could not delete the notifications.' : 'Could not delete the notification.', type: 'error' });
+      }
+      refetchNotifications?.();
+    });
+  }, [refetchNotifications]);
 
   const handleOpenNotifications = useCallback(() => {
     const seen = new Set<string>();
@@ -1017,6 +1051,7 @@ export default function AuthenticatedApp() {
         return true;
       });
     setSelectedNotifications(nonChatNotifs);
+    setInboxOpen(true);
     setSelectedNotification(null);
     if (unreadCount > 0) {
       markAllNotificationsAsRead().then(() => {
@@ -1479,7 +1514,7 @@ export default function AuthenticatedApp() {
     if (first && realType && detailTypes.includes(realType)) {
       const realData = clicked.map((n) => { const rid = notificationIdMap.get(n.id); return realNotifications?.find((rn) => rn.id === rid); }).filter(Boolean).map((n) => ({ id: n!.id, type: n!.type, title: n!.title, body: n!.body, data: n!.data as Record<string, unknown>, band_id: n!.band_id, created_at: n!.created_at, read: n!.read }));
       if (realData.length > 0) {
-        if (realData.length === 1) { setSelectedNotification(realData[0]); setSelectedNotifications([]); }
+        if (realData.length === 1) { setSelectedNotification(realData[0]); setSelectedNotifications([]); setInboxOpen(false); }
         else { setSelectedNotifications(realData); setSelectedNotification(null); }
         closeIdentity();
         return;
@@ -1582,6 +1617,7 @@ export default function AuthenticatedApp() {
     pollNotification,
     selectedNotifications,
     selectedNotification,
+    inboxOpen,
     showPersonalGigModal,
     showNoBandRehearsalModal,
     showChooseBandProposalModal,
@@ -1622,6 +1658,7 @@ export default function AuthenticatedApp() {
     pollNotification,
     selectedNotifications,
     selectedNotification,
+    inboxOpen,
     showPersonalGigModal,
     showNoBandRehearsalModal,
     showChooseBandProposalModal,
@@ -1674,8 +1711,8 @@ export default function AuthenticatedApp() {
         setPollNotification(null);
         return;
       }
-      if (s.selectedNotifications.length > 0) {
-        setSelectedNotifications([]);
+      if (s.selectedNotifications.length > 0 || s.inboxOpen) {
+        setSelectedNotifications([]); setInboxOpen(false);
         return;
       }
       if (s.selectedNotification) {
@@ -3439,30 +3476,38 @@ export default function AuthenticatedApp() {
 
           <NotificationDetailModal key="notification-detail"
             isOpen={isNotificationsOpen}
-            onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); }}
+            onClose={() => { setSelectedNotification(null); setSelectedNotifications([]); setInboxOpen(false); }}
             notification={selectedNotification}
             notifications={selectedNotifications}
             calendarEvents={events}
             bandNames={(realBands?.length ?? 0) > 1 ? bandLookup : undefined}
+            // Opening the action a notification suggests (RSVP, poll, its
+            // screen) also removes it: it has done its job.
             onOpenRSVP={(notif) => {
               setSelectedNotification(null);
-              setSelectedNotifications([]);
-              markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              setSelectedNotifications([]); setInboxOpen(false);
+              removeNotifications([notif.id]);
               setRsvpNotification(notif as any);
             }}
             onOpenPoll={(notif) => {
               setSelectedNotification(null);
-              setSelectedNotifications([]);
-              markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              setSelectedNotifications([]); setInboxOpen(false);
+              removeNotifications([notif.id]);
               setPollNotification(notif as any);
             }}
             onNavigate={(notif) => {
               setSelectedNotification(null);
-              setSelectedNotifications([]);
-              if (!notif.read) markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              setSelectedNotifications([]); setInboxOpen(false);
+              removeNotifications([notif.id]);
               navigateToNotificationTarget(notificationTarget(notif.type, notif.data), notificationBandId(notif));
             }}
-            onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
+            onClearAll={() => {
+              const ids = [selectedNotification?.id, ...selectedNotifications.map((n) => n.id)].filter(Boolean) as string[];
+              setSelectedNotification(null);
+              setSelectedNotifications([]); // the inbox stays open, empty
+              removeNotifications(ids);
+            }}
+            onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); setInboxOpen(false); } }}
             onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}
             onDelete={(id) => {
               // Deleted for real (it used to come back on the next refresh).
@@ -3470,11 +3515,8 @@ export default function AuthenticatedApp() {
                 ? [id]
                 : [selectedNotification?.id, ...selectedNotifications.map((n) => n.id)].filter(Boolean) as string[];
               if (id) setSelectedNotifications((p) => p.filter((n) => n.id !== id));
-              else { setSelectedNotification(null); setSelectedNotifications([]); }
-              Promise.all([...new Set(ids)].map((nid) => deleteNotificationService(nid))).then((results) => {
-                if (results.some((r) => r.error)) setSaveToast({ message: 'Could not delete the notification.', type: 'error' });
-                refetchNotifications?.();
-              });
+              else { setSelectedNotification(null); setSelectedNotifications([]); setInboxOpen(false); }
+              removeNotifications(ids);
             }}
             onAction={async (action, notificationId) => {
               const notif = selectedNotification || selectedNotifications.find((n) => n.id === notificationId);
@@ -3520,7 +3562,7 @@ export default function AuthenticatedApp() {
               } catch (err) { console.error("Action error:", err); }
               const navId = notif?.data?.event_id as string;
               setSelectedNotification(null);
-              setSelectedNotifications([]);
+              setSelectedNotifications([]); setInboxOpen(false);
               if (navId) setTimeout(() => navigateToEvent(navId), 300);
             }}
           />

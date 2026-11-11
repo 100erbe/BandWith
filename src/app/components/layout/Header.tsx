@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { RailHeaderActions, useRailOwnsChrome } from '@/lib/railActions';
 import { HEADER_SPRING, durations } from '@/styles/motion';
 import { FIT, FitText } from '@/app/components/bw/FitText';
+import { primeKeyboard } from '@/lib/keyboardSafeTap';
 
 export { HEADER_SPRING };
 
@@ -328,7 +329,10 @@ export const Header: React.FC<HeaderProps> = ({
               railOwnsChrome ? null : <IconButton
                 label="Search events"
                 icon={<Search />}
-                onClick={() => window.dispatchEvent(new CustomEvent('bw:open-event-search'))}
+                onClick={() => {
+                  primeKeyboard(); // keyboard up with the tap; the search field takes the focus
+                  window.dispatchEvent(new CustomEvent('bw:open-event-search'));
+                }}
               />
             ) : (
             <>

@@ -119,9 +119,11 @@ export const NavBackButton: React.FC<
     icon?: React.ReactNode;
     /** iPhone Duo open: this back belongs to a trailing-pane detail. */
     pane?: boolean;
+    /** iPhone Duo: keep the rail's tab bar visible (tab-level screens). */
+    keepTabs?: boolean;
   }
-> = ({ label = 'Back', onClick, icon, pane = false, ...rest }) => {
-  const inRail = useRailBack(onClick, label, true, pane);
+> = ({ label = 'Back', onClick, icon, pane = false, keepTabs = false, ...rest }) => {
+  const inRail = useRailBack(onClick, label, true, pane, false, keepTabs);
   if (inRail) return null;
   return <IconButton label={label} icon={icon ?? <ArrowLeft />} onClick={onClick} {...rest} />;
 };
@@ -251,12 +253,18 @@ export interface SearchFieldProps extends Omit<React.InputHTMLAttributes<HTMLInp
   onChange: (value: string) => void;
   /** Accessible name (visually hidden, like the Figma search Input). */
   label?: string;
+  /**
+   * Stay in the screen on iPhone Duo too, instead of moving into the rail:
+   * for screens whose whole purpose is the search (Search events).
+   */
+  inline?: boolean;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 /** Figma "Input" used as a search: 52pt white pill, search icon, Body/LG. */
-export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = 'Search', placeholder, className, ...rest }) => {
+export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = 'Search', placeholder, className, inline = false, inputRef, ...rest }) => {
   // iPhone Duo: the search moves into the side rail (Figma "Duo/Rail Search Field").
-  const inRail = useRailSearch({
+  const inRail = useRailSearch(inline ? null : {
     label,
     value,
     onChange,
@@ -264,7 +272,7 @@ export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label
     autoFocus: !!rest.autoFocus,
     onKeyDown: rest.onKeyDown,
   });
-  if (inRail) return null;
+  if (inRail && !inline) return null;
   return (
   <label
     className={cn(
@@ -276,7 +284,9 @@ export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label
     <span className="sr-only">{label}</span>
     <Search className="w-5 h-5 shrink-0" aria-hidden />
     <input
+      ref={inputRef}
       type="search"
+      enterKeyHint="search"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
