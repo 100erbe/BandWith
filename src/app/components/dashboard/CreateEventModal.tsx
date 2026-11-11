@@ -581,6 +581,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     date: editingEvent?.date || initialDate || todayLocal(),
     startTime: editingEvent?.time || '20:00',
     endTime: editingEvent?.endTime || '23:30',
+    // Optional call times for gigs (events.load_in_time / soundcheck_time).
+    loadInTime: editingEvent?.loadInTime?.slice(0, 5) || '',
+    soundcheckTime: editingEvent?.soundcheckTime?.slice(0, 5) || '',
     guests: editingEvent?.guests || 0,
     duration: 120,
     pay: editingEvent?.price || '',
@@ -676,7 +679,15 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   );
   const [newTaskText, setNewTaskText] = useState('');
   const [notes, setNotes] = useState(editingEvent?.notes || '');
-  const [extraBandFee, setExtraBandFee] = useState('');
+  // The extra band fee isn't stored on its own: the event fee is members +
+  // extra, so when editing it is what the saved fee has beyond the members.
+  const [extraBandFee, setExtraBandFee] = useState(() => {
+    if (!editingEvent) return '';
+    const total = parseFloat(String(editingEvent.price || '').replace(/[^0-9.]/g, '')) || 0;
+    const members = Object.values(editingEvent.memberFeeMap || {}).reduce((acc, f) => acc + (parseFloat(f) || 0), 0);
+    const extra = Math.round((total - members) * 100) / 100;
+    return extra > 0 ? String(extra) : '';
+  });
 
   const activeAccentColor = useMemo(
     () => getEventAccentColor(eventType, modalCategory),
@@ -1297,6 +1308,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   })();
 
   const renderTimeFields = () => (
+    <div className="flex flex-col gap-4">
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-2 min-w-0">
         <FieldLabel htmlFor="cem-start-time">Start time</FieldLabel>
@@ -1327,6 +1339,43 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           overline={timeOverline}
         />
       </div>
+    </div>
+    {/* Call times: shown on the event and the member's Home card. */}
+    {(
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel htmlFor="cem-loadin-time">Load-in (optional)</FieldLabel>
+          <TimePicker
+            id="cem-loadin-time"
+            value={details.loadInTime}
+            onChange={val => setDetails(prev => ({ ...prev, loadInTime: val }))}
+            accentColor={activeAccentColor}
+            textSize="text-lg"
+            showIcon
+            allowEmpty
+            emptyLabel="Add"
+            className={PICKER_FIELD}
+            overline={timeOverline}
+          />
+        </div>
+        <div className="flex flex-col gap-2 min-w-0">
+          <FieldLabel htmlFor="cem-soundcheck-time">Soundcheck (optional)</FieldLabel>
+          <TimePicker
+            id="cem-soundcheck-time"
+            value={details.soundcheckTime}
+            onChange={val => setDetails(prev => ({ ...prev, soundcheckTime: val }))}
+            accentColor={activeAccentColor}
+            align="end"
+            textSize="text-lg"
+            showIcon
+            allowEmpty
+            emptyLabel="Add"
+            className={PICKER_FIELD}
+            overline={timeOverline}
+          />
+        </div>
+      </div>
+    )}
     </div>
   );
 

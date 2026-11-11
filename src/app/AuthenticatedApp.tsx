@@ -1360,7 +1360,9 @@ export default function AuthenticatedApp() {
       });
     };
     fetchCounts();
-  }, [realBand?.id]);
+    // Recount when a library screen closes or the hub opens, so the numbers
+    // follow what was just added or removed.
+  }, [realBand?.id, isIdentityOpen, isControlDeckOpen, showInventory, showContracts, showTaskTemplates, showSetlistManager]);
 
   useEffect(() => {
     if (rehearsalIndex >= upcomingRehearsals.length && upcomingRehearsals.length > 0) setRehearsalIndex(upcomingRehearsals.length - 1);
@@ -2375,6 +2377,12 @@ export default function AuthenticatedApp() {
         event_date: date,
         start_time: timeFinal,
         end_time: endTime || null,
+        ...(!isRehearsalWizard
+          ? {
+              load_in_time: data.details?.loadInTime || null,
+              soundcheck_time: data.details?.soundcheckTime || null,
+            }
+          : {}),
         venue_name: venueFinal,
         venue: venueFinal,
         venue_address: fullAddress,

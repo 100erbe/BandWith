@@ -224,7 +224,15 @@ export const TimePicker: React.FC<TimePickerProps> = ({
               Clear
             </PillButton>
           )}
-          <PillButton icon={<Check className="w-5 h-5" />} className="flex-1" onClick={() => setOpen(false)}>
+          <PillButton
+            icon={<Check className="w-5 h-5" />}
+            className="flex-1"
+            onClick={() => {
+              // An empty optional field takes the time shown on the wheel.
+              if (!value) onChange(currentTime);
+              setOpen(false);
+            }}
+          >
             Set {currentTime}
           </PillButton>
         </div>
