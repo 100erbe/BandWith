@@ -30,6 +30,7 @@ import { useRailLayout } from '@/lib/deviceRegions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { findCalendarEvent, findEventConflicts, type CalendarEventLike } from '@/lib/eventConflicts';
+import { notificationTarget, notificationTargetLabel } from '@/lib/notificationRouting';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -63,6 +64,11 @@ interface NotificationDetailModalProps {
   onAction?: (action: string, notificationId?: string) => void;
   onOpenRSVP?: (notification: NotificationData) => void;
   onOpenPoll?: (notification: NotificationData) => void;
+  /**
+   * Opens the screen the notification is about (event, chat, quotes…). When
+   * set, tapping such a notification in the list goes straight there.
+   */
+  onNavigate?: (notification: NotificationData) => void;
   /**
    * The user's calendar (same list EventRSVPSheet gets). Enables timings and the
    * schedule-conflict card on gig invitations; when absent the card is hidden.
@@ -202,6 +208,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   onAction,
   onOpenRSVP,
   onOpenPoll,
+  onNavigate,
   calendarEvents,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
@@ -284,6 +291,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
 
   const isPollType = detailNotif?.type === 'rehearsal_poll' || detailNotif?.type === 'rehearsal_proposal';
+  const detailTarget = detailNotif ? notificationTarget(detailNotif.type, detailNotif.data) : null;
 
   const renderListHeader = () => (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
@@ -394,6 +402,12 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                   onOpenPoll(notif);
                                   return;
                                 }
+                                // Everything else that belongs to a screen opens it
+                                // directly; the rest shows its detail page.
+                                if (notif.type !== 'event_invite' && onNavigate && notificationTarget(notif.type, notif.data)) {
+                                  onNavigate(notif);
+                                  return;
+                                }
                                 setViewingIndex(originalIndex >= 0 ? originalIndex : i);
                               }}
                               className={cn(
@@ -430,7 +444,22 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   {(() => {
                     const meta = getNotificationMeta(detailNotif.type, detailNotif.data);
                     return (
-                      <div className={cn('p-5 rounded-[24px] flex flex-col gap-3', meta.fill)}>
+                      <div
+                        className={cn('p-5 rounded-[24px] flex flex-col gap-3', meta.fill, detailTarget && onNavigate && detailNotif.type !== 'event_invite' && 'cursor-pointer active:scale-[0.99] transition-transform')}
+                        {...(detailTarget && onNavigate && detailNotif.type !== 'event_invite'
+                          ? {
+                              role: 'button',
+                              tabIndex: 0,
+                              onClick: () => onNavigate(detailNotif),
+                              onKeyDown: (e: React.KeyboardEvent) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  onNavigate(detailNotif);
+                                }
+                              },
+                            }
+                          : {})}
+                      >
                         <div className="flex items-center gap-2 flex-wrap">
                           <Tag variant="solid" className={meta.onDark ? 'bg-white text-black' : undefined}>
                             {meta.label}
@@ -595,6 +624,19 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                   </PillButton>
                   <PillButton className="flex-1" icon={<Calendar className="w-[18px] h-[18px]" />} onClick={() => detailNotif && onOpenPoll?.(detailNotif)}>
                     {detailNotif?.type === 'rehearsal_poll' ? 'Vote on dates' : 'View proposal'}
+                  </PillButton>
+                </div>
+              ) : detailTarget && onNavigate ? (
+                <div className="flex items-center gap-3">
+                  <PillButton
+                    variant="outline"
+                    className="flex-[0_0_36%]"
+                    onClick={viewingIndex !== null && !split ? backToList : handleClose}
+                  >
+                    {viewingIndex !== null && !split ? 'Back' : 'Close'}
+                  </PillButton>
+                  <PillButton className="flex-1" onClick={() => detailNotif && onNavigate(detailNotif)}>
+                    {notificationTargetLabel(detailTarget)}
                   </PillButton>
                 </div>
               ) : (

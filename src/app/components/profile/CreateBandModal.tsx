@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { IS_BETA } from '@/lib/beta';
 import { motion } from 'motion/react';
 import { X, Users, Link, Check, Plus } from '@/app/components/icons';
 import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
@@ -24,7 +25,7 @@ const GENRES = [
 ];
 
 const PLANS = [
-  { id: 'free', name: 'Free', description: '1 band', price: '€0', available: true },
+  { id: 'free', name: 'Free', description: IS_BETA ? 'everything, during the beta' : '1 band', price: '€0', available: true },
   { id: 'pro', name: 'Pro', description: 'coming soon', price: '€9.99/mo', available: false },
 ];
 
