@@ -52,9 +52,13 @@ Placeholders are `{{Name}}`. Values must be HTML-escaped and links checked again
 | `welcome` | Database: once per user when `auth.users.email_confirmed_at` is set (063), logged in `bw_email_log` |
 | `onboarding_reminder` | Database: daily job `bw-invite-emails` (pg_cron, 08:00 UTC, 064) → once per pending invite with 2 days or less left, to the invited address |
 | `invite_expired` | Same job → once to the admin who sent it, for invites that expired in the last 3 days |
-| product news | Not sent yet (planned: Resend Broadcasts) |
+| `product_update` | By hand, with the owner's OK: insert a row in `bw_product_updates`, test with `select bw_send_product_update('<id>', array['<user id>']::uuid[])`, then send with `select bw_send_product_update('<id>')` (065). Everyone with a confirmed account, unless they turned off Product news or Email (opt-out); once per person per issue; 20 per Resend batch call |
 
 Database calls authenticate with `x-bw-dispatch-secret` (Vault `bw_email_dispatch_secret`, checked by `bw_verify_email_dispatch_secret`) and pass the gateway with the public anon key from Vault `bw_anon_key`. The function looks up every address from the ids it receives, and re-checks invitations at send time (accepted or declined ones are skipped). `band_invitations.reminder_sent_at` / `expiry_notified_at` make each email go out once; `invite-member` resets them when an address is invited again.
+
+### Product news: consent and unsubscribe
+
+Product news is opt-out: Settings → Notifications → **Product news** (`notification_preferences.product_updates`), and the Email switch turns it off too. Every issue carries a personal link to `/unsubscribe.html?u=<user id>&s=<HMAC>` (Vault `bw_unsubscribe_secret`, `bw_unsubscribe_sig` for the server only) and the same link in the `List-Unsubscribe` header. The page asks for one click, then calls `bw_email_unsubscribe`, which checks the signature. In `Headline`, line breaks become `<br>`.
 
 ## Logos
 

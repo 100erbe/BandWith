@@ -52,6 +52,15 @@ describe('saveNotificationPrefs', () => {
     expect(readLocalPref('email')).toBe(true);
   });
 
+  it('product news has its own key, on by default', async () => {
+    expect(readLocalPref('product_updates')).toBe(true);
+    selectResults.push({ data: { notification_preferences: { email: true } }, error: null });
+    await saveNotificationPref('product_updates', false);
+    expect(updateMock).toHaveBeenCalledWith({ notification_preferences: { email: true, product_updates: false } });
+    expect(readLocalPref('product_updates')).toBe(false);
+    expect(readLocalPref('email')).toBe(true);
+  });
+
   it('single-key helper still works', async () => {
     selectResults.push({ data: { notification_preferences: { push: true } }, error: null });
     await saveNotificationPref('email', false);

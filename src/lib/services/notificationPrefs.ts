@@ -4,14 +4,16 @@ import { getSafeUser } from '@/lib/supabase';
 /**
  * Server-side notification preferences (profiles.notification_preferences).
  * The push dispatcher (migration 048) skips push when `push` is false.
- * `email` is stored but no server code reads it yet: the only emails sent
- * today are band invites an admin explicitly sends (send-email).
+ * `email` = false stops the band emails sent by the server (member joined,
+ * invite reminders and expiries, product news); `product_updates` = false
+ * stops only product news (065). Missing keys mean on.
  */
-export type NotificationPrefKey = 'push' | 'email';
+export type NotificationPrefKey = 'push' | 'email' | 'product_updates';
 
 const LOCAL_KEY: Record<NotificationPrefKey, string> = {
   push: 'bandwith_push_notifs',
   email: 'bandwith_email_notifs',
+  product_updates: 'bandwith_product_updates',
 };
 
 export const readLocalPref = (key: NotificationPrefKey): boolean => {
@@ -41,7 +43,7 @@ export const loadNotificationPrefs = async (): Promise<Partial<Record<Notificati
   if (error || !data) return null;
   const prefs = (data.notification_preferences || {}) as Record<string, unknown>;
   const out: Partial<Record<NotificationPrefKey, boolean>> = {};
-  (['push', 'email'] as NotificationPrefKey[]).forEach((k) => {
+  (['push', 'email', 'product_updates'] as NotificationPrefKey[]).forEach((k) => {
     if (typeof prefs[k] === 'boolean') {
       out[k] = prefs[k] as boolean;
       writeLocalPref(k, prefs[k] as boolean);
