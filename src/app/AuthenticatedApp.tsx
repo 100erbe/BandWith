@@ -115,6 +115,8 @@ import { PersonalGigModal } from "@/app/components/modals/PersonalGigModal";
 import { NoBandRehearsalModal } from "@/app/components/modals/NoBandRehearsalModal";
 import { ChooseBandProposalModal, type BandOption } from "@/app/components/modals/ChooseBandProposalModal";
 import { NotificationDetailModal } from "@/app/components/notifications/NotificationDetailModal";
+import { navigateToNotificationTarget, notificationTarget } from "@/lib/notificationRouting";
+import { IS_BETA } from "@/lib/beta";
 import { EventRSVPSheet } from "@/app/components/notifications/EventRSVPSheet";
 import { ProposeRehearsalModal } from "@/app/components/rehearsal/ProposeRehearsalModal";
 import { RehearsalPollModal } from "@/app/components/rehearsal/RehearsalPollModal";
@@ -910,7 +912,8 @@ export default function AuthenticatedApp() {
       unlimited: Infinity,
     };
 
-    const limit = limits[tier] ?? 0;
+    // Beta: no band limit for anyone.
+    const limit = IS_BETA ? Infinity : limits[tier] ?? 0;
 
     if (adminBandCount >= limit) {
       // Hit the ceiling — show upgrade pricing sheet instead
@@ -3382,6 +3385,12 @@ export default function AuthenticatedApp() {
               setSelectedNotifications([]);
               markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
               setPollNotification(notif as any);
+            }}
+            onNavigate={(notif) => {
+              setSelectedNotification(null);
+              setSelectedNotifications([]);
+              if (!notif.read) markNotificationAsRead(notif.id).then(() => refetchNotifications?.());
+              navigateToNotificationTarget(notificationTarget(notif.type, notif.data));
             }}
             onMarkAsRead={(id) => { const nid = id || selectedNotification?.id; if (nid) markNotificationAsRead(nid).then(() => refetchNotifications?.()); if (!id) { setSelectedNotification(null); setSelectedNotifications([]); } }}
             onMarkAllAsRead={() => { markAllNotificationsAsRead().then(() => refetchNotifications?.()); }}

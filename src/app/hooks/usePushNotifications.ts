@@ -1,3 +1,4 @@
+import { navigateToNotificationTarget, notificationTarget } from '@/lib/notificationRouting';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import {
@@ -153,39 +154,8 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
       return;
     }
 
-    // Support both chatId and chat_id (Edge Function uses snake_case)
-    const chatId = data.chatId || data.chat_id;
-    const eventId = data.eventId || data.event_id;
-
-    // Navigate based on notification type (types sent by the database
-    // dispatcher, migration 048, plus the legacy client ones).
-    const go = (detail: Record<string, unknown>) =>
-      window.dispatchEvent(new CustomEvent('push-navigate', { detail }));
-    const type = String(data.type || '');
-
-    if (type === 'chat_message' || type === 'chat_mention') {
-      go({ screen: 'chat', chatId });
-    } else if (
-      type.startsWith('event_') ||
-      type === 'member_dropped_out' ||
-      type === 'setlist_updated' ||
-      type === 'rehearsal_reminder' ||
-      type === 'rehearsal_poll_finalized'
-    ) {
-      go({ screen: 'event', eventId });
-    } else if (type === 'rehearsal_poll' || type === 'rehearsal_proposal') {
-      go({ screen: 'event' });
-    } else if (type === 'quote_update' || type === 'quote_accepted') {
-      go({ screen: 'quotes' });
-    } else if (type.startsWith('payment_')) {
-      go({ screen: 'finance' });
-    } else if (type === 'invite_received' || type === 'band_invite') {
-      go({ screen: 'invites' });
-    } else if (type === 'member_joined' || type === 'member_left') {
-      go({ screen: 'bandMembers' });
-    } else {
-      go({ screen: 'home' });
-    }
+    // Same routing as tapping the notification in the in-app inbox.
+    navigateToNotificationTarget(notificationTarget(String(data.type || ''), data));
   };
 
   return {

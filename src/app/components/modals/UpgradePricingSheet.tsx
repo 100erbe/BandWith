@@ -1,4 +1,5 @@
 import React from 'react';
+import { IS_BETA } from '@/lib/beta';
 import { cn } from '@/app/components/ui/utils';
 import { BwSheet, Tag } from '@/app/components/bw/Screen';
 
@@ -25,7 +26,9 @@ const TIERS: PricingTier[] = [
     id: 'single_band',
     name: 'Indie Act',
     price: '€0/mo',
-    summary: '1 band admin · unlimited gigs & quotes',
+    summary: IS_BETA
+      ? 'Every feature unlocked during the beta'
+      : '1 band admin · unlimited gigs & quotes',
   },
   {
     id: 'multi_band',
@@ -59,13 +62,15 @@ export const UpgradePricingSheet: React.FC<UpgradePricingSheetProps> = ({
       open={isOpen}
       onClose={onClose}
       zIndex={121}
-      overline={limitReached ? 'Free plan limit' : 'Plans'}
-      title={<span id="upgrade-sheet-title">{limitReached ? 'One band on free' : 'BandWith plans'}</span>}
+      overline={limitReached && !IS_BETA ? 'Free plan limit' : 'Plans'}
+      title={<span id="upgrade-sheet-title">{limitReached && !IS_BETA ? 'One band on free' : 'BandWith plans'}</span>}
     >
       <div className="max-w-xl mx-auto flex flex-col gap-4 pb-4">
         <p className="bw-body-md text-sheet-foreground/85">
-          The free plan includes one band you admin. Multi-band plans are on the way.
-          {limitReached && ' You can still join any number of bands as a member.'}
+          {IS_BETA
+            ? 'BandWith is in beta: the free plan has every feature, as your role allows. Paid plans are on the way.'
+            : 'The free plan includes one band you admin. Multi-band plans are on the way.'}
+          {limitReached && !IS_BETA && ' You can still join any number of bands as a member.'}
         </p>
 
         <ul className="flex flex-col gap-3">

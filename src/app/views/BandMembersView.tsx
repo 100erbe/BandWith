@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { hasPlanFeature, isPaidTier } from '@/lib/beta';
 import { Capacitor } from '@capacitor/core';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -298,11 +299,10 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     return '??';
   };
 
-  // Check if a member has a paid subscription tier (not free_member or null)
-  const isProMember = (member: BandMember): boolean => {
-    const tier = member.profile?.sub_tier;
-    return !!tier && tier !== 'free_member';
-  };
+  // Paid plan (Indie Act / single_band is free, so it isn't "Pro").
+  const isProMember = (member: BandMember): boolean => isPaidTier(member.profile?.sub_tier);
+  // Co-managing a band is a paid feature, open to everyone during the beta.
+  const canBeAdmin = (member: BandMember): boolean => hasPlanFeature(member.profile?.sub_tier);
 
   const stats = useMemo(() => {
     const admins = members.filter((m) => m.role === 'admin').length;
@@ -430,7 +430,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                               <>
                                 {member.role === 'admin' ? (
                                   <MenuRow icon={<UserCog />} label="Make member" onClick={() => handleToggleRole(member)} />
-                                ) : isProMember(member) ? (
+                                ) : canBeAdmin(member) ? (
                                   <MenuRow icon={<Crown />} label="Make admin" onClick={() => handleToggleRole(member)} />
                                 ) : (
                                   <MenuRow icon={<Crown />} label="Make admin" hint="Requires a Pro account to co-manage" disabled />
