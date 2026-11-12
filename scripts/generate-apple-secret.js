@@ -1,94 +1,49 @@
 /**
- * Generate Apple Sign-In Secret Key (JWT)
- * Run with: node scripts/generate-apple-secret.js
+ * Generate the Sign in with Apple client secret (an ES256 JWT) for
+ * Supabase → Auth → Providers → Apple.
+ *
+ * Nothing secret lives in this file: the IDs and the .p8 private key are read
+ * from the environment, and the .p8 must stay outside the repo (*.p8 is
+ * gitignored).
+ *
+ *   APPLE_TEAM_ID=… APPLE_KEY_ID=… APPLE_SERVICE_ID=… \
+ *   APPLE_P8_PATH=~/secure/AuthKey_XXXX.p8 node scripts/generate-apple-secret.js
+ *
+ * Apple caps the secret at 6 months: regenerate it before it expires.
  */
 
-import { createSign } from 'crypto';
+import { createPrivateKey, sign } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 
-// Apple Developer Account details
-const TEAM_ID = 'EXXP64DV5K';
-const KEY_ID = '39Y5SSTUTM';
-const SERVICE_ID = 'com.bandwith.app.auth';
+const env = (name) => {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    console.error(`Missing ${name}. See the usage at the top of this file.`);
+    process.exit(1);
+  }
+  return value;
+};
 
-// Private key from .p8 file
-const PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgLLfOMUQ9IcNlGL76
-ps1XLjx5GcUfUbjxfz6sJz8gy0KgCgYIKoZIzj0DAQehRANCAARh00wTGNuFRy1t
-j7MDY49sJNkaT5+R504b9+qX3U4WtYDqNe4cubtRBzUATfJDzfOVYFbnkEY2TyJa
-VIf0PB5x
------END PRIVATE KEY-----`;
+const TEAM_ID = env('APPLE_TEAM_ID');
+const KEY_ID = env('APPLE_KEY_ID');
+const SERVICE_ID = env('APPLE_SERVICE_ID');
+const P8_PATH = env('APPLE_P8_PATH').replace(/^~(?=\/)/, homedir());
 
-// JWT expires in 6 months (maximum allowed by Apple)
+const privateKey = createPrivateKey(readFileSync(P8_PATH, 'utf8'));
+
 const now = Math.floor(Date.now() / 1000);
-const expiry = now + (180 * 24 * 60 * 60); // 180 days
+const expiry = now + 180 * 24 * 60 * 60; // 180 days, Apple's maximum
 
-// Create JWT header and payload
-const header = {
-  alg: 'ES256',
-  kid: KEY_ID,
-  typ: 'JWT'
-};
+const b64url = (input) => Buffer.from(input).toString('base64url');
+const header = b64url(JSON.stringify({ alg: 'ES256', kid: KEY_ID, typ: 'JWT' }));
+const payload = b64url(
+  JSON.stringify({ iss: TEAM_ID, iat: now, exp: expiry, aud: 'https://appleid.apple.com', sub: SERVICE_ID }),
+);
+const signingInput = `${header}.${payload}`;
+// ES256 JWTs need the raw r||s signature, not DER.
+const signature = sign('sha256', Buffer.from(signingInput), { key: privateKey, dsaEncoding: 'ieee-p1363' });
 
-const payload = {
-  iss: TEAM_ID,
-  iat: now,
-  exp: expiry,
-  aud: 'https://appleid.apple.com',
-  sub: SERVICE_ID
-};
-
-// Base64URL encode
-function base64UrlEncode(data) {
-  const json = JSON.stringify(data);
-  const base64 = Buffer.from(json).toString('base64');
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-// Create signature
-function signJWT(header, payload, privateKey) {
-  const headerEncoded = base64UrlEncode(header);
-  const payloadEncoded = base64UrlEncode(payload);
-  const signatureInput = `${headerEncoded}.${payloadEncoded}`;
-  
-  const sign = createSign('SHA256');
-  sign.update(signatureInput);
-  sign.end();
-  
-  const signature = sign.sign(privateKey);
-  
-  // Convert DER signature to raw R+S format for ES256
-  // DER format: 0x30 [length] 0x02 [r-length] [r] 0x02 [s-length] [s]
-  let offset = 3;
-  const rLength = signature[offset];
-  offset += 1;
-  let r = signature.slice(offset, offset + rLength);
-  offset += rLength + 1;
-  const sLength = signature[offset];
-  offset += 1;
-  let s = signature.slice(offset, offset + sLength);
-  
-  // Ensure R and S are exactly 32 bytes each
-  if (r.length > 32) r = r.slice(-32);
-  if (s.length > 32) s = s.slice(-32);
-  if (r.length < 32) r = Buffer.concat([Buffer.alloc(32 - r.length), r]);
-  if (s.length < 32) s = Buffer.concat([Buffer.alloc(32 - s.length), s]);
-  
-  const rawSignature = Buffer.concat([r, s]);
-  const signatureEncoded = rawSignature.toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-  
-  return `${signatureInput}.${signatureEncoded}`;
-}
-
-const jwt = signJWT(header, payload, PRIVATE_KEY);
-
-console.log('\n========================================');
-console.log('Apple Sign-In Secret Key (JWT)');
-console.log('========================================\n');
-console.log('Copy this entire string to Supabase:\n');
-console.log(jwt);
-console.log('\n========================================');
-console.log(`Expires: ${new Date(expiry * 1000).toISOString()}`);
-console.log('========================================\n');
+console.log('Apple Sign-In client secret (paste it into Supabase, do not commit it):\n');
+console.log(`${signingInput}.${signature.toString('base64url')}`);
+console.log(`\nExpires: ${new Date(expiry * 1000).toISOString()}`);

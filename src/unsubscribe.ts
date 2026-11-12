@@ -4,7 +4,7 @@
 // unsubscribing people by just opening the URL.
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
 const params = new URL(window.location.href).searchParams;
 const user = params.get('u') ?? '';
@@ -19,16 +19,17 @@ const errorNote = document.getElementById('error');
 const button = document.getElementById('confirm') as HTMLButtonElement | null;
 
 const looksValid = /^[0-9a-f-]{36}$/i.test(user) && /^[0-9a-f]{64}$/i.test(sig);
-if (!looksValid || !SUPABASE_URL || !ANON_KEY) show('invalid');
+if (!looksValid || !SUPABASE_URL || !PUBLISHABLE_KEY) show('invalid');
 
 button?.addEventListener('click', async () => {
-  if (!SUPABASE_URL || !ANON_KEY) return;
+  if (!SUPABASE_URL || !PUBLISHABLE_KEY) return;
   button.disabled = true;
   errorNote?.setAttribute('hidden', '');
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bw_email_unsubscribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
+      // Publishable keys go on `apikey` only: they are not JWTs.
+      headers: { 'Content-Type': 'application/json', apikey: PUBLISHABLE_KEY },
       body: JSON.stringify({ p_user: user, p_sig: sig }),
     });
     if (!res.ok) throw new Error(String(res.status));

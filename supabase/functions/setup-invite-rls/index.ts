@@ -1,7 +1,7 @@
 // Edge Function: public invitation lookup for the onboarding "joiner" flow.
 //
-// SECURITY: this function runs with the service-role key and is reachable with
-// the public anon key (the user is not signed in yet). It therefore exposes a
+// SECURITY: this function runs with the secret key and is public (deployed with
+// verify_jwt = false; the user is not signed in yet). It therefore exposes a
 // single, read-only, minimal action. All former debug/admin actions
 // (accept_invite_for_user, list_invites, list_all_notifications,
 // delete_notification, update_notification_data, cancel_invite, create_invite,
@@ -9,7 +9,7 @@
 // removed: they let anyone with the anon key join any band as admin or read
 // everyone's invitations and notifications.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,11 +66,7 @@ serve(async (req) => {
       return json({ success: false, error: "Invalid email" }, 400);
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
+    const supabaseAdmin = adminClient();
 
     // Only the fields the joiner UI needs. Never return the invite token.
     const { data: invites, error } = await supabaseAdmin

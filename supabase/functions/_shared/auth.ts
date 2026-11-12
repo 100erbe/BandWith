@@ -1,8 +1,11 @@
 // Shared auth helpers for BandWith edge functions.
 //
-// The anon key is a valid JWT, so `verify_jwt = true` alone does NOT prove the
-// caller is a signed-in user. Every privileged function must resolve the real
-// user from the Authorization header and authorise them explicitly.
+// Every function is deployed with verify_jwt = false: the platform's JWT check
+// only understands the legacy anon/service_role keys, while the app now uses
+// the publishable key and functions use the secret key (neither is a JWT).
+// So each function must authorise the caller in code: a signed-in user's JWT
+// on `Authorization`, a secret key on `apikey`, or a database-generated
+// dispatch secret (pg_net triggers).
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export const corsHeaders = {
@@ -23,12 +26,45 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Secret keys (sb_secret_…) from the platform env. SUPABASE_SECRET_KEYS is a
+ * JSON object keyed by name; the CLI's local stack exposes a single
+ * SUPABASE_SECRET_KEY instead.
+ */
+function secretKeys(): Record<string, string> {
+  const raw = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed as Record<string, string>;
+    } catch {
+      // fall through to the single-key form
+    }
+  }
+  const single = Deno.env.get("SUPABASE_SECRET_KEY");
+  return single ? { default: single } : {};
+}
+
+export function secretKey(name = "default"): string {
+  const key = secretKeys()[name];
+  if (!key) throw new HttpError(500, "Server is missing its secret key");
+  return key;
+}
+
 export function adminClient(): SupabaseClient {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  return createClient(Deno.env.get("SUPABASE_URL")!, secretKey(), {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+/** Constant-time string comparison for secrets. */
+export function safeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
+  return diff === 0;
 }
 
 export type Caller =
@@ -36,16 +72,23 @@ export type Caller =
   | { kind: "user"; id: string; email: string | null };
 
 /**
- * Resolve who is calling. Server-to-server calls that present the service-role
- * key are trusted; everyone else must be a signed-in (non-anonymous) user.
+ * Resolve who is calling. Server-to-server calls that present a secret key on
+ * the `apikey` header are trusted; everyone else must be a signed-in
+ * (non-anonymous) user with their session JWT on `Authorization`.
  */
 export async function requireCaller(req: Request, admin: SupabaseClient): Promise<Caller> {
+  const apikey = req.headers.get("apikey") ?? "";
+  if (apikey.startsWith("sb_secret_")) {
+    const ok = Object.values(secretKeys()).some((k) => typeof k === "string" && safeEqual(apikey, k));
+    if (!ok) throw new HttpError(401, "Invalid secret key");
+    return { kind: "service" };
+  }
+
   const header = req.headers.get("Authorization") ?? "";
   const token = header.replace(/^Bearer\s+/i, "").trim();
   if (!token) throw new HttpError(401, "Missing authorization");
-
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (serviceKey && token === serviceKey) return { kind: "service" };
+  // Publishable/secret keys are not user sessions.
+  if (token.startsWith("sb_")) throw new HttpError(401, "Not signed in");
 
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) throw new HttpError(401, "Not signed in");

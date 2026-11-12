@@ -12,6 +12,11 @@ build/
 .env.local
 .env.*.local
 
+# Private keys (Apple Sign-In .p8, certificates): never commit
+*.p8
+*.pem
+*.p12
+
 # IDE
 .idea/
 .vscode/

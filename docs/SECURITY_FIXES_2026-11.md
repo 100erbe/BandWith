@@ -1,5 +1,7 @@
 # Fix sicurezza + bug P0 — novembre 2026
 
+> Rotazione delle chiavi (nuove chiavi API, Apple, JWT secret): vedi [KEY_ROTATION_2026-11.md](KEY_ROTATION_2026-11.md).
+
 Le correzioni sono nel codice, ma **nulla è ancora stato applicato su Supabase né sugli store**. Ecco cosa fare, in ordine.
 
 ## 1. Azioni urgenti da fare a mano (non automatizzabili)
@@ -22,7 +24,7 @@ Poi controllare **Database → Advisors → Security**. La migrazione 042 segnal
 ## 3. Rideployare le edge function
 
 ```bash
-supabase functions deploy setup-invite-rls invite-member send-push send-email
+supabase functions deploy setup-invite-rls invite-member send-push send-email --no-verify-jwt
 ```
 Variabili consigliate (`supabase secrets set …`): `APP_URL` (dominio dell'app, usato per i link nelle email e per il redirect degli inviti) ed eventualmente `EMAIL_ALLOWED_LINK_HOSTS`.
 
@@ -76,7 +78,7 @@ CAP_DEBUG=true npx cap sync
 
 ```bash
 supabase db push        # 044_band_invite_acceptance.sql, 045_account_deletion.sql
-supabase functions deploy invite-member delete-account
+supabase functions deploy invite-member delete-account --no-verify-jwt
 supabase secrets set APP_URL=https://<dominio-web>   # serve per i link d'invito
 ```
 Per i link d'invito su nativo, il deep link deve aprire l'app con `?invite=<token>` (es. `com.bandwith.app://invite?invite=<token>`): va aggiunto l'intent filter / Universal Link per `https://<dominio-web>/?invite=…`.
