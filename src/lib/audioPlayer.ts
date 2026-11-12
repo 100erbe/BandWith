@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { playableAudioUrl, resolveSongFileUrl } from './services/songFiles';
+import { t } from '@/lib/i18n';
 
 /**
  * One in-app audio player for song recordings (stored files and https links,
@@ -52,8 +53,8 @@ const element = (): HTMLAudioElement => {
     set({
       status: 'error',
       error: /drive\.(usercontent\.)?google\.com/.test(audio!.currentSrc || audio!.src)
-        ? "Can't play this Drive file. In Google Drive, share it as “Anyone with the link”, or upload the MP3 to the song."
-        : "Can't play this recording here.",
+        ? t("Can't play this Drive file. In Google Drive, share it as “Anyone with the link”, or upload the MP3 to the song.")
+        : t("Can't play this recording here."),
     });
   });
   return audio;
@@ -68,7 +69,7 @@ export async function playTrack(track: PlayerTrack, ref: string): Promise<void> 
   const resolved = await resolveSongFileUrl(ref);
   if (token !== loadToken) return;
   if (!resolved) {
-    set({ status: 'error', error: "This recording's link isn't valid." });
+    set({ status: 'error', error: t("This recording's link isn't valid.") });
     return;
   }
   const url = playableAudioUrl(resolved);

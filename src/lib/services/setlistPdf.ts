@@ -1,5 +1,6 @@
 import { buildPdfBlobFromJpegDataUrls } from './quotePdf';
 import { formatHoursMinutes } from '@/lib/songGenres';
+import { t } from '@/lib/i18n';
 
 /**
  * Setlist → printable PDF (A4, one or more pages): set by set, with the
@@ -61,7 +62,7 @@ export function generateSetlistPdf(opts: {
     ctx.textAlign = 'left';
     ctx.fillText(`${(bandName || 'BandWith').toUpperCase()} · ${name.toUpperCase()}`.slice(0, 80), M, H - 70);
     ctx.textAlign = 'right';
-    ctx.fillText(`PAGE ${pageNo}`, W - M, H - 70);
+    ctx.fillText(t('PAGE {page}', { page: pageNo }), W - M, H - 70);
     ctx.textAlign = 'left';
     pages.push(canvas.toDataURL('image/jpeg', 0.9));
   };
@@ -80,23 +81,23 @@ export function generateSetlistPdf(opts: {
     if (first) {
       ctx.fillStyle = MUTED;
       ctx.font = `500 26px ${MONO}`;
-      ctx.fillText(`${(bandName || 'Setlist').toUpperCase()} · SETLIST`, M, y + 20);
+      ctx.fillText(`${(bandName || t('Setlist')).toUpperCase()} · ${t('SETLIST')}`, M, y + 20);
       ctx.fillStyle = INK;
       ctx.font = `800 84px ${SANS}`;
       ctx.fillText(fit(ctx, name.toUpperCase(), W - 2 * M), M, y + 120);
       ctx.fillStyle = MUTED;
       ctx.font = `400 30px ${SANS}`;
       const meta = [
-        `${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`,
-        multiSet ? `${sets.length} sets` : null,
-        total > 0 ? `Total ${formatHoursMinutes(total)}` : null,
+        songs.length === 1 ? t('{count} song', { count: songs.length }) : t('{count} songs', { count: songs.length }),
+        multiSet ? t('{count} sets', { count: sets.length }) : null,
+        total > 0 ? t('Total {time}', { time: formatHoursMinutes(total) }) : null,
       ].filter(Boolean).join(' · ');
       ctx.fillText(meta, M, y + 175);
       y += 230;
     } else {
       ctx.fillStyle = MUTED;
       ctx.font = `500 26px ${MONO}`;
-      ctx.fillText(`${name.toUpperCase()} · CONTINUED`, M, y + 20);
+      ctx.fillText(`${name.toUpperCase()} · ${t('CONTINUED')}`, M, y + 20);
       y += 70;
     }
     ctx.fillStyle = INK;
@@ -118,11 +119,11 @@ export function generateSetlistPdf(opts: {
       const setTime = inSet.reduce((a, s) => a + (s.durationSeconds || 0), 0);
       ctx!.fillStyle = INK;
       ctx!.font = `700 30px ${MONO}`;
-      ctx!.fillText(`SET ${set}`, M, y + 44);
+      ctx!.fillText(t('SET {number}', { number: set }), M, y + 44);
       ctx!.fillStyle = MUTED;
       ctx!.font = `400 26px ${MONO}`;
       ctx!.textAlign = 'right';
-      ctx!.fillText([`${inSet.length} songs`, setTime ? formatHoursMinutes(setTime) : ''].filter(Boolean).join(' · '), W - M, y + 44);
+      ctx!.fillText([t('{count} songs', { count: inSet.length }), setTime ? formatHoursMinutes(setTime) : ''].filter(Boolean).join(' · '), W - M, y + 44);
       ctx!.textAlign = 'left';
       y += 70;
     }
@@ -143,7 +144,7 @@ export function generateSetlistPdf(opts: {
       const maxW = W - M - rightW - 40 - textX;
       c.fillStyle = INK;
       c.font = `700 36px ${SANS}`;
-      c.fillText(fit(c, s.title || 'Untitled', maxW), textX, y + 44);
+      c.fillText(fit(c, s.title || t('Untitled'), maxW), textX, y + 44);
       if (s.artist) {
         c.fillStyle = MUTED;
         c.font = `400 26px ${SANS}`;
@@ -158,7 +159,7 @@ export function generateSetlistPdf(opts: {
   if (songs.length === 0) {
     ctx!.fillStyle = MUTED;
     ctx!.font = `400 32px ${SANS}`;
-    ctx!.fillText('No songs in this setlist yet.', M, y + 40);
+    ctx!.fillText(t('No songs in this setlist yet.'), M, y + 40);
   }
   finishPage();
 
