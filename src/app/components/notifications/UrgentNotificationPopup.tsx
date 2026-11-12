@@ -4,6 +4,7 @@ import { ArrowUpRight, X } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw/Form';
 import type { Notification } from '@/lib/services/notifications';
 import { springs } from '@/styles/motion';
+import { useT } from '@/lib/i18n';
 
 interface UrgentNotificationPopupProps {
   notification: Notification;
@@ -16,6 +17,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
   onOpen,
   onDismiss,
 }) => {
+  const t = useT();
   const data = (notification.data || {}) as Record<string, unknown>;
   const type = notification.type;
   const isRehearsalPoll = type === 'rehearsal_poll';
@@ -26,28 +28,28 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
   const isRehearsalInvite = isEventInvite && eventType === 'rehearsal';
 
   const eyebrowLabel = isRehearsalPoll
-    ? 'REHEARSAL POLL'
+    ? t('REHEARSAL POLL')
     : isRehearsalProposal
-    ? 'REHEARSAL PROPOSAL'
+    ? t('REHEARSAL PROPOSAL')
     : isRehearsalInvite
-    ? 'REHEARSAL INVITE'
-    : 'GIG INVITATION';
+    ? t('REHEARSAL INVITE')
+    : t('GIG INVITATION');
 
   const actionLabel = isRehearsalPoll
-    ? 'VOTE NOW'
+    ? t('VOTE NOW')
     : isRehearsalProposal
-    ? 'VIEW'
-    : 'CONFIRM';
+    ? t('VIEW')
+    : t('CONFIRM');
 
-  const title = (data.event_title as string) || notification.title || 'New Urgent Action';
+  const title = (data.event_title as string) || notification.title || t('New Urgent Action');
 
   const subtitle = isRehearsalPoll
-    ? 'Select your available dates'
+    ? t('Select your available dates')
     : isRehearsalProposal
-    ? 'New proposal needs poll setup'
+    ? t('New proposal needs poll setup')
     : data.venue
     ? `${data.venue}${data.event_date ? ` • ${data.event_date}` : ''}`
-    : 'Urgent response needed';
+    : t('Urgent response needed');
 
   return (
     <>
@@ -72,7 +74,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
       style={{ top: 'calc(var(--safe-top) + 4px)' }}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <span className="inline-flex items-center h-4 px-1.5 rounded-full bg-destructive-solid text-white bw-label-xs shrink-0">Urgent</span>
+        <span className="inline-flex items-center h-4 px-1.5 rounded-full bg-destructive-solid text-white bw-label-xs shrink-0">{t('Urgent')}</span>
         <span className="flex-1 min-w-0 bw-label-xs truncate">{eyebrowLabel}</span>
         <button
           type="button"
@@ -80,7 +82,7 @@ export const UrgentNotificationPopup: React.FC<UrgentNotificationPopupProps> = (
             e.stopPropagation();
             onDismiss();
           }}
-          aria-label="Dismiss alert"
+          aria-label={t('Dismiss alert')}
           className="-m-3 w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
         >
           <X className="w-5 h-5" />

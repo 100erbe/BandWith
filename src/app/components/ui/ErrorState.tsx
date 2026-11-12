@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { AlertTriangle } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
+import { t } from '@/lib/i18n';
 
 export interface ErrorStateProps {
   /** Default: "Couldn't load this". */
@@ -26,12 +27,12 @@ export interface ErrorStateProps {
  * secondary "Go back". Centred in whatever container it is placed in.
  */
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  title = "Couldn't load this",
-  body = 'Check your connection and try again.',
+  title = t("Couldn't load this"),
+  body = t('Check your connection and try again.'),
   onRetry,
   onBack,
-  retryLabel = 'Try again',
-  backLabel = 'Go back',
+  retryLabel = t('Try again'),
+  backLabel = t('Go back'),
   retrying = false,
   icon,
   className,

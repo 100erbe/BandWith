@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 /**
  * Where a notification leads. Shared by push taps and the in-app inbox so both
  * open the same screen. The result is the `detail` of the `push-navigate`
@@ -20,30 +21,30 @@ export function notificationTarget(
   type: string | undefined | null,
   data?: Record<string, unknown> | null
 ): NotificationTarget | null {
-  const t = String(type || data?.type || '');
+  const kind = String(type || data?.type || '');
   const d = data || {};
   const chatId = str(d.chatId) || str(d.chat_id);
   const eventId = str(d.eventId) || str(d.event_id);
 
-  if (t === 'chat_message' || t === 'chat_mention') {
+  if (kind === 'chat_message' || kind === 'chat_mention') {
     return chatId ? { screen: 'chat', chatId } : null;
   }
   if (
-    t.startsWith('event_') ||
-    t.startsWith('gig_') ||
-    t === 'member_dropped_out' ||
-    t === 'setlist_updated' ||
-    t === 'rehearsal_reminder' ||
-    t === 'rehearsal_poll_finalized'
+    kind.startsWith('event_') ||
+    kind.startsWith('gig_') ||
+    kind === 'member_dropped_out' ||
+    kind === 'setlist_updated' ||
+    kind === 'rehearsal_reminder' ||
+    kind === 'rehearsal_poll_finalized'
   ) {
     return { screen: 'event', eventId };
   }
-  if (t === 'rehearsal_poll' || t === 'rehearsal_proposal') return { screen: 'event' };
-  if (t.startsWith('quote_')) return { screen: 'quotes' };
-  if (t.startsWith('payment_')) return { screen: 'finance' };
-  if (t === 'invite_received' || t === 'band_invite') return { screen: 'invites' };
-  if (t === 'song_added') return { screen: 'repertoire' };
-  if (t === 'member_joined' || t === 'member_left') {
+  if (kind === 'rehearsal_poll' || kind === 'rehearsal_proposal') return { screen: 'event' };
+  if (kind.startsWith('quote_')) return { screen: 'quotes' };
+  if (kind.startsWith('payment_')) return { screen: 'finance' };
+  if (kind === 'invite_received' || kind === 'band_invite') return { screen: 'invites' };
+  if (kind === 'song_added') return { screen: 'repertoire' };
+  if (kind === 'member_joined' || kind === 'member_left') {
     // Someone removed from a band can no longer open its member list.
     return d.removed ? null : { screen: 'bandMembers' };
   }
@@ -54,19 +55,19 @@ export function notificationTarget(
 export function notificationTargetLabel(target: NotificationTarget): string {
   switch (target.screen) {
     case 'chat':
-      return 'Open chat';
+      return t('Open chat');
     case 'event':
-      return target.eventId ? 'Open event' : 'Open calendar';
+      return target.eventId ? t('Open event') : t('Open calendar');
     case 'quotes':
-      return 'Open quotes';
+      return t('Open quotes');
     case 'finance':
-      return 'Open finance';
+      return t('Open finance');
     case 'invites':
-      return 'View invite';
+      return t('View invite');
     case 'bandMembers':
-      return 'Open members';
+      return t('Open members');
     case 'repertoire':
-      return 'Open repertoire';
+      return t('Open repertoire');
   }
 }
 

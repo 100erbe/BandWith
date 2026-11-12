@@ -34,6 +34,7 @@ import { notificationBandId, notificationTarget, notificationTargetLabel } from 
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
+import { t, useT } from '@/lib/i18n';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -94,10 +95,10 @@ const formatTime = (dateStr: string): string => {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return t('now');
+  if (diffMins < 60) return t('{count}m ago', { count: diffMins });
+  if (diffHours < 24) return t('{count}h ago', { count: diffHours });
+  if (diffDays < 7) return t('{count}d ago', { count: diffDays });
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
@@ -112,7 +113,7 @@ const formatEventDate = (dateStr: string): string => {
 };
 
 const cleanNotificationTitle = (title?: string): string => {
-  if (!title) return 'NOTIFICATION';
+  if (!title) return t('NOTIFICATION');
   return title
     .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D✓✗?]+\s*/gu, '')
     .trim();
@@ -132,47 +133,47 @@ interface NotificationMeta {
 }
 
 function getNotificationMeta(type: string, data?: Record<string, unknown>): NotificationMeta {
-  const t = (type || '').toLowerCase();
+  const kind = (type || '').toLowerCase();
   const evType = String(data?.event_type || '').toLowerCase();
   const tag = data?.tag as string | undefined;
 
-  if (t === 'member_dropped_out' || t === 'event_declined' || data?.response === 'declined') {
-    return { label: tag || 'Dropout alert', icon: AlertTriangle, fill: 'bg-destructive-solid text-white', onDark: true };
+  if (kind === 'member_dropped_out' || kind === 'event_declined' || data?.response === 'declined') {
+    return { label: tag || t('Dropout alert'), icon: AlertTriangle, fill: 'bg-destructive-solid text-white', onDark: true };
   }
-  if (t === 'rehearsal_poll') {
-    return { label: tag || 'Poll', icon: Poll, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+  if (kind === 'rehearsal_poll') {
+    return { label: tag || t('Poll'), icon: Poll, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
-  if (t === 'rehearsal_proposal') {
-    return { label: tag || 'Proposal', icon: Mic2, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+  if (kind === 'rehearsal_proposal') {
+    return { label: tag || t('Proposal'), icon: Mic2, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
-  if (t.includes('rehearsal') || evType === 'rehearsal') {
-    return { label: tag || 'Rehearsal', icon: Music, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
+  if (kind.includes('rehearsal') || evType === 'rehearsal') {
+    return { label: tag || t('Rehearsal'), icon: Music, fill: 'bg-accent-rehearsal text-accent-rehearsal-foreground', onDark: true };
   }
-  if (t.includes('chat')) {
+  if (kind.includes('chat')) {
     const isDirect = data?.chatType === 'direct' || data?.tag === 'Direct Message' || !data?.band_id;
     return {
-      label: tag || (isDirect ? 'Private message' : 'Band message'),
+      label: tag || (isDirect ? t('Private message') : t('Band message')),
       icon: MessageCircle,
       fill: 'bg-surface-inverse text-surface-inverse-foreground',
       onDark: true,
     };
   }
-  if (t === 'event_invite') {
-    return { label: tag || 'Gig invitation', icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+  if (kind === 'event_invite') {
+    return { label: tag || t('Gig invitation'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
-  if (t === 'event_confirmed') {
-    return { label: tag || 'Gig confirmed', icon: CheckCheck, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+  if (kind === 'event_confirmed') {
+    return { label: tag || t('Gig confirmed'), icon: CheckCheck, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
-  if (t.includes('gig') || t.includes('event')) {
-    return { label: tag || 'Gig', icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
+  if (kind.includes('gig') || kind.includes('event')) {
+    return { label: tag || t('Gig'), icon: Music, fill: 'bg-accent-gig text-accent-gig-foreground', onDark: false };
   }
-  if (t.includes('quote') || t.includes('payment') || t.includes('finance')) {
-    return { label: tag || 'Finance', icon: Euro, fill: 'bg-accent-quote text-accent-quote-foreground', onDark: false };
+  if (kind.includes('quote') || kind.includes('payment') || kind.includes('finance')) {
+    return { label: tag || t('Finance'), icon: Euro, fill: 'bg-accent-quote text-accent-quote-foreground', onDark: false };
   }
-  if (t.includes('invite') || t.includes('member')) {
-    return { label: tag || 'Invite', icon: UserPlus, fill: 'bg-accent-personal text-accent-personal-foreground', onDark: false };
+  if (kind.includes('invite') || kind.includes('member')) {
+    return { label: tag || t('Invite'), icon: UserPlus, fill: 'bg-accent-personal text-accent-personal-foreground', onDark: false };
   }
-  return { label: tag || 'Alert', icon: Bell, fill: 'bg-surface-inverse text-surface-inverse-foreground', onDark: true };
+  return { label: tag || t('Alert'), icon: Bell, fill: 'bg-surface-inverse text-surface-inverse-foreground', onDark: true };
 }
 
 /** Key/value line of the Figma "Event specifications" card. */
@@ -226,6 +227,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
   // Swipe left on a row reveals Delete; one row open at a time.
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   /** Band a notification comes from, when the user is in several. */
   const bandOf = (n: NotificationData): string | null => {
@@ -320,18 +322,18 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
               <div className="max-w-xl mx-auto w-full flex items-end gap-3">
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <p className="bw-label-sm text-muted-foreground">Activity &amp; updates</p>
-                  <h1 className="bw-display-lg text-foreground truncate">Inbox</h1>
+                  <p className="bw-label-sm text-muted-foreground">{t('Activity & updates')}</p>
+                  <h1 className="bw-display-lg text-foreground truncate">{t('Inbox')}</h1>
                 </div>
                 {split ? (
                   <>
-                    <NavBackButton label="Close notifications" onClick={handleClose} />
-                    <HeaderAction label="Close notifications" icon={<X />} onClick={handleClose} />
+                    <NavBackButton label={t('Close notifications')} onClick={handleClose} />
+                    <HeaderAction label={t('Close notifications')} icon={<X />} onClick={handleClose} />
                   </>
                 ) : (
                   <>
                     <RailCover pane />
-                    <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
+                    <HeaderAction pane label={t('Close notifications')} icon={<X />} onClick={handleClose} />
                   </>
                 )}
               </div>
@@ -341,15 +343,15 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             <header className="shrink-0 px-4 bg-background" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
               <div className="max-w-xl mx-auto w-full h-11 flex items-center gap-3">
                 {split ? null : viewingIndex !== null ? (
-                  <NavBackButton pane label="Back to notification list" onClick={backToList} />
+                  <NavBackButton pane label={t('Back to notification list')} onClick={backToList} />
                 ) : (
                   <>
                     <RailCover pane />
-                    <HeaderAction pane label="Close notifications" icon={<X />} onClick={handleClose} />
+                    <HeaderAction pane label={t('Close notifications')} icon={<X />} onClick={handleClose} />
                   </>
                 )}
-                <p className={cn('flex-1 min-w-0 bw-label-sm text-muted-foreground truncate', split ? 'text-left' : 'text-center')}>Notification detail</p>
-                <HeaderAction pane label="Delete notification" variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
+                <p className={cn('flex-1 min-w-0 bw-label-sm text-muted-foreground truncate', split ? 'text-left' : 'text-center')}>{t('Notification detail')}</p>
+                <HeaderAction pane label={t('Delete notification')} variant="ghost" icon={<Trash2 />} onClick={() => handleDelete(detailNotif?.id)} />
               </div>
             </header>
   );
@@ -360,10 +362,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <Selector size="md" selected={filter === 'all'} onClick={() => setFilter('all')} count={allNotifications.length}>
-                          All
+                          {t('All')}
                         </Selector>
                         <Selector size="md" selected={filter === 'unread'} onClick={() => setFilter('unread')} count={unreadCount}>
-                          Unread
+                          {t('Unread')}
                         </Selector>
                       </div>
                       {unreadCount > 0 && onMarkAllAsRead && (
@@ -373,10 +375,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           fullWidth={false}
                           icon={<Check className="w-4 h-4" />}
                           onClick={onMarkAllAsRead}
-                          aria-label="Mark all as read"
+                          aria-label={t('Mark all as read')}
                           className="px-0"
                         >
-                          Mark read
+                          {t('Mark read')}
                         </PillButton>
                       )}
                       {onClearAll && (
@@ -386,19 +388,19 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           fullWidth={false}
                           icon={<Trash2 className="w-4 h-4" />}
                           onClick={() => setConfirmClear(true)}
-                          aria-label="Clear all notifications"
+                          aria-label={t('Clear all notifications')}
                           className="px-0"
                         >
-                          Clear
+                          {t('Clear')}
                         </PillButton>
                       )}
                     </div>
                   )}
                   <DeleteChatSheet
                     open={confirmClear}
-                    title="Clear all notifications?"
-                    body={`This removes ${allNotifications.length === 1 ? 'the notification' : `all ${allNotifications.length} notifications`} from your list. You can't undo this.`}
-                    confirmLabel="Clear all"
+                    title={t('Clear all notifications?')}
+                    body={allNotifications.length === 1 ? t("This removes the notification from your list. You can't undo this.") : t("This removes all {count} notifications from your list. You can't undo this.", { count: allNotifications.length })}
+                    confirmLabel={t('Clear all')}
                     onCancel={() => setConfirmClear(false)}
                     onConfirm={() => {
                       setConfirmClear(false);
@@ -419,12 +421,12 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       </span>
                       <div className="flex flex-col gap-1 items-center">
                         <h3 className="bw-h3">
-                          {filter === 'unread' || allNotifications.length > 0 ? 'All caught up' : 'No notifications yet'}
+                          {filter === 'unread' || allNotifications.length > 0 ? t('All caught up') : t('No notifications yet')}
                         </h3>
                         <p className="bw-body-sm text-muted-foreground max-w-xs">
                           {filter === 'unread'
-                            ? "No unread notifications. We'll ping you for invites, polls and payments."
-                            : "We'll ping you for invites, polls and payments."}
+                            ? t("No unread notifications. We'll ping you for invites, polls and payments.")
+                            : t("We'll ping you for invites, polls and payments.")}
                         </p>
                       </div>
                     </div>
@@ -476,7 +478,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                 {notif.body && <span className="bw-body-sm text-muted-foreground line-clamp-2">{notif.body}</span>}
                               </span>
                               {!isRead && (
-                                <span className="w-2 h-2 mt-1 rounded-full bg-destructive shrink-0" aria-label="Unread" />
+                                <span className="w-2 h-2 mt-1 rounded-full bg-destructive shrink-0" aria-label={t('Unread')} />
                               )}
                             </button>
                         );
@@ -484,7 +486,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           <li key={notif.id}>
                             {onDelete ? (
                               <SwipeRow
-                                deleteLabel={`Delete notification: ${cleanNotificationTitle(notif.title)}`}
+                                deleteLabel={t('Delete notification: {title}', { title: cleanNotificationTitle(notif.title) })}
                                 open={openRowId === notif.id}
                                 onOpenChange={(o) => setOpenRowId(o ? notif.id : null)}
                                 onDelete={() => {
@@ -570,9 +572,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     const soundcheck = (d.soundcheck_time as string | undefined) || calEvent?.soundcheckTime;
                     const start = d.event_time ? String(d.event_time) : undefined;
                     const timings = [
-                      loadIn && `Load-in ${loadIn}`,
-                      soundcheck && `Soundcheck ${soundcheck}`,
-                      start && `Start ${start}`,
+                      loadIn && t('Load-in {time}', { time: loadIn }),
+                      soundcheck && t('Soundcheck {time}', { time: soundcheck }),
+                      start && t('Start {time}', { time: start }),
                     ]
                       .filter(Boolean)
                       .join(' · ');
@@ -597,17 +599,17 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     return (
                       <>
                         <h3 className="bw-label-sm text-muted-foreground">
-                          {hasEventData ? 'Event specifications' : 'Invitation details'}
+                          {hasEventData ? t('Event specifications') : t('Invitation details')}
                         </h3>
                         <Card className="gap-4">
                           {hasEventData && (
                             <>
-                              {showEventKV && <KV k="Event" v={eventTitle} />}
-                              <KV k="Date" v={formatEventDate(String(d.event_date))} />
-                              {timings && <KV k="Timings" v={timings} />}
+                              {showEventKV && <KV k={t('Event')} v={eventTitle} />}
+                              <KV k={t('Date')} v={formatEventDate(String(d.event_date))} />
+                              {timings && <KV k={t('Timings')} v={timings} />}
                               {venue && (
                                 <KV
-                                  k="Venue"
+                                  k={t('Venue')}
                                   v={
                                     <span className="flex flex-col items-end gap-0.5">
                                       <span>{[venue, distance ? (distance.startsWith('~') ? distance : `~${distance}`) : null].filter(Boolean).join(' · ')}</span>
@@ -620,15 +622,15 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                               )}
                               {Boolean(d.member_fee || d.fee) && (
                                 <KV
-                                  k={d.member_fee ? 'Allocated fee' : 'Total fee'}
+                                  k={d.member_fee ? t('Allocated fee') : t('Total fee')}
                                   v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString()}`}
                                 />
                               )}
                             </>
                           )}
-                          {d.invitee_email && <KV k="Email" v={String(d.invitee_email)} />}
-                          {d.inviter_name && <KV k="Invited by" v={String(d.inviter_name)} />}
-                          {d.member_name && <KV k="Member" v={String(d.member_name)} />}
+                          {d.invitee_email && <KV k={t('Email')} v={String(d.invitee_email)} />}
+                          {d.inviter_name && <KV k={t('Invited by')} v={String(d.inviter_name)} />}
+                          {d.member_name && <KV k={t('Member')} v={String(d.member_name)} />}
                         </Card>
 
                         {canCheckConflicts &&
@@ -637,12 +639,12 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                               <AlertTriangle className="w-5 h-5 shrink-0 text-warning" />
                               <div className="flex flex-col gap-1 min-w-0">
                                 <span className="bw-label-md text-foreground">
-                                  {conflicts.length === 1 ? 'Schedule conflict' : `${conflicts.length} schedule conflicts`}
+                                  {conflicts.length === 1 ? t('Schedule conflict') : t('{count} schedule conflicts', { count: conflicts.length })}
                                 </span>
                                 {conflicts.map((c, idx) => (
                                   <span key={String(c.eventId ?? c.id ?? idx)} className="bw-body-sm text-muted-foreground [overflow-wrap:anywhere]">
-                                    {c.title || 'Event'}
-                                    {c.time ? ` · ${c.time}` : ' · same day'}
+                                    {c.title || t('Event')}
+                                    {c.time ? ` · ${c.time}` : ` · ${t('same day')}`}
                                   </span>
                                 ))}
                               </div>
@@ -650,7 +652,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                           ) : (
                             <Card className="flex-row items-center gap-3">
                               <CheckCircle2 className="w-5 h-5 shrink-0 text-success" />
-                              <span className="bw-body-sm text-foreground">No schedule conflicts in your calendar</span>
+                              <span className="bw-body-sm text-foreground">{t('No schedule conflicts in your calendar')}</span>
                             </Card>
                           ))}
 
@@ -662,7 +664,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             disabled={isAddingToCalendar}
                             icon={<CalendarPlus className="w-[18px] h-[18px]" />}
                           >
-                            {isAddingToCalendar ? 'Adding…' : 'Add to Google Calendar'}
+                            {isAddingToCalendar ? t('Adding…') : t('Add to Google Calendar')}
                           </PillButton>
                         )}
                       </>
@@ -674,7 +676,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     detailNotif?.type === 'event_invite' ? (
                 <div className="flex items-center gap-3">
                   <PillButton variant="outline" className="flex-[0_0_36%]" onClick={() => handleAction('decline_event')}>
-                    Decline
+                    {t('Decline')}
                   </PillButton>
                   <PillButton
                     className="flex-1"
@@ -686,7 +688,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                       else handleAction('accept_event');
                     }}
                   >
-                    Accept event
+                    {t('Accept event')}
                   </PillButton>
                 </div>
               ) : isPollType ? (
@@ -696,10 +698,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     className="flex-[0_0_36%]"
                     onClick={viewingIndex !== null && !split ? backToList : handleClose}
                   >
-                    {viewingIndex !== null && !split ? 'Back' : 'Close'}
+                    {viewingIndex !== null && !split ? t('Back') : t('Close')}
                   </PillButton>
                   <PillButton className="flex-1" icon={<Calendar className="w-[18px] h-[18px]" />} onClick={() => detailNotif && onOpenPoll?.(detailNotif)}>
-                    {detailNotif?.type === 'rehearsal_poll' ? 'Vote on dates' : 'View proposal'}
+                    {detailNotif?.type === 'rehearsal_poll' ? t('Vote on dates') : t('View proposal')}
                   </PillButton>
                 </div>
               ) : detailTarget && onNavigate ? (
@@ -709,7 +711,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     className="flex-[0_0_36%]"
                     onClick={viewingIndex !== null && !split ? backToList : handleClose}
                   >
-                    {viewingIndex !== null && !split ? 'Back' : 'Close'}
+                    {viewingIndex !== null && !split ? t('Back') : t('Close')}
                   </PillButton>
                   <PillButton className="flex-1" onClick={() => detailNotif && onNavigate(detailNotif)}>
                     {notificationTargetLabel(detailTarget)}
@@ -717,7 +719,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                 </div>
               ) : (
                 <PillButton variant="dark" onClick={viewingIndex !== null && !split ? backToList : handleClose}>
-                  {viewingIndex !== null && !split ? 'Back to list' : 'Close'}
+                  {viewingIndex !== null && !split ? t('Back to list') : t('Close')}
                 </PillButton>
               );
 
@@ -750,7 +752,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             <div className="max-w-xl mx-auto w-full">
               {isListView ? (
                 <PillButton variant="dark" onClick={handleClose}>
-                  Close notifications
+                  {t('Close notifications')}
                 </PillButton>
               ) : (
                 renderDetailCta()
