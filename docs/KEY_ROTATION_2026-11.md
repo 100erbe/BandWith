@@ -14,7 +14,7 @@ Il repo è pubblico e la cronologia git contiene la vecchia service-role key, la
 
 ## 2. App ed edge function (PR G16-A)
 
-1. `.env` locale e variabili di Cloudflare Pages / Vercel: `VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…`. `VITE_SUPABASE_ANON_KEY` non è più letto. **Prima del merge**, altrimenti il sito pubblicato resta senza chiave.
+1. La publishable key è in `.env.production` (committato: è pubblica per definizione e finisce comunque nel bundle). Cloudflare Pages e Vercel la prendono da lì; una variabile impostata nelle loro dashboard ha la precedenza. In locale va anche nel `.env`. `VITE_SUPABASE_ANON_KEY` non è più letto. Se la publishable key viene ruotata, aggiornare `.env.production`.
 2. Edge function: leggono `SUPABASE_SECRET_KEYS` (fornita dalla piattaforma, chiave `default`). Tutte vanno deployate con `--no-verify-jwt`, perché il controllo del gateway capisce solo le chiavi JWT legacy; ogni funzione autorizza il chiamante nel codice (`_shared/auth.ts`).
    ```bash
    supabase functions deploy send-push send-email invite-member setup-invite-rls delete-account --no-verify-jwt
