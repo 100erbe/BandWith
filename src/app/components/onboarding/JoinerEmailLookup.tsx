@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Search } from '@/app/components/icons';
 import { AuthScreen, BackButton, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
+import { useT } from '@/lib/i18n';
 
 interface PendingInvite {
   id: string;
@@ -31,6 +32,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
   onInvitesFound,
   onNoInvites,
 }) => {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
 
   const handleLookup = async () => {
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      setError(t('Please enter a valid email address'));
       return;
     }
 
@@ -68,13 +70,13 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to check invitations');
+        throw new Error(t('Failed to check invitations'));
       }
 
       const result = await response.json();
 
       if (!result?.success) {
-        throw new Error(result?.error || 'Failed to check invitations');
+        throw new Error(result?.error || t('Failed to check invitations'));
       }
 
       const invitations = result.invites || [];
@@ -86,7 +88,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
 
       onInvitesFound(invitations, email);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      setError(err.message || t('Something went wrong'));
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +112,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           loading={isLoading}
           trailingIcon={<Search className="w-5 h-5" />}
         >
-          {isLoading ? 'Searching…' : 'Find invite'}
+          {isLoading ? t('Searching…') : t('Find invite')}
         </PillButton>
       }
     >
@@ -124,14 +126,14 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           <Search className="w-[29px] h-[29px]" aria-hidden />
         </div>
 
-        <Kicker overline="Join a band" title="Find your invite" />
+        <Kicker overline={t('Join a band')} title={t('Find your invite')} />
 
         <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px]">
-          Enter the email where your band invitation was sent.
+          {t('Enter the email where your band invitation was sent.')}
         </p>
 
         <PillField
-          label="Email"
+          label={t('Email')}
           type="email"
           inputMode="email"
           value={email}
@@ -146,7 +148,7 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
           autoFocus
           icon={<Mail className="w-5 h-5" strokeWidth={1.75} />}
           error={error}
-          hint="We'll look for pending invitations sent to this address."
+          hint={t("We'll look for pending invitations sent to this address.")}
         />
       </motion.div>
     </AuthScreen>

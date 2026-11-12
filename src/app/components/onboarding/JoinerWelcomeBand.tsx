@@ -4,6 +4,7 @@ import { AlertCircle, ArrowUpRight, RefreshCw } from '@/app/components/icons';
 import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { personName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 interface JoinerWelcomeBandProps {
   inviteData: any;
@@ -19,6 +20,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
   joining = false,
   error = null,
 }) => {
+  const t = useT();
   const { profileData } = useOnboarding();
   const [showConfetti, setShowConfetti] = useState(true);
 
@@ -27,7 +29,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  const bandName = inviteData?.band?.name || 'Your Band';
+  const bandName = inviteData?.band?.name || t('Your Band');
   const bandLogo = inviteData?.band?.logo_url;
 
   // Only what we actually know before joining: who invited you and how many
@@ -36,7 +38,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
     personName(inviteData?.inviter, '') || undefined;
   const memberCount: number = inviteData?.member_count ?? 0;
   const bandmates = inviterName
-    ? [{ id: 'inviter', name: inviterName, role: 'Invited you', isAdmin: true }]
+    ? [{ id: 'inviter', name: inviterName, role: t('Invited you'), isAdmin: true }]
     : [];
 
   const getInitials = (name: string) => {
@@ -48,8 +50,8 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
       .slice(0, 2);
   };
 
-  const youName = profileData?.fullName || 'You';
-  const youMeta = profileData?.instruments?.length ? profileData.instruments.join(' · ') : 'Musician';
+  const youName = profileData?.fullName || t('You');
+  const youMeta = profileData?.instruments?.length ? profileData.instruments.join(' · ') : t('Musician');
   // Avatars we can show before joining: the inviter, then a "+N" chip for the rest.
   const othersCount = Math.max(0, memberCount - bandmates.length);
 
@@ -66,7 +68,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
           trailingIcon={!error ? <ArrowUpRight className="w-5 h-5" /> : undefined}
         >
           <span className="block max-w-[240px] truncate">
-            {joining ? 'Joining…' : error ? 'Try again' : `Join ${bandName}`}
+            {joining ? t('Joining…') : error ? t('Try again') : t('Join {band}', { band: bandName })}
           </span>
         </PillButton>
       }
@@ -118,7 +120,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.35 }}
       >
-        <Kicker overline="You’re joining" title={bandName} size="xl" className="break-words" />
+        <Kicker overline={t('You’re joining')} title={bandName} size="xl" className="break-words" />
       </motion.div>
 
       {/* Bandmates */}
@@ -130,8 +132,10 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
       >
         <p className="bw-label-md text-foreground">
           {memberCount > 0
-            ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'} + you`
-            : 'Your band'}
+            ? memberCount === 1
+              ? t('{count} member + you', { count: memberCount })
+              : t('{count} members + you', { count: memberCount })
+            : t('Your band')}
         </p>
         {(bandmates.length > 0 || othersCount > 0) && (
           <div className="flex items-center">
@@ -145,21 +149,21 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
                   {getInitials(member.name)}
                 </span>
                 <span className="sr-only">
-                  {member.name}, {member.isAdmin ? 'admin, ' : ''}
+                  {member.name}, {member.isAdmin ? `${t('admin')}, ` : ''}
                   {member.role}
                 </span>
               </div>
             ))}
             {othersCount > 0 && (
               <div className="w-11 h-11 rounded-full bg-white text-black border-[1.5px] border-border flex items-center justify-center shrink-0">
-                <span className="bw-label-md" aria-label={`and ${othersCount} more`}>
+                <span className="bw-label-md" aria-label={t('and {count} more', { count: othersCount })}>
                   +{othersCount}
                 </span>
               </div>
             )}
           </div>
         )}
-        {inviterName && <p className="bw-body-sm text-muted-foreground">{inviterName} invited you</p>}
+        {inviterName && <p className="bw-body-sm text-muted-foreground">{t('{name} invited you', { name: inviterName })}</p>}
       </motion.div>
 
       {/* You (new member) */}
@@ -177,7 +181,7 @@ export const JoinerWelcomeBand: React.FC<JoinerWelcomeBandProps> = ({
         <div className="min-w-0 flex flex-col gap-1">
           <p className="bw-h3 truncate">
             {youName}
-            <span className="sr-only">, new member</span>
+            <span className="sr-only">, {t('new member')}</span>
           </p>
           <p className="bw-label-sm truncate">{youMeta}</p>
         </div>

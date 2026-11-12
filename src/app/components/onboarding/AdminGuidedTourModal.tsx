@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Check, CheckCircle2, Crown, DollarSign, FileText, X } from '@/app/components/icons';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
+import { useT } from '@/lib/i18n';
 
 interface AdminGuidedTourModalProps {
   isOpen: boolean;
@@ -19,56 +20,57 @@ interface TourStep {
   highlights: string[];
 }
 
-const TOUR_STEPS: TourStep[] = [
+// Built per render so the text follows the app language.
+const tourSteps = (t: (source: string) => string): TourStep[] => [
   {
-    title: 'WELCOME TO BANDWITH',
-    subtitle: 'YOUR ADMIN COMMAND CENTER',
-    badge: 'OVERVIEW',
+    title: t('WELCOME TO BANDWITH'),
+    subtitle: t('YOUR ADMIN COMMAND CENTER'),
+    badge: t('OVERVIEW'),
     icon: Crown,
-    content: 'Run gigs, rehearsals and quotes for the whole band from one place.',
+    content: t('Run gigs, rehearsals and quotes for the whole band from one place.'),
     highlights: [
-      'Schedule gigs & rehearsals for everyone',
-      'Send branded quotes in minutes',
-      'Track fees, payouts and revenue',
+      t('Schedule gigs & rehearsals for everyone'),
+      t('Send branded quotes in minutes'),
+      t('Track fees, payouts and revenue'),
     ],
   },
   {
-    title: 'PRICING & SERVICES',
-    subtitle: 'NEUTRAL FORMULA & CUSTOM ADD-ONS',
-    badge: 'CORE ENGINE',
+    title: t('PRICING & SERVICES'),
+    subtitle: t('NEUTRAL FORMULA & CUSTOM ADD-ONS'),
+    badge: t('CORE ENGINE'),
     icon: DollarSign,
     content:
-      'Every band operates with unique fees. The Pricing & Services section gives you a neutral base where you configure your musicians’ pay and client rates.',
+      t('Every band operates with unique fees. The Pricing & Services section gives you a neutral base where you configure your musicians’ pay and client rates.'),
     highlights: [
-      'Core vs. Session Musician tiers (set core threshold and session player rates)',
-      'Production packages: Standard PA (≤150 guests) and Pro rigs (≤250 guests)',
-      'Custom add-ons: Create extra services like cocktail sets, DJs, or extra sound zones',
+      t('Core vs. Session Musician tiers (set core threshold and session player rates)'),
+      t('Production packages: Standard PA (≤150 guests) and Pro rigs (≤250 guests)'),
+      t('Custom add-ons: Create extra services like cocktail sets, DJs, or extra sound zones'),
     ],
   },
   {
-    title: 'AUTOMATED QUOTES',
-    subtitle: 'INSTANT PROPOSALS IN SECONDS',
-    badge: 'WORKFLOW',
+    title: t('AUTOMATED QUOTES'),
+    subtitle: t('INSTANT PROPOSALS IN SECONDS'),
+    badge: t('WORKFLOW'),
     icon: FileText,
     content:
-      'When an inquiry comes in, tap "+ NEW QUOTE". The system calculates travel, lineup compensation, taxes, and deposit schedules automatically.',
+      t('When an inquiry comes in, tap "+ NEW QUOTE". The system calculates travel, lineup compensation, taxes, and deposit schedules automatically.'),
     highlights: [
-      'Seasonal pricing adjustment automatically calculated from the event date',
-      'Travel rate per km (or mile) per musician from your home base',
-      'One-click breakdown of client total, VAT, deposit, and contingency buffer',
+      t('Seasonal pricing adjustment automatically calculated from the event date'),
+      t('Travel rate per km (or mile) per musician from your home base'),
+      t('One-click breakdown of client total, VAT, deposit, and contingency buffer'),
     ],
   },
   {
-    title: 'READY TO CONFIGURE',
-    subtitle: 'PERSONALIZE YOUR BAND PROFILE',
-    badge: 'GET STARTED',
+    title: t('READY TO CONFIGURE'),
+    subtitle: t('PERSONALIZE YOUR BAND PROFILE'),
+    badge: t('GET STARTED'),
     icon: CheckCircle2,
     content:
-      'You are all set! You can visit "Pricing & Services" at any time from the More drawer to set your currency, rates, and services.',
+      t('You are all set! You can visit "Pricing & Services" at any time from the More drawer to set your currency, rates, and services.'),
     highlights: [
-      'Access anytime from the More menu → Pricing & Services',
-      'All active services will immediately appear in your Quote Wizard',
-      'Invite your band members and start booking gigs',
+      t('Access anytime from the More menu → Pricing & Services'),
+      t('All active services will immediately appear in your Quote Wizard'),
+      t('Invite your band members and start booking gigs'),
     ],
   },
 ];
@@ -79,6 +81,8 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
   onOpenPricing,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const t = useT();
+  const TOUR_STEPS = tourSteps(t);
 
   if (!isOpen) return null;
 
@@ -125,12 +129,12 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between">
           <Selector className="bg-accent text-accent-foreground">
-            Step {currentStep + 1} of {TOUR_STEPS.length}
+            {t('Step {step} of {total}', { step: currentStep + 1, total: TOUR_STEPS.length })}
           </Selector>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close tour"
+            aria-label={t('Close tour')}
             className="-m-1 p-1 rounded-full active:scale-[var(--press-scale,0.97)] transition-transform"
           >
             <span className="flex items-center justify-center w-9 h-9 rounded-full border-[1.5px] border-foreground text-foreground">
@@ -153,7 +157,7 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
         </h2>
         <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground">{step.content}</p>
 
-        <p className="bw-label-sm text-muted-foreground">Key capabilities</p>
+        <p className="bw-label-sm text-muted-foreground">{t('Key capabilities')}</p>
         <ul className="flex flex-col gap-4">
           {step.highlights.map((h, i) => (
             <li key={i} className="flex items-start gap-3 text-[16px] leading-[1.45] tracking-[-0.003em] text-foreground">
@@ -165,7 +169,7 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
 
         {isLast && onOpenPricing && (
           <PillButton variant="outline" size="md" onClick={handleOpenPricing}>
-            Configure rates
+            {t('Configure rates')}
           </PillButton>
         )}
 
@@ -185,11 +189,11 @@ export const AdminGuidedTourModal: React.FC<AdminGuidedTourModalProps> = ({
           <div className="flex items-center gap-2">
             {currentStep > 0 && (
               <PillButton variant="outline" size="md" fullWidth={false} onClick={handlePrev}>
-                Back
+                {t('Back')}
               </PillButton>
             )}
             <PillButton size="md" fullWidth={false} onClick={handleNext}>
-              {isLast ? 'Done' : 'Next'}
+              {isLast ? t('Done') : t('Next')}
             </PillButton>
           </div>
         </div>

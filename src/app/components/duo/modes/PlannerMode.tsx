@@ -222,7 +222,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
       <section aria-label={t('Agenda')} className="flex-1 flex flex-col gap-2">
         <DeckHeading>{t('Agenda')}</DeckHeading>
         {agenda.length === 0 ? (
-          <ModeEmpty title={t('Free')} detail={t('Nothing on this day.')} className="py-2" />
+          <ModeEmpty title={t('Free', { context: 'day' })} detail={t('Nothing on this day.')} className="py-2" />
         ) : (
           <ul className="flex flex-col gap-1.5">
             {agenda.map((e) => (

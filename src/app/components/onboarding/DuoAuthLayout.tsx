@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrandMark } from '@/app/components/bw/BrandMark';
 import { cn } from '@/app/components/ui/utils';
+import { useT } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * iPhone Duo, open (Figma "Duo · 01 Auth & Onboarding"): a BRAND page on the
@@ -35,22 +36,34 @@ export interface DuoAuthBrandProps {
 }
 
 /** Figma "Brand pane": black page, Logo/Mark 56, BANDWITH label, Display 44 headline, step list. */
-export const DuoAuthBrand: React.FC<DuoAuthBrandProps> = ({ steps, current = 1 }) => (
+export const DuoAuthBrand: React.FC<DuoAuthBrandProps> = ({ steps, current = 1 }) => {
+  const t = useT();
+  // Step names stay the keys passed in; only what is shown is translated.
+  const stepLabel: Record<string, string> = {
+    'Create account': t('Create account'),
+    Intent: t('Intent'),
+    'Name your band': t('Name your band'),
+    'About you': t('About you'),
+    'Invite bandmates': t('Invite bandmates'),
+    'Build your repertoire': t('Build your repertoire'),
+    'Ready to rock': t('Ready to rock'),
+  };
+  return (
   <aside className="bw-auth-brand select-none" aria-hidden="true">
     <BrandMark size={56} color="#fff" title="" />
     <p className="bw-label-md text-white mt-5">BandWith</p>
     <p className="bw-display-lg text-white mt-5">
       {steps ? (
         <>
-          Set up
+          {t('Set up')}
           <br />
-          your band.
+          {t('your band.')}
         </>
       ) : (
         <>
-          Run the
+          {t('Run the')}
           <br />
-          band.
+          {t('band.')}
         </>
       )}
     </p>
@@ -65,14 +78,15 @@ export const DuoAuthBrand: React.FC<DuoAuthBrandProps> = ({ steps, current = 1 }
               className={cn('flex items-center gap-[10px] h-[14px]', n < current ? 'opacity-75' : n > current ? 'opacity-40' : '')}
             >
               <span className={cn('w-2 h-2 rounded-full shrink-0', isCurrent ? 'bg-accent' : 'bg-white')} />
-              <span className="bw-label-md text-white whitespace-pre">{`${n}  ${label}`}</span>
+              <span className="bw-label-md text-white whitespace-pre">{`${n}  ${stepLabel[label] ?? label}`}</span>
             </li>
           );
         })}
       </ol>
     )}
   </aside>
-);
+  );
+};
 
 /**
  * Brand page + trailing page around an auth/onboarding screen. On the closed

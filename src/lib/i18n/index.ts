@@ -105,10 +105,16 @@ export const setLocalePref = (next: LocalePref) => {
 const interpolate = (text: string, vars?: TranslateVars) =>
   vars ? text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : text;
 
-/** Translates in the current language. In components use `useT()` so the screen updates when the language changes. */
+/**
+ * Translates in the current language. In components use `useT()` so the screen updates when the language changes.
+ * When one English word needs two translations, pass `{ context: 'day' }`: the entry "Free|day" wins over "Free".
+ */
 export const t = (source: string, vars?: TranslateVars): string => {
   const l = getLocale();
-  const text = l === 'en' ? source : DICTIONARIES[l][source] ?? source;
+  if (l === 'en') return interpolate(source, vars);
+  const dict = DICTIONARIES[l];
+  const ctx = vars?.context;
+  const text = (ctx !== undefined ? dict[`${source}|${ctx}`] : undefined) ?? dict[source] ?? source;
   return interpolate(text, vars);
 };
 

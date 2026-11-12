@@ -5,6 +5,7 @@ import { useOnboarding, MemberInvite, INSTRUMENTS } from '@/lib/OnboardingContex
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, DotMatrixRadio, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 interface InviteMembersProps {
   onBack: () => void;
@@ -15,6 +16,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
   onBack,
   onComplete,
 }) => {
+  const t = useT();
   const inviteDrag = useSheetDrag(() => setShowModal(false));
   const { invites, addInvite, removeInvite, path } = useOnboarding();
 
@@ -97,9 +99,24 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
     return letters.toUpperCase();
   };
 
+  // Instrument ids and the English labels are what gets saved; these are display only.
+  const instrumentLabel: Record<string, string> = {
+    guitar: t('Guitar'),
+    bass: t('Bass'),
+    drums: t('Drums'),
+    vocals: t('Vocals'),
+    keys: t('Keys'),
+    saxophone: t('Saxophone'),
+  };
+  const roleLabel = (role: string) => {
+    const inst = INSTRUMENTS.find((i) => i.label === role);
+    return (inst && instrumentLabel[inst.id]) || role;
+  };
+
   const metaFor = (invite: MemberInvite) => {
-    if (invite.permission === 'admin') return invite.role ? `Admin · ${invite.role}` : 'Admin · full access';
-    return invite.role ? `Musician · ${invite.role}` : 'Musician';
+    if (invite.permission === 'admin')
+      return invite.role ? t('Admin · {role}', { role: roleLabel(invite.role) }) : t('Admin · full access');
+    return invite.role ? t('Musician · {role}', { role: roleLabel(invite.role) }) : t('Musician');
   };
 
   return (
@@ -109,7 +126,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
       footer={
         <>
           <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSkip} disabled={isSubmitting}>
-            Skip for now
+            {t('Skip for now')}
           </PillButton>
           <PillButton
             onClick={handleSubmit}
@@ -117,17 +134,21 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
             loading={isSubmitting && invites.length > 0}
             trailingIcon={<Send className="w-5 h-5" />}
           >
-            {invites.length > 0 ? `Send ${invites.length} ${invites.length === 1 ? 'invite' : 'invites'}` : 'Send invites'}
+            {invites.length > 0
+              ? invites.length === 1
+                ? t('Send {count} invite', { count: invites.length })
+                : t('Send {count} invites', { count: invites.length })
+              : t('Send invites')}
           </PillButton>
         </>
       }
     >
-      <Kicker overline="Your crew" title="Invite your bandmates" />
+      <Kicker overline={t('Your crew')} title={t('Invite your bandmates')} />
 
       {/* Email Input */}
       <div className="flex items-end gap-2">
         <PillField
-          label="Email address"
+          label={t('Email address')}
           type="email"
           value={emailInput}
           onChange={(e) => setEmailInput(e.target.value)}
@@ -150,7 +171,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           type="button"
           onClick={handleAddEmail}
           disabled={!isValidEmail(emailInput)}
-          aria-label="Add bandmate"
+          aria-label={t('Add bandmate')}
           className="shrink-0 w-11 h-11 rounded-full bg-surface-inverse text-surface-inverse-foreground flex items-center justify-center mb-1 active:scale-[var(--press-scale,0.97)] transition-[transform,opacity] disabled:opacity-30"
         >
           <Plus className="w-5 h-5" strokeWidth={2} />
@@ -159,7 +180,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
 
       {/* Invited List */}
       {invites.length > 0 && (
-        <ul className="flex flex-col gap-2" aria-label={`Invited (${invites.length})`}>
+        <ul className="flex flex-col gap-2" aria-label={t('Invited ({count})', { count: invites.length })}>
           <AnimatePresence initial={false}>
             {invites.map((invite, index) => (
               <motion.li
@@ -182,7 +203,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                 <button
                   type="button"
                   onClick={() => removeInvite(invite.email)}
-                  aria-label={`Remove ${invite.email}`}
+                  aria-label={t('Remove {email}', { email: invite.email })}
                   className="-m-2.5 p-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                 >
                   <X className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -199,18 +220,18 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
           <div className="w-11 h-11 rounded-full bg-card flex items-center justify-center shrink-0">
             <Send className="w-5 h-5 text-muted-foreground" />
           </div>
-          <p className="bw-body-sm text-muted-foreground">Add emails above to invite your bandmates.</p>
+          <p className="bw-body-sm text-muted-foreground">{t('Add emails above to invite your bandmates.')}</p>
         </div>
       )}
 
       {/* Import from Contacts */}
       {canPickContacts && (
         <PillButton variant="outline" size="md" icon={<Users className="w-[18px] h-[18px]" />} onClick={handleImportContacts}>
-          Import from contacts
+          {t('Import from contacts')}
         </PillButton>
       )}
 
-      <p className="bw-body-sm text-muted-foreground">You can invite more members later from Band members.</p>
+      <p className="bw-body-sm text-muted-foreground">{t('You can invite more members later from Band members.')}</p>
 
       {/* Invite Detail Sheet */}
       <AnimatePresence>
@@ -235,7 +256,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
               <OnboardingSheet
                 overline={currentInvite.email}
                 handleProps={inviteDrag.handle}
-                title="Invite details"
+                title={t('Invite details')}
                 labelledBy="invite-details-title"
                 onClose={() => setShowModal(false)}
                 closeIcon={<X className="w-4 h-4" strokeWidth={2} />}
@@ -243,7 +264,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                 <div className="flex flex-col gap-5">
                   {/* Name (optional) */}
                   <PillField
-                    label="Name (optional)"
+                    label={t('Name (optional)')}
                     type="text"
                     value={currentInvite.name || ''}
                     onChange={(e) =>
@@ -252,7 +273,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                         name: e.target.value,
                       }))
                     }
-                    placeholder="Their name"
+                    placeholder={t('Their name')}
                     autoCapitalize="words"
                     enterKeyHint="done"
                   />
@@ -260,7 +281,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   {/* Role/Instrument */}
                   <div className="flex flex-col gap-3">
                     <p id="invite-role-label" className="bw-label-sm text-muted-foreground">
-                      Role / instrument
+                      {t('Role / instrument')}
                     </p>
                     <div role="group" aria-labelledby="invite-role-label" className="flex flex-wrap gap-2">
                       {INSTRUMENTS.slice(0, 6).map((inst) => (
@@ -274,7 +295,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                             }))
                           }
                         >
-                          {inst.label}
+                          {instrumentLabel[inst.id] ?? inst.label}
                         </ChoicePill>
                       ))}
                     </div>
@@ -283,13 +304,13 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
                   {/* Permission */}
                   <div className="flex flex-col gap-3">
                     <p id="invite-permission-label" className="bw-label-sm text-muted-foreground">
-                      Permission
+                      {t('Permission')}
                     </p>
                     <div role="radiogroup" aria-labelledby="invite-permission-label" className="flex flex-col gap-2">
                       {(
                         [
-                          { id: 'member', label: 'Member', hint: 'Limited access' },
-                          { id: 'admin', label: 'Admin', hint: 'Full access' },
+                          { id: 'member', label: t('Member'), hint: t('Limited access') },
+                          { id: 'admin', label: t('Admin'), hint: t('Full access') },
                         ] as const
                       ).map((opt) => {
                         const selected =
@@ -323,7 +344,7 @@ export const InviteMembers: React.FC<InviteMembersProps> = ({
 
                   {/* Confirm Button */}
                   <PillButton onClick={handleConfirmInvite} trailingIcon={<Plus className="w-5 h-5" />}>
-                    Add to list
+                    {t('Add to list')}
                   </PillButton>
                 </div>
               </OnboardingSheet>

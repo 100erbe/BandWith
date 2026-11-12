@@ -5,6 +5,7 @@ import { InviteData } from './JoinerInviteLanding';
 import { AuthScreen, BackButton, Kicker } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { personName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 interface JoinerInviteSelectProps {
   invites: InviteData[];
@@ -17,6 +18,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
   onBack,
   onSelect,
 }) => {
+  const t = useT();
   // Get initials for avatar
   const getInitials = (name: string) => {
     return name
@@ -33,24 +35,36 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
   return (
     <AuthScreen bodyClassName="pt-3 gap-4" top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>
       <Kicker
-        overline={`${invites.length} ${invites.length === 1 ? 'invitation' : 'invitations'}`}
-        title="Choose your band"
+        overline={
+          invites.length === 1
+            ? t('{count} invitation', { count: invites.length })
+            : t('{count} invitations', { count: invites.length })
+        }
+        title={t('Choose your band')}
       />
 
       {/* Band list — the first invite is featured on the dark surface (Figma) */}
       <div className="flex flex-col gap-4">
         {invites.map((invite, index) => {
           const featured = index === 0;
-          const name = invite.band?.name || 'Unknown Band';
+          const name = invite.band?.name || t('Unknown Band');
           const count = invite.member_count || 0;
           const inviter = inviterOf(invite);
-          const role = invite.role === 'admin' ? 'Admin' : 'Member';
+          const role = invite.role === 'admin' ? t('Admin') : t('Member');
           return (
             <motion.button
               key={invite.id}
               type="button"
               onClick={() => onSelect(invite)}
-              aria-label={`${name}, ${count} ${count === 1 ? 'member' : 'members'}, invited as ${role}${inviter ? ` by ${inviter}` : ''}`}
+              aria-label={
+                inviter
+                  ? count === 1
+                    ? t('{name}, {count} member, invited as {role} by {inviter}', { name, count, role, inviter })
+                    : t('{name}, {count} members, invited as {role} by {inviter}', { name, count, role, inviter })
+                  : count === 1
+                    ? t('{name}, {count} member, invited as {role}', { name, count, role })
+                    : t('{name}, {count} members, invited as {role}', { name, count, role })
+              }
               className={cn(
                 'w-full flex items-center gap-4 p-4 rounded-[24px] text-left',
                 'active:scale-[var(--press-scale,0.97)] transition-transform',
@@ -81,7 +95,8 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <h3 className="bw-h3 truncate">{name}</h3>
                 <p className={cn('bw-body-sm truncate', !featured && 'text-muted-foreground')}>
-                  {count} {count === 1 ? 'member' : 'members'} · {inviter ? `invited by ${inviter}` : role}
+                  {count === 1 ? t('{count} member', { count }) : t('{count} members', { count })} ·{' '}
+                  {inviter ? t('invited by {name}', { name: inviter }) : role}
                 </p>
               </div>
 
@@ -91,7 +106,7 @@ export const JoinerInviteSelect: React.FC<JoinerInviteSelectProps> = ({
         })}
       </div>
 
-      <p className="bw-body-sm text-muted-foreground">Tap a band to view invitation details.</p>
+      <p className="bw-body-sm text-muted-foreground">{t('Tap a band to view invitation details.')}</p>
     </AuthScreen>
   );
 };

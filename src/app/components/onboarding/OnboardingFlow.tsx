@@ -23,6 +23,7 @@ import JoinerInviteSelect from './JoinerInviteSelect';
 import { PendingInvitesPrompt } from '@/app/components/notifications/PendingInvitesPrompt';
 import { declineInvitation, inviteErrorMessage, InviteError } from '@/lib/services/invitations';
 import { DuoAuthLayout, CREATOR_BRAND_STEPS, SOLO_BRAND_STEPS } from './DuoAuthLayout';
+import { t } from '@/lib/i18n';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -120,7 +121,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           setScreenMode('flow');
         } else {
           setInviteCodeError(
-            'This invite link isn’t valid any more. Ask your band admin for a new one.'
+            t('This invite link isn’t valid any more. Ask your band admin for a new one.')
           );
         }
       });
@@ -158,7 +159,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             ? inviteErrorMessage(e.code, invitedEmail || undefined)
             : e instanceof Error && e.name === 'InviteError'
               ? e.message
-              : 'We couldn’t add you to the band. Check your connection and try again.'
+              : t('We couldn’t add you to the band. Check your connection and try again.')
         );
         return;
       }
@@ -232,7 +233,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         App.exitApp();
       } else {
         lastBackPressRef.current = now;
-        setExitToast('Tap again to exit');
+        setExitToast(t('Tap again to exit'));
         setTimeout(() => setExitToast(null), 2000);
       }
       return;

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Mail, RefreshCw, Users } from '@/app/components/icons';
 import { AuthScreen, BackButton, Kicker, PillButton } from '@/app/components/bw/Form';
+import { useT } from '@/lib/i18n';
 
 interface JoinerNoInvitesProps {
   email: string;
@@ -9,17 +10,21 @@ interface JoinerNoInvitesProps {
   onCreateBand: () => void;
 }
 
-const SUGGESTIONS = [
-  { icon: Mail, label: 'Check your spam folder' },
-  { icon: RefreshCw, label: 'Try another email address' },
-  { icon: Users, label: 'Ask your band admin to resend the invite' },
-];
-
 export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
   email,
   onBack,
   onCreateBand,
 }) => {
+  const t = useT();
+  const SUGGESTIONS = [
+    { icon: Mail, label: t('Check your spam folder') },
+    { icon: RefreshCw, label: t('Try another email address') },
+    { icon: Users, label: t('Ask your band admin to resend the invite') },
+  ];
+  // "We couldn't find pending invitations for {email}." with the address highlighted.
+  const [notFoundBefore, notFoundAfter = ''] = t("We couldn't find pending invitations for {email}.", {
+    email: '\u0000',
+  }).split('\u0000');
   return (
     <AuthScreen
       bodyClassName="pt-3 gap-5"
@@ -27,10 +32,10 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
       footer={
         <>
           <PillButton variant="ghost" size="sm" onClick={onCreateBand}>
-            Or create your own band →
+            {t('Or create your own band →')}
           </PillButton>
           <PillButton variant="dark" onClick={onBack}>
-            Try another email
+            {t('Try another email')}
           </PillButton>
         </>
       }
@@ -48,14 +53,16 @@ export const JoinerNoInvites: React.FC<JoinerNoInvitesProps> = ({
           ))}
         </div>
 
-        <Kicker overline="Nothing here yet" title="No invites found" />
+        <Kicker overline={t('Nothing here yet')} title={t('No invites found')} />
 
         <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px] break-words">
-          We couldn't find pending invitations for <span className="text-foreground font-medium">{email}</span>.
+          {notFoundBefore}
+          <span className="text-foreground font-medium">{email}</span>
+          {notFoundAfter}
         </p>
 
         <div className="bg-card rounded-[24px] p-4 flex flex-col gap-4">
-          <p className="bw-label-md text-foreground">What to do</p>
+          <p className="bw-label-md text-foreground">{t('What to do')}</p>
           <ul className="flex flex-col gap-4">
             {SUGGESTIONS.map(({ icon: Icon, label }) => (
               <li key={label} className="flex items-center gap-3 text-foreground">

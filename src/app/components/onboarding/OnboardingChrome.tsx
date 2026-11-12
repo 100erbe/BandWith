@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '@/app/components/ui/utils';
 import { BackButton } from '@/app/components/bw/Form';
 import type { OnboardingPath } from '@/lib/OnboardingContext';
+import { useT } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Onboarding wizard chrome (Figma "01 · Auth & Onboarding"): Wizard top bar
@@ -49,15 +50,18 @@ export const WizardTop: React.FC<{ onBack: () => void; step: number; total: numb
   step,
   total,
   backLabel,
-}) => (
+}) => {
+  const t = useT();
+  return (
   <div className="w-full flex items-center justify-between gap-3">
     <BackButton onClick={onBack} label={backLabel} />
     <StepIndicator step={step} total={total} />
-    <p className="bw-label-sm text-muted-foreground whitespace-nowrap" aria-label={`Step ${step} of ${total}`}>
-      Step {step} of {total}
+    <p className="bw-label-sm text-muted-foreground whitespace-nowrap" aria-label={t('Step {step} of {total}', { step, total })}>
+      {t('Step {step} of {total}', { step, total })}
     </p>
   </div>
-);
+  );
+};
 
 /**
  * Selector SM pill (28pt) for inline multi-choices. `tone` sets the selected
@@ -141,7 +145,9 @@ export const OnboardingSheet: React.FC<{
   closeIcon: React.ReactNode;
   /** Pointer handlers that start a swipe-down (useSheetDrag's `handle`). */
   handleProps?: React.HTMLAttributes<HTMLDivElement>;
-}> = ({ title, overline, onClose, children, closeLabel = 'Close', labelledBy, closeIcon, handleProps }) => (
+}> = ({ title, overline, onClose, children, closeLabel, labelledBy, closeIcon, handleProps }) => {
+  const t = useT();
+  return (
   <div
     role="dialog"
     aria-modal="true"
@@ -161,7 +167,7 @@ export const OnboardingSheet: React.FC<{
       <button
         type="button"
         onClick={onClose}
-        aria-label={closeLabel}
+        aria-label={closeLabel ?? t('Close')}
         className="-m-1 p-1 rounded-full shrink-0 active:scale-[var(--press-scale,0.97)] transition-transform"
       >
         <span className="flex items-center justify-center w-9 h-9 rounded-full border-[1.5px] border-foreground">{closeIcon}</span>
@@ -170,4 +176,5 @@ export const OnboardingSheet: React.FC<{
     </div>
     {children}
   </div>
-);
+  );
+};

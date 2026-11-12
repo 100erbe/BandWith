@@ -6,6 +6,7 @@ import { PillButton, PillField, Selector } from '@/app/components/bw/Form';
 import { isDemoMode, signIn } from '@/lib/supabase';
 import { setStatusBarTone } from '@/lib/systemBars';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
@@ -24,8 +25,6 @@ const DOT_HERO: number[][] = [
   [10, 52, 52, 10, 52, 10],
 ];
 
-const FEATURES = ['Shared calendars', 'Automated quotes', 'Rehearsal costs', 'Setlist builder'];
-
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onGetStarted,
   onSignIn,
@@ -35,6 +34,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   inviteCodeError,
   closeInviteInputRef,
 }) => {
+  const t = useT();
+  const FEATURES = [t('Shared calendars'), t('Automated quotes'), t('Rehearsal costs'), t('Setlist builder')];
   const drag = useSheetDrag(() => closeSheet());
   // Open the sheet straight away when we arrive with an error (e.g. a dead invite link).
   const [showInviteInput, setShowInviteInput] = useState(!!inviteCodeError);
@@ -79,7 +80,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
       >
         <Loader2 className="w-8 h-8 animate-spin" />
-        <p className="bw-label-sm">Checking invite code…</p>
+        <p className="bw-label-sm">{t('Checking invite code…')}</p>
       </div>
     );
   }
@@ -127,12 +128,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           transition={{ delay: 0.2, duration: 0.5 }}
         >
           <h1 className="font-[family-name:var(--font-display)] font-bold uppercase text-[56px] leading-[0.88] tracking-[-0.03em]">
-            Your music, your schedule, your way.
+            {t('Your music, your schedule, your way.')}
           </h1>
           <p className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] max-w-[340px]">
-            Manage gigs, rehearsals and sync your band — or just keep your own calendar in tune.
+            {t('Manage gigs, rehearsals and sync your band — or just keep your own calendar in tune.')}
           </p>
-          <ul className="flex flex-wrap gap-x-2 gap-y-1.5" aria-label="Features">
+          <ul className="flex flex-wrap gap-x-2 gap-y-1.5" aria-label={t('Features')}>
             {FEATURES.map((f) => (
               <li key={f}>
                 <Selector>{f}</Selector>
@@ -148,10 +149,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           transition={{ delay: 0.35, duration: 0.5 }}
         >
           <PillButton variant="dark" onClick={onGetStarted} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
-            Get started
+            {t('Get started')}
           </PillButton>
           <PillButton variant="outline" onClick={onSignIn} className="border-accent-foreground text-accent-foreground">
-            Sign in
+            {t('Sign in')}
           </PillButton>
           <PillButton
             variant="ghost"
@@ -160,7 +161,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             icon={<Link className="w-[18px] h-[18px]" />}
             className="text-accent-foreground"
           >
-            I have an invite code
+            {t('I have an invite code')}
           </PillButton>
           {/* Demo access (development builds only) */}
           {isDemoMode && (
@@ -174,7 +175,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               }}
               className="text-accent-foreground underline underline-offset-4"
             >
-              Enter demo
+              {t('Enter demo')}
             </PillButton>
           )}
         </motion.div>
@@ -209,13 +210,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/40" aria-hidden />
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div className="flex flex-col gap-1">
-                  <p className="bw-label-sm text-white/70">Invite code</p>
-                  <h2 id="invite-sheet-title" className="bw-h2 text-[28px]">Join a band</h2>
+                  <p className="bw-label-sm text-white/70">{t('Invite code')}</p>
+                  <h2 id="invite-sheet-title" className="bw-h2 text-[28px]">{t('Join a band')}</h2>
                 </div>
                 <button
                   type="button"
                   onClick={closeSheet}
-                  aria-label="Close"
+                  aria-label={t('Close')}
                   className="w-9 h-9 rounded-full border-[1.5px] border-white flex items-center justify-center active:scale-[var(--press-scale)] transition-transform"
                 >
                   <X className="w-4 h-4" />
@@ -224,7 +225,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div className="flex flex-col gap-3">
                 <PillField
                   tone="sheet"
-                  label="Invite code or link"
+                  label={t('Invite code or link')}
                   id="invite-code"
                   type="text"
                   inputMode="text"
@@ -237,7 +238,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     setInviteCode(e.target.value);
                     setSubmitted(false);
                   }}
-                  placeholder="Paste invite code or link"
+                  placeholder={t('Paste invite code or link')}
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleInviteSubmit();
@@ -248,18 +249,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   disabled={inviteCode.trim().length < 2}
                   loading={inviteCodeLoading}
                 >
-                  Join
+                  {t('Join')}
                 </PillButton>
                 <div className="flex items-center justify-between">
                   {onFindInviteByEmail ? (
                     <PillButton variant="ghost" size="sm" fullWidth={false} onClick={onFindInviteByEmail} className="text-accent -ml-3">
-                      No code? Find my invite by email
+                      {t('No code? Find my invite by email')}
                     </PillButton>
                   ) : (
                     <span />
                   )}
                   <PillButton variant="ghost" size="sm" fullWidth={false} onClick={closeSheet} className="text-white -mr-3">
-                    Cancel
+                    {t('Cancel')}
                   </PillButton>
                 </div>
               </div>

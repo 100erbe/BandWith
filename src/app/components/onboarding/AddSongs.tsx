@@ -14,6 +14,7 @@ import { parseSongList, parseDuration, SONG_LIST_ACCEPT } from '@/lib/songListIm
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, OnboardingSheet, WizardTop, wizardStep } from './OnboardingChrome';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 // Popular songs suggestions (would come from API in production)
 const SUGGESTED_SONGS: OnboardingSong[] = [
@@ -78,6 +79,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
   onComplete,
   closeModalRef,
 }) => {
+  const t = useT();
   const importDrag = useSheetDrag(() => setShowImportModal(false));
   const addDrag = useSheetDrag(() => setShowAddModal(false));
   const { songs, addSong, removeSong, addSongs, path } = useOnboarding();
@@ -135,12 +137,12 @@ export const AddSongs: React.FC<AddSongsProps> = ({
     e.target.value = '';
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      setImportMessage('That file is too large for a song list (max 2 MB).');
+      setImportMessage(t('That file is too large for a song list (max 2 MB).'));
       return;
     }
     const parsed = parseSongList(await file.text());
     if (parsed.length === 0) {
-      setImportMessage('No songs found. Use one song per line or a CSV with a “title” column.');
+      setImportMessage(t('No songs found. Use one song per line or a CSV with a “title” column.'));
       return;
     }
     const existing = new Set(songs.map((s) => `${s.title.toLowerCase()}|${(s.artist || '').toLowerCase()}`));
@@ -159,8 +161,12 @@ export const AddSongs: React.FC<AddSongsProps> = ({
     );
     setImportMessage(
       fresh.length === parsed.length
-        ? `Imported ${fresh.length} song${fresh.length === 1 ? '' : 's'}.`
-        : `Imported ${fresh.length} new song${fresh.length === 1 ? '' : 's'} (${parsed.length - fresh.length} already in your list).`,
+        ? fresh.length === 1
+          ? t('Imported {count} song.', { count: fresh.length })
+          : t('Imported {count} songs.', { count: fresh.length })
+        : fresh.length === 1
+          ? t('Imported {count} new song ({skipped} already in your list).', { count: fresh.length, skipped: parsed.length - fresh.length })
+          : t('Imported {count} new songs ({skipped} already in your list).', { count: fresh.length, skipped: parsed.length - fresh.length }),
     );
   };
 
@@ -213,7 +219,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
       footer={
         <>
           <PillButton variant="ghost" size="sm" className="text-muted-foreground" onClick={handleSkip} disabled={isSubmitting}>
-            Skip for now
+            {t('Skip for now')}
           </PillButton>
           <PillButton
             onClick={handleSubmit}
@@ -221,21 +227,21 @@ export const AddSongs: React.FC<AddSongsProps> = ({
             loading={isSubmitting && songs.length > 0}
             trailingIcon={<ArrowUpRight className="w-5 h-5" />}
           >
-            Continue
+            {t('Continue')}
           </PillButton>
         </>
       }
     >
-      <Kicker overline="Repertoire" title="Build your repertoire" />
+      <Kicker overline={t('Repertoire')} title={t('Build your repertoire')} />
 
       {/* Search */}
       <PillField
-        label="Search songs"
+        label={t('Search songs')}
         hideLabel
         type="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Search song or artist…"
+        placeholder={t('Search song or artist…')}
         autoCapitalize="none"
         autoCorrect="off"
         enterKeyHint="search"
@@ -246,7 +252,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
       {/* Suggestions */}
       <div className="flex flex-col gap-3">
         <p id="popular-songs-label" className="bw-label-sm text-muted-foreground">
-          Popular songs
+          {t('Popular songs')}
         </p>
         <div role="group" aria-labelledby="popular-songs-label" className="flex flex-wrap gap-2">
           {filteredSuggestions.map((song) => (
@@ -255,32 +261,32 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               tone="inverse"
               selected={isSongAdded(song.id)}
               onClick={() => toggleSuggestion(song)}
-              aria-label={`${song.title} by ${song.artist}`}
+              aria-label={t('{title} by {artist}', { title: song.title, artist: song.artist ?? '' })}
             >
               {song.title}
             </ChoicePill>
           ))}
           {filteredSuggestions.length === 0 && (
-            <p className="bw-body-sm text-muted-foreground">No popular songs match. Add it as your own song.</p>
+            <p className="bw-body-sm text-muted-foreground">{t('No popular songs match. Add it as your own song.')}</p>
           )}
         </div>
       </div>
 
       {/* Your songs */}
       <div className="flex items-center justify-between gap-3 mt-2">
-        <h2 className="bw-h3 text-foreground">Your songs ({songs.length})</h2>
+        <h2 className="bw-h3 text-foreground">{t('Your songs ({count})', { count: songs.length })}</h2>
         <div className="flex items-center -mr-3">
           <PillButton variant="ghost" size="sm" fullWidth={false} onClick={() => setShowImportModal(true)} className="text-muted-foreground">
-            Import
+            {t('Import')}
           </PillButton>
           <PillButton variant="ghost" size="sm" fullWidth={false} onClick={() => setShowAddModal(true)}>
-            + Add song
+            {t('+ Add song')}
           </PillButton>
         </div>
       </div>
 
       {songs.length === 0 ? (
-        <p className="bw-body-sm text-muted-foreground -mt-2">Tap a popular song or add your own. This helps build setlists later.</p>
+        <p className="bw-body-sm text-muted-foreground -mt-2">{t('Tap a popular song or add your own. This helps build setlists later.')}</p>
       ) : (
         <div className="flex flex-col gap-2">
           <AnimatePresence initial={false}>
@@ -294,13 +300,13 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               >
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <p className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] text-foreground truncate">{song.title}</p>
-                  <p className="bw-body-sm text-muted-foreground truncate">{song.artist || 'Unknown artist'}</p>
+                  <p className="bw-body-sm text-muted-foreground truncate">{song.artist || t('Unknown artist')}</p>
                 </div>
                 <span className="bw-num text-foreground shrink-0">{formatDuration(song.duration)}</span>
                 <button
                   type="button"
                   onClick={() => removeSong(song.id)}
-                  aria-label={`Remove ${song.title}`}
+                  aria-label={t('Remove {title}', { title: song.title })}
                   className="-my-2 -mr-2 p-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
                 >
                   <X className="w-4 h-4" strokeWidth={2} />
@@ -315,7 +321,11 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               aria-expanded={showAllSongs}
               className="self-start bw-label-sm text-muted-foreground py-2"
             >
-              {showAllSongs ? 'Show less' : `+ ${hiddenCount} more ${hiddenCount === 1 ? 'song' : 'songs'}`}
+              {showAllSongs
+                ? t('Show less')
+                : hiddenCount === 1
+                  ? t('+ {count} more song', { count: hiddenCount })
+                  : t('+ {count} more songs', { count: hiddenCount })}
             </button>
           )}
         </div>
@@ -341,34 +351,34 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               {...addDrag.sheet}
             >
               <OnboardingSheet
-                overline="Repertoire"
+                overline={t('Repertoire')}
                 handleProps={addDrag.handle}
-                title="Add custom song"
+                title={t('Add custom song')}
                 labelledBy="add-song-title"
                 onClose={() => setShowAddModal(false)}
                 closeIcon={<X className="w-4 h-4" strokeWidth={2} />}
               >
                 <div className="flex flex-col gap-5">
                   <PillField
-                    label="Song title *"
+                    label={t('Song title *')}
                     type="text"
                     value={customSong.title || ''}
                     onChange={(e) => setCustomSong((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter song title"
+                    placeholder={t('Enter song title')}
                     icon={<Music className="w-5 h-5" strokeWidth={1.75} />}
                   />
 
                   <PillField
-                    label="Artist"
+                    label={t('Artist')}
                     type="text"
                     value={customSong.artist || ''}
                     onChange={(e) => setCustomSong((prev) => ({ ...prev, artist: e.target.value }))}
-                    placeholder="Enter artist name"
+                    placeholder={t('Enter artist name')}
                   />
 
                   <div className="grid grid-cols-2 gap-3">
                     <PillField
-                      label="Duration"
+                      label={t('Duration')}
                       type="text"
                       placeholder="3:30"
                       inputMode="numeric"
@@ -397,7 +407,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                   {/* Key */}
                   <div className="flex flex-col gap-2">
                     <label htmlFor="custom-song-key" className="bw-label-sm text-muted-foreground">
-                      Key
+                      {t('Key')}
                     </label>
                     <select
                       id="custom-song-key"
@@ -405,21 +415,21 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                       onChange={(e) => setCustomSong((prev) => ({ ...prev, key: e.target.value }))}
                       className="w-full h-[52px] px-4 rounded-full bg-field border border-border text-foreground text-[18px] font-medium outline-none focus:border-2 focus:border-foreground appearance-none"
                     >
-                      <option value="">Select key</option>
-                      <option value="C">C Major</option>
-                      <option value="Cm">C Minor</option>
-                      <option value="D">D Major</option>
-                      <option value="Dm">D Minor</option>
-                      <option value="E">E Major</option>
-                      <option value="Em">E Minor</option>
-                      <option value="F">F Major</option>
-                      <option value="Fm">F Minor</option>
-                      <option value="G">G Major</option>
-                      <option value="Gm">G Minor</option>
-                      <option value="A">A Major</option>
-                      <option value="Am">A Minor</option>
-                      <option value="B">B Major</option>
-                      <option value="Bm">B Minor</option>
+                      <option value="">{t('Select key')}</option>
+                      <option value="C">{t('C Major')}</option>
+                      <option value="Cm">{t('C Minor')}</option>
+                      <option value="D">{t('D Major')}</option>
+                      <option value="Dm">{t('D Minor')}</option>
+                      <option value="E">{t('E Major')}</option>
+                      <option value="Em">{t('E Minor')}</option>
+                      <option value="F">{t('F Major')}</option>
+                      <option value="Fm">{t('F Minor')}</option>
+                      <option value="G">{t('G Major')}</option>
+                      <option value="Gm">{t('G Minor')}</option>
+                      <option value="A">{t('A Major')}</option>
+                      <option value="Am">{t('A Minor')}</option>
+                      <option value="B">{t('B Major')}</option>
+                      <option value="Bm">{t('B Minor')}</option>
                     </select>
                   </div>
 
@@ -428,7 +438,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                     disabled={!customSong.title?.trim()}
                     trailingIcon={<Plus className="w-5 h-5" />}
                   >
-                    Add song
+                    {t('Add song')}
                   </PillButton>
                 </div>
               </OnboardingSheet>
@@ -457,16 +467,17 @@ export const AddSongs: React.FC<AddSongsProps> = ({
               {...importDrag.sheet}
             >
               <OnboardingSheet
-                overline="Repertoire"
+                overline={t('Repertoire')}
                 handleProps={importDrag.handle}
-                title="Import songs"
+                title={t('Import songs')}
                 labelledBy="import-songs-title"
                 onClose={() => setShowImportModal(false)}
                 closeIcon={<X className="w-4 h-4" strokeWidth={2} />}
               >
                 <p className="bw-body-sm text-muted-foreground -mt-2 mb-5">
-                  Pick a song list exported from Excel, Numbers or Google Sheets (CSV), or a plain text list with one
-                  song per line, like “Superstition - Stevie Wonder”.
+                  {t(
+                    'Pick a song list exported from Excel, Numbers or Google Sheets (CSV), or a plain text list with one song per line, like “Superstition - Stevie Wonder”.',
+                  )}
                 </p>
 
                 <div className="flex flex-col gap-3">
@@ -476,8 +487,8 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                       <Upload className="w-5 h-5" />
                     </span>
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                      <span className="bw-label-md text-foreground">Choose a CSV or TXT file</span>
-                      <span className="bw-body-sm text-muted-foreground">From this device, iCloud Drive, Google Drive or Dropbox</span>
+                      <span className="bw-label-md text-foreground">{t('Choose a CSV or TXT file')}</span>
+                      <span className="bw-body-sm text-muted-foreground">{t('From this device, iCloud Drive, Google Drive or Dropbox')}</span>
                     </span>
                     <ArrowUpRight className="w-5 h-5 text-muted-foreground" />
                   </label>
@@ -487,7 +498,7 @@ export const AddSongs: React.FC<AddSongsProps> = ({
                     </p>
                   )}
                   <p className="bw-label-xs text-muted-foreground text-center">
-                    Columns we read: title, artist, key, BPM, duration
+                    {t('Columns we read: title, artist, key, BPM, duration')}
                   </p>
                 </div>
               </OnboardingSheet>

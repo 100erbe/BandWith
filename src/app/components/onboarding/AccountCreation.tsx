@@ -16,6 +16,7 @@ import { useOnboarding } from '@/lib/OnboardingContext';
 import { AuthScreen, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import { WizardTop, wizardStep } from './OnboardingChrome';
 import { LegalSheet, legalUrl, type LegalDoc } from '@/app/components/legal/LegalSheet';
+import { useT } from '@/lib/i18n';
 
 interface AccountCreationProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
   onComplete,
   prefilledEmail,
 }) => {
+  const t = useT();
   const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
   const { setAccountData, path } = useOnboarding();
   const mountedRef = useRef(true);
@@ -96,7 +98,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
         if (!mountedRef.current) return;
         if (error) {
           if (error.message.includes('already registered')) {
-            setError('This email is already registered. Try signing in.');
+            setError(t('This email is already registered. Try signing in.'));
           } else {
             setError(error.message);
           }
@@ -111,13 +113,13 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
         authMethod: 'email',
       });
 
-      setSuccess('Account created!');
+      setSuccess(t('Account created!'));
       setTimeout(() => {
         if (mountedRef.current) onComplete();
       }, 600);
     } catch (err: any) {
       if (!mountedRef.current) return;
-      setError(err.message || 'An error occurred');
+      setError(err.message || t('An error occurred'));
       setLoading(false);
     }
   };
@@ -136,20 +138,27 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
             loading={loading}
             trailingIcon={<ArrowUpRight className="w-5 h-5" />}
           >
-            Continue
+            {t('Continue')}
           </PillButton>
           <p className="bw-body-sm text-muted-foreground">
-            By continuing you accept the{' '}
-            <a href={legalUrl('terms')} onClick={(e) => { e.preventDefault(); setLegalDoc('terms'); }} className="text-foreground underline underline-offset-4">Terms</a> and{' '}
-            <a href={legalUrl('privacy')} onClick={(e) => { e.preventDefault(); setLegalDoc('privacy'); }} className="text-foreground underline underline-offset-4">Privacy Policy</a>.
+            {/* The two links sit inside the sentence: split it around their placeholders. */}
+            {t('By continuing you accept the {terms} and {privacy}.').split(/(\{terms\}|\{privacy\})/).map((part, i) =>
+              part === '{terms}' ? (
+                <a key={i} href={legalUrl('terms')} onClick={(e) => { e.preventDefault(); setLegalDoc('terms'); }} className="text-foreground underline underline-offset-4">{t('Terms')}</a>
+              ) : part === '{privacy}' ? (
+                <a key={i} href={legalUrl('privacy')} onClick={(e) => { e.preventDefault(); setLegalDoc('privacy'); }} className="text-foreground underline underline-offset-4">{t('Privacy Policy')}</a>
+              ) : (
+                <React.Fragment key={i}>{part}</React.Fragment>
+              ),
+            )}
             <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
           </p>
         </>
       }
     >
-      <Kicker overline="Account" title={isJoiner ? 'Join band' : 'Create account'} />
+      <Kicker overline={t('Account')} title={isJoiner ? t('Join band') : t('Create account')} />
       <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground -mt-1">
-        {isJoiner ? 'One step to join the crew.' : "Let's get you set up in seconds."}
+        {isJoiner ? t('One step to join the crew.') : t("Let's get you set up in seconds.")}
       </p>
 
       {/* OAuth */}
@@ -174,7 +183,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
         </PillButton>
       </div>
 
-      <OrDivider label="or with email" />
+      <OrDivider label={t('or with email')} />
 
       {/* Form (submitted by the pinned footer CTA via form="account-creation-form") */}
       <form id="account-creation-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -206,11 +215,11 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
 
         {!isJoiner && (
           <PillField
-            label="Full name"
+            label={t('Full name')}
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t('Your name')}
             autoComplete="name"
             autoCapitalize="words"
             icon={<User className="w-5 h-5" strokeWidth={1.75} />}
@@ -219,7 +228,7 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
         )}
 
         <PillField
-          label="Email"
+          label={t('Email')}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -234,21 +243,21 @@ export const AccountCreation: React.FC<AccountCreationProps> = ({
         />
 
         <PillField
-          label="Password"
+          label={t('Password')}
           type={showPassword ? 'text' : 'password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder={t('Password')}
           autoComplete={isJoiner ? 'current-password' : 'new-password'}
           icon={<Lock className="w-5 h-5" strokeWidth={1.75} />}
-          hint="Min 8 characters"
+          hint={t('Min 8 characters')}
           required
           minLength={8}
           trailing={
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? t('Hide password') : t('Show password')}
               className="-m-2 p-2 text-muted-foreground"
             >
               {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={1.75} /> : <Eye className="w-5 h-5" strokeWidth={1.75} />}
