@@ -7,6 +7,7 @@ import type { RehearsalPoll, RehearsalPollOption } from '@/lib/services/rehearsa
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel, hhmm, initialsOf } from './shared';
 import { personName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 /**
  * Find a date (an open rehearsal poll in Laptop pose). Display: members ×
@@ -78,6 +79,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
   onClose,
   zIndex = 186,
 }) => {
+  const t = useT();
   const options = useMemo(() => sortOptions(poll?.options ?? []), [poll?.options]);
 
   const rows: PollMember[] = useMemo(() => {
@@ -90,9 +92,9 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
         }
       }
     }
-    if (!seen.has(currentUserId)) seen.set(currentUserId, { id: currentUserId, name: 'You' });
+    if (!seen.has(currentUserId)) seen.set(currentUserId, { id: currentUserId, name: t('You') });
     return [...seen.values()];
-  }, [members, options, currentUserId]);
+  }, [members, options, currentUserId, t]);
 
   const votedBy = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -117,27 +119,27 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
 
   const display = !poll ? (
     <div className="bw-fold-pad min-h-full flex items-center">
-      <ModeEmpty title={loading ? 'Loading the poll…' : 'No open poll'} />
+      <ModeEmpty title={loading ? t('Loading the poll…') : t('No open poll')} />
     </div>
   ) : (
     <div className="bw-fold-pad flex flex-col gap-3 pt-3 pb-4">
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="bw-label-sm uppercase text-muted-foreground">Find a date</p>
-          <h1 className="bw-h2 line-clamp-2 [overflow-wrap:anywhere]">{poll.title || 'Rehearsal'}</h1>
+          <p className="bw-label-sm uppercase text-muted-foreground">{t('Find a date')}</p>
+          <h1 className="bw-h2 line-clamp-2 [overflow-wrap:anywhere]">{poll.title || t('Rehearsal')}</h1>
         </div>
         <p className="bw-label-md shrink-0" aria-live="polite">
-          {voters} of {total} voted
+          {t('{voted} of {total} voted', { voted: voters, total })}
         </p>
       </div>
       {options.length === 0 ? (
-        <ModeEmpty title="No dates proposed yet" />
+        <ModeEmpty title={t('No dates proposed yet')} />
       ) : (
         <div className="overflow-x-auto -mx-1 px-1">
           <table className="w-full border-separate border-spacing-1">
             <thead>
               <tr>
-                <th scope="col" className="sr-only">Member</th>
+                <th scope="col" className="sr-only">{t('Member')}</th>
                 {options.map((o) => {
                   const isBest = best?.id === o.id;
                   return (
@@ -149,7 +151,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
                       <span className="block bw-label-xs uppercase">{dayLabel(o.proposed_date, { weekday: 'short' })}</span>
                       <span className="block bw-num">{dayLabel(o.proposed_date, { day: 'numeric' })}</span>
                       <span className="block bw-label-xs opacity-70">{hhmm(o.start_time)}</span>
-                      {isBest && <span className="sr-only">Best day</span>}
+                      {isBest && <span className="sr-only">{t('Best day')}</span>}
                     </th>
                   );
                 })}
@@ -163,7 +165,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
                       <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center bw-label-xs shrink-0" aria-hidden>
                         {initialsOf(m.name)}
                       </span>
-                      <span className="bw-body-sm truncate max-w-[9rem]">{m.id === currentUserId ? 'You' : m.name}</span>
+                      <span className="bw-body-sm truncate max-w-[9rem]">{m.id === currentUserId ? t('You') : m.name}</span>
                     </span>
                   </th>
                   {options.map((o) => {
@@ -173,7 +175,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
                       <td key={o.id} className="p-0">
                         <span
                           className={cn('block h-7 rounded-[8px]', yes ? (isBest ? 'bg-accent' : 'bg-foreground') : 'bg-muted')}
-                          aria-label={yes ? 'Available' : 'No vote'}
+                          aria-label={yes ? t('Available') : t('No vote')}
                           role="img"
                         />
                       </td>
@@ -190,11 +192,11 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
 
   const deck = (
     <div className="flex flex-col gap-3 px-4 pt-3 pb-3 min-h-full">
-      <DeckHeading trailing={best ? <span className="bw-label-md">Best: {dayLabel(best.proposed_date)}</span> : undefined}>
-        Your vote
+      <DeckHeading trailing={best ? <span className="bw-label-md">{t('Best: {day}', { day: dayLabel(best.proposed_date) })}</span> : undefined}>
+        {t('Your vote')}
       </DeckHeading>
       {!poll || options.length === 0 ? (
-        <ModeEmpty title={loading ? 'Loading…' : 'Nothing to vote on'} className="py-2" />
+        <ModeEmpty title={loading ? t('Loading…') : t('Nothing to vote on')} className="py-2" />
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {options.map((o) => (
@@ -220,7 +222,7 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
           <div className={cn('grid gap-2', onClose ? 'grid-cols-[2fr_3fr]' : 'grid-cols-1')}>
             {onClose && (
               <DeckButton tone="outline" onClick={() => { haptic.tap(); onClose(); }}>
-                Close
+                {t('Close')}
               </DeckButton>
             )}
             <DeckButton
@@ -233,19 +235,19 @@ export const FindADateMode: React.FC<FindADateModeProps> = ({
               }}
             >
               <Lock className="w-5 h-5" />
-              {best ? `Lock ${dayLabel(best.proposed_date)}` : 'Lock a date'}
+              {best ? t('Lock {day}', { day: dayLabel(best.proposed_date) }) : t('Lock a date')}
             </DeckButton>
           </div>
         ) : onDone ? (
           <DeckButton tone="inverse" onClick={() => { haptic.tap(); onDone(); }}>
-            <Check className="w-5 h-5" /> Done
+            <Check className="w-5 h-5" /> {t('Done')}
           </DeckButton>
         ) : null}
       </div>
     </div>
   );
 
-  return <FoldSplit zIndex={zIndex} displayLabel="Availability" deckLabel="Your vote" display={display} deck={deck} />;
+  return <FoldSplit zIndex={zIndex} displayLabel={t('Availability')} deckLabel={t('Your vote')} display={display} deck={deck} />;
 };
 
 export default FindADateMode;

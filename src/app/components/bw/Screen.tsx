@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronRight, Search, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
+import { t } from '@/lib/i18n';
 import { RailHeaderActions, useRailAction, useRailBack, useRailHeaderSlot, useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 
@@ -123,7 +124,7 @@ export const NavBackButton: React.FC<
     /** iPhone Duo: keep the rail's tab bar visible (tab-level screens). */
     keepTabs?: boolean;
   }
-> = ({ label = 'Back', onClick, icon, pane = false, keepTabs = false, ...rest }) => {
+> = ({ label = t('Back'), onClick, icon, pane = false, keepTabs = false, ...rest }) => {
   const inRail = useRailBack(onClick, label, true, pane, false, keepTabs);
   if (inRail) return null;
   return <IconButton label={label} icon={icon ?? <ArrowLeft />} onClick={onClick} {...rest} />;
@@ -196,7 +197,7 @@ export interface ScreenHeaderProps {
  */
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   onBack,
-  backLabel = 'Back',
+  backLabel = t('Back'),
   actions,
   overline,
   title,
@@ -263,7 +264,7 @@ export interface SearchFieldProps extends Omit<React.InputHTMLAttributes<HTMLInp
 }
 
 /** Figma "Input" used as a search: 52pt white pill, search icon, Body/LG. */
-export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = 'Search', placeholder, className, inline = false, inputRef, ...rest }) => {
+export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label = t('Search'), placeholder, className, inline = false, inputRef, ...rest }) => {
   // iPhone Duo: the search moves into the side rail (Figma "Duo/Rail Search Field").
   const inRail = useRailSearch(inline ? null : {
     label,
@@ -295,7 +296,7 @@ export const SearchField: React.FC<SearchFieldProps> = ({ value, onChange, label
       {...rest}
     />
     {value && (
-      <button type="button" onClick={() => onChange('')} aria-label="Clear search" className="-m-2 p-2 shrink-0 text-muted-foreground">
+      <button type="button" onClick={() => onChange('')} aria-label={t('Clear search')} className="-m-2 p-2 shrink-0 text-muted-foreground">
         <X className="w-4 h-4" />
       </button>
     )}
@@ -394,7 +395,7 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   tone = 'dark',
   footer,
   children,
-  closeLabel = 'Close',
+  closeLabel = t('Close'),
   zIndex = 90,
   leading = false,
   portal = false,

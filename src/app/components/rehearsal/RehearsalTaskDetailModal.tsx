@@ -3,6 +3,7 @@ import { Users, User, Check, Trash2 } from '@/app/components/icons';
 import { BwSheet, PillButton, PillField, Selector, Tag } from '@/app/components/bw';
 import { RehearsalTask, RehearsalMember } from './types';
 import { cn } from '@/app/components/ui/utils';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface Props {
 export const RehearsalTaskDetailModal: React.FC<Props> = ({
   isOpen, onClose, task, members, onSave, onDelete, readOnly = false
 }) => {
+  const t = useT();
   const [editedTask, setEditedTask] = useState<RehearsalTask | null>(null);
 
   useEffect(() => {
@@ -40,6 +42,10 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
   };
 
   const isAssignedToAll = editedTask.assignedTo.includes('all');
+  // Task categories as shown (the ids stay English).
+  const categoryLabels: Record<string, string> = {
+    study: t('study'), bring: t('bring'), fix: t('fix'), prepare: t('prepare'), other: t('other'),
+  };
 
   const handleToggleMember = (memberId: string) => {
     if (readOnly) return;
@@ -62,24 +68,24 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
   };
 
   const assignedNames = isAssignedToAll
-    ? 'Entire Band'
+    ? t('Entire Band')
     : editedTask.assignedTo.map(id => members.find(m => m.id === id)?.name).filter(Boolean).join(', ');
 
   return (
     <BwSheet
       open={isOpen}
       onClose={onClose}
-      overline={isAssignedToAll ? 'Band task' : 'Assigned task'}
-      title="Task details"
+      overline={isAssignedToAll ? t('Band task') : t('Assigned task')}
+      title={t('Task details')}
       zIndex={110}
       footer={
         readOnly ? undefined : (
           <div className="dark grid grid-cols-[2fr_3fr] gap-3">
             <PillButton variant="outline" onClick={handleDelete} icon={<Trash2 className="w-4 h-4" />}>
-              Delete
+              {t('Delete')}
             </PillButton>
             <PillButton onClick={handleSave} icon={<Check className="w-[18px] h-[18px]" />}>
-              Save
+              {t('Save')}
             </PillButton>
           </div>
         )
@@ -89,21 +95,21 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
         {/* Status */}
         <div className="flex flex-wrap gap-1.5">
           <Tag variant="outline" icon={isAssignedToAll ? <Users /> : <User />}>
-            {isAssignedToAll ? 'Band task' : 'Assigned'}
+            {isAssignedToAll ? t('Band task') : t('Assigned')}
           </Tag>
-          <Tag variant={editedTask.completed ? 'accent' : 'outline'}>{editedTask.completed ? 'Completed' : 'Open'}</Tag>
+          <Tag variant={editedTask.completed ? 'accent' : 'outline'}>{editedTask.completed ? t('Completed') : t('Open')}</Tag>
         </div>
 
         {/* Description */}
         {readOnly ? (
           <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-sheet-foreground/70">Description</span>
+            <span className="bw-label-sm text-sheet-foreground/70">{t('Description')}</span>
             <p className="bw-h2">{editedTask.text}</p>
           </div>
         ) : (
           <PillField
             tone="sheet"
-            label="Description"
+            label={t('Description')}
             value={editedTask.text}
             onChange={(e) => setEditedTask({ ...editedTask, text: e.target.value })}
           />
@@ -111,9 +117,9 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
 
         {/* Assigned To */}
         <section className="flex flex-col gap-2">
-          <h3 className="bw-label-sm text-sheet-foreground/70">Assigned to</h3>
+          <h3 className="bw-label-sm text-sheet-foreground/70">{t('Assigned to')}</h3>
           {readOnly ? (
-            <p className="bw-body-lg">{assignedNames || 'Unassigned'}</p>
+            <p className="bw-body-lg">{assignedNames || t('Unassigned')}</p>
           ) : (
             <div className="flex flex-col gap-2">
               <button
@@ -126,7 +132,7 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
                 )}
               >
                 <DotCheck checked={isAssignedToAll} />
-                <span className="flex-1 bw-label-md">Entire band</span>
+                <span className="flex-1 bw-label-md">{t('Entire band')}</span>
                 <Users className="w-5 h-5 text-sheet-foreground/70" />
               </button>
               {members.map((m) => {
@@ -160,14 +166,14 @@ export const RehearsalTaskDetailModal: React.FC<Props> = ({
 
         {/* Category */}
         <section className="flex flex-col gap-2">
-          <h3 className="bw-label-sm text-sheet-foreground/70">Category</h3>
+          <h3 className="bw-label-sm text-sheet-foreground/70">{t('Category')}</h3>
           {readOnly ? (
-            <p className="bw-body-lg capitalize">{editedTask.type}</p>
+            <p className="bw-body-lg capitalize">{categoryLabels[editedTask.type] ?? editedTask.type}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((t) => (
-                <Selector key={t} selected={editedTask.type === t} onClick={() => setEditedTask({ ...editedTask, type: t })}>
-                  {t}
+              {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((cat) => (
+                <Selector key={cat} selected={editedTask.type === cat} onClick={() => setEditedTask({ ...editedTask, type: cat })}>
+                  {categoryLabels[cat] ?? cat}
                 </Selector>
               ))}
             </div>

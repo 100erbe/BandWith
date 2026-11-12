@@ -26,6 +26,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { FindADateMode } from '@/app/components/duo';
 import { personName } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 interface RehearsalPollVoteSheetProps {
   notification?: Notification | null;
@@ -48,6 +49,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   onShowToast,
   onOpenAdminWizard,
 }) => {
+  const t = useT();
   const drag = useSheetDrag(onClose);
   const [poll, setPoll] = useState<RehearsalPoll | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,10 +82,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     if (data) {
       setPoll(data);
     } else if (error && !/not found|PGRST116/i.test(`${error.message} ${(error as any).code || ''}`)) {
-      setLoadError(error.message || 'Check your connection and try again.');
+      setLoadError(error.message || t('Check your connection and try again.'));
     }
     setLoading(false);
-  }, [effectivePollId, currentUserId]);
+  }, [effectivePollId, currentUserId, t]);
 
   useEffect(() => {
     loadPoll();
@@ -118,7 +120,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setVotingOptionId(null);
 
     if (error) {
-      onShowToast?.('Failed to update vote. Please try again.', 'error');
+      onShowToast?.(t('Failed to update vote. Please try again.'), 'error');
       loadPoll();
     } else {
       if (notification?.id) {
@@ -135,7 +137,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     if (!hasUserVotedAny) {
       // Nothing to clear: record the answer for this session only.
       setDeclinedAll(true);
-      onShowToast?.('Marked unavailable for all dates.', 'info');
+      onShowToast?.(t('Marked unavailable for all dates.'), 'info');
       return;
     }
     setIsClearing(true);
@@ -154,11 +156,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setIsClearing(false);
 
     if (error) {
-      onShowToast?.(`Couldn't clear your votes: ${error.message || 'please try again.'}`, 'error');
+      onShowToast?.(t("Couldn't clear your votes: {reason}", { reason: error.message || t('please try again.') }), 'error');
       loadPoll();
     } else {
       setDeclinedAll(true);
-      onShowToast?.('Marked unavailable for all dates.', 'info');
+      onShowToast?.(t('Marked unavailable for all dates.'), 'info');
       if (notification?.id) {
         markAsRead(notification.id).catch(() => {});
       }
@@ -183,9 +185,9 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setIsFinalizing(false);
 
     if (error) {
-      onShowToast?.('Failed to finalize rehearsal. Please try again.', 'error');
+      onShowToast?.(t('Failed to finalize rehearsal. Please try again.'), 'error');
     } else {
-      onShowToast?.('Rehearsal scheduled and confirmed!', 'success');
+      onShowToast?.(t('Rehearsal scheduled and confirmed!'), 'success');
       if (notification?.id) {
         markAsRead(notification.id).catch(() => {});
       }
@@ -203,9 +205,9 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
     setShowDeleteConfirm(false);
 
     if (error) {
-      onShowToast?.('Failed to delete poll. Please try again.', 'error');
+      onShowToast?.(t('Failed to delete poll. Please try again.'), 'error');
     } else {
-      onShowToast?.('Rehearsal poll deleted.', 'info');
+      onShowToast?.(t('Rehearsal poll deleted.'), 'info');
       if (notification?.id) {
         markAsRead(notification.id).catch(() => {});
       }
@@ -256,12 +258,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
   };
 
   const overline = !poll
-    ? 'Rehearsal poll'
+    ? t('Rehearsal poll')
     : isProposed
-      ? 'Rehearsal proposal'
+      ? t('Rehearsal proposal')
       : isConfirmed
-        ? 'Rehearsal · Confirmed'
-        : 'Rehearsal poll · Active';
+        ? t('Rehearsal · Confirmed')
+        : t('Rehearsal poll · Active');
 
   const initialsOf = (name?: string | null) =>
     name
@@ -311,11 +313,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <p className="bw-label-sm text-sheet-foreground/85">{overline}</p>
               <h2 id="poll-vote-title" className="bw-h1 [overflow-wrap:anywhere]">
-                {poll?.title || notification?.title || 'Rehearsal availability'}
+                {poll?.title || notification?.title || t('Rehearsal availability')}
               </h2>
             </div>
             <RailSheet onClose={onClose} />
-            <IconButton label="Close" icon={<X />} size="sm" variant="sheet" onClick={onClose} />
+            <IconButton label={t('Close')} icon={<X />} size="sm" variant="sheet" onClick={onClose} />
           </div>
         </div>
 
@@ -326,12 +328,12 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <Loader2 className="w-7 h-7 animate-spin text-sheet-foreground/70" />
-              <span className="bw-label-sm text-sheet-foreground/70">Loading poll details…</span>
+              <span className="bw-label-sm text-sheet-foreground/70">{t('Loading poll details…')}</span>
             </div>
           ) : !poll && loadError ? (
             <ErrorState
               className="py-6 px-0"
-              title="Couldn't load this poll"
+              title={t("Couldn't load this poll")}
               body={loadError}
               onRetry={loadPoll}
               onBack={onClose}
@@ -339,10 +341,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
           ) : !poll ? (
             <div className="flex flex-col gap-4">
               <p className="bw-body-md text-sheet-foreground/80">
-                This rehearsal poll or proposal could not be found or has expired.
+                {t('This rehearsal poll or proposal could not be found or has expired.')}
               </p>
               <PillButton variant="outline" onClick={onClose}>
-                Close
+                {t('Close')}
               </PillButton>
             </div>
           ) : isProposed ? (
@@ -352,16 +354,16 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 shrink-0" />
                   <p className="bw-body-sm text-sheet-foreground/80">
-                    Proposed by{' '}
+                    {t('Proposed by')}{' '}
                     <span className="text-sheet-foreground font-semibold">
-                      {personName(poll.creator_profile, 'Band member')}
+                      {personName(poll.creator_profile, t('Band member'))}
                     </span>
                   </p>
                 </div>
 
                 {poll.preferred_days && poll.preferred_days.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="bw-label-sm text-sheet-foreground/70 mr-1">Preferred days</span>
+                    <span className="bw-label-sm text-sheet-foreground/70 mr-1">{t('Preferred days')}</span>
                     {poll.preferred_days.map((day) => (
                       <Tag key={day} variant="outline">
                         {day}
@@ -378,11 +380,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                   onClick={() => onOpenAdminWizard?.(poll)}
                   trailingIcon={<ArrowUpRight className="w-5 h-5" />}
                 >
-                  Build poll from proposal
+                  {t('Build poll from proposal')}
                 </PillButton>
               ) : (
                 <p className="bw-body-sm text-sheet-foreground/70">
-                  This proposal is waiting for the band admin to turn it into an availability poll.
+                  {t('This proposal is waiting for the band admin to turn it into an availability poll.')}
                 </p>
               )}
             </div>
@@ -393,28 +395,28 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                 <span className="w-12 h-12 rounded-full bg-accent text-accent-foreground flex items-center justify-center">
                   <Check className="w-6 h-6" />
                 </span>
-                <h3 className="bw-h2">Rehearsal confirmed</h3>
+                <h3 className="bw-h2">{t('Rehearsal confirmed')}</h3>
                 <p className="bw-body-sm text-sheet-foreground/75">
-                  This poll has been finalized into a confirmed rehearsal on your band calendar.
+                  {t('This poll has been finalized into a confirmed rehearsal on your band calendar.')}
                 </p>
               </div>
-              <PillButton onClick={handleDone}>Close</PillButton>
+              <PillButton onClick={handleDone}>{t('Close')}</PillButton>
             </div>
           ) : (
             /* ACTIVE AVAILABILITY POLL OPTIONS */
             <div className="flex flex-col gap-4">
               {/* Status & Summary */}
               <div className="flex items-center gap-2 flex-wrap">
-                <Tag variant="accent">{hasUserVotedAny ? 'Voted' : declinedAll ? 'None work' : 'Active'}</Tag>
+                <Tag variant="accent">{hasUserVotedAny ? t('Voted') : declinedAll ? t('None work') : t('Active')}</Tag>
                 <span className="bw-body-sm text-sheet-foreground/85">
-                  {voteByLabel ? `Vote by ${voteByLabel} · ` : ''}
-                  {uniqueVoterCount} of {totalMembers} voted
+                  {voteByLabel ? `${t('Vote by {date}', { date: voteByLabel })} · ` : ''}
+                  {t('{voted} of {total} voted', { voted: uniqueVoterCount, total: totalMembers })}
                 </span>
               </div>
 
               {poll.notes && <p className="bw-body-sm text-sheet-foreground/75">{poll.notes}</p>}
 
-              <p className="bw-label-sm">Select the dates that work for you</p>
+              <p className="bw-label-sm">{t('Select the dates that work for you')}</p>
 
               {/* Candidate pads */}
               {poll.options && poll.options.length > 0 ? (
@@ -440,7 +442,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                 </div>
               ) : (
                 <p className="bw-body-sm text-sheet-foreground/70">
-                  No candidate time slots have been added to this poll yet.
+                  {t('No candidate time slots have been added to this poll yet.')}
                 </p>
               )}
 
@@ -448,7 +450,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
               {poll.options && poll.options.length > 0 && (isAdmin || anyVotes) && (
                 <section className="flex flex-col gap-2 pt-2">
                   <h3 className="bw-label-sm text-sheet-foreground/70">
-                    {isAdmin ? 'Responses · Lock in a date' : 'Responses'}
+                    {isAdmin ? t('Responses · Lock in a date') : t('Responses')}
                   </h3>
                   {poll.options.map((option) => {
                     const parsedDate = new Date(option.proposed_date + 'T12:00:00');
@@ -468,11 +470,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                                   day: 'numeric',
                                 })}
                               </span>
-                              {isWinning && <Tag variant="accent">Top pick</Tag>}
+                              {isWinning && <Tag variant="accent">{t('Top pick')}</Tag>}
                             </span>
                             <span className="bw-body-sm text-sheet-foreground/70">
                               {option.start_time}
-                              {option.end_time ? ` – ${option.end_time}` : ''} · {option.vote_count || 0}/{totalMembers} available
+                              {option.end_time ? ` – ${option.end_time}` : ''} · {t('{count}/{total} available', { count: option.vote_count || 0, total: totalMembers })}
                             </span>
                           </div>
                           {isAdmin && (
@@ -483,7 +485,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                               aria-expanded={isSelectingLocation}
                               onClick={() => setShowLocationInput(isSelectingLocation ? null : option.id)}
                             >
-                              Lock in
+                              {t('Lock in')}
                             </PillButton>
                           )}
                         </div>
@@ -498,7 +500,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                                 className="w-7 h-7 rounded-full border border-sheet-foreground/40 bw-label-xs flex items-center justify-center shrink-0 overflow-hidden"
                               >
                                 {v.profile?.avatar_url ? (
-                                  <img src={v.profile.avatar_url} alt={v.profile?.full_name || 'Voter'} className="w-full h-full object-cover" />
+                                  <img src={v.profile.avatar_url} alt={v.profile?.full_name || t('Voter')} className="w-full h-full object-cover" />
                                 ) : (
                                   initialsOf(v.profile?.full_name)
                                 )}
@@ -516,11 +518,11 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                           >
                             <PillField
                               tone="sheet"
-                              label="Rehearsal location"
+                              label={t('Rehearsal location')}
                               icon={<MapPin className="w-5 h-5" />}
                               value={finalLocation}
                               onChange={(e) => setFinalLocation(e.target.value)}
-                              placeholder="Location / practice studio"
+                              placeholder={t('Location / practice studio')}
                             />
                             <PillButton
                               size="md"
@@ -528,7 +530,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                               icon={<Check className="w-4 h-4" />}
                               onClick={() => handleFinalize(option.id)}
                             >
-                              Confirm &amp; create event
+                              {t('Confirm & create event')}
                             </PillButton>
                           </motion.div>
                         )}
@@ -549,7 +551,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                     icon={<Trash2 className="w-4 h-4" />}
                     onClick={() => setShowDeleteConfirm(true)}
                   >
-                    Delete poll
+                    {t('Delete poll')}
                   </PillButton>
                 ) : (
                   <motion.div
@@ -563,10 +565,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                       <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
                       <div className="flex flex-col gap-1">
                         <span id="poll-delete-title" className="bw-h3 text-destructive">
-                          Delete rehearsal poll?
+                          {t('Delete rehearsal poll?')}
                         </span>
                         <p className="bw-body-sm text-sheet-foreground/80">
-                          All proposed dates and member votes will be permanently deleted. This cannot be undone.
+                          {t('All proposed dates and member votes will be permanently deleted. This cannot be undone.')}
                         </p>
                       </div>
                     </div>
@@ -578,7 +580,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                         disabled={isDeleting}
                         onClick={() => setShowDeleteConfirm(false)}
                       >
-                        Cancel
+                        {t('Cancel')}
                       </PillButton>
                       <PillButton
                         size="sm"
@@ -588,7 +590,7 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
                         className="bg-destructive-solid text-white"
                         onClick={handleDeletePoll}
                       >
-                        {isDeleting ? 'Deleting…' : 'Delete poll'}
+                        {isDeleting ? t('Deleting…') : t('Delete poll')}
                       </PillButton>
                     </div>
                   </motion.div>
@@ -611,10 +613,10 @@ export const RehearsalPollVoteSheet: React.FC<RehearsalPollVoteSheetProps> = ({
               className={declinedAll ? 'bg-sheet-foreground/[0.12]' : undefined}
               onClick={handleNoneWork}
             >
-              None work
+              {t('None work')}
             </PillButton>
             <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={handleDone}>
-              Done
+              {t('Done')}
             </PillButton>
           </div>
         )}

@@ -44,6 +44,7 @@ import { toLocalDateString } from '../../../lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { personName, personInitials } from '@/lib/personName';
 import { parseGenres } from '@/lib/songGenres';
+import { t, useT } from '@/lib/i18n';
 
 interface TaskTemplateDB {
   id: string;
@@ -150,7 +151,7 @@ const WizardSteps: React.FC<{
           type="button"
           onClick={() => i <= maxAccessibleStep && onSelectStep(i)}
           disabled={i > maxAccessibleStep}
-          aria-label={`Step ${i + 1}: ${s.title}`}
+          aria-label={t('Step {step}: {title}', { step: i + 1, title: s.title })}
           aria-current={i === current ? 'step' : undefined}
           className="flex-1 py-1 -my-1 cursor-pointer disabled:cursor-not-allowed"
         >
@@ -165,7 +166,7 @@ const WizardSteps: React.FC<{
     </div>
     <div className="flex items-center justify-between gap-3">
       <span className="bw-label-sm text-muted-foreground">
-        Step {current + 1} of {steps.length}
+        {t('Step {step} of {total}', { step: current + 1, total: steps.length })}
       </span>
       <span className="bw-label-sm text-foreground">{steps[current]?.title}</span>
     </div>
@@ -279,7 +280,7 @@ const RehearsalAccordionCard: React.FC<{
   hasWarning?: boolean;
   warningLabel?: string;
   children: React.ReactNode;
-}> = ({ isOpen, onToggle, stepNumber, icon, title, summary, optional, hasWarning, warningLabel = 'Needs attention', children }) => (
+}> = ({ isOpen, onToggle, stepNumber, icon, title, summary, optional, hasWarning, warningLabel = t('Needs attention'), children }) => (
   <div className="rounded-[24px] bg-card text-card-foreground overflow-hidden">
     <button
       type="button"
@@ -296,7 +297,7 @@ const RehearsalAccordionCard: React.FC<{
         <span className="flex items-center gap-2 flex-wrap">
           {stepNumber && <span className="bw-label-sm text-muted-foreground">{stepNumber}</span>}
           <span className="bw-h3">{title}</span>
-          {optional && <Tag variant="outline">Optional</Tag>}
+          {optional && <Tag variant="outline">{t('Optional')}</Tag>}
           {hasWarning && (
             <Tag className="bg-warning text-warning-foreground" icon={<AlertCircle />}>
               {warningLabel}
@@ -331,6 +332,7 @@ const RehearsalAccordionCard: React.FC<{
 );
 
 export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, editingEvent, onOpenPollBuilder, existingEvents, draft, initialTasks }) => {
+  const t = useT();
   const pickerEvents = useMemo(
     () => toDatePickerEvents(existingEvents, editingEvent?.eventId),
     [existingEvents, editingEvent?.eventId]
@@ -883,11 +885,37 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   // ── Shared field groups ───────────────────────────────────
 
   const recurrenceOptions: { value: RecurrenceType; label: string }[] = [
-    { value: 'once', label: 'One time' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'biweekly', label: 'Biweekly' },
-    { value: 'monthly', label: 'Monthly' },
+    { value: 'once', label: t('One time') },
+    { value: 'weekly', label: t('Weekly') },
+    { value: 'biweekly', label: t('Biweekly') },
+    { value: 'monthly', label: t('Monthly') },
   ];
+
+  // Display text of the session types and steps (TYPE_OPTIONS / STEPS keep the English for logic and saved titles).
+  const typeText: Record<string, { label: string; subtitle: string }> = {
+    full_band: { label: t('Full Band'), subtitle: t('Everyone, full set') },
+    vocals: { label: t('Vocals'), subtitle: t('Harmonies & leads') },
+    rhythm: { label: t('Rhythm'), subtitle: t('Drums, bass, keys') },
+    acoustic: { label: t('Acoustic'), subtitle: t('Unplugged set') },
+    custom: { label: t('Other'), subtitle: t('Custom lineup') },
+  };
+  const stepTitles: Record<string, string> = {
+    session: t('SESSION & ROSTER'),
+    datetime: t('DATE & LOCATION'),
+    review: t('REVIEW & CONFIRM'),
+  };
+  const warningFieldText: Record<string, string> = {
+    location: t('location'),
+    date: t('date'),
+    title: t('title'),
+  };
+  const taskTypeText: Record<string, string> = {
+    study: t('study'),
+    bring: t('bring'),
+    fix: t('fix'),
+    prepare: t('prepare'),
+    other: t('other'),
+  };
 
   const audienceCount = data.audienceIds.length === 0 ? data.members.length : data.audienceIds.length;
   const costNumber = parseFloat(data.totalCost || '0') || 0;
@@ -897,7 +925,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const renderTypeTiles = () => (
     <div className="flex flex-col gap-2">
       <span id="session-type-label" className="bw-label-sm text-muted-foreground">
-        Session type
+        {t('Session type')}
       </span>
       <div role="radiogroup" aria-labelledby="session-type-label" className="grid grid-cols-2 gap-3">
         {TYPE_OPTIONS.map((opt, idx) => {
@@ -923,9 +951,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   : 'bg-card text-foreground border-border'
               )}
             >
-              <span className="bw-label-md">{opt.label}</span>
+              <span className="bw-label-md">{typeText[opt.value]?.label ?? opt.label}</span>
               <span className={cn('bw-body-sm truncate', isSelected ? 'opacity-85' : 'text-muted-foreground')}>
-                {opt.subtitle}
+                {typeText[opt.value]?.subtitle ?? opt.subtitle}
               </span>
             </button>
           );
@@ -948,9 +976,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <Initials initials={member.initials} title={member.name} />
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">
             <span className={cn('bw-label-md truncate', !isSelected && 'text-muted-foreground')}>
-              {member.id === currentUserId ? 'You' : member.name}
+              {member.id === currentUserId ? t('You') : member.name}
             </span>
-            <span className="bw-body-sm text-muted-foreground truncate">{member.role || 'Member'}</span>
+            <span className="bw-body-sm text-muted-foreground truncate">{member.role || t('Member')}</span>
           </span>
         </button>
       </li>
@@ -958,7 +986,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   };
 
   const renderLocationField = (placeholder: string) => (
-    <PillShell label="Location / studio" icon={<MapPin />}>
+    <PillShell label={t('Location / studio')} icon={<MapPin />}>
       <VenueAutocomplete
         value={data.location}
         onChange={val => setData(prev => ({ ...prev, location: val }))}
@@ -975,13 +1003,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   const renderDateTimeFields = () => (
     <>
-      <PillShell label="Rehearsal date" htmlFor="rehearsal-date" icon={<Calendar />}>
+      <PillShell label={t('Rehearsal date')} htmlFor="rehearsal-date" icon={<Calendar />}>
         <DatePicker
           id="rehearsal-date"
           value={data.date}
           onChange={d => setData(prev => ({ ...prev, date: d }))}
           accentColor={activeAccentColor}
-          placeholder="Select rehearsal date…"
+          placeholder={t('Select rehearsal date…')}
           showIcon={false}
           events={pickerEvents}
           className="h-full border-0 pb-0 text-lg font-medium hover:border-0"
@@ -989,7 +1017,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       </PillShell>
 
       <div className="grid grid-cols-2 gap-3">
-        <PillShell label="Start time" htmlFor="rehearsal-start" icon={<Clock />}>
+        <PillShell label={t('Start time')} htmlFor="rehearsal-start" icon={<Clock />}>
           <TimePicker
             id="rehearsal-start"
             value={data.time}
@@ -1001,7 +1029,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           />
         </PillShell>
         <PillShell
-          label="End time"
+          label={t('End time')}
           htmlFor="rehearsal-end"
           icon={<Clock />}
           aside={<span className="bw-label-sm text-foreground">{data.duration}</span>}
@@ -1025,7 +1053,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     <Card className="gap-4">
       <div className="flex items-end justify-between gap-3">
         <label className="flex flex-col gap-2 min-w-0">
-          <span className="bw-label-sm text-muted-foreground">Total studio cost</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Total studio cost')}</span>
           <span className="flex items-baseline gap-2">
             <span className="bw-value-lg">{sym()}</span>
             <input
@@ -1040,17 +1068,17 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           </span>
         </label>
         <div className="flex flex-col gap-2 items-end text-right shrink-0">
-          <span className="bw-label-sm text-muted-foreground">Per person</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Per person')}</span>
           <span className="bw-value-md">{perPersonLabel}</span>
         </div>
       </div>
       {withSplit && (
         <div className="flex gap-2">
           <Selector selected={data.splitMethod === 'equal'} onClick={() => setData(prev => ({ ...prev, splitMethod: 'equal' }))}>
-            Equal split
+            {t('Equal split')}
           </Selector>
           <Selector selected={data.splitMethod === 'custom'} onClick={() => setData(prev => ({ ...prev, splitMethod: 'custom' }))}>
-            Custom
+            {t('Custom')}
           </Selector>
         </div>
       )}
@@ -1072,11 +1100,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* Scheduling Mode */}
         {!isEditing && onOpenPollBuilder && isAdmin && (
           <Segmented
-            label="Scheduling mode"
+            label={t('Scheduling mode')}
             value="direct"
             options={[
-              { value: 'direct', label: 'Schedule directly' },
-              { value: 'poll', label: 'Poll availability' },
+              { value: 'direct', label: t('Schedule directly') },
+              { value: 'poll', label: t('Poll availability') },
             ]}
             onChange={(v) => {
               if (v === 'poll') {
@@ -1088,10 +1116,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         )}
 
         <PillField
-          label="Rehearsal title (optional)"
+          label={t('Rehearsal title (optional)')}
           value={data.title}
           onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
-          placeholder="e.g. New setlist run-through"
+          placeholder={t('e.g. New setlist run-through')}
         />
 
         {renderTypeTiles()}
@@ -1100,7 +1128,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <Card className="gap-1">
           <div className="flex items-center justify-between gap-3 min-h-9">
             <h3 className="bw-label-md">
-              Band roster · {selectedCount} of {totalAvailable}
+              {t('Band roster · {selected} of {total}', { selected: selectedCount, total: totalAvailable })}
             </h3>
             <PillButton
               variant="ghost"
@@ -1110,12 +1138,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               icon={<Check className="w-4 h-4" />}
               onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}
             >
-              Select all
+              {t('Select all')}
             </PillButton>
           </div>
 
           {data.members.length === 0 ? (
-            <p className="bw-body-sm text-muted-foreground py-2">No band members yet.</p>
+            <p className="bw-body-sm text-muted-foreground py-2">{t('No band members yet.')}</p>
           ) : (
             <ul className="flex flex-col">{visibleMembers.map(renderMemberRow)}</ul>
           )}
@@ -1126,7 +1154,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               onClick={() => setIsRosterExpanded(true)}
               className="self-start py-2 bw-label-sm text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              + {hiddenCount} more
+              {t('+ {count} more', { count: hiddenCount })}
             </button>
           )}
           {isRosterExpanded && data.members.length > 4 && (
@@ -1135,7 +1163,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               onClick={() => setIsRosterExpanded(false)}
               className="self-start py-2 bw-label-sm text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              Show less
+              {t('Show less')}
             </button>
           )}
         </Card>
@@ -1147,7 +1175,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   const renderDateLocationStep = () => (
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
-      {renderLocationField('Search venue or studio…')}
+      {renderLocationField(t('Search venue or studio…'))}
 
       {/* Quick-select chips */}
       <div className="flex flex-wrap gap-2 -mt-1">
@@ -1161,9 +1189,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       {renderDateTimeFields()}
 
       <div className="flex flex-col gap-2">
-        <span className="bw-label-sm text-muted-foreground">Recurrence</span>
+        <span className="bw-label-sm text-muted-foreground">{t('Recurrence')}</span>
         <Segmented
-          label="Recurrence"
+          label={t('Recurrence')}
           value={data.recurrence}
           options={recurrenceOptions}
           onChange={(freq) => setData(prev => ({ ...prev, recurrence: freq }))}
@@ -1173,13 +1201,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       {/* Venue cost (admin only) */}
       {isAdmin && (
         <div className="flex flex-col gap-2">
-          <span className="bw-label-sm text-muted-foreground">Venue cost</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Venue cost')}</span>
           <Segmented
-            label="Venue cost"
+            label={t('Venue cost')}
             value={data.venueType}
             options={[
-              { value: 'free', label: 'Free' },
-              { value: 'paid', label: 'Paid' },
+              { value: 'free', label: t('Free') },
+              { value: 'paid', label: t('Paid') },
             ]}
             onChange={(v) =>
               setData(prev => (v === 'free' ? { ...prev, venueType: 'free', totalCost: '0' } : { ...prev, venueType: 'paid' }))
@@ -1208,7 +1236,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     <>
       {data.setlist.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="bw-label-sm text-muted-foreground">Selected songs · {data.setlist.length}</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Selected songs')} · {data.setlist.length}</span>
           <ol className="flex flex-col gap-2">
             {data.setlist.map((song, idx) => (
               <li key={`${song.id}-${idx}`} className={songRowCls}>
@@ -1219,7 +1247,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 </div>
                 <span className="bw-label-sm text-muted-foreground shrink-0">{song.duration}</span>
                 <IconButton
-                  label={`Remove ${song.title}`}
+                  label={t('Remove {title}', { title: song.title })}
                   icon={<X />}
                   variant="ghost"
                   size="sm"
@@ -1233,18 +1261,18 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
       {data.proposals.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="bw-label-sm text-muted-foreground">Proposed songs · {data.proposals.length}</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Proposed songs')} · {data.proposals.length}</span>
           <ul className="flex flex-col gap-2">
             {data.proposals.map((prop, idx) => (
               <li key={`${prop.id}-${idx}`} className={songRowCls}>
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <span className="bw-body-md truncate">{prop.title}</span>
                   <span className="bw-body-sm text-muted-foreground truncate">
-                    {prop.artist} · By {prop.proposer}
+                    {prop.artist} · {t('By {name}', { name: prop.proposer })}
                   </span>
                 </div>
                 <IconButton
-                  label={`Remove proposal ${prop.title}`}
+                  label={t('Remove proposal {title}', { title: prop.title })}
                   icon={<X />}
                   variant="ghost"
                   size="sm"
@@ -1261,8 +1289,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   const renderReviewExtrasStep = () => {
     const selectedCount = audienceCount;
     const totalAvailable = data.members.length;
-    const recurrenceLabel = data.recurrence === 'once' ? 'One-time' : data.recurrence.charAt(0).toUpperCase() + data.recurrence.slice(1);
-    const typeLabel = TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band';
+    const recurrenceLabel = data.recurrence === 'once'
+      ? t('One-time')
+      : recurrenceOptions.find(o => o.value === data.recurrence)?.label ?? data.recurrence.charAt(0).toUpperCase() + data.recurrence.slice(1);
+    const typeLabel = typeText[data.type]?.label || t('Full Band');
     const isPaid = isAdmin && data.venueType === 'paid' && costNumber > 0;
     const songCount = data.setlist.length;
 
@@ -1275,7 +1305,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               <Tag variant="rehearsal">{typeLabel}</Tag>
               <Tag variant="subtle">{recurrenceLabel}</Tag>
               <Tag variant="subtle" icon={isPaid ? <CurrencyIcon /> : undefined}>
-                {isPaid ? data.totalCost : 'Free studio'}
+                {isPaid ? data.totalCost : t('Free studio')}
               </Tag>
             </div>
             <h3 className="bw-h2 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
@@ -1284,7 +1314,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="flex items-start gap-3">
             <Calendar className="w-5 h-5 shrink-0" />
             <div className="min-w-0 flex flex-col gap-0.5">
-              <span className="bw-body-lg">{data.date ? formatDate(data.date) : 'Date TBD'}</span>
+              <span className="bw-body-lg">{data.date ? formatDate(data.date) : t('Date TBD')}</span>
               <span className="bw-body-sm text-muted-foreground">
                 {data.time || '19:00'} – {endTime || '21:00'} · {data.duration || '2h'}
               </span>
@@ -1294,7 +1324,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="flex items-start gap-3">
             <MapPin className="w-5 h-5 shrink-0" />
             <div className="min-w-0 flex flex-col gap-0.5">
-              <span className="bw-body-lg truncate">{data.location || 'Studio TBD'}</span>
+              <span className="bw-body-lg truncate">{data.location || t('Studio TBD')}</span>
               {data.address && <span className="bw-body-sm text-muted-foreground truncate">{data.address}</span>}
             </div>
           </div>
@@ -1302,7 +1332,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 shrink-0" />
             <span className="flex-1 min-w-0 bw-body-lg truncate">
-              {selectedCount} of {totalAvailable} members
+              {t('{selected} of {total} members', { selected: selectedCount, total: totalAvailable })}
             </span>
             <div className="flex -space-x-1.5 shrink-0">
               {data.members
@@ -1317,10 +1347,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           <div className="flex flex-wrap gap-2 pt-1">
             <PillButton variant="outline" size="sm" fullWidth={false} icon={<Edit3 className="w-4 h-4" />} onClick={() => setStep(0)}>
-              Session &amp; roster
+              {t('Session & roster')}
             </PillButton>
             <PillButton variant="outline" size="sm" fullWidth={false} icon={<Edit3 className="w-4 h-4" />} onClick={() => setStep(1)}>
-              Date &amp; studio
+              {t('Date & studio')}
             </PillButton>
           </div>
         </Card>
@@ -1330,17 +1360,17 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={isSetlistExpanded}
           onToggle={() => setIsSetlistExpanded(!isSetlistExpanded)}
           icon={<Music2 />}
-          title="Setlist & proposals"
+          title={t('Setlist & proposals')}
           optional
           summary={
             songCount + data.proposals.length === 0
-              ? 'No songs yet'
-              : `${songCount} ${songCount === 1 ? 'song' : 'songs'}${data.proposals.length > 0 ? ` · ${data.proposals.length} proposed` : ''}`
+              ? t('No songs yet')
+              : `${songCount === 1 ? t('{count} song', { count: songCount }) : t('{count} songs', { count: songCount })}${data.proposals.length > 0 ? ` · ${t('{count} proposed', { count: data.proposals.length })}` : ''}`
           }
         >
           <div className="flex flex-wrap gap-2">
             <PillButton variant="outline" size="sm" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setSongPickerOpen(true)}>
-              Add songs
+              {t('Add songs')}
             </PillButton>
             <PillButton
               variant="outline"
@@ -1355,10 +1385,10 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 }
               }}
             >
-              Setlist template
+              {t('Setlist template')}
             </PillButton>
             <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
-              Propose song
+              {t('Propose song')}
             </PillButton>
           </div>
 
@@ -1366,7 +1396,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           {data.setlist.length === 0 && data.proposals.length === 0 && (
             <p className="bw-body-sm text-muted-foreground">
-              Add songs from your catalog or propose new tracks to rehearse.
+              {t('Add songs from your catalog or propose new tracks to rehearse.')}
             </p>
           )}
         </RehearsalAccordionCard>
@@ -1376,19 +1406,26 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={isTasksExpanded}
           onToggle={() => setIsTasksExpanded(!isTasksExpanded)}
           icon={<CheckSquare />}
-          title="Prep tasks"
+          title={t('Prep tasks')}
           optional
-          summary={data.tasks.length === 0 ? 'No tasks yet' : `${data.tasks.length} ${data.tasks.length === 1 ? 'task' : 'tasks'} assigned`}
+          summary={
+            data.tasks.length === 0
+              ? t('No tasks yet')
+              : data.tasks.length === 1
+                ? t('{count} task assigned', { count: data.tasks.length })
+                : t('{count} tasks assigned', { count: data.tasks.length })
+          }
         >
           <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-muted-foreground">Quick add</span>
+            <span className="bw-label-sm text-muted-foreground">{t('Quick add')}</span>
             <div className="flex flex-wrap gap-2">
+              {/* The suggestion is added as the task text, so it is saved in the language it is shown in. */}
               {[
-                'Bring chord charts',
-                'Set up PA early',
-                'Record audio',
-                'Review bridge vocal harmonies',
-                'Bring spare cables',
+                t('Bring chord charts'),
+                t('Set up PA early'),
+                t('Record audio'),
+                t('Review bridge vocal harmonies'),
+                t('Bring spare cables'),
               ].map(suggestion => (
                 <Selector key={suggestion} selected={false} onClick={() => handleAddQuickTask(suggestion)}>
                   + {suggestion}
@@ -1399,7 +1436,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           <div className="flex items-center gap-2">
             <PillField
-              label="New task"
+              label={t('New task')}
               hideLabel
               className="flex-1"
               value={newTaskText}
@@ -1410,27 +1447,27 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   handleAddNewTask();
                 }
               }}
-              placeholder="Add a preparation task…"
+              placeholder={t('Add a preparation task…')}
             />
             <PillButton variant="dark" size="md" fullWidth={false} onClick={handleAddNewTask} disabled={!newTaskText.trim()}>
-              Add
+              {t('Add')}
             </PillButton>
           </div>
 
           {data.tasks.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <span className="bw-label-sm text-muted-foreground">Band tasks · {data.tasks.length}</span>
+              <span className="bw-label-sm text-muted-foreground">{t('Band tasks')} · {data.tasks.length}</span>
               <ul className="flex flex-col gap-2">
                 {data.tasks.map(task => (
                   <li key={task.id} className={songRowCls}>
                     <span className="flex-1 min-w-0 bw-body-md truncate">{task.text}</span>
-                    <IconButton label={`Delete task ${task.text}`} icon={<X />} variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} />
+                    <IconButton label={t('Delete task {task}', { task: task.text })} icon={<X />} variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} />
                   </li>
                 ))}
               </ul>
             </div>
           ) : (
-            <p className="bw-body-sm text-muted-foreground">Add action items for the band to prepare ahead of time.</p>
+            <p className="bw-body-sm text-muted-foreground">{t('Add action items for the band to prepare ahead of time.')}</p>
           )}
         </RehearsalAccordionCard>
       </div>
@@ -1454,9 +1491,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             <AlertCircle className="w-5 h-5 text-warning shrink-0" />
             <div className="flex flex-col gap-1">
               <span className="bw-label-sm text-warning">
-                {editingWarnings.length} {editingWarnings.length === 1 ? 'field needs' : 'fields need'} attention
+                {editingWarnings.length === 1
+                  ? t('{count} field needs attention', { count: editingWarnings.length })
+                  : t('{count} fields need attention', { count: editingWarnings.length })}
               </span>
-              <span className="bw-body-sm">Please complete: {editingWarnings.join(', ')}.</span>
+              <span className="bw-body-sm">{t('Please complete: {fields}.', { fields: editingWarnings.map(w => warningFieldText[w] ?? w).join(', ') })}</span>
             </div>
           </div>
         )}
@@ -1466,22 +1505,22 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={!!expandedEditSections.basics}
           onToggle={() => toggleEditSection('basics')}
           stepNumber="01"
-          title="Session & recurrence"
-          summary={`${(TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band')} · ${recurrenceOptions.find(o => o.value === data.recurrence)?.label || 'One time'}`}
+          title={t('Session & recurrence')}
+          summary={`${(typeText[data.type]?.label || t('Full Band'))} · ${recurrenceOptions.find(o => o.value === data.recurrence)?.label || t('One time')}`}
           hasWarning={!data.title.trim()}
-          warningLabel="Missing title"
+          warningLabel={t('Missing title')}
         >
           <PillField
-            label="Session title"
+            label={t('Session title')}
             value={data.title}
             onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
             placeholder={getEffectiveTitle()}
           />
           {renderTypeTiles()}
           <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-muted-foreground">Recurrence</span>
+            <span className="bw-label-sm text-muted-foreground">{t('Recurrence')}</span>
             <Segmented
-              label="Recurrence"
+              label={t('Recurrence')}
               value={data.recurrence}
               options={recurrenceOptions}
               onChange={(freq) => setData(prev => ({ ...prev, recurrence: freq }))}
@@ -1494,18 +1533,18 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={!!expandedEditSections.when_where}
           onToggle={() => toggleEditSection('when_where')}
           stepNumber="02"
-          title="Date, time & studio"
-          summary={`${formatDate(data.date)} · ${data.time} – ${endTime} · ${data.location || 'Location TBD'}`}
+          title={t('Date, time & studio')}
+          summary={`${formatDate(data.date)} · ${data.time} – ${endTime} · ${data.location || t('Location TBD')}`}
           hasWarning={!data.location.trim() || data.location === 'TBD' || !data.date}
         >
-          {renderLocationField('Venue or studio name')}
+          {renderLocationField(t('Venue or studio name'))}
 
           <div className="flex flex-col gap-2">
             <PillField
-              label="Address"
+              label={t('Address')}
               value={data.address}
               onChange={e => setData(prev => ({ ...prev, address: e.target.value }))}
-              placeholder="Street, city, ZIP, country"
+              placeholder={t('Street, city, ZIP, country')}
             />
             {data.address && (
               <div className="flex flex-wrap gap-1.5">
@@ -1523,17 +1562,17 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           {renderDateTimeFields()}
 
           <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-muted-foreground">Studio cost</span>
+            <span className="bw-label-sm text-muted-foreground">{t('Studio cost')}</span>
             <Segmented
-              label="Studio cost"
+              label={t('Studio cost')}
               value={data.venueType}
               options={
                 isAdmin
                   ? [
-                      { value: 'free', label: 'Free' },
-                      { value: 'paid', label: 'Paid' },
+                      { value: 'free', label: t('Free') },
+                      { value: 'paid', label: t('Paid') },
                     ]
-                  : [{ value: 'free', label: 'Free' }]
+                  : [{ value: 'free', label: t('Free') }]
               }
               onChange={(v) => setData(prev => ({ ...prev, venueType: v }))}
             />
@@ -1546,12 +1585,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={!!expandedEditSections.roster}
           onToggle={() => toggleEditSection('roster')}
           stepNumber="03"
-          title="Band roster"
-          summary={`${selectedCount} of ${totalAvailable} musicians selected`}
+          title={t('Band roster')}
+          summary={t('{selected} of {total} musicians selected', { selected: selectedCount, total: totalAvailable })}
         >
           <div className="flex gap-2">
             <Selector size="md" selected={isAllSelected} onClick={() => setData(prev => ({ ...prev, audienceIds: [] }))}>
-              Select all · {totalAvailable}
+              {t('Select all')} · {totalAvailable}
             </Selector>
             <Selector
               size="md"
@@ -1562,7 +1601,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 }
               }}
             >
-              Custom
+              {t('Custom')}
             </Selector>
           </div>
           <ul className="flex flex-col">{data.members.map(renderMemberRow)}</ul>
@@ -1573,10 +1612,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={!!expandedEditSections.setlist_proposals}
           onToggle={() => toggleEditSection('setlist_proposals')}
           stepNumber="04"
-          title="Setlist & proposals"
+          title={t('Setlist & proposals')}
           summary={(() => {
             const n = data.setlistSnapshotFinal?.songs.length || data.setlist.length;
-            return `${n} ${n === 1 ? 'song' : 'songs'} · ${data.proposals.length} ${data.proposals.length === 1 ? 'proposal' : 'proposals'}`;
+            const p = data.proposals.length;
+            return `${n === 1 ? t('{count} song', { count: n }) : t('{count} songs', { count: n })} · ${p === 1 ? t('{count} proposal', { count: p }) : t('{count} proposals', { count: p })}`;
           })()}
         >
           {data.setlistSnapshotFinal ? (
@@ -1589,25 +1629,27 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               )}
             >
               <span className="flex items-center justify-between gap-3">
-                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>Active setlist</span>
-                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>Tap to edit</span>
+                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>{t('Active setlist')}</span>
+                <span className={cn('bw-label-sm', !isSetlistConfirmed && 'text-muted-foreground')}>{t('Tap to edit')}</span>
               </span>
               <span className="flex items-baseline gap-2">
                 <span className="bw-value-lg">{data.setlistSnapshotFinal.songs.length}</span>
-                <span className="bw-label-sm">{data.setlistSnapshotFinal.songs.length === 1 ? 'Song' : 'Songs'}</span>
+                <span className="bw-label-sm">{data.setlistSnapshotFinal.songs.length === 1 ? t('Song') : t('Songs')}</span>
               </span>
               <span className="flex items-center gap-1.5 flex-wrap">
                 <Tag variant={isSetlistConfirmed ? 'solid' : 'subtle'}>{totalDuration}</Tag>
                 <Tag variant={isSetlistConfirmed ? 'solid' : 'subtle'}>
-                  {data.setlistSnapshotFinal.sources.length} {data.setlistSnapshotFinal.sources.length === 1 ? 'source' : 'sources'}
+                  {data.setlistSnapshotFinal.sources.length === 1
+                    ? t('{count} source', { count: data.setlistSnapshotFinal.sources.length })
+                    : t('{count} sources', { count: data.setlistSnapshotFinal.sources.length })}
                 </Tag>
               </span>
             </button>
           ) : (
             <div className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background">
-              <span className="bw-label-sm text-muted-foreground">No setlist attached</span>
+              <span className="bw-label-sm text-muted-foreground">{t('No setlist attached')}</span>
               <PillButton variant="dark" size="sm" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setSongPickerOpen(true)}>
-                Add songs
+                {t('Add songs')}
               </PillButton>
             </div>
           )}
@@ -1616,32 +1658,32 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           {hasQueue && (
             <div className="flex flex-col gap-2 p-4 rounded-[16px] bg-background">
-              <span className="bw-label-sm text-muted-foreground">Queue · {queueIds.length}</span>
+              <span className="bw-label-sm text-muted-foreground">{t('Queue')} · {queueIds.length}</span>
               <ul className="flex flex-col gap-1">
                 {queueIds.map((tid, i) => {
-                  const t = templates.find(tp => tp.id === tid);
+                  const tpl = templates.find(tp => tp.id === tid);
                   return (
                     <li key={`${tid}-${i}`} className="flex items-center gap-3">
-                      <span className="flex-1 min-w-0 bw-body-md truncate">{t?.name || 'Unknown'}</span>
-                      <IconButton label={`Remove ${t?.name || 'template'} from queue`} icon={<X />} variant="ghost" size="sm" onClick={() => handleRemoveFromQueue(i)} />
+                      <span className="flex-1 min-w-0 bw-body-md truncate">{tpl?.name || t('Unknown')}</span>
+                      <IconButton label={t('Remove {name} from queue', { name: tpl?.name || t('template') })} icon={<X />} variant="ghost" size="sm" onClick={() => handleRemoveFromQueue(i)} />
                     </li>
                   );
                 })}
               </ul>
               <PillButton variant="dark" size="md" onClick={handleBuildSnapshot}>
-                Merge into setlist
+                {t('Merge into setlist')}
               </PillButton>
             </div>
           )}
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
-              <span className="bw-label-sm text-muted-foreground">Available setlists</span>
+              <span className="bw-label-sm text-muted-foreground">{t('Available setlists')}</span>
               <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3" icon={<Plus className="w-4 h-4" />} onClick={() => openSetlistEditor(null)}>
-                New setlist
+                {t('New setlist')}
               </PillButton>
             </div>
-            {templates.length === 0 && <p className="bw-body-sm text-muted-foreground">No saved setlists yet.</p>}
+            {templates.length === 0 && <p className="bw-body-sm text-muted-foreground">{t('No saved setlists yet.')}</p>}
             <ul className="flex flex-col gap-2">
               {templates.slice(0, 4).map(template => {
                 const inQueue = queueIds.includes(template.id);
@@ -1650,7 +1692,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                       <span className="bw-body-md truncate">{template.name}</span>
                       <span className="bw-body-sm text-muted-foreground">
-                        {template.songIds.length} {template.songIds.length === 1 ? 'song' : 'songs'}
+                        {template.songIds.length === 1
+                          ? t('{count} song', { count: template.songIds.length })
+                          : t('{count} songs', { count: template.songIds.length })}
                       </span>
                     </span>
                     <PillButton
@@ -1660,7 +1704,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                       icon={inQueue ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                       onClick={() => handleAddToQueue(template.id)}
                     >
-                      {inQueue ? 'Queued' : 'Add'}
+                      {inQueue ? t('Queued') : t('Add')}
                     </PillButton>
                   </li>
                 );
@@ -1670,10 +1714,12 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           <div className="flex items-center justify-between gap-3">
             <span className="bw-label-sm text-muted-foreground">
-              {data.proposals.length} {data.proposals.length === 1 ? 'song proposal' : 'song proposals'}
+              {data.proposals.length === 1
+                ? t('{count} song proposal', { count: data.proposals.length })
+                : t('{count} song proposals', { count: data.proposals.length })}
             </span>
             <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
-              Propose song
+              {t('Propose song')}
             </PillButton>
           </div>
         </RehearsalAccordionCard>
@@ -1683,11 +1729,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           isOpen={!!expandedEditSections.prep_tasks}
           onToggle={() => toggleEditSection('prep_tasks')}
           stepNumber="05"
-          title="Gear & tasks"
-          summary={`${data.tasks.length} ${data.tasks.length === 1 ? 'task' : 'tasks'} · ${checklistChecked.size} of ${data.defaultChecklist.length} gear checked`}
+          title={t('Gear & tasks')}
+          summary={`${data.tasks.length === 1 ? t('{count} task', { count: data.tasks.length }) : t('{count} tasks', { count: data.tasks.length })} · ${t('{checked} of {total} gear checked', { checked: checklistChecked.size, total: data.defaultChecklist.length })}`}
         >
           <div className="flex flex-col gap-2">
-            <span className="bw-label-sm text-muted-foreground">My gear checklist</span>
+            <span className="bw-label-sm text-muted-foreground">{t('My gear checklist')}</span>
             <div className="grid grid-cols-2 gap-2">
               {data.defaultChecklist.map((item, i) => {
                 const checked = checklistChecked.has(i);
@@ -1716,15 +1762,15 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
-              <span className="bw-label-sm text-muted-foreground">Tasks · {data.tasks.length}</span>
+              <span className="bw-label-sm text-muted-foreground">{t('Tasks')} · {data.tasks.length}</span>
               <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3" icon={<Plus className="w-4 h-4" />} onClick={() => setIsAddTaskModalOpen(true)}>
-                Add task
+                {t('Add task')}
               </PillButton>
             </div>
 
             {taskTemplatesDB.length > 0 && data.tasks.length === 0 && (
               <div className="flex flex-col gap-2">
-                <span className="bw-label-sm text-muted-foreground">Load template</span>
+                <span className="bw-label-sm text-muted-foreground">{t('Load template')}</span>
                 <div className="flex flex-wrap gap-2">
                   {taskTemplatesDB.map(tpl => (
                     <Selector key={tpl.id} selected={false} onClick={() => loadTaskTemplate(tpl)}>
@@ -1745,14 +1791,14 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                   >
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                       <span className="bw-body-md truncate">{task.text}</span>
-                      <span className="bw-label-xs text-muted-foreground">{task.type}</span>
+                      <span className="bw-label-xs text-muted-foreground">{taskTypeText[task.type] ?? task.type}</span>
                     </span>
                     <DotCheck checked={task.completed} className={task.completed ? 'text-foreground' : 'text-muted-foreground'} />
                   </button>
                 </li>
               ))}
             </ul>
-            {data.tasks.length === 0 && <p className="bw-body-sm text-muted-foreground">No tasks assigned yet.</p>}
+            {data.tasks.length === 0 && <p className="bw-body-sm text-muted-foreground">{t('No tasks assigned yet.')}</p>}
           </div>
         </RehearsalAccordionCard>
       </div>
@@ -1834,13 +1880,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   // iPhone Duo: the wizard's close sits in the system column under the clock
   // (Figma "Closed · Rehearsal / New – 1 Session & roster").
   const closeInRail = useRailAction(isEditing ? undefined : requestClose, {
-    label: 'Close rehearsal wizard',
+    label: t('Close rehearsal wizard'),
     icon: <X />,
     pane: true,
   });
 
   if (isEditing) {
-    const typeLabel = TYPE_OPTIONS.find(o => o.value === data.type)?.label || 'Full Band';
+    const typeLabel = typeText[data.type]?.label || t('Full Band');
     return (
       <>
         <motion.div
@@ -1853,11 +1899,11 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           {/* Header */}
           <header className="shrink-0 px-4 pb-4 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
             <div className="flex items-center gap-3 min-h-11">
-              <NavBackButton pane label="Close edit rehearsal" onClick={onClose} />
+              <NavBackButton pane label={t('Close edit rehearsal')} onClick={onClose} />
               {/* iPhone Duo: Back is in the rail, so the tag leads the row
                   (as in the gig edit header) instead of floating top-right. */}
               <div className="flex-1 [[data-bw-rail-host]_&]:hidden" />
-              <Tag variant="rehearsal">Editing</Tag>
+              <Tag variant="rehearsal">{t('Editing')}</Tag>
             </div>
             <div className="flex flex-col gap-1 min-w-0">
               <p className="bw-label-sm text-muted-foreground">
@@ -1866,7 +1912,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
               </p>
               <h1 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h1>
               <p className="bw-body-sm text-muted-foreground truncate">
-                {formatDate(data.date)} · {data.time} – {endTime} · {data.location || 'Location TBD'}
+                {formatDate(data.date)} · {data.time} – {endTime} · {data.location || t('Location TBD')}
               </p>
             </div>
           </header>
@@ -1880,7 +1926,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
             <div className="grid grid-cols-[2fr_3fr] gap-3">
               <PillButton variant="outline" onClick={onClose}>
-                Cancel
+                {t('Cancel')}
               </PillButton>
               <PillButton
                 onClick={handleSubmit}
@@ -1888,7 +1934,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
                 loading={isSubmitting}
                 icon={<Check className="w-[18px] h-[18px]" />}
               >
-                Save rehearsal
+                {t('Save rehearsal')}
               </PillButton>
             </div>
           </div>
@@ -1910,13 +1956,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         {/* Header: Top Bar + wizard steps (Figma "Rehearsal / New") */}
         <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
           <div className="flex items-center gap-3 min-h-11">
-            <NavBackButton pane label={step > 0 ? 'Back' : 'Cancel'} onClick={handleBack} />
-            <h2 className="flex-1 min-w-0 bw-h1 truncate">New rehearsal</h2>
+            <NavBackButton pane label={step > 0 ? t('Back') : t('Cancel')} onClick={handleBack} />
+            <h2 className="flex-1 min-w-0 bw-h1 truncate">{t('New rehearsal')}</h2>
             {!closeInRail && (
-              <IconButton label="Close rehearsal wizard" icon={<X />} variant="ghost" onClick={requestClose} />
+              <IconButton label={t('Close rehearsal wizard')} icon={<X />} variant="ghost" onClick={requestClose} />
             )}
           </div>
-          <WizardSteps current={step} steps={STEPS} maxAccessibleStep={maxAccessibleStep} onSelectStep={(s) => setStep(s)} />
+          <WizardSteps current={step} steps={STEPS.map(s => ({ ...s, title: stepTitles[s.id] ?? s.title }))} maxAccessibleStep={maxAccessibleStep} onSelectStep={(s) => setStep(s)} />
         </header>
 
         {/* Scrollable body */}
@@ -1930,16 +1976,16 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
           <div className="grid grid-cols-[2fr_3fr] gap-3">
             <PillButton variant="outline" onClick={step > 0 ? handleBack : requestClose}>
-              {step > 0 ? 'Back' : 'Cancel'}
+              {step > 0 ? t('Back') : t('Cancel')}
             </PillButton>
             {step < STEPS.length - 1 ? (
               <PillButton onClick={handleNext} disabled={!canProceed}>
-                Next
+                {t('Next')}
                 <ArrowUpRight className="w-5 h-5" />
               </PillButton>
             ) : (
               <PillButton onClick={handleSubmit} loading={isSubmitting} icon={<Check className="w-[18px] h-[18px]" />}>
-                Create rehearsal
+                {t('Create rehearsal')}
               </PillButton>
             )}
           </div>
@@ -1953,7 +1999,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           onSaveDraft={handleSaveDraft}
           onDiscard={handleDiscardDraft}
           onKeepEditing={() => setLeaveOpen(false)}
-          discardLabel={draft ? 'Delete draft' : undefined}
+          discardLabel={draft ? t('Delete draft') : undefined}
         />
       )}
     </>

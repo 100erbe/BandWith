@@ -8,6 +8,7 @@ import {
   createMemberRehearsalProposal,
   type ProposalEligibility,
 } from '@/lib/services/rehearsalPolls';
+import { useT } from '@/lib/i18n';
 
 const DAYS_OF_WEEK = [
   { key: 'Mon', label: 'Mon' },
@@ -38,6 +39,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
   onSuccess,
   onShowToast,
 }) => {
+  const t = useT();
   const [loadingEligibility, setLoadingEligibility] = useState(true);
   const [eligibility, setEligibility] = useState<ProposalEligibility>({
     canPropose: true,
@@ -88,7 +90,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
     e.preventDefault();
     if (isSubmittingRef.current || submitting) return;
     if (!title.trim()) {
-      setError('Please provide a short reason or topic for the rehearsal.');
+      setError(t('Please provide a short reason or topic for the rehearsal.'));
       return;
     }
 
@@ -106,11 +108,11 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
       });
 
       if (submitErr) {
-        setError(submitErr.message || 'Failed to submit proposal. Please try again.');
+        setError(submitErr.message || t('Failed to submit proposal. Please try again.'));
         return;
       }
 
-      onShowToast?.('Proposal sent to band admin.', 'success');
+      onShowToast?.(t('Proposal sent to band admin.'), 'success');
       setTitle('');
       setSelectedDays([]);
       setNotes('');
@@ -143,12 +145,12 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
           style={{ paddingTop: 'calc(var(--safe-top) + 16px)' }}
         >
           <div className="flex items-center gap-3 min-h-11">
-            <p className="flex-1 min-w-0 bw-label-sm truncate">{bandName ? `For ${bandName}` : 'Member request'}</p>
+            <p className="flex-1 min-w-0 bw-label-sm truncate">{bandName ? t('For {band}', { band: bandName }) : t('Member request')}</p>
             <RailCover pane />
-            <HeaderAction pane label="Close" icon={<X />} variant="sheet" onClick={onClose} />
+            <HeaderAction pane label={t('Close')} icon={<X />} variant="sheet" onClick={onClose} />
           </div>
           <h1 id="propose-rehearsal-title" className="bw-display-lg [overflow-wrap:anywhere]">
-            Propose rehearsal
+            {t('Propose rehearsal')}
           </h1>
         </header>
 
@@ -159,7 +161,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
           {loadingEligibility ? (
             <div className="py-16 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-              <p className="bw-label-sm text-muted-foreground">Checking weekly proposal quota…</p>
+              <p className="bw-label-sm text-muted-foreground">{t('Checking weekly proposal quota…')}</p>
             </div>
           ) : !eligibility.canPropose ? (
             // LOCKED STATE: 1 per 7 days reached
@@ -169,16 +171,16 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
                   <Clock className="w-6 h-6" />
                 </span>
                 <div className="flex flex-col gap-2">
-                  <h2 className="bw-h1">Weekly limit reached</h2>
+                  <h2 className="bw-h1">{t('Weekly limit reached')}</h2>
                   <p className="bw-body-md text-muted-foreground">
-                    Band members can send one rehearsal proposal every 7 days, to keep band scheduling focused.
+                    {t('Band members can send one rehearsal proposal every 7 days, to keep band scheduling focused.')}
                   </p>
                 </div>
               </Card>
 
               {eligibility.nextAvailableDate && (
                 <Card>
-                  <p className="bw-label-sm text-muted-foreground">Next available proposal</p>
+                  <p className="bw-label-sm text-muted-foreground">{t('Next available proposal')}</p>
                   <div className="flex items-center justify-between gap-3">
                     <span className="bw-h3">
                       {eligibility.nextAvailableDate.toLocaleDateString(undefined, {
@@ -189,7 +191,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
                     </span>
                     {eligibility.daysRemaining != null && (
                       <Tag variant="rehearsal">
-                        In {eligibility.daysRemaining} {eligibility.daysRemaining === 1 ? 'day' : 'days'}
+                        {eligibility.daysRemaining === 1 ? t('In {count} day', { count: eligibility.daysRemaining }) : t('In {count} days', { count: eligibility.daysRemaining })}
                       </Tag>
                     )}
                   </div>
@@ -197,7 +199,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
               )}
 
               <PillButton variant="outline" onClick={onClose} className="mt-2">
-                Close
+                {t('Close')}
               </PillButton>
             </div>
           ) : (
@@ -207,17 +209,17 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
 
               {/* Topic / Purpose */}
               <PillField
-                label="Topic"
+                label={t('Topic')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Practice new setlist transitions"
+                placeholder={t('e.g. Practice new setlist transitions')}
                 maxLength={100}
                 autoFocus
               />
 
               {/* Preferred Days of the Week */}
               <fieldset className="flex flex-col gap-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Preferred days (optional)</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">{t('Preferred days (optional)')}</legend>
                 <div className="flex gap-1.5">
                   {DAYS_OF_WEEK.map((d) => (
                     <Selector
@@ -234,11 +236,11 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
 
               {/* Optional Notes */}
               <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
-                <span className="bw-label-sm text-muted-foreground">Notes or songs (optional)</span>
+                <span className="bw-label-sm text-muted-foreground">{t('Notes or songs (optional)')}</span>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Volare → September segue, and the new medley ending."
+                  placeholder={t('e.g. Volare → September segue, and the new medley ending.')}
                   className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[72px] resize-none"
                   maxLength={400}
                 />
@@ -248,7 +250,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
               <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
                 <Mail className="w-5 h-5 shrink-0" />
                 <p className="bw-body-sm">
-                  Your proposal goes straight to the band admin. 1 proposal per week.
+                  {t('Your proposal goes straight to the band admin. 1 proposal per week.')}
                 </p>
               </div>
 
@@ -259,7 +261,7 @@ export const ProposeRehearsalModal: React.FC<ProposeRehearsalModalProps> = ({
                 icon={<Send className="w-[18px] h-[18px]" />}
                 className="mt-5"
               >
-                {submitting ? 'Submitting…' : 'Submit to admin'}
+                {submitting ? t('Submitting…') : t('Submit to admin')}
               </PillButton>
             </form>
           )}

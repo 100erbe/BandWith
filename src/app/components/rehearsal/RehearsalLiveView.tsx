@@ -10,6 +10,7 @@ import { Card, IconButton, PillButton } from '@/app/components/bw';
 import { RailCover, useRailAction, useRailTone } from '@/lib/railActions';
 import { setStatusBarTone } from '@/lib/systemBars';
 import { RehearsalSong } from './types';
+import { useT } from '@/lib/i18n';
 
 // Mock Data for Live Session
 const LIVE_SETLIST: RehearsalSong[] = [
@@ -33,7 +34,8 @@ interface Props {
 }
 
 export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
-  const exitInRail = useRailAction(onClose, { label: 'Exit live mode', icon: <X /> });
+  const t = useT();
+  const exitInRail = useRailAction(onClose, { label: t('Exit live mode'), icon: <X /> });
   // Dark canvas: light system icons, and the iPhone Duo rail in dark glass.
   useEffect(() => setStatusBarTone('dark'), []);
   useRailTone('dark');
@@ -71,13 +73,13 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
       <div className="flex items-center justify-between gap-3 px-4 min-h-[60px]">
         <span className="flex items-center gap-2 bw-label-sm text-destructive">
           <span className="w-2.5 h-2.5 rounded-full bg-destructive-solid animate-pulse" />
-          Live rehearsal
+          {t('Live rehearsal')}
         </span>
         {/* iPhone Duo: the exit joins the side rail as a close (X). */}
         <RailCover />
         {!exitInRail && (
           <PillButton variant="outline" size="sm" fullWidth={false} onClick={onClose}>
-            Exit live mode
+            {t('Exit live mode')}
           </PillButton>
         )}
       </div>
@@ -87,14 +89,14 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
         {/* Timer */}
         <div className="flex flex-col items-center gap-2 py-6">
           <span className="bw-value-xl">{formatTime(elapsed)}</span>
-          <span className="bw-label-sm text-muted-foreground">Total elapsed time</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Total elapsed time')}</span>
         </div>
 
         {/* Now Playing */}
         <Card className="p-5 gap-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1 min-w-0">
-              <span className="bw-label-sm text-accent">Now playing</span>
+              <span className="bw-label-sm text-accent">{t('Now playing')}</span>
               <h2 className="bw-h1 [overflow-wrap:anywhere]">{currentSong.title}</h2>
               <p className="bw-body-lg text-muted-foreground">{currentSong.artist}</p>
             </div>
@@ -116,7 +118,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
           <div className="grid grid-cols-4 gap-2">
             <button
               type="button"
-              aria-label={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? t('Pause') : t('Play')}
               onClick={() => setIsPlaying(!isPlaying)}
               className="h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center active:scale-[0.97] transition-transform"
             >
@@ -124,14 +126,14 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
             </button>
             <button
               type="button"
-              aria-label="Stop"
+              aria-label={t('Stop')}
               className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform"
             >
               <Square className="w-6 h-6 fill-current" />
             </button>
             <button
               type="button"
-              aria-label="Next song"
+              aria-label={t('Next song')}
               onClick={() => setActiveSongIndex((i) => Math.min(i + 1, LIVE_SETLIST.length - 1))}
               className="h-16 rounded-full bg-foreground/[0.08] flex items-center justify-center active:scale-[0.97] transition-transform"
             >
@@ -139,7 +141,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
             </button>
             <button
               type="button"
-              aria-label="Record"
+              aria-label={t('Record')}
               className="h-16 rounded-full bg-foreground/[0.08] text-destructive flex items-center justify-center active:scale-[0.97] transition-transform"
             >
               <Mic2 className="w-6 h-6" />
@@ -150,10 +152,10 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
         {/* Quick Feedback */}
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Nailed it', icon: CheckCircle2, color: 'text-success' },
-            { label: 'Needs work', icon: AlertTriangle, color: 'text-warning' },
-            { label: 'Problems', icon: XCircle, color: 'text-destructive' },
-            { label: 'Redo', icon: RotateCcw, color: 'text-[var(--accent-rehearsal-ink)]' },
+            { label: t('Nailed it'), icon: CheckCircle2, color: 'text-success' },
+            { label: t('Needs work'), icon: AlertTriangle, color: 'text-warning' },
+            { label: t('Problems'), icon: XCircle, color: 'text-destructive' },
+            { label: t('Redo'), icon: RotateCcw, color: 'text-[var(--accent-rehearsal-ink)]' },
           ].map((fb) => (
             <button
               key={fb.label}
@@ -169,7 +171,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
         {/* Attendance & Tools */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
-            <h3 className="bw-label-sm text-muted-foreground">Check-in</h3>
+            <h3 className="bw-label-sm text-muted-foreground">{t('Check-in')}</h3>
             <div className="flex flex-col gap-2">
               {ATTENDANCE.map((m) => (
                 <div key={m.id} className="flex items-center justify-between gap-3">
@@ -182,28 +184,28 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
                     />
                     <span className="bw-label-md">{m.initials}</span>
                   </span>
-                  <span className="bw-label-sm text-muted-foreground">{m.time || 'Not yet'}</span>
+                  <span className="bw-label-sm text-muted-foreground">{m.time || t('Not yet')}</span>
                 </div>
               ))}
             </div>
           </Card>
 
           <Card>
-            <h3 className="bw-label-sm text-muted-foreground">Tools</h3>
+            <h3 className="bw-label-sm text-muted-foreground">{t('Tools')}</h3>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Metronome', icon: Clock, cls: 'text-accent', onClick: () => setShowMetronome(true) },
-                { label: 'Scores', icon: FileText, cls: '', onClick: undefined },
-                { label: 'Chat', icon: MessageSquare, cls: '', onClick: undefined },
-              ].map((t) => (
+                { label: t('Metronome'), icon: Clock, cls: 'text-accent', onClick: () => setShowMetronome(true) },
+                { label: t('Scores'), icon: FileText, cls: '', onClick: undefined },
+                { label: t('Chat'), icon: MessageSquare, cls: '', onClick: undefined },
+              ].map((tool) => (
                 <button
-                  key={t.label}
+                  key={tool.label}
                   type="button"
-                  onClick={t.onClick}
+                  onClick={tool.onClick}
                   className="aspect-square rounded-[16px] bg-foreground/[0.08] flex flex-col items-center justify-center gap-1.5 active:scale-[0.97] transition-transform"
                 >
-                  <t.icon className={cn('w-5 h-5', t.cls)} />
-                  <span className="bw-label-xs">{t.label}</span>
+                  <tool.icon className={cn('w-5 h-5', tool.cls)} />
+                  <span className="bw-label-xs">{tool.label}</span>
                 </button>
               ))}
             </div>
@@ -215,7 +217,7 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
           onClick={onFinish}
           className="mt-2 border-destructive text-destructive"
         >
-          End session
+          {t('End session')}
         </PillButton>
       </div>
 
@@ -227,25 +229,25 @@ export const RehearsalLiveView: React.FC<Props> = ({ onClose, onFinish }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             role="dialog"
-            aria-label="Metronome"
+            aria-label={t('Metronome')}
             className="absolute left-4 right-4 z-50 bg-card rounded-[24px] p-5 shadow-2xl flex flex-col gap-6"
             style={{ bottom: 'calc(var(--safe-bottom) + 16px)' }}
           >
             <div className="flex items-start justify-between gap-3">
-              <h3 className="bw-h2">Metronome</h3>
-              <IconButton label="Close metronome" icon={<X />} size="sm" onClick={() => setShowMetronome(false)} />
+              <h3 className="bw-h2">{t('Metronome')}</h3>
+              <IconButton label={t('Close metronome')} icon={<X />} size="sm" onClick={() => setShowMetronome(false)} />
             </div>
 
             <div className="flex items-center justify-center gap-8">
-              <IconButton label="Slower" icon={<Minus />} onClick={() => setBpm((b) => b - 5)} />
+              <IconButton label={t('Slower')} icon={<Minus />} onClick={() => setBpm((b) => b - 5)} />
               <div className="flex flex-col items-center gap-1">
                 <span className="bw-value-xl text-accent">{bpm}</span>
                 <span className="bw-label-sm text-muted-foreground">BPM</span>
               </div>
-              <IconButton label="Faster" icon={<Plus />} onClick={() => setBpm((b) => b + 5)} />
+              <IconButton label={t('Faster')} icon={<Plus />} onClick={() => setBpm((b) => b + 5)} />
             </div>
 
-            <PillButton icon={<Play className="w-5 h-5 fill-current" />}>Start</PillButton>
+            <PillButton icon={<Play className="w-5 h-5 fill-current" />}>{t('Start')}</PillButton>
           </motion.div>
         )}
       </AnimatePresence>
