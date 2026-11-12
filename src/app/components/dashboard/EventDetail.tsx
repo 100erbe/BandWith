@@ -1795,7 +1795,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         )}
                         {canFindDeputy && m.status === 'declined' && (
                           <PillButton size="sm" variant="white" fullWidth={false} className="shrink-0" onClick={() => setDeputyFor(m)}>
-                            {t('Find a deputy')}
+                            {t('Find a deputy', { context: 'button' })}
                           </PillButton>
                         )}
                       </div>

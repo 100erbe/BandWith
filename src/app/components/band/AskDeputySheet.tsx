@@ -13,6 +13,7 @@ import {
   whatsappUrl,
   type Deputy,
 } from '@/lib/services/deputies';
+import { useT } from '@/lib/i18n';
 
 export interface DeputyRequestContext {
   bandId: string;
@@ -38,6 +39,7 @@ export const AskDeputySheet: React.FC<{
   /** Money in the band's currency (a deputy's usual fee). */
   formatFee?: (n: number) => string;
 }> = ({ open, onClose, ctx, member, onManage, formatFee = (n) => String(n) }) => {
+  const t = useT();
   const [deputies, setDeputies] = React.useState<Deputy[] | null>(null);
   const [unavailable, setUnavailable] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
@@ -87,43 +89,43 @@ export const AskDeputySheet: React.FC<{
     <BwSheet
       open={open}
       onClose={onClose}
-      overline={member ? `Replacing ${member.name}${role ? ` · ${role}` : ''}` : ctx.eventTitle}
-      title="Find a deputy"
+      overline={member ? `${t('Replacing {name}', { name: member.name })}${role ? ` · ${role}` : ''}` : ctx.eventTitle}
+      title={t('Find a deputy')}
       zIndex={120}
     >
       <div className="@container flex flex-col gap-3">
         <p className="bw-body-sm text-sheet-foreground/80">
-          Send a request for {ctx.eventTitle} · {ctx.dateLabel}. It opens WhatsApp, Messages or Mail with the details filled in.
+          {t('Send a request for {event} · {date}. It opens WhatsApp, Messages or Mail with the details filled in.', { event: ctx.eventTitle, date: ctx.dateLabel })}
         </p>
         {deputies == null ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-sheet-foreground/70" />
           </div>
         ) : unavailable ? (
-          <p className="bw-body-sm text-sheet-foreground/80 py-4">The deputies list will be available as soon as the server is updated.</p>
+          <p className="bw-body-sm text-sheet-foreground/80 py-4">{t('The deputies list will be available as soon as the server is updated.')}</p>
         ) : failed ? (
-          <p role="alert" className="bw-body-sm text-destructive py-4">Could not load the deputies. Try again.</p>
+          <p role="alert" className="bw-body-sm text-destructive py-4">{t('Could not load the deputies. Try again.')}</p>
         ) : ranked.length === 0 ? (
           <div className="flex flex-col gap-3 py-4">
-            <p className="bw-body-sm text-sheet-foreground/80">No deputies yet. Add them in Band members → Deputies.</p>
+            <p className="bw-body-sm text-sheet-foreground/80">{t('No deputies yet. Add them in Band members → Deputies.')}</p>
             {onManage && (
               <PillButton variant="white" size="md" onClick={onManage}>
-                Add deputies
+                {t('Add deputies')}
               </PillButton>
             )}
           </div>
         ) : (
-          <ul className="grid grid-cols-1 @min-[600px]:grid-cols-2 gap-2" aria-label="Deputies">
+          <ul className="grid grid-cols-1 @min-[600px]:grid-cols-2 gap-2" aria-label={t('Deputies')}>
             {ranked.map((d) => (
               <li key={d.id} className="rounded-[16px] bg-sheet-foreground/[0.08] p-3 flex flex-col gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                     <span className="bw-label-md truncate">{d.name}</span>
                     <span className="bw-body-sm text-sheet-foreground/70 truncate">
-                      {[d.instrument, d.default_fee ? `usual fee ${formatFee(d.default_fee)}` : null, d.notes].filter(Boolean).join(' · ') || 'Deputy'}
+                      {[d.instrument, d.default_fee ? t('usual fee {fee}', { fee: formatFee(d.default_fee) }) : null, d.notes].filter(Boolean).join(' · ') || t('Deputy')}
                     </span>
                   </span>
-                  {sent[d.id] && <span className="bw-label-sm text-sheet-foreground/70 shrink-0">Sent</span>}
+                  {sent[d.id] && <span className="bw-label-sm text-sheet-foreground/70 shrink-0">{t('Sent')}</span>}
                 </div>
                 {d.phone || d.email ? (
                   <div className="flex flex-wrap gap-2">
@@ -139,12 +141,12 @@ export const AskDeputySheet: React.FC<{
                     )}
                     {d.email && (
                       <PillButton size="sm" variant="white" fullWidth={false} icon={<Mail className="w-4 h-4" />} onClick={() => send(d, 'email')}>
-                        Email
+                        {t('Email')}
                       </PillButton>
                     )}
                   </div>
                 ) : (
-                  <p className="bw-body-sm text-sheet-foreground/70">Add a phone or email to contact them.</p>
+                  <p className="bw-body-sm text-sheet-foreground/70">{t('Add a phone or email to contact them.')}</p>
                 )}
               </li>
             ))}
