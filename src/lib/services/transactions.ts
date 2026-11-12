@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '../supabase';
+import { t } from '@/lib/i18n';
 
 // Types
 export type TransactionType = 'income' | 'expense';
@@ -76,7 +77,7 @@ export const createTransaction = async (
 ): Promise<{ data: Transaction | null; error: Error | null }> => {
   try {
     const { data: { user } } = await getSafeUser();
-    if (!user) throw new Error('Not authenticated');
+    if (!user) throw new Error(t('Not authenticated'));
 
     const { data, error } = await supabase
       .from('transactions')
@@ -168,11 +169,11 @@ export const getFinancialStats = async (
 
     const stats = {
       totalIncome: transactions
-        ?.filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + Number(t.amount), 0) || 0,
+        ?.filter(tx => tx.type === 'income')
+        .reduce((sum, tx) => sum + Number(tx.amount), 0) || 0,
       totalExpenses: transactions
-        ?.filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Number(t.amount), 0) || 0,
+        ?.filter(tx => tx.type === 'expense')
+        .reduce((sum, tx) => sum + Number(tx.amount), 0) || 0,
       netProfit: 0,
       transactionCount: transactions?.length || 0,
     };

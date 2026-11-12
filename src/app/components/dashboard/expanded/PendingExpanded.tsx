@@ -11,6 +11,7 @@ import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { MapsLink } from '@/app/components/ui/MapsLink';
+import { useT } from '@/lib/i18n';
 
 interface PendingExpandedProps {
   bandId: string;
@@ -28,6 +29,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
   events: realEvents,
   loading
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   // Convert real events to display format and group by date
   const eventsByDate = useMemo(() => {
@@ -66,18 +68,18 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         label: getDateLabel(date),
         events
       }));
-  }, [realEvents]);
+  }, [realEvents, t]);
 
   function getDateLabel(dateStr: string): string {
     const date = parseLocalDate(dateStr);
     const today = new Date();
     const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays <= 7) return 'This Week';
-    if (diffDays <= 14) return 'Next Week';
-    return 'Upcoming';
+    if (diffDays === 0) return t('Today');
+    if (diffDays === 1) return t('Tomorrow');
+    if (diffDays <= 7) return t('This Week');
+    if (diffDays <= 14) return t('Next Week');
+    return t('Upcoming');
   }
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
@@ -94,6 +96,20 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
     return 'quote';
   };
 
+  // Display labels only: the filter ids and statuses stay as they are for the logic.
+  const filterLabel = (filter: string) =>
+    filter === 'All' ? t('All') : filter === 'Confirmed' ? t('Confirmed') : filter === 'Rehearsal' ? t('Rehearsal') : filter;
+  const statusLabel = (status: string) =>
+    ({
+      CONFIRMED: t('CONFIRMED'),
+      PENDING: t('PENDING'),
+      DRAFT: t('DRAFT'),
+      TENTATIVE: t('TENTATIVE'),
+      COMPLETED: t('COMPLETED'),
+      CANCELLED: t('CANCELLED'),
+      REHEARSAL: t('REHEARSAL'),
+    } as Record<string, string>)[status] ?? status;
+
   return (
     <ExpandedCardWrapper
       backgroundColor="var(--bg)"
@@ -101,7 +117,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
       origin={{ top: '12%', left: '61%', right: '3%', bottom: '62%' }}
     >
       <ExpandedTopBar
-        title="Pending events"
+        title={t('Pending events')}
         onBack={onClose}
         meta={<span className="bw-label-sm text-muted-foreground">{realEvents?.length || 0}</span>}
       />
@@ -110,13 +126,13 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         className="flex-1 flex flex-col gap-4 px-4 pt-2 max-w-[700px] w-full mx-auto bg-background text-foreground"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}
       >
-        <SearchField value={query} onChange={setQuery} label="Search events" placeholder="Search title or venue…" />
+        <SearchField value={query} onChange={setQuery} label={t('Search events')} placeholder={t('Search title or venue…')} />
 
         {/* Filter tabs (Figma Selector MD) */}
         <div className="flex items-center gap-2 shrink-0 overflow-x-auto -mx-4 px-4 [scrollbar-width:none]">
           {EVENT_FILTERS.map((filter) => (
             <Selector key={filter} size="md" selected={eventFilter === filter} onClick={() => setEventFilter(filter)}>
-              {filter}
+              {filterLabel(filter)}
             </Selector>
           ))}
         </div>
@@ -127,8 +143,8 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
           </div>
         ) : visibleGroups.length === 0 ? (
           <Card className="items-center text-center py-10">
-            <h2 className="bw-h3">{q ? 'No matching events' : 'No pending events'}</h2>
-            {q && <p className="bw-body-sm text-muted-foreground">Try another title or venue.</p>}
+            <h2 className="bw-h3">{q ? t('No matching events') : t('No pending events')}</h2>
+            {q && <p className="bw-body-sm text-muted-foreground">{t('Try another title or venue.')}</p>}
           </Card>
         ) : (
           visibleGroups.map((group, groupIndex) => (
@@ -151,10 +167,10 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                       <span className="flex-1 min-w-0 flex flex-col gap-2">
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <EventMark kind={kind} size={20} />
-                          <Tag variant={tagFor(event.status)}>{event.status}</Tag>
+                          <Tag variant={tagFor(event.status)}>{statusLabel(event.status)}</Tag>
                           {!event.contractSigned && (
                             <Tag variant="outline" icon={<AlertCircle />} className="text-destructive border-destructive">
-                              No contract
+                              {t('No contract')}
                             </Tag>
                           )}
                         </span>
@@ -164,9 +180,9 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <MapsLink pin query={event.mapQuery || event.location} className="bw-label-md">
-                        {event.location}
+                        {event.location === 'TBD' ? t('TBD') : event.location}
                       </MapsLink>
-                      <span className="bw-label-md shrink-0">{event.time || 'Time TBD'}</span>
+                      <span className="bw-label-md shrink-0">{event.time || t('Time TBD')}</span>
                     </div>
                   </Card>
                 );

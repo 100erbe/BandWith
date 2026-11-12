@@ -3370,14 +3370,14 @@ export default function AuthenticatedApp() {
             <ExpandedCardWrapper key="expanded-card-wrapper" backgroundColor="#3B82F6" onClose={() => setExpandedCard(null)} origin={{ top: "18%", left: "3%", right: "42%", bottom: "52%" }}>
               <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3">
                 <NavBackButton onClick={() => setExpandedCard(null)} variant="ghost" className="w-10 h-10 bg-white/20 text-white" icon={<ChevronLeft className="w-6 h-6 text-white" />} />
-                <h1 className="text-lg font-bold text-white">My Rehearsals</h1>
-                {isAdmin ? <HeaderAction label="New rehearsal" variant="ghost" icon={<Plus />} onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 text-white" /> : <div className="w-10" />}
+                <h1 className="text-lg font-bold text-white">{t('My Rehearsals')}</h1>
+                {isAdmin ? <HeaderAction label={t('New rehearsal')} variant="ghost" icon={<Plus />} onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="w-10 h-10 bg-white/20 text-white" /> : <div className="w-10" />}
               </div>
               <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
                 <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6"><Music className="w-10 h-10 text-white" /></div>
-                <h2 className="bw-h2 uppercase text-white mb-2">No Rehearsals</h2>
-                <p className="text-white/70 text-center mb-8">{isAdmin ? "No upcoming rehearsals. Tap + to create one!" : "No upcoming rehearsals scheduled."}</p>
-                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-white text-blue-600 px-6 py-3 rounded-full font-bold">Schedule Rehearsal</button>}
+                <h2 className="bw-h2 uppercase text-white mb-2">{t('No Rehearsals')}</h2>
+                <p className="text-white/70 text-center mb-8">{isAdmin ? t('No upcoming rehearsals. Tap + to create one!') : t('No upcoming rehearsals scheduled.')}</p>
+                {isAdmin && <button onClick={() => { setExpandedCard(null); setCreateEventType("rehearsal"); setIsCreateEventOpen(true); }} className="bg-white text-blue-600 px-6 py-3 rounded-full font-bold">{t('Schedule Rehearsal')}</button>}
               </div>
             </ExpandedCardWrapper>
           ) : null}

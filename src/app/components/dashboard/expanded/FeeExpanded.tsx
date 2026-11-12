@@ -7,6 +7,7 @@ import { DotText, EventMark, Metric } from '@/app/components/bw';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { t, useT } from '@/lib/i18n';
 
 interface FeeExpandedProps {
   onClose: () => void;
@@ -27,7 +28,7 @@ const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1).r
 
 /** "2026-11-12" → "Thu, Nov 12"; anything unparseable is shown as is. */
 const formatDay = (d: string) => {
-  if (!d) return 'Date TBD';
+  if (!d) return t('Date TBD');
   const parsed = parseLocalDate(d);
   return isNaN(parsed.getTime()) ? d : parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
@@ -60,6 +61,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
   loading = false,
   events = []
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
 
@@ -120,7 +122,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
       origin={{ top: '52%', left: '3%', right: '42%', bottom: '28%' }}
     >
       <ExpandedTopBar
-        title="My earnings"
+        title={t('My earnings')}
         onBack={onClose}
         meta={
           <Tag variant={trendUp ? 'accent' : 'outline'} icon={trendUp ? <TrendingUp /> : <TrendingDown />} className={trendUp ? undefined : 'text-destructive border-destructive'}>
@@ -143,19 +145,19 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
           <>
             {/* Metrics */}
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
-              <Metric label="Total earned" value={shortEuro(earningsData.totalEarned)} fill={earningsData.totalEarned / (48 * 100)} />
-              <Metric label="Gigs played" value={earningsData.totalGigs} fill={earningsData.totalGigs / 48} />
+              <Metric label={t('Total earned')} value={shortEuro(earningsData.totalEarned)} fill={earningsData.totalEarned / (48 * 100)} />
+              <Metric label={t('Gigs played')} value={earningsData.totalGigs} fill={earningsData.totalGigs / 48} />
             </div>
 
             {/* Earnings overview (dot columns) */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <Card className="gap-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="bw-label-md">Earnings overview</h2>
+                  <h2 className="bw-label-md">{t('Earnings overview')}</h2>
                   <div className="flex gap-1">
                     {(['month', 'quarter', 'year'] as const).map(period => (
                       <Selector key={period} selected={selectedPeriod === period} onClick={() => setSelectedPeriod(period)}>
-                        {period === 'month' ? '6M' : period === 'quarter' ? '1Y' : 'All'}
+                        {period === 'month' ? t('6M') : period === 'quarter' ? t('1Y') : t('All')}
                       </Selector>
                     ))}
                   </div>
@@ -171,7 +173,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 </div>
                 <div className="h-px bg-border" />
                 <span className="flex items-baseline justify-between gap-3">
-                  <span className="bw-body-md text-muted-foreground">Average per gig</span>
+                  <span className="bw-body-md text-muted-foreground">{t('Average per gig')}</span>
                   <span className="bw-label-md">{sym()}{earningsData.avgPerGig}</span>
                 </span>
               </Card>
@@ -180,8 +182,8 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
             {/* Upcoming payments */}
             <section className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="bw-label-md">Upcoming payments</h2>
-                <Tag variant="subtle">{upcomingPayments.length} pending</Tag>
+                <h2 className="bw-label-md">{t('Upcoming payments')}</h2>
+                <Tag variant="subtle">{t('{count} pending', { count: upcomingPayments.length })}</Tag>
               </div>
               {upcomingPayments.length > 0 ? (
                 <div className="flex flex-col gap-2">
@@ -203,17 +205,17 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 </div>
               ) : (
                 <Card className="items-center text-center py-8 gap-1">
-                  <h3 className="bw-h3">No upcoming payments</h3>
-                  <p className="bw-body-sm text-muted-foreground">Payments appear here when gigs are confirmed.</p>
+                  <h3 className="bw-h3">{t('No upcoming payments')}</h3>
+                  <p className="bw-body-sm text-muted-foreground">{t('Payments appear here when gigs are confirmed.')}</p>
                 </Card>
               )}
             </section>
 
             {/* Default fee (Figma Fee card, dark) */}
             <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-5 flex flex-col gap-2">
-              <span className="bw-label-sm">Your default fee</span>
-              <DotText text={memberFee ? `${sym()}${memberFee}` : '--'} size={32} label={memberFee ? `${sym()}${memberFee}` : 'Not set'} />
-              <span className="bw-body-sm text-sheet-foreground/70">per event</span>
+              <span className="bw-label-sm">{t('Your default fee')}</span>
+              <DotText text={memberFee ? `${sym()}${memberFee}` : '--'} size={32} label={memberFee ? `${sym()}${memberFee}` : t('Not set')} />
+              <span className="bw-body-sm text-sheet-foreground/70">{t('per event')}</span>
             </section>
           </>
         )}
