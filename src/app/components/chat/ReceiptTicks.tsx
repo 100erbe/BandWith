@@ -2,13 +2,7 @@ import React from 'react';
 import { Check, CheckCheck, Clock } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import type { ReceiptStatus } from '@/lib/services/chats';
-
-const LABEL: Record<ReceiptStatus, string> = {
-  sending: 'Sending',
-  sent: 'Sent',
-  delivered: 'Delivered',
-  read: 'Read',
-};
+import { useT } from '@/lib/i18n';
 
 /**
  * WhatsApp-style message status:
@@ -18,6 +12,13 @@ export const ReceiptTicks: React.FC<{ status: ReceiptStatus; className?: string 
   status,
   className,
 }) => {
+  const t = useT();
+  const LABEL: Record<ReceiptStatus, string> = {
+    sending: t('Sending'),
+    sent: t('Sent'),
+    delivered: t('Delivered'),
+    read: t('Read'),
+  };
   const base = cn('shrink-0', className);
   if (status === 'sending') return <Clock aria-label={LABEL.sending} className={cn(base, 'text-muted-foreground')} />;
   if (status === 'sent') return <Check aria-label={LABEL.sent} className={cn(base, 'text-muted-foreground')} />;

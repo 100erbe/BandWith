@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, Trash2 } from '@/app/components/icons';
 import { RailCover } from '@/lib/railActions';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 /**
  * Bottom-sheet confirmation for removing a chat from the list. Lives at the
@@ -19,7 +20,8 @@ export const DeleteChatSheet: React.FC<{
   title?: string;
   body?: string;
   confirmLabel?: string;
-}> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel = 'Delete' }) => {
+}> = ({ open, chatName, deleting, onCancel, onConfirm, title, body, confirmLabel }) => {
+  const t = useT();
   const drag = useSheetDrag(onCancel);
   useEffect(() => {
     if (!open) return;
@@ -59,13 +61,13 @@ export const DeleteChatSheet: React.FC<{
             <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
             <div className="flex flex-col gap-1">
               <span id="delete-chat-title" className="bw-label-md [overflow-wrap:anywhere]">
-                {title ?? (chatName ? `Delete chat with ${chatName}?` : 'Delete this chat?')}
+                {title ?? (chatName ? t('Delete chat with {name}?', { name: chatName }) : t('Delete this chat?'))}
               </span>
               <span className="bw-body-sm text-sheet-foreground/70">
                 {body ??
                   (chatName
-                    ? 'Every message is deleted for good, for both of you. This can\'t be undone.'
-                    : 'Your messages are deleted for good and the chat leaves your list. It can\'t be undone.')}
+                    ? t('Every message is deleted for good, for both of you. This can\'t be undone.')
+                    : t('Your messages are deleted for good and the chat leaves your list. It can\'t be undone.'))}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -74,7 +76,7 @@ export const DeleteChatSheet: React.FC<{
                 onClick={onCancel}
                 className="min-h-12 rounded-full border border-sheet-foreground/25 bw-button-sm"
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button
                 type="button"
@@ -83,7 +85,7 @@ export const DeleteChatSheet: React.FC<{
                 className="flex items-center justify-center gap-2 min-h-12 rounded-full bg-destructive-solid text-white bw-button-sm disabled:opacity-60"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Trash2 className="w-4 h-4" aria-hidden />}
-                {confirmLabel}
+                {confirmLabel ?? t('Delete')}
               </button>
             </div>
           </motion.div>

@@ -29,6 +29,7 @@ import { setActiveChat } from '@/lib/services/activeChatTracker';
 import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
 import { Capacitor } from '@capacitor/core';
+import { useT } from '@/lib/i18n';
 
 /**
  * Chat keyboard: it stays up while you read and tap around the chat. It
@@ -101,6 +102,7 @@ const renderMessageContent = (content: string, isMe: boolean) => {
 
 export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose }) => {
   const { user } = useAuth();
+  const t = useT();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const swipeStartY = useRef<number | null>(null);
@@ -309,7 +311,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
               if (!hasAdmin) {
                 permitted = false;
-                reason = 'Direct messaging is only available with band admins.';
+                reason = t('Direct messaging is only available with band admins.');
               }
             }
           } else if (fullChat.type === 'band' && fullChat.band_id) {
@@ -323,7 +325,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 
             if (!bm) {
               permitted = false;
-              reason = 'You can only message in bands you are an active member of.';
+              reason = t('You can only message in bands you are an active member of.');
             }
           } else if (fullChat.type === 'event' && fullChat.event_id) {
             let hasAccess = false;
@@ -348,7 +350,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
             }
             if (!hasAccess) {
               permitted = false;
-              reason = 'You can only message in events you are participating in.';
+              reason = t('You can only message in events you are participating in.');
             }
           }
 
@@ -424,7 +426,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       created_at: new Date().toISOString(),
       reply_to_id: replyToMessage?.id,
       reply_to: replyToMessage || undefined,
-      sender: { id: user?.id || '', full_name: 'You' }
+      sender: { id: user?.id || '', full_name: t('You') }
     };
     setMessages(prev => [...prev, optimisticMessage]);
     
@@ -452,8 +454,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    if (date.toDateString() === today.toDateString()) return t('Today');
+    if (date.toDateString() === yesterday.toDateString()) return t('Yesterday');
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -473,7 +475,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
   };
 
   const messageGroups = groupMessagesByDate(messages);
-  const chatTypeLabel = chat.type === 'direct' ? 'DM' : chat.type === 'band' ? 'BAND' : 'EVENT';
+  const chatTypeLabel = chat.type === 'direct' ? t('DM') : chat.type === 'band' ? t('BAND') : t('EVENT');
   // Group chats: "N members · N online". Online comes from realtime presence and is
   // only shown once presence has synced (our own id is tracked) and participants are loaded.
   const memberCount = chatParticipants.length > 0 ? chatParticipants.length + 1 : chat.members;
@@ -490,7 +492,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
       : !!chat.isOnline;
   const eventKind = eventKindOf({ eventType: chat.eventType });
   const EventIcon = EVENT_ICON[eventKind];
-  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? 'Member' : chat.type === 'band' ? 'Band Chat' : 'Event Chat'));
+  const displayTitle = toTitleCase(chatName || (chat.name && chat.name !== 'New Chat' ? chat.name : '') || (chat.type === 'direct' ? t('Member') : chat.type === 'band' ? t('Band Chat') : t('Event Chat')));
 
   return (
     <motion.div
@@ -557,24 +559,24 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 isOtherOnline ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-success inline-block shrink-0" />
-                    Online
+                    {t('Online')}
                   </>
                 ) : (
-                  'Offline'
+                  t('Offline')
                 )
               ) : memberCount ? (
-                `${memberCount} ${memberCount === 1 ? 'member' : 'members'}${onlineCount !== null ? ` · ${onlineCount} online` : ''}`
+                `${memberCount === 1 ? t('{count} member', { count: memberCount }) : t('{count} members', { count: memberCount })}${onlineCount !== null ? ` · ${t('{count} online', { count: onlineCount })}` : ''}`
               ) : chat.type === 'band' ? (
-                'Band chat'
+                t('Band chat')
               ) : (
-                'Event chat'
+                t('Event chat')
               )}
               {chat.bandLabel && <span className="truncate">· {chat.bandLabel}</span>}
             </p>
           </div>
         </div>
 
-        <HeaderAction pane label="Delete chat" variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
+        <HeaderAction pane label={t('Delete chat')} variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
       </div>
 
       <DeleteChatSheet
@@ -626,9 +628,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <h4 className="bw-h3 text-foreground">No messages yet</h4>
+              <h4 className="bw-h3 text-foreground">{t('No messages yet')}</h4>
               <p className="bw-label-sm text-muted-foreground">
-                Start the conversation
+                {t('Start the conversation')}
               </p>
             </div>
           </div>
@@ -649,7 +651,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                     <button
                       type="button"
                       onClick={() => handleReply(message)}
-                      aria-label="Reply to message"
+                      aria-label={t('Reply to message')}
                       className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-8 h-8 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground flex items-center justify-center transition-opacity active:scale-90 self-center shrink-0 cursor-pointer"
                     >
                       <Reply className="w-3.5 h-3.5" />
@@ -673,8 +675,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       )}>
                         {!isMe && (chat.type === 'band' || chat.type === 'event') && (
                           <p className="bw-label-xs text-muted-foreground">
-                            {personName(message.sender)}
-                            {bandAdminIds.has(message.sender_id) ? ' · Admin' : ''}
+                            {personName(message.sender, t('Member'))}
+                            {bandAdminIds.has(message.sender_id) ? ' · ' + t('Admin') : ''}
                           </p>
                         )}
 
@@ -687,7 +689,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                           {replyTo && message.reply_to_id && replyTo.content && (
                             <div className="flex flex-col gap-1 px-3 py-2 rounded-[20px] bg-black text-white min-w-0">
                               <p className="bw-label-xs text-accent truncate">
-                                {personName(replyTo.sender, 'Unknown')}
+                                {personName(replyTo.sender, t('Unknown'))}
                               </p>
                               <p className="bw-body-sm text-white line-clamp-1">
                                 {replyTo.content}
@@ -731,7 +733,7 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
           <div className="px-4 pt-3 flex items-center justify-center">
             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-card text-muted-foreground">
               <Lock className="w-3.5 h-3.5 shrink-0" />
-              <span className="bw-label-xs">{restrictionReason || 'Messaging is restricted'}</span>
+              <span className="bw-label-xs">{restrictionReason || t('Messaging is restricted')}</span>
             </div>
           </div>
         ) : (
@@ -749,11 +751,11 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                     <span className="w-[3px] h-7 rounded-full bg-accent shrink-0" aria-hidden="true" />
                     <div className="flex-1 min-w-0 flex flex-col">
                       <span className="bw-label-sm text-foreground truncate">
-                        Replying to {personName(replyingTo.sender, 'Message')}
+                        {t('Replying to {name}', { name: personName(replyingTo.sender, t('Message')) })}
                       </span>
                       <p className="bw-body-sm text-muted-foreground line-clamp-1">{replyingTo.content}</p>
                     </div>
-                    <IconButton label="Cancel reply" variant="ghost" size="sm" icon={<X />} onClick={() => setReplyingTo(null)} className="-mr-2 text-muted-foreground" />
+                    <IconButton label={t('Cancel reply')} variant="ghost" size="sm" icon={<X />} onClick={() => setReplyingTo(null)} className="-mr-2 text-muted-foreground" />
                   </div>
                 </motion.div>
               )}
@@ -801,14 +803,14 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                       insertMention(filteredParticipants[0]);
                     }
                   }}
-                  placeholder={replyingTo ? "Write a reply…" : "Write a message…"}
-                  aria-label="Message"
+                  placeholder={replyingTo ? t('Write a reply…') : t('Write a message…')}
+                  aria-label={t('Message')}
                   className="w-full h-12 px-4 rounded-full bg-field text-foreground bw-body-md placeholder:text-muted-foreground/60 border border-border focus:border-2 focus:border-foreground focus:outline-none transition-colors"
                 />
               </div>
               
               <IconButton
-                label="Send message"
+                label={t('Send message')}
                 variant="filled"
                 onClick={handleSend}
                 // A tap used to blur the input first: the keyboard closed, the
@@ -818,9 +820,9 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
                 onMouseDown={(e) => e.preventDefault()}
                 onTouchEnd={(e) => {
                   e.preventDefault();
-                  const t = e.changedTouches[0];
+                  const touch = e.changedTouches[0];
                   const r = e.currentTarget.getBoundingClientRect();
-                  if (t && t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
+                  if (touch && touch.clientX >= r.left && touch.clientX <= r.right && touch.clientY >= r.top && touch.clientY <= r.bottom) {
                     void handleSend();
                   }
                 }}
