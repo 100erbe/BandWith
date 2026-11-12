@@ -17,6 +17,7 @@ import type { BandWithMembers } from '@/lib/services/bands';
 import type { Event } from '@/lib/services/events';
 import { personName, personFirstName, personInitials } from '@/lib/personName';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -41,6 +42,7 @@ interface EventWithBand extends Event {
 type ChatTypeOption = 'direct' | 'band' | 'event';
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreated }) => {
+  const t = useT();
   const drag = useSheetDrag(onClose);
   const [chatType, setChatType] = useState<ChatTypeOption>('direct');
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +124,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         }
       } catch (err) {
         console.error('Error loading data:', err);
-        setError('Failed to load data');
+        setError(t('Failed to load data'));
       }
       
       setIsLoading(false);
@@ -244,7 +246,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to create chat');
+      setError(err.message || t('Failed to create chat'));
     }
 
     setCreating(false);
@@ -300,21 +302,21 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           <div className="w-10 h-[5px] rounded-[3px] bg-foreground/85" aria-hidden="true" />
           <div className="flex items-center gap-3 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-              <span className="bw-label-sm text-foreground/85">Start chat</span>
-              <h2 id="new-chat-title" className="bw-h1 text-foreground">New chat</h2>
+              <span className="bw-label-sm text-foreground/85">{t('Start chat')}</span>
+              <h2 id="new-chat-title" className="bw-h1 text-foreground">{t('New chat')}</h2>
             </div>
             <RailSheet onClose={onClose} />
-            <IconButton label="Close" variant="sheet" size="sm" icon={<X />} onClick={onClose} />
+            <IconButton label={t('Close')} variant="sheet" size="sm" icon={<X />} onClick={onClose} />
           </div>
         </div>
 
         <div className="flex flex-col gap-3 px-5 pt-4 min-h-0 flex-1">
           {/* Type selector */}
-          <div className="flex gap-2 shrink-0" role="tablist" aria-label="Chat type">
+          <div className="flex gap-2 shrink-0" role="tablist" aria-label={t('Chat type')}>
             {[
-              { type: 'direct' as const, label: 'DIRECT' },
-              { type: 'band' as const, label: 'BAND' },
-              { type: 'event' as const, label: 'EVENT' },
+              { type: 'direct' as const, label: t('DIRECT') },
+              { type: 'band' as const, label: t('BAND') },
+              { type: 'event' as const, label: t('EVENT') },
             ].map(({ type, label }) => (
               <button
                 key={type}
@@ -347,12 +349,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search"
+              aria-label={t('Search')}
               placeholder={
                 chatType === 'direct' 
-                  ? (canMessageAnyMember ? 'Search members…' : 'Search admins…') 
-                  : chatType === 'band' ? 'Search bands…' :
-                  'Search events…'
+                  ? (canMessageAnyMember ? t('Search members…') : t('Search admins…')) 
+                  : chatType === 'band' ? t('Search bands…') :
+                  t('Search events…')
               }
               className="w-full min-w-0 h-full bg-transparent bw-body-md text-foreground placeholder:text-foreground/70 focus:outline-none"
             />
@@ -397,7 +399,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                             </span>
                             {band.user_role !== 'admin' && (
                               <span className="bw-label-xs text-foreground/85 shrink-0">
-                                Admins
+                                {t('Admins')}
                               </span>
                             )}
                           </div>
@@ -433,11 +435,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                                       {personName(member, '')}
                                     </p>
                                     <p className="bw-body-sm text-foreground/85 truncate">
-                                      {member.instrument || member.role || 'Member'}
+                                      {member.instrument || member.role || t('Member')}
                                     </p>
                                   </div>
                                   {member.role === 'admin' && (
-                                    <Tag variant="accent">Admin</Tag>
+                                    <Tag variant="accent">{t('Admin')}</Tag>
                                   )}
                                 </motion.button>
                               );
@@ -449,12 +451,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                     
                     {filteredMembers.length === 0 ? (
                       <div className="text-center py-12 flex flex-col items-center gap-1.5">
-                        <p className="bw-label-md text-foreground/85">NO ADMINS AVAILABLE</p>
-                        <p className="bw-body-sm text-foreground/60">Direct messaging is restricted to band admins.</p>
+                        <p className="bw-label-md text-foreground/85">{t('NO ADMINS AVAILABLE')}</p>
+                        <p className="bw-body-sm text-foreground/60">{t('Direct messaging is restricted to band admins.')}</p>
                       </div>
                     ) : !canMessageAnyMember && (
                       <p className="bw-body-sm text-foreground/85">
-                        Direct messages are limited to band admins.
+                        {t('Direct messages are limited to band admins.')}
                       </p>
                     )}
                   </div>
@@ -484,7 +486,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                               {band.name}
                             </p>
                             <p className="bw-body-sm text-foreground/85">
-                              {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                              {memberCount === 1 ? t('{count} member', { count: memberCount }) : t('{count} members', { count: memberCount })}
                             </p>
                           </div>
                         </motion.button>
@@ -493,7 +495,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                     {filteredBands.length === 0 && (
                       <div className="text-center py-12">
-                        <p className="bw-label-md text-foreground/85">NO BANDS FOUND</p>
+                        <p className="bw-label-md text-foreground/85">{t('NO BANDS FOUND')}</p>
                       </div>
                     )}
                   </div>
@@ -530,7 +532,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
                             </p>
                           </div>
                           <Tag variant="subtle" className="bg-foreground/[0.12]">
-                            {event.event_type === 'rehearsal' ? 'Rehearsal' : 'Gig'}
+                            {event.event_type === 'rehearsal' ? t('Rehearsal') : t('Gig')}
                           </Tag>
                         </motion.button>
                       );
@@ -538,8 +540,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
 
                     {filteredEvents.length === 0 && (
                       <div className="text-center py-12 flex flex-col items-center gap-1.5">
-                        <p className="bw-label-md text-foreground/85">NO EVENTS FOUND</p>
-                        <p className="bw-body-sm text-foreground/60">You can only chat in events you are participating in.</p>
+                        <p className="bw-label-md text-foreground/85">{t('NO EVENTS FOUND')}</p>
+                        <p className="bw-body-sm text-foreground/60">{t('You can only chat in events you are participating in.')}</p>
                       </div>
                     )}
                   </div>
@@ -559,12 +561,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
             >
               <span>
                 {chatType === 'direct' && selectedMember
-                  ? `Message ${personFirstName(selectedMember, 'User')}`
+                  ? t('Message {name}', { name: personFirstName(selectedMember, t('User')) })
                   : chatType === 'band' && selectedBandChat
-                  ? `Open ${selectedBandChat.name} chat`
+                  ? t('Open {name} chat', { name: selectedBandChat.name })
                   : chatType === 'event' && selectedEvent
-                  ? `Open ${selectedEvent.title} chat`
-                  : 'Select to continue'}
+                  ? t('Open {name} chat', { name: selectedEvent.title })
+                  : t('Select to continue')}
               </span>
             </PillButton>
           </div>

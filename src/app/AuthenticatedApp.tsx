@@ -137,6 +137,7 @@ import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 import { personName, personFirstName, personInitials } from "@/lib/personName";
+import { t, useLocale } from "@/lib/i18n";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
 
@@ -200,6 +201,8 @@ const eventToEventItem = (event: Event): EventItem => {
 
 export default function AuthenticatedApp() {
   const { isAuthenticated, user, profile, userMode } = useAuth();
+  // Chat list labels below are built with t(); rebuild them when the language changes.
+  const locale = useLocale();
   const {
     selectedBand: realBand,
     bands: realBands,
@@ -1294,13 +1297,13 @@ export default function AuthenticatedApp() {
         const otherWithAvatar = others.find((p) => (p as any).profile?.avatar_url);
         avatarUrl = (otherWithAvatar as any)?.profile?.avatar_url || undefined;
       } else if (type === "band") {
-        displayName = currentBandName || (chat.name && chat.name !== "New Chat" ? chat.name : "Band Chat");
+        displayName = currentBandName || (chat.name && chat.name !== "New Chat" ? chat.name : t("Band Chat"));
         avatarUrl = currentBandLogo || (chat as any).logo_url || (chat as any).avatar_url || undefined;
       } else if (type === "event") {
-        displayName = (chat.name && chat.name !== "New Chat") ? chat.name : "Event Chat";
+        displayName = (chat.name && chat.name !== "New Chat") ? chat.name : t("Event Chat");
       }
       if (!displayName || displayName === "New Chat") {
-        displayName = "Chat";
+        displayName = t("Chat");
       }
       const initials = displayName
         .split(" ")
@@ -1316,12 +1319,12 @@ export default function AuthenticatedApp() {
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      let timeStr = "now";
+      let timeStr = t("now");
       if (diffDays > 7) timeStr = lastTime.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       else if (diffDays > 1) timeStr = lastTime.toLocaleDateString("en-US", { weekday: "short" });
-      else if (diffDays === 1) timeStr = "Yesterday";
+      else if (diffDays === 1) timeStr = t("Yesterday");
       else if (diffHours > 0) timeStr = lastTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-      else if (diffMins > 0) timeStr = `${diffMins}m`;
+      else if (diffMins > 0) timeStr = t("{count}m", { count: diffMins });
 
       const bandName = currentBandName || "";
       let subtitle = "";
@@ -1333,10 +1336,10 @@ export default function AuthenticatedApp() {
 
       let senderName = "";
       if ((type === "band" || type === "event") && chat.last_message?.sender) {
-        senderName = chat.last_message.sender.id !== user?.id ? personFirstName(chat.last_message.sender, "Someone") : "You";
+        senderName = chat.last_message.sender.id !== user?.id ? personFirstName(chat.last_message.sender, t("Someone")) : t("You");
       }
 
-      let lastMessageDisplay = chat.last_message?.content || "No messages yet";
+      let lastMessageDisplay = chat.last_message?.content || t("No messages yet");
       if (senderName && chat.last_message?.content) lastMessageDisplay = `${senderName}: ${chat.last_message.content}`;
 
       let eventDateStr = "";
@@ -1390,7 +1393,7 @@ export default function AuthenticatedApp() {
         lastMessageStatus,
       };
     }) as ChatItem[];
-  }, [realChats, realBand?.name, realBand?.logo_url, realBands, user?.id, onlineUserIds]);
+  }, [realChats, realBand?.name, realBand?.logo_url, realBands, user?.id, onlineUserIds, locale]);
 
   const filteredChats = useMemo(() => {
     return convertedChats

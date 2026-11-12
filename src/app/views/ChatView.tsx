@@ -22,6 +22,7 @@ import { ChatItem, ChatFilterType, toTitleCase } from '@/app/data/chats';
 import { searchChatsAndMessages, SearchResult } from '@/lib/services/chats';
 import { useRailSearch } from '@/lib/railActions';
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
+import { useT } from '@/lib/i18n';
 
 interface ChatViewProps {
   chatFilter: ChatFilterType;
@@ -58,6 +59,7 @@ const EVENT_ICON: Record<EventKind, React.ComponentType<{ className?: string }>>
  * with an online dot.
  */
 const ChatAvatar: React.FC<{ chat: ChatItem }> = ({ chat }) => {
+  const t = useT();
   if (chat.type === 'event') {
     const kind = eventKindOf({ eventType: chat.eventType });
     const Icon = EVENT_ICON[kind];
@@ -96,7 +98,7 @@ const ChatAvatar: React.FC<{ chat: ChatItem }> = ({ chat }) => {
       {chat.isOnline && (
         <span
           className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-success ring-2 ring-background"
-          aria-label="Online"
+          aria-label={t('Online')}
         />
       )}
     </div>
@@ -114,6 +116,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onStartChat,
   onDeleteChat,
 }) => {
+  const t = useT();
   const [openRowId, setOpenRowId] = useState<ChatItem['id'] | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChatItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -137,8 +140,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // iPhone Duo: the chat search lives in the side rail (Figma "Duo/Rail Search Field").
   const searchInRail = useRailSearch({
-    label: 'Search chats',
-    placeholder: 'Search chats…',
+    label: t('Search chats'),
+    placeholder: t('Search chats…'),
     base: true,
     value: chatSearch,
     busy: isSearching,
@@ -187,15 +190,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setShowSearchResults(false);
   };
   
+  // Pill labels, translated at render (FILTERS keeps the logic keys).
+  const filterLabels: Record<ChatFilterType, string> = {
+    all: t('ALL'),
+    direct: t('DIRECT'),
+    band: t('BANDS'),
+    event: t('EVENTS'),
+  };
+
   const formatResultDate = (dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
+    if (days === 0) return t('Today');
+    if (days === 1) return t('Yesterday');
+    if (days < 7) return t('{count}d ago', { count: days });
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -210,7 +221,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       className="flex flex-col gap-3 relative z-10 min-h-[50vh]"
     >
       {/* ═══ FILTER SELECTORS ═══ */}
-      <div className="flex gap-1.5 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4" role="tablist" aria-label="Chat filters">
+      <div className="flex gap-1.5 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4" role="tablist" aria-label={t('Chat filters')}>
         {FILTERS.map(({ key, label }) => {
           const count = unreadCounts[key];
           const isActive = chatFilter === key;
@@ -228,7 +239,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   : "border border-foreground/25 text-foreground"
               )}
             >
-              <span>{label}</span>
+              <span>{filterLabels[key] ?? label}</span>
               {count > 0 && (
                 <span className="opacity-60">{count > 99 ? '99+' : count}</span>
               )}
@@ -248,8 +259,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
             )}
             <input 
               type="text" 
-              placeholder="Search chats…"
-              aria-label="Search chats"
+              placeholder={t('Search chats…')}
+              aria-label={t('Search chats')}
               value={chatSearch}
               onChange={(e) => setChatSearch(e.target.value)}
               onFocus={() => chatSearch.length >= 2 && setShowSearchResults(true)}
@@ -262,7 +273,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   setChatSearch('');
                   setShowSearchResults(false);
                 }}
-                aria-label="Clear search"
+                aria-label={t('Clear search')}
                 className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center hover:bg-foreground/10 shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
@@ -287,7 +298,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 return (
                   <div key={type}>
                     <div className="px-4 pt-2 pb-1 bg-card bw-label-xs text-muted-foreground sticky top-0">
-                      {type === 'chat' ? 'CHATS' : type === 'participant' ? 'PEOPLE' : 'MESSAGES'}
+                      {type === 'chat' ? t('CHATS') : type === 'participant' ? t('PEOPLE') : t('MESSAGES')}
                     </div>
                     {typeResults.map((result, i) => (
                       <button
@@ -332,7 +343,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                           )}
                           {result.type === 'participant' && (
                             <p className="bw-body-sm text-muted-foreground truncate">
-                              in {result.chat_name}
+                              {t('in {chat}', { chat: result.chat_name ?? '' })}
                             </p>
                           )}
                         </div>
@@ -367,7 +378,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     onChatClick?.(chat);
                   }
                 }}
-                aria-label={`${displayName}${hasUnread ? `, ${chat.unread} unread` : ''}`}
+                aria-label={hasUnread ? t('{name}, {count} unread', { name: displayName, count: chat.unread }) : displayName}
                 className="py-3 cursor-pointer active:scale-[0.99] transition-transform flex items-center gap-3"
               >
                 <ChatAvatar chat={chat} />
@@ -377,7 +388,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="bw-label-md text-foreground truncate">
                       {displayName}
-                      {chat.type === 'band' && <span> · Band</span>}
+                      {chat.type === 'band' && <span> · {t('Band')}</span>}
                       {chat.bandLabel && (
                         <span className="text-muted-foreground"> · {chat.bandLabel}</span>
                       )}
@@ -386,7 +397,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       "bw-label-sm whitespace-nowrap shrink-0",
                       hasUnread ? "text-foreground" : "text-muted-foreground"
                     )}>
-                      {chat.time || 'now'}
+                      {chat.time || t('now')}
                     </span>
                   </div>
 
@@ -396,7 +407,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       "bw-body-sm flex-1 min-w-0",
                       hasUnread ? "text-foreground line-clamp-2" : "text-muted-foreground truncate"
                     )}>
-                      {chat.lastMessage || 'No messages yet'}
+                      {chat.lastMessage || t('No messages yet')}
                     </p>
 
                     {hasUnread ? (
@@ -417,7 +428,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             return (
               <SwipeRow
                 key={chat.id}
-                deleteLabel={`Delete chat with ${displayName}`}
+                deleteLabel={t('Delete chat with {name}', { name: displayName })}
                 open={openRowId === chat.id}
                 onOpenChange={(o) => setOpenRowId(o ? chat.id : null)}
                 onDelete={() => setPendingDelete(chat)}
