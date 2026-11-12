@@ -32,6 +32,7 @@ import { ScreenHeader, IconButton, Card, Tag, BwSheet } from '@/app/components/b
 import { PillButton } from '@/app/components/bw/Form';
 import { personName } from '@/lib/personName';
 import { DeputiesSection } from '@/app/components/band/DeputiesSection';
+import { useT } from '@/lib/i18n';
 
 /** Small stat card (Figma: label + 24pt dot value). */
 const StatCard: React.FC<{ label: string; value: number; delay: number }> = ({ label, value, delay }) => (
@@ -119,6 +120,7 @@ interface SearchUser {
 }
 
 export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => {
+  const t = useT();
   const { selectedBand, isAdmin } = useBand();
   const { profile: currentProfile } = useAuth();
   const [members, setMembers] = useState<BandMember[]>([]);
@@ -164,7 +166,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
   const handleRemoveMember = (member: BandMember) => {
     setActionMenuId(null);
     if (isLastAdmin(member)) {
-      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      flashNotice(t('A band needs at least one admin. Make someone else admin first.'));
       return;
     }
     setPendingRemoval(member);
@@ -176,7 +178,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     const { error } = await removeMember(pendingRemoval.id);
     setRemoving(false);
     if (error) {
-      flashNotice(error.message || 'Could not remove the member. Try again.');
+      flashNotice(error.message || t('Could not remove the member. Try again.'));
       return;
     }
     // The database notifies the removed member and the band (migration 046).
@@ -188,12 +190,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
     setActionMenuId(null);
     const newRole = member.role === 'admin' ? 'member' : 'admin';
     if (newRole === 'member' && isLastAdmin(member)) {
-      flashNotice('A band needs at least one admin. Make someone else admin first.');
+      flashNotice(t('A band needs at least one admin. Make someone else admin first.'));
       return;
     }
     const { error } = await updateMemberRole(member.id, newRole);
     if (error) {
-      flashNotice(error.message || 'Could not change the role. Try again.');
+      flashNotice(error.message || t('Could not change the role. Try again.'));
       return;
     }
     setMembers((prev) =>
@@ -244,15 +246,15 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         inviterName: currentProfile?.full_name ?? undefined,
       });
       if (result.kind === 'existing_user') {
-        setInviteSuccess(`Invite sent to ${displayName}. They’ll see it next time they open BandWith.`);
+        setInviteSuccess(t('Invite sent to {name}. They’ll see it next time they open BandWith.', { name: displayName }));
       } else {
         // New person: keep the sheet open with the code and a Share button
         // (copying after an await is blocked on iOS, and there may be no email).
         setInviteShare({ code: result.token, url: result.inviteUrl, name: displayName });
         setInviteSuccess(
           result.emailSent
-            ? `Invite emailed to ${displayName}. You can also share it directly.`
-            : `Invite created for ${displayName}. Share it so they can join.`
+            ? t('Invite emailed to {name}. You can also share it directly.', { name: displayName })
+            : t('Invite created for {name}. Share it so they can join.', { name: displayName })
         );
         return true;
       }
@@ -264,7 +266,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       }, 2500);
       return true;
     } catch (e: any) {
-      setError(e?.message || 'We couldn’t send the invite. Try again.');
+      setError(e?.message || t('We couldn’t send the invite. Try again.'));
       return false;
     } finally {
       setInviting(false);
@@ -341,9 +343,13 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
       <ScreenHeader
         onBack={onClose}
         overline={selectedBand?.name}
-        title={<>Band<br />members</>}
+        title={(() => {
+          // Two lines: the first word, then the rest ("Band / members").
+          const [first, ...rest] = t('Band members').split(' ');
+          return rest.length ? <>{first}<br />{rest.join(' ')}</> : first;
+        })()}
         actions={
-          isAdmin ? <IconButton label="Invite member" variant="filled" icon={<Plus />} onClick={() => setShowInvite(true)} /> : undefined
+          isAdmin ? <IconButton label={t('Invite member')} variant="filled" icon={<Plus />} onClick={() => setShowInvite(true)} /> : undefined
         }
       />
 
@@ -359,23 +365,23 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
           <Card className="items-center text-center py-10 gap-4">
             <UserPlus className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">No members yet</h2>
-              <p className="bw-body-sm text-muted-foreground">Invite your bandmates to collaborate.</p>
+              <h2 className="bw-h3">{t('No members yet')}</h2>
+              <p className="bw-body-sm text-muted-foreground">{t('Invite your bandmates to collaborate.')}</p>
             </div>
           </Card>
         ) : (
           <>
             <div className="flex gap-2">
-              <StatCard label="Total" value={stats.total} delay={0.05} />
-              <StatCard label="Admins" value={stats.admins} delay={0.1} />
-              <StatCard label="Members" value={stats.members} delay={0.15} />
+              <StatCard label={t('Total')} value={stats.total} delay={0.05} />
+              <StatCard label={t('Admins')} value={stats.admins} delay={0.1} />
+              <StatCard label={t('Members')} value={stats.members} delay={0.15} />
             </div>
 
-            <ul className="flex flex-col gap-4" aria-label="All members">
+            <ul className="flex flex-col gap-4" aria-label={t('All members')}>
               {members.map((member, i) => {
-                const name = member.stage_name || personName(member.profile, 'Unknown');
+                const name = member.stage_name || personName(member.profile, t('Unknown'));
                 const open = actionMenuId === member.id;
-                const roleLabel = member.role === 'admin' ? 'Admin' : member.role === 'member' ? 'Member' : member.role;
+                const roleLabel = member.role === 'admin' ? t('Admin') : member.role === 'member' ? t('Member') : member.role;
                 return (
                   <motion.li
                     key={member.id}
@@ -406,7 +412,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         </span>
                       </div>
                       <IconButton
-                        label={`Actions for ${name}`}
+                        label={t('Actions for {name}', { name })}
                         variant="ghost"
                         size="sm"
                         icon={<MoreHorizontal />}
@@ -426,18 +432,18 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                         >
                           <div className="dark mt-4 p-2 rounded-[24px] bg-sheet text-sheet-foreground flex flex-col gap-1" role="menu">
                             {member.profile?.email && (
-                              <MenuRow icon={<Mail />} label="Email" onClick={() => handleEmailMember(member.profile!.email)} />
+                              <MenuRow icon={<Mail />} label={t('Email')} onClick={() => handleEmailMember(member.profile!.email)} />
                             )}
                             {isAdmin && (
                               <>
                                 {member.role === 'admin' ? (
-                                  <MenuRow icon={<UserCog />} label="Make member" onClick={() => handleToggleRole(member)} />
+                                  <MenuRow icon={<UserCog />} label={t('Make member')} onClick={() => handleToggleRole(member)} />
                                 ) : canBeAdmin(member) ? (
-                                  <MenuRow icon={<Crown />} label="Make admin" onClick={() => handleToggleRole(member)} />
+                                  <MenuRow icon={<Crown />} label={t('Make admin')} onClick={() => handleToggleRole(member)} />
                                 ) : (
-                                  <MenuRow icon={<Crown />} label="Make admin" hint="Requires a Pro account to co-manage" disabled />
+                                  <MenuRow icon={<Crown />} label={t('Make admin')} hint={t('Requires a Pro account to co-manage')} disabled />
                                 )}
-                                <MenuRow icon={<Trash2 />} label="Remove from band" danger onClick={() => handleRemoveMember(member)} />
+                                <MenuRow icon={<Trash2 />} label={t('Remove from band')} danger onClick={() => handleRemoveMember(member)} />
                               </>
                             )}
                           </div>
@@ -458,7 +464,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         <div className="sticky bottom-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
           <div className="max-w-2xl mx-auto w-full">
             <PillButton icon={<Plus className="w-[18px] h-[18px]" />} onClick={() => setShowInvite(true)}>
-              {members.length === 0 ? 'Invite first member' : 'Invite member'}
+              {members.length === 0 ? t('Invite first member') : t('Invite member')}
             </PillButton>
           </div>
         </div>
@@ -469,35 +475,35 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
         open={!!pendingRemoval}
         onClose={() => !removing && setPendingRemoval(null)}
         overline={selectedBand?.name}
-        title="Remove from band?"
+        title={t('Remove from band?')}
         zIndex={102}
         footer={
           <div className="grid grid-cols-2 gap-2">
             <PillButton variant="outline" onClick={() => setPendingRemoval(null)} disabled={removing}>
-              Cancel
+              {t('Cancel')}
             </PillButton>
             <PillButton variant="danger" loading={removing} icon={<Trash2 className="w-4 h-4" />} onClick={confirmRemoveMember}>
-              Remove
+              {t('Remove')}
             </PillButton>
           </div>
         }
       >
         <p className="bw-body-md text-sheet-foreground/80">
-          {personName(pendingRemoval?.profile, 'This member')} loses access to the band's events, chats and repertoire. You can invite them again later.
+          {t("{name} loses access to the band's events, chats and repertoire. You can invite them again later.", { name: personName(pendingRemoval?.profile, t('This member')) })}
         </p>
       </BwSheet>
 
-      <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title="Invite member" zIndex={102}>
+      <BwSheet open={showInvite} onClose={closeInvite} overline={selectedBand?.name} title={t('Invite member')} zIndex={102}>
         <div className="dark flex flex-col gap-3 text-sheet-foreground">
           {/* Search (white pill) */}
           <label className="flex items-center gap-3 h-12 px-4 rounded-full bg-white text-black">
-            <span className="sr-only">Search BandWith users</span>
+            <span className="sr-only">{t('Search BandWith users')}</span>
             <Search className="w-[18px] h-[18px] shrink-0" aria-hidden />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Name or email address…"
+              placeholder={t('Name or email address…')}
               autoComplete="off"
               className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg placeholder:text-black/40"
             />
@@ -505,7 +511,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
               <Loader2 className="w-[18px] h-[18px] shrink-0 animate-spin text-black/50" />
             ) : (
               searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear search" className="-m-2 p-2 shrink-0 text-black/50">
+                <button type="button" onClick={() => setSearchQuery('')} aria-label={t('Clear search')} className="-m-2 p-2 shrink-0 text-black/50">
                   <X className="w-4 h-4" />
                 </button>
               )
@@ -522,7 +528,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
           {/* Results */}
           {searchResults.length > 0 && (
             <section className="flex flex-col gap-3">
-              <h3 className="bw-label-sm text-sheet-foreground/70">Found in BandWith</h3>
+              <h3 className="bw-label-sm text-sheet-foreground/70">{t('Found in BandWith')}</h3>
               {searchResults.map((user) => (
                 <motion.div
                   key={user.id}
@@ -532,11 +538,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 >
                   <Avatar src={user.avatar_url} alt={user.full_name || user.email} initials={userInitials(user)} />
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <span className="bw-label-md truncate">{user.full_name || 'No name'}</span>
+                    <span className="bw-label-md truncate">{user.full_name || t('No name')}</span>
                     <span className="bw-body-sm text-sheet-foreground/70 truncate">{user.email}</span>
                   </div>
-                  <PillButton size="sm" fullWidth={false} onClick={() => handleAddUser(user)} disabled={inviting} aria-label={`Invite ${user.full_name || user.email}`}>
-                    Invite
+                  <PillButton size="sm" fullWidth={false} onClick={() => handleAddUser(user)} disabled={inviting} aria-label={t('Invite {name}', { name: user.full_name || user.email })}>
+                    {t('Invite', { context: 'verb' })}
                   </PillButton>
                 </motion.div>
               ))}
@@ -548,7 +554,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <UserPlus className="w-8 h-8 text-sheet-foreground/50" />
               <p className="bw-body-sm text-sheet-foreground/70">
-                {searchQuery.includes('@') ? 'User not found. Send them an invitation?' : 'No users found. Enter an email to invite.'}
+                {searchQuery.includes('@') ? t('User not found. Send them an invitation?') : t('No users found. Enter an email to invite.')}
               </p>
               {searchQuery.includes('@') && (
                 <PillButton
@@ -559,7 +565,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   onClick={handleInviteByEmail}
                   className="max-w-full [&>span]:min-w-0 [&>span]:truncate"
                 >
-                  Invite {searchQuery}
+                  {t('Invite {name}', { name: searchQuery })}
                 </PillButton>
               )}
             </div>
@@ -567,12 +573,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
 
           {/* Role */}
           <section className="flex flex-col gap-3">
-            <h3 className="bw-label-sm text-sheet-foreground/70">Role</h3>
+            <h3 className="bw-label-sm text-sheet-foreground/70">{t('Role')}</h3>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
-                  { value: 'member', label: 'Member', desc: 'Can view band content' },
-                  { value: 'admin', label: 'Admin', desc: 'Manage members, events & settings' },
+                  { value: 'member', label: t('Member'), desc: t('Can view band content') },
+                  { value: 'admin', label: t('Admin'), desc: t('Manage members, events & settings') },
                 ] as const
               ).map((role) => {
                 const selected = inviteRole === role.value;
@@ -603,10 +609,12 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
           )}
           {inviteShare && (
             <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
-              <span className="bw-label-sm text-sheet-foreground/70">Invite code</span>
+              <span className="bw-label-sm text-sheet-foreground/70">{t('Invite code')}</span>
               <span className="bw-body-sm font-mono select-all [overflow-wrap:anywhere]">{inviteShare.code}</span>
               <span className="bw-body-sm text-sheet-foreground/70">
-                They install BandWith, sign up and paste this code{inviteShare.url ? ', or open the link' : ''}.
+                {inviteShare.url
+                  ? t('They install BandWith, sign up and paste this code, or open the link.')
+                  : t('They install BandWith, sign up and paste this code.')}
               </span>
               <div className="grid grid-cols-2 gap-2">
                 <PillButton
@@ -615,11 +623,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                   onClick={() => {
                     navigator.clipboard?.writeText(inviteShare.code).then(
                       () => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); },
-                      () => setError('Could not copy. Use Share instead.')
+                      () => setError(t('Could not copy. Use Share instead.'))
                     );
                   }}
                 >
-                  {codeCopied ? 'Copied' : 'Copy code'}
+                  {codeCopied ? t('Copied') : t('Copy code')}
                 </PillButton>
                 <PillButton
                   onClick={async () => {
@@ -643,7 +651,7 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                     }
                   }}
                 >
-                  Share invite
+                  {t('Share invite')}
                 </PillButton>
               </div>
             </div>

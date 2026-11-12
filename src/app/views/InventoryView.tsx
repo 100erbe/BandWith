@@ -14,6 +14,7 @@ import {
   type InventoryInput,
   type InventoryItem,
 } from '@/lib/services/inventory';
+import { useT } from '@/lib/i18n';
 
 interface InventoryViewProps {
   onBack: () => void;
@@ -82,6 +83,7 @@ const formFromItem = (item: InventoryItem): InventoryInput => ({
 });
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) => {
+  const t = useT();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -98,6 +100,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isNew = editing === 'new';
+  // Display labels only; category ids and status values stay English (stored in the DB).
+  const categoryLabel: Record<string, string> = {
+    All: t('All'),
+    Instruments: t('Instruments'),
+    Cables: t('Cables'),
+    Microphones: t('Microphones'),
+    Stands: t('Stands'),
+    Lighting: t('Lighting'),
+    Cases: t('Cases'),
+    Other: t('Other'),
+  };
+  const statusLabel: Record<string, string> = {
+    available: t('Available'),
+    in_use: t('In use'),
+    maintenance: t('Maintenance'),
+    lost: t('Lost'),
+  };
   const set = <K extends keyof InventoryInput>(key: K, value: InventoryInput[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const fetchItems = useCallback(async () => {
@@ -138,7 +157,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
     const { data, error } = isNew ? await createInventoryItem(bandId, form) : await updateInventoryItem((editing as InventoryItem).id, form);
     setSaving(false);
     if (error || !data) {
-      setFormError(error?.message || 'Could not save the item.');
+      setFormError(error?.message || t('Could not save the item.'));
       return;
     }
     setItems((prev) => {
@@ -170,7 +189,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
     const { error } = await deleteInventoryItem(item.id);
     setDeletingId(null);
     if (error) {
-      setListError(`Couldn't delete ${item.name}. ${error.message}`);
+      setListError(t("Couldn't delete {name}. {error}", { name: item.name, error: error.message }));
       return;
     }
     setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -205,14 +224,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
       <ScreenHeader
         sticky
         onBack={onBack}
-        backLabel="Go back"
-        overline="Equipment & assets"
-        title="Gear & inventory"
-        actions={<IconButton label="Add equipment" variant="filled" icon={<Plus />} onClick={openAdd} />}
+        backLabel={t('Go back')}
+        overline={t('Equipment & assets')}
+        title={t('Gear & inventory')}
+        actions={<IconButton label={t('Add equipment')} variant="filled" icon={<Plus />} onClick={openAdd} />}
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search equipment" placeholder="Search equipment, mics, cables…" />
+        <SearchField value={searchQuery} onChange={setSearchQuery} label={t('Search equipment')} placeholder={t('Search equipment, mics, cables…')} />
 
         {/* Category filter (Figma Selector MD, wrapping) */}
         <div className="flex flex-wrap gap-2">
@@ -226,7 +245,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
                 onClick={() => setSelectedCategory(cat)}
                 count={count ? count : undefined}
               >
-                {cat}
+                {categoryLabel[cat] ?? cat}
               </Selector>
             );
           })}
@@ -243,19 +262,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
           <Card className="items-center text-center py-10 gap-4" role="alert">
             <Package className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">Couldn't load your gear</h2>
+              <h2 className="bw-h3">{t("Couldn't load your gear")}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{loadError}</p>
             </div>
             <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={fetchItems}>
-              Try again
+              {t('Try again')}
             </PillButton>
           </Card>
         ) : filteredItems.length === 0 ? (
           <Card className="items-center text-center py-10 gap-4">
             <Package className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">No equipment found</h2>
-              <p className="bw-body-sm text-muted-foreground max-w-xs">Add items to keep track of your band's gear.</p>
+              <h2 className="bw-h3">{t('No equipment found')}</h2>
+              <p className="bw-body-sm text-muted-foreground max-w-xs">{t("Add items to keep track of your band's gear.")}</p>
             </div>
           </Card>
         ) : (
@@ -272,20 +291,20 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
                   <button
                     type="button"
                     onClick={() => openEdit(item)}
-                    aria-label={`Edit ${item.name}`}
+                    aria-label={t('Edit {name}', { name: item.name })}
                     className="flex-1 min-w-0 flex flex-col gap-1 text-left after:absolute after:inset-0 after:rounded-[24px] after:content-['']"
                   >
                     <span className="bw-label-md truncate">{item.name}</span>
                     <span className="bw-body-sm text-muted-foreground truncate">
-                      {[category, `qty ${item.quantity}`, item.location].filter(Boolean).join(' · ')}
+                      {[categoryLabel[category] ?? category, t('qty {count}', { count: item.quantity }), item.location].filter(Boolean).join(' · ')}
                     </span>
                   </button>
                   <span className="flex items-center gap-1.5 shrink-0">
                     <span className={cn('w-2 h-2 rounded-full', status?.dot ?? 'bg-muted-foreground')} aria-hidden />
-                    <span className="bw-label-xs">{status?.label ?? item.status}</span>
+                    <span className="bw-label-xs">{statusLabel[item.status] ?? item.status}</span>
                   </span>
                   <IconButton
-                    label={`Delete ${item.name}`}
+                    label={t('Delete {name}', { name: item.name })}
                     variant="ghost"
                     size="sm"
                     icon={deletingId === item.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
@@ -301,7 +320,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
 
         {!loading && !loadError && (
           <PillButton icon={<Plus className="w-[18px] h-[18px]" />} onClick={openAdd}>
-            Add equipment
+            {t('Add equipment')}
           </PillButton>
         )}
       </div>
@@ -310,13 +329,13 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
       <BwSheet
         open={!!editing}
         onClose={closeSheet}
-        overline="Gear & inventory"
-        title={isNew ? 'Add equipment' : 'Edit equipment'}
+        overline={t('Gear & inventory')}
+        title={isNew ? t('Add equipment') : t('Edit equipment')}
         zIndex={80}
         footer={
           <div className="flex flex-col gap-2">
             <PillButton type="submit" form="gear-form" loading={saving} disabled={!form.name.trim() || deleting}>
-              {isNew ? 'Save item' : 'Save changes'}
+              {isNew ? t('Save item') : t('Save changes')}
             </PillButton>
             {!isNew && (
               <PillButton
@@ -327,7 +346,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
                 disabled={saving}
                 onClick={handleDeleteFromSheet}
               >
-                Delete item
+                {t('Delete item')}
               </PillButton>
             )}
           </div>
@@ -338,30 +357,30 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
 
           <PillField
             tone="sheet"
-            label="Item name"
+            label={t('Item name', { context: 'inventory' })}
             required
-            placeholder="Shure SM58, drum kit, DI box…"
+            placeholder={t('Shure SM58, drum kit, DI box…')}
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
           />
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Category</legend>
+            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">{t('Category')}</legend>
             <div className="flex flex-wrap gap-2">
               {INVENTORY_CATEGORIES.map((c) => (
                 <SheetChip key={c} selected={form.category === c} onClick={() => set('category', c)}>
-                  {c}
+                  {categoryLabel[c] ?? c}
                 </SheetChip>
               ))}
             </div>
           </fieldset>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Status</legend>
+            <legend className="bw-label-sm text-sheet-foreground/70 mb-2">{t('Status')}</legend>
             <div className="flex flex-wrap gap-2">
               {statusChoices.map((s) => (
                 <SheetChip key={s} selected={form.status === s} onClick={() => set('status', s)}>
-                  {STATUS_CONFIG[s]?.label ?? s}
+                  {statusLabel[s] ?? s}
                 </SheetChip>
               ))}
             </div>
@@ -369,11 +388,11 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
 
           <div className="flex flex-col gap-2">
             <label htmlFor="gear-qty" className="bw-label-sm text-sheet-foreground/70">
-              Quantity
+              {t('Quantity')}
             </label>
             <div className="flex items-center gap-3">
               <IconButton
-                label="Decrease quantity"
+                label={t('Decrease quantity')}
                 variant="sheet"
                 icon={<Minus />}
                 onClick={() => set('quantity', Math.max(minQty, form.quantity - 1))}
@@ -388,35 +407,35 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
                 onChange={(e) => set('quantity', Math.max(minQty, parseInt(e.target.value) || minQty))}
                 className="w-20 h-[52px] rounded-full bg-white/10 border border-white/20 text-center bw-num text-sheet-foreground outline-none focus:border-2 focus:border-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <IconButton label="Increase quantity" variant="sheet" icon={<Plus />} onClick={() => set('quantity', form.quantity + 1)} />
+              <IconButton label={t('Increase quantity')} variant="sheet" icon={<Plus />} onClick={() => set('quantity', form.quantity + 1)} />
             </div>
           </div>
 
           <PillField
             tone="sheet"
-            label="Location / who has it"
-            placeholder="Rehearsal room, Alex's van…"
+            label={t('Location / who has it')}
+            placeholder={t("Rehearsal room, Alex's van…")}
             value={form.location}
             onChange={(e) => set('location', e.target.value)}
           />
           <PillField
             tone="sheet"
-            label="Serial number"
-            placeholder="Optional"
+            label={t('Serial number')}
+            placeholder={t('Optional')}
             value={form.serialNumber}
             onChange={(e) => set('serialNumber', e.target.value)}
           />
           <div className="grid grid-cols-2 gap-3">
             <PillField
               tone="sheet"
-              label="Purchase date"
+              label={t('Purchase date')}
               type="date"
               value={form.purchaseDate}
               onChange={(e) => set('purchaseDate', e.target.value)}
             />
             <PillField
               tone="sheet"
-              label="Purchase price"
+              label={t('Purchase price')}
               inputMode="decimal"
               placeholder="0.00"
               value={form.purchasePrice}
@@ -425,12 +444,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onBack, bandId }) 
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="gear-notes" className="bw-label-sm text-sheet-foreground/70">
-              Notes
+              {t('Notes')}
             </label>
             <textarea
               id="gear-notes"
               rows={3}
-              placeholder="Condition, spare parts, who to ask…"
+              placeholder={t('Condition, spare parts, who to ask…')}
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
               className={sheetField}

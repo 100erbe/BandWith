@@ -9,6 +9,7 @@ import {
   saveDeputy,
   type Deputy,
 } from '@/lib/services/deputies';
+import { useT } from '@/lib/i18n';
 
 const EMPTY = { name: '', instrument: '', phone: '', email: '', fee: '', notes: '' };
 
@@ -18,6 +19,7 @@ const EMPTY = { name: '', instrument: '', phone: '', email: '', fee: '', notes: 
  * who declined ("Find a deputy").
  */
 export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = ({ bandId, bandName }) => {
+  const t = useT();
   const [deputies, setDeputies] = React.useState<Deputy[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [unavailable, setUnavailable] = React.useState(false);
@@ -30,13 +32,13 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
   const load = React.useCallback(async () => {
     const { data, error: e } = await listDeputies(bandId);
     if (deputiesUnavailable(e)) setUnavailable(true);
-    else if (e) setError('Could not load the deputies.');
+    else if (e) setError(t('Could not load the deputies.'));
     else {
       setDeputies(data);
       setError(null);
     }
     setLoading(false);
-  }, [bandId]);
+  }, [bandId, t]);
 
   React.useEffect(() => {
     setLoading(true);
@@ -77,7 +79,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
     );
     setSaving(false);
     if (e) {
-      setError(deputiesUnavailable(e) ? 'Deputies need the latest app update on the server.' : 'Could not save. Try again.');
+      setError(deputiesUnavailable(e) ? t('Deputies need the latest app update on the server.') : t('Could not save. Try again.'));
       return;
     }
     setEditing(null);
@@ -90,7 +92,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
     const { error: e } = await deleteDeputy(editing.id);
     setSaving(false);
     if (e) {
-      setError('Could not delete. Try again.');
+      setError(t('Could not delete. Try again.'));
       return;
     }
     setEditing(null);
@@ -103,10 +105,10 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
     <section aria-labelledby="deputies-title" className="@container flex flex-col gap-3 pt-2">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-          <h2 id="deputies-title" className="bw-h3">Deputies</h2>
-          <p className="bw-body-sm text-muted-foreground">Session players you call when a member can't make a gig. Only admins see this list.</p>
+          <h2 id="deputies-title" className="bw-h3">{t('Deputies')}</h2>
+          <p className="bw-body-sm text-muted-foreground">{t("Session players you call when a member can't make a gig. Only admins see this list.")}</p>
         </div>
-        {!unavailable && <IconButton label="Add deputy" variant="outline" size="sm" icon={<Plus />} onClick={() => open('new')} />}
+        {!unavailable && <IconButton label={t('Add deputy')} variant="outline" size="sm" icon={<Plus />} onClick={() => open('new')} />}
       </div>
 
       {loading ? (
@@ -115,20 +117,20 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
         </div>
       ) : unavailable ? (
         <Card className="gap-1">
-          <p className="bw-label-md">Coming with the next update</p>
-          <p className="bw-body-sm text-muted-foreground">The deputies list will be available as soon as the server is updated.</p>
+          <p className="bw-label-md">{t('Coming with the next update')}</p>
+          <p className="bw-body-sm text-muted-foreground">{t('The deputies list will be available as soon as the server is updated.')}</p>
         </Card>
       ) : deputies.length === 0 ? (
         <Card className="items-center text-center py-6 gap-3">
           <Users className="w-8 h-8 text-muted-foreground" aria-hidden />
-          <p className="bw-body-sm text-muted-foreground">No deputies yet. Add the players you trust for each instrument.</p>
+          <p className="bw-body-sm text-muted-foreground">{t('No deputies yet. Add the players you trust for each instrument.')}</p>
           <PillButton size="md" variant="outline" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => open('new')}>
-            Add deputy
+            {t('Add deputy')}
           </PillButton>
         </Card>
       ) : (
         // Grid: one column on phones and the closed Duo, two when wide.
-        <ul className="grid grid-cols-1 @min-[600px]:grid-cols-2 gap-3" aria-label="Deputies">
+        <ul className="grid grid-cols-1 @min-[600px]:grid-cols-2 gap-3" aria-label={t('Deputies')}>
           {deputies.map((d) => (
             <li key={d.id}>
               <button
@@ -142,7 +144,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
                 <span className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className="bw-label-md truncate">{d.name}</span>
                   <span className="bw-body-sm text-muted-foreground truncate">
-                    {[d.instrument, d.phone || d.email].filter(Boolean).join(' · ') || 'No contact yet'}
+                    {[d.instrument, d.phone || d.email].filter(Boolean).join(' · ') || t('No contact yet')}
                   </span>
                 </span>
                 <Pencil className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -157,26 +159,26 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
         open={!!editing}
         onClose={close}
         overline={bandName}
-        title={editing === 'new' ? 'New deputy' : confirmDelete ? 'Delete deputy?' : 'Edit deputy'}
+        title={editing === 'new' ? t('New deputy') : confirmDelete ? t('Delete deputy?') : t('Edit deputy')}
         zIndex={102}
         footer={
           confirmDelete ? (
             <div className="grid grid-cols-2 gap-2">
               <PillButton variant="white" onClick={() => setConfirmDelete(false)} disabled={saving}>
-                Cancel
+                {t('Cancel')}
               </PillButton>
               <PillButton variant="danger" loading={saving} icon={<Trash2 className="w-4 h-4" />} onClick={remove}>
-                Delete
+                {t('Delete')}
               </PillButton>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <PillButton disabled={!canSave} loading={saving} onClick={save}>
-                {editing === 'new' ? 'Add deputy' : 'Save'}
+                {editing === 'new' ? t('Add deputy') : t('Save')}
               </PillButton>
               {editing && editing !== 'new' && (
                 <PillButton variant="danger" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirmDelete(true)}>
-                  Delete deputy
+                  {t('Delete deputy')}
                 </PillButton>
               )}
             </div>
@@ -185,7 +187,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
       >
         {confirmDelete ? (
           <p className="bw-body-md text-sheet-foreground/80">
-            {editing && editing !== 'new' ? editing.name : 'This deputy'} is removed from the band's list. You can add them again later.
+            {t("{name} is removed from the band's list. You can add them again later.", { name: editing && editing !== 'new' ? editing.name : t('This deputy') })}
           </p>
         ) : (
           <form
@@ -195,11 +197,11 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
               void save();
             }}
           >
-            <PillField tone="sheet" label="Name" value={form.name} onChange={set('name')} maxLength={120} autoComplete="off" required />
-            <PillField tone="sheet" label="Instrument" value={form.instrument} onChange={set('instrument')} maxLength={60} placeholder="Bass, drums…" />
+            <PillField tone="sheet" label={t('Name')} value={form.name} onChange={set('name')} maxLength={120} autoComplete="off" required />
+            <PillField tone="sheet" label={t('Instrument')} value={form.instrument} onChange={set('instrument')} maxLength={60} placeholder={t('Bass, drums…')} />
             <PillField
               tone="sheet"
-              label="Phone (WhatsApp)"
+              label={t('Phone (WhatsApp)')}
               icon={<Phone className="w-5 h-5" />}
               value={form.phone}
               onChange={set('phone')}
@@ -210,7 +212,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
             />
             <PillField
               tone="sheet"
-              label="Email"
+              label={t('Email')}
               icon={<Mail className="w-5 h-5" />}
               value={form.email}
               onChange={set('email')}
@@ -218,18 +220,18 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string }> = 
               type="email"
               inputMode="email"
               autoCapitalize="none"
-              error={emailInvalid ? 'Check the email address.' : null}
+              error={emailInvalid ? t('Check the email address.') : null}
             />
             <PillField
               tone="sheet"
-              label="Usual fee"
+              label={t('Usual fee')}
               value={form.fee}
               onChange={set('fee')}
               inputMode="decimal"
-              placeholder="Optional"
-              error={feeInvalid ? 'Use a number, like 150.' : null}
+              placeholder={t('Optional')}
+              error={feeInvalid ? t('Use a number, like 150.') : null}
             />
-            <PillField tone="sheet" label="Notes" value={form.notes} onChange={set('notes')} maxLength={1000} placeholder="Reads charts, has own gear…" />
+            <PillField tone="sheet" label={t('Notes')} value={form.notes} onChange={set('notes')} maxLength={1000} placeholder={t('Reads charts, has own gear…')} />
             {error && <p role="alert" className="bw-body-sm text-destructive">{error}</p>}
             <button type="submit" hidden aria-hidden tabIndex={-1} />
           </form>
