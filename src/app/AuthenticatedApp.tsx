@@ -241,17 +241,17 @@ export default function AuthenticatedApp() {
         document.addEventListener(
           "touchstart",
           (e) => {
-            const t = e.target as HTMLElement;
+            const target = e.target as HTMLElement;
             const a = document.activeElement as HTMLElement;
             // Areas marked data-keep-keyboard (the chat) keep it up: there it
             // closes with a swipe down on the messages or Android Back.
             // data-keep-keyboard="android" keeps it up on Android only.
-            const keep = t.closest?.('[data-keep-keyboard]') as HTMLElement | null;
+            const keep = target.closest?.('[data-keep-keyboard]') as HTMLElement | null;
             if (keep && (keep.dataset.keepKeyboard !== 'android' || Capacitor.getPlatform() === 'android')) return;
             if (
               a &&
               ["INPUT", "TEXTAREA", "SELECT"].includes(a.tagName) &&
-              !["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)
+              !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
             ) {
               Keyboard.hide().catch(() => {});
             }
@@ -386,8 +386,8 @@ export default function AuthenticatedApp() {
       haptic.delete();
     }
     const duration = saveToast.duration || (saveToast.action ? 8000 : 5000);
-    const t = setTimeout(() => setSaveToast(null), duration);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSaveToast(null), duration);
+    return () => clearTimeout(timer);
   }, [saveToast]);
 
   const { isOnline, wasOffline, pendingSyncCount, triggerSync } = useNetworkStatus((msg) => {
@@ -888,14 +888,19 @@ export default function AuthenticatedApp() {
         }
       }
       const isRehearsal = info.event_type === 'rehearsal';
-      const what = isRehearsal ? 'rehearsal' : 'gig';
-      const name = info.event_title ? `“${info.event_title}”` : `This ${what}`;
+      const name = info.event_title ? `“${info.event_title}”` : isRehearsal ? t('This rehearsal') : t('This gig');
       const day = dayOf(info.event_date);
       setEventLoadError({
         id: eventDbId,
         kind: 'gone',
-        title: cancelled ? `${isRehearsal ? 'Rehearsal' : 'Gig'} cancelled` : `${isRehearsal ? 'Rehearsal' : 'Event'} removed`,
-        message: `${name}${day ? ` on ${day}` : ''} was ${cancelled ? 'cancelled' : 'deleted'} by an admin, so it's no longer on the calendar. Nothing else to do.`,
+        title: cancelled ? (isRehearsal ? t('Rehearsal cancelled') : t('Gig cancelled')) : isRehearsal ? t('Rehearsal removed') : t('Event removed'),
+        message: cancelled
+          ? day
+            ? t("{name} on {day} was cancelled by an admin, so it's no longer on the calendar. Nothing else to do.", { name, day })
+            : t("{name} was cancelled by an admin, so it's no longer on the calendar. Nothing else to do.", { name })
+          : day
+            ? t("{name} on {day} was deleted by an admin, so it's no longer on the calendar. Nothing else to do.", { name, day })
+            : t("{name} was deleted by an admin, so it's no longer on the calendar. Nothing else to do.", { name }),
       });
       return;
     }
@@ -908,8 +913,10 @@ export default function AuthenticatedApp() {
       setEventLoadError({
         id: eventDbId,
         kind: 'hidden',
-        title: 'Not confirmed yet',
-        message: `“${row.title || 'This gig'}”${dayOf(row.event_date) ? ` on ${dayOf(row.event_date)}` : ''} went back to being a quote. It comes back to your calendar as soon as an admin confirms it as a gig.`,
+        title: t('Not confirmed yet'),
+        message: dayOf(row.event_date)
+          ? t('“{title}” on {day} went back to being a quote. It comes back to your calendar as soon as an admin confirms it as a gig.', { title: row.title || t('This gig'), day: dayOf(row.event_date) ?? '' })
+          : t('“{title}” went back to being a quote. It comes back to your calendar as soon as an admin confirms it as a gig.', { title: row.title || t('This gig') }),
       });
       return;
     }
@@ -917,8 +924,8 @@ export default function AuthenticatedApp() {
       setEventLoadError({
         id: eventDbId,
         kind: 'hidden',
-        title: "You can't make it",
-        message: `You declined “${row.title || 'this event'}”, so it's not on your calendar. Ask an admin if you'd like to join after all.`,
+        title: t("You can't make it"),
+        message: t("You declined “{title}”, so it's not on your calendar. Ask an admin if you'd like to join after all.", { title: row.title || t('this event') }),
       });
       return;
     }
@@ -1238,7 +1245,7 @@ export default function AuthenticatedApp() {
     if (unique.length === 0) return;
     Promise.all(unique.map((nid) => deleteNotificationService(nid))).then((results) => {
       if (results.some((r) => r.error)) {
-        setSaveToast({ message: unique.length > 1 ? 'Could not delete the notifications.' : 'Could not delete the notification.', type: 'error' });
+        setSaveToast({ message: unique.length > 1 ? t('Could not delete the notifications.') : t('Could not delete the notification.'), type: 'error' });
       }
       refetchNotifications?.();
     });
@@ -2059,7 +2066,7 @@ export default function AuthenticatedApp() {
       } else {
         lastBackPressRef.current = now;
         setSaveToast({
-          message: "Tap again to exit",
+          message: t("Tap again to exit"),
           type: "info",
           duration: 2000,
           minimal: true,
@@ -2157,12 +2164,12 @@ export default function AuthenticatedApp() {
           await supabase.from('quotes').update({ converted_to_event_id: null }).eq('converted_to_event_id', selectedEvent.eventId);
         }
       }
-      setSaveToast({ message: 'Event deleted', type: 'success' });
+      setSaveToast({ message: t('Event deleted'), type: 'success' });
       refetchEvents();
       refetchDashboard?.();
     } catch (err: any) {
       console.error('Delete error:', err);
-      setSaveToast({ message: `Could not delete the event: ${err?.message || 'unknown error'}`, type: 'error' });
+      setSaveToast({ message: t('Could not delete the event: {error}', { error: err?.message || t('unknown error') }), type: 'error' });
       return; // keep the detail open
     }
     setSelectedEvent(null);
@@ -2174,7 +2181,7 @@ export default function AuthenticatedApp() {
     if (!selectedEvent) return;
     const ev = selectedEvent;
     if (isSolo || !ev.eventId || !ev.band_id) {
-      setSaveToast({ message: 'Event chats are available for band events.', type: 'info' });
+      setSaveToast({ message: t('Event chats are available for band events.'), type: 'info' });
       return;
     }
     const lineup = (eventMembersMap[ev.eventId] || [])
@@ -2188,7 +2195,7 @@ export default function AuthenticatedApp() {
       participant_ids: lineup,
     });
     if (error || !chat) {
-      setSaveToast({ message: error?.message || 'Could not open the event chat.', type: 'error' });
+      setSaveToast({ message: error?.message || t('Could not open the event chat.'), type: 'error' });
       return;
     }
     // Open display: the gig stays on the leading page next to its thread.
@@ -2254,11 +2261,11 @@ export default function AuthenticatedApp() {
 
       // Show confirmation toast with instant 1-tap UNDO action
       setSaveToast({
-        message: 'Quote confirmed as Gig!',
+        message: t('Quote confirmed as Gig!'),
         type: 'success',
         duration: 8000,
         action: {
-          label: 'UNDO',
+          label: t('UNDO'),
           onClick: () => handleRevertQuote(ev),
         },
       });
@@ -2274,7 +2281,7 @@ export default function AuthenticatedApp() {
       if (refetchDashboard) await refetchDashboard();
     } catch (err: any) {
       console.error('Failed to confirm quote:', err);
-      setSaveToast({ message: `Failed to confirm quote: ${err.message || 'Unknown error'}`, type: 'error' });
+      setSaveToast({ message: t('Failed to confirm quote: {error}', { error: err.message || t('Unknown error') }), type: 'error' });
     }
   };
 
@@ -2322,7 +2329,7 @@ export default function AuthenticatedApp() {
         };
       });
 
-      setSaveToast({ message: 'Back to a quote: confirm it as a gig again when the client says yes', type: 'info' });
+      setSaveToast({ message: t('Back to a quote: confirm it as a gig again when the client says yes'), type: 'info' });
 
       // If user was on Gigs filter, switch back to Quotes
       if (eventFilter === 'GIGS') {
@@ -2335,7 +2342,7 @@ export default function AuthenticatedApp() {
       if (refetchDashboard) await refetchDashboard();
     } catch (err: any) {
       console.error('Failed to revert quote:', err);
-      setSaveToast({ message: `Failed to revert quote: ${err.message || 'Unknown error'}`, type: 'error' });
+      setSaveToast({ message: t('Failed to revert quote: {error}', { error: err.message || t('Unknown error') }), type: 'error' });
     }
   };
 
@@ -2405,12 +2412,12 @@ export default function AuthenticatedApp() {
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "confirmed");
     if (error || !updated) {
       console.error('[handleEventAccept] Failed to update membership:', error);
-      setSaveToast({ message: 'Failed to accept. Please check your connection and try again.', type: 'error' });
+      setSaveToast({ message: t('Failed to accept. Please check your connection and try again.'), type: 'error' });
       return;
     }
 
     // DB succeeded — confirm with success toast
-    setSaveToast({ message: "You're confirmed!", type: 'success' });
+    setSaveToast({ message: t("You're confirmed!"), type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP D — Safe Notification Sandbox (autonomous try/catch)
@@ -2455,7 +2462,7 @@ export default function AuthenticatedApp() {
         return { ...prev, [eventId]: list.map(m => m.userId === user.id ? { ...m, status: 'maybe' } : m) };
       });
     }
-    setSaveToast({ message: "Saved as maybe", type: 'success' });
+    setSaveToast({ message: t("Saved as maybe"), type: 'success' });
   };
 
   /** Personal-gig conflict: tell the band's admins the user is booked that evening. */
@@ -2507,7 +2514,7 @@ export default function AuthenticatedApp() {
     const { data: updated, error } = await respondToEventInvite(selectedEventMembership.id, "declined");
     if (error || !updated) {
       console.error('[handleEventDecline] Failed to update membership:', error);
-      setSaveToast({ message: 'Failed to drop out. Please check your connection and try again.', type: 'error' });
+      setSaveToast({ message: t('Failed to drop out. Please check your connection and try again.'), type: 'error' });
       // Rollback optimistic hide so the card re-appears on next render
       if (eventIdToHide) {
         setOptimisticallyHiddenEventIds(prev => prev.filter(id => id !== eventIdToHide));
@@ -2516,7 +2523,7 @@ export default function AuthenticatedApp() {
     }
 
     // DB succeeded — confirm with success toast
-    setSaveToast({ message: 'You dropped out of this event.', type: 'success' });
+    setSaveToast({ message: t('You dropped out of this event.'), type: 'success' });
 
     // ═══════════════════════════════════════════════════════════════
     // STEP D — Safe Notification Sandbox (autonomous try/catch)
@@ -2560,7 +2567,7 @@ export default function AuthenticatedApp() {
     const eventType = isRehearsalWizard ? "rehearsal" : (data._originalEventType || data.eventType || "other");
 
     if (!realBand?.id) {
-      setSaveToast({ message: 'No band selected', type: 'error' });
+      setSaveToast({ message: t('No band selected'), type: 'error' });
       setEditingEventData(null);
       setIsCreateEventOpen(false);
       return;
@@ -2812,7 +2819,7 @@ export default function AuthenticatedApp() {
             });
           }
         }
-        setSaveToast({ message: 'Saved offline • Will sync when connected', type: 'info' });
+        setSaveToast({ message: t('Saved offline • Will sync when connected'), type: 'info' });
         setMembersRefreshKey(k => k + 1);
         refetchEvents().catch(() => {});
         if (refetchDashboard) refetchDashboard().catch(() => {});
@@ -2858,19 +2865,19 @@ export default function AuthenticatedApp() {
           const memberFailed = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
           if (memberFailed) {
             console.error('Member persist issue:', memberResult);
-            setSaveToast({ message: 'Event updated, but there was a problem saving members.', type: 'error' });
+            setSaveToast({ message: t('Event updated, but there was a problem saving members.'), type: 'error' });
           } else if (setlistFailed) {
-            setSaveToast({ message: 'Event updated, but the setlist was not saved.', type: 'error' });
+            setSaveToast({ message: t('Event updated, but the setlist was not saved.'), type: 'error' });
           } else if (!tasksSaved) {
-            setSaveToast({ message: 'Event updated, but the tasks were not saved.', type: 'error' });
+            setSaveToast({ message: t('Event updated, but the tasks were not saved.'), type: 'error' });
           } else {
-            setSaveToast({ message: 'Event updated!', type: 'success' });
+            setSaveToast({ message: t('Event updated!'), type: 'success' });
           }
         } else if (isOfflineError(error)) {
           await saveEventOffline(true, data._editingEventId);
           return;
         } else {
-          setSaveToast({ message: `Save failed: ${error.message || JSON.stringify(error)}`, type: 'error' });
+          setSaveToast({ message: t('Save failed: {error}', { error: error.message || JSON.stringify(error) }), type: 'error' });
         }
       } else {
         const { data: saved, error } = await withFastTimeout(createEvent({ ...eventData, id: newEventId }), 4500);
@@ -2895,19 +2902,19 @@ export default function AuthenticatedApp() {
           const memberFailed2 = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
           if (memberFailed2) {
             console.error('Member persist issue:', memberResult);
-            setSaveToast({ message: 'Event created, but there was a problem saving members.', type: 'error' });
+            setSaveToast({ message: t('Event created, but there was a problem saving members.'), type: 'error' });
           } else if (setlistFailed) {
-            setSaveToast({ message: 'Event created, but the setlist was not saved.', type: 'error' });
+            setSaveToast({ message: t('Event created, but the setlist was not saved.'), type: 'error' });
           } else if (!tasksSaved) {
-            setSaveToast({ message: 'Event created, but the tasks were not saved.', type: 'error' });
+            setSaveToast({ message: t('Event created, but the tasks were not saved.'), type: 'error' });
           } else {
-            setSaveToast({ message: 'Event created!', type: 'success' });
+            setSaveToast({ message: t('Event created!'), type: 'success' });
           }
         } else if (isOfflineError(error)) {
           await saveEventOffline(false);
           return;
         } else {
-          setSaveToast({ message: `Create failed: ${error?.message || JSON.stringify(error)}`, type: 'error' });
+          setSaveToast({ message: t('Create failed: {error}', { error: error?.message || JSON.stringify(error) }), type: 'error' });
         }
       }
       setMembersRefreshKey(k => k + 1);
@@ -2919,10 +2926,10 @@ export default function AuthenticatedApp() {
           await saveEventOffline(Boolean(data._editing && data._editingEventId), data._editingEventId);
         } catch (offlineErr: any) {
           console.error('Offline save failed:', offlineErr);
-          setSaveToast({ message: 'Could not save the event. Please try again.', type: 'error' });
+          setSaveToast({ message: t('Could not save the event. Please try again.'), type: 'error' });
         }
       } else {
-        setSaveToast({ message: `Error: ${err?.message || String(err)}`, type: 'error' });
+        setSaveToast({ message: t('Error: {error}', { error: err?.message || String(err) }), type: 'error' });
       }
     }
   };
@@ -3272,7 +3279,7 @@ export default function AuthenticatedApp() {
             />
           )}
           {activeTab === "Chat" && !isSolo && (
-            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: 'Could not delete the chat. Try again.', type: 'error' }); else refetchChats?.(); }} />
+            <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: t('Could not delete the chat. Try again.'), type: 'error' }); else refetchChats?.(); }} />
           )}
           {activeTab === "Events" && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={calendarEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
@@ -3618,7 +3625,7 @@ export default function AuthenticatedApp() {
             onDelete={(d) => {
               deleteEventDraft(d.id);
               setPreviewDraftId(null);
-              setSaveToast({ message: 'Draft deleted', type: 'success' });
+              setSaveToast({ message: t('Draft deleted'), type: 'success' });
             }}
           />
           <AnimatePresence key="nested-presence-2">{isCreateEventOpen && createEventType === "quote" && !editingEventData && <QuoteCreationWizard bandMembers={memoizedBandMembers} initialData={createEventInitialDate ? { eventDate: createEventInitialDate } : undefined} onClose={() => { setIsCreateEventOpen(false); setCreateEventInitialDate(null); setCreateEventInitialTasks(undefined); }} onCreate={async (q, opts) => {
@@ -3630,7 +3637,7 @@ export default function AuthenticatedApp() {
             // carries the number assigned by the database.
             const wantsShare = !!opts?.share;
             if (!realBand?.id) {
-              setSaveToast({ message: 'Select a band before creating a quote.', type: 'error' });
+              setSaveToast({ message: t('Select a band before creating a quote.'), type: 'error' });
               return;
             }
             if (realBand?.id) {
@@ -3681,7 +3688,7 @@ export default function AuthenticatedApp() {
                     _tempId: tempId,
                   };
                   await enqueueMutation('create_event', { eventData: offlineEv, memberIds: memberRows }, tempId);
-                  setSaveToast({ message: 'Saved quote event offline • Will sync when connected', type: 'info' });
+                  setSaveToast({ message: t('Saved quote event offline • Will sync when connected'), type: 'info' });
                   return tempId;
                 };
 
@@ -3720,9 +3727,9 @@ export default function AuthenticatedApp() {
                   if (createdEventId && !q.eventId) {
                     await supabase.from('events').delete().eq('id', createdEventId);
                   }
-                  setSaveToast({ message: `Quote not saved: ${quoteErr?.message || 'unknown error'}`, type: 'error' });
+                  setSaveToast({ message: t('Quote not saved: {error}', { error: quoteErr?.message || t('unknown error') }), type: 'error' });
                 } else {
-                  setSaveToast({ message: `Quote ${savedQuote.quote_number} saved`, type: 'success' });
+                  setSaveToast({ message: t('Quote {number} saved', { number: savedQuote.quote_number }), type: 'success' });
                   // Started from a to-do list: the quote's event gets its tasks.
                   if (templateTasks?.length && createdEventId) {
                     const { error: taskErr } = await syncEventTasks(
@@ -3731,7 +3738,7 @@ export default function AuthenticatedApp() {
                       q.eventDate || todayLocal(),
                       [],
                     );
-                    if (taskErr) setSaveToast({ message: `Quote saved, but the to-do list was not added: ${taskErr.message}`, type: 'error' });
+                    if (taskErr) setSaveToast({ message: t('Quote saved, but the to-do list was not added: {error}', { error: taskErr.message }), type: 'error' });
                   }
                   // Quote-stage RSVP: ask the lineup before the client confirms.
                   if (opts?.askAvailability && createdEventId && user?.id) {
@@ -3752,8 +3759,8 @@ export default function AuthenticatedApp() {
                         { venue: q.venueName, memberFees: feeByUser, tentative: true }
                       );
                       setSaveToast(rsvpErr
-                        ? { message: `Quote ${savedQuote.quote_number} saved, but the availability check wasn't sent.`, type: 'error' }
-                        : { message: `Quote ${savedQuote.quote_number} saved · availability asked to ${invited.length}`, type: 'success' });
+                        ? { message: t("Quote {number} saved, but the availability check wasn't sent.", { number: savedQuote.quote_number }), type: 'error' }
+                        : { message: t('Quote {number} saved · availability asked to {count}', { number: savedQuote.quote_number, count: invited.length }), type: 'success' });
                     }
                   }
                   if (wantsShare) {
@@ -3763,7 +3770,7 @@ export default function AuthenticatedApp() {
                 }
               } else if (isOfflineTempId) {
                 // Quotes need a database number, so they can't be queued offline yet.
-                setSaveToast({ message: 'Offline: the event was saved, but the quote itself needs a connection. Create it again when you are back online.', type: 'error' });
+                setSaveToast({ message: t('Offline: the event was saved, but the quote itself needs a connection. Create it again when you are back online.'), type: 'error' });
               }
               setMembersRefreshKey(prev => prev + 1);
               refetchEvents().catch(() => {});
@@ -3969,7 +3976,7 @@ export default function AuthenticatedApp() {
         <div className="bw-pane-detail fixed inset-0 z-[100] bg-background flex items-center justify-center px-6" style={{ paddingTop: 'var(--safe-top)' }}>
           {eventLoadError.kind === 'error' ? (
             <ErrorState
-              body={eventLoadError.message || "Check your connection and try again."}
+              body={eventLoadError.message || t("Check your connection and try again.")}
               onRetry={() => { const id = eventLoadError.id; setEventLoadError(null); navigateToEvent(id); }}
               onBack={() => setEventLoadError(null)}
             />
@@ -4179,7 +4186,7 @@ export default function AuthenticatedApp() {
               {!saveToast.action && (
                 <button
                   onClick={() => setSaveToast(null)}
-                  aria-label="Dismiss notification"
+                  aria-label={t("Dismiss notification")}
                   className="text-white/70 hover:text-white shrink-0 ml-1"
                 >
                   <X className="w-4 h-4" />

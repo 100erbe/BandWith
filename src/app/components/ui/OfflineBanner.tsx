@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, Wifi, RefreshCw } from '@/app/components/icons';
 import { cn } from './utils';
+import { useT } from '@/lib/i18n';
 
 interface OfflineBannerProps {
   isOnline: boolean;
@@ -16,6 +17,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
   pendingCount = 0,
   onSyncNow,
 }) => {
+  const t = useT();
   const [showReconnected, setShowReconnected] = useState(false);
 
   useEffect(() => {
@@ -58,7 +60,10 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
     };
   }, [visible]);
 
-  const changes = `${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'}`;
+  const changes =
+    pendingCount === 1
+      ? t('{count} change', { count: pendingCount })
+      : t('{count} changes', { count: pendingCount });
 
   return (
     <AnimatePresence>
@@ -84,7 +89,9 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
             <>
               <WifiOff className="w-[18px] h-[18px] shrink-0" aria-hidden />
               <span className="flex-1 min-w-0 truncate bw-label-sm">
-                {pendingCount > 0 ? `You’re offline · ${changes} will sync` : 'You’re offline · showing cached info'}
+                {pendingCount > 0
+                  ? t('You’re offline · {changes} will sync', { changes })
+                  : t('You’re offline · showing cached info')}
               </span>
               <RefreshCw className="w-4 h-4 shrink-0" aria-hidden />
             </>
@@ -92,13 +99,15 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
             <>
               <Wifi className="w-[18px] h-[18px] shrink-0" aria-hidden />
               <span className="flex-1 min-w-0 truncate bw-label-sm">
-                {pendingCount > 0 ? `Back online · ${changes} to sync` : 'Back online · synced'}
+                {pendingCount > 0
+                  ? t('Back online · {changes} to sync', { changes })
+                  : t('Back online · synced')}
               </span>
               {pendingCount > 0 && onSyncNow && (
                 <button
                   type="button"
                   onClick={onSyncNow}
-                  aria-label="Sync now"
+                  aria-label={t('Sync now')}
                   className="relative -m-2 p-2 shrink-0 rounded-full active:scale-[var(--press-scale,0.97)] transition-transform"
                 >
                   <RefreshCw className="w-4 h-4 animate-spin" aria-hidden />

@@ -7,6 +7,7 @@ import {
 import { isOfflineError } from './networkErrors';
 import * as eventsService from '@/lib/services/events';
 import { supabase } from '@/lib/supabase';
+import { t } from '@/lib/i18n';
 
 /** Per-user queue keys live under the `bw:` prefix that clearOfflineCache() wipes on logout. */
 export const OFFLINE_QUEUE_PREFIX = 'bw:offline_queue:';
@@ -533,7 +534,11 @@ export const processSyncQueue = async (
     notifySubscribers();
 
     if (result.synced > 0 && onSuccessToast) {
-      onSuccessToast(`Synced ${result.synced} offline update${result.synced > 1 ? 's' : ''}`);
+      onSuccessToast(
+        result.synced > 1
+          ? t('Synced {count} offline updates', { count: result.synced })
+          : t('Synced {count} offline update', { count: result.synced }),
+      );
     }
   } finally {
     isProcessing = false;

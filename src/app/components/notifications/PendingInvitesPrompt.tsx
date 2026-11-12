@@ -10,6 +10,7 @@ import {
   InviteError,
   type PendingInvitation,
 } from '@/lib/services/invitations';
+import { useT } from '@/lib/i18n';
 
 interface PendingInvitesPromptProps {
   userId: string | null | undefined;
@@ -43,6 +44,7 @@ function writeDismissed(ids: string[]) {
  * (invite sent to an email that already has an account).
  */
 export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: PendingInvitesPromptProps) {
+  const t = useT();
   const [invites, setInvites] = useState<PendingInvitation[]>([]);
   const [busy, setBusy] = useState<'join' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,11 +91,11 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
     setError(null);
     try {
       const bandId = await acceptInvitation({ invitationId: current.id });
-      onToast?.(`You joined ${current.bandName}`, 'success');
+      onToast?.(t('You joined {band}', { band: current.bandName }), 'success');
       onJoined(bandId, current.bandName);
       next();
     } catch (e) {
-      setError(e instanceof InviteError ? e.message : 'We couldn’t join the band. Try again.');
+      setError(e instanceof InviteError ? e.message : t('We couldn’t join the band. Try again.'));
     } finally {
       setBusy(null);
     }
@@ -105,10 +107,10 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
     setError(null);
     try {
       await declineInvitation(current.id);
-      onToast?.(`Invite from ${current.bandName} declined`, 'info');
+      onToast?.(t('Invite from {band} declined', { band: current.bandName }), 'info');
       next();
     } catch {
-      setError('We couldn’t decline the invite. Try again.');
+      setError(t('We couldn’t decline the invite. Try again.'));
     } finally {
       setBusy(null);
     }
@@ -149,18 +151,22 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
               </div>
             )}
             <div className="min-w-0 flex-1 flex flex-col gap-1">
-              <p className="bw-label-xs text-sheet-foreground/70">Band invite</p>
+              <p className="bw-label-xs text-sheet-foreground/70">{t('Band invite')}</p>
               <h2 id="pending-invite-title" className="bw-h3 [overflow-wrap:anywhere]">
-                {current.inviterName ? `${current.inviterName} invited you to join ` : 'You’re invited to join '}
-                {current.bandName}
+                {current.inviterName
+                  ? t('{name} invited you to join {band}', { name: current.inviterName, band: current.bandName })
+                  : t('You’re invited to join {band}', { band: current.bandName })}
               </h2>
               <p className="flex items-center gap-1.5 bw-body-sm text-sheet-foreground/70">
                 <Users aria-hidden className="h-4 w-4" />
-                {current.memberCount} {current.memberCount === 1 ? 'member' : 'members'} · as{' '}
-                {current.role === 'admin' ? 'admin' : 'member'}
+                {current.memberCount === 1
+                  ? t('{count} member', { count: current.memberCount })
+                  : t('{count} members', { count: current.memberCount })}
+                {' · '}
+                {current.role === 'admin' ? t('as admin') : t('as member')}
               </p>
             </div>
-            <IconButton label="Decide later" variant="ghost" size="sm" icon={<X />} onClick={handleLater} className="text-sheet-foreground -mr-1 -mt-1" />
+            <IconButton label={t('Decide later')} variant="ghost" size="sm" icon={<X />} onClick={handleLater} className="text-sheet-foreground -mr-1 -mt-1" />
           </div>
 
           {error && (
@@ -177,7 +183,7 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
               disabled={!!busy}
               className="flex-1 border-sheet-foreground text-sheet-foreground"
             >
-              {busy === 'decline' ? 'Declining…' : 'Decline'}
+              {busy === 'decline' ? t('Declining…') : t('Decline')}
             </PillButton>
             <PillButton
               size="md"
@@ -187,7 +193,7 @@ export function PendingInvitesPrompt({ userId, onJoined, onToast, hidden }: Pend
               className="flex-[1.4]"
               icon={busy === 'join' ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : undefined}
             >
-              {busy === 'join' ? 'Joining…' : 'Join band'}
+              {busy === 'join' ? t('Joining…') : t('Join band')}
             </PillButton>
           </div>
         </motion.section>

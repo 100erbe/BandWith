@@ -21,6 +21,7 @@ import { findCalendarEvent, findEventConflicts } from '@/lib/eventConflicts';
 import { cn } from '@/app/components/ui/utils';
 import { formatDayShort, formatTime12, parseAmount } from '@/app/components/event/format';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 export type RsvpStatus = 'confirmed' | 'maybe' | 'declined';
 
@@ -43,12 +44,6 @@ export interface EventRSVPSheetProps {
   initialStatus?: RsvpStatus;
 }
 
-const CHOICES: { value: RsvpStatus; label: string }[] = [
-  { value: 'confirmed', label: 'GOING' },
-  { value: 'maybe', label: "MAYBE — I'LL CONFIRM LATER" },
-  { value: 'declined', label: "CAN'T MAKE IT" },
-];
-
 const kindOf = (e: any): 'personal gig' | 'rehearsal' | 'gig' => {
   if (!e?.band_id) return 'personal gig';
   return String(e.status || '').toUpperCase() === 'REHEARSAL' ? 'rehearsal' : 'gig';
@@ -65,6 +60,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   currentUserId,
   initialStatus,
 }) => {
+  const t = useT();
   const drag = useSheetDrag(onClose);
   useCurrency(); // re-render money labels when the band currency changes
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +68,13 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { containerRef, maskStyle } = usePeekingScroll<HTMLDivElement>();
+
+  const CHOICES: { value: RsvpStatus; label: string }[] = [
+    { value: 'confirmed', label: t('GOING') },
+    { value: 'maybe', label: t("MAYBE — I'LL CONFIRM LATER") },
+    { value: 'declined', label: t("CAN'T MAKE IT") },
+  ];
+  const KIND_LABEL = { 'personal gig': t('personal gig'), rehearsal: t('rehearsal'), gig: t('gig') };
 
   const data = notification.data || {};
   const eventId = data.event_id as string | undefined;
@@ -91,7 +94,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   const memberFee = Number(data.member_fee) || 0;
   const totalFee = Number(data.fee) || parseAmount(matchedEvent?.price);
   const displayFee = memberFee || totalFee;
-  const creatorName = (data.creator_name as string) || (data.creator_id ? 'Band Admin' : null);
+  const creatorName = (data.creator_name as string) || (data.creator_id ? t('Band Admin') : null);
 
   const loadInTime = matchedEvent?.loadInTime as string | undefined;
   const soundcheckTime = matchedEvent?.soundcheckTime as string | undefined;
@@ -105,15 +108,15 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 
   const isRehearsal = eventType === 'rehearsal';
   const isQuote = eventType === 'quote';
-  const label = isRehearsal ? 'Rehearsal' : isQuote ? 'Quote' : 'Gig';
+  const label = isRehearsal ? t('Rehearsal') : isQuote ? t('Quote') : t('Gig');
 
   const dayLabel = formatDayShort(eventDate);
-  const dateLabel = dayLabel || 'Date TBD';
-  const timeLabel = eventTime ? formatTime12(eventTime) : 'TBD';
+  const dateLabel = dayLabel || t('Date TBD');
+  const timeLabel = eventTime ? formatTime12(eventTime) : t('TBD');
   const schedule = [
-    loadInTime && `Load ${formatTime12(loadInTime)}`,
-    soundcheckTime && `Sound ${formatTime12(soundcheckTime)}`,
-    showTime && `Show ${formatTime12(showTime)}`,
+    loadInTime && t('Load {time}', { time: formatTime12(loadInTime) }),
+    soundcheckTime && t('Sound {time}', { time: formatTime12(soundcheckTime) }),
+    showTime && t('Show {time}', { time: formatTime12(showTime) }),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -122,14 +125,14 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
     ? (() => {
         const start = formatTime12(conflictEvent.time);
         const end = formatTime12(conflictEvent.endTime);
-        const when = start ? (end ? `${start} – ${end}` : start) : 'same day';
-        return `${conflictEvent.title || 'Event'} · ${when} (${kindOf(conflictEvent)})`;
+        const when = start ? (end ? `${start} – ${end}` : start) : t('same day');
+        return `${conflictEvent.title || t('Event')} · ${when} (${KIND_LABEL[kindOf(conflictEvent)]})`;
       })()
     : '';
 
   /** Writes the answer (maybe without a parent handler) and/or the note on the member's own row. */
   const saveOwnRow = async (patch: Record<string, unknown>): Promise<string | null> => {
-    if (!eventId || !currentUserId) return 'Could not find your invitation for this event.';
+    if (!eventId || !currentUserId) return t('Could not find your invitation for this event.');
     const { data: rows, error: upErr } = await supabase
       .from('event_members')
       .update(patch)
@@ -137,7 +140,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       .eq('user_id', currentUserId)
       .select('id');
     if (upErr) return upErr.message;
-    if (!rows || rows.length === 0) return 'Could not find your invitation for this event.';
+    if (!rows || rows.length === 0) return t('Could not find your invitation for this event.');
     return null;
   };
 
@@ -165,7 +168,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       if (trimmed) {
         const err = await saveOwnRow({ notes: trimmed });
         if (err) {
-          setError(`Your note was not saved: ${err}`);
+          setError(t('Your note was not saved: {error}', { error: err }));
           return;
         }
       }
@@ -174,7 +177,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
       else await onDecline(trimmed || undefined);
     } catch (err: any) {
       console.error('RSVP action error:', err);
-      setError(err?.message || 'Could not send your RSVP. Please try again.');
+      setError(err?.message || t('Could not send your RSVP. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -196,7 +199,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`RSVP: ${eventTitle}`}
+        aria-label={t('RSVP: {title}', { title: eventTitle })}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -213,14 +216,14 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" />
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-              <p className="bw-label-sm text-sheet-foreground/85">RSVP{dayLabel ? ` · ${dayLabel}` : ''}</p>
-              <h2 className="bw-h1 [overflow-wrap:anywhere]">Can you make it?</h2>
+              <p className="bw-label-sm text-sheet-foreground/85">{t('RSVP')}{dayLabel ? ` · ${dayLabel}` : ''}</p>
+              <h2 className="bw-h1 [overflow-wrap:anywhere]">{t('Can you make it?')}</h2>
               {creatorName && (
-                <p className="bw-body-sm text-sheet-foreground/70 mt-1">Scheduled by {creatorName}</p>
+                <p className="bw-body-sm text-sheet-foreground/70 mt-1">{t('Scheduled by {name}', { name: creatorName })}</p>
               )}
             </div>
             <RailSheet onClose={onClose} />
-            <IconButton label="Close" icon={<X />} size="sm" variant="sheet" onClick={onClose} />
+            <IconButton label={t('Close')} icon={<X />} size="sm" variant="sheet" onClick={onClose} />
           </div>
         </div>
 
@@ -230,19 +233,19 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             <span className="bw-label-xs text-sheet-foreground/70">{label}</span>
             <span className="bw-label-md [overflow-wrap:anywhere]">{eventTitle}</span>
           </div>
-          <SheetKV icon={<Calendar className="w-4 h-4" />} k="Date" v={dateLabel} />
-          <SheetKV icon={<Clock className="w-4 h-4" />} k="Time" v={timeLabel} />
-          {schedule && <SheetKV k="Timings" v={schedule} />}
+          <SheetKV icon={<Calendar className="w-4 h-4" />} k={t('Date')} v={dateLabel} />
+          <SheetKV icon={<Clock className="w-4 h-4" />} k={t('Time')} v={timeLabel} />
+          {schedule && <SheetKV k={t('Timings')} v={schedule} />}
           <SheetKV
             icon={<MapPin className="w-4 h-4" />}
-            k="Venue"
+            k={t('Venue')}
             v={
               <span className="flex flex-col items-end gap-1">
                 <MapsLink
                   query={[venue, venueAddress && venueAddress !== venue ? venueAddress : ''].filter(Boolean).join(', ')}
                   className="justify-end"
                 >
-                  {venue || 'Venue TBD'}
+                  {venue || t('Venue TBD')}
                 </MapsLink>
                 {venueAddress && venueAddress !== venue && (
                   <span className="block bw-body-sm normal-case text-sheet-foreground/70">{venueAddress}</span>
@@ -253,7 +256,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           {displayFee > 0 && (
             <SheetKV
               icon={<CurrencyIcon className="w-4 h-4" />}
-              k={memberFee ? 'Your fee' : 'Fee'}
+              k={memberFee ? t('Your fee') : t('Fee')}
               v={`${sym()}${displayFee.toLocaleString()}`}
             />
           )}
@@ -264,19 +267,19 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
           <div className="flex items-start gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
             <AlertTriangle className="w-5 h-5 shrink-0 text-warning" />
             <div className="flex flex-col gap-1 min-w-0">
-              <span className="bw-label-md">You&apos;re already booked</span>
+              <span className="bw-label-md">{t("You're already booked")}</span>
               <span className="bw-body-sm text-sheet-foreground/80 [overflow-wrap:anywhere]">{conflictLine}</span>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-3 p-4 rounded-[16px] bg-sheet-foreground/[0.08]">
             <CheckCircle2 className="w-5 h-5 shrink-0 text-success" />
-            <span className="bw-body-sm">No schedule conflicts in your calendar</span>
+            <span className="bw-body-sm">{t('No schedule conflicts in your calendar')}</span>
           </div>
         )}
 
         {/* Answers */}
-        <div role="radiogroup" aria-label="Your answer" className="flex flex-col gap-2">
+        <div role="radiogroup" aria-label={t('Your answer')} className="flex flex-col gap-2">
           {CHOICES.map((c) => {
             const on = choice === c.value;
             return (
@@ -310,7 +313,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 
         <PillField
           tone="sheet"
-          label="Note for the band (optional)"
+          label={t('Note for the band (optional)')}
           value={note}
           maxLength={280}
           onChange={(e) => setNote(e.target.value)}
@@ -321,7 +324,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
 
         <div className="pt-1">
           <PillButton onClick={handleSend} loading={isSubmitting} disabled={!choice}>
-            {isSubmitting ? 'Sending…' : 'Send RSVP'}
+            {isSubmitting ? t('Sending…') : t('Send RSVP')}
           </PillButton>
         </div>
       </motion.div>
