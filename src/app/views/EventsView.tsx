@@ -92,7 +92,7 @@ const getEventTags = (event: EventData): string[] => {
     tags.push(getRehearsalCadence(event));
   } else if (status === 'QUOTED' || status === 'QUOTE') {
     tags.push('QUOTE');
-    tags.push((event.quoteStatus || 'pending').toUpperCase());
+    tags.push((event.quoteStatus || 'draft').toUpperCase());
   } else if (status === 'DRAFT' || status === 'PENDING') {
     tags.push('DRAFT');
   }

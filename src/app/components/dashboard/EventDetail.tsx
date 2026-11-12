@@ -595,7 +595,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   if (isPersonalGig) statusChips.push('ONLY YOU');
   else if (isRehearsal) statusChips.push(rehearsalCadence(event.is_recurring, event.recurrence_rule, event.date));
   else if (isQuote) {
-    const qs = String(linkedQuote?.status || event.quoteStatus || 'pending');
+    // Same fallback as the status card below: a quote never shared is a draft.
+    const qs = String(linkedQuote?.status || event.quoteStatus || 'draft');
     statusChips.push(qs.toUpperCase());
     // A quote not shared yet: on the admins' calendar only (unless the
     // lineup was asked for availability, then they see the check).
@@ -987,15 +988,15 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── RSVP (pending gig invite) ─── */}
               {showRsvpCard && (
                 <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
-                  <span className="bw-label-sm">Your RSVP</span>
-                  <h2 className="bw-h1">Are you in?</h2>
+                  <span className="bw-label-sm">{isQuote ? 'Availability check' : 'Your RSVP'}</span>
+                  <h2 className="bw-h1">{isQuote ? 'Are you free?' : 'Are you in?'}</h2>
                   <div className="grid grid-cols-2 gap-2">
                     <PillButton variant="primary" size="md" onClick={handleAccept} disabled={isSubmitting}>
                       <Check className="w-4 h-4" />
-                      {isSubmitting ? '...' : 'ACCEPT'}
+                      {isSubmitting ? '...' : isQuote ? "I'M FREE" : 'ACCEPT'}
                     </PillButton>
                     <PillButton variant="white" size="md" onClick={handleDecline} disabled={isSubmitting}>
-                      DECLINE
+                      {isQuote ? 'NOT FREE' : 'DECLINE'}
                     </PillButton>
                   </div>
                 </section>
@@ -1444,7 +1445,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       </button>
                     )}
                   </>
-                ) : showRsvpCard ? null : isAdmin ? (
+                ) : showRsvpCard && !(isAdmin && isQuote) ? null : isAdmin ? (
                   isQuote ? (
                     <>
                       <div className="grid grid-cols-2 gap-3 w-full">
