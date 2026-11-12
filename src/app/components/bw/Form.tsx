@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, ArrowLeft, Loader2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { useRailBack } from '@/lib/railActions';
+import { t } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Form building blocks from the Figma design system (Button, Input, Top Bar,
@@ -68,7 +69,7 @@ PillButton.displayName = 'PillButton';
 /** Circular back button (Figma Top Bar → Back). 36pt visual, 44pt hit area. */
 export const BackButton: React.FC<{ onClick: () => void; label?: string; className?: string; tone?: 'default' | 'inverse' }> = ({
   onClick,
-  label = 'Back',
+  label = t('Back'),
   className,
   tone = 'default',
 }) => {

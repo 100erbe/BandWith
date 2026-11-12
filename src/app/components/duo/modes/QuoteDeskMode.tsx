@@ -7,6 +7,7 @@ import { calculateDepositAmount, calculateQuoteTotals, type QuoteDiscountType } 
 import type { Quote as AppQuote } from '@/app/data/quotes';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel } from './shared';
+import { t, useT } from '@/lib/i18n';
 
 /**
  * Quote desk (a quote being edited, in Laptop pose). Display: the quote as
@@ -44,7 +45,7 @@ export function quoteDeskLinesFromQuote(q: Partial<Pick<AppQuote, 'lineItems' | 
       .map((m) => ({ id: `m-${m.id}`, description: m.name, quantity: 1, unitPrice: m.price || 0, adjustable: false })),
     ...(q.customItems || []).map((c) => ({
       id: `c-${c.id}`,
-      description: c.description || c.name || 'Custom item',
+      description: c.description || c.name || t('Custom item'),
       quantity: c.quantity || 1,
       unitPrice: c.amount ?? c.price ?? 0,
     })),
@@ -105,6 +106,7 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
   sendDisabled,
   zIndex = 105,
 }) => {
+  const t = useT();
   const [touched, setTouched] = useState<string | null>(null);
   const active = activeLineId !== undefined ? activeLineId : touched;
   const focus = (id: string) => {
@@ -124,17 +126,17 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
       }),
     [lines, discountType, discountValue, vatRate, vatExempt, reverseCharge],
   );
-  const taxLabel = findCountryPreset(billingCountry)?.taxLabel ?? 'VAT';
+  const taxLabel = findCountryPreset(billingCountry)?.taxLabel ?? t('VAT');
   const taxLine = vatExempt
-    ? `${taxLabel} exempt`
+    ? t('{tax} exempt', { tax: taxLabel })
     : reverseCharge
-      ? `${taxLabel} reverse charge`
+      ? t('{tax} reverse charge', { tax: taxLabel })
       : `${taxLabel} ${vatRate}%`;
   const discountLine =
     discountType === 'percentage' && discountValue > 0
-      ? `Discount ${discountValue}%`
+      ? t('Discount {value}%', { value: discountValue })
       : discountType === 'fixed' && discountValue > 0
-        ? 'Discount'
+        ? t('Discount')
         : null;
   const deposit = depositPercentage && depositPercentage > 0 ? calculateDepositAmount(totals.total, depositPercentage) : null;
 
@@ -150,19 +152,19 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
     <div className="bw-fold-pad flex flex-col gap-4 pt-3 pb-4">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="bw-label-sm uppercase text-muted-foreground">Quote{quoteNumber ? ` · ${quoteNumber}` : ''}</p>
-          <h1 className="bw-h2 [overflow-wrap:anywhere]">{title || 'Untitled quote'}</h1>
+          <p className="bw-label-sm uppercase text-muted-foreground">{t('Quote')}{quoteNumber ? ` · ${quoteNumber}` : ''}</p>
+          <h1 className="bw-h2 [overflow-wrap:anywhere]">{title || t('Untitled quote')}</h1>
           <p className="bw-body-sm text-muted-foreground">
-            {[clientCompany || clientName, dayLabel(eventDate), venue].filter(Boolean).join(' · ') || 'Client not set'}
+            {[clientCompany || clientName, dayLabel(eventDate), venue].filter(Boolean).join(' · ') || t('Client not set')}
           </p>
         </div>
         <p className="flex flex-col items-end shrink-0">
-          <span className="bw-label-sm uppercase text-muted-foreground">Total</span>
+          <span className="bw-label-sm uppercase text-muted-foreground">{t('Total')}</span>
           <span className="bw-value-lg tabular-nums">{money(totals.total, 'auto')}</span>
         </p>
       </header>
       {lines.length === 0 ? (
-        <ModeEmpty title="No lines yet" detail="Add a line on the Deck." className="py-2" />
+        <ModeEmpty title={t('No lines yet')} detail={t('Add a line on the Deck.')} className="py-2" />
       ) : (
         <ul className="flex flex-col">
           {lines.map((l) => {
@@ -187,14 +189,14 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
         </ul>
       )}
       <dl className="flex flex-col gap-1 bw-body-sm">
-        <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="tabular-nums">{money(totals.subtotal, 'auto')}</dd></div>
+        <div className="flex justify-between"><dt className="text-muted-foreground">{t('Subtotal')}</dt><dd className="tabular-nums">{money(totals.subtotal, 'auto')}</dd></div>
         {discountLine && (
           <div className="flex justify-between"><dt className="text-muted-foreground">{discountLine}</dt><dd className="tabular-nums">−{money(totals.discount, 'auto')}</dd></div>
         )}
         <div className="flex justify-between"><dt className="text-muted-foreground">{taxLine}</dt><dd className="tabular-nums">{money(totals.vat, 'auto')}</dd></div>
-        <div className="flex justify-between bw-h3 pt-1"><dt>Total</dt><dd className="tabular-nums">{money(totals.total, 'auto')}</dd></div>
+        <div className="flex justify-between bw-h3 pt-1"><dt>{t('Total')}</dt><dd className="tabular-nums">{money(totals.total, 'auto')}</dd></div>
         {deposit !== null && (
-          <div className="flex justify-between"><dt className="text-muted-foreground">Deposit {depositPercentage}%</dt><dd className="tabular-nums">{money(deposit, 'auto')}</dd></div>
+          <div className="flex justify-between"><dt className="text-muted-foreground">{t('Deposit {percent}%', { percent: depositPercentage ?? 0 })}</dt><dd className="tabular-nums">{money(deposit, 'auto')}</dd></div>
         )}
       </dl>
     </div>
@@ -210,15 +212,15 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
               onClick={() => { haptic.tap(); onAddLine(); }}
               className="h-9 px-3 rounded-full bg-muted bw-button-sm flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Add line
+              <Plus className="w-4 h-4" /> {t('Add line')}
             </button>
           ) : undefined
         }
       >
-        Lines
+        {t('Lines')}
       </DeckHeading>
       {lines.length === 0 ? (
-        <ModeEmpty title="No lines" className="py-2" />
+        <ModeEmpty title={t('No lines')} className="py-2" />
       ) : (
         <ul className="flex flex-col gap-1.5">
           {lines.map((l) => {
@@ -231,13 +233,13 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
               >
                 <button type="button" onClick={() => focus(l.id)} className="flex-1 min-w-0 text-left cursor-pointer">
                   <span className="block bw-body-md font-semibold truncate">{l.description}</span>
-                  <span className="block bw-body-sm text-muted-foreground tabular-nums">{money(l.unitPrice, 'auto')} each</span>
+                  <span className="block bw-body-sm text-muted-foreground tabular-nums">{t('{price} each', { price: money(l.unitPrice, 'auto') })}</span>
                 </button>
                 {adjustable ? (
-                  <div className="flex items-center gap-1 shrink-0" role="group" aria-label={`Quantity of ${l.description}`}>
+                  <div className="flex items-center gap-1 shrink-0" role="group" aria-label={t('Quantity of {item}', { item: l.description })}>
                     <button
                       type="button"
-                      aria-label="Decrease"
+                      aria-label={t('Decrease')}
                       disabled={l.quantity <= 1}
                       onClick={() => step(l, -1)}
                       className="w-11 h-11 rounded-full bg-background flex items-center justify-center cursor-pointer disabled:opacity-40"
@@ -247,7 +249,7 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
                     <span className="w-8 text-center bw-h3 tabular-nums" aria-live="polite">{l.quantity}</span>
                     <button
                       type="button"
-                      aria-label="Increase"
+                      aria-label={t('Increase')}
                       onClick={() => step(l, 1)}
                       className="w-11 h-11 rounded-full bg-background flex items-center justify-center cursor-pointer"
                     >
@@ -263,8 +265,8 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
         </ul>
       )}
       <dl className="flex flex-wrap gap-x-4 gap-y-1 bw-label-md uppercase text-muted-foreground">
-        <div className="flex gap-1"><dt>Discount</dt><dd className="text-foreground">{discountLine ? (discountType === 'percentage' ? `${discountValue}%` : money(discountValue, 'auto')) : 'None'}</dd></div>
-        <div className="flex gap-1"><dt>{taxLabel}</dt><dd className="text-foreground">{vatExempt ? 'Exempt' : reverseCharge ? 'Reverse charge' : `${vatRate}%`}</dd></div>
+        <div className="flex gap-1"><dt>{t('Discount')}</dt><dd className="text-foreground">{discountLine ? (discountType === 'percentage' ? `${discountValue}%` : money(discountValue, 'auto')) : t('None')}</dd></div>
+        <div className="flex gap-1"><dt>{taxLabel}</dt><dd className="text-foreground">{vatExempt ? t('Exempt') : reverseCharge ? t('Reverse charge') : `${vatRate}%`}</dd></div>
       </dl>
       {onSend && (
         <DeckButton
@@ -273,13 +275,13 @@ export const QuoteDeskMode: React.FC<QuoteDeskModeProps> = ({
           disabled={sending || sendDisabled || lines.length === 0}
           onClick={() => { haptic.medium(); onSend(); }}
         >
-          <Send className="w-5 h-5" /> {sending ? 'Sending…' : `Send · ${money(totals.total, 'auto')}`}
+          <Send className="w-5 h-5" /> {sending ? t('Sending…') : t('Send · {amount}', { amount: money(totals.total, 'auto') })}
         </DeckButton>
       )}
     </div>
   );
 
-  return <FoldSplit zIndex={zIndex} displayLabel="Quote preview" deckLabel="Quote lines" display={display} deck={deck} />;
+  return <FoldSplit zIndex={zIndex} displayLabel={t('Quote preview')} deckLabel={t('Quote lines')} display={display} deck={deck} />;
 };
 
 export default QuoteDeskMode;

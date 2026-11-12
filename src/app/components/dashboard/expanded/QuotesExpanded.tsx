@@ -39,6 +39,7 @@ import {
 } from '@/lib/services/quotes';
 import { useBand } from '@/lib/BandContext';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { useT } from '@/lib/i18n';
 
 interface QuotesExpandedProps {
   bandId: string;
@@ -70,6 +71,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   onQuotesChanged,
   onOpenBandSettings,
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const { selectedBand } = useBand();
   // Real band id: BandContext first, then the prop (only if it is a real UUID, never a mock id)
@@ -98,8 +100,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
   useEffect(() => {
     if (!inlineMessage) return;
-    const t = setTimeout(() => setInlineMessage(null), inlineMessage.type === 'error' ? 6000 : 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setInlineMessage(null), inlineMessage.type === 'error' ? 6000 : 3500);
+    return () => clearTimeout(timer);
   }, [inlineMessage]);
 
   const notify = useCallback(
@@ -111,7 +113,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   );
 
   const errorText = (err: unknown, fallback: string) =>
-    `${fallback}: ${(err as any)?.message || 'Unknown error'}`;
+    `${fallback}: ${(err as any)?.message || t('Unknown error')}`;
   
   // Modal states
   const [isCreating, setIsCreating] = useState(false);
@@ -133,7 +135,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   const handleCreateQuote = async (quoteData: Partial<Quote>, opts?: { share?: boolean }) => {
     if (isSaving) return;
     if (!currentBandId) {
-      notify('No band selected — cannot save the quote', 'error');
+      notify(t('No band selected — cannot save the quote'), 'error');
       return;
     }
 
@@ -152,7 +154,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         const { data, error } = await updateQuoteDB(existing.id, updates);
         if (error || !data) {
           setQuotes(previous);
-          notify(errorText(error, 'Failed to update quote'), 'error');
+          notify(errorText(error, t('Failed to update quote')), 'error');
           return; // keep the wizard open so nothing is lost
         }
 
@@ -160,7 +162,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         setQuotes(prev => prev.map(q => (q.id === existing.id ? saved : q)));
         setIsCreating(false);
         setEditingQuote(null);
-        notify('Quote updated', 'success');
+        notify(t('Quote updated'), 'success');
         onQuotesChanged?.();
         if (opts?.share) setSharingQuote(saved);
         return;
@@ -169,7 +171,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       // ── Create: the DB assigns the quote number; share/PDF only after the insert returns ──
       const { data, error } = await createQuoteDB(record, appMusiciansToDb(quoteData.musicians));
       if (error || !data) {
-        notify(errorText(error, 'Failed to create quote'), 'error');
+        notify(errorText(error, t('Failed to create quote')), 'error');
         return; // keep the wizard open so nothing is lost
       }
 
@@ -187,7 +189,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       setQuotes(prev => [saved, ...prev]);
       setIsCreating(false);
       setEditingQuote(null);
-      notify(`Quote ${saved.quoteNumber} saved`, 'success');
+      notify(t('Quote {number} saved', { number: String(saved.quoteNumber) }), 'success');
       onQuotesChanged?.();
       if (opts?.share) setSharingQuote(saved);
     } finally {
@@ -207,7 +209,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     const { data, error } = await sendQuoteDB(quote.id);
     if (error || !data) {
       setQuotes(previous);
-      notify(errorText(error, 'Failed to mark quote as sent'), 'error');
+      notify(errorText(error, t('Failed to mark quote as sent')), 'error');
       return;
     }
     setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
@@ -221,11 +223,11 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     const { data, error } = outcome === 'ACCEPTED' ? await acceptQuoteDB(quote.id) : await declineQuoteDB(quote.id);
     if (error || !data) {
       setQuotes(previous);
-      notify(errorText(error, 'Could not update the quote'), 'error');
+      notify(errorText(error, t('Could not update the quote')), 'error');
       return;
     }
     setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, ...dbQuoteToAppQuote(data), musicians: q.musicians } : q)));
-    notify(outcome === 'ACCEPTED' ? 'Quote accepted. The gig is confirmed.' : 'Quote marked as declined', 'success');
+    notify(outcome === 'ACCEPTED' ? t('Quote accepted. The gig is confirmed.') : t('Quote marked as declined'), 'success');
     onQuotesChanged?.();
   };
 
@@ -233,17 +235,17 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     setSelectedQuote(null);
     const { data, error } = await duplicateQuoteDB(quote.id);
     if (error || !data) {
-      notify(errorText(error, 'Failed to duplicate quote'), 'error');
+      notify(errorText(error, t('Failed to duplicate quote')), 'error');
       return;
     }
     setQuotes(prev => [dbQuoteToAppQuote(data), ...prev]);
-    notify(`Quote duplicated as ${data.quote_number}`, 'success');
+    notify(t('Quote duplicated as {number}', { number: String(data.quote_number) }), 'success');
     onQuotesChanged?.();
   };
 
   const handleDeleteQuote = async (quote: Quote) => {
-    const label = quote.quoteNumber || quote.eventTitle || quote.clientName || 'this quote';
-    if (typeof window !== 'undefined' && !window.confirm(`Delete ${label}? This cannot be undone.`)) {
+    const label = quote.quoteNumber || quote.eventTitle || quote.clientName || t('this quote');
+    if (typeof window !== 'undefined' && !window.confirm(t('Delete {label}? This cannot be undone.', { label }))) {
       return;
     }
 
@@ -254,10 +256,10 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     const { error } = await deleteQuoteDB(quote.id);
     if (error) {
       setQuotes(previous);
-      notify(errorText(error, 'Failed to delete quote'), 'error');
+      notify(errorText(error, t('Failed to delete quote')), 'error');
       return;
     }
-    notify('Quote deleted', 'success');
+    notify(t('Quote deleted'), 'success');
     onQuotesChanged?.();
   };
 
@@ -312,10 +314,10 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
       origin={{ top: '40%', left: '3%', right: '58%', bottom: '42%' }}
     >
       <ExpandedTopBar
-        title="Quotes"
+        title={t('Quotes')}
         onBack={onClose}
         meta={<span className="bw-label-sm text-muted-foreground">{quotes.length}</span>}
-        actions={<IconButton label="New quote" variant="filled" icon={<Plus />} onClick={() => setIsCreating(true)} />}
+        actions={<IconButton label={t('New quote')} variant="filled" icon={<Plus />} onClick={() => setIsCreating(true)} />}
       />
 
       <div
@@ -332,13 +334,13 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col gap-1">
-            <span className="bw-label-sm">Pipeline potential</span>
-            <DotText text={`${sym()}${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={`Pipeline ${sym()}${pipelineTotal.toLocaleString()}`} />
+            <span className="bw-label-sm">{t('Pipeline potential')}</span>
+            <DotText text={`${sym()}${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={t('Pipeline {amount}', { amount: `${sym()}${pipelineTotal.toLocaleString()}` })} />
           </div>
 
           {/* One dot column per active quote: height = value, colour = likelihood */}
           {chartQuotes.length === 0 ? (
-            <p className="bw-body-sm text-sheet-foreground/70 py-6 text-center">No pipeline data</p>
+            <p className="bw-body-sm text-sheet-foreground/70 py-6 text-center">{t('No pipeline data')}</p>
           ) : (
             <div className="flex justify-between gap-2 pt-6">
               {chartQuotes.map((quote, qi) => {
@@ -384,22 +386,24 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
 
           <div className="flex items-center justify-between gap-3 pt-3 border-t border-sheet-foreground/15">
             <span className="bw-label-sm text-sheet-foreground/70">
-              {activeQuotes.length} {activeQuotes.length === 1 ? 'deal' : 'deals'}
+              {activeQuotes.length === 1
+                ? t('{count} deal', { count: activeQuotes.length })
+                : t('{count} deals', { count: activeQuotes.length })}
             </span>
             <span className="flex items-center gap-1.5 bw-label-sm">
               <span className="w-2 h-2 rounded-full bg-accent" aria-hidden="true" />
-              Accepted
+              {t('Accepted')}
             </span>
           </div>
         </motion.section>
 
         {/* Quote list */}
         <section className="grid grid-cols-1 @min-[640px]:grid-cols-2 @min-[960px]:grid-cols-3 gap-4 items-stretch">
-          <h2 className="bw-label-md text-foreground col-span-full">All quotes</h2>
+          <h2 className="bw-label-md text-foreground col-span-full">{t('All quotes')}</h2>
           {quotes.length === 0 ? (
             <Card className="col-span-full items-center text-center py-8 gap-1">
-              <h3 className="bw-h3">No quotes yet</h3>
-              <p className="bw-body-sm text-muted-foreground">Create your first quote to get started.</p>
+              <h3 className="bw-h3">{t('No quotes yet')}</h3>
+              <p className="bw-body-sm text-muted-foreground">{t('Create your first quote to get started.')}</p>
             </Card>
           ) : quotes.map((quote, i) => {
             const accepted = quote.status === 'ACCEPTED';
@@ -423,7 +427,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     {quote.clientName && (
                       <span className={'bw-label-sm truncate ' + (accepted ? 'opacity-70' : 'text-muted-foreground')}>{quote.clientName}</span>
                     )}
-                    <span className="bw-h3 [overflow-wrap:anywhere]">{quote.eventTitle || 'Untitled quote'}</span>
+                    <span className="bw-h3 [overflow-wrap:anywhere]">{quote.eventTitle || t('Untitled quote')}</span>
                   </span>
                   <Tag variant={statusTag(quote.status)} icon={getStatusIcon(quote.status)}>
                     {getStatusLabel(quote.status)}
@@ -431,7 +435,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 </span>
                 <span className="flex items-end justify-between gap-3">
                   <span className={'bw-label-xs ' + (accepted ? 'opacity-70' : 'text-muted-foreground')}>
-                    {[items > 0 ? `${items} ${items === 1 ? 'item' : 'items'}` : null, created && !isNaN(created.getTime()) ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null]
+                    {[items > 0 ? (items === 1 ? t('{count} item', { count: items }) : t('{count} items', { count: items })) : null, created && !isNaN(created.getTime()) ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null]
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
@@ -476,7 +480,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
               className="bw-pane-leading-center fixed left-1/2 -translate-x-1/2 bottom-[calc(var(--safe-bottom)+24px)] z-[300] flex items-center gap-2 h-9 rounded-full bg-surface-inverse text-surface-inverse-foreground px-4 bw-label-sm"
             >
               <Loader2 className="w-4 h-4 animate-spin" />
-              Saving quote…
+              {t('Saving quote…')}
             </div>
           )}
 
