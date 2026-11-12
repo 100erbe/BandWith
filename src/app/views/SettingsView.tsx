@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { readLocalPref, loadNotificationPrefs, saveNotificationPref } from '@/lib/services/notificationPrefs';
 import { loadPrivacyPrefs, savePrivacyPref } from '@/lib/services/privacyPrefs';
 import { exportMyData } from '@/lib/services/dataExport';
-import { Toggle, IconButton, NavBackButton, Tag, PillButton, Selector } from '@/app/components/bw';
+import { Toggle, IconButton, NavBackButton, PillButton, Selector } from '@/app/components/bw';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrandLogo } from '@/app/components/ui/BrandLogo';
 import {
@@ -26,6 +26,7 @@ import {
   Smartphone,
   FileText,
   Navigation,
+  Check,
 } from '@/app/components/icons';
 import { LegalSheet, type LegalDoc } from '@/app/components/legal/LegalSheet';
 import { deleteMyAccount } from '@/lib/services/account';
@@ -35,6 +36,7 @@ import { cn } from '@/app/components/ui/utils';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { usePosture, useLaptopPoseEnabled, setLaptopPoseEnabled } from '@/lib/posture';
 import { setDistanceUnit, useDistanceUnit } from '@/lib/units';
+import { useT, useLocalePref, setLocalePref, getLocale, deviceLocale, formatList, LANGUAGES } from '@/lib/i18n';
 
 type SettingsSection = 'notifications' | 'appearance' | 'units' | 'privacy' | 'duo' | 'help' | 'about' | 'language';
 
@@ -83,8 +85,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const { signOut } = useAuth();
   const { mode, setMode, resolvedTheme } = useTheme();
+  const t = useT();
+  const localePref = useLocalePref();
+  const languageName = (id: string) => LANGUAGES.find((l) => l.id === id)?.name ?? 'English';
 
-  const themeLabel = mode === 'system' ? 'System' : mode === 'dark' ? 'Dark' : 'Light';
+  const themeLabel = mode === 'system' ? t('System') : mode === 'dark' ? t('Dark') : t('Light');
 
   // iPhone Duo: only where the device reports posture (fold / hinge / Duo
   // status column); ordinary phones never see it.
@@ -99,16 +104,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     value?: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
-    { id: 'notifications', label: 'Notifications', hint: 'Push and email', icon: Bell },
-    { id: 'appearance', label: 'Appearance', hint: 'Light, dark or system', value: themeLabel, icon: Sun },
-    { id: 'units', label: 'Units', hint: 'Distances in km or miles', value: distanceUnit === 'mi' ? 'Miles' : 'Kilometres', icon: Navigation },
-    { id: 'privacy', label: 'Privacy & account', hint: 'Gig privacy, export, delete account', icon: Lock },
+    { id: 'notifications', label: t('Notifications'), hint: t('Push and email'), icon: Bell },
+    { id: 'appearance', label: t('Appearance'), hint: t('Light, dark or system'), value: themeLabel, icon: Sun },
+    { id: 'units', label: t('Units'), hint: t('Distances in km or miles'), value: distanceUnit === 'mi' ? t('Miles') : t('Kilometres'), icon: Navigation },
+    { id: 'privacy', label: t('Privacy & account'), hint: t('Gig privacy, export, delete account'), icon: Lock },
     ...(postureDetected
-      ? [{ id: 'duo' as const, label: 'iPhone Duo', hint: 'Laptop pose', value: laptopPoseEnabled ? 'On' : 'Off', icon: Smartphone }]
+      ? [{ id: 'duo' as const, label: 'iPhone Duo', hint: t('Laptop pose'), value: laptopPoseEnabled ? t('On') : t('Off'), icon: Smartphone }]
       : []),
-    { id: 'language', label: 'Language', value: 'English (US)', icon: MessageSquare },
-    { id: 'help', label: 'Help & support', hint: 'support@bandwith.app', icon: Mail },
-    { id: 'about', label: 'About', hint: 'Version 1.0.0', icon: Star },
+    { id: 'language', label: t('Language'), value: languageName(getLocale()), icon: MessageSquare },
+    { id: 'help', label: t('Help & support'), hint: 'support@bandwith.app', icon: Mail },
+    { id: 'about', label: t('About'), hint: t('Version {version}', { version: '1.0.0' }), icon: Star },
   ];
   const isKnownSection = (v?: string): v is SettingsSection =>
     !!v && SECTIONS.some((sec) => sec.id === v);
@@ -162,7 +167,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     saveNotificationPref('push', val).then(({ error }) => {
       if (error) {
         setPushEnabled(!val);
-        setNotifError(`Couldn’t save push setting: ${error.message}`);
+        setNotifError(t('Couldn’t save push setting: {error}', { error: error.message }));
       }
     });
   };
@@ -173,7 +178,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     saveNotificationPref('email', val).then(({ error }) => {
       if (error) {
         setEmailEnabled(!val);
-        setNotifError(`Couldn’t save email setting: ${error.message}`);
+        setNotifError(t('Couldn’t save email setting: {error}', { error: error.message }));
       }
     });
   };
@@ -184,7 +189,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     saveNotificationPref('product_updates', val).then(({ error }) => {
       if (error) {
         setProductUpdatesEnabled(!val);
-        setNotifError(`Couldn’t save product news setting: ${error.message}`);
+        setNotifError(t('Couldn’t save product news setting: {error}', { error: error.message }));
       }
     });
   };
@@ -205,7 +210,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setPrivacyState('unavailable');
       } else {
         setPrivacyState('error');
-        setPrivacyError(`Couldn’t load privacy settings: ${res.error.message}`);
+        setPrivacyError(t('Couldn’t load privacy settings: {error}', { error: res.error.message }));
       }
     });
     return () => { cancelled = true; };
@@ -221,7 +226,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (error) {
         setHideGigDetails(!val);
         if (unavailable) setPrivacyState('unavailable');
-        setPrivacyError(unavailable ? error.message : `Couldn’t save: ${error.message}`);
+        setPrivacyError(unavailable ? error.message : t('Couldn’t save: {error}', { error: error.message }));
       }
     });
   };
@@ -237,7 +242,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       await exportMyData();
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Couldn’t export your data.');
+      setExportError(err instanceof Error ? err.message : t('Couldn’t export your data.'));
     } finally {
       setExporting(false);
     }
@@ -245,14 +250,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
 
   const notificationStatus = (() => {
-    const on = [
-      pushEnabled && 'push',
-      emailEnabled && 'email',
-    ].filter(Boolean) as string[];
-    if (on.length === 0) return 'All alerts paused';
-    const list =
-      on.length === 1 ? on[0] : `${on.slice(0, -1).join(', ')} & ${on[on.length - 1]}`;
-    return `${list} alerts enabled`;
+    if (pushEnabled && emailEnabled) return t('push & email alerts enabled');
+    if (pushEnabled) return t('push alerts enabled');
+    if (emailEnabled) return t('email alerts enabled');
+    return t('All alerts paused');
   })();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -281,11 +282,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setDeleting(false);
     if (result.reason === 'admin_of_bands') {
       const names = result.bands.filter(Boolean);
-      const list =
-        names.length <= 1
-          ? names[0] || 'your band'
-          : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-      setDeleteError(`Add another admin to ${list} first.`);
+      const list = names.length === 0 ? t('your band') : formatList(names);
+      setDeleteError(t('Add another admin to {bands} first.', { bands: list }));
     } else {
       setDeleteError(result.message);
     }
@@ -293,20 +291,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const getSectionTitle = (section: SettingsSection | null = activeSection): string => {
     switch (section) {
-      case 'notifications': return 'Notifications';
-      case 'appearance': return 'Appearance';
-      case 'units': return 'Units';
-      case 'privacy': return 'Privacy & account';
+      case 'notifications': return t('Notifications');
+      case 'appearance': return t('Appearance');
+      case 'units': return t('Units');
+      case 'privacy': return t('Privacy & account');
       case 'duo': return 'iPhone Duo';
-      case 'help': return 'Help & support';
-      case 'about': return 'About';
-      case 'language': return 'Language';
-      default: return 'App settings';
+      case 'help': return t('Help & support');
+      case 'about': return t('About');
+      case 'language': return t('Language');
+      default: return t('App settings');
     }
   };
 
   const renderMenu = () => (
-    <nav aria-label="Settings sections" className="flex flex-col gap-3">
+    <nav aria-label={t('Settings sections')} className="flex flex-col gap-3">
       {SECTIONS.map((sec) => {
         const Icon = sec.icon;
         const selected = twoPane && selectedSection === sec.id;
@@ -346,11 +344,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <IconTile>
           <Bell />
         </IconTile>
-        <RowText title="Push notifications" hint="Gig invites, polls, chat messages" />
+        <RowText title={t('Push notifications')} hint={t('Gig invites, polls, chat messages')} />
         <Toggle
           checked={pushEnabled}
           onCheckedChange={handleTogglePush}
-          aria-label="Push notifications"
+          aria-label={t('Push notifications')}
         />
       </div>
 
@@ -358,11 +356,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <IconTile>
           <Mail />
         </IconTile>
-        <RowText title="Email notifications" hint="Invites and new members by email" />
+        <RowText title={t('Email notifications')} hint={t('Invites and new members by email')} />
         <Toggle
           checked={emailEnabled}
           onCheckedChange={handleToggleEmail}
-          aria-label="Email notifications"
+          aria-label={t('Email notifications')}
         />
       </div>
 
@@ -371,14 +369,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <Sparkles />
         </IconTile>
         <RowText
-          title="Product news"
-          hint={emailEnabled ? 'What’s new in BandWith, a few times a year' : 'Off while email notifications are off'}
+          title={t('Product news')}
+          hint={emailEnabled ? t('What’s new in BandWith, a few times a year') : t('Off while email notifications are off')}
         />
         <Toggle
           checked={emailEnabled && productUpdatesEnabled}
           disabled={!emailEnabled}
           onCheckedChange={handleToggleProductUpdates}
-          aria-label="Product news emails"
+          aria-label={t('Product news emails')}
         />
       </div>
 
@@ -389,7 +387,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       )}
 
       <p className="bw-body-sm text-muted-foreground">
-        Urgent invites and polls always show a pop-up, even when push is off.
+        {t('Urgent invites and polls always show a pop-up, even when push is off.')}
       </p>
     </div>
   );
@@ -397,23 +395,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const renderAppearanceSection = () => (
     <div className={cn(CARD, 'p-4 flex flex-col gap-3')}>
       <div className="flex items-center justify-between gap-3">
-        <span className="bw-label-sm text-muted-foreground">Theme</span>
-        <span className="bw-label-sm text-muted-foreground">Current: {resolvedTheme} mode</span>
+        <span className="bw-label-sm text-muted-foreground">{t('Theme')}</span>
+        <span className="bw-label-sm text-muted-foreground">{resolvedTheme === 'dark' ? t('Current: dark mode') : t('Current: light mode')}</span>
       </div>
-      <div role="group" aria-label="Theme" className="flex items-center gap-2">
+      <div role="group" aria-label={t('Theme')} className="flex items-center gap-2">
         {[
-          { id: 'light' as const, label: 'Light' },
-          { id: 'dark' as const, label: 'Dark' },
-          { id: 'system' as const, label: 'System' },
-        ].map((t) => (
+          { id: 'light' as const, label: t('Light') },
+          { id: 'dark' as const, label: t('Dark') },
+          { id: 'system' as const, label: t('System') },
+        ].map((th) => (
           <Selector
-            key={t.id}
+            key={th.id}
             size="md"
-            selected={mode === t.id}
-            onClick={() => setMode(t.id)}
+            selected={mode === th.id}
+            onClick={() => setMode(th.id)}
             className="flex-1 min-w-0 justify-center"
           >
-            {t.label}
+            {th.label}
           </Selector>
         ))}
       </div>
@@ -422,11 +420,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const renderUnitsSection = () => (
     <div className={cn(CARD, 'p-4 flex flex-col gap-3')}>
-      <span className="bw-label-sm text-muted-foreground">Distance</span>
-      <div role="group" aria-label="Distance unit" className="flex items-center gap-2">
+      <span className="bw-label-sm text-muted-foreground">{t('Distance')}</span>
+      <div role="group" aria-label={t('Distance unit')} className="flex items-center gap-2">
         {[
-          { id: 'km' as const, label: 'Kilometres' },
-          { id: 'mi' as const, label: 'Miles' },
+          { id: 'km' as const, label: t('Kilometres') },
+          { id: 'mi' as const, label: t('Miles') },
         ].map((u) => (
           <Selector
             key={u.id}
@@ -440,8 +438,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ))}
       </div>
       <p className="bw-body-sm text-muted-foreground">
-        Travel distances and rates in quotes and pricing, and wind speed in the weather. Saved quotes and prices don't change, only
-        how they're shown on this device.
+        {t("Travel distances and rates in quotes and pricing, and wind speed in the weather. Saved quotes and prices don't change, only how they're shown on this device.")}
       </p>
     </div>
   );
@@ -454,18 +451,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Eye />
           </IconTile>
           <RowText
-            title="Hide my personal gigs' details from bands"
+            title={t("Hide my personal gigs' details from bands")}
             hint={
               privacyState === 'unavailable'
-                ? 'Not available yet'
-                : 'Bands see you as busy, without title or venue'
+                ? t('Not available yet')
+                : t('Bands see you as busy, without title or venue')
             }
           />
           <Toggle
             checked={hideGigDetails}
             onCheckedChange={handleToggleHideGigDetails}
             disabled={privacyState !== 'ready' || privacySaving}
-            aria-label="Hide my personal gigs' details from bands"
+            aria-label={t("Hide my personal gigs' details from bands")}
           />
         </div>
         {privacyError && (
@@ -485,7 +482,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <IconTile>
           <Download />
         </IconTile>
-        <RowText title="Export my data" hint={exporting ? 'Preparing your file…' : 'Download a JSON copy'} />
+        <RowText title={t('Export my data')} hint={exporting ? t('Preparing your file…') : t('Download a JSON copy')} />
         <ChevronRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
       </button>
       {exportError && (
@@ -505,7 +502,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <IconTile>
               <FileText />
             </IconTile>
-            <RowText title={doc === 'terms' ? 'Terms of Service' : 'Privacy Policy'} hint={doc === 'terms' ? 'The rules for using BandWith' : 'How your data is used and protected'} />
+            <RowText title={doc === 'terms' ? t('Terms of Service') : t('Privacy Policy')} hint={doc === 'terms' ? t('The rules for using BandWith') : t('How your data is used and protected')} />
             <ChevronRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
           </button>
         ))}
@@ -515,11 +512,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className={cn(CARD, 'p-4 flex flex-col gap-3 border-[1.5px] border-destructive')}>
         <div className="flex items-center gap-3">
           <Trash2 aria-hidden className="w-5 h-5 text-destructive shrink-0" />
-          <span className="bw-h2 text-destructive">Delete account</span>
+          <span className="bw-h2 text-destructive">{t('Delete account')}</span>
         </div>
         <p className="bw-body-md text-foreground">
-          Permanently removes your profile, personal gigs and messages. Bands you admin must have
-          another admin first.
+          {t('Permanently removes your profile, personal gigs and messages. Bands you admin must have another admin first.')}
         </p>
         <PillButton
           variant="danger"
@@ -529,7 +525,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           icon={<Trash2 aria-hidden className="w-[18px] h-[18px]" />}
           className="self-start"
         >
-          Delete account
+          {t('Delete account')}
         </PillButton>
       </div>
     </div>
@@ -544,7 +540,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <IconTile>
         <Mail />
       </IconTile>
-      <RowText title="Contact support" hint="support@bandwith.app" />
+      <RowText title={t('Contact support')} hint="support@bandwith.app" />
       <ArrowUpRight aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />
     </button>
   );
@@ -552,33 +548,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const renderAboutSection = () => (
     <div className={cn(CARD, 'p-5 flex flex-col gap-4')}>
       <BrandLogo variant="waveform" lockup="horizontal" className="h-8" textClassName="text-2xl" />
-      <span className="bw-label-sm text-muted-foreground">Version 1.0.0</span>
+      <span className="bw-label-sm text-muted-foreground">{t('Version {version}', { version: '1.0.0' })}</span>
       <p className="bw-body-sm text-muted-foreground">
-        All workspace data encrypted end-to-end. Built for musicians, managers, and touring crews.
+        {t('All workspace data encrypted end-to-end. Built for musicians, managers, and touring crews.')}
       </p>
     </div>
   );
 
-  const renderLanguageSection = () => (
-    <div className={cn(CARD, ROW)}>
-      <IconTile>
-        <Globe />
-      </IconTile>
-      <RowText title="Language" hint="English (US)" />
-      <Tag variant="accent">Active</Tag>
-    </div>
-  );
+  // Settings › Language: Automatic follows the phone; the names are written in their own language.
+  const renderLanguageSection = () => {
+    const options: { id: 'system' | (typeof LANGUAGES)[number]['id']; title: string; hint?: string }[] = [
+      { id: 'system', title: t('Automatic'), hint: t('Same as this phone: {language}', { language: languageName(deviceLocale()) }) },
+      ...LANGUAGES.map((l) => ({ id: l.id, title: l.name })),
+    ];
+    return (
+      <div className="flex flex-col gap-3">
+        <div role="radiogroup" aria-label={t('Language')} className={cn(CARD, 'flex flex-col')}>
+          {options.map((o, i) => {
+            const selected = localePref === o.id;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                lang={o.id === 'system' ? undefined : o.id}
+                onClick={() => setLocalePref(o.id)}
+                className={cn(ROW, PRESSABLE, 'min-h-[60px]', i > 0 && 'border-t border-border')}
+              >
+                {o.id === 'system' ? (
+                  <IconTile>
+                    <Globe />
+                  </IconTile>
+                ) : null}
+                <RowText title={o.title} hint={o.hint} />
+                {selected && <Check aria-hidden className="w-[18px] h-[18px] text-foreground shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        <p className="bw-body-sm text-muted-foreground">
+          {t('Some screens, notifications and emails are still in English while translations are being added.')}
+        </p>
+      </div>
+    );
+  };
 
   const renderDuoSection = () => (
     <div className={cn(CARD, ROW)}>
       <IconTile>
         <Smartphone />
       </IconTile>
-      <RowText title="Laptop pose" hint="Switch layouts when the phone is half open on a table" />
+      <RowText title={t('Laptop pose')} hint={t('Switch layouts when the phone is half open on a table')} />
       <Toggle
         checked={laptopPoseEnabled}
         onCheckedChange={(on: boolean) => setLaptopPoseEnabled(on)}
-        aria-label="Laptop pose"
+        aria-label={t('Laptop pose')}
       />
     </div>
   );
@@ -648,7 +673,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {renderSection(twoPane ? leadingSection : activeSection)}
 
         {/* Footer */}
-        <p className="bw-label-sm text-muted-foreground pt-1">v1.0.0 · All data encrypted</p>
+        <p className="bw-label-sm text-muted-foreground pt-1">{t('v{version} · All data encrypted', { version: '1.0.0' })}</p>
 
         {bottomSpacer}
       </div>
@@ -695,14 +720,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <AlertCircle aria-hidden className="w-6 h-6" />
               </div>
               <h2 id="delete-account-title" className="bw-h1 text-foreground">
-                Delete account?
+                {t('Delete account?')}
               </h2>
               <p id="delete-account-desc" className="bw-body-md text-muted-foreground">
-                This can't be undone. Your profile, personal gigs and messages will be deleted.
+                {t("This can't be undone. Your profile, personal gigs and messages will be deleted.")}
               </p>
               <div className="flex flex-col gap-2">
                 <label htmlFor="delete-account-confirm" className="bw-label-sm text-muted-foreground">
-                  Type DELETE to confirm
+                  {t('Type DELETE to confirm')}
                 </label>
                 <div
                   className={cn(
@@ -735,7 +760,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <div className="flex gap-3">
                 <PillButton variant="outline" className="flex-1" onClick={closeDeleteConfirm} disabled={deleting}>
-                  Cancel
+                  {t('Cancel')}
                 </PillButton>
                 <PillButton
                   variant="dark"
@@ -746,7 +771,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   loading={deleting}
                   icon={<Trash2 aria-hidden className="w-5 h-5" />}
                 >
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? t('Deleting…') : t('Delete')}
                 </PillButton>
               </div>
             </motion.div>
