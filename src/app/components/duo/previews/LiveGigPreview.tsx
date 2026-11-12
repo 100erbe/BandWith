@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, MapPin, Users } from '@/app/components/icons';
 import { Tag } from '@/app/components/bw/Screen';
+import { useT } from '@/lib/i18n';
 
 /**
  * Figma "Duo · 04": while the new gig wizard is on its first step in the
@@ -47,37 +48,41 @@ export const LiveGigPreview: React.FC<LiveGigPreviewProps> = ({
   accent,
   accentFg,
 }) => {
+  const t = useT();
+  // `settingLabel` is the raw setting value; translate it for display only.
+  const setting =
+    settingLabel === 'indoor' ? t('indoor') : settingLabel === 'outdoor' ? t('outdoor') : settingLabel;
   const place = [venue?.trim(), city?.trim()].filter(Boolean).join(', ');
   return (
     <div className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-live="polite">
-      <p className="bw-label-sm text-muted-foreground">Live preview</p>
+      <p className="bw-label-sm text-muted-foreground">{t('Live preview')}</p>
       <section
         className="rounded-[24px] p-5 flex flex-col gap-3"
         style={{ backgroundColor: accent, color: accentFg }}
-        aria-label={`${kindLabel} preview`}
+        aria-label={t('{kind} preview', { kind: kindLabel })}
       >
         <div className="flex items-center gap-2 flex-wrap">
           <Tag variant="solid">{kindLabel}</Tag>
           {typeLabel && <span className="bw-label-xs">{typeLabel}</span>}
-          {settingLabel && <span className="bw-label-xs opacity-70">{settingLabel}</span>}
+          {setting && <span className="bw-label-xs opacity-70">{setting}</span>}
         </div>
         <h2 className="bw-display-lg [overflow-wrap:anywhere]">{title}</h2>
 
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 shrink-0 mt-[3px]" />
           <span className="bw-body-md">
-            {dateLabel || 'Date TBD'}
+            {dateLabel || t('Date TBD')}
             {timeLabel ? ` · ${timeLabel}` : ''}
           </span>
         </div>
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 shrink-0 mt-[3px]" />
-          <span className="bw-body-md [overflow-wrap:anywhere]">{place || 'Venue TBD'}</span>
+          <span className="bw-body-md [overflow-wrap:anywhere]">{place || t('Venue TBD')}</span>
         </div>
         <div className="flex items-start gap-2 min-w-0">
           <Users className="w-4 h-4 shrink-0 mt-[3px]" />
           <span className="bw-body-md [overflow-wrap:anywhere]">
-            {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
+            {lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}
             {lineupNames.length > 0 && <span className="opacity-70"> · {lineupNames.join(', ')}</span>}
           </span>
         </div>
@@ -87,7 +92,7 @@ export const LiveGigPreview: React.FC<LiveGigPreviewProps> = ({
             className="flex items-baseline justify-between gap-3 pt-2"
             style={{ borderTop: '1px solid color-mix(in srgb, currentColor 20%, transparent)' }}
           >
-            <span className="bw-label-sm">Fee</span>
+            <span className="bw-label-sm">{t('Fee')}</span>
             <span className="bw-value-md shrink-0">{fee}</span>
           </div>
         )}

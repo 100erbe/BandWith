@@ -4,6 +4,7 @@ import { cn } from './utils';
 import { PickerSheet, PickerChip } from './DatePicker';
 import { DotText } from '@/app/components/bw/DotText';
 import { PillButton } from '@/app/components/bw/Form';
+import { useT } from '@/lib/i18n';
 
 export interface TimePickerProps {
   value?: string; // "HH:mm" (e.g. "20:00") or ""
@@ -150,12 +151,13 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   showIcon = true,
   showShortcuts = true,
   accentColor,
-  placeholder = 'Select time...',
+  placeholder,
   id,
-  overline = 'Pick a time',
+  overline,
 }) => {
+  const t = useT();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('Time');
+  const [title, setTitle] = useState('');
 
   // Parse 24h string e.g. "20:00"
   const [rawH = '20', rawM = '00'] = (value || '20:00').split(':');
@@ -178,7 +180,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
     if (next && id) {
       // Reuse the field's visible label ("Start time", "End time") as the sheet title.
       const text = document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent?.trim();
-      setTitle(text || 'Time');
+      setTitle(text || '');
     }
     setOpen(next);
   };
@@ -201,7 +203,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
     >
       {showIcon && <Clock className="w-5 h-5 shrink-0" aria-hidden />}
       <span className={cn('flex-1 min-w-0 truncate tabular-nums', !displayTime && 'text-muted-foreground/60')}>
-        {displayTime || (allowEmpty ? emptyLabel : placeholder)}
+        {displayTime || (allowEmpty ? emptyLabel : placeholder ?? t('Select time...'))}
       </span>
     </button>
   );
@@ -211,8 +213,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       open={open}
       onOpenChange={handleOpenChange}
       trigger={trigger}
-      overline={overline}
-      title={title}
+      overline={overline ?? t('Pick a time')}
+      title={title || t('Time')}
       footer={
         <div className="flex items-center gap-2">
           {allowEmpty && (
@@ -224,7 +226,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                 setOpen(false);
               }}
             >
-              Clear
+              {t('Clear')}
             </PillButton>
           )}
           <PillButton
@@ -236,7 +238,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
               setOpen(false);
             }}
           >
-            Set {currentTime}
+            {t('Set {time}', { time: currentTime })}
           </PillButton>
         </div>
       }
@@ -244,7 +246,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       {/* Wheel */}
       <div className="flex items-center justify-center p-3 rounded-2xl bg-card text-card-foreground select-none">
         <WheelColumn
-          label="Hours"
+          label={t('Hours')}
           display={pad2(numH24)}
           neighbour={o => pad2(mod(numH24 + o, 24))}
           onStep={stepHour}
@@ -256,7 +258,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
           <DotText text=":" size={40} label="" />
         </span>
         <WheelColumn
-          label="Minutes"
+          label={t('Minutes')}
           display={pad2(numM)}
           neighbour={o => MINUTES_5[mod(minuteIndex + o, 12)]}
           onStep={stepMinute}
@@ -269,9 +271,9 @@ export const TimePicker: React.FC<TimePickerProps> = ({
       {/* Quick picks (Figma Selector SM, Accent = current) */}
       {showShortcuts && (
         <div className="flex flex-wrap items-center gap-2">
-          {TIME_SHORTCUTS.map(t => (
-            <PickerChip key={t} selected={displayTime === t} onClick={() => onChange(t)}>
-              {t}
+          {TIME_SHORTCUTS.map(time => (
+            <PickerChip key={time} selected={displayTime === time} onClick={() => onChange(time)}>
+              {time}
             </PickerChip>
           ))}
         </div>

@@ -7,6 +7,7 @@ import { getSongs, createSong, type Song } from '@/lib/services/songs';
 import { useBand } from '@/lib/BandContext';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
 import { genresOf, parseGenres, songHasGenre } from '@/lib/songGenres';
+import { useT } from '@/lib/i18n';
 
 export interface PickedSong {
   id: string;
@@ -52,8 +53,9 @@ export const SongPicker: React.FC<SongPickerProps> = ({
   multiSelect = false,
   selectedIds = [],
   theme = 'lime',
-  overline = 'Song library',
+  overline,
 }) => {
+  const t = useT();
   const { selectedBand } = useBand();
   const [tab, setTab] = useState<Tab>('library');
   const [search, setSearch] = useState('');
@@ -78,7 +80,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       setLoadError(null);
       const { data, error } = await getSongs(selectedBand.id);
       if (cancelled) return;
-      if (error) setLoadError(error.message || "Couldn't load your song library.");
+      if (error) setLoadError(error.message || t("Couldn't load your song library."));
       else if (data) setSongs(data);
       setLoading(false);
     };
@@ -154,7 +156,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
     const { data: created, error: createError } = await createSong(songData);
     setSaving(false);
     if (createError || !created) {
-      setSaveError(createError?.message || "Couldn't save this song.");
+      setSaveError(createError?.message || t("Couldn't save this song."));
       return;
     }
 
@@ -174,7 +176,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       setNewUrl('');
       setTab('library');
     }
-  }, [newTitle, newArtist, newUrl, selectedBand?.id, onSelect]);
+  }, [newTitle, newArtist, newUrl, selectedBand?.id, onSelect, t]);
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '';
@@ -202,15 +204,17 @@ export const SongPicker: React.FC<SongPickerProps> = ({
         disabled={!newTitle.trim()}
         loading={saving}
       >
-        {saving ? 'Saving…' : 'Add & select'}
+        {saving ? t('Saving…') : t('Add & select')}
       </PillButton>
     ) : multiSelect && multiSelected.size > 0 ? (
       <PillButton icon={<Plus className="w-5 h-5" />} onClick={handleConfirmMulti}>
-        Add {multiSelected.size} {multiSelected.size === 1 ? 'song' : 'songs'}
+        {multiSelected.size === 1
+          ? t('Add {count} song', { count: multiSelected.size })
+          : t('Add {count} songs', { count: multiSelected.size })}
       </PillButton>
     ) : (
       <PillButton icon={<Plus className="w-5 h-5" />} onClick={goToManual}>
-        New song
+        {t('New song')}
       </PillButton>
     );
 
@@ -219,8 +223,8 @@ export const SongPicker: React.FC<SongPickerProps> = ({
       picker
       open={isOpen}
       onClose={onClose}
-      overline={overline}
-      title={tab === 'library' ? 'Add songs' : 'New song'}
+      overline={overline ?? t('Song library')}
+      title={tab === 'library' ? t('Add songs') : t('New song')}
       footer={footer}
       zIndex={110}
     >
@@ -230,18 +234,18 @@ export const SongPicker: React.FC<SongPickerProps> = ({
             {/* Search (Figma Input on the dark sheet) */}
             <PillField
               tone="sheet"
-              label="Search library"
+              label={t('Search library')}
               icon={<Search className="w-5 h-5" />}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Title or artist"
+              placeholder={t('Title or artist')}
               trailing={
                 search ? (
                   <button
                     type="button"
                     onClick={() => setSearch('')}
-                    aria-label="Clear search"
+                    aria-label={t('Clear search')}
                     className="-m-2 p-2 shrink-0 text-sheet-foreground/70"
                   >
                     <X className="w-4 h-4" />
@@ -261,7 +265,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                   onClick={() => setFilterCategory(null)}
                   className={sheetSelector(!filterCategory)}
                 >
-                  All
+                  {t('All')}
                 </Selector>
                 {categories.map(cat => (
                   <Selector
@@ -278,25 +282,25 @@ export const SongPicker: React.FC<SongPickerProps> = ({
 
             {/* Song list */}
             {loading ? (
-              <p className="py-12 text-center bw-body-md text-sheet-foreground/70">Loading songs…</p>
+              <p className="py-12 text-center bw-body-md text-sheet-foreground/70">{t('Loading songs…')}</p>
             ) : loadError ? (
               <div role="alert" className="py-8 flex flex-col items-center gap-3 text-center">
-                <p className="bw-label-md text-sheet-foreground">Couldn't load the song library</p>
+                <p className="bw-label-md text-sheet-foreground">{t("Couldn't load the song library")}</p>
                 <p className="bw-body-sm text-sheet-foreground/70 max-w-[280px] [overflow-wrap:anywhere]">{loadError}</p>
                 <PillButton variant="white" size="sm" fullWidth={false} onClick={() => setReloadKey(k => k + 1)}>
-                  Try again
+                  {t('Try again')}
                 </PillButton>
               </div>
             ) : displayed.length === 0 ? (
               <p className="py-12 text-center bw-body-md text-sheet-foreground/70">
-                {songs.length === 0 ? 'No songs in your library yet.' : 'No matches found.'}
+                {songs.length === 0 ? t('No songs in your library yet.') : t('No matches found.')}
               </p>
             ) : (
               <div className="flex flex-col gap-3">
                 {displayed.map(song => {
                   const isChecked = allSelected.has(song.id);
                   const inSet = selectedIds.includes(song.id) && !multiSelected.has(song.id);
-                  const subtitle = [song.artist || 'Unknown artist', parseGenres(song.genre).join(', ')].filter(Boolean).join(' · ');
+                  const subtitle = [song.artist || t('Unknown artist'), parseGenres(song.genre).join(', ')].filter(Boolean).join(' · ');
                   return (
                     <button
                       key={song.id}
@@ -313,7 +317,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                         <span className="flex items-center gap-2 min-w-0">
                           <span className="bw-label-md text-sheet-foreground truncate">{song.title}</span>
                           {inSet && (
-                            <Tag className="bg-sheet-foreground/[0.12] text-sheet-foreground">In set</Tag>
+                            <Tag className="bg-sheet-foreground/[0.12] text-sheet-foreground">{t('In set')}</Tag>
                           )}
                         </span>
                         <span className="bw-body-sm text-sheet-foreground/85 truncate">{subtitle}</span>
@@ -336,7 +340,7 @@ export const SongPicker: React.FC<SongPickerProps> = ({
                 onClick={goToManual}
                 className="self-start h-9 inline-flex items-center bw-button-sm text-accent active:scale-[var(--press-scale,0.97)] transition-transform"
               >
-                {query ? `+ Add “${query}” as a new song` : '+ Add a new song'}
+                {query ? t('+ Add “{query}” as a new song', { query }) : t('+ Add a new song')}
               </button>
             )}
           </>
@@ -345,30 +349,30 @@ export const SongPicker: React.FC<SongPickerProps> = ({
             <SourceTabs tab={tab} onLibrary={() => setTab('library')} onManual={goToManual} />
             <PillField
               tone="sheet"
-              label="Song title *"
+              label={t('Song title *')}
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Enter song title"
+              placeholder={t('Enter song title')}
               autoFocus
             />
             <PillField
               tone="sheet"
-              label="Artist"
+              label={t('Artist')}
               type="text"
               value={newArtist}
               onChange={(e) => setNewArtist(e.target.value)}
-              placeholder="Enter artist name"
+              placeholder={t('Enter artist name')}
             />
             <PillField
               tone="sheet"
-              label="Link (Spotify, YouTube, Drive)"
+              label={t('Link (Spotify, YouTube, Drive)')}
               icon={<Link className="w-5 h-5" />}
               type="url"
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
-              placeholder="Paste URL"
-              hint="Spotify, YouTube, Google Drive, or any audio link"
+              placeholder={t('Paste URL')}
+              hint={t('Spotify, YouTube, Google Drive, or any audio link')}
             />
             {saveError && <FormError>{saveError}</FormError>}
           </>
@@ -384,16 +388,19 @@ const sheetSelector = (active: boolean) =>
     ? 'bg-accent text-accent-foreground'
     : 'border-sheet-foreground/85 text-sheet-foreground';
 
-const SourceTabs: React.FC<{ tab: Tab; onLibrary: () => void; onManual: () => void }> = ({ tab, onLibrary, onManual }) => (
-  <div className="flex items-center gap-2">
-    <Selector selected={tab === 'library'} onClick={onLibrary} className={sheetSelector(tab === 'library')}>
-      From library
-    </Selector>
-    <Selector selected={tab === 'add'} onClick={onManual} className={sheetSelector(tab === 'add')}>
-      Manual
-    </Selector>
-  </div>
-);
+const SourceTabs: React.FC<{ tab: Tab; onLibrary: () => void; onManual: () => void }> = ({ tab, onLibrary, onManual }) => {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-2">
+      <Selector selected={tab === 'library'} onClick={onLibrary} className={sheetSelector(tab === 'library')}>
+        {t('From library')}
+      </Selector>
+      <Selector selected={tab === 'add'} onClick={onManual} className={sheetSelector(tab === 'add')}>
+        {t('Manual')}
+      </Selector>
+    </div>
+  );
+};
 
 /**
  * Figma "Control" checkbox: a 4×4 dot-matrix square on the 6px pitch —

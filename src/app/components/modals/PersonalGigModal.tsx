@@ -12,6 +12,7 @@ import { createPersonalGig, updatePersonalGig, type Event } from '@/lib/services
 import { enqueueMutation } from '@/lib/offline/syncQueue';
 import { isOfflineError, reportNetworkStatus, getIsNetworkOnline } from '@/lib/offline/useNetworkStatus';
 import { todayLocal } from '../../../lib/dates';
+import { useT } from '@/lib/i18n';
 
 interface PersonalGigModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
   onSaved,
   onCreateBand,
 }) => {
+  const t = useT();
   const isEditing = Boolean(initialData?.id);
 
   const [title, setTitle] = useState('');
@@ -78,15 +80,15 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('Gig title is required.');
+      setError(t('Gig title is required.'));
       return;
     }
     if (!eventDate) {
-      setError('Event date is required.');
+      setError(t('Event date is required.'));
       return;
     }
     if (!startTime || !endTime) {
-      setError('Start and end times are required.');
+      setError(t('Start and end times are required.'));
       return;
     }
 
@@ -252,7 +254,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
         return;
       }
       console.error('Failed to save personal gig:', err);
-      setError(err?.message || 'Failed to save personal gig. Please try again.');
+      setError(err?.message || t('Failed to save personal gig. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -285,16 +287,16 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
               <div className="max-w-xl mx-auto w-full flex flex-col gap-3">
                 <div className="flex items-end gap-3">
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="bw-label-sm opacity-80">Personal gig</p>
+                    <p className="bw-label-sm opacity-80">{t('Personal gig')}</p>
                     <h2 id="personal-gig-title" className="bw-display-lg [overflow-wrap:anywhere]">
-                      {isEditing ? 'Edit personal gig' : 'Log personal gig'}
+                      {isEditing ? t('Edit personal gig') : t('Log personal gig')}
                     </h2>
                   </div>
                   <RailCover pane />
-                  <HeaderAction pane label="Close" variant="event" icon={<X />} onClick={onClose} className="self-start" />
+                  <HeaderAction pane label={t('Close')} variant="event" icon={<X />} onClick={onClose} className="self-start" />
                 </div>
                 <p className="bw-body-md">
-                  Only you can see it. It blocks the date for your bands and syncs to your earnings.
+                  {t('Only you can see it. It blocks the date for your bands and syncs to your earnings.')}
                 </p>
               </div>
             </header>
@@ -303,27 +305,27 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
               {error && <FormError>{error}</FormError>}
 
               <PillField
-                label="Gig title *"
+                label={t('Gig title *')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Solo acoustic set @ The Blue Room"
+                placeholder={t('e.g. Solo acoustic set @ The Blue Room')}
                 required
                 autoFocus
               />
 
-              <FieldShell label="Date *" icon={<Calendar className="w-5 h-5" />}>
+              <FieldShell label={t('Date *')} icon={<Calendar className="w-5 h-5" />}>
                 <DatePicker
                   value={eventDate}
                   onChange={setEventDate}
                   accentColor="var(--accent-personal)"
-                  placeholder="Select date…"
+                  placeholder={t('Select date…')}
                   showIcon={false}
                   className={PICKER_CLASS}
                 />
               </FieldShell>
 
               <div className="grid grid-cols-2 gap-3">
-                <FieldShell label="Start *" icon={<Clock className="w-5 h-5" />}>
+                <FieldShell label={t('Start *')} icon={<Clock className="w-5 h-5" />}>
                   <TimePicker
                     value={startTime}
                     onChange={setStartTime}
@@ -334,7 +336,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                     className={PICKER_CLASS}
                   />
                 </FieldShell>
-                <FieldShell label="End *" icon={<Clock className="w-5 h-5" />}>
+                <FieldShell label={t('End *')} icon={<Clock className="w-5 h-5" />}>
                   <TimePicker
                     value={endTime}
                     onChange={setEndTime}
@@ -347,18 +349,18 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                 </FieldShell>
               </div>
 
-              <FieldShell label="Venue / location (optional)" icon={<MapPin className="w-5 h-5" />}>
+              <FieldShell label={t('Venue / location (optional)')} icon={<MapPin className="w-5 h-5" />}>
                 <VenueAutocomplete
                   value={venueName}
                   onChange={setVenueName}
                   onSelect={(place) => setVenueName(venueFields(place).location)}
-                  placeholder="Search venue…"
+                  placeholder={t('Search venue…')}
                   className="h-[50px] border-0 pb-0 bw-body-lg normal-case font-medium text-foreground placeholder:text-muted-foreground/60"
                 />
               </FieldShell>
 
               <PillField
-                label="My personal fee (optional)"
+                label={t('My personal fee (optional)')}
                 icon={<CurrencyIcon className="w-5 h-5" />}
                 type="number"
                 inputMode="decimal"
@@ -367,15 +369,15 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
                 placeholder="0.00"
-                hint="Syncs to your personal earnings tracker"
+                hint={t('Syncs to your personal earnings tracker')}
               />
 
               <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-foreground transition-colors">
-                <span className="bw-label-xs text-muted-foreground">Personal notes (optional)</span>
+                <span className="bw-label-xs text-muted-foreground">{t('Personal notes (optional)')}</span>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Parking, load-in gate, wardrobe, gear checklist…"
+                  placeholder={t('Parking, load-in gate, wardrobe, gear checklist…')}
                   rows={2}
                   className="w-full bg-transparent bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none resize-none"
                 />
@@ -384,9 +386,9 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
               <p className="flex items-center gap-2 bw-body-sm text-muted-foreground">
                 <Users className="w-4 h-4 shrink-0 text-foreground" />
                 <span>
-                  Want to invite bandmates?{' '}
+                  {t('Want to invite bandmates?')}{' '}
                   <button type="button" onClick={() => onCreateBand?.()} className="text-foreground underline underline-offset-2">
-                    Create a free band
+                    {t('Create a free band')}
                   </button>
                 </span>
               </p>
@@ -397,7 +399,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
           <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
             <div className="max-w-xl mx-auto w-full flex items-center gap-3">
               <PillButton variant="outline" className="flex-[0_0_36%]" onClick={onClose}>
-                Cancel
+                {t('Cancel')}
               </PillButton>
               <PillButton
                 type="submit"
@@ -406,7 +408,7 @@ export const PersonalGigModal: React.FC<PersonalGigModalProps> = ({
                 loading={isSubmitting}
                 icon={<Check className="w-[18px] h-[18px]" />}
               >
-                {isSubmitting ? 'Saving…' : isEditing ? 'Save changes' : 'Create personal gig'}
+                {isSubmitting ? t('Saving…') : isEditing ? t('Save changes') : t('Create personal gig')}
               </PillButton>
             </div>
           </div>

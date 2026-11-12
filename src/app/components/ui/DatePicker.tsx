@@ -7,6 +7,7 @@ import { cn } from './utils';
 import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
+import { t, useT } from '@/lib/i18n';
 
 export type DatePickerEventKind = 'gig' | 'rehearsal' | 'personal' | 'quote';
 
@@ -49,11 +50,23 @@ export const toDatePickerEvents = (
       return { date: String(e.date).slice(0, 10), kind };
     });
 
-const KIND_NOUN: Record<DatePickerEventKind, string> = {
-  gig: 'gig',
-  rehearsal: 'rehearsal',
-  quote: 'quote',
-  personal: 'personal event',
+const kindNoun = (kind: DatePickerEventKind): string => {
+  switch (kind) {
+    case 'gig': return t('gig');
+    case 'rehearsal': return t('rehearsal');
+    case 'quote': return t('quote');
+    case 'personal': return t('personal event');
+  }
+};
+
+/** "Dec 12 has a gig" (whole sentence per kind, so each language can word it). */
+const dayHasKind = (day: string, kind: DatePickerEventKind): string => {
+  switch (kind) {
+    case 'gig': return t('{day} has a gig', { day });
+    case 'rehearsal': return t('{day} has a rehearsal', { day });
+    case 'quote': return t('{day} has a quote', { day });
+    case 'personal': return t('{day} has a personal event', { day });
+  }
 };
 
 export interface DatePickerProps {
@@ -105,10 +118,10 @@ export const formatDisplayDate = (dateStr: string): string => {
   });
 
   if (dateStr === todayStr) {
-    return `Today • ${formatted}`;
+    return t('Today • {date}', { date: formatted });
   }
   if (dateStr === tomorrowStr) {
-    return `Tomorrow • ${formatted}`;
+    return t('Tomorrow • {date}', { date: formatted });
   }
   return formatted;
 };
@@ -145,6 +158,7 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
   zIndex = 150,
   contentStyle,
 }) => {
+  const t = useT();
   const drag = useSheetDrag(() => onOpenChange(false));
   return (
   <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -178,7 +192,7 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
                 (Figma "Closed · Picker / Date"). */}
             <RailSheet onClose={() => onOpenChange(false)} />
             <DialogPrimitive.Close asChild>
-              <IconButton label="Close" icon={<X />} size="sm" variant="outline" />
+              <IconButton label={t('Close')} icon={<X />} size="sm" variant="outline" />
             </DialogPrimitive.Close>
           </div>
         </div>
@@ -228,13 +242,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   onChange,
   className,
   disabled = false,
-  placeholder = 'Select event date...',
+  placeholder: placeholderProp,
   id,
   showIcon = true,
   showShortcuts = true,
   accentColor,
   events,
 }) => {
+  const t = useT();
+  const placeholder = placeholderProp ?? t('Select event date...');
   const [open, setOpen] = useState(false);
 
   // "YYYY-MM-DD" → kinds on that day (first one wins for the dot colour).
@@ -359,9 +375,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   }, [value]);
 
   const shortcuts: { label: string; date: string }[] = [
-    { label: 'Today', date: getTodayStr() },
-    { label: 'Tomorrow', date: getTomorrowStr() },
-    { label: 'Weekend', date: getNextWeekendStr() },
+    { label: t('Today'), date: getTodayStr() },
+    { label: t('Tomorrow'), date: getTomorrowStr() },
+    { label: t('Weekend'), date: getNextWeekendStr() },
   ];
 
   const trigger = (
@@ -388,15 +404,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       open={open}
       onOpenChange={setOpen}
       trigger={trigger}
-      overline="Pick a day"
-      title={titleFromPlaceholder(placeholder, 'Date')}
+      overline={t('Pick a day')}
+      title={titleFromPlaceholder(placeholder, t('Date'))}
       footer={
         <div className="flex flex-col gap-3">
           {conflict && (
             <p role="status" className="flex items-start gap-2 bw-body-sm text-foreground">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-px text-warning" aria-hidden />
               <span>
-                {conflict.day} has a {KIND_NOUN[conflict.kind]}
+                {dayHasKind(conflict.day, conflict.kind)}
                 {conflict.nextFree && conflict.nextFreeLabel && (
                   <>
                     {' — '}
@@ -407,7 +423,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     >
                       {conflict.nextFreeLabel}
                     </button>{' '}
-                    is free.
+                    {t('is free.')}
                   </>
                 )}
                 {!conflict.nextFree && '.'}
@@ -415,7 +431,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </p>
           )}
           <PillButton icon={<Check className="w-5 h-5" />} disabled={!value} onClick={() => setOpen(false)}>
-            {value ? `Select ${selectedLabel}` : 'Select a day'}
+            {value ? t('Select {date}', { date: selectedLabel }) : t('Select a day')}
           </PillButton>
         </div>
       }
@@ -434,8 +450,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       {/* Calendar Month */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <IconButton label="Previous month" icon={<ArrowLeft />} size="sm" onClick={prevMonth} />
-          <IconButton label="Next month" icon={<ArrowRight />} size="sm" onClick={nextMonth} />
+          <IconButton label={t('Previous month')} icon={<ArrowLeft />} size="sm" onClick={prevMonth} />
+          <IconButton label={t('Next month')} icon={<ArrowRight />} size="sm" onClick={nextMonth} />
           <span className="bw-h3 text-foreground truncate" aria-live="polite">
             {calMonthName} {calYear}
           </span>
@@ -480,7 +496,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
-                })}${dayKinds ? `, has ${dayKinds.map(k => KIND_NOUN[k]).join(' and ')}` : ''}`}
+                })}${dayKinds ? `, ${t('has {events}', { events: dayKinds.map(kindNoun).join(` ${t('and')} `) })}` : ''}`}
                 className={cn(
                   "relative h-6 rounded-full flex items-center justify-center bw-label-md transition-colors cursor-pointer after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
                   isSelected
