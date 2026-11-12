@@ -9,6 +9,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { supabase } from '../supabase';
+import { t } from '@/lib/i18n';
 
 export const SONG_FILES_BUCKET = 'song-files';
 const REF_PREFIX = `sb://${SONG_FILES_BUCKET}/`;
@@ -56,8 +57,8 @@ const MIME_BY_EXT: Record<string, string> = {
   webp: 'image/webp',
 };
 
-const UNSUPPORTED_TYPE_MESSAGE =
-  'This file type is not supported. Use MP3, M4A, WAV, AIFF, AAC, OGG or FLAC audio, or a PDF, PNG, JPG, HEIC or WebP chart.';
+const unsupportedTypeMessage = () =>
+  t('This file type is not supported. Use MP3, M4A, WAV, AIFF, AAC, OGG or FLAC audio, or a PDF, PNG, JPG, HEIC or WebP chart.');
 
 /**
  * Content type to upload with: the file's own type when the bucket accepts
@@ -81,10 +82,13 @@ export const classifySongFile = (file: Pick<File, 'name' | 'type'>): SongFileKin
 /** Human-readable problem with a picked file, or null if it can be uploaded. */
 export const validateSongFile = (file: Pick<File, 'name' | 'type' | 'size'>): string | null => {
   const kind = classifySongFile(file);
-  if (!kind) return 'Use an audio file (MP3, M4A, WAV…) or a chart (PDF or image).';
-  if (!songFileContentType(file)) return UNSUPPORTED_TYPE_MESSAGE;
+  if (!kind) return t('Use an audio file (MP3, M4A, WAV…) or a chart (PDF or image).');
+  if (!songFileContentType(file)) return unsupportedTypeMessage();
   const max = kind === 'audio' ? SONG_AUDIO_MAX_BYTES : SONG_CHART_MAX_BYTES;
-  if (file.size > max) return `File too large: max ${Math.round(max / 1024 / 1024)} MB for ${kind === 'audio' ? 'audio' : 'charts'}.`;
+  if (file.size > max) {
+    const mb = Math.round(max / 1024 / 1024);
+    return kind === 'audio' ? t('File too large: max {mb} MB for audio.', { mb }) : t('File too large: max {mb} MB for charts.', { mb });
+  }
   return null;
 };
 
@@ -118,7 +122,7 @@ export const uploadSongFile = async (
   if (problem) return { ref: null, kind: null, error: new Error(problem) };
   const kind = classifySongFile(file)!;
   const contentType = songFileContentType(file);
-  if (!contentType) return { ref: null, kind: null, error: new Error(UNSUPPORTED_TYPE_MESSAGE) };
+  if (!contentType) return { ref: null, kind: null, error: new Error(unsupportedTypeMessage()) };
   const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
   const path = `${bandId}/${kind}/${id}-${safeName(file.name)}`;
   const { error } = await supabase.storage.from(SONG_FILES_BUCKET).upload(path, file, {
@@ -126,7 +130,7 @@ export const uploadSongFile = async (
     upsert: false,
     cacheControl: '3600',
   });
-  if (error) return { ref: null, kind: null, error: new Error(error.message || 'Upload failed') };
+  if (error) return { ref: null, kind: null, error: new Error(error.message || t('Upload failed')) };
   return { ref: `${REF_PREFIX}${path}`, kind, error: null };
 };
 

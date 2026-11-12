@@ -35,6 +35,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { personName } from '@/lib/personName';
 import { notifySongAdded } from '@/lib/services/notifications';
 import { genresOf, joinGenres, parseGenres } from '@/lib/songGenres';
+import { useT } from '@/lib/i18n';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -61,6 +62,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   onSongAdded,
   song,
 }) => {
+  const t = useT();
   const isEdit = !!song;
   const { isAdmin } = useBand();
   const { profile, user } = useAuth();
@@ -166,7 +168,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      setError('Song title is required');
+      setError(t('Song title is required'));
       return;
     }
 
@@ -181,7 +183,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       const chartLink = chartUrl.trim() ? safeHttpsUrl(chartUrl) : undefined;
       const chords = chordsUrl.trim() ? safeHttpsUrl(chordsUrl) : undefined;
       if ((youtubeUrl.trim() && !youtube) || (chartUrl.trim() && !chartLink) || (chordsUrl.trim() && !chords)) {
-        throw new Error('Links must start with https://');
+        throw new Error(t('Links must start with https://'));
       }
 
       // Upload new files to the band's private storage.
@@ -255,8 +257,15 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     } catch (err: any) {
       // Don't leave orphaned uploads in storage when the song wasn't saved.
       if (uploaded.length > 0) await removeSongFiles(uploaded);
-      const base = isEdit ? 'Could not save the song' : 'Could not add the song';
-      setError(err?.message ? `${base}: ${err.message}` : `${base}. Try again.`);
+      setError(
+        err?.message
+          ? isEdit
+            ? t('Could not save the song: {error}', { error: err.message })
+            : t('Could not add the song: {error}', { error: err.message })
+          : isEdit
+            ? t('Could not save the song. Try again.')
+            : t('Could not add the song. Try again.'),
+      );
     } finally {
       setSaving(false);
     }
@@ -303,21 +312,23 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
   const getStepInfo = () => {
     switch (step) {
-      case 'details': return { num: '01', title: 'Song', subtitle: 'Title and artist are all you need. The rest is optional.' };
-      case 'more': return { num: '02', title: 'Details · optional', subtitle: 'Duration, tempo, key and folder.' };
-      case 'extras': return { num: '03', title: 'Files & links · optional', subtitle: 'A recording, a chart, links and notes.' };
+      case 'details': return { num: '01', title: t('Song'), subtitle: t('Title and artist are all you need. The rest is optional.') };
+      case 'more': return { num: '02', title: t('Details · optional'), subtitle: t('Duration, tempo, key and folder.') };
+      case 'extras': return { num: '03', title: t('Files & links · optional'), subtitle: t('A recording, a chart, links and notes.') };
     }
   };
 
   // iPhone Duo: close sits in the system column under the clock
   // (Figma "Closed · Songs / Add song – details").
-  const closeInRail = useRailAction(isOpen ? handleClose : undefined, { label: 'Close', icon: <X />, pane: true });
+  const closeInRail = useRailAction(isOpen ? handleClose : undefined, { label: t('Close'), icon: <X />, pane: true });
 
   if (!isOpen) return null;
 
   const stepInfo = getStepInfo();
   const STEP_ORDER: StepType[] = ['details', 'more', 'extras'];
   const stepIndex = STEP_ORDER.indexOf(step);
+  const [suggestedBefore, suggestedAfter] = t('Your song is added as {status}: an admin moves it to Learning or Ready.').split('{status}');
+  const cloudParts = t('Files on iCloud Drive, Google Drive or Dropbox: tap {choose}, then {browse} and pick the app under Locations. Files are stored privately for your band.').split(/\{choose\}|\{browse\}/);
 
   return (
     <motion.div
@@ -332,11 +343,11 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
       {/* Header: Top Bar + wizard steps */}
       <header className="shrink-0 px-4 pb-3 flex flex-col gap-3" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
         <div className="flex items-center gap-3 min-h-11">
-          <NavBackButton pane label={step === 'details' ? 'Cancel' : 'Back'} onClick={prevStep} />
+          <NavBackButton pane label={step === 'details' ? t('Cancel') : t('Back')} onClick={prevStep} />
           <h2 id="add-song-title" className="flex-1 min-w-0 bw-h1 truncate">
-            {isEdit ? 'Edit song' : 'Add song'}
+            {isEdit ? t('Edit song') : t('Add song', { context: 'title' })}
           </h2>
-          {!closeInRail && <IconButton label="Close" icon={<X />} variant="ghost" onClick={handleClose} />}
+          {!closeInRail && <IconButton label={t('Close')} icon={<X />} variant="ghost" onClick={handleClose} />}
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
@@ -349,7 +360,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="bw-label-sm text-muted-foreground">
-              Step {stepIndex + 1} of {STEP_ORDER.length}
+              {t('Step {step} of {total}', { step: stepIndex + 1, total: STEP_ORDER.length })}
             </span>
             <span className="bw-label-sm">{stepInfo.title}</span>
           </div>
@@ -369,18 +380,18 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             >
               <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
               <PillField
-                label="Song title *"
+                label={t('Song title *')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && canProceed() && nextStep()}
-                placeholder="e.g. Superstition"
+                placeholder={t('e.g. Superstition')}
                 autoFocus={!isEdit}
                 enterKeyHint="next"
               />
-              <PillField label="Original artist" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="e.g. Stevie Wonder" />
+              <PillField label={t('Original artist')} value={artist} onChange={(e) => setArtist(e.target.value)} placeholder={t('e.g. Stevie Wonder')} />
               {!isEdit && !isAdmin && (
                 <p className="bw-body-sm text-muted-foreground">
-                  Your song is added as <span className="text-foreground">Suggested</span>: an admin moves it to Learning or Ready.
+                  {suggestedBefore}<span className="text-foreground">{t('Suggested')}</span>{suggestedAfter}
                 </p>
               )}
               {error && <FormError>{error}</FormError>}
@@ -399,10 +410,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
 
               {/* Duration: minutes : seconds (numeric pads have no colon key) */}
               <fieldset className="flex flex-col gap-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Duration</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">{t('Duration')}</legend>
                 <div className="flex items-center gap-2">
                   <PillField
-                    label="Minutes"
+                    label={t('Minutes')}
                     hideLabel
                     className="w-24"
                     type="text"
@@ -412,11 +423,11 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                     value={durMin}
                     onChange={(e) => setDurMin(e.target.value.replace(/\D/g, '').slice(0, 2))}
                     placeholder="4"
-                    trailing={<span className="bw-label-xs text-muted-foreground">min</span>}
+                    trailing={<span className="bw-label-xs text-muted-foreground">{t('min')}</span>}
                   />
                   <span className="bw-h2" aria-hidden>:</span>
                   <PillField
-                    label="Seconds"
+                    label={t('Seconds')}
                     hideLabel
                     className="w-24"
                     type="text"
@@ -430,19 +441,19 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                     }}
                     onBlur={() => durSec.length === 1 && setDurSec(`0${durSec}`)}
                     placeholder="00"
-                    trailing={<span className="bw-label-xs text-muted-foreground">sec</span>}
+                    trailing={<span className="bw-label-xs text-muted-foreground">{t('sec')}</span>}
                   />
                 </div>
               </fieldset>
 
               <div className="grid grid-cols-2 gap-3">
                 <PillField label="BPM" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} value={bpm} onChange={(e) => setBpm(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="120" />
-                <PillField label="Key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="C maj" />
+                <PillField label={t('Key')} value={key} onChange={(e) => setKey(e.target.value)} placeholder={t('C maj')} />
               </div>
 
               {/* Genre tags: used to filter the library when building a setlist */}
               <fieldset className="flex flex-col gap-2 pt-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Genre</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">{t('Genre')}</legend>
                 <div className="flex flex-wrap items-center gap-2">
                   {genresOf([{ genre: [...bandGenres, ...genres].join(',') }]).map((g) => (
                     <Selector
@@ -457,22 +468,22 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                   {!showNewGenre && (
                     <Selector size="md" selected={false} onClick={() => setShowNewGenre(true)} className="border-dashed">
                       <Plus className="w-3.5 h-3.5" />
-                      Genre
+                      {t('Genre')}
                     </Selector>
                   )}
                 </div>
                 {showNewGenre && (
                   <div className="flex items-end gap-2">
                     <PillField
-                      label="New genre"
+                      label={t('New genre')}
                       hideLabel
                       value={newGenre}
                       onChange={(e) => setNewGenre(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddGenre()}
-                      placeholder="e.g. Funk, Soul"
+                      placeholder={t('e.g. Funk, Soul')}
                       autoFocus
                     />
-                    <IconButton label="Add genre" icon={<Check />} variant="filled" className="mb-1" onClick={handleAddGenre} />
+                    <IconButton label={t('Add genre')} icon={<Check />} variant="filled" className="mb-1" onClick={handleAddGenre} />
                   </div>
                 )}
               </fieldset>
@@ -491,10 +502,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               <p className="bw-body-md text-muted-foreground">{stepInfo.subtitle}</p>
               {/* Audio */}
               <FileSlot
-                label="Recording"
-                hint="MP3, M4A, WAV · max 50 MB"
+                label={t('Recording')}
+                hint={t('MP3, M4A, WAV · max 50 MB')}
                 file={audioFile}
-                existing={existingAudio && isStoredSongFile(existingAudio) ? 'Recording uploaded' : undefined}
+                existing={existingAudio && isStoredSongFile(existingAudio) ? t('Recording uploaded') : undefined}
                 onClear={() => {
                   setAudioFile(null);
                   setExistingAudio(undefined);
@@ -502,10 +513,10 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               />
               {/* Chart */}
               <FileSlot
-                label="Chart / sheet music"
-                hint="PDF or photo · max 20 MB"
+                label={t('Chart / sheet music')}
+                hint={t('PDF or photo · max 20 MB')}
                 file={chartFile}
-                existing={existingChart && isStoredSongFile(existingChart) ? 'Chart uploaded' : undefined}
+                existing={existingChart && isStoredSongFile(existingChart) ? t('Chart uploaded') : undefined}
                 onClear={() => {
                   setChartFile(null);
                   setExistingChart(undefined);
@@ -515,20 +526,18 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               <label className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full bg-surface-inverse text-surface-inverse-foreground bw-button-md cursor-pointer active:scale-[0.97] transition-transform">
                 <input type="file" multiple accept={SONG_FILE_ACCEPT} onChange={handleFileChange} className="hidden" />
                 <Plus className="w-[18px] h-[18px]" />
-                Choose files
+                {t('Choose files')}
               </label>
 
               <div className="flex items-start gap-3 p-4 rounded-[16px] bg-card">
                 <Cloud className="w-5 h-5 shrink-0 mt-0.5" aria-hidden />
                 <p className="bw-body-sm text-muted-foreground">
-                  Files on iCloud Drive, Google Drive or Dropbox: tap <span className="text-foreground">Choose files</span>,
-                  then <span className="text-foreground">Browse</span> and pick the app under Locations. Files are stored
-                  privately for your band.
+                  {cloudParts[0]}<span className="text-foreground">{t('Choose files')}</span>{cloudParts[1]}<span className="text-foreground">{t('Browse')}</span>{cloudParts[2]}
                 </p>
               </div>
               <PillField
                 type="url"
-                label="YouTube video"
+                label={t('YouTube video')}
                 icon={<Youtube className="w-5 h-5" />}
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
@@ -536,30 +545,30 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               />
               <PillField
                 type="url"
-                label="Sheet music"
+                label={t('Sheet music')}
                 icon={<FileMusic className="w-5 h-5" />}
                 value={chartUrl}
                 onChange={(e) => setChartUrl(e.target.value)}
-                placeholder="URL to PDF or sheet music…"
+                placeholder={t('URL to PDF or sheet music…')}
               />
               <PillField
                 type="url"
-                label="Chords"
+                label={t('Chords')}
                 icon={<LinkIcon className="w-5 h-5" />}
                 value={chordsUrl}
                 onChange={(e) => setChordsUrl(e.target.value)}
-                placeholder="Link to chords (Ultimate Guitar, etc.)"
+                placeholder={t('Link to chords (Ultimate Guitar, etc.)')}
               />
 
               <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
                 <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
                   <StickyNote className="w-4 h-4" />
-                  Notes
+                  {t('Notes')}
                 </span>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Arrangement ideas, key changes…"
+                  placeholder={t('Arrangement ideas, key changes…')}
                   rows={4}
                   className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[96px] resize-none"
                 />
@@ -568,16 +577,16 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
               <label className="flex flex-col gap-2 p-4 rounded-[24px] bg-field border border-border focus-within:border-2 focus-within:border-foreground transition-[border-color]">
                 <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
                   <BookOpen className="w-4 h-4" />
-                  Lyrics · text, Markdown or JSON
+                  {t('Lyrics · text, Markdown or JSON')}
                 </span>
                 <textarea
                   value={lyrics}
                   onChange={(e) => setLyrics(e.target.value)}
-                  placeholder={'# Verse 1\nFirst line…\n\n[Chorus]\n…'}
+                  placeholder={[`# ${t('Verse 1')}`, t('First line…'), '', `[${t('Chorus')}]`, '…'].join('\n')}
                   rows={6}
                   className="w-full bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground/60 min-h-[140px] resize-y font-mono text-[15px]"
                 />
-                <span className="bw-body-sm text-muted-foreground">Read them in the app from the song menu or the player.</span>
+                <span className="bw-body-sm text-muted-foreground">{t('Read them in the app from the song menu or the player.')}</span>
               </label>
 
               {error && <FormError>{error}</FormError>}
@@ -592,13 +601,13 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         {step !== 'extras' && !success && (
           <div className="max-w-2xl mx-auto w-full flex justify-center">
             <PillButton variant="ghost" size="sm" fullWidth={false} onClick={handleSubmit} disabled={!canProceed() || saving}>
-              {isEdit ? 'Save now' : 'Add song now'}
+              {isEdit ? t('Save now') : t('Add song now')}
             </PillButton>
           </div>
         )}
         <div className="max-w-2xl mx-auto w-full grid grid-cols-[2fr_3fr] gap-3">
           <PillButton variant="outline" onClick={prevStep}>
-            {step === 'details' ? 'Cancel' : 'Back'}
+            {step === 'details' ? t('Cancel') : t('Back')}
           </PillButton>
           <PillButton
             onClick={nextStep}
@@ -608,12 +617,12 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
             icon={success ? <Check className="w-[18px] h-[18px]" /> : step === 'extras' ? <Disc3 className="w-[18px] h-[18px]" /> : undefined}
           >
             {success ? (
-              isEdit ? 'Saved!' : 'Added!'
+              isEdit ? t('Saved!') : t('Added!')
             ) : step === 'extras' ? (
-              isEdit ? 'Save song' : 'Add song'
+              isEdit ? t('Save song') : t('Add song')
             ) : (
               <>
-                Next
+                {t('Next')}
                 <ArrowUpRight className="w-5 h-5" />
               </>
             )}
@@ -631,7 +640,9 @@ const FileSlot: React.FC<{
   file: File | null;
   existing?: string;
   onClear: () => void;
-}> = ({ label, hint, file, existing, onClear }) => (
+}> = ({ label, hint, file, existing, onClear }) => {
+  const t = useT();
+  return (
   <div className="flex flex-col gap-2">
     <span className="bw-label-sm text-muted-foreground">{label}</span>
     {file || existing ? (
@@ -640,10 +651,10 @@ const FileSlot: React.FC<{
         <div className="flex-1 min-w-0 flex flex-col gap-0.5">
           <span className="bw-body-lg truncate">{file ? file.name : existing}</span>
           <span className="bw-body-sm text-muted-foreground">
-            {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB · uploads when you save` : 'Stored for your band'}
+            {file ? t('{size} MB · uploads when you save', { size: (file.size / 1024 / 1024).toFixed(1) }) : t('Stored for your band')}
           </span>
         </div>
-        <IconButton label={`Remove ${label.toLowerCase()}`} icon={<X />} variant="ghost" size="sm" onClick={onClear} />
+        <IconButton label={t('Remove {label}', { label: label.toLowerCase() })} icon={<X />} variant="ghost" size="sm" onClick={onClear} />
       </div>
     ) : (
       <div className="flex items-center gap-3 px-4 py-4 rounded-[16px] border-[1.5px] border-dashed border-foreground/25">
@@ -652,4 +663,5 @@ const FileSlot: React.FC<{
       </div>
     )}
   </div>
-);
+  );
+};
