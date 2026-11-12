@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { MapPin, Loader2 } from '@/app/components/icons';
 import { cn } from './utils';
 import { searchVenues, getGooglePlaceDetails, venueFields, type VenuePlace } from '@/lib/services/location';
+import { useT } from '@/lib/i18n';
 
 export interface VenueAutocompleteProps {
   value: string;
@@ -23,15 +24,16 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
   value,
   onChange,
   onSelect,
-  placeholder = 'Venue name',
+  placeholder,
   className,
   containerClassName,
   disabled = false,
   autoFocus = false,
   required = false,
-  heading = 'Suggested venues',
+  heading,
   inputId,
 }) => {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<VenuePlace[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -163,7 +165,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
           onFocus={() => {
             if (suggestions.length > 0) setIsOpen(true);
           }}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('Venue name')}
           disabled={disabled}
           autoFocus={autoFocus}
           required={required}
@@ -179,7 +181,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
         {/* Loading or Clear action indicator */}
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
           {isLoading && (
-            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" aria-label="Searching" />
+            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" aria-label={t('Searching')} />
           )}
         </div>
       </div>
@@ -192,7 +194,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
           className="absolute z-50 left-0 right-0 top-full mt-2 p-2 bg-sheet text-sheet-foreground rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.14)] max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150"
         >
           <div className="px-3 pt-2 pb-2 flex items-center justify-between gap-3">
-            <span className="bw-label-sm text-sheet-foreground/85">{heading}</span>
+            <span className="bw-label-sm text-sheet-foreground/85">{heading ?? t('Suggested venues')}</span>
             <span className="bw-label-xs text-sheet-foreground/60">
               {suggestions[0]?.provider === 'google' ? 'Google Places' : 'OpenStreetMap'}
             </span>
@@ -222,7 +224,7 @@ export const VenueAutocomplete: React.FC<VenueAutocompleteProps> = ({
                     {subtext && <span className="bw-body-sm text-sheet-foreground/70 truncate">{subtext}</span>}
                   </span>
                   <span className="bw-label-xs text-sheet-foreground/60 shrink-0">
-                    {item.provider === 'google' ? 'Google' : 'Map'}
+                    {item.provider === 'google' ? 'Google' : t('Map')}
                   </span>
                 </button>
               );

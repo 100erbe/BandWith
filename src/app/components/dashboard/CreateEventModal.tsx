@@ -51,6 +51,7 @@ import { haptic } from '@/lib/haptics';
 import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { useLeadingCompanion } from '@/app/components/duo';
 import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
+import { useT } from '@/lib/i18n';
 
 export interface BandMember {
   id: string;
@@ -157,7 +158,9 @@ const InteractiveStepIndicator: React.FC<{
   onSelectStep: (step: number) => void;
   activeColor?: string;
   inactiveColor?: string;
-}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => (
+}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor, inactiveColor }) => {
+  const t = useT();
+  return (
   <div className="flex flex-col gap-2 w-full">
     <div className="flex items-center gap-2 w-full">
       {Array.from({ length: total }).map((_, i) => {
@@ -170,7 +173,7 @@ const InteractiveStepIndicator: React.FC<{
             type="button"
             onClick={() => isAccessible && onSelectStep(i)}
             disabled={!isAccessible}
-            aria-label={`Step ${i + 1}: ${steps[i]?.title || ''}`}
+            aria-label={t('Step {number}: {title}', { number: i + 1, title: steps[i]?.title || '' })}
             aria-current={isCurrent ? 'step' : undefined}
             className={cn('flex-1 py-2 -my-2', isAccessible ? 'cursor-pointer' : 'cursor-not-allowed')}
           >
@@ -188,12 +191,13 @@ const InteractiveStepIndicator: React.FC<{
     </div>
     <div className="flex items-center justify-between gap-3">
       <span className="bw-label-sm text-muted-foreground shrink-0">
-        Step {current + 1} of {total}
+        {t('Step {current} of {total}', { current: current + 1, total })}
       </span>
       <span className="bw-label-sm text-foreground truncate">{steps[current]?.title}</span>
     </div>
   </div>
-);
+  );
+};
 
 // --- Collapsible card (Figma "Accordion": card r24 p16, Label/MD title + Body/SM summary) ---
 const EditAccordionCard: React.FC<{
@@ -205,7 +209,8 @@ const EditAccordionCard: React.FC<{
   hasWarning?: boolean;
   warningLabel?: string;
   children: React.ReactNode;
-}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'Needs attention', children }) => {
+}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel, children }) => {
+  const t = useT();
   return (
     <div
       className={cn(
@@ -225,7 +230,7 @@ const EditAccordionCard: React.FC<{
             <span className="bw-label-md text-foreground">{title}</span>
             {hasWarning && (
               <Tag variant="outline" icon={<AlertCircle />} className="border-warning text-warning">
-                {warningLabel}
+                {warningLabel ?? t('Needs attention')}
               </Tag>
             )}
           </div>
@@ -285,11 +290,11 @@ const PICKER_FIELD =
   'h-[52px] px-4 pb-0 gap-3 rounded-full bg-field border border-border text-foreground text-lg font-medium hover:border-foreground focus:border-2 focus:border-foreground';
 
 const capitalize = (s?: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '');
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** One setlist song with a drag handle (Figma: reorder by grip). */
 const SortableSongRow: React.FC<{ song: any; index: number; onRemove: () => void }> = ({ song, index, onRemove }) => {
   const controls = useDragControls();
+  const t = useT();
   return (
     <Reorder.Item
       value={song}
@@ -300,7 +305,7 @@ const SortableSongRow: React.FC<{ song: any; index: number; onRemove: () => void
     >
       <button
         type="button"
-        aria-label={`Reorder ${song.title || 'song'}`}
+        aria-label={t('Reorder {title}', { title: song.title || t('song') })}
         onPointerDown={e => controls.start(e)}
         className="w-6 h-8 -ml-1 flex items-center justify-center shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
       >
@@ -308,11 +313,11 @@ const SortableSongRow: React.FC<{ song: any; index: number; onRemove: () => void
       </button>
       <span className="bw-label-sm text-muted-foreground w-4 shrink-0">{index + 1}</span>
       <div className="flex-1 min-w-0">
-        <span className="bw-body-md text-foreground truncate block">{song.title || 'Untitled song'}</span>
+        <span className="bw-body-md text-foreground truncate block">{song.title || t('Untitled song')}</span>
         {song.artist && <span className="bw-body-sm text-muted-foreground truncate block">{song.artist}</span>}
       </div>
       <IconButton
-        label="Remove song"
+        label={t('Remove song')}
         variant="ghost"
         size="sm"
         icon={<X />}
@@ -411,6 +416,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   initialTasks,
   draft,
 }) => {
+  const t = useT();
   const isEditing = !!editingEvent;
   // A draft restores the wizard where it was left (creation only).
   const ds = (!editingEvent && draft?.state ? draft.state : null) as Record<string, any> | null;
@@ -483,7 +489,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       if (setlistsRes.data) setSavedSetlists(setlistsRes.data);
       if (taskTplRes.data) setTaskTemplates(taskTplRes.data);
       const err = setlistsRes.error || taskTplRes.error;
-      setLibraryError(err ? `Couldn't load saved templates: ${err.message}` : null);
+      setLibraryError(err ? t("Couldn't load saved templates: {error}", { error: err.message }) : null);
     };
     fetchLibrary();
   }, [selectedBand?.id]);
@@ -576,10 +582,70 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const requestCloseRef = useRef<() => void>(onClose);
   const requestClose = useCallback(() => requestCloseRef.current(), []);
   const closeInRail = useRailAction(!isEditing && eventType !== 'rehearsal' ? requestClose : undefined, {
-    label: `Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`,
+    label: modalCategory === 'quote' ? t('Close quote wizard') : t('Close gig wizard'),
     icon: <X />,
     pane: true,
   });
+  // Display-only labels; the ids (event_type, setting) stay English.
+  const eventTypeLabels: Record<string, { label: string; subtitle: string }> = {
+    wedding: { label: t('Wedding'), subtitle: t('Ceremony & reception') },
+    corporate: { label: t('Corporate'), subtitle: t('Company events') },
+    private: { label: t('Private party'), subtitle: t('Birthdays, anniversaries') },
+    festival: { label: t('Festival'), subtitle: t('Outdoor stages') },
+    club: { label: t('Club'), subtitle: t('Night sets') },
+    pub: { label: t('Pub'), subtitle: t('Small venues') },
+    other: { label: t('Other'), subtitle: t('Custom lineup') },
+  };
+  // capitalize(eventType) / raw eventType as shown before.
+  const typeCapLabels: Record<string, string> = {
+    wedding: t('Wedding'),
+    corporate: t('Corporate'),
+    private: t('Private'),
+    festival: t('Festival'),
+    club: t('Club'),
+    pub: t('Pub'),
+    other: t('Other'),
+    gig: t('Gig'),
+  };
+  const typeCap = (v?: string | null) => (v && typeCapLabels[v]) || capitalize(v);
+  const rawWordLabels: Record<string, string> = {
+    wedding: t('wedding'),
+    corporate: t('corporate'),
+    private: t('private'),
+    festival: t('festival'),
+    club: t('club'),
+    pub: t('pub'),
+    other: t('other'),
+    gig: t('gig'),
+    quote: t('quote'),
+    rehearsal: t('rehearsal'),
+    indoor: t('indoor'),
+    outdoor: t('outdoor'),
+  };
+  const rawWord = (v: string) => rawWordLabels[v] ?? v;
+  const settingCap = (v: string) => (v === 'indoor' ? t('Indoor') : v === 'outdoor' ? t('Outdoor') : capitalize(v));
+  const musiciansText = (n: number) =>
+    n === 1 ? t('{count} musician', { count: n }) : t('{count} musicians', { count: n });
+  const setsText = (n: number) => (n === 1 ? t('{count} set', { count: n }) : t('{count} sets', { count: n }));
+  const songsText = (n: number) => (n === 1 ? t('{count} song', { count: n }) : t('{count} songs', { count: n }));
+  const tasksText = (n: number) => (n === 1 ? t('{count} task', { count: n }) : t('{count} tasks', { count: n }));
+  const guestsText = (n: number) => (n === 1 ? t('{count} guest', { count: n }) : t('{count} guests', { count: n }));
+  const stepsShown = STEPS.map((st, i) => ({
+    ...st,
+    title: [t('Event & lineup'), t('Date & venue'), t('Review & confirm')][i] ?? st.title,
+  }));
+  const skyLabel = (sky: string) =>
+    (({
+      clear: t('clear'),
+      'partly cloudy': t('partly cloudy'),
+      overcast: t('overcast'),
+      fog: t('fog'),
+      drizzle: t('drizzle'),
+      rain: t('rain'),
+      snow: t('snow'),
+      storms: t('storms'),
+      cloudy: t('cloudy'),
+    }) as Record<string, string>)[sky] ?? sky;
   const [performanceType, setPerformanceType] = useState<PerformanceType>(() => ds?.performanceType ?? 'full_band');
   const [setting, setSetting] = useState<SettingType>(() => ds?.setting ?? 'indoor');
 
@@ -764,7 +830,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   }, [details.startTime, details.endTime, details.duration]);
 
   const formattedDateStr = useMemo(() => {
-    if (!details.date) return 'DATE TBD';
+    if (!details.date) return t('DATE TBD');
     const d = new Date(details.date + 'T00:00:00');
     if (isNaN(d.getTime())) return details.date;
     return d.toLocaleDateString('en-US', {
@@ -773,7 +839,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       day: 'numeric',
       year: 'numeric',
     });
-  }, [details.date]);
+  }, [details.date, t]);
 
   const maxAccessibleStep = useMemo(() => {
     if (isEditing) return STEPS.length - 1;
@@ -971,8 +1037,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // Called before the rehearsal passthrough so the hook order never changes.
   useLeadingCompanion(
     <LiveGigPreview
-      kindLabel={modalCategory === 'quote' ? 'Quote' : 'Gig'}
-      typeLabel={eventType ? EVENT_TYPE_OPTIONS.find(o => o.value === eventType)?.label ?? eventType : null}
+      kindLabel={modalCategory === 'quote' ? t('Quote') : t('Gig')}
+      typeLabel={eventType ? eventTypeLabels[eventType]?.label ?? eventType : null}
       settingLabel={setting}
       title={getEffectiveTitle()}
       dateLabel={details.date ? formattedDateStr : null}
@@ -1096,7 +1162,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const loadSavedSetlist = async (sl: Setlist) => {
     const { data, error } = await getSetlist(sl.id);
     if (error) {
-      setLibraryError(`Couldn't load "${sl.name}": ${error.message}`);
+      setLibraryError(t('Couldn\'t load "{name}": {error}', { name: sl.name, error: error.message }));
       return;
     }
     setLibraryError(null);
@@ -1225,18 +1291,18 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   };
 
   const lineupPresets = [
-    { label: 'Solo', count: 1, type: 'solo' as PerformanceType },
-    { label: 'Duo', count: 2, type: 'duo' as PerformanceType },
-    { label: 'Trio', count: 3, type: 'trio' as PerformanceType },
-    { label: 'Full band', count: MEMBERS.length || 1, type: 'full_band' as PerformanceType },
+    { label: t('Solo'), count: 1, type: 'solo' as PerformanceType },
+    { label: t('Duo'), count: 2, type: 'duo' as PerformanceType },
+    { label: t('Trio'), count: 3, type: 'trio' as PerformanceType },
+    { label: t('Full band'), count: MEMBERS.length || 1, type: 'full_band' as PerformanceType },
   ];
 
   const activeServices = (pricingSettings.custom_services || []).filter(s => s.is_active);
 
   const renderEventTypeGrid = () => (
     <div className="flex flex-col gap-2">
-      <FieldLabel>Event type</FieldLabel>
-      <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Event type">
+      <FieldLabel>{t('Event type')}</FieldLabel>
+      <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label={t('Event type')}>
         {EVENT_TYPE_OPTIONS.map(opt => {
           const isSelected = eventType === opt.value;
           return (
@@ -1252,9 +1318,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               )}
               style={isSelected ? { backgroundColor: activeAccentColor, color: activeAccentFg } : undefined}
             >
-              <span className="bw-label-md">{opt.label}</span>
+              <span className="bw-label-md">{eventTypeLabels[opt.value]?.label ?? opt.label}</span>
               <span className={cn('bw-body-sm', isSelected ? 'opacity-70' : 'text-muted-foreground')}>
-                {opt.subtitle}
+                {eventTypeLabels[opt.value]?.subtitle ?? opt.subtitle}
               </span>
             </button>
           );
@@ -1265,7 +1331,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const renderTitleField = () => (
     <PillField
-      label="Event title"
+      label={t('Event title')}
       value={details.title}
       onChange={e => handleTitleChange(e.target.value)}
       placeholder={getEffectiveTitle()}
@@ -1274,17 +1340,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const renderClientField = () => (
     <PillField
-      label="Client / promoter"
+      label={t('Client / promoter')}
       icon={<User className="w-5 h-5" />}
       value={details.clientName}
       onChange={e => handleClientChange(e.target.value)}
-      placeholder="e.g. Rossi / Red Bull"
+      placeholder={t('e.g. Rossi / Red Bull')}
     />
   );
 
   const renderPresets = () => (
     <div className="flex flex-col gap-2">
-      <FieldLabel>Lineup preset</FieldLabel>
+      <FieldLabel>{t('Lineup preset')}</FieldLabel>
       <div className="flex flex-wrap gap-2">
         {lineupPresets.map(preset => (
           <Selector
@@ -1326,7 +1392,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   {member.name}
                 </span>
                 <span className="bw-body-sm text-muted-foreground truncate">
-                  {isCurrentUser ? `You · ${member.role}` : member.role}
+                  {isCurrentUser ? t('You · {role}', { role: member.role }) : member.role}
                 </span>
               </div>
             </div>
@@ -1337,7 +1403,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 <input
                   type="number"
                   inputMode="decimal"
-                  aria-label={`Fee for ${member.name}`}
+                  aria-label={t('Fee for {name}', { name: member.name })}
                   value={memberFees[member.id] || ''}
                   onChange={e => updateFee(member.id, e.target.value)}
                   placeholder={getAutoFeeForMember(member.id, selectedMembers, pricingSettings)}
@@ -1360,17 +1426,17 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             onClick={() => setFeeTbd(v => !v)}
             aria-pressed={feeTbd}
           >
-            Fee to be discussed (TBD)
+            {t('Fee to be discussed (TBD)')}
           </Selector>
         )}
         {feeTbd && (
           <span className="bw-body-sm text-muted-foreground">
-            The gig is confirmed on the calendar; set the fees once the deal is closed.
+            {t('The gig is confirmed on the calendar; set the fees once the deal is closed.')}
           </span>
         )}
         {!feeTbd && <>
         <PillField
-          label="Extra band fee / services"
+          label={t('Extra band fee / services')}
           type="number"
           inputMode="decimal"
           icon={<span className="bw-body-lg text-muted-foreground w-5 text-center">{currencySymbol}</span>}
@@ -1402,7 +1468,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const renderVenueField = (placeholder: string) => (
     <div className="flex flex-col gap-2">
-      <FieldLabel>Venue / location</FieldLabel>
+      <FieldLabel>{t('Venue / location')}</FieldLabel>
       <div className="relative">
         <MapPin className="w-5 h-5 absolute left-4 top-4 z-[1] pointer-events-none text-foreground" />
         <VenueAutocomplete
@@ -1430,12 +1496,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const renderDateField = () => (
     <div className="flex flex-col gap-2">
-      <FieldLabel>Event date</FieldLabel>
+      <FieldLabel>{t('Event date')}</FieldLabel>
       <DatePicker
         value={details.date}
         onChange={d => setDetails(prev => ({ ...prev, date: d }))}
         accentColor={activeAccentColor}
-        placeholder="Select event date"
+        placeholder={t('Select event date')}
         className={PICKER_FIELD}
         events={pickerEvents}
       />
@@ -1444,7 +1510,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   // Figma "Picker / Time" overline: "Gig · Sat 12 Dec".
   const timeOverline = (() => {
-    const kindLabel = modalCategory === 'quote' ? 'Quote' : 'Gig';
+    const kindLabel = modalCategory === 'quote' ? t('Quote') : t('Gig');
     const d = details.date ? new Date(details.date + 'T00:00:00') : null;
     if (!d || isNaN(d.getTime())) return kindLabel;
     return `${kindLabel} · ${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
@@ -1454,7 +1520,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     <div className="flex flex-col gap-4">
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-2 min-w-0">
-        <FieldLabel htmlFor="cem-start-time">Start time</FieldLabel>
+        <FieldLabel htmlFor="cem-start-time">{t('Start time')}</FieldLabel>
         <TimePicker
           id="cem-start-time"
           value={details.startTime}
@@ -1468,7 +1534,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       </div>
       <div className="flex flex-col gap-2 min-w-0">
         <FieldLabel htmlFor="cem-end-time" trailing={<span className="bw-label-sm text-foreground">{calculatedDurationBadge}</span>}>
-          End time
+          {t('End time')}
         </FieldLabel>
         <TimePicker
           id="cem-end-time"
@@ -1487,7 +1553,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     {(
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel htmlFor="cem-loadin-time">Load-in (optional)</FieldLabel>
+          <FieldLabel htmlFor="cem-loadin-time">{t('Load-in (optional)')}</FieldLabel>
           <TimePicker
             id="cem-loadin-time"
             value={details.loadInTime}
@@ -1496,13 +1562,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             textSize="text-lg"
             showIcon
             allowEmpty
-            emptyLabel="Add"
+            emptyLabel={t('Add')}
             className={PICKER_FIELD}
             overline={timeOverline}
           />
         </div>
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel htmlFor="cem-soundcheck-time">Soundcheck (optional)</FieldLabel>
+          <FieldLabel htmlFor="cem-soundcheck-time">{t('Soundcheck (optional)')}</FieldLabel>
           <TimePicker
             id="cem-soundcheck-time"
             value={details.soundcheckTime}
@@ -1512,7 +1578,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             textSize="text-lg"
             showIcon
             allowEmpty
-            emptyLabel="Add"
+            emptyLabel={t('Add')}
             className={PICKER_FIELD}
             overline={timeOverline}
           />
@@ -1524,13 +1590,13 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const renderSettingField = () => (
     <div className="flex flex-col gap-2">
-      <FieldLabel>Setting</FieldLabel>
+      <FieldLabel>{t('Setting')}</FieldLabel>
       <div className="flex gap-2">
         <Selector size="md" selected={setting === 'indoor'} onClick={() => setSetting('indoor')}>
-          Indoor
+          {t('Indoor')}
         </Selector>
         <Selector size="md" selected={setting === 'outdoor'} onClick={() => setSetting('outdoor')}>
-          Outdoor
+          {t('Outdoor')}
         </Selector>
       </div>
     </div>
@@ -1541,14 +1607,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <FieldLabel>{label}</FieldLabel>
       <div className="flex items-center gap-3">
         <IconButton
-          label="Fewer guests"
+          label={t('Fewer guests')}
           size="sm"
           icon={<Minus />}
           onClick={() => setDetails(prev => ({ ...prev, guests: Math.max(0, prev.guests - 10) }))}
         />
         <span className="bw-h1 flex-1 text-center tabular-nums">{details.guests}</span>
         <IconButton
-          label="More guests"
+          label={t('More guests')}
           size="sm"
           icon={<Plus />}
           onClick={() => setDetails(prev => ({ ...prev, guests: prev.guests + 10 }))}
@@ -1593,7 +1659,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const renderTaskInput = () => (
     <div className="flex items-center gap-2">
       <PillField
-        label="New task"
+        label={t('New task')}
         hideLabel
         className="flex-1"
         value={newTaskText}
@@ -1604,10 +1670,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             handleAddNewTask();
           }
         }}
-        placeholder="Add a preparation task..."
+        placeholder={t('Add a preparation task...')}
       />
       <PillButton variant="primary" size="md" fullWidth={false} onClick={handleAddNewTask} disabled={!newTaskText.trim()}>
-        Add
+        {t('Add')}
       </PillButton>
     </div>
   );
@@ -1643,7 +1709,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <div className="bg-card text-card-foreground rounded-[24px] p-4 flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3 min-h-9">
           <span className="bw-label-md">
-            Roster · {selectedMembers.length} of {MEMBERS.length}
+            {t('Roster · {count} of {total}', { count: selectedMembers.length, total: MEMBERS.length })}
           </span>
           <PillButton
             variant="ghost"
@@ -1654,7 +1720,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             aria-expanded={isRosterExpanded}
             onClick={() => setIsRosterExpanded(!isRosterExpanded)}
           >
-            {isRosterExpanded ? 'Done' : 'Customize'}
+            {isRosterExpanded ? t('Done') : t('Customize')}
           </PillButton>
         </div>
 
@@ -1671,8 +1737,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               )}
             </div>
             <span className="bw-body-sm text-muted-foreground truncate">
-              {plural(selectedMembers.length, 'musician')}
-              {isAdmin && grandTotalFee > 0 ? ` · ${currencySymbol}${grandTotalFee} est. total` : ''}
+              {musiciansText(selectedMembers.length)}
+              {isAdmin && grandTotalFee > 0 ? ` · ${t('{amount} est. total', { amount: `${currencySymbol}${grandTotalFee}` })}` : ''}
             </span>
           </div>
         )}
@@ -1698,7 +1764,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // ── STEP 02: DATE & VENUE ───────────────────────────────────
   const renderStep2 = () => (
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
-      {renderVenueField('Search venue or location...')}
+      {renderVenueField(t('Search venue or location...'))}
 
       {/* Quick-select chips */}
       <div className="flex flex-wrap gap-2 -mt-1">
@@ -1718,8 +1784,8 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       {renderTimeFields()}
       {forecast && (
         <p className="bw-body-sm text-muted-foreground -mt-1" aria-live="polite">
-          Forecast: {forecast.temp}° {forecast.sky}
-          {forecast.sunset ? ` · sunset ${forecast.sunset}` : ''}
+          {t('Forecast: {temp}° {sky}', { temp: forecast.temp, sky: skyLabel(forecast.sky) })}
+          {forecast.sunset ? ` · ${t('sunset {time}', { time: forecast.sunset })}` : ''}
         </p>
       )}
     </div>
@@ -1728,23 +1794,23 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // ── STEP 03: REVIEW & OPTIONAL EXTRAS ───────────────────────
   const setlistSummary =
     totalSongCount === 0 && setlist.length === 0
-      ? 'Optional · No setlist'
-      : `Optional · ${plural(setlist.length, 'set')}, ${plural(totalSongCount, 'song')}`;
-  const logisticsSummary = ['Optional', capitalize(setting), details.guests > 0 ? `~${details.guests} guests` : null]
+      ? t('Optional · No setlist')
+      : t('Optional · {sets}, {songs}', { sets: setsText(setlist.length), songs: songsText(totalSongCount) });
+  const logisticsSummary = [t('Optional'), settingCap(setting), details.guests > 0 ? t('~{count} guests', { count: details.guests }) : null]
     .filter(Boolean)
     .join(' · ');
-  const tasksSummary = `Optional · ${plural(tasks.length, 'task')}`;
+  const tasksSummary = t('Optional · {tasks}', { tasks: tasksText(tasks.length) });
   const lineupLabel = (() => {
     const n = selectedMembers.length;
-    if (n > 1 && n === MEMBERS.length) return 'Full band';
-    if (n === 1) return 'Solo';
-    if (n === 2) return 'Duo';
-    if (n === 3) return 'Trio';
-    return 'Custom lineup';
+    if (n > 1 && n === MEMBERS.length) return t('Full band');
+    if (n === 1) return t('Solo');
+    if (n === 2) return t('Duo');
+    if (n === 3) return t('Trio');
+    return t('Custom lineup');
   })();
   const lineupSummary = [
     lineupLabel,
-    plural(selectedMembers.length, 'musician'),
+    musiciansText(selectedMembers.length),
     isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString('en-US')}` : null,
   ]
     .filter(Boolean)
@@ -1758,22 +1824,22 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         style={{ backgroundColor: activeAccentColor, color: activeAccentFg }}
       >
         <div className="flex items-center gap-2 flex-wrap">
-          <Tag variant="solid">{modalCategory === 'quote' ? 'Quote' : 'Gig'}</Tag>
-          <span className="bw-label-xs">{eventType || 'Event'}</span>
-          <span className="bw-label-xs opacity-70">{setting}</span>
+          <Tag variant="solid">{modalCategory === 'quote' ? t('Quote') : t('Gig')}</Tag>
+          <span className="bw-label-xs">{eventType ? rawWord(eventType) : t('Event')}</span>
+          <span className="bw-label-xs opacity-70">{rawWord(setting)}</span>
         </div>
         <h3 className="bw-display-lg [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
 
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 shrink-0 mt-[3px]" />
           <span className="bw-body-md">
-            {details.date ? formattedDateStr : 'Date TBD'} · {details.startTime || '20:00'} – {details.endTime || '23:30'}
+            {details.date ? formattedDateStr : t('Date TBD')} · {details.startTime || '20:00'} – {details.endTime || '23:30'}
           </span>
         </div>
         <div className="flex items-start gap-2 min-w-0">
           <MapPin className="w-4 h-4 shrink-0 mt-[3px]" />
           <span className="bw-body-md truncate">
-            {details.venue || 'Venue TBD'}
+            {details.venue || t('Venue TBD')}
             {details.city ? `, ${details.city}` : ''}
           </span>
         </div>
@@ -1784,10 +1850,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
         <div className="grid grid-cols-2 gap-2 pt-1">
           <PillButton variant="dark" size="sm" icon={<Edit3 className="w-3.5 h-3.5" />} onClick={() => setStep(0)}>
-            Edit lineup
+            {t('Edit lineup')}
           </PillButton>
           <PillButton variant="dark" size="sm" icon={<Edit3 className="w-3.5 h-3.5" />} onClick={() => setStep(1)}>
-            Edit date & venue
+            {t('Edit date & venue')}
           </PillButton>
         </div>
       </div>
@@ -1796,7 +1862,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <EditAccordionCard
         isOpen={isReviewSetlistExpanded}
         onToggle={() => setIsReviewSetlistExpanded(!isReviewSetlistExpanded)}
-        title="Setlist & songs"
+        title={t('Setlist & songs')}
         summary={setlistSummary}
       >
         {libraryError && (
@@ -1806,7 +1872,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         )}
         {savedSetlists.length > 0 && (setlist.length === 0 || showSetlistTemplates) && (
           <div className="flex flex-col gap-2">
-            <FieldLabel>{setlist.length > 0 ? 'Replace with a template' : 'Load from templates'}</FieldLabel>
+            <FieldLabel>{setlist.length > 0 ? t('Replace with a template') : t('Load from templates')}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {savedSetlists.map(sl => (
                 <Selector
@@ -1833,16 +1899,16 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               <div className="flex items-center gap-3">
                 <input
                   type="text"
-                  aria-label="Set name"
+                  aria-label={t('Set name')}
                   value={item.title}
                   onChange={e =>
                     setSetlist(prev => prev.map(s => (s.uid === item.uid ? { ...s, title: e.target.value } : s)))
                   }
                   className="flex-1 min-w-0 bg-transparent bw-label-md text-foreground placeholder:text-muted-foreground focus:outline-none"
-                  placeholder="Set name..."
+                  placeholder={t('Set name...')}
                 />
                 <PillButton variant="danger" size="sm" fullWidth={false} className="px-0" onClick={() => removeSet(item.uid)}>
-                  Remove set
+                  {t('Remove set')}
                 </PillButton>
               </div>
 
@@ -1866,7 +1932,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 </Reorder.Group>
               )}
               {(item.songs || []).length === 0 && (
-                <p className="bw-body-sm text-muted-foreground">No songs in this set.</p>
+                <p className="bw-body-sm text-muted-foreground">{t('No songs in this set.')}</p>
               )}
 
               <div className="flex items-center gap-4">
@@ -1878,7 +1944,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   icon={<Music className="w-3.5 h-3.5" />}
                   onClick={() => openSongPicker(item.uid)}
                 >
-                  From library
+                  {t('From library')}
                 </PillButton>
                 <PillButton
                   variant="ghost"
@@ -1888,14 +1954,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   icon={<Plus className="w-3.5 h-3.5" />}
                   onClick={() => addSongToSet(item.uid)}
                 >
-                  Manual
+                  {t('Manual')}
                 </PillButton>
               </div>
             </div>
           ))
         ) : (
           <p className="bw-body-sm text-muted-foreground">
-            No sets added yet. Load a saved template or add songs from your catalog.
+            {t('No sets added yet. Load a saved template or add songs from your catalog.')}
           </p>
         )}
 
@@ -1907,10 +1973,10 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             icon={<Plus className="w-4 h-4" />}
             onClick={() => openSongPicker(setlist[0]?.uid || null)}
           >
-            Add songs
+            {t('Add songs')}
           </PillButton>
           <PillButton variant="outline" size="sm" fullWidth={false} icon={<Layers className="w-4 h-4" />} onClick={addSet}>
-            Add set
+            {t('Add set')}
           </PillButton>
           {savedSetlists.length > 0 && setlist.length > 0 && (
             <PillButton
@@ -1921,7 +1987,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               aria-expanded={showSetlistTemplates}
               onClick={() => setShowSetlistTemplates(v => !v)}
             >
-              Templates
+              {t('Templates')}
             </PillButton>
           )}
         </div>
@@ -1931,24 +1997,24 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       <EditAccordionCard
         isOpen={isReviewLogisticsExpanded}
         onToggle={() => setIsReviewLogisticsExpanded(!isReviewLogisticsExpanded)}
-        title="Logistics, guests & setting"
+        title={t('Logistics, guests & setting')}
         summary={logisticsSummary}
       >
         {renderSettingField()}
-        {renderGuestsField('Estimated guests')}
-        {renderDurationField('Performance duration', true)}
+        {renderGuestsField(t('Estimated guests'))}
+        {renderDurationField(t('Performance duration'), true)}
       </EditAccordionCard>
 
       {/* Accordion 3: Tasks & band notes */}
       <EditAccordionCard
         isOpen={isReviewTasksExpanded}
         onToggle={() => setIsReviewTasksExpanded(!isReviewTasksExpanded)}
-        title="Tasks & band notes"
+        title={t('Tasks & band notes')}
         summary={tasksSummary}
       >
         {taskTemplates.length > 0 && tasks.length === 0 && (
           <div className="flex flex-col gap-2">
-            <FieldLabel>Load a to-do list</FieldLabel>
+            <FieldLabel>{t('Load a to-do list')}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {taskTemplates.map(tpl => (
                 <Selector
@@ -1956,12 +2022,12 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                   size="sm"
                   selected={false}
                   onClick={() => {
-                    const loaded = tpl.tasks.map((t: any) => ({
+                    const loaded = tpl.tasks.map((tk: any) => ({
                       uid: `t-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                      title: t.title,
+                      title: tk.title,
                       completed: false,
                       templateId: tpl.id,
-                      dueOffset: t.dueOffset ?? t.due_offset,
+                      dueOffset: tk.dueOffset ?? tk.due_offset,
                     }));
                     setTasks(loaded);
                   }}
@@ -1986,7 +2052,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
               >
                 <span className="bw-body-md text-foreground truncate flex-1 min-w-0">{task.title}</span>
                 <IconButton
-                  label="Delete task"
+                  label={t('Delete task')}
                   variant="ghost"
                   size="sm"
                   icon={<X />}
@@ -1997,7 +2063,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           </div>
         )}
 
-        {renderNotesField('Band notes', 'Any details, directions, or notes for the band...')}
+        {renderNotesField(t('Band notes'), t('Any details, directions, or notes for the band...'))}
       </EditAccordionCard>
     </div>
   );
@@ -2010,14 +2076,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         isOpen={!!expandedSections.basics}
         onToggle={() => toggleEditSection('basics')}
         stepNumber="01"
-        title="Event basics & client"
-        summary={`${capitalize(eventType) || 'Event'} · ${details.clientName ? `Client: ${details.clientName}` : 'No client'} · ${plural(details.guests || 0, 'guest')} · ${capitalize(setting)}`}
+        title={t('Event basics & client')}
+        summary={`${typeCap(eventType) || t('Event')} · ${details.clientName ? t('Client: {name}', { name: details.clientName }) : t('No client')} · ${guestsText(details.guests || 0)} · ${settingCap(setting)}`}
       >
         {renderEventTypeGrid()}
         {renderClientField()}
         {renderTitleField()}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {renderGuestsField('Guests')}
+          {renderGuestsField(t('Guests'))}
           {renderSettingField()}
         </div>
       </EditAccordionCard>
@@ -2027,11 +2093,11 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         isOpen={!!expandedSections.date_venue}
         onToggle={() => toggleEditSection('date_venue')}
         stepNumber="02"
-        title="Date, time & venue"
-        summary={`${formattedDateStr} · ${details.startTime} – ${details.endTime} · ${details.venue || 'Venue TBD'}`}
+        title={t('Date, time & venue')}
+        summary={`${formattedDateStr} · ${details.startTime} – ${details.endTime} · ${details.venue || t('Venue TBD')}`}
         hasWarning={warnField('date') || warnField('venue') || warnField('time')}
       >
-        {renderVenueField('Venue name')}
+        {renderVenueField(t('Venue name'))}
         {renderDateField()}
         {renderTimeFields()}
       </EditAccordionCard>
@@ -2041,16 +2107,20 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         isOpen={!!expandedSections.team_pay}
         onToggle={() => toggleEditSection('team_pay')}
         stepNumber="03"
-        title="Band & compensation"
-        summary={`${selectedMembers.length} of ${plural(MEMBERS.length, 'musician')} · Total ${currencySymbol}${grandTotalFee}`}
+        title={t('Band & compensation')}
+        summary={t('{count} of {musicians} · Total {amount}', {
+          count: selectedMembers.length,
+          musicians: musiciansText(MEMBERS.length),
+          amount: `${currencySymbol}${grandTotalFee}`,
+        })}
         hasWarning={warnField('members') || warnField('fee')}
       >
         {renderPresets()}
         {renderRosterRows()}
         {renderExtraFee()}
-        {renderDurationField('Duration', false)}
+        {renderDurationField(t('Duration'), false)}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-border">
-          <span className="bw-label-sm text-muted-foreground">Total estimate</span>
+          <span className="bw-label-sm text-muted-foreground">{t('Total estimate')}</span>
           <span className="bw-h2 tabular-nums">
             {currencySymbol}
             {grandTotalFee}
@@ -2063,14 +2133,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         isOpen={!!expandedSections.setlist_tasks}
         onToggle={() => toggleEditSection('setlist_tasks')}
         stepNumber="04"
-        title="Setlist, tasks & notes"
-        summary={`${plural(totalSongCount, 'song')} · ${plural(tasks.length, 'task')} · ${notes ? 'Notes attached' : 'No notes'}`}
+        title={t('Setlist, tasks & notes')}
+        summary={`${songsText(totalSongCount)} · ${tasksText(tasks.length)} · ${notes ? t('Notes attached') : t('No notes')}`}
       >
         <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex items-center justify-between gap-3">
           <div className="flex flex-col gap-1 min-w-0">
-            <span className="bw-label-sm text-muted-foreground">Setlist</span>
+            <span className="bw-label-sm text-muted-foreground">{t('Setlist')}</span>
             <span className="bw-body-lg text-foreground">
-              {plural(setlist.length, 'set')} · {plural(totalSongCount, 'song')}
+              {setsText(setlist.length)} · {songsText(totalSongCount)}
             </span>
           </div>
           <PillButton
@@ -2080,29 +2150,29 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             icon={<Music className="w-4 h-4" />}
             onClick={() => openSongPicker(setlist[0]?.uid || null)}
           >
-            Pick songs
+            {t('Pick songs')}
           </PillButton>
         </div>
 
         <div className="flex flex-col gap-2">
-          <FieldLabel>Tasks</FieldLabel>
+          <FieldLabel>{t('Tasks')}</FieldLabel>
           {renderTaskInput()}
           {tasks.map((task, i) => (
             <div key={task.uid || i} className="flex items-center gap-2">
               <input
                 type="text"
-                aria-label={`Task ${i + 1}`}
+                aria-label={t('Task {number}', { number: i + 1 })}
                 value={task.title}
                 onChange={e => {
                   const newTasks = [...tasks];
                   newTasks[i] = { ...newTasks[i], title: e.target.value };
                   setTasks(newTasks);
                 }}
-                placeholder="Task description..."
+                placeholder={t('Task description...')}
                 className="flex-1 min-w-0 h-11 px-4 rounded-full bg-field border border-border bw-body-md text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-foreground"
               />
               <IconButton
-                label="Delete task"
+                label={t('Delete task')}
                 variant="ghost"
                 size="sm"
                 icon={<X />}
@@ -2112,7 +2182,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           ))}
         </div>
 
-        {renderNotesField('Notes for the band', 'Any details or notes for the band...')}
+        {renderNotesField(t('Notes for the band'), t('Any details or notes for the band...'))}
       </EditAccordionCard>
     </div>
   );
@@ -2120,7 +2190,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   // SongPicker overline: the set the songs land in (e.g. "Set 1 · Dinner").
   const songPickerOverline = (() => {
     const target = setlist.find((s: any) => s.uid === songPickerTargetSet) || setlist[0];
-    return (target?.title || '').trim() || 'Set 1';
+    return (target?.title || '').trim() || t('Set 1');
   })();
 
   const isLastStep = step === STEPS.length - 1;
@@ -2141,9 +2211,9 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
   const rightButtonLabel = isLastStep
     ? modalCategory === 'quote'
-      ? 'Create quote'
-      : 'Create gig'
-    : 'Next';
+      ? t('Create quote')
+      : t('Create gig')
+    : t('Next');
 
   const rightButtonAction = isLastStep ? handleCreate : handleNext;
 
@@ -2167,14 +2237,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="shrink-0 px-4 pb-3 flex flex-col gap-2" style={headerPadTop}>
             <div className="h-11 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <Tag variant="solid">Editing</Tag>
-                <Tag variant="subtle">{modalCategory}</Tag>
-                {eventType && <Tag variant="subtle">{eventType}</Tag>}
+                <Tag variant="solid">{t('Editing')}</Tag>
+                <Tag variant="subtle">{rawWord(modalCategory)}</Tag>
+                {eventType && <Tag variant="subtle">{rawWord(eventType)}</Tag>}
               </div>
               <RailCover pane />
               <HeaderAction
                 pane
-                label={`Close edit ${modalCategory} modal`}
+                label={t('Close edit {kind} modal', { kind: rawWord(modalCategory) })}
                 variant="outline"
                 size="sm"
                 icon={<X />}
@@ -2183,7 +2253,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             </div>
             <h1 className="bw-h1 truncate">{getEffectiveTitle()}</h1>
             <span className="bw-body-sm text-muted-foreground truncate">
-              {formattedDateStr} · {details.startTime} – {details.endTime} · {details.venue || 'Venue TBD'}
+              {formattedDateStr} · {details.startTime} – {details.endTime} · {details.venue || t('Venue TBD')}
             </span>
           </div>
 
@@ -2196,7 +2266,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="shrink-0 px-4 pt-3 bg-background" style={ctaPadBottom}>
             <div className="grid grid-cols-[2fr_3fr] gap-3">
               <PillButton variant="outline" size="lg" onClick={onClose}>
-                Cancel
+                {t('Cancel')}
               </PillButton>
               <PillButton
                 variant="primary"
@@ -2205,7 +2275,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
                 onClick={handleCreate}
                 disabled={!details.date}
               >
-                Save changes
+                {t('Save changes')}
               </PillButton>
             </div>
           </div>
@@ -2252,14 +2322,14 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           <div className="h-14 px-4 flex items-center gap-3 bw-status-clear">
             <NavBackButton
               pane
-              label={isFirstStep ? `Cancel new ${modalCategory === 'quote' ? 'quote' : 'gig'}` : 'Back'}
+              label={isFirstStep ? (modalCategory === 'quote' ? t('Cancel new quote') : t('Cancel new gig')) : t('Back')}
               size="sm"
               onClick={isFirstStep ? requestClose : handleBack}
             />
-            <h2 className="bw-h2 flex-1 min-w-0 truncate">{modalCategory === 'quote' ? 'New quote' : 'New gig'}</h2>
+            <h2 className="bw-h2 flex-1 min-w-0 truncate">{modalCategory === 'quote' ? t('New quote') : t('New gig')}</h2>
             {!closeInRail && (
               <IconButton
-                label={`Close ${modalCategory === 'quote' ? 'quote' : 'gig'} wizard`}
+                label={modalCategory === 'quote' ? t('Close quote wizard') : t('Close gig wizard')}
                 variant="ghost"
                 size="sm"
                 icon={<X />}
@@ -2272,7 +2342,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
             <InteractiveStepIndicator
               current={step}
               total={STEPS.length}
-              steps={STEPS}
+              steps={stepsShown}
               maxAccessibleStep={maxAccessibleStep}
               onSelectStep={s => setStep(s)}
               activeColor="var(--wizard-accent)"
@@ -2291,7 +2361,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         <div className="shrink-0 px-4 pt-3 bg-background" style={ctaPadBottom}>
           <div className="grid grid-cols-[2fr_3fr] gap-3">
             <PillButton variant="outline" size="lg" onClick={isFirstStep ? requestClose : handleBack}>
-              {isFirstStep ? 'Cancel' : 'Back'}
+              {isFirstStep ? t('Cancel') : t('Back')}
             </PillButton>
             <PillButton
               variant="primary"
@@ -2336,7 +2406,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
           onSaveDraft={handleSaveDraft}
           onDiscard={handleDiscardDraft}
           onKeepEditing={() => setLeaveOpen(false)}
-          discardLabel={draft ? 'Delete draft' : undefined}
+          discardLabel={draft ? t('Delete draft') : undefined}
         />
       )}
     </>
