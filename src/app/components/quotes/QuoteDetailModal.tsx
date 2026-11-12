@@ -14,6 +14,7 @@ import { cn } from '@/app/components/ui/utils';
 import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
+import { useT } from '@/lib/i18n';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -30,16 +31,6 @@ interface QuoteDetailModalProps {
 }
 
 const getCurrencySym = (currency?: string): string => currencySymbol(currency || 'EUR');
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: 'Draft',
-  SENT: 'Sent',
-  ACCEPTED: 'Accepted',
-  DECLINED: 'Declined',
-  EXPIRED: 'Expired',
-  NEGOTIATING: 'Negotiating',
-  ARCHIVED: 'Archived',
-};
 
 /** Figma "Event detail" key/value row: Body/MD label, Label/MD value. */
 const KeyValueRow: React.FC<{ label: React.ReactNode; value: React.ReactNode; strong?: boolean }> = ({ label, value, strong }) => (
@@ -64,6 +55,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   onSent,
   onOpenBandSettings,
 }) => {
+  const t = useT();
   const { selectedBand } = useBand();
   const railChrome = useRailOwnsChrome();
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -80,18 +72,28 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const totals = totalsForQuote(quote);
   const displayTotal = hasMath ? totals.total : quote.total || 0;
 
-  const displayTitle = quote.eventTitle || quote.eventName || 'Untitled';
+  const STATUS_LABEL: Record<string, string> = {
+    DRAFT: t('Draft'),
+    SENT: t('Sent'),
+    ACCEPTED: t('Accepted'),
+    DECLINED: t('Declined'),
+    EXPIRED: t('Expired'),
+    NEGOTIATING: t('Negotiating'),
+    ARCHIVED: t('Archived'),
+  };
+
+  const displayTitle = quote.eventTitle || quote.eventName || t('Untitled');
   const eventTypeLabel = quote.eventType ? getEventTypeLabel(quote.eventType) : '';
   const statusLabel = STATUS_LABEL[quote.status] || quote.status;
-  const venueName = quote.venueName || quote.venueCity || 'Venue TBD';
+  const venueName = quote.venueName || quote.venueCity || t('Venue TBD');
   const venueAddress = [quote.venueAddress, quote.venueName ? quote.venueCity : ''].filter(Boolean).join(', ');
 
   const heroDay = hasDate ? String(eventDate!.getDate()).padStart(2, '0') : '--';
-  const heroMonth = hasDate ? eventDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'TBD';
+  const heroMonth = hasDate ? eventDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : t('TBD');
   const heroDateTime = [
     hasDate
       ? eventDate!.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-      : 'Date TBD',
+      : t('Date TBD'),
     quote.eventTimeStart ? (quote.eventTimeEnd ? `${quote.eventTimeStart} – ${quote.eventTimeEnd}` : quote.eventTimeStart) : '',
   ]
     .filter(Boolean)
@@ -109,7 +111,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: m.name, amount: m.price || 0 })),
           ...(quote.customItems || []).map((c) => ({
             id: `c-${c.id}`,
-            label: c.description || c.name || 'Custom item',
+            label: c.description || c.name || t('Custom item'),
             amount: (c.amount ?? c.price ?? 0) * (c.quantity || 1),
           })),
         ];
@@ -124,25 +126,38 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       ? Math.ceil((validUntil.getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000)
       : null;
   const validLabel =
-    validDays == null ? null : validDays < 0 ? 'Expired' : validDays === 0 ? 'Valid today' : `Valid ${validDays} ${validDays === 1 ? 'day' : 'days'}`;
+    validDays == null
+      ? null
+      : validDays < 0
+        ? t('Expired')
+        : validDays === 0
+          ? t('Valid today')
+          : validDays === 1
+            ? t('Valid {count} day', { count: validDays })
+            : t('Valid {count} days', { count: validDays });
 
   const sentAt = quote.sentAt ? new Date(quote.sentAt) : null;
   const sentLine =
     sentAt && !isNaN(sentAt.getTime())
-      ? `Sent${quote.clientEmail ? ` to ${quote.clientEmail}` : ''} on ${sentAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${
-          quote.viewedAt ? ' · opened' : ''
-        }`
+      ? `${
+          quote.clientEmail
+            ? t('Sent to {email} on {date}', {
+                email: quote.clientEmail,
+                date: sentAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              })
+            : t('Sent on {date}', { date: sentAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
+        }${quote.viewedAt ? ` · ${t('opened')}` : ''}`
       : quote.status === 'DRAFT'
-        ? 'Draft · not sent yet'
+        ? t('Draft · not sent yet')
         : null;
 
   const clientRows = [
-    quote.clientCompany ? { label: 'Company', value: quote.clientCompany } : null,
-    { label: 'Contact', value: quote.clientName || 'Client TBD' },
-    quote.clientEmail ? { label: 'Email', value: quote.clientEmail } : null,
-    { label: 'Guests', value: quote.guestCount ? `~${quote.guestCount}` : 'TBD' },
+    quote.clientCompany ? { label: t('Company'), value: quote.clientCompany } : null,
+    { label: t('Contact'), value: quote.clientName || t('Client TBD') },
+    quote.clientEmail ? { label: t('Email'), value: quote.clientEmail } : null,
+    { label: t('Guests'), value: quote.guestCount ? `~${quote.guestCount}` : t('TBD') },
     {
-      label: 'Musicians',
+      label: t('Musicians'),
       value: String(quote.musicians?.length || quote.musicianCount || 1),
     },
   ].filter(Boolean) as { label: string; value: string }[];
@@ -183,7 +198,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               <div className="flex-1 min-w-0 flex flex-col gap-3">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap" style={heroChipStyle}>
-                    Quote
+                    {t('Quote')}
                   </span>
                   <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center whitespace-nowrap" style={heroChipStyle}>
                     {statusLabel}
@@ -200,7 +215,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 className="shrink-0 flex flex-col items-end gap-1.5"
                 style={{ '--dot-off': 'color-mix(in srgb, currentColor 18%, transparent)' } as React.CSSProperties}
               >
-                <DotText text={heroDay} size={48} showGrid label={hasDate ? eventDate!.toDateString() : 'Date TBD'} />
+                <DotText text={heroDay} size={48} showGrid label={hasDate ? eventDate!.toDateString() : t('Date TBD')} />
                 <span className="bw-label-xs">{heroMonth}</span>
               </div>
             </div>
@@ -235,13 +250,13 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             <section className="dark bg-sheet text-sheet-foreground rounded-[24px] p-5 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="bw-label-xs text-sheet-foreground/85 truncate">
-                  Quote{quote.quoteNumber ? ` ${quote.quoteNumber}` : ''}
+                  {t('Quote')}{quote.quoteNumber ? ` ${quote.quoteNumber}` : ''}
                 </span>
                 {validLabel && <Tag variant={validDays != null && validDays < 0 ? 'subtle' : 'accent'}>{validLabel}</Tag>}
               </div>
               <DotText text={money(displayTotal)} size={34} label={money(displayTotal)} />
               <p className="bw-body-sm text-sheet-foreground/80">
-                {[sentLine, `Deposit ${dp}% · ${money((displayTotal * dp) / 100)}`].filter(Boolean).join(' · ')}
+                {[sentLine, t('Deposit {percent}% · {amount}', { percent: dp, amount: money((displayTotal * dp) / 100) })].filter(Boolean).join(' · ')}
               </p>
             </section>
 
@@ -252,22 +267,22 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
             {/* Line items */}
             <section className="flex flex-col gap-4">
-              <h2 className="bw-h1">Line items</h2>
+              <h2 className="bw-h1">{t('Line items')}</h2>
               <Card>
                 {itemRows.map((row) => (
                   <KeyValueRow key={row.id} label={row.label} value={money(row.amount)} />
                 ))}
                 {itemRows.length > 0 && <hr className="border-0 h-px bg-border" />}
-                <KeyValueRow label="Subtotal" value={money(hasMath ? totals.subtotal : displayTotal)} />
-                {hasMath && totals.discount > 0 && <KeyValueRow label="Discount" value={`−${money(totals.discount)}`} />}
-                {hasMath && <KeyValueRow label={`VAT ${vatRate}%`} value={money(totals.vat)} />}
-                <KeyValueRow label="Total" value={money(displayTotal)} strong />
+                <KeyValueRow label={t('Subtotal')} value={money(hasMath ? totals.subtotal : displayTotal)} />
+                {hasMath && totals.discount > 0 && <KeyValueRow label={t('Discount')} value={`−${money(totals.discount)}`} />}
+                {hasMath && <KeyValueRow label={t('VAT {rate}%', { rate: vatRate })} value={money(totals.vat)} />}
+                <KeyValueRow label={t('Total')} value={money(displayTotal)} strong />
               </Card>
             </section>
 
             {/* Client */}
             <section className="flex flex-col gap-4">
-              <h2 className="bw-h1">Client</h2>
+              <h2 className="bw-h1">{t('Client')}</h2>
               <Card>
                 {clientRows.map((row) => (
                   <KeyValueRow key={row.label} label={row.label} value={row.value} />
@@ -285,26 +300,26 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   disabled={!canEdit || !onEdit}
                   onClick={() => canEdit && onEdit?.(quote)}
                 >
-                  Edit quote
+                  {t('Edit quote')}
                 </PillButton>
                 <PillButton size="lg" icon={<Share2 className="w-4 h-4" />} onClick={() => setIsShareOpen(true)}>
-                  Share quote
+                  {t('Share quote')}
                 </PillButton>
               </div>
               {quote.status === 'DRAFT' && onSend && (
                 <PillButton variant="outline" size="lg" icon={<Send className="w-4 h-4" />} onClick={() => onSend(quote)}>
-                  Mark as sent
+                  {t('Mark as sent')}
                 </PillButton>
               )}
               {onSetOutcome && ['SENT', 'VIEWED', 'NEGOTIATING'].includes(quote.status) && (
                 <div className="flex flex-col gap-2">
-                  <span className="bw-label-sm text-muted-foreground">Client answer</span>
+                  <span className="bw-label-sm text-muted-foreground">{t('Client answer')}</span>
                   <div className="grid grid-cols-2 gap-2">
                     <PillButton variant="outline" size="lg" icon={<X className="w-4 h-4" />} onClick={() => onSetOutcome(quote, 'DECLINED')}>
-                      Declined
+                      {t('Declined')}
                     </PillButton>
                     <PillButton size="lg" icon={<Check className="w-4 h-4" />} onClick={() => onSetOutcome(quote, 'ACCEPTED')}>
-                      Accepted
+                      {t('Accepted')}
                     </PillButton>
                   </div>
                 </div>
@@ -317,7 +332,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     className="inline-flex items-center gap-1.5 min-h-11 px-3 bw-button-sm text-foreground"
                   >
                     <Copy className="w-3.5 h-3.5" />
-                    Duplicate
+                    {t('Duplicate')}
                   </button>
                 )}
                 {onDelete && (
@@ -327,7 +342,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     className="inline-flex items-center gap-1.5 min-h-11 px-3 bw-button-sm text-destructive"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Delete this quote
+                    {t('Delete this quote')}
                   </button>
                 )}
               </div>

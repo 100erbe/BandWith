@@ -38,6 +38,7 @@ import { HeaderAction, IconButton } from '@/app/components/bw/Screen';
 import { RailCover } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
+import { useT } from '@/lib/i18n';
 
 export interface QuoteShareModalProps {
   isOpen: boolean;
@@ -59,6 +60,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   onOpenBandSettings,
   onSent,
 }) => {
+  const t = useT();
   const [settings, setSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [pdfResult, setPdfResult] = useState<QuotePdfGenerationResult | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
@@ -216,12 +218,12 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
         text: opts.withText ? buildShareText(uploadedUrl) : undefined,
       });
       if (result === 'cancelled') return;
-      if (result === 'downloaded') flash('PDF downloaded');
-      else flash(opts.markAsSent ? 'Quote shared' : 'PDF ready');
+      if (result === 'downloaded') flash(t('PDF downloaded'));
+      else flash(opts.markAsSent ? t('Quote shared') : t('PDF ready'));
       if (opts.markAsSent) void markSent();
     } catch (err) {
       console.error('[QuoteShareModal] Share failed:', err);
-      flash('Could not share the PDF. Try again.', 'error');
+      flash(t('Could not share the PDF. Try again.'), 'error');
     }
   };
 
@@ -232,12 +234,12 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     if (!pdfResult) return;
     try {
       const { result, location } = await saveFile(pdfResult.pdfBlob, pdfResult.fileName);
-      if (result === 'saved') flash(`PDF saved to ${location}`);
-      else if (result === 'downloaded') flash('PDF downloaded');
-      else if (result === 'shared') flash('PDF ready');
+      if (result === 'saved') flash(t('PDF saved to {location}', { location: String(location) }));
+      else if (result === 'downloaded') flash(t('PDF downloaded'));
+      else if (result === 'shared') flash(t('PDF ready'));
     } catch (err) {
       console.error('[QuoteShareModal] Save failed:', err);
-      flash('Could not save the PDF. Try Share instead.', 'error');
+      flash(t('Could not save the PDF. Try Share instead.'), 'error');
     }
   };
 
@@ -279,9 +281,9 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       void markSent();
     };
     try {
-      navigator.clipboard.writeText(text).then(done, () => flash('Could not copy. Use Share PDF instead.', 'error'));
+      navigator.clipboard.writeText(text).then(done, () => flash(t('Could not copy. Use Share PDF instead.'), 'error'));
     } catch {
-      flash('Could not copy. Use Share PDF instead.', 'error');
+      flash(t('Could not copy. Use Share PDF instead.'), 'error');
     }
   };
 
@@ -302,8 +304,8 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
   }[] = [
     {
       key: 'native',
-      title: 'Share PDF document',
-      subtitle: 'Native share sheet',
+      title: t('Share PDF document'),
+      subtitle: t('Native share sheet'),
       icon: <Share2 />,
       onClick: handleNativeShare,
       disabled: isGenerating || !pdfResult,
@@ -311,31 +313,31 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
     {
       key: 'whatsapp',
       title: 'WhatsApp',
-      subtitle: uploadedUrl ? 'Pre-filled message + PDF link' : 'Send the PDF file',
+      subtitle: uploadedUrl ? t('Pre-filled message + PDF link') : t('Send the PDF file'),
       icon: isUploading ? <Loader2 className="animate-spin" /> : <MessageCircle />,
       onClick: handleWhatsAppShare,
       disabled: isGenerating || isUploading || !pdfResult,
     },
     {
       key: 'email',
-      title: 'Email client',
-      subtitle: uploadedUrl ? 'Formal proposal + PDF link' : 'PDF as attachment',
+      title: t('Email client'),
+      subtitle: uploadedUrl ? t('Formal proposal + PDF link') : t('PDF as attachment'),
       icon: isUploading ? <Loader2 className="animate-spin" /> : <Mail />,
       onClick: handleEmailShare,
       disabled: isGenerating || isUploading || !pdfResult,
     },
     {
       key: 'download',
-      title: 'Download PDF',
-      subtitle: Capacitor.isNativePlatform() ? 'Save a copy on this device' : 'Save to your computer',
+      title: t('Download PDF'),
+      subtitle: Capacitor.isNativePlatform() ? t('Save a copy on this device') : t('Save to your computer'),
       icon: <Download />,
       onClick: handleDownload,
       disabled: isGenerating || !pdfResult,
     },
     {
       key: 'copy',
-      title: copiedSummary ? 'Copied!' : 'Copy text & link',
-      subtitle: 'Paste anywhere',
+      title: copiedSummary ? t('Copied!') : t('Copy text & link'),
+      subtitle: t('Paste anywhere'),
       icon: copiedSummary ? <Check className="text-success" /> : <Copy />,
       onClick: handleCopySummary,
       disabled: isGenerating || isUploading || !pdfResult,
@@ -352,7 +354,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       transition={{ type: 'tween', duration: 0.25 }}
       role="dialog"
       aria-modal="true"
-      aria-label="Quote PDF ready"
+      aria-label={t('Quote PDF ready')}
       className="bw-pane-detail dark fixed inset-0 z-[120] flex flex-col bg-background text-foreground"
     >
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
@@ -365,12 +367,12 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <p className="bw-label-sm text-muted-foreground truncate">
-                  {quote.quoteNumber || 'Draft'} · Official quote
+                  {quote.quoteNumber || t('Draft')} · {t('Official quote')}
                 </p>
-                <h1 className="bw-display-lg">PDF ready</h1>
+                <h1 className="bw-display-lg">{t('PDF ready')}</h1>
               </div>
               <RailCover pane />
-              <HeaderAction pane label="Close" variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
+              <HeaderAction pane label={t('Close')} variant="filled" railProminent={false} icon={<X />} onClick={onClose} />
             </div>
             <div className="flex items-center gap-2">
               {openBandSettings && (
@@ -380,13 +382,13 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                   fullWidth={false}
                   icon={<IconSettings className="w-3.5 h-3.5" />}
                   onClick={openBandSettings}
-                  title="Configure band logo, signature & payment details"
+                  title={t('Configure band logo, signature & payment details')}
                 >
-                  Branding & payment
+                  {t('Branding & payment')}
                 </PillButton>
               )}
               <IconButton
-                label="Regenerate PDF preview"
+                label={t('Regenerate PDF preview')}
                 size="sm"
                 icon={<RefreshCw className={isGenerating ? 'animate-spin' : undefined} />}
                 onClick={loadAndGenerate}
@@ -404,13 +406,13 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                     const isSummaryPage = idx === pageCount - 1 && pageCount > 1 && quote.includeProposalSummary;
                     return (
                       <Selector key={idx} selected={activePageIndex === idx} onClick={() => setActivePageIndex(idx)}>
-                        {isSummaryPage ? `Page ${idx + 1} · Summary` : `Page ${idx + 1}`}
+                        {isSummaryPage ? t('Page {page} · Summary', { page: idx + 1 }) : t('Page {page}', { page: idx + 1 })}
                       </Selector>
                     );
                   })}
                 </div>
                 <IconButton
-                  label="Previous page"
+                  label={t('Previous page')}
                   size="sm"
                   variant="ghost"
                   icon={<ChevronLeft />}
@@ -418,7 +420,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                   disabled={activePageIndex === 0}
                 />
                 <IconButton
-                  label="Next page"
+                  label={t('Next page')}
                   size="sm"
                   variant="ghost"
                   icon={<ChevronRight />}
@@ -432,15 +434,15 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
               {generateError && !isGenerating ? (
                 <div className="w-full max-w-[260px] aspect-[1/1.414] bg-card rounded-[16px] flex flex-col items-center justify-center gap-3 p-6 text-center">
                   <AlertCircle className="w-7 h-7 text-destructive" />
-                  <p className="bw-body-sm">The PDF could not be created.</p>
+                  <p className="bw-body-sm">{t('The PDF could not be created.')}</p>
                   <PillButton variant="outline" size="sm" fullWidth={false} icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={loadAndGenerate}>
-                    Try again
+                    {t('Try again')}
                   </PillButton>
                 </div>
               ) : isGenerating || !pdfResult ? (
                 <div className="w-full max-w-[260px] aspect-[1/1.414] bg-white text-black rounded-[16px] flex flex-col items-center justify-center gap-3 p-6">
                   <Loader2 className="w-7 h-7 animate-spin" />
-                  <p className="bw-label-xs text-black/60 text-center">Rendering A4 PDF…</p>
+                  <p className="bw-label-xs text-black/60 text-center">{t('Rendering A4 PDF…')}</p>
                 </div>
               ) : (
                 <AnimatePresence mode="wait">
@@ -451,7 +453,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.18 }}
                     src={pdfResult.pageDataUrls[activePageIndex]}
-                    alt={`Quote PDF page ${activePageIndex + 1}`}
+                    alt={t('Quote PDF page {page}', { page: activePageIndex + 1 })}
                     className="max-h-[52vh] w-auto max-w-full object-contain rounded-[16px] bg-white"
                   />
                 </AnimatePresence>
@@ -460,8 +462,12 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
 
             <p className="bw-label-xs text-muted-foreground text-center">
               {pdfResult
-                ? `A4 portrait · Page ${activePageIndex + 1} of ${pageCount} · ${(pdfResult.pdfBlob.size / 1024).toFixed(0)} KB`
-                : 'A4 portrait · Preparing…'}
+                ? t('A4 portrait · Page {page} of {count} · {size} KB', {
+                    page: activePageIndex + 1,
+                    count: pageCount,
+                    size: (pdfResult.pdfBlob.size / 1024).toFixed(0),
+                  })
+                : t('A4 portrait · Preparing…')}
             </p>
           </section>
 
@@ -474,11 +480,11 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
             >
               <AlertCircle className="w-5 h-5 shrink-0 text-warning" />
               <span className="flex-1 min-w-0 flex flex-col gap-1">
-                <span className="bw-label-sm text-foreground">Complete your band branding</span>
+                <span className="bw-label-sm text-foreground">{t('Complete your band branding')}</span>
                 <span className="bw-body-sm text-muted-foreground">
                   {!settings.band_logo_url
-                    ? 'Add logo and signature to the PDF'
-                    : 'Add your bank account to show transfer details on the quote.'}
+                    ? t('Add logo and signature to the PDF')
+                    : t('Add your bank account to show transfer details on the quote.')}
                 </span>
               </span>
               <ChevronRight className="w-5 h-5 shrink-0" aria-hidden />
@@ -489,7 +495,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
 
           {/* Share channels */}
           <section className="flex flex-col gap-2">
-            <h2 className="bw-label-sm text-muted-foreground pt-2">Share quote via</h2>
+            <h2 className="bw-label-sm text-muted-foreground pt-2">{t('Share quote via')}</h2>
             {shareChannels.map((ch) => (
               <button
                 key={ch.key}
@@ -528,7 +534,7 @@ export const QuoteShareModal: React.FC<QuoteShareModalProps> = ({
       <div className="shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
         <div className="max-w-xl mx-auto w-full">
           <PillButton icon={<Check className="w-[18px] h-[18px]" />} onClick={onClose}>
-            Done
+            {t('Done')}
           </PillButton>
         </div>
       </div>

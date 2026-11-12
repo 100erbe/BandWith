@@ -4,6 +4,7 @@ import { setStatusBarTone, toneForBackground } from '@/lib/systemBars';
 import { BackButton } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { RailHeaderActions } from '@/lib/railActions';
+import { t } from '@/lib/i18n';
 
 interface CardOrigin {
   top: string;
@@ -133,7 +134,7 @@ export const ExpandedTopBar: React.FC<{
   /** Right-hand IconButtons. */
   actions?: React.ReactNode;
   className?: string;
-}> = ({ title, onBack, backLabel = 'Back', meta, actions, className }) => (
+}> = ({ title, onBack, backLabel = t('Back'), meta, actions, className }) => (
   <header
     className={cn('sticky z-30 bg-background text-foreground px-4', className)}
     // Sticky offsets are measured inside the scroller's padding, so pin at -safe-top

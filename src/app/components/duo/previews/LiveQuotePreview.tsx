@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/app/components/ui/utils';
+import { useT } from '@/lib/i18n';
 
 /**
  * Figma "Duo · 06": while the quote wizard is on steps 1–2 in the two-pane
@@ -59,23 +60,24 @@ export const LiveQuotePreview: React.FC<LiveQuotePreviewProps> = ({
   lineupNames = [],
   rows,
   total,
-  totalLabel = 'Total',
+  totalLabel,
 }) => {
+  const t = useT();
   const place = [venue?.trim(), city?.trim()].filter(Boolean).join(', ');
   const chip: React.CSSProperties = { backgroundColor: 'var(--accent-quote-fg)', color: 'var(--accent-quote)' };
   const tint: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)' };
   return (
     <div className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-live="polite">
-      <p className="bw-label-sm text-muted-foreground">Live preview</p>
+      <p className="bw-label-sm text-muted-foreground">{t('Live preview')}</p>
 
       <section
         className="rounded-[24px] p-5 flex flex-col gap-4"
         style={{ backgroundColor: 'var(--accent-quote)', color: 'var(--accent-quote-fg)' }}
-        aria-label="Quote preview"
+        aria-label={t('Quote preview')}
       >
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={chip}>
-            Quote{quoteNumber ? ` · ${quoteNumber}` : ''}
+            {t('Quote')}{quoteNumber ? ` · ${quoteNumber}` : ''}
           </span>
           {typeLabel && (
             <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={tint}>
@@ -86,12 +88,12 @@ export const LiveQuotePreview: React.FC<LiveQuotePreviewProps> = ({
         <h2 className="bw-display [overflow-wrap:anywhere]">{title}</h2>
         <div className="flex flex-col gap-3 bw-body-md">
           <p className="[overflow-wrap:anywhere]">
-            Client: {client?.trim() || 'Client TBD'}
+            {t('Client: {name}', { name: client?.trim() || t('Client TBD') })}
             {clientEmail ? ` · ${clientEmail}` : ''}
           </p>
           <p className="[overflow-wrap:anywhere]">
-            {dateLabel || 'Date TBD'}
-            {timeLabel ? ` · ${timeLabel}` : ''} · {place || 'Venue TBD'}
+            {dateLabel || t('Date TBD')}
+            {timeLabel ? ` · ${timeLabel}` : ''} · {place || t('Venue TBD')}
           </p>
           <p className="[overflow-wrap:anywhere]">
             {lineup}
@@ -100,14 +102,14 @@ export const LiveQuotePreview: React.FC<LiveQuotePreviewProps> = ({
         </div>
       </section>
 
-      <section className="rounded-[24px] bg-card p-4 flex flex-col gap-3" aria-label="Breakdown">
-        <span className="bw-label-sm text-muted-foreground">Breakdown</span>
+      <section className="rounded-[24px] bg-card p-4 flex flex-col gap-3" aria-label={t('Breakdown')}>
+        <span className="bw-label-sm text-muted-foreground">{t('Breakdown')}</span>
         {rows.map((r) => (
           <Row key={r.label} {...r} />
         ))}
         <hr className="border-0 h-px bg-border" />
         <div className="flex items-baseline justify-between gap-3">
-          <span className="bw-label-sm text-foreground">{totalLabel}</span>
+          <span className="bw-label-sm text-foreground">{totalLabel ?? t('Total')}</span>
           <span className="bw-value-md text-foreground shrink-0 tabular-nums">{total}</span>
         </div>
       </section>

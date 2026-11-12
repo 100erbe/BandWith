@@ -72,6 +72,7 @@ import { formatDistance, fromUnit, ratePerUnit, toUnit, useDistanceUnit } from '
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 import { personName } from '@/lib/personName';
+import { t, useT } from '@/lib/i18n';
 
 export interface QuoteBandMember {
   id: string;
@@ -85,9 +86,9 @@ export interface QuoteBandMember {
 export const MOMENT_DURATION_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 180, 240];
 
 const STEPS = [
-  { id: 'basics', title: 'EVENT & LINEUP' },
-  { id: 'datetime', title: 'DATE & VENUE' },
-  { id: 'review', title: 'REVIEW & CONFIRM' },
+  { id: 'basics', get title() { return t('EVENT & LINEUP'); } },
+  { id: 'datetime', get title() { return t('DATE & VENUE'); } },
+  { id: 'review', get title() { return t('REVIEW & CONFIRM'); } },
 ];
 
 // 'pub' is a wizard-level split of the legacy 'club' value (Figma: 7 chips).
@@ -101,18 +102,18 @@ const EVENT_TYPE_OPTIONS: {
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { value: 'wedding', label: 'Wedding', subtitle: 'Ceremony, dinner & party', icon: Sparkles },
-  { value: 'corporate', label: 'Corporate', subtitle: 'Company gala & summits', icon: Briefcase },
-  { value: 'private', label: 'Private party', subtitle: 'Birthdays & celebrations', icon: Users },
-  { value: 'festival', label: 'Festival', subtitle: 'Open-air & main stages', icon: Music },
-  { value: 'club', label: 'Club', subtitle: 'Live music & night venue', icon: Mic2 },
-  { value: 'pub', label: 'Pub', subtitle: 'Pub & bar sets', icon: Mic2 },
-  { value: 'other', label: 'Other', subtitle: 'Tailored event setup', icon: Sliders },
+  { value: 'wedding', get label() { return t('Wedding'); }, get subtitle() { return t('Ceremony, dinner & party'); }, icon: Sparkles },
+  { value: 'corporate', get label() { return t('Corporate'); }, get subtitle() { return t('Company gala & summits'); }, icon: Briefcase },
+  { value: 'private', get label() { return t('Private party'); }, get subtitle() { return t('Birthdays & celebrations'); }, icon: Users },
+  { value: 'festival', get label() { return t('Festival'); }, get subtitle() { return t('Open-air & main stages'); }, icon: Music },
+  { value: 'club', get label() { return t('Club'); }, get subtitle() { return t('Live music & night venue'); }, icon: Mic2 },
+  { value: 'pub', get label() { return t('Pub'); }, get subtitle() { return t('Pub & bar sets'); }, icon: Mic2 },
+  { value: 'other', get label() { return t('Other'); }, get subtitle() { return t('Tailored event setup'); }, icon: Sliders },
 ];
 
 /** Human label for a stored event type (falls back to a capitalised raw value). */
 const eventTypeLabel = (value?: string | null): string => {
-  if (!value) return 'Wedding';
+  if (!value) return t('Wedding');
   const opt = EVENT_TYPE_OPTIONS.find(o => o.value === value);
   return opt ? opt.label : value.charAt(0).toUpperCase() + value.slice(1);
 };
@@ -266,16 +267,19 @@ const StepperCard: React.FC<{ label: string; value: number; onDec: () => void; o
   onInc,
   decDisabled,
   incDisabled,
-}) => (
+}) => {
+  const t = useT();
+  return (
   <div className="flex flex-col gap-3 p-4 rounded-[24px] bg-card min-w-0">
     <span className="bw-label-sm text-muted-foreground truncate">{label}</span>
     <div className="flex items-center justify-between gap-2">
-      <IconButton size="sm" label={`Decrease ${label.toLowerCase()}`} icon={<Minus />} onClick={onDec} disabled={decDisabled} />
+      <IconButton size="sm" label={t('Decrease {label}', { label: label.toLowerCase() })} icon={<Minus />} onClick={onDec} disabled={decDisabled} />
       <DotText text={value} size={28} label={`${label}: ${value}`} />
-      <IconButton size="sm" variant="filled" label={`Increase ${label.toLowerCase()}`} icon={<Plus />} onClick={onInc} disabled={incDisabled} />
+      <IconButton size="sm" variant="filled" label={t('Increase {label}', { label: label.toLowerCase() })} icon={<Plus />} onClick={onInc} disabled={incDisabled} />
     </div>
   </div>
-);
+  );
+};
 
 // --- Interactive Step Indicator (Figma: 3 bars + "STEP 1 OF 3 · TITLE") ---
 const InteractiveQuoteStepIndicator: React.FC<{
@@ -286,7 +290,9 @@ const InteractiveQuoteStepIndicator: React.FC<{
   onSelectStep: (step: number) => void;
   activeColor?: string;
   inactiveColor?: string;
-}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor }) => (
+}> = ({ current, total, steps, maxAccessibleStep, onSelectStep, activeColor }) => {
+  const t = useT();
+  return (
   <div className="flex flex-col gap-2 w-full">
     <div className="flex items-center gap-1.5 w-full">
       {Array.from({ length: total }).map((_, i) => {
@@ -298,7 +304,7 @@ const InteractiveQuoteStepIndicator: React.FC<{
             type="button"
             onClick={() => isAccessible && onSelectStep(i)}
             disabled={!isAccessible}
-            aria-label={`Step ${i + 1}: ${steps[i]?.title || ''}`}
+            aria-label={t('Step {step}: {title}', { step: i + 1, title: steps[i]?.title || '' })}
             aria-current={i === current ? 'step' : undefined}
             className={cn('flex-1 py-2 -my-2', isAccessible ? 'cursor-pointer' : 'cursor-not-allowed')}
           >
@@ -312,12 +318,13 @@ const InteractiveQuoteStepIndicator: React.FC<{
     </div>
     <div className="flex items-center justify-between gap-3">
       <span className="bw-label-xs text-muted-foreground">
-        Step {current + 1} of {total}
+        {t('Step {step} of {total}', { step: current + 1, total })}
       </span>
       <span className="bw-label-xs text-foreground truncate">{steps[current]?.title}</span>
     </div>
   </div>
-);
+  );
+};
 
 // --- Accordion Card for Editing Quotes ---
 const QuoteAccordionCard: React.FC<{
@@ -329,7 +336,8 @@ const QuoteAccordionCard: React.FC<{
   hasWarning?: boolean;
   warningLabel?: string;
   children: React.ReactNode;
-}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel = 'Needs attention', children }) => {
+}> = ({ isOpen, onToggle, stepNumber, title, summary, hasWarning, warningLabel, children }) => {
+  const t = useT();
   return (
     <div className={cn('rounded-[24px] bg-card overflow-hidden', hasWarning && 'ring-2 ring-warning')}>
       <button
@@ -344,7 +352,7 @@ const QuoteAccordionCard: React.FC<{
             <span className="bw-label-sm text-foreground">{title}</span>
             {hasWarning && (
               <Tag variant="outline" icon={<AlertCircle />} className="text-warning border-warning">
-                {warningLabel}
+                {warningLabel ?? t('Needs attention')}
               </Tag>
             )}
           </div>
@@ -397,6 +405,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   initialData,
   bandMembers,
 }) => {
+  const t = useT();
   const { selectedBand } = useBand();
   const [pricingSettings, setPricingSettings] = useState<BandPricingSettings>(DEFAULT_BAND_PRICING);
   const [step, setStep] = useState(0);
@@ -1011,7 +1020,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // Shared quote math (src/lib/services/quoteMath.ts): same numbers on screen, in the PDF and in the DB
   const totals = useMemo(() => {
     const effectiveBase = lineupBaseAmount + legacyMomentsTotal;
-    const t = calculateQuoteTotals({
+    const res = calculateQuoteTotals({
       lineItems: [
         { amount: effectiveBase },
         { amount: effectiveTravelFee },
@@ -1029,11 +1038,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       reverseCharge,
     });
     return {
-      subtotal: t.subtotal,
-      discountAmount: t.discount,
-      netAmount: t.net,
-      vatAmount: t.vat,
-      total: t.total,
+      subtotal: res.subtotal,
+      discountAmount: res.discount,
+      netAmount: res.net,
+      vatAmount: res.vat,
+      total: res.total,
     };
   }, [
     lineupBaseAmount,
@@ -1072,7 +1081,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   }, [eventTimeStart, eventTimeEnd, setDuration]);
 
   const formattedDateStr = useMemo(() => {
-    if (!eventDate) return 'DATE TBD';
+    if (!eventDate) return t('DATE TBD');
     const d = new Date(eventDate + 'T00:00:00');
     if (isNaN(d.getTime())) return eventDate;
     return d.toLocaleDateString('en-US', {
@@ -1081,7 +1090,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       day: 'numeric',
       year: 'numeric',
     });
-  }, [eventDate]);
+  }, [eventDate, t]);
 
   const getEffectiveTitle = useCallback(() => {
     if (eventName.trim()) return eventName.trim();
@@ -1542,10 +1551,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Lineup: adapts to pricingSettings.pricing_mode */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>Lineup formation package</FieldLabel>
+          <FieldLabel>{t('Lineup formation package')}</FieldLabel>
           {pricingSettings.pricing_mode === 'per_musician' && (
             <span className="bw-label-xs text-muted-foreground">
-              {lineupCount} of {availableMusicians.length} selected
+              {t('{count} of {total} selected', { count: lineupCount, total: availableMusicians.length })}
             </span>
           )}
         </div>
@@ -1555,7 +1564,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 const isSelected =
                   selectedPackageId === pkg.id || (!selectedPackageId && performanceType === pkg.performanceType);
                 return (
-                  <Chip key={pkg.id} size="md" selected={isSelected} onClick={() => selectFlatPackage(pkg)} title={`${pkg.musiciansCount} musicians`}>
+                  <Chip key={pkg.id} size="md" selected={isSelected} onClick={() => selectFlatPackage(pkg)} title={t('{count} musicians', { count: pkg.musiciansCount })}>
                     {pkg.name}
                     <span className="opacity-60">
                       {currencySymbol}
@@ -1565,10 +1574,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 );
               })
             : [
-                { label: 'Solo', type: 'solo' as PerformanceType },
-                { label: 'Duo', type: 'duo' as PerformanceType },
-                { label: 'Trio', type: 'trio' as PerformanceType },
-                { label: 'Full band', type: 'full_band' as PerformanceType },
+                { label: t('Solo'), type: 'solo' as PerformanceType },
+                { label: t('Duo'), type: 'duo' as PerformanceType },
+                { label: t('Trio'), type: 'trio' as PerformanceType },
+                { label: t('Full band'), type: 'full_band' as PerformanceType },
               ].map(preset => (
                 <Chip key={preset.label} size="md" selected={performanceType === preset.type} onClick={() => selectPresetLineup(preset.type)}>
                   {preset.label}
@@ -1581,7 +1590,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       <div className="flex flex-col gap-4 p-4 rounded-[24px] bg-card">
         <div className="flex items-center justify-between gap-3">
           <span className="bw-label-sm text-foreground">
-            {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
+            {lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}
           </span>
           {availableMusicians.length > 0 && (
             <PillButton
@@ -1592,7 +1601,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               aria-expanded={isRosterExpanded}
               icon={isRosterExpanded ? <Check className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
             >
-              {isRosterExpanded ? 'Done' : 'Customize'}
+              {isRosterExpanded ? t('Done') : t('Customize')}
             </PillButton>
           )}
         </div>
@@ -1640,13 +1649,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                       <DotCheckbox checked={isSelected} activeColor="var(--surface-inverse)" inactiveColor="var(--border)" />
                       <span className="min-w-0 flex flex-col">
                         <span className={cn('bw-body-md font-medium truncate', !isSelected && 'text-muted-foreground')}>{musician.name}</span>
-                        <span className="bw-label-xs text-muted-foreground truncate">{musician.instrument || 'Musician'}</span>
+                        <span className="bw-label-xs text-muted-foreground truncate">{musician.instrument || t('Musician')}</span>
                       </span>
                     </button>
                     {isSelected && pricingSettings.pricing_mode === 'per_musician' && (
                       <MiniNumber
                         size="sm"
-                        label={`Fee for ${musician.name}`}
+                        label={t('Fee for {name}', { name: musician.name })}
                         prefix={currencySymbol}
                         className="w-28 shrink-0"
                         value={currentMusician?.fee || ''}
@@ -1663,11 +1672,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
         <div className="flex items-baseline justify-between gap-3">
           <span className="bw-body-md text-muted-foreground min-w-0">
-            {pricingSettings.pricing_mode === 'flat_packages' ? 'Package fee' : 'Musician fees'}
+            {pricingSettings.pricing_mode === 'flat_packages' ? t('Package fee') : t('Musician fees')}
             {pricingSettings.band_markup_type !== 'none' && pricingSettings.band_markup_value > 0
               ? pricingSettings.band_markup_type === 'percent'
-                ? ` · incl. +${pricingSettings.band_markup_value}% fund`
-                : ` · incl. +${currencySymbol}${pricingSettings.band_markup_value} fund`
+                ? ` · ${t('incl. +{value}% fund', { value: pricingSettings.band_markup_value })}`
+                : ` · ${t('incl. +{amount} fund', { amount: `${currencySymbol}${pricingSettings.band_markup_value}` })}`
               : ''}
           </span>
           <span className="bw-label-md text-foreground shrink-0">
@@ -1681,7 +1690,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {activeCatalogServices.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
-            <FieldLabel>Extra sets &amp; add-ons (optional)</FieldLabel>
+            <FieldLabel>{t('Extra sets & add-ons (optional)')}</FieldLabel>
             {customItemsTotal > 0 && (
               <span className="bw-label-sm text-foreground">
                 +{currencySymbol}
@@ -1722,10 +1731,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     const billableKm = travelDistanceKm != null ? Math.max(0, travelDistanceKm - freeRadius) : 0;
     const modeLabel =
       travelMode === 'included'
-        ? 'Included'
+        ? t('Included')
         : travelMode === 'separate'
           ? `+${currencySymbol}${travelFee}`
-          : 'Client';
+          : t('Client');
 
     return (
       <div className="flex flex-col gap-2">
@@ -1733,20 +1742,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <MapPin className="w-4 h-4 shrink-0" />
           <div className="flex-1 min-w-0">
             {isCalculatingDistance ? (
-              <span className="bw-label-sm">Calculating travel distance…</span>
+              <span className="bw-label-sm">{t('Calculating travel distance…')}</span>
             ) : travelDistanceKm != null && travelDistanceKm > 0 ? (
               <span className="bw-label-sm block truncate">
-                Travel: {formatDistance(travelDistanceKm, distanceUnit)} from band HQ
+                {t('Travel: {distance} from band HQ', { distance: formatDistance(travelDistanceKm, distanceUnit) })}
                 <span className="opacity-70">
                   {' · '}
                   {billableKm === 0
-                    ? `≤${formatDistance(freeRadius, distanceUnit)} free`
-                    : `${formatDistance(billableKm, distanceUnit)} billable`}
+                    ? t('≤{distance} free', { distance: formatDistance(freeRadius, distanceUnit) })
+                    : t('{distance} billable', { distance: formatDistance(billableKm, distanceUnit) })}
                 </span>
               </span>
             ) : (
               <label className="flex items-center gap-2">
-                <span className="bw-label-sm">Travel</span>
+                <span className="bw-label-sm">{t('Travel')}</span>
                 <input
                   type="number"
                   min="0"
@@ -1757,7 +1766,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     )
                   }
                   placeholder={distanceUnit}
-                  aria-label={`One-way travel distance in ${distanceUnit === 'mi' ? 'miles' : 'km'}`}
+                  aria-label={distanceUnit === 'mi' ? t('One-way travel distance in miles') : t('One-way travel distance in km')}
                   className="w-20 h-7 px-3 rounded-full bg-[var(--wizard-accent-fg)]/10 bw-body-sm font-medium outline-none placeholder:opacity-60"
                 />
               </label>
@@ -1776,7 +1785,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               setTravelIncluded(true);
             }}
           >
-            Included
+            {t('Included')}
           </Chip>
           <Chip
             selected={travelMode === 'separate'}
@@ -1788,7 +1797,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               }
             }}
           >
-            Separate{travelFee > 0 ? ` (+${currencySymbol}${travelFee})` : ''}
+            {t('Separate')}{travelFee > 0 ? ` (+${currencySymbol}${travelFee})` : ''}
           </Chip>
           <Chip
             selected={travelMode === 'client_provided'}
@@ -1797,7 +1806,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               setTravelIncluded(true);
             }}
           >
-            Client arranged
+            {t('Client arranged')}
           </Chip>
         </div>
       </div>
@@ -1808,7 +1817,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const renderStep1 = () => (
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
       <PillField
-        label="Client name"
+        label={t('Client name')}
         icon={<User className="w-5 h-5" />}
         value={clientName}
         onChange={e => {
@@ -1818,11 +1827,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           // never appends to a pre-filled value.
           setClientName(val);
         }}
-        placeholder="Client full name"
+        placeholder={t('Client full name')}
         autoComplete="off"
       />
       <PillField
-        label="Event title"
+        label={t('Event title')}
         value={eventName}
         onChange={e => {
           setEventName(e.target.value);
@@ -1833,7 +1842,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Event type */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Event type</FieldLabel>
+        <FieldLabel>{t('Event type')}</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {EVENT_TYPE_OPTIONS.map(opt => (
             <Chip
@@ -1856,7 +1865,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Contact details */}
       <div className="grid grid-cols-2 gap-3">
         <PillField
-          label="Client email"
+          label={t('Client email')}
           type="email"
           icon={<Mail className="w-5 h-5" />}
           value={clientEmail}
@@ -1865,12 +1874,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           className="min-w-0"
         />
         <PillField
-          label="Client phone"
+          label={t('Client phone')}
           type="tel"
           icon={<Phone className="w-5 h-5" />}
           value={clientPhone}
           onChange={e => setClientPhone(e.target.value)}
-          placeholder="Phone with country code"
+          placeholder={t('Phone with country code')}
           className="min-w-0"
         />
       </div>
@@ -1881,10 +1890,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const seasonLabel =
     pricingSettings.seasonal_pricing_enabled && eventDate
       ? pricingSettings.peak_months?.includes(getEventMonthFromDate(eventDate) || 0)
-        ? 'Peak season rate'
+        ? t('Peak season rate')
         : pricingSettings.off_peak_months?.includes(getEventMonthFromDate(eventDate) || 0)
-          ? 'Off-peak rate'
-          : 'Standard season'
+          ? t('Off-peak rate')
+          : t('Standard season')
       : null;
   const setDurationIdx = MOMENT_DURATION_OPTIONS.indexOf(setDuration);
 
@@ -1892,7 +1901,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300 pb-2">
       {/* Venue + inline travel pill */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Venue / location</FieldLabel>
+        <FieldLabel>{t('Venue / location')}</FieldLabel>
         <div className={PILL_WRAP}>
           <MapPin className="w-5 h-5 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -1908,7 +1917,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 if (place.country) setVenueCountry(place.country);
                 handleCalculateDistance(place.fullAddress || place.address || place.name || place.city || '');
               }}
-              placeholder="Search venue or location…"
+              placeholder={t('Search venue or location…')}
               className="border-0 pb-0 text-lg font-medium normal-case text-foreground placeholder:text-muted-foreground/60"
             />
           </div>
@@ -1935,14 +1944,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Date */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>Event date</FieldLabel>
+          <FieldLabel>{t('Event date')}</FieldLabel>
           {seasonLabel && <Tag variant="quote">{seasonLabel}</Tag>}
         </div>
         <DatePicker
           value={eventDate}
           onChange={d => setEventDate(d)}
           accentColor={activeAccentColor}
-          placeholder="Select event date…"
+          placeholder={t('Select event date…')}
           className={PICKER_PILL}
         />
       </div>
@@ -1950,7 +1959,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Start / end */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel>Start</FieldLabel>
+          <FieldLabel>{t('Start')}</FieldLabel>
           <TimePicker
             value={eventTimeStart}
             onChange={val => setEventTimeStart(val)}
@@ -1962,7 +1971,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         </div>
         <div className="flex flex-col gap-2 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <FieldLabel>End</FieldLabel>
+            <FieldLabel>{t('End')}</FieldLabel>
             {calculatedDurationBadge && <span className="bw-label-xs text-muted-foreground truncate">{calculatedDurationBadge}</span>}
           </div>
           <TimePicker
@@ -1980,7 +1989,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Sets & set length */}
       <div className="grid grid-cols-2 gap-3">
         <StepperCard
-          label="Number of sets"
+          label={t('Number of sets')}
           value={numberOfSets}
           onDec={() => setNumberOfSets(Math.max(1, numberOfSets - 1))}
           onInc={() => setNumberOfSets(Math.min(8, numberOfSets + 1))}
@@ -1988,7 +1997,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           incDisabled={numberOfSets >= 8}
         />
         <StepperCard
-          label="Mins per set"
+          label={t('Mins per set')}
           value={setDuration}
           onDec={() => {
             const prev = [...MOMENT_DURATION_OPTIONS].reverse().find(m => m < setDuration);
@@ -2004,7 +2013,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       </div>
 
       <PillField
-        label="Guest count (optional)"
+        label={t('Guest count (optional)')}
         type="number"
         min="0"
         inputMode="numeric"
@@ -2024,15 +2033,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Base fee override */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="bw-label-sm text-foreground">Base fee override</span>
+          <span className="bw-label-sm text-foreground">{t('Base fee override')}</span>
           <span className="bw-body-sm text-muted-foreground">
             {pricingSettings.pricing_mode === 'flat_packages'
-              ? 'Package lineup fee'
-              : `Musicians sum: ${currencySymbol}${musiciansTotal.toLocaleString()}`}
+              ? t('Package lineup fee')
+              : t('Musicians sum: {amount}', { amount: `${currencySymbol}${musiciansTotal.toLocaleString()}` })}
           </span>
         </div>
         <MiniNumber
-          label="Base fee override"
+          label={t('Base fee override')}
           prefix={currencySymbol}
           className="w-32 shrink-0"
           value={baseFee || ''}
@@ -2046,15 +2055,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Package discount */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Package discount</FieldLabel>
+        <FieldLabel>{t('Package discount')}</FieldLabel>
         <Segmented
-          label="Package discount"
+          label={t('Package discount')}
           track="field"
           value={discountType}
           options={[
-            { id: 'none', label: 'None' },
-            { id: 'percentage', label: '% off' },
-            { id: 'fixed', label: `${currencySymbol.trim()} off` },
+            { id: 'none', label: t('None') },
+            { id: 'percentage', label: t('% off') },
+            { id: 'fixed', label: t('{currency} off', { currency: currencySymbol.trim() }) },
           ]}
           onSelect={id => {
             setDiscountType(id);
@@ -2074,7 +2083,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
             )}
             <MiniNumber
-              label="Discount value"
+              label={t('Discount value')}
               className="w-28 ml-auto shrink-0"
               min="0"
               max={discountType === 'percentage' ? 100 : undefined}
@@ -2092,12 +2101,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* VAT · deposit · validity */}
       <div className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel>VAT rate</FieldLabel>
+          <FieldLabel>{t('VAT rate')}</FieldLabel>
           {vatExempt ? (
             <span className="h-11 px-3 rounded-full bg-field border border-border bw-body-lg flex items-center text-muted-foreground">0%</span>
           ) : (
             <MiniNumber
-              label="VAT rate"
+              label={t('VAT rate')}
               suffix="%"
               min="0"
               max="50"
@@ -2107,10 +2116,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           )}
         </div>
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel>Deposit</FieldLabel>
+          <FieldLabel>{t('Deposit')}</FieldLabel>
           <div className="relative">
             <select
-              aria-label="Booking deposit"
+              aria-label={t('Booking deposit')}
               value={depositPercentage}
               onChange={e => {
                 const pct = parseInt(e.target.value) || 0;
@@ -2121,7 +2130,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             >
               {Array.from(new Set([0, 20, 30, 50, depositPercentage])).sort((a, b) => a - b).map(pct => (
                 <option key={pct} value={pct}>
-                  {pct === 0 ? 'None' : `${pct}%`}
+                  {pct === 0 ? t('None') : `${pct}%`}
                 </option>
               ))}
             </select>
@@ -2129,17 +2138,17 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
         </div>
         <div className="flex flex-col gap-2 min-w-0">
-          <FieldLabel>Validity</FieldLabel>
+          <FieldLabel>{t('Validity')}</FieldLabel>
           <div className="relative">
             <select
-              aria-label={`Quote validity (until ${validUntilDate})`}
+              aria-label={t('Quote validity (until {date})', { date: validUntilDate })}
               value={validityDays}
               onChange={e => setValidityDays(parseInt(e.target.value) || 30)}
               className="w-full h-11 pl-3 pr-7 rounded-full bg-field border border-border bw-body-lg text-foreground outline-none focus:border-foreground appearance-none cursor-pointer"
             >
               {[7, 14, 30, 60, 90].map(days => (
                 <option key={days} value={days}>
-                  {days} days
+                  {t('{count} days', { count: days })}
                 </option>
               ))}
             </select>
@@ -2147,7 +2156,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           </div>
         </div>
       </div>
-      <span className="bw-body-sm text-muted-foreground -mt-2">Valid until {validUntilDate}</span>
+      <span className="bw-body-sm text-muted-foreground -mt-2">{t('Valid until {date}', { date: validUntilDate })}</span>
 
       {/* VAT exempt + show bank details */}
       <div className="flex flex-col gap-2">
@@ -2156,24 +2165,24 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
         >
           <span className="flex flex-col gap-1 min-w-0">
-            <span className="bw-body-lg">VAT exempt</span>
-            <span className="bw-body-sm text-muted-foreground">Quote at 0% VAT</span>
+            <span className="bw-body-lg">{t('VAT exempt')}</span>
+            <span className="bw-body-sm text-muted-foreground">{t('Quote at 0% VAT')}</span>
           </span>
-          <Toggle checked={vatExempt} onCheckedChange={() => setVatExempt(!vatExempt)} onClick={e => e.stopPropagation()} aria-label="VAT exempt" />
+          <Toggle checked={vatExempt} onCheckedChange={() => setVatExempt(!vatExempt)} onClick={e => e.stopPropagation()} aria-label={t('VAT exempt')} />
         </div>
         <div
           onClick={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
           className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
         >
           <span className="flex flex-col gap-1 min-w-0">
-            <span className="bw-body-lg">Show bank details on PDF</span>
-            <span className="bw-body-sm text-muted-foreground truncate">{maskedIban || 'Add your bank account in Branding & payment'}</span>
+            <span className="bw-body-lg">{t('Show bank details on PDF')}</span>
+            <span className="bw-body-sm text-muted-foreground truncate">{maskedIban || t('Add your bank account in Branding & payment')}</span>
           </span>
           <Toggle
             checked={showBankDetailsOnPdf}
             onCheckedChange={() => setShowBankDetailsOnPdf(!showBankDetailsOnPdf)}
             onClick={e => e.stopPropagation()}
-            aria-label="Show bank details on PDF"
+            aria-label={t('Show bank details on PDF')}
           />
         </div>
       </div>
@@ -2186,7 +2195,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Sound & lighting tier */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>Sound &amp; lighting production</FieldLabel>
+          <FieldLabel>{t('Sound & lighting production')}</FieldLabel>
           {productionTier !== 'none' && (
             <Chip
               selected={soundIncluded}
@@ -2202,18 +2211,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 }
               }}
             >
-              {soundIncluded ? 'Included in base' : 'Separate fee'}
+              {soundIncluded ? t('Included in base') : t('Separate fee')}
             </Chip>
           )}
         </div>
         <Segmented
-          label="Sound & lighting production"
+          label={t('Sound & lighting production')}
           track="field"
           value={productionTier as 'standard' | 'pro' | 'none'}
           options={[
-            { id: 'standard', label: 'Standard PA' },
-            { id: 'pro', label: 'Pro PA' },
-            { id: 'none', label: 'Client PA' },
+            { id: 'standard', label: t('Standard PA') },
+            { id: 'pro', label: t('Pro PA') },
+            { id: 'none', label: t('Client PA') },
           ]}
           onSelect={id => {
             setProductionTier(id);
@@ -2226,9 +2235,9 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         />
         {!soundIncluded && productionTier !== 'none' && (
           <div className="flex items-center justify-between gap-3 pt-1">
-            <span className="bw-body-md text-muted-foreground">Production fee</span>
+            <span className="bw-body-md text-muted-foreground">{t('Production fee')}</span>
             <MiniNumber
-              label="Production fee"
+              label={t('Production fee')}
               prefix={currencySymbol}
               className="w-32"
               value={soundFee || ''}
@@ -2240,15 +2249,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Travel */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Travel &amp; transport</FieldLabel>
+        <FieldLabel>{t('Travel & transport')}</FieldLabel>
         <Segmented
-          label="Travel & transport"
+          label={t('Travel & transport')}
           track="field"
           value={travelMode as 'included' | 'separate' | 'client_provided'}
           options={[
-            { id: 'included', label: 'Included' },
-            { id: 'separate', label: 'Separate fee' },
-            { id: 'client_provided', label: 'Client arranged' },
+            { id: 'included', label: t('Included') },
+            { id: 'separate', label: t('Separate fee') },
+            { id: 'client_provided', label: t('Client arranged') },
           ]}
           onSelect={id => {
             setTravelMode(id);
@@ -2258,14 +2267,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         {travelMode === 'separate' && (
           <div className="grid grid-cols-2 gap-2 pt-1">
             <MiniNumber
-              label={`One-way distance in ${distanceUnit === 'mi' ? 'miles' : 'km'}`}
+              label={distanceUnit === 'mi' ? t('One-way distance in miles') : t('One-way distance in km')}
               suffix={distanceUnit}
               value={travelDistanceKm != null ? toUnit(travelDistanceKm, distanceUnit) : ''}
               onChange={e => handleManualDistanceChange(e.target.value ? fromUnit(parseFloat(e.target.value), distanceUnit) : undefined)}
               placeholder="0"
             />
             <MiniNumber
-              label="Travel fee"
+              label={t('Travel fee')}
               prefix={currencySymbol}
               value={travelFee || ''}
               onChange={e => setTravelFee(parseFloat(e.target.value) || 0)}
@@ -2277,14 +2286,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Hotel / accommodation */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Hotel &amp; accommodation</FieldLabel>
+        <FieldLabel>{t('Hotel & accommodation')}</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              { id: 'included', label: 'Included' },
-              { id: 'separate', label: 'Separate fee' },
-              { id: 'client_provided', label: 'Client hotel' },
-              { id: 'none', label: 'Not needed' },
+              { id: 'included', label: t('Included') },
+              { id: 'separate', label: t('Separate fee') },
+              { id: 'client_provided', label: t('Client hotel') },
+              { id: 'none', label: t('Not needed') },
             ] as const
           ).map(opt => (
             <Chip
@@ -2303,21 +2312,21 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         {accommodationMode === 'separate' && (
           <div className="grid grid-cols-3 gap-2 pt-1">
             <MiniNumber
-              label="Rooms"
-              suffix="rooms"
+              label={t('Rooms')}
+              suffix={t('rooms')}
               min="1"
               value={accommodationRooms}
               onChange={e => setAccommodationRooms(parseInt(e.target.value) || 1)}
             />
             <MiniNumber
-              label="Nights"
-              suffix="nts"
+              label={t('Nights')}
+              suffix={t('nts')}
               min="1"
               value={accommodationNights}
               onChange={e => setAccommodationNights(parseInt(e.target.value) || 1)}
             />
             <MiniNumber
-              label="Accommodation fee"
+              label={t('Accommodation fee')}
               prefix={currencySymbol}
               value={accommodationFee || ''}
               onChange={e => setAccommodationFee(parseFloat(e.target.value) || 0)}
@@ -2330,7 +2339,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       {/* Selected sets & one-off custom line items */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel>Selected sets &amp; custom items</FieldLabel>
+          <FieldLabel>{t('Selected sets & custom items')}</FieldLabel>
           <PillButton
             size="sm"
             variant="ghost"
@@ -2351,28 +2360,28 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               ])
             }
           >
-            Add item
+            {t('Add item')}
           </PillButton>
         </div>
 
         {customItems.length === 0 ? (
-          <span className="bw-body-sm text-muted-foreground">No extra sets or custom line items added.</span>
+          <span className="bw-body-sm text-muted-foreground">{t('No extra sets or custom line items added.')}</span>
         ) : (
           <ul className="flex flex-col gap-2">
             {customItems.map((item, idx) => (
               <li key={item.id || idx} className="flex items-center gap-2">
                 <input
                   type="text"
-                  aria-label="Item name"
+                  aria-label={t('Item name')}
                   value={item.name || item.description || ''}
                   onChange={e =>
                     setCustomItems(prev => prev.map((it, i) => (i === idx ? { ...it, name: e.target.value } : it)))
                   }
                   className="flex-1 min-w-0 h-11 px-4 rounded-full bg-field border border-border bw-body-sm font-medium text-foreground outline-none focus:border-foreground"
-                  placeholder="Item name…"
+                  placeholder={t('Item name…')}
                 />
                 <MiniNumber
-                  label="Quantity"
+                  label={t('Quantity')}
                   prefix="×"
                   min="1"
                   className="w-16 shrink-0 px-2.5"
@@ -2383,7 +2392,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   }}
                 />
                 <MiniNumber
-                  label="Price"
+                  label={t('Price')}
                   prefix={currencySymbol}
                   className="w-24 shrink-0"
                   value={item.price ?? item.amount ?? 0}
@@ -2395,7 +2404,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <IconButton
                   size="sm"
                   variant="ghost"
-                  label="Remove item"
+                  label={t('Remove item')}
                   icon={<X />}
                   onClick={() => setCustomItems(prev => prev.filter((_, i) => i !== idx))}
                 />
@@ -2417,14 +2426,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           className="flex items-center justify-between gap-3 p-4 rounded-[16px] bg-background cursor-pointer"
         >
           <span className="flex flex-col gap-1 min-w-0">
-            <span className="bw-body-lg">Multi-option comparison</span>
-            <span className="bw-body-sm text-muted-foreground">Compare lineup sizes or packages side by side in the PDF.</span>
+            <span className="bw-body-lg">{t('Multi-option comparison')}</span>
+            <span className="bw-body-sm text-muted-foreground">{t('Compare lineup sizes or packages side by side in the PDF.')}</span>
           </span>
           <Toggle
             checked={includeProposalSummary}
             onCheckedChange={() => handleToggleProposalSummary(!includeProposalSummary)}
             onClick={e => e.stopPropagation()}
-            aria-label="Multi-option proposal comparison table"
+            aria-label={t('Multi-option proposal comparison table')}
           />
         </div>
 
@@ -2434,15 +2443,15 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <div key={opt.id} className="p-4 rounded-[16px] bg-background flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="bw-label-sm text-foreground">
-                    Option {String(idx + 1).padStart(2, '0')} · incl. VAT {formatQuoteMoney(opt.totalWithVat, currencySymbol)}
+                    {t('Option {number} · incl. VAT {amount}', { number: String(idx + 1).padStart(2, '0'), amount: formatQuoteMoney(opt.totalWithVat, currencySymbol) })}
                   </span>
                   {quoteOptions.length > 1 && (
-                    <IconButton size="sm" variant="ghost" label={`Remove option ${idx + 1}`} icon={<Trash2 />} onClick={() => removePackageOption(opt.id)} />
+                    <IconButton size="sm" variant="ghost" label={t('Remove option {number}', { number: idx + 1 })} icon={<Trash2 />} onClick={() => removePackageOption(opt.id)} />
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1.5 col-span-2">
-                    <span className="bw-label-xs text-muted-foreground">Tier name</span>
+                    <span className="bw-label-xs text-muted-foreground">{t('Tier name')}</span>
                     <input
                       type="text"
                       value={opt.name}
@@ -2451,27 +2460,27 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 min-w-0">
-                    <span className="bw-label-xs text-muted-foreground">Musicians</span>
+                    <span className="bw-label-xs text-muted-foreground">{t('Musicians')}</span>
                     <MiniNumber
-                      label="Musicians"
+                      label={t('Musicians')}
                       min="1"
                       value={opt.musiciansCount}
                       onChange={e => updatePackageOption(opt.id, { musiciansCount: Math.max(1, parseInt(e.target.value) || 1) })}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 min-w-0">
-                    <span className="bw-label-xs text-muted-foreground">Gross fee</span>
+                    <span className="bw-label-xs text-muted-foreground">{t('Gross fee')}</span>
                     <MiniNumber
-                      label="Gross fee"
+                      label={t('Gross fee')}
                       prefix={currencySymbol}
                       value={opt.grossFee}
                       onChange={e => updatePackageOption(opt.id, { grossFee: Math.max(0, parseFloat(e.target.value) || 0) })}
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 min-w-0">
-                    <span className="bw-label-xs text-muted-foreground">Discount</span>
+                    <span className="bw-label-xs text-muted-foreground">{t('Discount')}</span>
                     <MiniNumber
-                      label="Discount percentage"
+                      label={t('Discount percentage')}
                       suffix="%"
                       min="0"
                       max="90"
@@ -2484,7 +2493,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     />
                   </label>
                   <label className="flex flex-col gap-1.5 col-span-2">
-                    <span className="bw-label-xs text-muted-foreground">Lineup / instrumentation</span>
+                    <span className="bw-label-xs text-muted-foreground">{t('Lineup / instrumentation')}</span>
                     <input
                       type="text"
                       value={opt.instrumentsText}
@@ -2496,27 +2505,27 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               </div>
             ))}
             <PillButton size="md" variant="outline" icon={<Plus className="w-4 h-4" />} onClick={addPackageOption}>
-              Add option tier
+              {t('Add option tier')}
             </PillButton>
           </div>
         )}
       </div>
 
       <PillField
-        label="Quote subtitle (optional)"
+        label={t('Quote subtitle (optional)')}
         value={quoteDescription}
         onChange={e => setQuoteDescription(e.target.value)}
-        placeholder={`Formal quote for an event in ${venueName || venueCity || 'Venue'}`}
+        placeholder={t('Formal quote for an event in {place}', { place: venueName || venueCity || t('Venue') })}
       />
 
       {/* Payment methods */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Payment methods</FieldLabel>
+        <FieldLabel>{t('Payment methods')}</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {[
-            { id: 'bank_transfer', label: 'Bank transfer' },
-            { id: 'credit_card', label: 'Credit card' },
-            { id: 'cash', label: 'Cash' },
+            { id: 'bank_transfer', label: t('Bank transfer') },
+            { id: 'credit_card', label: t('Credit card') },
+            { id: 'cash', label: t('Cash') },
             { id: 'paypal', label: 'PayPal' },
           ].map(m => {
             const isChecked = paymentMethods.includes(m.id as PaymentMethod);
@@ -2542,14 +2551,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Cancellation policy */}
       <div className="flex flex-col gap-2">
-        <FieldLabel>Cancellation policy</FieldLabel>
+        <FieldLabel>{t('Cancellation policy')}</FieldLabel>
         <Segmented
-          label="Cancellation policy"
+          label={t('Cancellation policy')}
           track="field"
           value={cancellationPolicy as CancellationPolicy}
           options={(['flexible', 'moderate', 'strict'] as CancellationPolicy[]).map(pol => ({
             id: pol,
-            label: pol.charAt(0).toUpperCase() + pol.slice(1),
+            label: pol === 'flexible' ? t('Flexible') : pol === 'moderate' ? t('Moderate') : t('Strict'),
           }))}
           onSelect={id => setCancellationPolicy(id)}
         />
@@ -2557,12 +2566,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Client notes */}
       <div className="flex flex-col gap-2">
-        <FieldLabel htmlFor="quote-client-notes">Client message / notes</FieldLabel>
+        <FieldLabel htmlFor="quote-client-notes">{t('Client message / notes')}</FieldLabel>
         <textarea
           id="quote-client-notes"
           value={clientNotes}
           onChange={e => setClientNotes(e.target.value)}
-          placeholder="Notes or conditions shown on the quote document…"
+          placeholder={t('Notes or conditions shown on the quote document…')}
           rows={3}
           className="w-full rounded-[24px] bg-field border border-border p-4 bw-body-md text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-foreground resize-none"
         />
@@ -2572,35 +2581,45 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   // ── STEP 03: CONSOLIDATED REVIEW & 3 DRAWERS ────────────────
   const PERFORMANCE_LABEL: Record<string, string> = {
-    solo: 'Solo',
-    duo: 'Duo',
-    trio: 'Trio',
-    full_band: 'Full band',
-    dj_set: 'DJ set',
-    acoustic: 'Acoustic',
+    solo: t('Solo'),
+    duo: t('Duo'),
+    trio: t('Trio'),
+    full_band: t('Full band'),
+    dj_set: t('DJ set'),
+    acoustic: t('Acoustic'),
   };
   const heroChipStyle: React.CSSProperties = { backgroundColor: 'var(--wizard-accent-fg)', color: 'var(--wizard-accent)' };
   const heroTintStyle: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)' };
   const extrasNames = customItems.map(it => it.name || it.description).filter(Boolean) as string[];
 
   const billingSummary = [
-    vatExempt || reverseCharge ? 'VAT exempt' : `${vatRate}% VAT`,
-    depositRequired && depositPercentage > 0 ? `${depositPercentage}% deposit` : 'No deposit',
-    `valid ${validityDays} days`,
+    vatExempt || reverseCharge ? t('VAT exempt') : t('{rate}% VAT', { rate: vatRate }),
+    depositRequired && depositPercentage > 0 ? t('{percent}% deposit', { percent: depositPercentage }) : t('No deposit'),
+    t('valid {count} days', { count: validityDays }),
     totals.discountAmount > 0 ? `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
   const logisticsSummary = [
-    productionTier === 'pro' ? 'Pro PA' : productionTier === 'none' ? 'Client PA' : productionTier === 'custom' ? 'Custom PA' : 'Standard PA',
-    travelMode === 'included' ? 'travel included' : travelMode === 'separate' ? `travel ${currencySymbol}${travelFee}` : 'travel by client',
-    `${customItems.length} custom ${customItems.length === 1 ? 'item' : 'items'}`,
+    productionTier === 'pro' ? t('Pro PA') : productionTier === 'none' ? t('Client PA') : productionTier === 'custom' ? t('Custom PA') : t('Standard PA'),
+    travelMode === 'included' ? t('travel included') : travelMode === 'separate' ? t('travel {amount}', { amount: `${currencySymbol}${travelFee}` }) : t('travel by client'),
+    customItems.length === 1 ? t('{count} custom item', { count: customItems.length }) : t('{count} custom items', { count: customItems.length }),
   ].join(' · ');
   const proposalSummary = [
-    includeProposalSummary ? `${quoteOptions.length} option tiers` : 'Single option',
-    paymentMethods.length > 0 ? paymentMethods.map(p => p.replace(/_/g, ' ')).join(', ') : 'No payment method',
-    `${cancellationPolicy} cancellation`,
-    clientNotes ? 'notes added' : null,
+    includeProposalSummary ? t('{count} option tiers', { count: quoteOptions.length }) : t('Single option'),
+    paymentMethods.length > 0
+      ? paymentMethods
+          .map(p => (p === 'bank_transfer' ? t('bank transfer') : p === 'credit_card' ? t('credit card') : p === 'cash' ? t('cash') : p.replace(/_/g, ' ')))
+          .join(', ')
+      : t('No payment method'),
+    cancellationPolicy === 'flexible'
+      ? t('flexible cancellation')
+      : cancellationPolicy === 'moderate'
+        ? t('moderate cancellation')
+        : cancellationPolicy === 'strict'
+          ? t('strict cancellation')
+          : t('{policy} cancellation', { policy: cancellationPolicy }),
+    clientNotes ? t('notes added') : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -2650,7 +2669,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={heroChipStyle}>
-              Quote
+              {t('Quote')}
             </span>
             <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center" style={heroTintStyle}>
               {eventTypeLabel(eventType)}
@@ -2659,26 +2678,26 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex items-center gap-3 shrink-0 -my-2">
             <button type="button" onClick={() => setStep(0)} className="py-2 inline-flex items-center gap-1 bw-label-xs cursor-pointer">
               <Edit3 className="w-3 h-3" />
-              Lineup
+              {t('Lineup')}
             </button>
             <button type="button" onClick={() => setStep(1)} className="py-2 inline-flex items-center gap-1 bw-label-xs cursor-pointer">
               <Edit3 className="w-3 h-3" />
-              Venue
+              {t('Venue')}
             </button>
           </div>
         </div>
         <h2 className="bw-display [overflow-wrap:anywhere]">{getEffectiveTitle()}</h2>
         <div className="flex flex-col gap-3 bw-body-md">
           <p className="[overflow-wrap:anywhere]">
-            Client: {clientName.trim() || 'Client TBD'}
+            {t('Client: {name}', { name: clientName.trim() || t('Client TBD') })}
             {clientEmail ? ` · ${clientEmail}` : ''}
           </p>
           <p>
-            {eventDate ? formattedDateStr : 'Date TBD'} · {eventTimeStart} – {eventTimeEnd} · {venueName || 'Venue TBD'}
+            {eventDate ? formattedDateStr : t('Date TBD')} · {eventTimeStart} – {eventTimeEnd} · {venueName || t('Venue TBD')}
             {venueCity ? `, ${venueCity}` : ''}
           </p>
           <p>
-            {PERFORMANCE_LABEL[performanceType] || 'Lineup'} ({selectedMusicians.length || pricingSettings.core_members_count}) · {numberOfSets} ×{' '}
+            {PERFORMANCE_LABEL[performanceType] || t('Lineup')} ({selectedMusicians.length || pricingSettings.core_members_count}) · {numberOfSets} ×{' '}
             {setDuration} min
             {extrasNames.length > 0 ? ` · ${extrasNames.join(' · ')}` : ''}
           </p>
@@ -2687,38 +2706,38 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
       {/* Breakdown */}
       <section className="rounded-[24px] bg-card p-4 flex flex-col gap-3">
-        <span className="bw-label-sm text-muted-foreground">Breakdown</span>
+        <span className="bw-label-sm text-muted-foreground">{t('Breakdown')}</span>
         <LedgerRow
-          label={`Lineup base (${numberOfSets} × ${setDuration} min)`}
+          label={t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration })}
           value={`${currencySymbol}${Math.round(lineupBaseAmount).toLocaleString()}`}
         />
         <LedgerRow
-          label={`Sets & extras${customItems.length > 0 ? ` (${customItems.length})` : ''}`}
+          label={`${t('Sets & extras')}${customItems.length > 0 ? ` (${customItems.length})` : ''}`}
           value={`${currencySymbol}${Math.round(setsAndExtrasAmount).toLocaleString()}`}
         />
         <LedgerRow
-          label="Travel & production"
-          value={travelAndProductionAmount > 0 ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString()}` : 'Included'}
+          label={t('Travel & production')}
+          value={travelAndProductionAmount > 0 ? `${currencySymbol}${Math.round(travelAndProductionAmount).toLocaleString()}` : t('Included')}
         />
         {totals.discountAmount > 0 && (
-          <LedgerRow label="Discount" value={`−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`} tone="success" />
+          <LedgerRow label={t('Discount')} value={`−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`} tone="success" />
         )}
         <LedgerRow
-          label={`VAT ${vatExempt || reverseCharge ? '0% (exempt)' : `${vatRate}%`}`}
+          label={t('VAT {rate}', { rate: vatExempt || reverseCharge ? t('0% (exempt)') : `${vatRate}%` })}
           value={formatQuoteMoney(totals.vatAmount, currencySymbol)}
         />
         <hr className="border-0 h-px bg-border" />
         <div className="flex items-baseline justify-between gap-3">
           <span className="bw-label-sm text-foreground">
-            Total{depositRequired && depositPercentage > 0 ? ` · ${depositPercentage}% deposit` : ''}
+            {t('Total')}{depositRequired && depositPercentage > 0 ? ` · ${t('{percent}% deposit', { percent: depositPercentage })}` : ''}
           </span>
           <span className="bw-value-md text-foreground shrink-0">{formatQuoteMoney(totals.total, currencySymbol)}</span>
         </div>
       </section>
 
-      {renderReviewDrawer('billing', 'Billing, discounts, VAT & deposit', billingSummary, renderBillingControls())}
-      {renderReviewDrawer('logistics', 'Production & travel', logisticsSummary, renderLogisticsAndCustomItemsControls())}
-      {renderReviewDrawer('proposal_terms', 'Multi-option proposal & terms', proposalSummary, renderProposalAndTermsControls())}
+      {renderReviewDrawer('billing', t('Billing, discounts, VAT & deposit'), billingSummary, renderBillingControls())}
+      {renderReviewDrawer('logistics', t('Production & travel'), logisticsSummary, renderLogisticsAndCustomItemsControls())}
+      {renderReviewDrawer('proposal_terms', t('Multi-option proposal & terms'), proposalSummary, renderProposalAndTermsControls())}
 
       {!isEditing && allMusicians.length > 0 && (
         <section className="rounded-[16px] bg-card p-4 flex flex-col gap-3">
@@ -2727,20 +2746,20 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             className="flex items-center justify-between gap-3 cursor-pointer"
           >
             <span className="flex flex-col gap-1 min-w-0">
-              <span className="bw-label-sm text-muted-foreground">Lineup availability</span>
-              <span className="bw-label-md">Ask the lineup now</span>
+              <span className="bw-label-sm text-muted-foreground">{t('Lineup availability')}</span>
+              <span className="bw-label-md">{t('Ask the lineup now')}</span>
             </span>
             <Toggle
               checked={askAvailability}
               onCheckedChange={() => setAskAvailability(v => !v)}
               onClick={e => e.stopPropagation()}
-              aria-label="Ask the lineup for availability now"
+              aria-label={t('Ask the lineup for availability now')}
             />
           </div>
           <span className="bw-body-sm text-muted-foreground">
             {askAvailability
-              ? "As soon as the quote is saved (shared, or kept as a draft from ✕), the musicians get an availability check (RSVP) for this date, marked as not confirmed yet."
-              : 'Musicians are asked once the client accepts. Turn this on to check their availability now.'}
+              ? t('As soon as the quote is saved (shared, or kept as a draft from ✕), the musicians get an availability check (RSVP) for this date, marked as not confirmed yet.')
+              : t('Musicians are asked once the client accepts. Turn this on to check their availability now.')}
           </span>
         </section>
       )}
@@ -2755,8 +2774,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.client_event)}
         onToggle={() => toggleEditSection('client_event')}
         stepNumber="01"
-        title="Client & occasion"
-        summary={`${clientName || 'No client'} · ${eventTypeLabel(eventType)} · ${indoorOutdoor}`}
+        title={t('Client & occasion')}
+        summary={`${clientName || t('No client')} · ${eventTypeLabel(eventType)} · ${indoorOutdoor === 'indoor' ? t('indoor') : indoorOutdoor === 'outdoor' ? t('outdoor') : indoorOutdoor === 'hybrid' ? t('hybrid') : indoorOutdoor}`}
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-2">
@@ -2767,10 +2786,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <PillField label="Client name" icon={<User className="w-5 h-5" />} value={clientName} onChange={e => setClientName(e.target.value)} />
-            <PillField label="Event title" value={eventName} onChange={e => setEventName(e.target.value)} placeholder={getEffectiveTitle()} />
+            <PillField label={t('Client name')} icon={<User className="w-5 h-5" />} value={clientName} onChange={e => setClientName(e.target.value)} />
+            <PillField label={t('Event title')} value={eventName} onChange={e => setEventName(e.target.value)} placeholder={getEffectiveTitle()} />
             <PillField
-              label="Client email"
+              label={t('Client email')}
               type="email"
               icon={<Mail className="w-5 h-5" />}
               value={clientEmail}
@@ -2778,12 +2797,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               placeholder="client@example.com"
             />
             <PillField
-              label="Client phone"
+              label={t('Client phone')}
               type="tel"
               icon={<Phone className="w-5 h-5" />}
               value={clientPhone}
               onChange={e => setClientPhone(e.target.value)}
-              placeholder="Phone with country code"
+              placeholder={t('Phone with country code')}
             />
           </div>
         </div>
@@ -2794,8 +2813,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.date_venue)}
         onToggle={() => toggleEditSection('date_venue')}
         stepNumber="02"
-        title="Date & venue"
-        summary={`${formattedDateStr} · ${eventTimeStart} – ${eventTimeEnd} · ${venueName || 'Venue TBD'}`}
+        title={t('Date & venue')}
+        summary={`${formattedDateStr} · ${eventTimeStart} – ${eventTimeEnd} · ${venueName || t('Venue TBD')}`}
       >
         {renderStep2()}
       </QuoteAccordionCard>
@@ -2805,9 +2824,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.lineup_moments)}
         onToggle={() => toggleEditSection('lineup_moments')}
         stepNumber="03"
-        title="Lineup & extra sets"
-        summary={`${selectedMusicians.length} ${selectedMusicians.length === 1 ? 'musician' : 'musicians'} · ${customItems.length} ${
-          customItems.length === 1 ? 'extra' : 'extras'
+        title={t('Lineup & extra sets')}
+        summary={`${
+          selectedMusicians.length === 1
+            ? t('{count} musician', { count: selectedMusicians.length })
+            : t('{count} musicians', { count: selectedMusicians.length })
+        } · ${
+          customItems.length === 1 ? t('{count} extra', { count: customItems.length }) : t('{count} extras', { count: customItems.length })
         } · ${currencySymbol}${(lineupBaseAmount + setsAndExtrasAmount).toLocaleString()}`}
       >
         {renderLineupAndExtraSetsSection()}
@@ -2818,8 +2841,12 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.pricing_billing)}
         onToggle={() => toggleEditSection('pricing_billing')}
         stepNumber="04"
-        title="Pricing, logistics & billing"
-        summary={`Net ${formatQuoteMoney(totals.netAmount, currencySymbol)} · VAT ${vatRate}% · total ${formatQuoteMoney(totals.total, currencySymbol)}`}
+        title={t('Pricing, logistics & billing')}
+        summary={t('Net {net} · VAT {rate}% · total {total}', {
+          net: formatQuoteMoney(totals.netAmount, currencySymbol),
+          rate: vatRate,
+          total: formatQuoteMoney(totals.total, currencySymbol),
+        })}
       >
         {renderBillingControls()}
         <hr className="border-0 h-px bg-border" />
@@ -2831,7 +2858,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         isOpen={Boolean(expandedEditSections.terms_notes)}
         onToggle={() => toggleEditSection('terms_notes')}
         stepNumber="05"
-        title="Proposal options & terms"
+        title={t('Proposal options & terms')}
         summary={proposalSummary}
       >
         {renderProposalAndTermsControls()}
@@ -2842,13 +2869,17 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // Live quote estimate strip (Figma: black "Total estimate" bar above the actions)
   const estimateSubtitle =
     !isEditing && step === 0
-      ? `${lineupCount} ${lineupCount === 1 ? 'musician' : 'musicians'}${
-          customItems.length > 0 ? ` + ${customItems.length} ${customItems.length === 1 ? 'add-on' : 'add-ons'}` : ''
+      ? `${lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}${
+          customItems.length > 0
+            ? ` + ${customItems.length === 1 ? t('{count} add-on', { count: customItems.length }) : t('{count} add-ons', { count: customItems.length })}`
+            : ''
         }`
       : !isEditing && step === 1
-        ? `${travelMode === 'included' ? 'Incl. travel' : travelMode === 'separate' ? `Travel +${currencySymbol}${travelFee}` : 'Travel by client'} · ${numberOfSets} × ${setDuration} min`
-        : `Net ${formatQuoteMoney(totals.netAmount, currencySymbol)} · ${
-            vatExempt || reverseCharge ? 'VAT exempt' : `VAT ${vatRate}% ${formatQuoteMoney(totals.vatAmount, currencySymbol)}`
+        ? `${travelMode === 'included' ? t('Incl. travel') : travelMode === 'separate' ? t('Travel +{amount}', { amount: `${currencySymbol}${travelFee}` }) : t('Travel by client')} · ${numberOfSets} × ${setDuration} min`
+        : `${t('Net {amount}', { amount: formatQuoteMoney(totals.netAmount, currencySymbol) })} · ${
+            vatExempt || reverseCharge
+              ? t('VAT exempt')
+              : t('VAT {rate}% {amount}', { rate: vatRate, amount: formatQuoteMoney(totals.vatAmount, currencySymbol) })
           }`;
   const totalLabel = formatQuoteMoney(totals.total, currencySymbol);
 
@@ -2856,14 +2887,14 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     <div className="bg-surface-inverse text-surface-inverse-foreground px-4 py-3">
       <div className="max-w-xl mx-auto w-full flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="bw-label-sm">Total estimate</span>
+          <span className="bw-label-sm">{t('Total estimate')}</span>
           <span className="bw-body-sm truncate opacity-80">{estimateSubtitle}</span>
         </div>
         <div
           className="shrink-0 max-w-[55%]"
           style={{ '--dot-off': 'color-mix(in srgb, currentColor 18%, transparent)' } as React.CSSProperties}
         >
-          <DotText text={totalLabel} size={28} showGrid label={`Total estimate ${totalLabel}`} />
+          <DotText text={totalLabel} size={28} showGrid label={t('Total estimate {amount}', { amount: totalLabel })} />
         </div>
       </div>
     </div>
@@ -2880,13 +2911,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   // keep their quantity steppers. Same inputs as `totals`, so the same total.
   const deskLines = useMemo<QuoteDeskLine[]>(() => {
     const fixed: QuoteDeskLine[] = [
-      { id: 'f-lineup', description: `Lineup base (${numberOfSets} × ${setDuration} min)`, unitPrice: lineupBaseAmount },
-      { id: 'f-travel', description: 'Travel', unitPrice: effectiveTravelFee },
-      { id: 'f-accommodation', description: 'Accommodation', unitPrice: effectiveAccommodationFee },
-      { id: 'f-meals', description: 'Meals', unitPrice: effectiveMealsFee },
-      { id: 'f-sound', description: 'Sound', unitPrice: effectiveSoundFee },
-      { id: 'f-lights', description: 'Lights', unitPrice: effectiveLightsFee },
-      { id: 'f-backline', description: 'Backline', unitPrice: effectiveBacklineFee },
+      { id: 'f-lineup', description: t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration }), unitPrice: lineupBaseAmount },
+      { id: 'f-travel', description: t('Travel'), unitPrice: effectiveTravelFee },
+      { id: 'f-accommodation', description: t('Accommodation'), unitPrice: effectiveAccommodationFee },
+      { id: 'f-meals', description: t('Meals'), unitPrice: effectiveMealsFee },
+      { id: 'f-sound', description: t('Sound'), unitPrice: effectiveSoundFee },
+      { id: 'f-lights', description: t('Lights'), unitPrice: effectiveLightsFee },
+      { id: 'f-backline', description: t('Backline'), unitPrice: effectiveBacklineFee },
     ]
       .filter(l => l.unitPrice > 0)
       .map(l => ({ ...l, quantity: 1, adjustable: false }));
@@ -2913,6 +2944,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     pricingSettings.custom_services,
     legacySelectedMoments,
     normalizedCustomItemsForCalc,
+    t,
   ]);
 
   const handleDeskQuantityChange = (lineId: string, quantity: number) => {
@@ -2967,28 +2999,28 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       timeLabel={eventTimeStart ? `${eventTimeStart}${eventTimeEnd ? ` – ${eventTimeEnd}` : ''}` : null}
       venue={venueName}
       city={venueCity}
-      lineup={`${PERFORMANCE_LABEL[performanceType] || 'Lineup'} (${previewMusicians}) · ${numberOfSets} × ${setDuration} min`}
+      lineup={`${PERFORMANCE_LABEL[performanceType] || t('Lineup')} (${previewMusicians}) · ${numberOfSets} × ${setDuration} min`}
       lineupNames={selectedMusicians.map(m => m.name).filter(Boolean)}
       rows={[
-        { label: `Lineup base (${numberOfSets} × ${setDuration} min)`, value: formatQuoteMoney(lineupBaseAmount, currencySymbol) },
+        { label: t('Lineup base ({sets} × {minutes} min)', { sets: numberOfSets, minutes: setDuration }), value: formatQuoteMoney(lineupBaseAmount, currencySymbol) },
         {
-          label: `Sets & extras${customItems.length > 0 ? ` (${customItems.length})` : ''}`,
+          label: `${t('Sets & extras')}${customItems.length > 0 ? ` (${customItems.length})` : ''}`,
           value: formatQuoteMoney(setsAndExtrasAmount, currencySymbol),
         },
         {
-          label: 'Travel & production',
-          value: travelAndProductionAmount > 0 ? formatQuoteMoney(travelAndProductionAmount, currencySymbol) : 'Included',
+          label: t('Travel & production'),
+          value: travelAndProductionAmount > 0 ? formatQuoteMoney(travelAndProductionAmount, currencySymbol) : t('Included'),
         },
         ...(totals.discountAmount > 0
-          ? [{ label: 'Discount', value: `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`, tone: 'success' as const }]
+          ? [{ label: t('Discount'), value: `−${formatQuoteMoney(totals.discountAmount, currencySymbol)}`, tone: 'success' as const }]
           : []),
         {
-          label: `VAT ${vatExempt || reverseCharge ? '0% (exempt)' : `${vatRate}%`}`,
+          label: t('VAT {rate}', { rate: vatExempt || reverseCharge ? t('0% (exempt)') : `${vatRate}%` }),
           value: formatQuoteMoney(totals.vatAmount, currencySymbol),
         },
       ]}
       total={formatQuoteMoney(totals.total, currencySymbol)}
-      totalLabel={`Total${depositRequired && depositPercentage > 0 ? ` · ${depositPercentage}% deposit` : ''}`}
+      totalLabel={`${t('Total')}${depositRequired && depositPercentage > 0 ? ` · ${t('{percent}% deposit', { percent: depositPercentage })}` : ''}`}
     />,
     !isEditing && step < 2
   );
@@ -3020,7 +3052,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   });
 
   const closeInRail = useRailAction(isEditing ? undefined : requestClose, {
-    label: 'Close quote wizard',
+    label: t('Close quote wizard'),
     icon: <X />,
     pane: true,
   });
@@ -3041,18 +3073,18 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <div className="flex-1 min-w-0 flex flex-col gap-2">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="h-4 px-1.5 rounded-full bw-label-xs inline-flex items-center bg-[var(--wizard-accent)] text-[var(--wizard-accent-fg)]">
-                  Editing
+                  {t('Editing')}
                 </span>
-                <Tag variant="subtle">{initialData?.quoteNumber || 'Quote'}</Tag>
+                <Tag variant="subtle">{initialData?.quoteNumber || t('Quote')}</Tag>
                 <Tag variant="subtle">{eventTypeLabel(eventType)}</Tag>
               </div>
               <h1 className="bw-h1 [overflow-wrap:anywhere]">{getEffectiveTitle()}</h1>
               <span className="bw-body-sm text-muted-foreground">
-                {formattedDateStr} · {eventTimeStart} – {eventTimeEnd} · {venueName || 'Venue TBD'}
+                {formattedDateStr} · {eventTimeStart} – {eventTimeEnd} · {venueName || t('Venue TBD')}
               </span>
             </div>
             <RailCover pane />
-            <HeaderAction pane label="Close edit quote modal" icon={<X />} onClick={onClose} />
+            <HeaderAction pane label={t('Close edit quote modal')} icon={<X />} onClick={onClose} />
           </div>
         </header>
 
@@ -3065,13 +3097,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="px-4 pt-4 bg-background" style={footerPadBottom}>
             <div className="max-w-xl mx-auto w-full flex gap-2">
               <PillButton variant="outline" fullWidth={false} className="px-4" onClick={onClose}>
-                Cancel
+                {t('Cancel')}
               </PillButton>
               <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
-                Save
+                {t('Save')}
               </PillButton>
               <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
-                Save & share
+                {t('Save & share')}
               </PillButton>
             </div>
           </div>
@@ -3098,11 +3130,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           <div className="flex items-center gap-3 min-h-11">
             <NavBackButton
               pane
-              label={isFirstStep ? 'Close quote wizard' : 'Previous step'}
+              label={isFirstStep ? t('Close quote wizard') : t('Previous step')}
               onClick={isFirstStep ? requestClose : handleBack}
             />
-            <h1 className="flex-1 min-w-0 bw-h2 truncate">New quote</h1>
-            {!closeInRail && <IconButton variant="ghost" label="Close quote wizard" icon={<X />} onClick={requestClose} />}
+            <h1 className="flex-1 min-w-0 bw-h2 truncate">{t('New quote')}</h1>
+            {!closeInRail && <IconButton variant="ghost" label={t('Close quote wizard')} icon={<X />} onClick={requestClose} />}
           </div>
           <InteractiveQuoteStepIndicator
             current={step}
@@ -3134,19 +3166,19 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               // finished quote's one way forward is to send it.
               <div className="grid grid-cols-[auto_1fr] gap-2">
                 <PillButton variant="outline" fullWidth={false} className="px-5" onClick={handleBack}>
-                  Back
+                  {t('Back')}
                 </PillButton>
                 <PillButton className="min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
-                  Save & share
+                  {t('Save & share')}
                 </PillButton>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 <PillButton variant="outline" onClick={isFirstStep ? requestClose : handleBack}>
-                  {isFirstStep ? 'Cancel' : 'Back'}
+                  {isFirstStep ? t('Cancel') : t('Back')}
                 </PillButton>
                 <PillButton onClick={handleNext} disabled={!canProceed}>
-                  Next
+                  {t('Next')}
                   <ArrowUpRight className="w-[18px] h-[18px]" />
                 </PillButton>
               </div>
@@ -3160,8 +3192,8 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
         what="quote"
         draftHint={
           askAvailability
-            ? "Saved as a draft quote, not sent to the client. The musicians still get the availability check. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
-            : "Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar."
+            ? t('Saved as a draft quote, not sent to the client. The musicians still get the availability check. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar.')
+            : t("Saved as a draft quote that members can't see. Find it under Drafts on the home screen, in Quotes, and on its day in the calendar.")
         }
         onSaveDraft={() => {
           setLeaveOpen(false);
