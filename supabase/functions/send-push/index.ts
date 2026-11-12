@@ -300,11 +300,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // SECURITY: require a signed-in caller (or a server call with the service
-    // role key) and only deliver to users who share a band or chat with them.
+    // SECURITY: require a signed-in caller (or a server call with a secret
+    // key on apikey) and only deliver to users who share a band or chat with them.
     const supabase = adminClient();
     // The notifications trigger (migration 048) authenticates with a
-    // database-generated secret instead of the service role key.
+    // database-generated secret instead of a secret key.
     const dispatchSecret = req.headers.get('x-bw-dispatch-secret');
     let caller: Awaited<ReturnType<typeof requireCaller>>;
     if (dispatchSecret) {

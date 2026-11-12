@@ -1,20 +1,23 @@
 project_id = "oakhbfdhesktokscqxqo"
 
-# SECURITY: every function verifies the JWT at the gateway. Note that the anon
-# key is itself a valid JWT, so privileged functions additionally resolve the
-# real user in code (see functions/_shared/auth.ts).
+# SECURITY: verify_jwt = false everywhere. The gateway check only understands
+# the legacy JWT keys; the app uses the publishable key (sb_publishable_…) and
+# pg_net triggers send a dispatch secret, neither of which is a JWT. Every
+# function authorises the caller in code (functions/_shared/auth.ts): a user
+# session JWT, a secret key on `apikey`, or the trigger's dispatch secret.
+# Deploy with: supabase functions deploy <name> --no-verify-jwt
 [functions.send-push]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-email]
-verify_jwt = true
+verify_jwt = false
 
 [functions.invite-member]
-verify_jwt = true
+verify_jwt = false
 
-# Called before sign-in with the anon key; exposes only a minimal invite lookup.
+# Public (called before sign-in); exposes only a minimal, throttled invite lookup.
 [functions.setup-invite-rls]
-verify_jwt = true
+verify_jwt = false
 
 [functions.delete-account]
-verify_jwt = true
+verify_jwt = false

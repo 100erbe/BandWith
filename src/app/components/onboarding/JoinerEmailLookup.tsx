@@ -52,13 +52,14 @@ export const JoinerEmailLookup: React.FC<JoinerEmailLookupProps> = ({
       // Use direct fetch to Edge Function (bypasses RLS for anonymous users)
       // supabase.functions.invoke has issues with aborted signals during auth initialization
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
       const response = await fetch(`${supabaseUrl}/functions/v1/setup-invite-rls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          // Publishable keys go on `apikey` only: they are not JWTs.
+          apikey: supabasePublishableKey,
         },
         body: JSON.stringify({
           action: 'lookup_invites',

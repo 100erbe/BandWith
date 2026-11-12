@@ -3,7 +3,9 @@ import { Capacitor } from '@capacitor/core';
 import { createDemoClient } from './demo/demoClient';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Publishable key (sb_publishable_…): safe to ship in the app, RLS applies.
+// Read from the build env only; the legacy JWT anon key is no longer used.
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 /**
  * Demo mode (development builds only): the app runs on an in-memory fake
@@ -13,11 +15,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
  */
 export const isDemoMode =
   import.meta.env.DEV &&
-  (import.meta.env.VITE_DEMO_MODE === 'true' || !supabaseUrl || !supabaseAnonKey);
+  (import.meta.env.VITE_DEMO_MODE === 'true' || !supabaseUrl || !supabasePublishableKey);
 
 if (isDemoMode) {
   console.info('[BandWith] Demo mode: using local sample data, no Supabase connection.');
-} else if (!supabaseUrl || !supabaseAnonKey) {
+} else if (!supabaseUrl || !supabasePublishableKey) {
   console.warn('Missing Supabase environment variables');
 }
 
@@ -30,7 +32,7 @@ export const supabase = isDemoMode
   ? (createDemoClient() as unknown as ReturnType<typeof createClient>)
   : createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
+  supabasePublishableKey || 'placeholder-key',
   {
     auth: {
       autoRefreshToken: true,
