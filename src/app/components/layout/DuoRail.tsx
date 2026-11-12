@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRailHost, useRailSnapshot } from '@/lib/railActions';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { usePosture } from '@/lib/posture';
+import { KEYBOARD_EVENT, isKeyboardOpen } from '@/lib/keyboardInsets';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * iPhone Duo side rail, 1:1 with Figma "11 · Foldables":
@@ -152,21 +153,46 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backId]);
 
-  // Centre the field on the Search button.
+  // Centre the field on the Search button. While the keyboard is up the web
+  // view ends at the keyboard and the rail group may scroll the button out of
+  // view, so the field sits just above the keyboard instead, where the person
+  // is typing.
   useLayoutEffect(() => {
     if (!fieldOpen) return;
     const place = () => {
+      const bottom = window.innerHeight - 52 - 12;
+      if (isKeyboardOpen()) {
+        setFieldTop(Math.max(12, bottom));
+        return;
+      }
       const r = searchBtnRef.current?.getBoundingClientRect();
-      if (r) setFieldTop(Math.round(r.top + 12 - 26));
+      if (r) setFieldTop(Math.max(12, Math.min(bottom, Math.round(r.top + 12 - 26))));
     };
     place();
     window.addEventListener('resize', place);
     window.addEventListener('bwlayout', place);
+    window.addEventListener(KEYBOARD_EVENT, place);
     return () => {
       window.removeEventListener('resize', place);
       window.removeEventListener('bwlayout', place);
+      window.removeEventListener(KEYBOARD_EVENT, place);
     };
   }, [fieldOpen, tabsVisible, !!back, onDeck, railEdge]);
+
+  // The keyboard going away (tap outside, swipe, Android Back) ends the search
+  // entry: iOS keeps the input focused after Keyboard.hide(), so without this
+  // the field stayed floating over the content. The query stays applied and
+  // the Search button keeps its dot; a tap reopens the field.
+  useEffect(() => {
+    if (!fieldOpen) return;
+    const onKeyboard = (e: Event) => {
+      if ((e as CustomEvent<{ open: boolean }>).detail?.open) return;
+      setFieldOpen(false);
+      inputRef.current?.blur();
+    };
+    window.addEventListener(KEYBOARD_EVENT, onKeyboard);
+    return () => window.removeEventListener(KEYBOARD_EVENT, onKeyboard);
+  }, [fieldOpen]);
 
   useEffect(() => {
     if (fieldOpen) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
