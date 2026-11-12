@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { parseLocalDate, toLocalDateString, todayLocal } from '../dates';
+import { t } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Contracts & riders (table `contracts`, migration 006).
@@ -54,9 +55,9 @@ export type ContractEdits = Omit<NewContractInput, 'bandId'>;
 
 type Result<T> = { data: T | null; error: Error | null };
 
-const NO_ROWS_MESSAGE = "This change wasn't saved: only band admins can manage contracts and riders.";
+const noRowsMessage = () => t("This change wasn't saved: only band admins can manage contracts and riders.");
 
-export const errorMessage = (err: unknown, fallback = 'Something went wrong. Please try again.'): string => {
+export const errorMessage = (err: unknown, fallback = t('Something went wrong. Please try again.')): string => {
   if (!err) return fallback;
   if (typeof err === 'string') return err;
   const e = err as { message?: string; details?: string };
@@ -66,8 +67,8 @@ export const errorMessage = (err: unknown, fallback = 'Something went wrong. Ple
 const asError = (err: unknown, fallback?: string) => new Error(errorMessage(err, fallback));
 
 const blankToNull = (v?: string | null) => {
-  const t = (v ?? '').trim();
-  return t ? t : null;
+  const trimmed = (v ?? '').trim();
+  return trimmed ? trimmed : null;
 };
 
 export const isRider = (c: Pick<Contract, 'type'>) => c.type === 'rider';
@@ -101,16 +102,16 @@ export async function listContracts(bandId: string): Promise<Result<Contract[]>>
     .select('*')
     .eq('band_id', bandId)
     .order('created_at', { ascending: false });
-  if (error) return { data: null, error: asError(error, 'Could not load documents.') };
+  if (error) return { data: null, error: asError(error, t('Could not load documents.')) };
   return { data: (data || []) as Contract[], error: null };
 }
 
 export async function createContract(input: NewContractInput): Promise<Result<Contract>> {
   const title = input.title.trim();
   const clientName = input.clientName.trim();
-  if (!title || !clientName) return { data: null, error: new Error('Add a title and a client.') };
+  if (!title || !clientName) return { data: null, error: new Error(t('Add a title and a client.')) };
   const email = blankToNull(input.clientEmail);
-  if (email && !isValidEmail(email)) return { data: null, error: new Error('Enter a valid client email.') };
+  if (email && !isValidEmail(email)) return { data: null, error: new Error(t('Enter a valid client email.')) };
 
   const { data, error } = await supabase
     .from('contracts')
@@ -129,17 +130,17 @@ export async function createContract(input: NewContractInput): Promise<Result<Co
     })
     .select()
     .single();
-  if (error) return { data: null, error: asError(error, 'Could not create the document.') };
-  if (!data) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
+  if (error) return { data: null, error: asError(error, t('Could not create the document.')) };
+  if (!data) return { data: null, error: new Error(noRowsMessage()) };
   return { data: data as Contract, error: null };
 }
 
 /** Updates one row and returns it; 0 rows (RLS) is an error. */
 export async function updateContract(id: string, patch: Partial<Contract>): Promise<Result<Contract>> {
   const { data, error } = await supabase.from('contracts').update(patch).eq('id', id).select();
-  if (error) return { data: null, error: asError(error, 'Could not update the document.') };
+  if (error) return { data: null, error: asError(error, t('Could not update the document.')) };
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
+  if (!row) return { data: null, error: new Error(noRowsMessage()) };
   return { data: row as Contract, error: null };
 }
 
@@ -147,9 +148,9 @@ export async function updateContract(id: string, patch: Partial<Contract>): Prom
 export async function saveContractEdits(id: string, input: ContractEdits): Promise<Result<Contract>> {
   const title = input.title.trim();
   const clientName = input.clientName.trim();
-  if (!title || !clientName) return { data: null, error: new Error('Add a title and a client.') };
+  if (!title || !clientName) return { data: null, error: new Error(t('Add a title and a client.')) };
   const email = blankToNull(input.clientEmail);
-  if (email && !isValidEmail(email)) return { data: null, error: new Error('Enter a valid client email.') };
+  if (email && !isValidEmail(email)) return { data: null, error: new Error(t('Enter a valid client email.')) };
   return updateContract(id, {
     type: input.type,
     title,
@@ -234,8 +235,8 @@ export const markContractSigned = (id: string, now = new Date()) =>
 
 export async function deleteContract(id: string): Promise<{ error: Error | null }> {
   const { data, error } = await supabase.from('contracts').delete().eq('id', id).select('id');
-  if (error) return { error: asError(error, 'Could not delete the document.') };
-  if (!data || (Array.isArray(data) && data.length === 0)) return { error: new Error(NO_ROWS_MESSAGE) };
+  if (error) return { error: asError(error, t('Could not delete the document.')) };
+  if (!data || (Array.isArray(data) && data.length === 0)) return { error: new Error(noRowsMessage()) };
   return { error: null };
 }
 

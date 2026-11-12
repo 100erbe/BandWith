@@ -46,6 +46,7 @@ import {
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, IconButton, SearchField, Card, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
+import { useT } from '@/lib/i18n';
 
 interface ContractsViewProps {
   onBack: () => void;
@@ -61,12 +62,33 @@ const STATUS_DOT: Record<ContractStatus, string> = {
   expired: 'bg-destructive',
 };
 
-const StatusDot: React.FC<{ status: ContractStatus }> = ({ status }) => (
-  <span className="flex items-center gap-1.5 shrink-0">
-    <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[status] ?? 'bg-muted-foreground')} aria-hidden />
-    <span className="bw-label-xs">{STATUS_LABEL[status] ?? status}</span>
-  </span>
-);
+/** Status label for display (the status itself stays the stored value). */
+const useStatusLabel = () => {
+  const t = useT();
+  return useCallback(
+    (status: ContractStatus): string => {
+      const labels: Record<ContractStatus, string> = {
+        draft: t('Draft'),
+        sent: t('Sent'),
+        viewed: t('Viewed'),
+        signed: t('Signed'),
+        expired: t('Expired'),
+      };
+      return labels[status] ?? STATUS_LABEL[status] ?? status;
+    },
+    [t],
+  );
+};
+
+const StatusDot: React.FC<{ status: ContractStatus }> = ({ status }) => {
+  const statusLabel = useStatusLabel();
+  return (
+    <span className="flex items-center gap-1.5 shrink-0">
+      <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[status] ?? 'bg-muted-foreground')} aria-hidden />
+      <span className="bw-label-xs">{statusLabel(status)}</span>
+    </span>
+  );
+};
 
 /** Small stat card (Figma: label + 24pt dot value). */
 const StatCard: React.FC<{ label: string; value: number; inverse?: boolean }> = ({ label, value, inverse }) => (
@@ -99,6 +121,9 @@ const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim(
 type BusyKind = 'download' | 'sign' | 'delete';
 
 export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) => {
+  const t = useT();
+  const statusLabel = useStatusLabel();
+  const tabLabel = (tab: typeof TABS[number]) => (tab === 'All' ? t('All') : tab === 'Contracts' ? t('Contracts') : t('Riders'));
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -205,13 +230,13 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
 
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(timer);
   }, [notice]);
 
   const replaceContract = (row: Contract) => setContracts((prev) => prev.map((c) => (c.id === row.id ? row : c)));
 
-  const emailError = formClientEmail.trim() && !isValidEmail(formClientEmail) ? 'Enter a valid email address.' : null;
+  const emailError = formClientEmail.trim() && !isValidEmail(formClientEmail) ? t('Enter a valid email address.') : null;
 
   const handleSaveContract = async () => {
     if (!formTitle.trim() || !formClientName.trim() || emailError || saving) return;
@@ -231,12 +256,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     const { data, error } = editingId ? await saveContractEdits(editingId, fields) : await createContract({ bandId, ...fields });
     setSaving(false);
     if (error || !data) {
-      setFormError(error?.message || (editingId ? 'Could not save the changes.' : 'Could not create the document.'));
+      setFormError(error?.message || (editingId ? t('Could not save the changes.') : t('Could not create the document.')));
       return;
     }
     if (editingId) {
       replaceContract(data);
-      setNotice('Changes saved');
+      setNotice(t('Changes saved'));
     } else {
       setContracts((prev) => [data, ...prev]);
     }
@@ -301,7 +326,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setBusy(null);
     setPendingDelete(null);
     if (error) {
-      setActionError(`Couldn't delete "${contract.title}". ${error.message}`);
+      setActionError(t('Couldn\'t delete "{title}". {message}', { title: contract.title, message: error.message }));
       return;
     }
     setContracts((prev) => prev.filter((c) => c.id !== contract.id));
@@ -322,10 +347,10 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     try {
       const blob = buildContractPdf(contract, { bandName });
       const { result, location } = await saveFile(blob, contractFileName(contract));
-      if (result === 'saved') setNotice(`PDF saved to ${location}`);
-      else if (result === 'downloaded') setNotice('PDF downloaded');
+      if (result === 'saved') setNotice(t('PDF saved to {location}', { location: String(location) }));
+      else if (result === 'downloaded') setNotice(t('PDF downloaded'));
     } catch (err) {
-      setActionError(`Couldn't export "${contract.title}". ${errorMessage(err)}`);
+      setActionError(t('Couldn\'t export "{title}". {message}', { title: contract.title, message: errorMessage(err) }));
     } finally {
       setBusy(null);
     }
@@ -339,7 +364,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     const { data, error } = await markContractSigned(contract.id);
     setBusy(null);
     if (error || !data) {
-      setActionError(`Couldn't mark "${contract.title}" as signed. ${error?.message ?? ''}`.trim());
+      setActionError(t('Couldn\'t mark "{title}" as signed. {message}', { title: contract.title, message: error?.message ?? '' }).trim());
       return;
     }
     replaceContract(data);
@@ -362,7 +387,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
   const finishSend = async (contract: Contract, email: string) => {
     const { data, error } = await markContractSent(contract.id, email);
     if (error || !data) {
-      setSendError(`The document was shared, but its status couldn't be updated. ${error?.message ?? ''}`.trim());
+      setSendError(t('The document was shared, but its status couldn\'t be updated. {message}', { message: error?.message ?? '' }).trim());
       setSendStep('confirm');
       return;
     }
@@ -375,7 +400,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     if (!sendingContract || sendBusy) return;
     const email = sendEmail.trim();
     if (!isValidEmail(email)) {
-      setSendError('Enter the client email address.');
+      setSendError(t('Enter the client email address.'));
       return;
     }
     setSendBusy(true);
@@ -384,7 +409,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       const contract = { ...sendingContract, client_email: email };
       const { subject, body } = buildSendMessage(contract, bandName);
       const blob = buildContractPdf(contract, { bandName });
-      const result = await shareFile(blob, contractFileName(contract), { title: subject, text: body, dialogTitle: 'Send to client' });
+      const result = await shareFile(blob, contractFileName(contract), { title: subject, text: body, dialogTitle: t('Send to client') });
       if (result === 'cancelled') return;
       if (result === 'shared') {
         setSendVia('share');
@@ -397,7 +422,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       setSendVia('mail');
       setSendStep('confirm');
     } catch (err) {
-      setSendError(`Couldn't share the document. ${errorMessage(err)}`);
+      setSendError(t('Couldn\'t share the document. {message}', { message: errorMessage(err) }));
     } finally {
       setSendBusy(false);
     }
@@ -428,12 +453,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       <ScreenHeader
         sticky
         onBack={onBack}
-        backLabel="Go back"
-        overline="Legal & riders"
-        title="Contracts & docs"
+        backLabel={t('Go back')}
+        overline={t('Legal & riders')}
+        title={t('Contracts & docs')}
         actions={
           <IconButton
-            label="Create document"
+            label={t('Create document')}
             variant="filled"
             icon={<Plus />}
             onClick={openCreate}
@@ -442,23 +467,23 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search documents" placeholder="Search by title, client or event…" />
+        <SearchField value={searchQuery} onChange={setSearchQuery} label={t('Search documents')} placeholder={t('Search by title, client or event…')} />
 
         {/* Tabs (Figma Selector MD with counts) */}
         <div className="flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <Selector key={tab} size="md" selected={selectedTab === tab} onClick={() => setSelectedTab(tab)} count={getTabCount(tab)}>
-              {tab}
+              {tabLabel(tab)}
             </Selector>
           ))}
         </div>
 
         {/* Overview */}
         {contracts.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2" aria-label={`${stats.signed} of ${stats.total} signed`}>
-            <StatCard label="Total docs" value={stats.total} inverse />
-            <StatCard label="Signed" value={stats.signed} />
-            <StatCard label="Pending" value={stats.pending} />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2" aria-label={t('{signed} of {total} signed', { signed: stats.signed, total: stats.total })}>
+            <StatCard label={t('Total docs')} value={stats.total} inverse />
+            <StatCard label={t('Signed')} value={stats.signed} />
+            <StatCard label={t('Pending')} value={stats.pending} />
           </motion.div>
         )}
 
@@ -476,20 +501,20 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
           <Card className="items-center text-center py-10 gap-4" role="alert">
             <FileText className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">Couldn't load documents</h2>
+              <h2 className="bw-h3">{t('Couldn\'t load documents')}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{loadError}</p>
             </div>
             <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={loadContracts}>
-              Try again
+              {t('Try again')}
             </PillButton>
           </Card>
         ) : contracts.length === 0 ? (
           <Card className="items-center text-center py-10 gap-4">
             <FileText className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">No documents yet</h2>
+              <h2 className="bw-h3">{t('No documents yet')}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs">
-                Keep your band performance agreements and technical riders organised in one place.
+                {t('Keep your band performance agreements and technical riders organised in one place.')}
               </p>
             </div>
             <PillButton
@@ -498,16 +523,16 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               icon={<Plus className="w-4 h-4" />}
               onClick={openCreate}
             >
-              Create first document
+              {t('Create first document')}
             </PillButton>
           </Card>
         ) : filteredContracts.length === 0 ? (
           <Card className="items-center text-center py-8">
-            <h2 className="bw-h3">No matches</h2>
-            <p className="bw-body-sm text-muted-foreground">No documents match your search or filter.</p>
+            <h2 className="bw-h3">{t('No matches')}</h2>
+            <p className="bw-body-sm text-muted-foreground">{t('No documents match your search or filter.')}</p>
           </Card>
         ) : (
-          <ul className="flex flex-col gap-4" aria-label={`Documents (${filteredContracts.length})`}>
+          <ul className="flex flex-col gap-4" aria-label={t('Documents ({count})', { count: filteredContracts.length })}>
             {filteredContracts.map((contract, index) => {
               const rider = isRider(contract);
               const TypeIcon = rider ? ScrollText : FileText;
@@ -518,7 +543,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               const meta = [
                 contract.client_name,
                 showEventName ? contract.event_name : null,
-                contract.event_date ? `Event date ${formatContractDate(contract.event_date)}` : null,
+                contract.event_date ? t('Event date {date}', { date: formatContractDate(contract.event_date) }) : null,
               ]
                 .filter(Boolean)
                 .join(' · ');
@@ -533,13 +558,13 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                 >
                   <Card className="relative gap-2">
                     <div className="flex items-center gap-3">
-                      <TypeIcon className="w-[22px] h-[22px] shrink-0" aria-label={rider ? 'Rider' : 'Contract'} />
+                      <TypeIcon className="w-[22px] h-[22px] shrink-0" aria-label={rider ? t('Rider') : t('Contract')} />
                       <div className="flex-1" />
                       <StatusDot status={status} />
                       <button
                         type="button"
                         onClick={() => setMenuOpenId(menuOpenId === contract.id ? null : contract.id)}
-                        aria-label={`Actions for ${contract.title}`}
+                        aria-label={t('Actions for {title}', { title: contract.title })}
                         aria-expanded={menuOpenId === contract.id}
                         disabled={rowBusy}
                         className="relative z-10 -m-3 p-3 text-foreground"
@@ -567,21 +592,21 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                         role="menu"
                       >
                         {[
-                          { label: 'View', icon: <Eye className="w-4 h-4" />, run: () => handleView(contract) },
-                          { label: 'Download PDF', icon: <Download className="w-4 h-4" />, run: () => handleDownloadPdf(contract) },
+                          { label: t('View'), icon: <Eye className="w-4 h-4" />, run: () => handleView(contract) },
+                          { label: t('Download PDF'), icon: <Download className="w-4 h-4" />, run: () => handleDownloadPdf(contract) },
                           ...(contract.status !== 'signed'
                             ? [
-                                { label: 'Edit', icon: <Pencil className="w-4 h-4" />, run: () => openEdit(contract) },
+                                { label: t('Edit'), icon: <Pencil className="w-4 h-4" />, run: () => openEdit(contract) },
                                 {
-                                  label: contract.sent_at ? 'Resend to client' : 'Send to client',
+                                  label: contract.sent_at ? t('Resend to client') : t('Send to client'),
                                   icon: <Send className="w-4 h-4" />,
                                   run: () => openSend(contract),
                                 },
-                                { label: 'Mark as signed', icon: <FileSignature className="w-4 h-4" />, run: () => handleMarkSigned(contract) },
+                                { label: t('Mark as signed'), icon: <FileSignature className="w-4 h-4" />, run: () => handleMarkSigned(contract) },
                               ]
                             : []),
                           {
-                            label: 'Delete',
+                            label: t('Delete'),
                             icon: <Trash2 className="w-4 h-4" />,
                             run: () => {
                               setMenuOpenId(null);
@@ -627,8 +652,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
             <ScreenHeader
                 pane
               onBack={() => !saving && setShowCreateModal(false)}
-              overline={editingId ? 'Edit document' : 'New document'}
-              title={editingId ? (formType === 'contract' ? 'Edit contract' : 'Edit rider') : `Create ${formType === 'contract' ? 'contract' : 'rider'}`}
+              overline={editingId ? t('Edit document') : t('New document')}
+              title={editingId ? (formType === 'contract' ? t('Edit contract') : t('Edit rider')) : formType === 'contract' ? t('Create contract') : t('Create rider')}
               titleSize="h1"
             />
 
@@ -636,29 +661,29 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               {formError && <FormError>{formError}</FormError>}
 
               <fieldset className="flex flex-col gap-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Document type</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">{t('Document type')}</legend>
                 <div className="flex flex-wrap gap-2">
                   <Selector size="md" selected={formType === 'contract'} onClick={() => setFormType('contract')}>
                     <FileText className="w-4 h-4" />
-                    Contract
+                    {t('Contract')}
                   </Selector>
                   <Selector size="md" selected={formType === 'rider'} onClick={() => setFormType('rider')}>
                     <ScrollText className="w-4 h-4" />
-                    Rider
+                    {t('Rider')}
                   </Selector>
                 </div>
               </fieldset>
 
               {(linkableEvents.length > 0 || formEventId) && (
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="bw-label-sm text-muted-foreground mb-2">For a band event</legend>
+                  <legend className="bw-label-sm text-muted-foreground mb-2">{t('For a band event')}</legend>
                   <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 [scrollbar-width:none]">
                     <Selector size="md" selected={!formEventId} onClick={() => linkEvent(null)} className="shrink-0">
-                      None
+                      {t('None')}
                     </Selector>
                     {formEventId && !linkableEvents.some((e) => e.id === formEventId) && (
                       <Selector size="md" selected className="shrink-0">
-                        {formEventName || 'Linked event'}
+                        {formEventName || t('Linked event')}
                       </Selector>
                     )}
                     {linkableEvents.map((ev) => (
@@ -668,30 +693,30 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                       </Selector>
                     ))}
                   </div>
-                  <p className="bw-body-sm text-muted-foreground">Fills in the event, date and client from the gig.</p>
+                  <p className="bw-body-sm text-muted-foreground">{t('Fills in the event, date and client from the gig.')}</p>
                 </fieldset>
               )}
 
               <PillField
-                label="Document title *"
+                label={t('Document title *')}
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                placeholder="Performance agreement 2026"
+                placeholder={t('Performance agreement 2026')}
               />
               <PillField
-                label="Event name"
+                label={t('Event name')}
                 value={formEventName}
                 onChange={(e) => setFormEventName(e.target.value)}
-                placeholder="Annual gala night"
+                placeholder={t('Annual gala night')}
               />
               <PillField
-                label="Client / venue *"
+                label={t('Client / venue *')}
                 value={formClientName}
                 onChange={(e) => setFormClientName(e.target.value)}
                 placeholder="Hotel Arts & Club"
               />
               <PillField
-                label="Client email"
+                label={t('Client email')}
                 type="email"
                 inputMode="email"
                 autoCapitalize="none"
@@ -702,14 +727,14 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                 error={emailError}
               />
               <div className="grid grid-cols-2 gap-3">
-                <PillField label="Event date" type="date" value={formEventDate} onChange={(e) => setFormEventDate(e.target.value)} />
-                <PillField label="Valid until" type="date" value={formValidUntil} onChange={(e) => setFormValidUntil(e.target.value)} />
+                <PillField label={t('Event date')} type="date" value={formEventDate} onChange={(e) => setFormEventDate(e.target.value)} />
+                <PillField label={t('Valid until')} type="date" value={formValidUntil} onChange={(e) => setFormValidUntil(e.target.value)} />
               </div>
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="contract-notes" className="bw-label-sm text-muted-foreground">
-                    {formType === 'rider' ? 'Requirements & notes' : 'Notes & terms'}
+                    {formType === 'rider' ? t('Requirements & notes') : t('Notes & terms')}
                   </label>
                   {!formNotes.trim() && (
                     <button
@@ -718,7 +743,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                       className="inline-flex items-center gap-1.5 h-9 bw-button-sm text-foreground"
                     >
                       <Sparkles className="w-4 h-4" aria-hidden />
-                      {formType === 'rider' ? 'Use standard rider' : 'Use standard terms'}
+                      {formType === 'rider' ? t('Use standard rider') : t('Use standard terms')}
                     </button>
                   )}
                 </div>
@@ -726,7 +751,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   id="contract-notes"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="Technical specifications, load-in requirements, hospitality…"
+                  placeholder={t('Technical specifications, load-in requirements, hospitality…')}
                   rows={formNotes.length > 200 ? 12 : 5}
                   className="w-full px-4 py-3.5 rounded-[24px] bg-field border border-border bw-body-lg text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-2 focus:border-foreground resize-none"
                 />
@@ -741,7 +766,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   disabled={!formTitle.trim() || !formClientName.trim() || !!emailError}
                   icon={<FileText className="w-[18px] h-[18px]" />}
                 >
-                  {editingId ? 'Save changes' : `Create ${formType === 'contract' ? 'contract' : 'rider'}`}
+                  {editingId ? t('Save changes') : formType === 'contract' ? t('Create contract') : t('Create rider')}
                 </PillButton>
               </div>
             </div>
@@ -753,7 +778,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       <BwSheet
         open={!!viewingContract}
         onClose={() => setViewingId(null)}
-        overline={viewingContract ? STATUS_LABEL[effectiveStatus(viewingContract, today)] : undefined}
+        overline={viewingContract ? statusLabel(effectiveStatus(viewingContract, today)) : undefined}
         title={viewingContract?.title ?? ''}
         zIndex={110}
         footer={
@@ -771,7 +796,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                 </PillButton>
                 {viewingContract.status !== 'signed' && (
                   <PillButton icon={<Send className="w-[18px] h-[18px]" />} disabled={!!busy} onClick={() => openSend(viewingContract)}>
-                    {viewingContract.sent_at ? 'Resend' : 'Send'}
+                    {viewingContract.sent_at ? t('Resend') : t('Send')}
                   </PillButton>
                 )}
               </div>
@@ -784,7 +809,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                     disabled={!!busy}
                     onClick={() => openEdit(viewingContract)}
                   >
-                    Edit
+                    {t('Edit')}
                   </PillButton>
                   <PillButton
                     variant="outline"
@@ -794,7 +819,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                     disabled={!!busy}
                     onClick={() => handleMarkSigned(viewingContract)}
                   >
-                    Mark as signed
+                    {t('Mark as signed')}
                   </PillButton>
                 </div>
               )}
@@ -806,18 +831,18 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
           <div className="flex flex-col gap-2">
             {actionError && <FormError>{actionError}</FormError>}
             {notice && <p role="status" className="bw-body-sm text-success">{notice}</p>}
-            {viewingContract.event_name && <SheetInfo label="Event">{viewingContract.event_name}</SheetInfo>}
+            {viewingContract.event_name && <SheetInfo label={t('Event')}>{viewingContract.event_name}</SheetInfo>}
             <div className="grid grid-cols-2 gap-2">
-              <SheetInfo label="Client" className="[&>div:last-child]:truncate">{viewingContract.client_name || '—'}</SheetInfo>
-              <SheetInfo label="Event date">{formatContractDate(viewingContract.event_date) || '—'}</SheetInfo>
+              <SheetInfo label={t('Client')} className="[&>div:last-child]:truncate">{viewingContract.client_name || '—'}</SheetInfo>
+              <SheetInfo label={t('Event date')}>{formatContractDate(viewingContract.event_date) || '—'}</SheetInfo>
             </div>
-            {viewingContract.client_email && <SheetInfo label="Client email">{viewingContract.client_email}</SheetInfo>}
-            <SheetInfo label="Document type">{isRider(viewingContract) ? 'Rider' : 'Contract'}</SheetInfo>
-            {viewingContract.expires_at && <SheetInfo label="Valid until">{formatContractDate(viewingContract.expires_at)}</SheetInfo>}
-            {viewingContract.sent_at && <SheetInfo label="Sent">{formatContractDate(viewingContract.sent_at)}</SheetInfo>}
-            {viewingContract.signed_at && <SheetInfo label="Signed">{formatContractDate(viewingContract.signed_at)}</SheetInfo>}
+            {viewingContract.client_email && <SheetInfo label={t('Client email')}>{viewingContract.client_email}</SheetInfo>}
+            <SheetInfo label={t('Document type')}>{isRider(viewingContract) ? t('Rider') : t('Contract')}</SheetInfo>
+            {viewingContract.expires_at && <SheetInfo label={t('Valid until')}>{formatContractDate(viewingContract.expires_at)}</SheetInfo>}
+            {viewingContract.sent_at && <SheetInfo label={t('Sent')}>{formatContractDate(viewingContract.sent_at)}</SheetInfo>}
+            {viewingContract.signed_at && <SheetInfo label={t('Signed')}>{formatContractDate(viewingContract.signed_at)}</SheetInfo>}
             {viewingContract.content && (
-              <SheetInfo label={isRider(viewingContract) ? 'Requirements & notes' : 'Notes & terms'}>
+              <SheetInfo label={isRider(viewingContract) ? t('Requirements & notes') : t('Notes & terms')}>
                 <p className="whitespace-pre-wrap bw-body-md">{viewingContract.content}</p>
               </SheetInfo>
             )}
@@ -830,7 +855,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
         open={!!sendingContract}
         onClose={closeSend}
         overline={sendingContract?.title}
-        title="Send to client"
+        title={t('Send to client')}
         zIndex={120}
         footer={
           sendingContract &&
@@ -841,15 +866,15 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               disabled={!sendEmail.trim()}
               onClick={handleShareToClient}
             >
-              Share PDF
+              {t('Share PDF')}
             </PillButton>
           ) : (
             <div className="flex flex-col gap-2">
               <PillButton icon={<Send className="w-[18px] h-[18px]" />} loading={sendBusy} onClick={handleConfirmSent}>
-                Mark as sent
+                {t('Mark as sent')}
               </PillButton>
               <PillButton variant="outline" className={SHEET_OUTLINE} disabled={sendBusy} onClick={closeSend}>
-                Not sent yet
+                {t('Not sent yet')}
               </PillButton>
             </div>
           ))
@@ -862,7 +887,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               <>
                 <PillField
                   tone="sheet"
-                  label="Client email"
+                  label={t('Client email')}
                   type="email"
                   inputMode="email"
                   autoCapitalize="none"
@@ -870,13 +895,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   placeholder="events@venue.com"
                   value={sendEmail}
                   onChange={(e) => setSendEmail(e.target.value)}
-                  error={sendEmail.trim() && !isValidEmail(sendEmail) ? 'Enter a valid email address.' : null}
+                  error={sendEmail.trim() && !isValidEmail(sendEmail) ? t('Enter a valid email address.') : null}
                 />
                 <p className="bw-body-sm text-sheet-foreground/70">
-                  The PDF opens in the share sheet with a message ready to go. Pick Mail (or any app) and send it to the client.
-                  The document is marked as sent once you share it.
+                  {t('The PDF opens in the share sheet with a message ready to go. Pick Mail (or any app) and send it to the client. The document is marked as sent once you share it.')}
                 </p>
-                <SheetInfo label="Message">
+                <SheetInfo label={t('Message')}>
                   <p className="whitespace-pre-wrap bw-body-md">
                     {buildSendMessage({ ...sendingContract, client_email: sendEmail }, bandName).body}
                   </p>
@@ -884,12 +908,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
               </>
             ) : sendVia === 'mail' ? (
               <p className="bw-body-md text-sheet-foreground/85">
-                The PDF was saved and your email app opened with the message to {sendEmail.trim()}. Attach the PDF, send the email,
-                then mark the document as sent.
+                {t('The PDF was saved and your email app opened with the message to {email}. Attach the PDF, send the email, then mark the document as sent.', { email: sendEmail.trim() })}
               </p>
             ) : (
               <p className="bw-body-md text-sheet-foreground/85">
-                The PDF was shared. Try marking the document as sent again.
+                {t('The PDF was shared. Try marking the document as sent again.')}
               </p>
             )}
           </div>
@@ -898,8 +921,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
 
       <DeleteChatSheet
         open={!!pendingDelete}
-        title={pendingDelete ? `Delete "${pendingDelete.title}"?` : undefined}
-        body="The document is removed for the whole band. Copies already sent to the client are not affected."
+        title={pendingDelete ? t('Delete "{title}"?', { title: pendingDelete.title }) : undefined}
+        body={t('The document is removed for the whole band. Copies already sent to the client are not affected.')}
         deleting={!!pendingDelete && isBusy(pendingDelete.id, 'delete')}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => pendingDelete && handleDelete(pendingDelete)}

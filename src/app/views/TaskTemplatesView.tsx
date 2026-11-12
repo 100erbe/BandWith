@@ -30,6 +30,7 @@ import {
 } from '@/lib/services/taskTemplates';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { UseTemplateSheet, type TemplateTargetEvent, type TemplateTargetKind } from '@/app/components/templates/UseTemplateSheet';
+import { useT } from '@/lib/i18n';
 
 export type { TaskTemplate, TemplateTask } from '@/lib/services/taskTemplates';
 
@@ -61,6 +62,15 @@ const CATEGORIES: Record<TemplateCategory, { label: string; tag: TagStyle }> = {
 };
 
 export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate, events = [], userId, onNotify }) => {
+  const t = useT();
+  const categoryLabel: Record<TemplateCategory, string> = {
+    wedding: t('Wedding'),
+    corporate: t('Corporate'),
+    festival: t('Festival'),
+    private: t('Private party'),
+    rehearsal: t('Rehearsal'),
+    other: t('Other'),
+  };
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,7 +134,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
   };
 
   const handleRemoveTask = (taskId: string) => {
-    setFormTasks(formTasks.filter(t => t.id !== taskId));
+    setFormTasks(formTasks.filter(task => task.id !== taskId));
   };
 
   // A task typed in the field but not yet added with "Add task" is saved too.
@@ -137,15 +147,15 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     if (!formName.trim() || tasksToSave.length === 0 || saving) return;
     setSaving(true);
     setFormError(null);
-    const tasks = tasksToSave.map((t) => (t.id === 'pending' ? { ...t, id: crypto.randomUUID() } : t));
+    const tasks = tasksToSave.map((task) => (task.id === 'pending' ? { ...task, id: crypto.randomUUID() } : task));
     const input = { name: formName, description: formDescription, category: formCategory, tasks };
     const { data, error } = editingId ? await updateTemplate(editingId, input) : await createTemplate(bandId, input);
     setSaving(false);
     if (error || !data) {
-      setFormError(error?.message || 'Could not save the list.');
+      setFormError(error?.message || t('Could not save the list.'));
       return;
     }
-    setTemplates((prev) => (editingId ? prev.map((t) => (t.id === data.id ? data : t)) : [data, ...prev]));
+    setTemplates((prev) => (editingId ? prev.map((tpl) => (tpl.id === data.id ? data : tpl)) : [data, ...prev]));
     setSelectedTemplate((cur) => (cur && cur.id === data.id ? data : cur));
     setShowCreateModal(false);
     resetForm();
@@ -171,7 +181,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     const { data, error } = await insertStarterTemplates(bandId);
     setSeeding(false);
     if (error || !data) {
-      setListError(error?.message || 'Could not add the starter lists.');
+      setListError(error?.message || t('Could not add the starter lists.'));
       return;
     }
     setTemplates((prev) => [...data, ...prev]);
@@ -190,7 +200,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     const { data, error } = await duplicateTemplate(template);
     setBusyId(null);
     if (error || !data) {
-      setListError(`Couldn't duplicate "${template.name}". ${error?.message ?? ''}`.trim());
+      setListError(`${t('Couldn\'t duplicate "{name}".', { name: template.name })} ${error?.message ?? ''}`.trim());
       return;
     }
     setTemplates((prev) => [data, ...prev]);
@@ -207,10 +217,10 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setBusyId(null);
     setPendingDelete(null);
     if (error) {
-      setListError(`Couldn't delete "${template.name}". ${error.message}`);
+      setListError(`${t('Couldn\'t delete "{name}".', { name: template.name })} ${error.message}`);
       return;
     }
-    setTemplates((prev) => prev.filter((t) => t.id !== template.id));
+    setTemplates((prev) => prev.filter((tpl) => tpl.id !== template.id));
     setSelectedTemplate((cur) => (cur && cur.id === template.id ? null : cur));
   };
 
@@ -220,7 +230,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
     setFormName(template.name);
     setFormDescription(template.description);
     setFormCategory(template.category);
-    setFormTasks(template.tasks.map((t) => ({ ...t })));
+    setFormTasks(template.tasks.map((task) => ({ ...task })));
     setShowCreateModal(true);
     setMenuOpenId(null);
   };
@@ -234,18 +244,19 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
   const formatDueOffset = (offset?: number | null) => {
     if (offset == null || Number.isNaN(Number(offset))) return null;
     const n = Number(offset);
-    if (n === 0) return 'Day of event';
-    const days = Math.abs(n) === 1 ? 'day' : 'days';
-    return n < 0 ? `${Math.abs(n)} ${days} before` : `${n} ${days} after`;
+    if (n === 0) return t('Day of event');
+    const count = Math.abs(n);
+    if (n < 0) return count === 1 ? t('{count} day before', { count }) : t('{count} days before', { count });
+    return count === 1 ? t('{count} day after', { count }) : t('{count} days after', { count });
   };
 
   const offsetOptions = [
-    { value: -14, label: '14 days before' },
-    { value: -7, label: '7 days before' },
-    { value: -3, label: '3 days before' },
-    { value: -1, label: '1 day before' },
-    { value: 0, label: 'Day of event' },
-    { value: 1, label: '1 day after' },
+    { value: -14, label: t('{count} days before', { count: 14 }) },
+    { value: -7, label: t('{count} days before', { count: 7 }) },
+    { value: -3, label: t('{count} days before', { count: 3 }) },
+    { value: -1, label: t('{count} day before', { count: 1 }) },
+    { value: 0, label: t('Day of event') },
+    { value: 1, label: t('{count} day after', { count: 1 }) },
   ];
 
   return (
@@ -260,15 +271,15 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
       <ScreenHeader
         sticky
         onBack={onBack}
-        overline="Workflows & checklists"
-        title="To-do lists"
+        overline={t('Workflows & checklists')}
+        title={t('To-do lists')}
         actions={
-          <IconButton label="New to-do list" variant="filled" icon={<Plus />} onClick={openCreate} />
+          <IconButton label={t('New to-do list')} variant="filled" icon={<Plus />} onClick={openCreate} />
         }
       />
 
       <div className="flex-1 flex flex-col gap-4 px-4 pt-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
-        <SearchField value={searchQuery} onChange={setSearchQuery} label="Search to-do lists" placeholder="Search to-do lists…" />
+        <SearchField value={searchQuery} onChange={setSearchQuery} label={t('Search to-do lists')} placeholder={t('Search to-do lists…')} />
 
         {listError && <FormError>{listError}</FormError>}
 
@@ -280,28 +291,28 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <Card className="items-center text-center py-10 gap-4" role="alert">
             <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">Couldn't load the to-do lists</h2>
+              <h2 className="bw-h3">{t("Couldn't load the to-do lists")}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs [overflow-wrap:anywhere]">{loadError}</p>
             </div>
             <PillButton size="md" fullWidth={false} icon={<RefreshCw className="w-4 h-4" />} onClick={loadTemplates}>
-              Try again
+              {t('Try again')}
             </PillButton>
           </Card>
         ) : filteredTemplates.length === 0 ? (
           <Card className="items-center text-center py-10 gap-4">
             <LayoutTemplate className="w-10 h-10 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <h2 className="bw-h3">{searchQuery ? 'No matches' : 'No to-do lists yet'}</h2>
+              <h2 className="bw-h3">{searchQuery ? t('No matches') : t('No to-do lists yet')}</h2>
               <p className="bw-body-sm text-muted-foreground max-w-xs">
                 {searchQuery
-                  ? 'Try another name or description.'
-                  : 'Create reusable checklists for gigs, weddings, rehearsals or festival setups.'}
+                  ? t('Try another name or description.')
+                  : t('Create reusable checklists for gigs, weddings, rehearsals or festival setups.')}
               </p>
             </div>
             {!searchQuery && (
               <div className="flex flex-wrap justify-center gap-2">
                 <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-                  New to-do list
+                  {t('New to-do list')}
                 </PillButton>
                 <PillButton
                   size="md"
@@ -311,7 +322,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   loading={seeding}
                   onClick={handleAddStarters}
                 >
-                  Add starter lists
+                  {t('Add starter lists')}
                 </PillButton>
               </div>
             )}
@@ -320,7 +331,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
           <ul className="flex flex-col gap-4">
             {filteredTemplates.map((template, index) => {
               const category = CATEGORIES[template.category] || { label: template.category, tag: 'subtle' as TagStyle };
-              const summary = [`${template.tasks.length} ${template.tasks.length === 1 ? 'task' : 'tasks'}`, template.description]
+              const summary = [template.tasks.length === 1 ? t('{count} task', { count: 1 }) : t('{count} tasks', { count: template.tasks.length }), template.description]
                 .filter(Boolean)
                 .join(' · ');
               return (
@@ -334,13 +345,13 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   <Card className="relative">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                        <Tag variant={category.tag}>{category.label}</Tag>
-                        {template.is_default && <Tag variant="solid">Default</Tag>}
+                        <Tag variant={category.tag}>{categoryLabel[template.category] ?? category.label}</Tag>
+                        {template.is_default && <Tag variant="solid">{t('Default')}</Tag>}
                       </div>
                       <button
                         type="button"
                         onClick={() => setMenuOpenId(menuOpenId === template.id ? null : template.id)}
-                        aria-label={`Actions for ${template.name}`}
+                        aria-label={t('Actions for {name}', { name: template.name })}
                         aria-expanded={menuOpenId === template.id}
                         disabled={busyId === template.id}
                         className="relative z-10 -m-3 p-3 text-foreground"
@@ -372,10 +383,10 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         role="menu"
                       >
                         {[
-                          { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, run: () => handleDuplicate(template) },
-                          { label: 'Edit', icon: <Edit2 className="w-4 h-4" />, run: () => handleEdit(template) },
+                          { label: t('Duplicate'), icon: <Copy className="w-4 h-4" />, run: () => handleDuplicate(template) },
+                          { label: t('Edit'), icon: <Edit2 className="w-4 h-4" />, run: () => handleEdit(template) },
                           ...(!template.is_default
-                            ? [{ label: 'Delete', icon: <Trash2 className="w-4 h-4" />, run: () => { setMenuOpenId(null); setPendingDelete(template); }, danger: true }]
+                            ? [{ label: t('Delete'), icon: <Trash2 className="w-4 h-4" />, run: () => { setMenuOpenId(null); setPendingDelete(template); }, danger: true }]
                             : []),
                         ].map((item) => (
                           <button
@@ -410,18 +421,18 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         onClose={() => setSelectedTemplate(null)}
         portal
         zIndex={110}
-        overline="To-do list"
+        overline={t('To-do list')}
         title={selectedTemplate?.name ?? ''}
         footer={
           <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={handleUseTemplate}>
-            Use this list
+            {t('Use this list')}
           </PillButton>
         }
       >
         {selectedTemplate && (
           <div className="flex flex-col gap-4">
             {selectedTemplate.description && <p className="bw-body-md text-sheet-foreground/80">{selectedTemplate.description}</p>}
-            <p className="bw-label-sm text-sheet-foreground/85">Tasks ({selectedTemplate.tasks.length})</p>
+            <p className="bw-label-sm text-sheet-foreground/85">{t('Tasks ({count})', { count: selectedTemplate.tasks.length })}</p>
             <ol className="flex flex-col gap-2">
               {selectedTemplate.tasks.map((task, i) => {
                 const due = formatDueOffset(task.dueOffset);
@@ -440,7 +451,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                               {due}
                             </span>
                           )}
-                          {task.required && <Tag variant="accent">Required</Tag>}
+                          {task.required && <Tag variant="accent">{t('Required')}</Tag>}
                         </div>
                       )}
                     </div>
@@ -465,39 +476,39 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
             <ScreenHeader
                 pane
               onBack={closeForm}
-              overline={editingId ? 'To-do list' : 'New to-do list'}
-              title={editingId ? 'Edit to-do list' : 'New to-do list'}
+              overline={editingId ? t('To-do list') : t('New to-do list')}
+              title={editingId ? t('Edit to-do list') : t('New to-do list')}
               titleSize="h1"
             />
 
             <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8 max-w-xl mx-auto w-full flex flex-col gap-6">
               {formError && <FormError>{formError}</FormError>}
               <PillField
-                label="List name"
+                label={t('List name')}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="Festival preparation"
+                placeholder={t('Festival preparation')}
               />
               <PillField
-                label="Description"
+                label={t('Description')}
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Gear packing and stage protocol"
+                placeholder={t('Gear packing and stage protocol')}
               />
 
               <fieldset className="flex flex-col gap-2">
-                <legend className="bw-label-sm text-muted-foreground mb-2">Category</legend>
+                <legend className="bw-label-sm text-muted-foreground mb-2">{t('Category')}</legend>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(CATEGORIES) as TemplateCategory[]).map((cat) => (
                     <Selector key={cat} size="md" selected={formCategory === cat} onClick={() => setFormCategory(cat)}>
-                      {CATEGORIES[cat].label}
+                      {categoryLabel[cat]}
                     </Selector>
                   ))}
                 </div>
               </fieldset>
 
               <section className="flex flex-col gap-3">
-                <h2 className="bw-label-sm text-muted-foreground">Tasks ({formTasks.length})</h2>
+                <h2 className="bw-label-sm text-muted-foreground">{t('Tasks ({count})', { count: formTasks.length })}</h2>
                 {formTasks.length > 0 && (
                   <ol className="flex flex-col gap-2">
                     {formTasks.map((task, index) => (
@@ -508,10 +519,10 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                           <p className="bw-body-lg [overflow-wrap:anywhere]">{task.title}</p>
                           <p className="bw-body-sm text-muted-foreground">
-                            {[formatDueOffset(task.dueOffset), task.required ? 'Required' : 'Optional'].filter(Boolean).join(' · ')}
+                            {[formatDueOffset(task.dueOffset), task.required ? t('Required') : t('Optional')].filter(Boolean).join(' · ')}
                           </p>
                         </div>
-                        <IconButton label={`Remove ${task.title}`} variant="ghost" size="sm" icon={<X />} onClick={() => handleRemoveTask(task.id)} />
+                        <IconButton label={t('Remove {title}', { title: task.title })} variant="ghost" size="sm" icon={<X />} onClick={() => handleRemoveTask(task.id)} />
                       </li>
                     ))}
                   </ol>
@@ -519,14 +530,14 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
 
                 <Card className="gap-4">
                   <PillField
-                    label="New task"
+                    label={t('New task')}
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Charge in-ears"
+                    placeholder={t('Charge in-ears')}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
                   />
                   <div className="flex flex-col gap-2">
-                    <p className="bw-label-sm text-muted-foreground">Due</p>
+                    <p className="bw-label-sm text-muted-foreground">{t('Due')}</p>
                     <div className="flex flex-wrap gap-2">
                       {offsetOptions.map((o) => (
                         <Selector key={o.value} selected={newTaskOffset === o.value} onClick={() => setNewTaskOffset(o.value)}>
@@ -537,11 +548,11 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   </div>
                   <div className="flex items-center gap-3">
                     <Selector size="md" selected={newTaskRequired} onClick={() => setNewTaskRequired(!newTaskRequired)}>
-                      {newTaskRequired ? 'Required' : 'Optional'}
+                      {newTaskRequired ? t('Required') : t('Optional')}
                     </Selector>
                     <div className="flex-1" />
                     <PillButton size="md" variant="dark" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
-                      Add task
+                      {t('Add task')}
                     </PillButton>
                   </div>
                 </Card>
@@ -557,8 +568,10 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   icon={<CheckSquare className="w-[18px] h-[18px]" />}
                 >
                   {editingId
-                    ? 'Save changes'
-                    : `Create list (${tasksToSave.length} ${tasksToSave.length === 1 ? 'task' : 'tasks'})`}
+                    ? t('Save changes')
+                    : tasksToSave.length === 1
+                      ? t('Create list ({count} task)', { count: 1 })
+                      : t('Create list ({count} tasks)', { count: tasksToSave.length })}
                 </PillButton>
               </div>
             </div>
@@ -574,9 +587,9 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         userId={userId}
         bandId={bandId}
         onNew={(kind) => {
-          const t = usingTemplate;
+          const tpl = usingTemplate;
           setUsingTemplate(null);
-          if (t) onUseTemplate?.(t, kind);
+          if (tpl) onUseTemplate?.(tpl, kind);
         }}
         onAdded={(message) => {
           setUsingTemplate(null);
@@ -586,8 +599,8 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
 
       <DeleteChatSheet
         open={!!pendingDelete}
-        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : undefined}
-        body="The list is removed for the whole band. Events already created keep their tasks."
+        title={pendingDelete ? t('Delete "{name}"?', { name: pendingDelete.name }) : undefined}
+        body={t('The list is removed for the whole band. Events already created keep their tasks.')}
         deleting={!!pendingDelete && busyId === pendingDelete.id}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => pendingDelete && handleDelete(pendingDelete)}

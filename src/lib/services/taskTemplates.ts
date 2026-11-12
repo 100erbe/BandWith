@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { t } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Task templates (table `task_templates`, migrations 006 / 008).
@@ -35,7 +36,7 @@ export interface TemplateInput {
 
 type Result<T> = { data: T | null; error: Error | null };
 
-const NO_ROWS_MESSAGE = "This change wasn't saved: you don't have permission to manage this band's templates.";
+const noRowsMessage = () => t("This change wasn't saved: you don't have permission to manage this band's templates.");
 
 const asError = (err: unknown, fallback: string) => {
   const e = err as { message?: string } | null;
@@ -45,16 +46,16 @@ const asError = (err: unknown, fallback: string) => {
 const CATEGORIES: TemplateCategory[] = ['wedding', 'corporate', 'festival', 'private', 'rehearsal', 'other'];
 
 /** Normalises a DB row (tasks JSON may use snake_case or miss ids). */
-export const normalizeTemplate = (t: any): TaskTemplate => ({
-  id: t.id,
-  band_id: t.band_id,
-  name: t.name ?? '',
-  description: t.description ?? '',
-  category: CATEGORIES.includes(t.category) ? t.category : 'other',
-  is_default: !!t.is_default,
-  created_at: t.created_at ?? '',
-  tasks: (Array.isArray(t.tasks) ? t.tasks : []).map((task: any, i: number) => ({
-    id: String(task?.id ?? `${t.id}-${i}`),
+export const normalizeTemplate = (row: any): TaskTemplate => ({
+  id: row.id,
+  band_id: row.band_id,
+  name: row.name ?? '',
+  description: row.description ?? '',
+  category: CATEGORIES.includes(row.category) ? row.category : 'other',
+  is_default: !!row.is_default,
+  created_at: row.created_at ?? '',
+  tasks: (Array.isArray(row.tasks) ? row.tasks : []).map((task: any, i: number) => ({
+    id: String(task?.id ?? `${row.id}-${i}`),
     title: task?.title ?? '',
     dueOffset: task?.dueOffset ?? task?.due_offset ?? undefined,
     required: task?.required ?? false,
@@ -65,11 +66,11 @@ const toRow = (input: TemplateInput) => ({
   name: input.name.trim(),
   description: (input.description ?? '').trim() || null,
   category: input.category,
-  tasks: input.tasks.map((t) => ({
-    id: t.id,
-    title: t.title,
-    ...(t.dueOffset != null ? { dueOffset: t.dueOffset } : {}),
-    required: !!t.required,
+  tasks: input.tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    ...(task.dueOffset != null ? { dueOffset: task.dueOffset } : {}),
+    required: !!task.required,
   })),
 });
 
@@ -79,28 +80,28 @@ export async function listTemplates(bandId: string): Promise<Result<TaskTemplate
     .select('*')
     .eq('band_id', bandId)
     .order('created_at', { ascending: false });
-  if (error) return { data: null, error: asError(error, 'Could not load templates.') };
+  if (error) return { data: null, error: asError(error, t('Could not load templates.')) };
   return { data: (data || []).map(normalizeTemplate), error: null };
 }
 
 export async function createTemplate(bandId: string, input: TemplateInput, isDefault = false): Promise<Result<TaskTemplate>> {
-  if (!input.name.trim()) return { data: null, error: new Error('Give the template a name.') };
+  if (!input.name.trim()) return { data: null, error: new Error(t('Give the template a name.')) };
   const { data, error } = await supabase
     .from('task_templates')
     .insert({ band_id: bandId, ...toRow(input), is_default: isDefault })
     .select()
     .single();
-  if (error) return { data: null, error: asError(error, 'Could not save the template.') };
-  if (!data) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
+  if (error) return { data: null, error: asError(error, t('Could not save the template.')) };
+  if (!data) return { data: null, error: new Error(noRowsMessage()) };
   return { data: normalizeTemplate(data), error: null };
 }
 
 export async function updateTemplate(id: string, input: TemplateInput): Promise<Result<TaskTemplate>> {
-  if (!input.name.trim()) return { data: null, error: new Error('Give the template a name.') };
+  if (!input.name.trim()) return { data: null, error: new Error(t('Give the template a name.')) };
   const { data, error } = await supabase.from('task_templates').update(toRow(input)).eq('id', id).select();
-  if (error) return { data: null, error: asError(error, 'Could not save the template.') };
+  if (error) return { data: null, error: asError(error, t('Could not save the template.')) };
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
+  if (!row) return { data: null, error: new Error(noRowsMessage()) };
   return { data: normalizeTemplate(row), error: null };
 }
 
@@ -110,13 +111,13 @@ export const duplicateTemplate = (template: TaskTemplate) =>
     name: `${template.name} (Copy)`,
     description: template.description,
     category: template.category,
-    tasks: template.tasks.map((t) => ({ ...t })),
+    tasks: template.tasks.map((task) => ({ ...task })),
   });
 
 export async function deleteTemplate(id: string): Promise<{ error: Error | null }> {
   const { data, error } = await supabase.from('task_templates').delete().eq('id', id).select('id');
-  if (error) return { error: asError(error, 'Could not delete the template.') };
-  if (!data || (Array.isArray(data) && data.length === 0)) return { error: new Error(NO_ROWS_MESSAGE) };
+  if (error) return { error: asError(error, t('Could not delete the template.')) };
+  if (!data || (Array.isArray(data) && data.length === 0)) return { error: new Error(noRowsMessage()) };
   return { error: null };
 }
 
@@ -175,10 +176,10 @@ export const STARTER_TEMPLATES: TemplateInput[] = [
 export async function insertStarterTemplates(bandId: string): Promise<Result<TaskTemplate[]>> {
   const { data, error } = await supabase
     .from('task_templates')
-    .insert(STARTER_TEMPLATES.map((t) => ({ band_id: bandId, ...toRow(t), is_default: true })))
+    .insert(STARTER_TEMPLATES.map((tpl) => ({ band_id: bandId, ...toRow(tpl), is_default: true })))
     .select();
-  if (error) return { data: null, error: asError(error, 'Could not add the starter templates.') };
+  if (error) return { data: null, error: asError(error, t('Could not add the starter templates.')) };
   const rows = Array.isArray(data) ? data : data ? [data] : [];
-  if (rows.length === 0) return { data: null, error: new Error(NO_ROWS_MESSAGE) };
+  if (rows.length === 0) return { data: null, error: new Error(noRowsMessage()) };
   return { data: rows.map(normalizeTemplate), error: null };
 }
