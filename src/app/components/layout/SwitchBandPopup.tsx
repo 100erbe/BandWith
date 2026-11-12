@@ -6,6 +6,7 @@ import { Plus } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Band } from '@/app/data/bands';
 import { BwSheet, Tag } from '@/app/components/bw/Screen';
+import { useT } from '@/lib/i18n';
 
 interface SwitchBandPopupProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
   // it to the leading page so the list stays in view while the new band is
   // set up on the right ("Open · Home / Switch band | Band / Create band").
   const { twoPane } = useRailLayout();
+  const t = useT();
   const [docked, setDocked] = React.useState(false);
   React.useEffect(() => {
     if (!isOpen || !twoPane) setDocked(false);
@@ -39,7 +41,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
   // fixed layers on the leading page in iOS WebKit. Above a detail on the
   // trailing page (z 90), which it covers like the Figma frame.
   const sheet = (
-    <BwSheet open={isOpen} onClose={onClose} zIndex={95} overline="Select band" title="Your bands" leading={docked}>
+    <BwSheet open={isOpen} onClose={onClose} zIndex={95} overline={t('Select band')} title={t('Your bands')} leading={docked}>
       <div className="flex flex-col gap-3 pb-2">
         <ul className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto">
           {bands.map((band) => {
@@ -69,16 +71,16 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
                   <span className="flex-1 min-w-0 flex flex-col gap-1">
                     <span className="flex items-center gap-1.5 bw-label-xs">
                       {!isAdmin && <span className="w-2 h-2 rounded-full bg-accent shrink-0" aria-hidden />}
-                      {isAdmin ? 'Admin' : 'Member'}
+                      {isAdmin ? t('Admin') : t('Member')}
                     </span>
                     <span className="bw-h3 truncate">{band.name}</span>
                     <span className={cn('bw-body-sm', !isActive && 'text-sheet-foreground/70')}>
-                      {band.members} {band.members === 1 ? 'member' : 'members'}
+                      {band.members === 1 ? t('{count} member', { count: band.members }) : t('{count} members', { count: band.members })}
                     </span>
                   </span>
                   {isActive && (
                     <Tag variant="subtle" className="bg-white text-black">
-                      Active
+                      {t('Active')}
                     </Tag>
                   )}
                 </motion.button>
@@ -97,7 +99,7 @@ export const SwitchBandPopup: React.FC<SwitchBandPopupProps> = ({
           className="w-full h-[52px] rounded-full border-[1.5px] border-dashed border-sheet-foreground/70 flex items-center justify-center gap-2 text-sheet-foreground bw-button-md active:scale-[0.98] transition-transform"
         >
           <Plus className="w-[18px] h-[18px]" />
-          Create band
+          {t('Create band')}
         </button>
       </div>
     </BwSheet>

@@ -21,6 +21,7 @@ import { haptic } from '@/lib/haptics';
 import { springs } from '@/styles/motion';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { DuoRail } from './DuoRail';
+import { useT } from '@/lib/i18n';
 
 interface BottomNavigationProps {
   activeTab: TabName;
@@ -140,6 +141,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   isScrollingDown = false,
   unreadChatCount = 0,
 }) => {
+  const t = useT();
   const navRef = useRef<HTMLDivElement>(null);
   
   const [forceOpen, setForceOpen] = useState(false);
@@ -234,12 +236,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
 
   const tabs: TabDescriptor[] = [
-    { key: 'Home', label: 'Home', icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
-    { key: 'Events', label: 'Calendar', icon: IconCalendar, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
-    { key: 'Chat', label: 'Chat', icon: IconChat, isActive: isChatActive, badgeCount: unreadChatCount, onClick: () => handleTabClick('Chat') },
+    { key: 'Home', label: t('Home'), icon: IconHome, isActive: isHomeActive, onClick: () => handleTabClick('Home') },
+    { key: 'Events', label: t('Calendar'), icon: IconCalendar, isActive: isEventsActive, onClick: () => handleTabClick('Events') },
+    { key: 'Chat', label: t('Chat'), icon: IconChat, isActive: isChatActive, badgeCount: unreadChatCount, onClick: () => handleTabClick('Chat') },
     {
       key: 'Settings',
-      label: 'Settings',
+      label: t('Settings'),
       icon: IconMenu,
       isActive: isSettingsActive,
       onClick: () => {
@@ -270,8 +272,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       ? [{
           key: 'personal',
           type: 'personal' as CreateEventType,
-          title: 'Add personal gig',
-          description: 'Log your outside gig and track personal earnings.',
+          title: t('Add personal gig'),
+          description: t('Log your outside gig and track personal earnings.'),
           icon: <User />,
           tile: 'bg-accent-personal text-accent-personal-foreground',
         }]
@@ -280,8 +282,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       ? [{
           key: 'gig',
           type: 'gig' as CreateEventType,
-          title: 'New gig',
-          description: 'Lineup, fees, venue and setlist',
+          title: t('New gig'),
+          description: t('Lineup, fees, venue and setlist'),
           icon: <Music />,
           tile: 'bg-accent-gig text-accent-gig-foreground',
         }]
@@ -289,8 +291,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     {
       key: 'rehearsal',
       type: 'rehearsal' as CreateEventType,
-      title: isAdmin ? 'New rehearsal' : 'Propose rehearsal',
-      description: isAdmin ? 'Schedule directly or poll availability' : 'Suggest a date or topic to the band admin.',
+      title: isAdmin ? t('New rehearsal') : t('Propose rehearsal'),
+      description: isAdmin ? t('Schedule directly or poll availability') : t('Suggest a date or topic to the band admin.'),
       icon: <Mic />,
       tile: 'bg-accent-rehearsal text-accent-rehearsal-foreground',
     },
@@ -299,16 +301,16 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           {
             key: 'quote',
             type: 'quote' as CreateEventType,
-            title: 'New quote',
-            description: 'Branded PDF with pricing & terms',
+            title: t('New quote'),
+            description: t('Branded PDF with pricing & terms'),
             icon: <File />,
             tile: 'bg-accent-quote text-accent-quote-foreground',
           },
           {
             key: 'log-personal',
             type: 'personal' as CreateEventType,
-            title: 'Log personal gig',
-            description: 'Log an outside solo gig without inviting band members.',
+            title: t('Log personal gig'),
+            description: t('Log an outside solo gig without inviting band members.'),
             icon: <User />,
             tile: 'bg-sheet-foreground/[0.08] text-sheet-foreground',
             muted: true,
@@ -324,8 +326,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       <BwSheet
         open={isPlusMenuOpen}
         onClose={() => setIsPlusMenuOpen(false)}
-        overline="Start"
-        title="Create"
+        overline={t('Start')}
+        title={t('Create')}
         // Bottom bar: just under the bar (z-80). Duo rail: above the detail
         // panes, still under the rail (z-190).
         zIndex={rail ? 150 : 79}
@@ -368,7 +370,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
       {rail ? (
         <DuoRail
-          tabs={tabs.filter((t) => t.key !== 'Settings')}
+          tabs={tabs.filter((tab) => tab.key !== 'Settings')}
           isPlusMenuOpen={isPlusMenuOpen}
           onPlus={() => {
             haptic.tap();
@@ -414,7 +416,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           <div className="relative z-10 w-[60px] h-11 flex items-center justify-center">
             <motion.button
               type="button"
-              aria-label={isPlusMenuOpen ? 'Close create menu' : 'Create'}
+              aria-label={isPlusMenuOpen ? t('Close create menu') : t('Create')}
               aria-expanded={isPlusMenuOpen}
               onClick={() => {
                 haptic.tap();

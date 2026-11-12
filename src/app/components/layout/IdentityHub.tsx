@@ -37,6 +37,7 @@ import { useBand } from '@/lib/BandContext';
 import { updateBand } from '@/lib/services/bands';
 import { uploadBandBrandingAsset, getBandPricing, saveBandPricing } from '@/lib/services/pricing';
 import { personName, personInitials, hasRealName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 interface NotificationGroup {
   type: string;
@@ -96,6 +97,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   onBandUpdated,
 }) => {
   const { signOut, user, profile } = useAuth();
+  const t = useT();
   const { mode, setMode, resolvedTheme } = useTheme();
   const {
     isAdmin: isBandAdmin,
@@ -238,7 +240,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
       if (error) {
         setPushEnabled(prev.push);
         setEmailEnabled(prev.email);
-        setAlertsError(`Couldn’t save notifications: ${error.message}`);
+        setAlertsError(t('Couldn’t save notifications: {error}', { error: error.message }));
       }
     });
   };
@@ -252,7 +254,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
     try {
       await exportMyData();
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Couldn’t export your data.');
+      setExportError(err instanceof Error ? err.message : t('Couldn’t export your data.'));
     } finally {
       setExporting(false);
     }
@@ -273,15 +275,15 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
   const notificationStatus =
     pushEnabled && emailEnabled
-      ? 'Push & email alerts enabled'
+      ? t('Push & email alerts enabled')
       : pushEnabled
-        ? 'Push alerts enabled'
+        ? t('Push alerts enabled')
         : emailEnabled
-          ? 'Email alerts enabled'
-          : 'Alerts off';
+          ? t('Email alerts enabled')
+          : t('Alerts off');
 
-  const displayName = personName({ full_name: profile?.full_name, email: user?.email }, 'User');
-  const displayEmail = user?.email || 'No email attached';
+  const displayName = personName({ full_name: profile?.full_name, email: user?.email }, t('User'));
+  const displayEmail = user?.email || t('No email attached');
   // No name yet: the address stands in for it, and the card asks for a name.
   const missingName = !hasRealName({ full_name: profile?.full_name, email: user?.email });
   const displayInitials = personInitials({ full_name: profile?.full_name, email: user?.email }, 'BW');
@@ -318,30 +320,30 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
   const assetShortcuts = [
     {
       id: 'REPERTOIRE',
-      label: 'Repertoire',
+      label: t('Repertoire'),
       count: entityCounts?.repertoire ?? 0,
-      unit: 'songs',
+      unit: t('songs'),
       icon: Music,
     },
     {
       id: 'INVENTORY',
-      label: 'Gear & inventory',
+      label: t('Gear & inventory'),
       count: entityCounts?.inventory ?? 0,
-      unit: 'items',
+      unit: t('items'),
       icon: Box,
     },
     {
       id: 'DOCUMENTS',
-      label: 'Contracts & docs',
+      label: t('Contracts & docs'),
       count: entityCounts?.documents ?? 0,
-      unit: 'files',
+      unit: t('files'),
       icon: FileSignature,
     },
     {
       id: 'TEMPLATES',
-      label: 'To-do lists',
+      label: t('To-do lists'),
       count: entityCounts?.templates ?? 0,
-      unit: 'lists',
+      unit: t('lists'),
       icon: CheckSquare,
     },
   ];
@@ -397,7 +399,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     style={{ willChange: 'transform' }}
                     className="bw-label-sm text-muted-foreground h-[14px] flex items-center origin-top-left"
                   >
-                    Identity & account
+                    {t('Identity & account')}
                   </motion.span>
                   <motion.h1
                     initial={false}
@@ -409,12 +411,12 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     style={{ willChange: 'transform' }}
                     className="bw-display-lg text-foreground origin-top-left whitespace-nowrap"
                   >
-                    Who you are
+                    {t('Who you are')}
                   </motion.h1>
                 </div>
                 {(showCloseButton || railChrome) && (
                   <HeaderAction
-                    label="Close Account Hub"
+                    label={t('Close Account Hub')}
                     variant="filled"
                     railProminent={false}
                     icon={<X />}
@@ -429,7 +431,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
           {/* ═══ SCROLLABLE CONTENT ═══ */}
           <div className="px-4 pt-5 pb-2 max-w-xl mx-auto w-full flex flex-col gap-4">
             {/* ═══ 1. PROFILE CARD ═══ */}
-            <section aria-label="Your profile" className={cn('p-5 rounded-[24px]', HUB_CARD)}>
+            <section aria-label={t('Your profile')} className={cn('p-5 rounded-[24px]', HUB_CARD)}>
               <div className="flex items-center gap-4">
                 {profile?.avatar_url ? (
                   <img
@@ -460,9 +462,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                       displayName
                     )}
                   </h2>
-                  <span className="bw-body-sm text-muted-foreground truncate">{missingName ? 'No name yet' : displayEmail}</span>
+                  <span className="bw-body-sm text-muted-foreground truncate">{missingName ? t('No name yet') : displayEmail}</span>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Tag variant={isAdmin ? 'accent' : 'subtle'}>{myInstrument || roleLabel}</Tag>
+                    <Tag variant={isAdmin ? 'accent' : 'subtle'}>{myInstrument || (roleLabel === 'ADMIN' ? t('Admin') : roleLabel === 'MEMBER' ? t('Member') : roleLabel)}</Tag>
                   </div>
                 </div>
                 <button
@@ -473,7 +475,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   className="h-9 px-2 -mr-2 rounded-full flex items-center gap-2 text-accent-ink bw-button-sm shrink-0 self-start mt-1 active:scale-95 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Edit3 aria-hidden className="w-3.5 h-3.5" />
-                  <span>Edit</span>
+                  <span>{t('Edit')}</span>
                 </button>
               </div>
               {missingName && (
@@ -483,8 +485,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   className="mt-4 w-full rounded-[16px] bg-accent text-accent-foreground px-4 py-3 flex items-center justify-between gap-3 text-left active:scale-[0.99] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="flex flex-col gap-0.5 min-w-0">
-                    <span className="bw-label-md">Add your name</span>
-                    <span className="bw-body-sm opacity-80">Your band sees your email until you do.</span>
+                    <span className="bw-label-md">{t('Add your name')}</span>
+                    <span className="bw-body-sm opacity-80">{t('Your band sees your email until you do.')}</span>
                   </span>
                   <ArrowUpRight aria-hidden className="w-4 h-4 shrink-0" />
                 </button>
@@ -493,7 +495,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
             {/* ═══ 2. CURRENT BAND & LINEUP ═══ */}
             <section
-              aria-label="Current band"
+              aria-label={t('Current band')}
               className={cn('p-5 rounded-[24px] flex flex-col gap-4', HUB_CARD)}
             >
               {/* Band identity row */}
@@ -516,9 +518,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   </h3>
                   <div className="flex items-center gap-1 flex-wrap">
                     <Tag>
-                      {lineupCount} {lineupCount === 1 ? 'musician' : 'musicians'}
+                      {lineupCount === 1 ? t('{count} musician', { count: lineupCount }) : t('{count} musicians', { count: lineupCount })}
                     </Tag>
-                    <Tag>{isAdmin ? 'Band admin' : 'Band member'}</Tag>
+                    <Tag>{isAdmin ? t('Band admin') : t('Band member')}</Tag>
                   </div>
                   {(activeBandDetails?.home_base_address || activeBandDetails?.description) && (
                     <span className="bw-body-sm text-muted-foreground truncate">
@@ -546,7 +548,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     ) : (
                       <Edit3 aria-hidden className="w-3.5 h-3.5" />
                     )}
-                    <span>{isEditingBandDetails ? 'Close' : 'Edit'}</span>
+                    <span>{isEditingBandDetails ? t('Close') : t('Edit')}</span>
                   </button>
                 )}
               </div>
@@ -569,7 +571,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           {editBandLogoUrl ? (
                             <img
                               src={editBandLogoUrl}
-                              alt="Band Emblem"
+                              alt={t('Band logo')}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -577,9 +579,9 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           )}
                         </div>
                         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-                          <span className="bw-label-md text-foreground">Band logo</span>
+                          <span className="bw-label-md text-foreground">{t('Band logo')}</span>
                           <span className="bw-body-sm text-muted-foreground truncate">
-                            Band card, switcher & quote PDFs
+                            {t('Band card, switcher & quote PDFs')}
                           </span>
                         </div>
 
@@ -599,11 +601,11 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                             loading={uploadingBandLogo}
                             icon={<Upload aria-hidden className="w-3.5 h-3.5" />}
                           >
-                            {editBandLogoUrl ? 'Change' : 'Upload'}
+                            {editBandLogoUrl ? t('Change') : t('Upload')}
                           </PillButton>
                           {editBandLogoUrl && (
                             <IconButton
-                              label="Remove logo"
+                              label={t('Remove logo')}
                               variant="ghost"
                               size="sm"
                               icon={<Trash2 aria-hidden />}
@@ -616,18 +618,18 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
                       <PillField
                         id="hub-band-name"
-                        label="Band name"
+                        label={t('Band name')}
                         type="text"
                         required
                         value={editBandName}
                         onChange={(e) => setEditBandName(e.target.value)}
-                        placeholder="e.g. Bandazz"
+                        placeholder={t('e.g. Bandazz')}
                       />
 
                       {/* Home base city with place suggestions (same search as venues). */}
                       <div className="flex flex-col gap-2 w-full">
                         <label htmlFor="hub-band-city" className="bw-label-sm text-muted-foreground">
-                          Home base city
+                          {t('Home base city')}
                         </label>
                         <div className="flex items-center gap-3 h-[52px] px-4 rounded-full border bg-field border-border text-foreground focus-within:border-2 focus-within:border-foreground">
                           <VenueAutocomplete
@@ -647,8 +649,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                                   : null,
                               );
                             }}
-                            heading="Suggested places"
-                            placeholder="Start typing a city"
+                            heading={t('Suggested places')}
+                            placeholder={t('Start typing a city')}
                             className="text-[18px] font-medium normal-case"
                           />
                         </div>
@@ -656,11 +658,11 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
 
                       <PillField
                         id="hub-band-bio"
-                        label="Band bio / tagline (optional)"
+                        label={t('Band bio / tagline (optional)')}
                         type="text"
                         value={editBandDescription}
                         onChange={(e) => setEditBandDescription(e.target.value)}
-                        placeholder="e.g. Live Funk, Soul & Disco Collective"
+                        placeholder={t('e.g. Live Funk, Soul & Disco Collective')}
                       />
 
                       <div className="flex items-center gap-3">
@@ -670,7 +672,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           className="flex-1 min-w-0"
                           onClick={() => setIsEditingBandDetails(false)}
                         >
-                          Cancel
+                          {t('Cancel')}
                         </PillButton>
                         <PillButton
                           type="submit"
@@ -680,7 +682,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           disabled={!editBandName.trim()}
                           icon={<Check aria-hidden className="w-4 h-4" />}
                         >
-                          Save details
+                          {t('Save details')}
                         </PillButton>
                       </div>
                     </div>
@@ -694,10 +696,10 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                 onClick={() => {
                   onEditBand?.();
                 }}
-                aria-label={`Members (${lineupCount})`}
+                aria-label={t('Members ({count})', { count: lineupCount })}
                 className="w-full px-4 py-3 rounded-full bg-foreground/[0.08] flex items-center gap-3 text-left transition-colors hover:bg-foreground/[0.12] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span className="bw-label-md text-foreground flex-1 min-w-0 truncate">Members</span>
+                <span className="bw-label-md text-foreground flex-1 min-w-0 truncate">{t('Members')}</span>
                 {rosterMembers.length > 0 ? (
                   <span className="flex items-center shrink-0" aria-hidden>
                     {rosterMembers.slice(0, 4).map((m) => {
@@ -748,14 +750,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     }
                   }}
                 >
-                  Band settings
+                  {t('Band settings')}
                 </PillButton>
               )}
 
               {/* Band Switcher / Multi-Band Section */}
               {bands.length > 1 ? (
                 <div className="flex flex-col gap-3 pt-1">
-                  <span className="bw-label-sm text-muted-foreground">Your bands ({bands.length})</span>
+                  <span className="bw-label-sm text-muted-foreground">{t('Your bands ({count})', { count: bands.length })}</span>
 
                   <div className="flex flex-col gap-2">
                     {bands.map((b) => {
@@ -791,7 +793,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                               {!isActive && (
                                 <span aria-hidden className="w-2 h-2 rounded-full bg-accent shrink-0" />
                               )}
-                              {b.role === 'ADMIN' ? 'Admin' : 'Member'}
+                              {b.role === 'ADMIN' ? t('Admin') : t('Member')}
                             </span>
                             <span className="bw-h3 truncate">{b.name}</span>
                             <span
@@ -800,13 +802,13 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                                 isActive ? 'text-accent-foreground/70' : 'text-muted-foreground'
                               )}
                             >
-                              {b.members} {b.members === 1 ? 'member' : 'members'}
+                              {b.members === 1 ? t('{count} member', { count: b.members }) : t('{count} members', { count: b.members })}
                             </span>
                           </span>
                           {isActive ? (
-                            <Tag variant="solid">Active</Tag>
+                            <Tag variant="solid">{t('Active')}</Tag>
                           ) : (
-                            <span className="bw-label-xs text-muted-foreground shrink-0">Switch</span>
+                            <span className="bw-label-xs text-muted-foreground shrink-0">{t('Switch')}</span>
                           )}
                         </button>
                       );
@@ -814,12 +816,12 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                   </div>
 
                   <PillButton size="md" variant="outline" icon={<Plus aria-hidden className="w-4 h-4" />} onClick={() => onAddEntity?.()}>
-                    New band
+                    {t('New band')}
                   </PillButton>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-3">
-                  <span className="bw-body-sm text-muted-foreground">Playing in another act?</span>
+                  <span className="bw-body-sm text-muted-foreground">{t('Playing in another act?')}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -827,14 +829,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                     }}
                     className="h-9 px-2 -mr-2 rounded-full text-accent-ink bw-button-sm flex items-center gap-1 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <Plus aria-hidden className="w-3 h-3" /> New band
+                    <Plus aria-hidden className="w-3 h-3" /> {t('New band')}
                   </button>
                 </div>
               )}
             </section>
 
             {/* ═══ 3. BAND ASSETS & WORKFLOWS ═══ */}
-            <h2 className="bw-label-md text-foreground">Band assets & workflows</h2>
+            <h2 className="bw-label-md text-foreground">{t('Band assets & workflows')}</h2>
 
             <div className="grid grid-cols-2 gap-3">
               {assetShortcuts.map((item) => {
@@ -875,33 +877,33 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               >
                 <CurrencyIcon aria-hidden className="w-6 h-6 shrink-0" />
                 <span className="flex flex-col gap-1 min-w-0 flex-1">
-                  <span className="bw-label-md">Pricing, fees & services</span>
-                  <span className="bw-body-sm">Logo, bank account, musician fees & quote services</span>
+                  <span className="bw-label-md">{t('Pricing, fees & services')}</span>
+                  <span className="bw-body-sm">{t('Logo, bank account, musician fees & quote services')}</span>
                 </span>
                 <ArrowUpRight aria-hidden className="w-5 h-5 shrink-0" />
               </button>
             )}
 
             {/* ═══ 4. APP SETTINGS ═══ */}
-            <h2 className="bw-label-md text-foreground">App settings</h2>
+            <h2 className="bw-label-md text-foreground">{t('App settings')}</h2>
 
             <div className={cn('p-4 rounded-[24px] flex flex-col gap-3', HUB_CARD)}>
               {/* Appearance / Theme */}
-              <span className="bw-label-sm text-muted-foreground">Appearance</span>
-              <div role="group" aria-label="Theme" className="flex items-center gap-2">
+              <span className="bw-label-sm text-muted-foreground">{t('Appearance')}</span>
+              <div role="group" aria-label={t('Theme')} className="flex items-center gap-2">
                 {[
-                  { id: 'light' as const, label: 'Light' },
-                  { id: 'dark' as const, label: 'Dark' },
-                  { id: 'system' as const, label: 'System' },
-                ].map((t) => {
-                  const isSelected = mode === t.id;
+                  { id: 'light' as const, label: t('Light') },
+                  { id: 'dark' as const, label: t('Dark') },
+                  { id: 'system' as const, label: t('System') },
+                ].map((opt) => {
+                  const isSelected = mode === opt.id;
                   return (
                     <button
-                      key={t.id}
+                      key={opt.id}
                       type="button"
                       aria-pressed={isSelected}
-                      title={t.id === 'system' ? `System (${resolvedTheme})` : undefined}
-                      onClick={() => setMode(t.id)}
+                      title={opt.id === 'system' ? t('System ({theme})', { theme: resolvedTheme === 'dark' ? t('dark') : t('light') }) : undefined}
+                      onClick={() => setMode(opt.id)}
                       className={cn(
                         'flex-1 min-w-0 h-9 px-4 rounded-full bw-label-md flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         isSelected
@@ -909,7 +911,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
                           : 'border border-border text-muted-foreground hover:text-foreground'
                       )}
                     >
-                      {t.label}
+                      {opt.label}
                     </button>
                   );
                 })}
@@ -918,14 +920,14 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               {/* Notifications (Figma: one row, one master toggle) */}
               <div className="p-4 rounded-[16px] flex items-center gap-3">
                 <span className="flex flex-col gap-1 min-w-0 flex-1">
-                  <span className="bw-body-lg">Notifications</span>
+                  <span className="bw-body-lg">{t('Notifications')}</span>
                   <span className="bw-body-sm text-muted-foreground">{notificationStatus}</span>
                 </span>
                 <Toggle
                   checked={alertsOn}
                   onCheckedChange={handleToggleAlerts}
                   disabled={savingAlerts}
-                  aria-label="Notifications"
+                  aria-label={t('Notifications')}
                 />
               </div>
               {alertsError && (
@@ -940,8 +942,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
               <ListRow
                 className="dark:bg-sheet"
                 icon={<IconSettings />}
-                title="Settings & account"
-                subtitle="Privacy, language, delete account"
+                title={t('Settings & account')}
+                subtitle={t('Privacy, language, delete account')}
                 onClick={() => onOpenSettings('main')}
               />
             )}
@@ -950,7 +952,7 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <ListRow
               className="dark:bg-sheet"
               icon={<Mail />}
-              title="Help & support"
+              title={t('Help & support')}
               subtitle="support@bandwith.app"
               onClick={() =>
                 window.open('mailto:support@bandwith.app?subject=BandWith%20Help%20Request', '_blank')
@@ -961,8 +963,8 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <ListRow
               className="dark:bg-sheet"
               icon={<Download />}
-              title="Export my data"
-              subtitle={exporting ? 'Preparing your file…' : 'Download a JSON copy'}
+              title={t('Export my data')}
+              subtitle={exporting ? t('Preparing your file…') : t('Download a JSON copy')}
               onClick={handleExport}
             />
             {exportError && (
@@ -975,15 +977,15 @@ export const IdentityHub: React.FC<IdentityHubProps> = ({
             <PillButton
               variant="outline"
               onClick={handleLogout}
-              title={`Sign out (${displayEmail})`}
+              title={t('Sign out ({email})', { email: displayEmail })}
               icon={<LogOut aria-hidden className="w-5 h-5" />}
               className="border-destructive text-destructive"
             >
-              Sign out
+              {t('Sign out')}
             </PillButton>
 
             {/* Footer */}
-            <p className="bw-label-sm text-muted-foreground">v1.0.0 · All data encrypted</p>
+            <p className="bw-label-sm text-muted-foreground">{t('v{version} · All data encrypted', { version: '1.0.0' })}</p>
 
             {/* Bottom clearance spacer ensuring the footer cleanly clears the floating navbar */}
             <div

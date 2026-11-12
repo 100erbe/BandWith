@@ -16,6 +16,7 @@ import { RailHeaderActions, useRailOwnsChrome } from '@/lib/railActions';
 import { HEADER_SPRING, durations } from '@/styles/motion';
 import { FIT, FitText } from '@/app/components/bw/FitText';
 import { primeKeyboard } from '@/lib/keyboardSafeTap';
+import { useT } from '@/lib/i18n';
 
 export { HEADER_SPRING };
 
@@ -51,6 +52,11 @@ export const Header: React.FC<HeaderProps> = ({
   isScrolled = false,
 }) => {
   const { profile } = useAuth();
+  const t = useT();
+  const calendarTitle = t('Calendar');
+  // The Calendar title is sized for the 8 letters of "Calendar"; a longer word shrinks to fit.
+  const calendarDivisor = +(4.9 * Math.max(1, calendarTitle.length / 8)).toFixed(3);
+  const notificationsLabel = unreadCount > 0 ? t('Notifications ({count} unread)', { count: unreadCount }) : t('Notifications');
   // iPhone Duo: search and the profile live in the side rail (Figma "Duo/Side Actions").
   const railOwnsChrome = useRailOwnsChrome();
   
@@ -148,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform, opacity' }}
                 className="bw-label-sm text-muted-foreground leading-none origin-top-left truncate h-[13px]"
               >
-                Messages
+                {t('Messages')}
               </motion.span>
               <motion.h1
                 initial={false}
@@ -160,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
                 style={{ willChange: 'transform' }}
                 className="bw-display-lg text-foreground origin-top-left"
               >
-                Chat
+                {t('Chat')}
               </motion.h1>
             </div>
           ) : activeTab === 'Events' ? (
@@ -185,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
                   aria-hidden
                 />
                 <span className="bw-label-md text-foreground font-semibold truncate">{selectedBand.name}</span>
-                <span className="bw-label-md text-muted-foreground shrink-0">· Schedule</span>
+                <span className="bw-label-md text-muted-foreground shrink-0">· {t('Schedule')}</span>
               </motion.span>
               <motion.h1
                 initial={false}
@@ -195,9 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
                 transition={HEADER_SPRING}
                 className="bw-display-lg text-foreground origin-top-left"
-                style={{ willChange: 'transform', fontSize: 'min(44px, calc((100vw - 100px) / 4.9))' }}
+                style={{ willChange: 'transform', fontSize: `min(44px, calc((100vw - 100px) / ${calendarDivisor}))` }}
               >
-                Calendar
+                {calendarTitle}
               </motion.h1>
             </div>
           ) : (
@@ -218,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({
                   selectedBand.role === 'ADMIN' ? "bg-destructive-solid" : "bg-accent"
                 )} />
                 <span className="bw-label-sm text-foreground leading-none">
-                  {selectedBand.role}
+                  {selectedBand.role === 'ADMIN' ? t('Admin') : t('Member')}
                 </span>
               </motion.div>
 
@@ -273,7 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
                     }}
                     className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors origin-top-left"
                   >
-                    <span className="bw-label-sm leading-none">Switch band</span>
+                    <span className="bw-label-sm leading-none">{t('Switch band')}</span>
                     <ChevronDown className="w-3 h-3 transition-transform group-hover:translate-y-0.5" />
                   </motion.div>
                 </button>
@@ -305,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
             <RailHeaderActions base>
               {activeTab === 'Chat' ? (
                 <IconButton
-                  label="New chat"
+                  label={t('New chat')}
                   variant="filled"
                   icon={<Plus />}
                   railIcon={<Edit />}
@@ -313,7 +319,7 @@ export const Header: React.FC<HeaderProps> = ({
                 />
               ) : activeTab === 'Events' ? null : (
                 <IconButton
-                  label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                  label={notificationsLabel}
                   variant="ghost"
                   icon={<Bell />}
                   railBadge={unreadCount}
@@ -328,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({
             {activeTab === 'Chat' ? (
               /* Figma "Chat / Inbox": a single filled "+" starts a new conversation */
               <IconButton
-                label="New chat"
+                label={t('New chat')}
                 variant="filled"
                 icon={<Plus />}
                 onClick={() => window.dispatchEvent(new CustomEvent('bw:new-chat'))}
@@ -336,7 +342,7 @@ export const Header: React.FC<HeaderProps> = ({
             ) : activeTab === 'Events' ? (
               /* Figma "Calendar": a single Outline search button opens "Search events" */
               railOwnsChrome ? null : <IconButton
-                label="Search events"
+                label={t('Search events')}
                 icon={<Search />}
                 onClick={() => {
                   primeKeyboard(); // keyboard up with the tap; the search field takes the focus
@@ -351,7 +357,7 @@ export const Header: React.FC<HeaderProps> = ({
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={onOpenNotifications}
-              aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+              aria-label={notificationsLabel}
               className="relative shrink-0 w-11 h-11 rounded-full border-[1.5px] border-foreground text-foreground flex items-center justify-center transition-colors hover:bg-foreground/[0.08] focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground cursor-pointer"
             >
               <Bell className="w-5 h-5 text-foreground" />
@@ -377,7 +383,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onOpenIdentity}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
-              aria-label="Open Identity and Account Hub"
+              aria-label={t('Open Identity and Account Hub')}
               className="relative shrink-0 w-11 h-11 rounded-full bg-white border-[1.5px] border-border text-black flex items-center justify-center bw-h3 transition-colors focus:outline-none overflow-hidden cursor-pointer"
             >
               {profile?.avatar_url ? (
@@ -410,7 +416,7 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <img 
                         src={profile.avatar_url} 
-                        alt="Profile" 
+                        alt={t('Profile')} 
                         className="w-full h-full object-cover select-none pointer-events-none" 
                       />
                     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@/lib/i18n';
 import { cn } from '@/app/components/ui/utils';
 import { parseLocalDate } from '@/lib/dates';
 
@@ -25,11 +26,11 @@ export function daysFromToday(date: string | null | undefined, now = new Date())
 
 export function relativeDays(n: number | null): string | null {
   if (n === null) return null;
-  if (n === 0) return 'Today';
-  if (n === 1) return 'Tomorrow';
-  if (n > 1) return `In ${n} days`;
-  if (n === -1) return 'Yesterday';
-  return `${-n} days ago`;
+  if (n === 0) return t('Today');
+  if (n === 1) return t('Tomorrow');
+  if (n > 1) return t('In {count} days', { count: n });
+  if (n === -1) return t('Yesterday');
+  return t('{count} days ago', { count: -n });
 }
 
 /** "19:00" from "19:00", "19:00:00" or "7:00"; null when empty. */

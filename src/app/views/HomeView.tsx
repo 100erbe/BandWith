@@ -10,7 +10,7 @@ import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
 import { useBand } from '@/lib/BandContext';
-import { APP_COPY } from '@/app/constants/copy';
+import { useT } from '@/lib/i18n';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
@@ -217,6 +217,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onOpenEventDraft,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
+  const t = useT();
   // Use the band context for role, fall back to prop for backwards compatibility
   const { isAdmin: isAdminFromContext, selectedBand: contextBand } = useBand();
   const isAdmin = isAdminFromContext ?? _isAdminProp;
@@ -437,7 +438,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return {
       id,
       kind: isRehearsal(gig) ? 'rehearsal' : 'gig',
-      title: gig.title || APP_COPY.home.nextEvents.untitledEvent,
+      title: gig.title || t('Untitled Event'),
       date: String(gig.event_date || gig.date).slice(0, 10),
       venue: gig.venue_name || gig.venueName || (typeof gig.location === 'string' && gig.location !== 'TBD' ? gig.location : null) || null,
       city: gig.venue_city || gig.venueCity || null,
@@ -447,7 +448,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       lineup,
       fee: Number.isFinite(fee) && fee > 0 ? fee : null,
     };
-  }, [dashboardData?.upcomingEvents, eventMembersMap]);
+  }, [dashboardData?.upcomingEvents, eventMembersMap, t]);
 
   const deskActionItems = useMemo<DeskActionItem[]>(() => {
     const items: DeskActionItem[] = [];
@@ -457,8 +458,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       if (p.status === 'polling' && voted) continue;
       items.push({
         id: `poll-${p.id}`,
-        title: p.title || 'Rehearsal poll',
-        detail: p.status === 'proposed' ? 'Rehearsal proposal · build a poll' : 'Rehearsal poll · vote on dates',
+        title: p.title || t('Rehearsal poll'),
+        detail: p.status === 'proposed' ? t('Rehearsal proposal · build a poll') : t('Rehearsal poll · vote on dates'),
         kind: 'rehearsal',
         urgent: p.status === 'polling',
         onSelect: onOpenPoll ? () => onOpenPoll(p) : undefined,
@@ -475,8 +476,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
         const d = raw ? parseLocalDate(raw) : null;
         items.push({
           id: `rsvp-${id}`,
-          title: e.title || APP_COPY.home.nextEvents.untitledEvent,
-          detail: ['RSVP', d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null]
+          title: e.title || t('Untitled Event'),
+          detail: [t('RSVP'), d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null]
             .filter(Boolean)
             .join(' · '),
           kind: (e.event_type || e.eventType) === 'rehearsal' ? 'rehearsal' : 'gig',
@@ -486,7 +487,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       }
     }
     return items;
-  }, [activePolls, onOpenPoll, currentUserId, eventMembersMap, dashboardData?.upcomingEvents, onSelectEvent]);
+  }, [activePolls, onOpenPoll, currentUserId, eventMembersMap, dashboardData?.upcomingEvents, onSelectEvent, t]);
 
   // Each create button shows only when the host passes its handler (role rules live there).
   const bandDesk = (
@@ -532,11 +533,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   })();
 
   const QUICK_LABELS: Record<string, string> = {
-    'Setlist & Repertoire': 'Repertoire',
-    'Band Members': 'Members',
-    Inventory: 'Gear list',
-    'Task Templates': 'To-do lists',
-    'Contracts & Riders': 'Contracts',
+    'Setlist & Repertoire': t('Repertoire'),
+    'Band Members': t('Members'),
+    Inventory: t('Gear list'),
+    'Task Templates': t('To-do lists'),
+    'Contracts & Riders': t('Contracts'),
   };
 
   const shortMoney = (value: number) => formatRevenue(value).replace('.0k', 'k');
@@ -576,8 +577,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   const upcomingTime = (event: any): string | undefined => {
-    const t = event.start_time || event.time;
-    return t ? formatEventTime(t) || undefined : undefined;
+    const time = event.start_time || event.time;
+    return time ? formatEventTime(time) || undefined : undefined;
   };
 
   const upcomingValue = (event: any): string | undefined => {
@@ -605,10 +606,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       return join([venue || where, formatClock24(event.start_time || event.time)]);
     }
     if (upcomingKind(event) === 'personal') {
-      return join([APP_COPY.home.nextEvents.soloGigMeta, where || venue]);
+      return join([t('Solo gig'), where || venue]);
     }
     if (!isAdmin && myFeeFor(event)) {
-      return join([APP_COPY.home.nextEvents.yourFeeMeta, venue || where]);
+      return join([t('Your fee'), venue || where]);
     }
     return join([venue, where && where.toLowerCase() !== venue.toLowerCase() ? where : '']);
   };
@@ -628,13 +629,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ METRICS (2×2 dot meters) ═══ */}
       <motion.div variants={dashboardItemVariants} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8 gap-y-8">
         <Metric
-          label={APP_COPY.home.stats.confirmedGigs}
+          label={t('CONFIRMED GIGS')}
           value={dashboardLoading ? '-' : confirmedCount}
           fill={countFill(confirmedCount)}
           onClick={() => onFilterEvents ? onFilterEvents('GIGS') : onViewChange?.('Events')}
         />
         <Metric
-          label={APP_COPY.home.stats.upcomingRehearsals}
+          label={t('UPCOMING REHEARSALS')}
           value={dashboardLoading ? '-' : rehearsalCount}
           fill={countFill(rehearsalCount)}
           onClick={() => onFilterEvents ? onFilterEvents('REHEARSALS') : onViewChange?.('Events')}
@@ -642,13 +643,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {isAdmin ? (
           <>
             <Metric
-              label={APP_COPY.home.stats.activeQuotes}
+              label={t('ACTIVE QUOTES')}
               value={dashboardLoading ? '-' : quotesCount}
               fill={countFill(quotesCount)}
               onClick={() => setExpandedCard('quotes')}
             />
             <Metric
-              label={APP_COPY.home.stats.revenue}
+              label={t('REVENUE')}
               value={dashboardLoading ? '-' : revenueDots}
               fill={revenueFill}
               onClick={() => setExpandedCard('finance')}
@@ -657,12 +658,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
         ) : (
           <>
             <Metric
-              label={APP_COPY.home.stats.upcomingPay}
+              label={t('UPCOMING PAY')}
               value={dashboardLoading ? '-' : formatRevenue(memberStats?.confirmedFee || 0).replace('.0k', 'k')}
               fill={(memberStats?.confirmedFee || 0) / Math.max((memberStats?.confirmedFee || 0) + (memberStats?.pendingFee || 0), 1)}
             />
             <Metric
-              label={APP_COPY.home.stats.totalEarned}
+              label={t('TOTAL EARNED')}
               value={dashboardLoading ? '-' : formatRevenue(memberStats?.totalEarned || 0).replace('.0k', 'k')}
               fill={(memberStats?.totalEarned || 0) > 0 ? 1 : 0}
             />
@@ -673,10 +674,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* ═══ ACTION CENTER (rehearsal polls & proposals) ═══ */}
       {activePolls.length > 0 && (
         <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
-          <h2 className="bw-display-lg max-w-[300px]">Action center</h2>
+          <h2 className="bw-display-lg max-w-[300px]">{t('Action center')}</h2>
           {isAdmin && (
             <span className="bw-label-md text-muted-foreground">
-              Rehearsal scheduling ({activePolls.length})
+              {t('Rehearsal scheduling ({count})', { count: activePolls.length })}
             </span>
           )}
           <div className="flex flex-col gap-3">
@@ -723,15 +724,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
             };
             return (
               <div className="rounded-[24px] p-4 flex flex-col gap-2 min-w-0 bg-accent text-accent-foreground">
-                <span className="bw-label-md truncate">{APP_COPY.home.operations.nextSoundcheck}</span>
+                <span className="bw-label-md truncate">{t('Next Soundcheck')}</span>
                 <span className="flex items-end gap-1.5">
                   <DotText text={value} size={24} label={`${value}${suffix ? ` ${suffix}` : ''}`} />
                   {suffix && <span className="bw-body-lg leading-none">{suffix}</span>}
                 </span>
                 <span className="bw-label-sm truncate">
                   {nextMemberGig?.start_time
-                    ? `${APP_COPY.home.operations.doorsAt} ${formatEventTime(nextMemberGig.start_time)}`
-                    : (confirmedCount > 0 ? APP_COPY.home.operations.checkEventDetails : APP_COPY.home.operations.noUpcomingGigs)}
+                    ? t('Doors {time}', { time: formatEventTime(nextMemberGig.start_time) })
+                    : (confirmedCount > 0 ? t('Check event details') : t('No upcoming gigs'))}
                 </span>
                 <PillButton
                   size="sm"
@@ -742,7 +743,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   onClick={openLoadIn}
                   disabled={!nextMemberGig}
                 >
-                  Load-in map
+                  {t('Load-in map')}
                 </PillButton>
               </div>
             );
@@ -752,10 +753,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               nextMemberGig?.setlist_song_count ?? nextMemberGig?.song_count ?? (Array.isArray(nextMemberGig?.setlist) ? nextMemberGig.setlist.length : undefined);
             return (
               <div className="rounded-[24px] p-4 flex flex-col gap-2 min-w-0 bg-card text-card-foreground">
-                <span className="bw-label-md truncate">My setlist</span>
-                <DotText text={songCount != null ? String(songCount) : '--'} size={24} label={songCount != null ? `${songCount} songs` : 'No song count'} />
+                <span className="bw-label-md truncate">{t('My setlist')}</span>
+                <DotText text={songCount != null ? String(songCount) : '--'} size={24} label={songCount != null ? t('{count} songs', { count: songCount }) : t('No song count')} />
                 <span className="bw-label-sm text-muted-foreground truncate">
-                  {songCount != null ? 'Next gig songs' : nextMemberGig?.setlist_id ? 'Setlist linked' : 'No setlist yet'}
+                  {songCount != null ? t('Next gig songs') : nextMemberGig?.setlist_id ? t('Setlist linked') : t('No setlist yet')}
                 </span>
                 <PillButton
                   size="sm"
@@ -764,7 +765,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   className="self-start mt-auto"
                   onClick={() => onQuickAction?.('Setlist & Repertoire')}
                 >
-                  {APP_COPY.home.operations.viewSetlist}
+                  {t('View Setlist')}
                 </PillButton>
               </div>
             );
@@ -774,12 +775,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       {/* ═══ UPCOMING ═══ */}
       <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
-        <SectionHeader title="Upcoming" onSeeAll={() => onViewChange?.('Events')} />
+        <SectionHeader title={t('Upcoming')} seeAllLabel={t('See all')} onSeeAll={() => onViewChange?.('Events')} />
         {upcomingGigsAndRehearsals.length === 0 ? (
           <Card className="gap-1">
-            <span className="bw-h3">{APP_COPY.home.nextEvents.noUpcomingEvents}</span>
+            <span className="bw-h3">{t('No upcoming gigs or rehearsals scheduled')}</span>
             <span className="bw-body-sm text-muted-foreground">
-              {isAdmin ? APP_COPY.home.nextEvents.adminEmptyHelper : APP_COPY.home.nextEvents.memberEmptyHelper}
+              {isAdmin ? t('Tap + to schedule a gig or rehearsal') : t('Upcoming gigs and rehearsals will appear here once confirmed')}
             </span>
           </Card>
         ) : (
@@ -793,11 +794,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <UpcomingRow
                   key={event.id || event.eventId || index}
                   kind={kind}
-                  typeLabel={kind === 'rehearsal' ? 'Rehearsal' : kind === 'quote' ? 'Quote' : kind === 'personal' ? 'Personal' : 'Gig'}
-                  title={event.title || APP_COPY.home.nextEvents.untitledEvent}
+                  typeLabel={kind === 'rehearsal' ? t('Rehearsal') : kind === 'quote' ? t('Quote') : kind === 'personal' ? t('Personal') : t('Gig')}
+                  title={event.title || t('Untitled Event')}
                   meta={upcomingMeta(event)}
                   day={valid ? d!.getDate() : '–'}
-                  month={valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : APP_COPY.home.nextEvents.tbd}
+                  month={valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}
                   value={upcomingValue(event)}
                   onClick={() => {
                     if (onSelectEvent && (event.id || event.eventId)) {
@@ -824,21 +825,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
           const ok = d && !isNaN(d.getTime());
           return {
             day: ok ? d!.getDate() : '–',
-            month: ok ? d!.toLocaleDateString('en-US', { month: 'short' }) : APP_COPY.home.nextEvents.tbd,
+            month: ok ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD'),
           };
         };
         const saved = (iso: string) => {
           const d = new Date(iso);
           return isNaN(d.getTime())
-            ? 'Draft'
-            : `Draft · saved ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}`;
+            ? t('Draft')
+            : t('Draft · saved {date}', { date: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) });
         };
         return (
-          <motion.div variants={dashboardItemVariants} className="@container flex flex-col gap-4" aria-label="Drafts">
-            <SectionHeader title="Drafts" />
+          <motion.div variants={dashboardItemVariants} className="@container flex flex-col gap-4" aria-label={t('Drafts')}>
+            <SectionHeader title={t('Drafts')} />
             <p className="bw-body-sm text-muted-foreground -mt-1 flex items-start gap-2">
               <EyeOff className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-              <span>Only you can see these. Members get nothing until you create them. Dated drafts are on the calendar too.</span>
+              <span>{t('Only you can see these. Members get nothing until you create them. Dated drafts are on the calendar too.')}</span>
             </p>
             <div className="grid grid-cols-1 @min-[640px]:grid-cols-2 gap-x-6 gap-y-4 pt-2">
               {eventDrafts.map((d) => {
@@ -847,9 +848,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <div key={d.id} className="saturate-[0.3]">
                     <UpcomingRow
                       kind={isReh ? 'rehearsal' : 'gig'}
-                      typeLabel={isReh ? 'Rehearsal · Draft' : 'Gig · Draft'}
-                      title={d.title || (isReh ? 'New rehearsal' : 'New gig')}
-                      meta={[saved(d.savedAt), d.venue, d.date ? null : 'No date'].filter(Boolean).join(' · ')}
+                      typeLabel={isReh ? t('Rehearsal · Draft') : t('Gig · Draft')}
+                      title={d.title || (isReh ? t('New rehearsal') : t('New gig'))}
+                      meta={[saved(d.savedAt), d.venue, d.date ? null : t('No date')].filter(Boolean).join(' · ')}
                       {...tile(d.date)}
                       onClick={() => onOpenEventDraft?.(d)}
                     />
@@ -860,9 +861,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div key={q.id} className="saturate-[0.3]">
                   <UpcomingRow
                     kind="quote"
-                    typeLabel="Quote · Draft"
-                    title={q.event_name || q.client_name || 'New quote'}
-                    meta={[q.quote_number, q.client_name].filter(Boolean).join(' · ') || 'Draft'}
+                    typeLabel={t('Quote · Draft')}
+                    title={q.event_name || q.client_name || t('New quote')}
+                    meta={[q.quote_number, q.client_name].filter(Boolean).join(' · ') || t('Draft')}
                     {...tile(q.event_date)}
                     onClick={() => setExpandedCard('quotes')}
                   />
@@ -878,9 +879,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
           {/* Figma: ↗ only, no "See all" text — the label stays for screen readers. */}
           <SectionHeader
-            title={APP_COPY.home.quickActions.title}
+            title={t('Quick Actions')}
             onSeeAll={onOpenAllAssets}
-            seeAllLabel={APP_COPY.home.quickActions.openAllAssets}
+            seeAllLabel={t('Band assets & workflows')}
             className="[&_button>span]:sr-only"
           />
           <div
@@ -902,9 +903,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {isAdmin && (
         <motion.div variants={dashboardItemVariants} className="flex flex-col gap-8">
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8">
-            <Metric label="Gigs this month" value={gigsThisMonth} fill={countFill(gigsThisMonth)} />
+            <Metric label={t('Gigs this month')} value={gigsThisMonth} fill={countFill(gigsThisMonth)} />
             <Metric
-              label="Revenue vs last month"
+              label={t('Revenue vs last month')}
               value={revenueChangeText === '--' ? '0%' : revenueChangeText}
               fill={revenueChange ? Math.min(1, Math.abs(revenueChange) / 100) : 0}
             />
@@ -912,11 +913,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <div className="flex gap-3">
             <PillButton size="md" className="flex-1 min-w-0" onClick={() => onQuickAction?.('View Calendar')}>
-              View calendar
+              {t('View calendar')}
               <ArrowUpRight className="w-4 h-4" />
             </PillButton>
             <PillButton size="md" variant="dark" className="flex-1 min-w-0" onClick={() => onQuickAction?.('View Analytics')}>
-              {APP_COPY.home.operations.viewAnalytics}
+              {t('View Analytics')}
             </PillButton>
           </div>
         </motion.div>
