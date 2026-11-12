@@ -15,6 +15,7 @@ import { useRailHost, useRailSnapshot } from '@/lib/railActions';
 import { useRailLayout } from '@/lib/deviceRegions';
 import { usePosture } from '@/lib/posture';
 import { KEYBOARD_EVENT, isKeyboardOpen } from '@/lib/keyboardInsets';
+import { useT } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * iPhone Duo side rail, 1:1 with Figma "11 · Foldables":
@@ -116,6 +117,7 @@ const deckMotion = {
 
 export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, isProfileOpen, onProfile, profileLocked = false, showTabs }) => {
   useRailHost();
+  const t = useT();
   const { actions, back, search, fullScreen, tone } = useRailSnapshot();
   const { railEdge } = useRailLayout();
   const onLeft = railEdge === 'left';
@@ -265,18 +267,18 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
           {tabsVisible && (
             <motion.nav
               key="tabs"
-              aria-label="Main"
+              aria-label={t('Main')}
               {...containerMotion}
               className={cn('bw-glass pointer-events-auto shrink-0 rounded-[24px] flex items-center gap-[14px]', onDeck ? 'h-12 px-3 flex-row' : 'w-12 py-3 flex-col')}
             >
-              {tabs.slice(0, 2).map((t) => (
-                <Cell key={t.key} label={t.label} onClick={t.onClick} dot={t.isActive} active={t.isActive} badgeCount={t.badgeCount}>
-                  <t.icon color="currentColor" size={24} strokeWidth={t.isActive ? 2.2 : 2} />
+              {tabs.slice(0, 2).map((tab) => (
+                <Cell key={tab.key} label={tab.label} onClick={tab.onClick} dot={tab.isActive} active={tab.isActive} badgeCount={tab.badgeCount}>
+                  <tab.icon color="currentColor" size={24} strokeWidth={tab.isActive ? 2.2 : 2} />
                 </Cell>
               ))}
               <motion.button
                 type="button"
-                aria-label={isPlusMenuOpen ? 'Close create menu' : 'Create'}
+                aria-label={isPlusMenuOpen ? t('Close create menu') : t('Create')}
                 aria-expanded={isPlusMenuOpen}
                 onClick={onPlus}
                 whileTap={{ scale: 0.94 }}
@@ -286,9 +288,9 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
               >
                 <IconPlus size={24} color="currentColor" strokeWidth={2.4} />
               </motion.button>
-              {tabs.slice(2).map((t) => (
-                <Cell key={t.key} label={t.label} onClick={t.onClick} dot={t.isActive} active={t.isActive} badgeCount={t.badgeCount}>
-                  <t.icon color="currentColor" size={24} strokeWidth={t.isActive ? 2.2 : 2} />
+              {tabs.slice(2).map((tab) => (
+                <Cell key={tab.key} label={tab.label} onClick={tab.onClick} dot={tab.isActive} active={tab.isActive} badgeCount={tab.badgeCount}>
+                  <tab.icon color="currentColor" size={24} strokeWidth={tab.isActive ? 2.2 : 2} />
                 </Cell>
               ))}
             </motion.nav>
@@ -297,7 +299,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
           <motion.div
             key="actions"
             role="toolbar"
-            aria-label="Screen actions, search and profile"
+            aria-label={t('Screen actions, search and profile')}
             {...containerMotion}
             className={cn('bw-glass pointer-events-auto shrink-0 rounded-[24px] flex items-center gap-[14px]', onDeck ? 'h-12 px-3 flex-row' : 'w-12 py-3 flex-col')}
           >
@@ -351,7 +353,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
               type="button"
               onClick={() => { haptic.tap(); onProfile(); }}
               disabled={profileLocked}
-              aria-label={isProfileOpen ? 'Close profile' : 'Open profile'}
+              aria-label={isProfileOpen ? t('Close profile') : t('Open profile')}
               aria-expanded={isProfileOpen}
               className={cn(
                 'w-10 h-10 shrink-0 rounded-full overflow-hidden bg-white border-[1.5px] border-border text-black bw-h3 flex items-center justify-center cursor-pointer',
@@ -430,7 +432,7 @@ export const DuoRail: React.FC<DuoRailProps> = ({ tabs, isPlusMenuOpen, onPlus, 
               search.onChange('');
               inputRef.current?.focus({ preventScroll: true });
             }}
-            aria-label="Clear search"
+            aria-label={t('Clear search')}
             className="-m-2 p-2 shrink-0 text-muted-foreground cursor-pointer"
           >
             <X className="w-4 h-4" />
