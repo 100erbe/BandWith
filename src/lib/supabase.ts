@@ -134,7 +134,21 @@ export const signInWithOAuth = async (provider: 'google' | 'apple') => {
   return { data, error };
 };
 
-export const signOut = async () => {
+/**
+ * Signs out. `keepDeviceSession`: quick sign-in (Face ID / fingerprint) holds
+ * this session's refresh token, so only forget it on this device instead of
+ * revoking it on the server; the next quick sign-in resumes it.
+ */
+export const signOut = async (opts?: { keepDeviceSession?: boolean }) => {
+  const auth = supabase.auth as unknown as { _removeSession?: () => Promise<void> };
+  if (opts?.keepDeviceSession && typeof auth._removeSession === 'function') {
+    try {
+      await auth._removeSession(); // clears storage and emits SIGNED_OUT
+      return { error: null };
+    } catch {
+      // fall through to a normal sign-out
+    }
+  }
   const { error } = await supabase.auth.signOut();
   return { error };
 };

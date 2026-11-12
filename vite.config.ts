@@ -3,13 +3,16 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
   ],
+  // Production builds drop console.log/info/debug (they printed push tokens,
+  // notification payloads and user ids: audit PR-116). warn/error stay.
+  esbuild: mode === 'production' ? { pure: ['console.log', 'console.info', 'console.debug'] } : undefined,
   build: {
     rollupOptions: {
       // Second page: /unsubscribe.html (product news emails, migration 065).
@@ -33,4 +36,4 @@ export default defineConfig({
       'lucide-react': path.resolve(__dirname, './src/app/components/icons'),
     },
   },
-})
+}))

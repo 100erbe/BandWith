@@ -56,6 +56,8 @@ interface EmailRequest {
     inviteeName?: string;
     firstName?: string;
     daysRemaining?: number;
+    /** Invitation token: app callers name the invitation, the server reads the rest. */
+    token?: string;
   };
 }
 
@@ -211,6 +213,20 @@ interface InvitationRow {
   invited_by: string | null;
   expires_at: string | null;
   token: string;
+  email_sent_at?: string | null;
+}
+
+/** One invite email per invitation every 10 minutes (PR-11). */
+const INVITE_EMAIL_INTERVAL_MS = 10 * 60 * 1000;
+
+async function invitationByToken(admin: SupabaseClient, token: unknown) {
+  if (typeof token !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) return null;
+  const { data } = await admin
+    .from("band_invitations")
+    .select("id, band_id, email, role, status, invited_by, expires_at, token, email_sent_at")
+    .eq("token", token)
+    .maybeSingle();
+  return data as InvitationRow | null;
 }
 
 async function invitationOf(admin: SupabaseClient, id: string | undefined) {
@@ -375,21 +391,13 @@ serve(async (req) => {
       caller = await requireCaller(req, admin);
     }
 
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY not configured");
-      // Say so: the app then tells the admin to share the link instead.
-      return new Response(
-        JSON.stringify({ success: false, code: "email_not_configured", error: "Email sending is not configured" }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     const { type, data: requestData } = (await req.json()) as EmailRequest;
     const template = TEMPLATE_FOR[type];
     if (!template) throw new HttpError(400, "Unsupported email type");
 
     if (type === "product_update") {
       if (!dispatchSecret) throw new HttpError(403, "Product updates are sent by the server only");
+      if (!RESEND_API_KEY) throw new HttpError(503, "Email sending is not configured");
       const result = await sendProductUpdate(admin, requestData as unknown as DispatchData);
       return new Response(
         JSON.stringify({ success: true, ...result }),
@@ -408,6 +416,28 @@ serve(async (req) => {
         );
       }
       rawData = resolved;
+    }
+
+    // From the app, only the invite email for a pending invitation the caller
+    // may send: recipient, band, role and link all come from that row.
+    let invitation: InvitationRow | null = null;
+    if (caller.kind === "user") {
+      if (type !== "onboarding_invite") throw new HttpError(403, "This email is sent by the server only");
+      invitation = await invitationByToken(admin, rawData?.token);
+      if (!invitation || invitation.status !== "pending") throw new HttpError(404, "Invitation not found");
+      if (invitation.expires_at && new Date(invitation.expires_at).getTime() < Date.now()) {
+        throw new HttpError(410, "Invitation expired");
+      }
+      if (invitation.email_sent_at && Date.now() - new Date(invitation.email_sent_at).getTime() < INVITE_EMAIL_INTERVAL_MS) {
+        throw new HttpError(429, "The invite email was just sent");
+      }
+      rawData = {
+        ...rawData,
+        to: invitation.email,
+        bandId: invitation.band_id,
+        role: roleLabel(invitation.role),
+        inviteUrl: `${appUrl()}/?invite=${invitation.token}`,
+      };
     }
 
     const to = typeof rawData?.to === "string" ? rawData.to.trim().toLowerCase() : "";
@@ -470,12 +500,24 @@ serve(async (req) => {
       }
     }
 
+    if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY not configured");
+      // Say so: the app then tells the admin to share the link instead.
+      return new Response(
+        JSON.stringify({ success: false, code: "email_not_configured", error: "Email sending is not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { subject, html } = renderEmail(template, vars);
 
     console.log(`Sending ${type} email`);
 
     const result = await resend("/emails", { from: FROM_EMAIL, to: [to], subject, html });
     console.log("Email sent:", result.id);
+    if (invitation) {
+      await admin.from("band_invitations").update({ email_sent_at: new Date().toISOString() }).eq("id", invitation.id);
+    }
 
     return new Response(
       JSON.stringify({ success: true, id: result.id }),

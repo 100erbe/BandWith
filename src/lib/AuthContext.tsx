@@ -221,6 +221,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
+      // Quick sign-in keeps the refresh token, which Supabase rotates.
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && Capacitor.isNativePlatform()) {
+        import('@/lib/services/biometric')
+          .then((m) => m.updateStoredSession(session))
+          .catch(() => {});
+      }
+
       if (session?.user) {
         setTimeout(async () => {
           const profileData = await fetchProfile(session.user.id);
@@ -324,7 +331,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Before the session ends: this device must stop receiving this account's pushes.
     await unregisterPushToken();
     cleanupPresence();
-    const { error } = await signOut();
+    // With quick sign-in on for this account, keep its session for Face ID.
+    let keepDeviceSession = false;
+    if (Capacitor.isNativePlatform() && user?.id) {
+      try {
+        const owner = await (await import('@/lib/services/biometric')).getQuickSignInOwner();
+        keepDeviceSession = !!owner?.userId && owner.userId === user.id;
+      } catch {
+        keepDeviceSession = false;
+      }
+    }
+    const { error } = await signOut({ keepDeviceSession });
     if (!error) {
       setUser(null);
       setProfile(null);

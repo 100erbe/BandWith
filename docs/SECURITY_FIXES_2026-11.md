@@ -111,3 +111,30 @@ Non esiste un sistema di pagamento, quindi:
 - "Upgrade to Band Admin" nel form del gig personale diventa **"Create a free band"** e apre la creazione band sopra il form, senza perdere i dati.
 
 Quando arriveranno i pagamenti (StoreKit / Play Billing, o Stripe sul web) basta sostituire il blocco "Coming soon" in `UpgradePricingSheet.tsx`.
+
+## G16-B — permessi dei member nel database (migrazione 071)
+
+Le regole che prima erano solo nell'app ora sono nel database e nelle edge function. Provate su un progetto di staging con un admin e due member (62 controlli RLS, 7 su send-push, 8 su send-email, 4 sulla presence).
+
+| Cosa | Prima | Adesso |
+|---|---|---|
+| Ruolo e fee in `band_members` | solo policy | anche trigger: role, is_active, default_fee, fee_percentage solo dagli admin |
+| Lineup (`event_members`) | policy duplicate, admin anche inattivi | admin attivi (o creatore del gig personale); il member cambia solo stato, nota e motivo sulla propria riga |
+| Fee e pagamenti | ogni membro leggeva le fee di tutti | colonne `fee`/`paid_at` non leggibili; `bw_event_member_money()` dà tutto agli admin e al member solo la sua; scritture con `bw_save_event_lineup()` e `bw_mark_event_paid()` |
+| Task delle prove | ogni membro creava, rinominava, cancellava | admin; i member li spuntano soltanto |
+| Sondaggi prove | un member poteva pubblicare | il member propone (`proposed`), `creator_role` dal ruolo vero |
+| Notifiche | qualsiasi tipo e testo ai compagni | `bw_can_notify()`: admin tutto nella band; member solo chat, canzoni, e risposte/proposte agli admin |
+| send-push dall'app | qualsiasi testo a chi condivide una band | solo notifiche di chat, ai partecipanti di quella chat |
+| send-email dall'app | destinatari e tipi scelti dal client | solo l'invito di una riga `band_invitations` pending (dati dalla riga), una volta ogni 10 minuti |
+| Registro economico | leggibile da tutti i membri | solo admin |
+| Messaggi diretti | regola solo nel client | nel database: un member scrive in privato solo agli admin |
+| `subscriptions` | scrivibile da chiunque | policy aperta rimossa |
+| `accept_pending_invitations()` | chiamabile via REST | eliminata |
+| Presence | un canale pubblico per tutta l'app, keep-alive ogni 30 s | un canale privato per band (Realtime Authorization), nessun keep-alive |
+| Face ID | password nel Keychain, ripiego sul codice del telefono | refresh token legato all'account, solo biometria, email sotto il bottone, conferma prima di cambiare account |
+| Android | backup completo dell'app | backup e trasferimento esclusi (`data_extraction_rules.xml`) |
+| Log | token push e payload nei log | tolti; in produzione `console.log/info/debug` eliminati dal bundle |
+
+Ordine di rilascio: merge (il client funziona anche senza 071), poi la migrazione 071, poi il deploy di `send-push` e `send-email` da un worktree pulito con `--no-verify-jwt`. Le build iOS/Android vecchie non leggono più le fee dopo la 071: i tester vanno aggiornati.
+
+Facoltativo, dalla dashboard: Realtime → Settings → disattivare *Allow public access*, così restano solo i canali privati.

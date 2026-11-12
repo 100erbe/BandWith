@@ -1,4 +1,5 @@
 import { supabase, getSafeUser } from '../supabase';
+import { EVENT_MEMBER_COLUMNS, getEventMemberMoney, withMoney } from './eventMemberMoney';
 import { todayLocal, toLocalDateString } from '../dates';
 
 // Types
@@ -223,12 +224,13 @@ export const getEvent = async (eventId: string): Promise<{ data: EventWithMember
 
     if (eventError) throw eventError;
 
-    const { data: members, error: membersError } = await supabase
+    const { data: lineup, error: membersError } = await supabase
       .from('event_members')
-      .select(`*`)
+      .select(EVENT_MEMBER_COLUMNS)
       .eq('event_id', eventId);
 
     if (membersError) throw membersError;
+    const members = await withMoney((lineup || []) as any[], eventId);
 
     return {
       data: {
@@ -587,12 +589,13 @@ export const deletePersonalGig = async (
 
 export const getEventMembers = async (eventId: string): Promise<{ data: EventMember[] | null; error: Error | null }> => {
   try {
-    const { data, error } = await supabase
+    const { data: lineup, error } = await supabase
       .from('event_members')
-      .select(`*`)
+      .select(EVENT_MEMBER_COLUMNS)
       .eq('event_id', eventId);
 
     if (error) throw error;
+    const data = await withMoney((lineup || []) as any[], eventId);
 
     const safeData = (data || []).map((m: any) => ({
       ...m,
@@ -621,7 +624,7 @@ export const inviteToEvent = async (
         fee: fee != null ? fee : 0,
         status: 'pending',
       })
-      .select()
+      .select(EVENT_MEMBER_COLUMNS)
       .single();
 
     if (error) throw error;
@@ -644,7 +647,7 @@ export const respondToEventInvite = async (
         responded_at: new Date().toISOString(),
       })
       .eq('id', eventMemberId)
-      .select()
+      .select(EVENT_MEMBER_COLUMNS)
       .maybeSingle();
 
     if (error) throw error;
@@ -675,14 +678,15 @@ export const getUserEventMembership = async (
   userId: string
 ): Promise<{ data: EventMember | null; error: Error | null }> => {
   try {
-    const { data, error } = await supabase
+    const { data: row, error } = await supabase
       .from('event_members')
-      .select(`*`)
+      .select(EVENT_MEMBER_COLUMNS)
       .eq('event_id', eventId)
       .eq('user_id', userId)
       .maybeSingle();
 
     if (error) throw error;
+    const data = row ? (await withMoney([row as any], eventId))[0] : null;
 
     return { data: data || null, error: null };
   } catch (error: any) {
@@ -797,7 +801,7 @@ export const getMemberPersonalStats = async (
     // Query user's event_memberships
     let query = supabase
       .from('event_members')
-      .select('fee, status, events!inner(band_id, event_date, status, event_type, created_by)')
+      .select('event_id, status, events!inner(band_id, event_date, status, event_type, created_by)')
       .eq('user_id', userId);
 
     if (year) {
@@ -810,7 +814,10 @@ export const getMemberPersonalStats = async (
 
     if (error) throw error;
 
-    const rawRows = (memberships || []) as any[];
+    // Own fees come from bw_event_member_money (071).
+    const { data: ownMoney } = await getEventMemberMoney();
+    const feeByEvent = new Map(ownMoney.filter((m) => m.user_id === userId).map((m) => [m.event_id, m.fee]));
+    const rawRows = ((memberships || []) as any[]).map((r) => ({ ...r, fee: feeByEvent.get(r.event_id) ?? 0 }));
     // Include events for the specific bandId (if given) PLUS any personal gigs (events.band_id IS NULL)
     const rows = rawRows.filter(r => {
       if (bandId && bandId !== 'all') {

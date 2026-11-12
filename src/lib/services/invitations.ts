@@ -222,7 +222,8 @@ export async function inviteToBand(input: {
       data.bandName ?? '',
       input.inviterName ?? 'A bandmate',
       inviteUrl,
-      input.role === 'admin' ? 'Admin' : 'Musician'
+      input.role === 'admin' ? 'Admin' : 'Musician',
+      data.token
     );
     emailSent = success;
   }

@@ -81,11 +81,9 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
       if (!cleanupRef.current) {
         cleanupRef.current = setupNativePushListeners(
           (notification) => {
-            console.log('[usePush] Notification received:', notification);
             setLastNotification(notification);
           },
           (action) => {
-            console.log('[usePush] Notification action:', action);
             handleNotificationAction(action);
           }
         );
@@ -144,7 +142,6 @@ export const usePushNotifications = (): UsePushNotificationsReturn => {
     const { notification } = action;
     const data = notification.data;
 
-    console.log('[usePush] Handling notification tap with data:', data);
 
     if (!data) {
       console.log('[usePush] No data in notification, navigating to home');

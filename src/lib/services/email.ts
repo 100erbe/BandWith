@@ -37,14 +37,17 @@ export const sendEmail = async (
   }
 };
 
-// Send onboarding invite email
+// Send the invite email for a pending invitation. The server takes the
+// recipient, band, role and link from the invitation row (by token); the
+// other values are only a fallback for older servers.
 export const sendOnboardingInviteEmail = async (
   bandId: string,
   email: string,
   bandName: string,
   inviterName: string,
   inviteUrl: string,
-  role?: string
+  role: string | undefined,
+  token: string
 ): Promise<{ success: boolean; error: Error | null }> => {
   return sendEmail('onboarding_invite', {
     to: email,
@@ -53,48 +56,11 @@ export const sendOnboardingInviteEmail = async (
     inviterName,
     inviteUrl,
     role: role || 'Musician',
-  });
-};
-
-// Send invite reminder email
-export const sendInviteReminderEmail = async (
-  bandId: string,
-  email: string,
-  bandName: string,
-  inviterName: string,
-  inviteUrl: string,
-  daysRemaining: number
-): Promise<{ success: boolean; error: Error | null }> => {
-  return sendEmail('onboarding_reminder', {
-    to: email,
-    bandId,
-    bandName,
-    inviterName,
-    inviteUrl,
-    daysRemaining,
-  });
-};
-
-// Send member joined notification to admin
-export const sendMemberJoinedEmail = async (
-  bandId: string,
-  adminEmail: string,
-  bandName: string,
-  newMemberName: string,
-  newMemberEmail: string
-): Promise<{ success: boolean; error: Error | null }> => {
-  return sendEmail('member_joined', {
-    to: adminEmail,
-    bandId,
-    bandName,
-    newMemberName,
-    newMemberEmail,
+    token,
   });
 };
 
 export default {
   sendEmail,
   sendOnboardingInviteEmail,
-  sendInviteReminderEmail,
-  sendMemberJoinedEmail,
 };

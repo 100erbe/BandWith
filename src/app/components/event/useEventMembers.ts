@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { initialsOf, type ResolvedMember } from './parts';
 import { personName } from '@/lib/personName';
+import { getEventMemberMoney, markEventPaid } from '@/lib/services/eventMemberMoney';
 
 interface BandLike {
   id?: string;
@@ -18,10 +19,6 @@ interface Options {
   bands?: BandLike[] | null;
   selectedBand?: BandLike | null;
 }
-
-/** PostgREST / Postgres "column does not exist" for paid_at (057 not applied yet). */
-const isMissingPaidAt = (err: { code?: string; message?: string } | null): boolean =>
-  !!err && (err.code === '42703' || err.code === 'PGRST204' || /paid_at/i.test(err.message || ''));
 
 /**
  * The event's lineup from event_members, names resolved against the band
@@ -55,18 +52,13 @@ export function useEventMembers({
     const load = async () => {
       setLoading(true);
       setError(null);
-      let withPaid = true;
-      let res = await supabase
+      // fee and paid_at come from bw_event_member_money (071): all rows for
+      // admins, only the viewer's own row for members.
+      const withPaid = true;
+      const res = await supabase
         .from('event_members')
-        .select('user_id, fee, status, role, paid_at')
+        .select('user_id, status, role')
         .eq('event_id', eventId);
-      if (res.error && isMissingPaidAt(res.error)) {
-        withPaid = false;
-        res = (await supabase
-          .from('event_members')
-          .select('user_id, fee, status, role')
-          .eq('event_id', eventId)) as typeof res;
-      }
       if (cancelled) return;
       if (res.error) {
         setError(res.error.message);
@@ -74,7 +66,10 @@ export function useEventMembers({
         setLoading(false);
         return;
       }
-      const rows = (res.data || []) as any[];
+      const money = await getEventMemberMoney([eventId]);
+      if (cancelled) return;
+      const moneyOf = new Map(money.data.map((m) => [m.user_id, m]));
+      const rows = (res.data || []).map((r: any) => ({ ...r, fee: moneyOf.get(r.user_id)?.fee, paid_at: moneyOf.get(r.user_id)?.paid_at ?? null, hasMoney: moneyOf.has(r.user_id) })) as any[];
 
       // Names and instruments from the band roster.
       const targetBand = bands?.find((b) => b.id === bandId) || selectedBand;
@@ -115,7 +110,7 @@ export function useEventMembers({
           name,
           initials: initialsOf(name),
           role: leader ? `${instrument} · Band leader` : instrument,
-          fee: em.fee != null ? Number(em.fee) : info?.defaultFee || 0,
+          fee: em.fee != null ? Number(em.fee) : em.hasMoney ? info?.defaultFee || 0 : 0,
           status,
           paidAt: withPaid ? em.paid_at ?? null : undefined,
         };
@@ -140,20 +135,13 @@ export function useEventMembers({
     if (!eventId || !paidSupported || markingPaid) return;
     setMarkingPaid(true);
     setMarkError(null);
-    const { data, error: upErr } = await supabase
-      .from('event_members')
-      .update({ paid_at: new Date().toISOString() })
-      .eq('event_id', eventId)
-      .is('paid_at', null)
-      .neq('status', 'declined')
-      .select('user_id, paid_at');
+    const { data, error: upErr } = await markEventPaid(eventId);
     setMarkingPaid(false);
     if (upErr) {
-      if (isMissingPaidAt(upErr)) setPaidSupported(false);
       setMarkError(upErr.message);
       return;
     }
-    const stamped = new Map((data || []).map((r: any) => [r.user_id, r.paid_at as string]));
+    const stamped = new Map(data.map((r) => [r.user_id, r.paid_at]));
     setMembers((prev) => prev?.map((m) => (m.userId && stamped.has(m.userId) ? { ...m, paidAt: stamped.get(m.userId) } : m)) ?? prev);
   }, [eventId, paidSupported, markingPaid]);
 
