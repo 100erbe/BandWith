@@ -486,6 +486,18 @@
 .bw-fold-display .bw-value-md { font-size: 32px; }
 .bw-fold-display .bw-value-lg { font-size: 44px; }
 
+/* iPhone Duo (rail host): the displays sit further from the eye and the small
+   secondary type read too small and too faint, so the small styles are one
+   step bigger there (Duo only; iPhone and Android keep the Figma sizes). */
+:root[data-bw-rail-host] .bw-label-xs { font-size: 11px; }
+:root[data-bw-rail-host] .bw-label-sm { font-size: 12px; }
+:root[data-bw-rail-host] .bw-label-md { font-size: 13px; }
+:root[data-bw-rail-host] .bw-body-sm { font-size: 15px; }
+:root[data-bw-rail-host] .bw-fold-display .bw-label-xs { font-size: 12px; }
+:root[data-bw-rail-host] .bw-fold-display .bw-label-sm { font-size: 13px; }
+:root[data-bw-rail-host] .bw-fold-display .bw-label-md { font-size: 15px; }
+:root[data-bw-rail-host] .bw-fold-display .bw-body-sm { font-size: 17px; }
+
 /* Leading companion (src/app/components/duo/companion.tsx): on the book
    layout a trailing-page task can show a companion over the leading pane. */
 .bw-leading-companion {

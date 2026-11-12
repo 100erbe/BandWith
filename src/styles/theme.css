@@ -198,6 +198,14 @@
 }
 /* Laptop pose: the rail lies along the Deck's bottom edge (DuoRail), so
    content clears a 48pt bar instead. */
+/* iPhone Duo, dark: secondary text one notch lighter (#ADADAD → #BDBDBD,
+   about 6:1 on cards instead of 5:1) to go with the bigger small type
+   (index.css). Light theme is unchanged. */
+:root[data-bw-rail-host].dark,
+:root[data-bw-rail-host] .dark {
+  --muted-fg: #BDBDBD;
+}
+
 :root[data-bw-rail-host][data-bw-posture="tabletop"] {
   --content-bottom-clearance: calc(max(12px, calc(var(--safe-bottom) - 4px)) + 64px);
 }
@@ -336,6 +344,13 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* A fieldset defaults to min-inline-size: min-content, so a horizontally
+     scrolling chip row inside it (Create rider / contract → "For a band
+     event") widened the whole form and the screen scrolled sideways. */
+  fieldset {
+    min-inline-size: 0;
   }
 
   /* Smooth theme transitions on interactive / surface elements */
