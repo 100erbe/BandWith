@@ -680,6 +680,42 @@ const rpc = (fn: string, args: Row = {}) => {
     case 'bw_mark_chats_delivered':
       data = 0;
       break;
+    // Fees and payouts (071). The demo user is the band admin.
+    case 'bw_event_member_money': {
+      const ids: string[] | null = Array.isArray(args.p_event_ids) ? args.p_event_ids : null;
+      data = table('event_members')
+        .filter((r) => (ids ? ids.includes(r.event_id) : r.user_id === DEMO_USER.id))
+        .map((r) => ({ event_id: r.event_id, user_id: r.user_id, fee: r.fee ?? 0, paid_at: r.paid_at ?? null }));
+      break;
+    }
+    case 'bw_save_event_lineup': {
+      const rows = table('event_members');
+      const now = new Date().toISOString();
+      const list: Row[] = Array.isArray(args.p_rows) ? args.p_rows : [];
+      list.forEach((r) => {
+        const existing = rows.find((x) => x.event_id === args.p_event_id && x.user_id === r.user_id);
+        if (existing) {
+          existing.role = r.role ?? null;
+          existing.fee = r.fee ?? 0;
+        } else {
+          rows.push({ id: uuid(), created_at: now, event_id: args.p_event_id, user_id: r.user_id, role: r.role ?? null, fee: r.fee ?? 0, status: r.status ?? 'pending' });
+        }
+      });
+      persist();
+      data = list.length;
+      break;
+    }
+    case 'bw_mark_event_paid': {
+      const now = new Date().toISOString();
+      data = table('event_members')
+        .filter((r) => r.event_id === args.p_event_id && !r.paid_at && r.status !== 'declined')
+        .map((r) => {
+          r.paid_at = now;
+          return { user_id: r.user_id, paid_at: now };
+        });
+      persist();
+      break;
+    }
     case 'bw_mark_chat_read': {
       const now = new Date().toISOString();
       table('chat_participants')

@@ -22,7 +22,9 @@ vi.mock('@/lib/supabase', () => {
     };
     return chain;
   };
-  return { supabase: { from }, getSafeUser: () => mockGetUser() };
+  // Fees come from bw_event_member_money (071), never from the table.
+  const rpc = (fn: string) => Promise.resolve(results[`rpc:${fn}`] ?? { data: [], error: null });
+  return { supabase: { from, rpc }, getSafeUser: () => mockGetUser() };
 });
 
 vi.mock('@/lib/nativeFiles', () => ({
@@ -41,6 +43,7 @@ beforeEach(() => {
   };
   results.events = { data: [{ id: 'e1', title: 'Solo set', band_id: null, created_by: 'u1' }], error: null };
   results.event_members = { data: [{ id: 'em1', event_id: 'e1', user_id: 'u1', status: 'confirmed' }], error: null };
+  results['rpc:bw_event_member_money'] = { data: [{ event_id: 'e1', user_id: 'u1', fee: 120, paid_at: null }], error: null };
 });
 
 describe('buildMyDataExport', () => {
@@ -53,6 +56,7 @@ describe('buildMyDataExport', () => {
     ]);
     expect(out.personalGigs).toHaveLength(1);
     expect(out.eventMemberships).toHaveLength(1);
+    expect(out.eventMemberships[0]).toMatchObject({ id: 'em1', fee: 120, paid_at: null });
 
     // Only the user's own rows are requested.
     expect(calls.profiles).toContainEqual(['eq', 'id', 'u1']);

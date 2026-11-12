@@ -167,6 +167,26 @@ export async function allowedRecipients(
   return unique.filter((id) => allowed.has(id));
 }
 
+/**
+ * Recipients of a chat notice sent by a user: the other participants of
+ * `chatId`, and only when the caller is in that chat too.
+ */
+export async function chatRecipients(
+  admin: SupabaseClient,
+  callerId: string,
+  chatId: unknown,
+  targetIds: string[],
+): Promise<string[]> {
+  if (typeof chatId !== "string" || chatId.length === 0) return [];
+  const { data } = await admin
+    .from("chat_participants")
+    .select("user_id")
+    .eq("chat_id", chatId);
+  const inChat = new Set((data ?? []).map((r: { user_id: string }) => r.user_id));
+  if (!inChat.has(callerId)) return [];
+  return [...new Set(targetIds)].filter((id) => id !== callerId && inChat.has(id));
+}
+
 export function errorResponse(error: unknown) {
   if (error instanceof HttpError) return json({ success: false, error: error.message }, error.status);
   console.error("Unhandled error:", error);

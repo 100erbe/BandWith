@@ -98,7 +98,6 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
 
     // If we already have a cached token, just save it
     if (cachedToken) {
-      console.log('[Push] Using cached token:', cachedToken.substring(0, 20) + '...');
       return await saveTokenToDatabase(userId, cachedToken);
     }
 
@@ -138,7 +137,6 @@ export const subscribeToPush = async (userId: string): Promise<{ success: boolea
         clearTimeout(timeout);
         cleanup();
         cachedToken = token.value;
-        console.log('[Push] Got token:', token.value.substring(0, 20) + '...');
         
         const result = await saveTokenToDatabase(userId, token.value);
         resolve(result);
@@ -255,7 +253,6 @@ export const setupNativePushListeners = (
 
   // Listen for push notifications received while app is in foreground
   PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-    console.log('[Push] Notification received in foreground:', notification);
     
     // Check if this is a chat notification for the currently open chat
     const notificationChatId = notification.data?.chatId || notification.data?.chat_id;
@@ -313,8 +310,6 @@ export const setupNativePushListeners = (
   
   // Listen for push notification actions (when user taps the notification)
   PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    console.log('[Push] Push notification TAP:', JSON.stringify(action));
-    console.log('[Push] Push notification data:', JSON.stringify(action.notification.data));
     onAction({
       notification: {
         title: action.notification.title,
@@ -327,8 +322,6 @@ export const setupNativePushListeners = (
 
   // Also listen for local notification actions
   LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-    console.log('[Push] Local notification TAP:', JSON.stringify(action));
-    console.log('[Push] Local notification extra:', JSON.stringify(action.notification.extra));
     onAction({
       notification: {
         title: action.notification.title,

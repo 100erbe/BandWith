@@ -13,16 +13,24 @@ function notifyListeners() {
   listeners.forEach((listener) => listener(copy));
 }
 
-let presenceChannel: RealtimeChannel | null = null;
+/**
+ * One private channel per band ("presence:band:<id>", migration 071): only
+ * the band's active members can join it and see who is online (PR-44).
+ * The online set is the union of all of the user's bands.
+ */
+const channels = new Map<string, RealtimeChannel>();
 let activeUserId: string | null = null;
 let lifecycleBound = false;
 let inForeground = true;
+/** Bumped on every init/cleanup so late async work from an old run stops. */
+let generation = 0;
 
-/** Rebuild the online set from the channel's full presence state. */
-function syncFromState(channel: RealtimeChannel) {
-  const state = channel.presenceState();
+/** Rebuild the online set from every band channel's full presence state. */
+function syncFromState() {
   globalOnlineUserIds.clear();
-  Object.keys(state).forEach((key) => globalOnlineUserIds.add(key));
+  channels.forEach((channel) => {
+    Object.keys(channel.presenceState()).forEach((key) => globalOnlineUserIds.add(key));
+  });
   notifyListeners();
 }
 
@@ -32,74 +40,78 @@ function track(channel: RealtimeChannel, userId: string) {
     .catch(() => {});
 }
 
-function openChannel(userId: string) {
-  const channel = supabase.channel('bandwith-presence', {
-    config: { presence: { key: userId } },
+function openChannel(bandId: string, userId: string) {
+  const channel = supabase.channel(`presence:band:${bandId}`, {
+    config: { private: true, presence: { key: userId } },
   });
 
   channel
     // join/leave also rebuild from the full state: a user with two devices
     // stays online when only one of them leaves.
-    .on('presence', { event: 'sync' }, () => syncFromState(channel))
-    .on('presence', { event: 'join' }, () => syncFromState(channel))
-    .on('presence', { event: 'leave' }, () => syncFromState(channel))
+    .on('presence', { event: 'sync' }, syncFromState)
+    .on('presence', { event: 'join' }, syncFromState)
+    .on('presence', { event: 'leave' }, syncFromState)
     .subscribe((status) => {
       if (status === 'SUBSCRIBED' && inForeground) {
         void track(channel, userId);
       }
     });
 
-  presenceChannel = channel;
+  channels.set(bandId, channel);
+}
+
+async function myBandIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('band_members')
+    .select('band_id')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+  if (error) return [];
+  return [...new Set((data || []).map((r: { band_id: string }) => r.band_id).filter(Boolean))];
+}
+
+async function closeAll() {
+  const old = [...channels.values()];
+  channels.clear();
+  await Promise.all(old.map((ch) => supabase.removeChannel(ch).catch(() => {})));
+}
+
+async function openAll(userId: string, gen: number) {
+  const bandIds = await myBandIds(userId);
+  if (gen !== generation || activeUserId !== userId) return;
+  bandIds.forEach((id) => openChannel(id, userId));
 }
 
 let backgroundedAt = 0;
-/** Re-tracks us every 30 s in the foreground: a frame that never left (e.g.
- *  sent while iOS suspended the app) can't leave us shown offline for long. */
-let keepAlive: ReturnType<typeof setInterval> | null = null;
-
-function startKeepAlive() {
-  if (keepAlive) return;
-  keepAlive = setInterval(() => {
-    const ch = presenceChannel;
-    if (inForeground && activeUserId && ch && ch.state === 'joined') void track(ch, activeUserId);
-  }, 30_000);
-}
-
-function stopKeepAlive() {
-  if (keepAlive) clearInterval(keepAlive);
-  keepAlive = null;
-}
 
 /**
  * Back in the foreground: show ourselves online right away. After a real stay
  * in the background the socket may look connected but be dead (iOS suspends
- * the app), so the channel is rebuilt from scratch: reconnect if needed, join
- * again and track on SUBSCRIBED. A short blip just re-tracks.
+ * the app), so the channels are rebuilt from scratch: reconnect if needed,
+ * join again and track on SUBSCRIBED. A short blip just re-tracks. Nothing
+ * is re-sent while the state does not change (no keep-alive timer).
  */
 function onForeground() {
   if (inForeground) return; // visibilitychange and appStateChange both fire
   inForeground = true;
   const userId = activeUserId;
-  const channel = presenceChannel;
-  if (!userId || !channel) return;
-  startKeepAlive();
+  if (!userId) return;
 
   // The demo client has no realtime socket.
   const realtime = (supabase as { realtime?: typeof supabase.realtime }).realtime;
   const away = Date.now() - backgroundedAt;
   if (realtime && (away > 5_000 || !realtime.isConnected())) {
-    presenceChannel = null;
-    supabase
-      .removeChannel(channel)
-      .catch(() => {})
-      .finally(() => {
-        if (activeUserId !== userId || presenceChannel) return;
-        if (!realtime.isConnected()) realtime.connect();
-        openChannel(userId);
-      });
+    const gen = ++generation;
+    void closeAll().finally(() => {
+      if (gen !== generation || activeUserId !== userId) return;
+      if (!realtime.isConnected()) realtime.connect();
+      void openAll(userId, gen);
+    });
     return;
   }
-  if (channel.state === 'joined') void track(channel, userId);
+  channels.forEach((ch) => {
+    if (ch.state === 'joined') void track(ch, userId);
+  });
 }
 
 /** Going to the background: drop our presence now instead of on socket timeout. */
@@ -107,8 +119,7 @@ function onBackground() {
   if (!inForeground) return;
   inForeground = false;
   backgroundedAt = Date.now();
-  stopKeepAlive();
-  if (presenceChannel) void presenceChannel.untrack().catch(() => {});
+  channels.forEach((ch) => void ch.untrack().catch(() => {}));
 }
 
 function bindLifecycle() {
@@ -129,46 +140,34 @@ function bindLifecycle() {
 }
 
 export function initPresence(userId: string) {
-  if (!userId || (presenceChannel && activeUserId === userId)) {
+  if (!userId || (activeUserId === userId && channels.size > 0)) {
     return;
   }
 
   activeUserId = userId;
   inForeground = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+  const gen = ++generation;
 
-  const open = () => {
-    if (activeUserId !== userId) return;
+  // Switching users: the old channels must be gone first, or
+  // supabase.channel() would hand them back instead of fresh ones.
+  void closeAll().finally(() => {
+    if (gen !== generation || activeUserId !== userId) return;
     try {
       bindLifecycle();
-      openChannel(userId);
-      if (inForeground) startKeepAlive();
+      void openAll(userId, gen);
     } catch (err) {
       console.warn('[Presence] Realtime presence unavailable:', err);
     }
-  };
-
-  // Switching users: the topic is shared, so the old channel must be gone
-  // before supabase.channel() would hand it back instead of a fresh one.
-  const previous = presenceChannel;
-  if (previous) {
-    presenceChannel = null;
-    supabase.removeChannel(previous).catch(() => {}).finally(open);
-  } else {
-    open();
-  }
+  });
 }
 
 export function cleanupPresence() {
-  stopKeepAlive();
+  generation += 1;
   activeUserId = null;
-  if (presenceChannel) {
-    void presenceChannel.untrack().catch(() => {});
-    void supabase.removeChannel(presenceChannel);
-    presenceChannel = null;
-    activeUserId = null;
-    globalOnlineUserIds.clear();
-    notifyListeners();
-  }
+  channels.forEach((ch) => void ch.untrack().catch(() => {}));
+  void closeAll();
+  globalOnlineUserIds.clear();
+  notifyListeners();
 }
 
 /** True once our own presence is in the synced state, i.e. the set is trustworthy. */

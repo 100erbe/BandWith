@@ -1,5 +1,5 @@
 // Supabase Edge Function: Send Push Notification (Zero External Dependencies)
-import { adminClient, allowedRecipients, HttpError, requireCaller } from '../_shared/auth.ts';
+import { adminClient, chatRecipients, HttpError, requireCaller } from '../_shared/auth.ts';
 
 const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID');
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID');
@@ -338,9 +338,16 @@ Deno.serve(async (req: Request) => {
     }
     const requestedIds = (user_ids || (user_id ? [user_id] : [])).slice(0, 200);
     if (requestedIds.length === 0) throw new HttpError(400, 'No user IDs provided');
+    // Users can only push chat notices, to the other people in that chat.
+    // Every other notice comes from the database (dispatch secret) or a
+    // server call.
+    const userType = caller.kind === 'service' ? null : (data?.type || 'chat_message');
+    if (userType && userType !== 'chat_message' && userType !== 'chat_mention') {
+      throw new HttpError(403, 'Only chat notifications can be sent from the app');
+    }
     const targetUserIds = caller.kind === 'service'
       ? requestedIds
-      : await allowedRecipients(supabase, caller.id, requestedIds);
+      : await chatRecipients(supabase, caller.id, data?.chat_id || data?.chatId, requestedIds);
     if (targetUserIds.length === 0) {
       return new Response(
         JSON.stringify({ success: true, sent: 0, message: 'No permitted recipients' }),
@@ -350,7 +357,7 @@ Deno.serve(async (req: Request) => {
 
     const effectiveSubtitle = subtitle || data?.subtitle;
     const effectiveTag = tag || data?.tag;
-    const notificationType = data?.type || 'chat_message';
+    const notificationType = userType || data?.type || 'chat_message';
     const effectiveChannel = channel_id || data?.channel_id || (
       notificationType.includes('chat') ? 'bandwith_messages' :
       notificationType.includes('quote') || notificationType.includes('payment') ? 'bandwith_finance' :

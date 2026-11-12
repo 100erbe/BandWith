@@ -968,7 +968,7 @@ export const sendMessage = async (
         // Send push notification (Edge Function also creates in-app notifications)
         // Uses service role so RLS is bypassed
         try {
-          const pushResult = await sendPushToUsers(otherParticipants, 'chat_message', {
+          await sendPushToUsers(otherParticipants, 'chat_message', {
             senderName,
             content: content.substring(0, 120),
             chatId,
@@ -980,7 +980,6 @@ export const sendMessage = async (
             tag,
             channel_id: 'bandwith_messages',
           });
-          console.log('[sendMessage] Push result:', JSON.stringify(pushResult));
         } catch (pushErr) {
           console.warn('[sendMessage] Push notification error (non-critical):', pushErr);
         }

@@ -138,6 +138,7 @@ import { parseLocalDate } from '@/lib/dates';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 import { personName, personFirstName, personInitials } from "@/lib/personName";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
+import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -602,7 +603,7 @@ export default function AuthenticatedApp() {
       // Simple query WITHOUT profile join to avoid FK/schema issues
       const { data, error } = await supabase
         .from('event_members')
-        .select('event_id, user_id, fee, status')
+        .select('event_id, user_id, status')
         .in('event_id', dbEventIds);
 
       if (error) {
@@ -612,10 +613,14 @@ export default function AuthenticatedApp() {
         return; // Keep previous/cached map rather than overwriting with empty
       }
 
+      // Fees: all rows for events this user manages, only their own otherwise (071).
+      const { data: money } = await getEventMemberMoney(dbEventIds);
+      const feeOf = moneyLookup(money);
       const map: Record<string, { name: string; userId: string; fee?: number; status?: string }[]> = { ...pendingMap };
       data?.forEach((em: any) => {
         if (!map[em.event_id]) map[em.event_id] = [];
-        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: em.fee, status: em.status });
+        const fee = feeOf(em.event_id, em.user_id)?.fee;
+        map[em.event_id].push({ name: bandNameMap[em.user_id] || 'Member', userId: em.user_id, fee: fee ?? undefined, status: em.status });
       });
       setEventMembersMap(map);
       setOfflineItem(membersMapCacheKey, map).catch(() => {});
@@ -2099,10 +2104,7 @@ export default function AuthenticatedApp() {
         members.forEach(m => { memberFeeMap[m.user_id] = m.fee?.toString() || '0'; });
       } else {
         // Fallback 1: simple query without profile join
-        const { data: rawMembers } = await supabase
-          .from('event_members')
-          .select('user_id, fee')
-          .eq('event_id', selectedEvent.eventId);
+        const { data: rawMembers } = await getEventMemberMoney([selectedEvent.eventId]);
         if (rawMembers?.length) {
           memberUserIds = rawMembers.map((m: any) => m.user_id);
           rawMembers.forEach((m: any) => { memberFeeMap[m.user_id] = m.fee?.toString() || '0'; });
@@ -2678,9 +2680,7 @@ export default function AuthenticatedApp() {
           fee: parseFloat(m.fee) || 0,
           status: existingStatus.get(m.id) || (m.id === user?.id ? 'confirmed' : 'pending'),
         }));
-        const { error: upErr } = await supabase
-          .from('event_members')
-          .upsert(rows, { onConflict: 'event_id,user_id' });
+        const { error: upErr } = await saveEventLineup(eventId, rows);
         if (upErr) errors.push(upErr.message);
         if (isEdit) {
           addedOnEdit = membersToInvite
@@ -3439,7 +3439,7 @@ export default function AuthenticatedApp() {
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} events={templateTargetEvents} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
+          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} events={isAdminOfBand(realBand.id) ? templateTargetEvents : []} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
             setShowTaskTemplates(false);
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
             handleCreateEvent(kind);
@@ -3695,10 +3695,7 @@ export default function AuthenticatedApp() {
                     return await saveQuoteEventOffline();
                   }
                   if (ev?.id && memberRows.length > 0) {
-                    await supabase.from('event_members').upsert(
-                      memberRows.map((r: any) => ({ ...r, event_id: ev.id })),
-                      { onConflict: 'event_id,user_id' }
-                    );
+                    await saveEventLineup(ev.id, memberRows as LineupRow[]);
                   }
                   return ev?.id || null;
                 } catch (err) {

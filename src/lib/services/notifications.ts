@@ -1206,7 +1206,6 @@ export const sendPushToUsers = async (
     }
 
     // Call the Edge Function
-    console.log('[sendPushToUsers] Calling Edge Function with:', { user_ids: userIds, title, subtitle, tag, body });
     
     const { data: result, error } = await supabase.functions.invoke('send-push', {
       body: {
@@ -1222,7 +1221,6 @@ export const sendPushToUsers = async (
 
     if (error) {
       console.error('[sendPushToUsers] Edge function error:', error);
-      console.error('[sendPushToUsers] Error details:', JSON.stringify(error, null, 2));
       
       // Try to get more info
       if ('context' in error && error.context) {
@@ -1237,7 +1235,6 @@ export const sendPushToUsers = async (
       return { success: false, error: new Error(error.message || 'Edge function failed') };
     }
 
-    console.log('[sendPushToUsers] Push sent successfully:', result);
     return { success: true, error: null };
   } catch (error: any) {
     console.error('[sendPushToUsers] Error:', error);

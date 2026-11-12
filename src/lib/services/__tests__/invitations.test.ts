@@ -129,7 +129,7 @@ describe('inviteToBand', () => {
     const result = await inviteToBand({ bandId: 'b', email: 'x@y.co', inviterName: 'Sam' });
     expect(result).toMatchObject({ kind: 'invited', token: TOKEN, emailSent: true });
     expect(sendOnboardingInviteEmail).toHaveBeenCalledWith(
-      'b', 'x@y.co', 'The Lines', 'Sam', `https://bandwith.app/?invite=${TOKEN}`, 'Musician'
+      'b', 'x@y.co', 'The Lines', 'Sam', `https://bandwith.app/?invite=${TOKEN}`, 'Musician', TOKEN
     );
   });
 });

@@ -12,6 +12,7 @@ import {
   AppleBrandIcon,
 } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { AuthScreen, BackButton, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import type { BiometricStatus } from '@/lib/services/biometric';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
@@ -85,31 +86,46 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setError(null);
 
     try {
-      const credentials = await bioModule.getCredentialsWithBiometric(undefined, { allowWebTest: import.meta.env.DEV });
+      const quick = await bioModule.getQuickSignIn(undefined, { allowWebTest: import.meta.env.DEV });
       if (!mountedRef.current) return;
-      if (credentials) {
-        const { error } = await signIn(credentials.email, credentials.password);
+      if (!quick) {
+        setLoading(false);
+        return;
+      }
+      const forget = async (message: string) => {
+        await bioModule.deleteBiometricCredentials();
         if (!mountedRef.current) return;
-        if (error) {
-          // Saved password no longer valid (changed or reset): forget it so the
-          // next Face ID / fingerprint attempt doesn't keep failing.
-          if (/invalid login credentials/i.test(error.message)) {
-            await bioModule.deleteBiometricCredentials();
-            if (mountedRef.current) {
-              setBiometricStatus((prev) => (prev ? { ...prev, hasCredentials: false } : prev));
-              setError('Your password changed. Sign in with it once to turn quick sign-in back on.');
-              setLoading(false);
-            }
-            return;
-          }
-          setError(error.message);
-          setLoading(false);
+        setBiometricStatus((prev) => (prev ? { ...prev, hasCredentials: false, email: undefined } : prev));
+        setError(message);
+        setLoading(false);
+      };
+      if (quick.kind === 'session') {
+        // Resume the account's session from its refresh token.
+        const { data, error } = await supabase.auth.refreshSession({ refresh_token: quick.refreshToken });
+        if (!mountedRef.current) return;
+        if (error || !data.session) {
+          await forget('Quick sign-in expired. Sign in with your password once to turn it back on.');
           return;
         }
+        await bioModule.updateStoredSession(data.session);
         onSuccess();
-      } else {
-        setLoading(false);
+        return;
       }
+      // Older build: a saved password. Use it once, then keep the token instead.
+      const { error } = await signIn(quick.email, quick.password);
+      if (!mountedRef.current) return;
+      if (error) {
+        if (/invalid login credentials/i.test(error.message)) {
+          await forget('Your password changed. Sign in with it once to turn quick sign-in back on.');
+          return;
+        }
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      await bioModule.updateStoredSession(session);
+      onSuccess();
     } catch (err: any) {
       if (!mountedRef.current) return;
       setError(err.message || 'Biometric authentication failed');
@@ -133,13 +149,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setLoading(false);
         return;
       }
-      // Store for Face ID / fingerprint only once the password is proven right.
+      // Quick sign-in keeps the session's refresh token, never the password,
+      // and only once the password is proven right.
       if (save && biometricModuleRef.current) {
-        await biometricModuleRef.current.saveCredentialsForBiometric(
-          pendingCredentials.email,
-          pendingCredentials.password,
-          { allowWebTest: import.meta.env.DEV }
-        );
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await biometricModuleRef.current.saveSessionForBiometric(session, { allowWebTest: import.meta.env.DEV });
+        }
       }
       onSuccess();
     } catch (err: any) {
@@ -194,7 +210,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       if (mountedRef.current) setBiometricStatus(bioStatus);
     }
 
-    if (bioStatus?.isAvailable && !bioStatus.hasCredentials) {
+    // Offer quick sign-in when it is off, or ask before moving it from
+    // another account to this one (PR-42).
+    const typedEmail = email.trim().toLowerCase();
+    if (bioStatus?.isAvailable && (!bioStatus.hasCredentials || (bioStatus.email && bioStatus.email !== typedEmail))) {
       // Show prompt first — signIn() happens after user decides
       setPendingCredentials({ email, password });
       setShowBiometricPrompt(true);
@@ -230,6 +249,12 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   };
 
   const canUseBiometric = !!(biometricStatus?.isAvailable && biometricStatus.hasCredentials);
+  const replacingAccount = !!(
+    biometricStatus?.hasCredentials &&
+    biometricStatus.email &&
+    pendingCredentials &&
+    biometricStatus.email !== pendingCredentials.email.trim().toLowerCase()
+  );
   const biometryName = getBiometryDisplayName(biometricStatus?.biometryType);
   const BiometryIcon = biometricStatus?.biometryType === 'faceId' ? ScanFace : Fingerprint;
 
@@ -332,6 +357,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             Use {biometryName}
           </PillButton>
         )}
+        {canUseBiometric && biometricStatus?.email && (
+          <p className="bw-body-sm text-muted-foreground -mt-2 text-center break-all">{biometricStatus.email}</p>
+        )}
 
         {onCreateAccount && (
           <p className="bw-body-sm text-muted-foreground">
@@ -374,12 +402,18 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 <BiometryIcon className="w-8 h-8" strokeWidth={1.75} />
               </div>
               <p className="bw-label-sm text-white/70 mb-1">Faster sign-in</p>
-              <h2 id="bio-title" className="bw-h2 text-[28px] mb-3">Enable {biometryName}?</h2>
-              <p className="text-[16px] leading-[1.4] text-white/70 mb-6">
-                Sign in faster next time using {biometryName}.
+              <h2 id="bio-title" className="bw-h2 text-[28px] mb-3">
+                {replacingAccount ? `Use ${biometryName} for this account?` : `Enable ${biometryName}?`}
+              </h2>
+              <p className="text-[16px] leading-[1.4] text-white/70 mb-6 break-words">
+                {replacingAccount
+                  ? `${biometryName} now signs in ${biometricStatus.email}. Switch it to ${pendingCredentials?.email.trim().toLowerCase()}?`
+                  : `Sign in faster next time using ${biometryName}.`}
               </p>
               <div className="flex flex-col gap-3">
-                <PillButton onClick={() => handleBiometricPromptDecision(true)}>Enable {biometryName}</PillButton>
+                <PillButton onClick={() => handleBiometricPromptDecision(true)}>
+                  {replacingAccount ? `Switch ${biometryName}` : `Enable ${biometryName}`}
+                </PillButton>
                 <PillButton variant="ghost" size="md" className="text-white" onClick={() => handleBiometricPromptDecision(false)}>
                   Not now
                 </PillButton>

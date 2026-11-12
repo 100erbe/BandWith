@@ -84,15 +84,59 @@ const removeStoredCredentials = async (): Promise<void> => {
   }
 };
 
-export interface BiometricCredentials {
+/**
+ * What quick sign-in keeps on the device (PR-41, PR-42): the Supabase refresh
+ * token of the account, never the password, tied to that account's id and
+ * email. Older builds stored { email, password }; that record is read once
+ * more and replaced right after the next successful sign-in.
+ */
+interface StoredSession {
+  v: 2;
+  userId: string;
+  email: string;
+  refreshToken: string;
+}
+interface LegacyCredentials {
   email: string;
   password: string;
 }
+
+export type QuickSignIn =
+  | { kind: 'session'; userId: string; email: string; refreshToken: string }
+  | { kind: 'password'; email: string; password: string };
+
+/** The minimum of a Supabase session quick sign-in needs. */
+export interface SessionLike {
+  refresh_token?: string | null;
+  user?: { id: string; email?: string | null } | null;
+}
+
+const decodeRecord = (stored: string | null): StoredSession | LegacyCredentials | null => {
+  if (!stored) return null;
+  try {
+    const parsed = JSON.parse(deobfuscate(stored));
+    if (parsed?.v === 2 && parsed.userId && parsed.refreshToken) return parsed as StoredSession;
+    if (parsed?.email && parsed?.password) return parsed as LegacyCredentials;
+  } catch {
+    // corrupt
+  }
+  return null;
+};
+
+const encodeSession = (session: SessionLike): string | null => {
+  const userId = session.user?.id;
+  const refreshToken = session.refresh_token;
+  if (!userId || !refreshToken) return null;
+  const record: StoredSession = { v: 2, userId, email: (session.user?.email || '').toLowerCase(), refreshToken };
+  return obfuscate(JSON.stringify(record));
+};
 
 export interface BiometricStatus {
   isAvailable: boolean;
   biometryType: 'faceId' | 'touchId' | 'fingerprint' | 'iris' | 'none';
   hasCredentials: boolean;
+  /** Account quick sign-in belongs to (shown under the button). */
+  email?: string;
   isWebTest?: boolean;
 }
 
@@ -100,6 +144,10 @@ export interface BiometricOptions {
   /** Allow testing the biometric flow in web/browser (no actual hardware). Default false. */
   allowWebTest?: boolean;
 }
+
+/** Face ID / fingerprint only: no fallback to the device passcode (PR-41). */
+const authenticate = (reason: string) =>
+  BiometricAuth.authenticate({ reason, allowDeviceCredential: false });
 
 /**
  * Check if biometric authentication is available on the device.
@@ -115,11 +163,12 @@ export const checkBiometricAvailability = async (
   // Web/browser: optionally allow testing the biometric flow
   if (!isNative) {
     if (allowWebTest) {
-      const hasCredentials = !!localStorage.getItem(CREDENTIALS_KEY);
+      const record = decodeRecord(localStorage.getItem(CREDENTIALS_KEY));
       return {
         isAvailable: true,
         biometryType: 'fingerprint',
-        hasCredentials,
+        hasCredentials: !!record,
+        email: record?.email?.toLowerCase(),
         isWebTest: true,
       };
     }
@@ -161,7 +210,8 @@ export const checkBiometricAvailability = async (
     }
 
     // Check if we have stored credentials
-    const hasCredentials = !!(await readStoredCredentials());
+    const record = decodeRecord(await readStoredCredentials());
+    const hasCredentials = !!record;
 
     // BUG FIX: If credentials exist but biometric says unavailable, log warning
     if (hasCredentials && !isAvailable) {
@@ -175,6 +225,7 @@ export const checkBiometricAvailability = async (
       isAvailable,
       biometryType,
       hasCredentials,
+      email: record?.email?.toLowerCase(),
     };
   } catch (error) {
     console.error('[Biometric] Availability check failed:', error);
@@ -201,92 +252,85 @@ export const getBiometryDisplayName = (type: BiometricStatus['biometryType']): s
 };
 
 /**
- * Save credentials securely for biometric access.
- * On native: verifies biometric first, then stores obfuscated credentials.
- * On web with allowWebTest: stores directly (for testing).
+ * Turns on quick sign-in for the signed-in account: after a Face ID /
+ * fingerprint check, keeps its refresh token (not the password).
  */
-export const saveCredentialsForBiometric = async (
-  email: string,
-  password: string,
+export const saveSessionForBiometric = async (
+  session: SessionLike,
   options?: BiometricOptions
 ): Promise<boolean> => {
   const isNative = Capacitor.isNativePlatform();
   const allowWebTest = options?.allowWebTest ?? false;
+  if (!isNative && !allowWebTest) return false;
 
-  if (!isNative && !allowWebTest) {
-    console.log('[Biometric] Not on native platform, skipping credential save');
-    return false;
-  }
-
+  const encoded = encodeSession(session);
+  if (!encoded) return false;
   try {
-    // Verify biometric first before saving (native only)
-    if (isNative) {
-      await BiometricAuth.authenticate({
-        reason: 'Confirm it’s you to turn on quick sign-in',
-        allowDeviceCredential: true,
-      });
-    }
-
-    // Store obfuscated credentials
-    const credentials = obfuscate(JSON.stringify({ email, password }));
-    await writeStoredCredentials(credentials);
-
-    console.log('[Biometric] Credentials saved successfully');
+    if (isNative) await authenticate('Confirm it’s you to turn on quick sign-in');
+    await writeStoredCredentials(encoded);
     return true;
   } catch (error) {
-    console.error('[Biometric] Failed to save credentials:', error);
+    console.warn('[Biometric] Quick sign-in not turned on:', error);
     return false;
   }
 };
 
 /**
- * Get stored credentials after biometric verification.
- * On native: requires biometric authentication first.
- * On web with allowWebTest: returns stored credentials without hardware check.
+ * Keeps the stored refresh token current. Supabase rotates it on every
+ * refresh, so this runs on each SIGNED_IN / TOKEN_REFRESHED. It only touches
+ * the record of the same account (or turns an old password record of the
+ * same email into a token record). No biometric prompt.
  */
-export const getCredentialsWithBiometric = async (
+export const updateStoredSession = async (session: SessionLike | null | undefined): Promise<void> => {
+  if (!session?.user?.id || !session.refresh_token) return;
+  try {
+    const record = decodeRecord(await readStoredCredentials());
+    if (!record) return;
+    const sameAccount = 'v' in record
+      ? record.userId === session.user.id
+      : record.email.toLowerCase() === (session.user.email || '').toLowerCase();
+    if (!sameAccount) return;
+    if ('v' in record && record.refreshToken === session.refresh_token) return;
+    const encoded = encodeSession(session);
+    if (encoded) await writeStoredCredentials(encoded);
+  } catch {
+    // keep the old record
+  }
+};
+
+/** Account that quick sign-in belongs to, without a biometric prompt. */
+export const getQuickSignInOwner = async (): Promise<{ userId?: string; email: string } | null> => {
+  const record = decodeRecord(await readStoredCredentials());
+  if (!record) return null;
+  return 'v' in record ? { userId: record.userId, email: record.email } : { email: record.email.toLowerCase() };
+};
+
+/**
+ * After a Face ID / fingerprint check, what to sign in with: the stored
+ * refresh token (or, once, an old build's saved password).
+ */
+export const getQuickSignIn = async (
   reason?: string,
   options?: BiometricOptions
-): Promise<BiometricCredentials | null> => {
+): Promise<QuickSignIn | null> => {
   const isNative = Capacitor.isNativePlatform();
   const allowWebTest = options?.allowWebTest ?? false;
-
-  if (!isNative && !allowWebTest) {
-    return null;
-  }
+  if (!isNative && !allowWebTest) return null;
 
   try {
-    // Verify with biometric (native only)
-    if (isNative) {
-      await BiometricAuth.authenticate({
-        reason: reason || 'Sign in to BandWith',
-        allowDeviceCredential: true,
-      });
-    }
-
-    // Get stored credentials
-    const stored = await readStoredCredentials();
-    if (!stored) {
-      console.log('[Biometric] No stored credentials found');
-      return null;
-    }
-
-    try {
-      const credentials = JSON.parse(deobfuscate(stored));
-      return {
-        email: credentials.email,
-        password: credentials.password,
-      };
-    } catch (parseError) {
-      console.error('[Biometric] Failed to decode stored credentials:', parseError);
-      // Corrupt storage — clean up
-      await removeStoredCredentials();
-      return null;
-    }
-  } catch (error: any) {
-    console.log('[Biometric] Authentication cancelled or failed:', error);
+    if (isNative) await authenticate(reason || 'Sign in to BandWith');
+  } catch {
+    return null; // cancelled or failed
+  }
+  const stored = await readStoredCredentials();
+  const record = decodeRecord(stored);
+  if (!record) {
+    if (stored) await removeStoredCredentials();
     return null;
   }
+  return 'v' in record
+    ? { kind: 'session', userId: record.userId, email: record.email, refreshToken: record.refreshToken }
+    : { kind: 'password', email: record.email, password: record.password };
 };
 
 /**
