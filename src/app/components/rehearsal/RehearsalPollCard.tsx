@@ -21,6 +21,7 @@ import {
 import { haptic } from '@/lib/haptics';
 import { StepPad, Card, Tag, PillButton, PillField } from '@/app/components/bw';
 import { personName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 interface RehearsalPollCardProps {
   poll: RehearsalPoll;
@@ -41,6 +42,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
   onShowToast,
   defaultExpanded = false,
 }) => {
+  const t = useT();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [votingOptionId, setVotingOptionId] = useState<string | null>(null);
   const [finalizingOptionId, setFinalizingOptionId] = useState<string | null>(null);
@@ -143,7 +145,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
 
     if (error) {
       clearAutoClose();
-      onShowToast?.('Failed to register vote. Please try again.', 'error');
+      onShowToast?.(t('Failed to register vote. Please try again.'), 'error');
     } else {
       onPollUpdated?.();
     }
@@ -155,7 +157,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     startAutoClose();
     const { error } = await clearUserVotesForPoll(poll.id, currentUserId);
     if (!error) {
-      onShowToast?.('Cleared your availability for this poll.', 'info');
+      onShowToast?.(t('Cleared your availability for this poll.'), 'info');
       onPollUpdated?.();
     } else {
       clearAutoClose();
@@ -177,9 +179,9 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     setShowLocationInput(null);
 
     if (error) {
-      onShowToast?.(error.message || 'Failed to create rehearsal.', 'error');
+      onShowToast?.(error.message || t('Failed to create rehearsal.'), 'error');
     } else {
-      onShowToast?.('Rehearsal scheduled and added to the calendar!', 'success');
+      onShowToast?.(t('Rehearsal scheduled and added to the calendar!'), 'success');
       onPollUpdated?.();
     }
   };
@@ -190,7 +192,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     const { error } = await dismissPoll(poll.id);
     setDismissing(false);
     if (!error) {
-      onShowToast?.('Proposal dismissed.', 'info');
+      onShowToast?.(t('Proposal dismissed.'), 'info');
       onPollUpdated?.();
     }
   };
@@ -204,9 +206,9 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
     setShowDeleteConfirm(false);
 
     if (error) {
-      onShowToast?.('Failed to delete poll. Please try again.', 'error');
+      onShowToast?.(t('Failed to delete poll. Please try again.'), 'error');
     } else {
-      onShowToast?.('Rehearsal poll deleted.', 'info');
+      onShowToast?.(t('Rehearsal poll deleted.'), 'info');
       onPollUpdated?.();
     }
   };
@@ -223,18 +225,18 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
           <div className="flex flex-col gap-1 min-w-0">
             <span className="flex items-center gap-2 bw-label-sm text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-accent-rehearsal" />
-              {isAuthor && !isAdmin ? 'Your rehearsal proposal' : 'Member rehearsal proposal'}
+              {isAuthor && !isAdmin ? t('Your rehearsal proposal') : t('Member rehearsal proposal')}
             </span>
             <h4 className="bw-h2 [overflow-wrap:anywhere]">{poll.title}</h4>
           </div>
-          <Tag variant="subtle">Pending admin</Tag>
+          <Tag variant="subtle">{t('Pending admin')}</Tag>
         </div>
 
         {/* Proposer Details */}
         <p className="bw-body-sm text-muted-foreground">
-          Proposed by{' '}
+          {t('Proposed by')}{' '}
           <span className="text-foreground font-semibold">
-            {personName(poll.creator_profile, 'Band member')}
+            {personName(poll.creator_profile, t('Band member'))}
           </span>{' '}
           ·{' '}
           {new Date(poll.created_at).toLocaleDateString(undefined, {
@@ -246,7 +248,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
         {/* Preferred Days */}
         {poll.preferred_days && poll.preferred_days.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="bw-label-sm text-muted-foreground mr-1">Preferred</span>
+            <span className="bw-label-sm text-muted-foreground mr-1">{t('Preferred')}</span>
             {poll.preferred_days.map((day) => (
               <Tag key={day} variant="rehearsal">
                 {day}
@@ -262,7 +264,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
         {isAdmin && (
           <div className="flex items-center justify-end gap-2">
             <PillButton variant="ghost" size="sm" fullWidth={false} loading={dismissing} onClick={handleDismiss}>
-              Dismiss
+              {t('Dismiss')}
             </PillButton>
             <PillButton
               variant="dark"
@@ -271,7 +273,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
               onClick={() => onConvertProposal?.(poll)}
               icon={<ArrowUpRight className="w-4 h-4" />}
             >
-              Build poll
+              {t('Build poll')}
             </PillButton>
           </div>
         )}
@@ -290,7 +292,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-2 bw-label-sm">
             <span className="w-2 h-2 rounded-full bg-destructive-solid" />
-            Poll · Active
+            {t('Poll · Active')}
           </span>
           <span
             className={cn(
@@ -298,15 +300,15 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
               hasUserVotedAny ? 'bg-white/15 text-white' : 'bg-accent text-accent-foreground'
             )}
           >
-            {hasUserVotedAny ? 'Voted' : 'Vote now'}
+            {hasUserVotedAny ? t('Voted') : t('Vote now')}
           </span>
         </div>
 
         <div className="flex flex-col gap-2">
           <h4 className="bw-h2 text-white">{poll.title}</h4>
           <p className="bw-body-sm text-white/75">
-            {poll.notes ? `${poll.notes} — ` : 'Select your available options — '}
-            {uniqueVoterCount} of {totalMembers} voted
+            {poll.notes ? `${poll.notes} — ` : t('Select your available options — ')}
+            {t('{voted} of {total} voted', { voted: uniqueVoterCount, total: totalMembers })}
           </p>
         </div>
 
@@ -340,7 +342,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
           }}
           className="self-start flex items-center gap-1.5 bw-label-sm text-white/70 hover:text-white transition-colors cursor-pointer"
         >
-          {expanded ? 'Hide details' : isAdmin ? 'Details · Lock in' : 'Details'}
+          {expanded ? t('Hide details') : isAdmin ? t('Details · Lock in') : t('Details')}
           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
       </div>
@@ -358,16 +360,16 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
             <div className="px-5 pb-5 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3 min-h-9">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="bw-label-sm text-white/70">Your availability</span>
+                  <span className="bw-label-sm text-white/70">{t('Your availability')}</span>
                   {autoCloseCountdown !== null && (
                     <span className="flex items-center gap-2 bw-label-sm text-white/70">
-                      <span className="animate-pulse">· Closing in {autoCloseCountdown}s</span>
+                      <span className="animate-pulse">· {t('Closing in {seconds}s', { seconds: autoCloseCountdown })}</span>
                       <button
                         type="button"
                         onClick={clearAutoClose}
                         className="underline underline-offset-2 text-white hover:opacity-80"
                       >
-                        Keep open
+                        {t('Keep open')}
                       </button>
                     </span>
                   )}
@@ -375,7 +377,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
 
                 {hasUserVotedAny && (
                   <PillButton variant="ghost" size="sm" fullWidth={false} className="-mr-3 shrink-0" onClick={handleNoneWork}>
-                    None work
+                    {t('None work')}
                   </PillButton>
                 )}
               </div>
@@ -416,13 +418,13 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                             </span>
                             {isWinning && (
                               <Tag variant={isChecked ? 'solid' : 'accent'} className={isChecked ? 'bg-black text-white' : undefined}>
-                                Top pick
+                                {t('Top pick')}
                               </Tag>
                             )}
                           </span>
                           <span className="bw-body-sm opacity-75 min-w-0 [overflow-wrap:anywhere]">
                             {option.start_time}
-                            {option.end_time ? ` – ${option.end_time}` : ''} · {option.vote_count || 0}/{totalMembers} available
+                            {option.end_time ? ` – ${option.end_time}` : ''} · {t('{count}/{total} available', { count: option.vote_count || 0, total: totalMembers })}
                           </span>
                         </button>
 
@@ -439,7 +441,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                               setShowLocationInput(isSelectingLocation ? null : option.id);
                             }}
                           >
-                            Lock in
+                            {t('Lock in')}
                           </PillButton>
                         )}
                       </div>
@@ -464,7 +466,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                                 className="w-7 h-7 rounded-full border border-current/40 bw-label-xs flex items-center justify-center shrink-0 overflow-hidden"
                               >
                                 {v.profile?.avatar_url ? (
-                                  <img src={v.profile.avatar_url} alt={v.profile?.full_name || 'Voter'} className="w-full h-full object-cover" />
+                                  <img src={v.profile.avatar_url} alt={v.profile?.full_name || t('Voter')} className="w-full h-full object-cover" />
                                 ) : (
                                   initials
                                 )}
@@ -483,11 +485,11 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                         >
                           <PillField
                             tone="sheet"
-                            label="Rehearsal location"
+                            label={t('Rehearsal location')}
                             icon={<MapPin className="w-5 h-5" />}
                             value={finalLocation}
                             onChange={(e) => setFinalLocation(e.target.value)}
-                            placeholder="Location / practice studio"
+                            placeholder={t('Location / practice studio')}
                           />
                           <PillButton
                             size="md"
@@ -495,7 +497,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                             icon={<Check className="w-4 h-4" />}
                             onClick={() => handleConfirmFinalize(option.id)}
                           >
-                            Confirm &amp; create event
+                            {t('Confirm & create event')}
                           </PillButton>
                         </motion.div>
                       )}
@@ -518,7 +520,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                       setShowDeleteConfirm(true);
                     }}
                   >
-                    Delete poll
+                    {t('Delete poll')}
                   </PillButton>
                 ) : (
                   <motion.div
@@ -532,10 +534,10 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                       <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
                       <div className="flex flex-col gap-1">
                         <span id={`poll-delete-${poll.id}`} className="bw-h3 text-destructive">
-                          Delete rehearsal poll?
+                          {t('Delete rehearsal poll?')}
                         </span>
                         <p className="bw-body-sm text-white/80">
-                          All proposed dates and member votes will be permanently deleted. This cannot be undone.
+                          {t('All proposed dates and member votes will be permanently deleted. This cannot be undone.')}
                         </p>
                       </div>
                     </div>
@@ -547,7 +549,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                         disabled={isDeleting}
                         onClick={() => setShowDeleteConfirm(false)}
                       >
-                        Cancel
+                        {t('Cancel')}
                       </PillButton>
                       <PillButton
                         size="sm"
@@ -557,7 +559,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                         className="bg-destructive-solid text-white"
                         onClick={handleDeletePoll}
                       >
-                        {isDeleting ? 'Deleting…' : 'Delete poll'}
+                        {isDeleting ? t('Deleting…') : t('Delete poll')}
                       </PillButton>
                     </div>
                   </motion.div>

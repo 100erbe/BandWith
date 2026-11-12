@@ -21,10 +21,11 @@ import { RehearsalViewMode } from '@/app/types';
 import { useEventTasks } from '@/lib/services/eventTasks';
 import { getSetlist } from '@/lib/services/songs';
 import { MapsLink } from '@/app/components/ui/MapsLink';
+import { useT } from '@/lib/i18n';
 
 type RehearsalSong = { id: string; title: string; key?: string; bpm?: number; duration?: string };
 
-const hhmm = (t?: string) => (t ? t.slice(0, 5) : '');
+const hhmm = (time?: string) => (time ? time.slice(0, 5) : '');
 
 interface RehearsalExpandedProps {
   upcomingRehearsals: EventItem[];
@@ -45,15 +46,6 @@ const Initials: React.FC<{ value: string }> = ({ value }) => (
   </span>
 );
 
-const VIEW_TITLE: Partial<Record<RehearsalViewMode, string>> = {
-  index: 'Rehearsals',
-  overview: 'Rehearsal',
-  setlist: 'Setlist',
-  tasks: 'Tasks',
-  live: 'Live',
-  post: 'Summary',
-};
-
 export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
   upcomingRehearsals,
   currentRehearsal,
@@ -65,6 +57,23 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
   onClose,
   onDecline
 }) => {
+  const t = useT();
+  const VIEW_TITLE: Partial<Record<RehearsalViewMode, string>> = {
+    index: t('Rehearsals'),
+    overview: t('Rehearsal'),
+    setlist: t('Setlist'),
+    tasks: t('Tasks'),
+    live: t('Live'),
+    post: t('Summary'),
+  };
+  // Shown names of the event status (the value stays as it is).
+  const statusLabel: Record<string, string> = {
+    CONFIRMED: t('CONFIRMED'),
+    TENTATIVE: t('TENTATIVE'),
+    DRAFT: t('DRAFT'),
+    QUOTE: t('QUOTE'),
+    REHEARSAL: t('REHEARSAL'),
+  };
   const handleBack = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (rehearsalViewMode === 'index') {
@@ -97,7 +106,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
           const secs = row.song?.duration_seconds;
           return {
             id: row.id,
-            title: row.song?.title || 'Untitled song',
+            title: row.song?.title || t('Untitled song'),
             key: row.song?.key || undefined,
             bpm: row.song?.bpm || undefined,
             duration: typeof secs === 'number' && secs > 0 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : undefined,
@@ -108,18 +117,18 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [setlistId]);
+  }, [setlistId, t]);
 
   const timeline = useMemo(() => {
     const steps: { time: string; label: string; active?: boolean }[] = [];
-    if (currentRehearsal?.loadInTime) steps.push({ time: hhmm(currentRehearsal.loadInTime), label: 'Load-in' });
-    if (currentRehearsal?.soundcheckTime) steps.push({ time: hhmm(currentRehearsal.soundcheckTime), label: 'Soundcheck' });
-    if (currentRehearsal?.time) steps.push({ time: hhmm(currentRehearsal.time), label: 'Start', active: true });
-    if (currentRehearsal?.endTime) steps.push({ time: hhmm(currentRehearsal.endTime), label: 'End' });
+    if (currentRehearsal?.loadInTime) steps.push({ time: hhmm(currentRehearsal.loadInTime), label: t('Load-in') });
+    if (currentRehearsal?.soundcheckTime) steps.push({ time: hhmm(currentRehearsal.soundcheckTime), label: t('Soundcheck') });
+    if (currentRehearsal?.time) steps.push({ time: hhmm(currentRehearsal.time), label: t('Start'), active: true });
+    if (currentRehearsal?.endTime) steps.push({ time: hhmm(currentRehearsal.endTime), label: t('End') });
     return steps;
-  }, [currentRehearsal?.loadInTime, currentRehearsal?.soundcheckTime, currentRehearsal?.time, currentRehearsal?.endTime]);
+  }, [currentRehearsal?.loadInTime, currentRehearsal?.soundcheckTime, currentRehearsal?.time, currentRehearsal?.endTime, t]);
 
-  const pendingTasks = tasks.filter((t) => !t.is_completed).length;
+  const pendingTasks = tasks.filter((task) => !task.is_completed).length;
   const songCount = setlist.length;
 
   return (
@@ -136,7 +145,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
           rehearsalViewMode === 'overview' && upcomingRehearsals.length > 1 ? (
             <span className="flex items-center gap-1">
               <IconButton
-                label="Previous rehearsal"
+                label={t('Previous rehearsal')}
                 size="sm"
                 variant="ghost"
                 icon={<ChevronLeft />}
@@ -144,7 +153,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               />
               <span className="bw-label-sm tabular-nums">{rehearsalIndex + 1}/{upcomingRehearsals.length}</span>
               <IconButton
-                label="Next rehearsal"
+                label={t('Next rehearsal')}
                 size="sm"
                 variant="ghost"
                 icon={<ChevronRight />}
@@ -174,15 +183,15 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
             >
               {/* Metrics */}
               <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
-                <Metric label="Sessions" value={upcomingRehearsals.length} fill={upcomingRehearsals.length / 48} />
-                <Metric label="Next" value={upcomingRehearsals[0]?.time || '--'} fill={upcomingRehearsals.length > 0 ? 1 / 48 : 0} />
+                <Metric label={t('Sessions')} value={upcomingRehearsals.length} fill={upcomingRehearsals.length / 48} />
+                <Metric label={t('Next')} value={upcomingRehearsals[0]?.time || '--'} fill={upcomingRehearsals.length > 0 ? 1 / 48 : 0} />
               </div>
 
               <section className="flex flex-col gap-4">
-                <h2 className="bw-label-md text-foreground">Upcoming sessions</h2>
+                <h2 className="bw-label-md text-foreground">{t('Upcoming sessions')}</h2>
                 {upcomingRehearsals.length === 0 ? (
                   <Card className="items-center text-center py-8">
-                    <h3 className="bw-h3">No rehearsals scheduled</h3>
+                    <h3 className="bw-h3">{t('No rehearsals scheduled')}</h3>
                   </Card>
                 ) : (
                   upcomingRehearsals.map((rehearsal, i) => (
@@ -200,7 +209,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                     >
                       <EventMark kind="rehearsal" size={32} />
                       <span className="flex-1 min-w-0 flex flex-col gap-1">
-                        {i === 0 && <Tag variant="rehearsal" className="self-start">Next up</Tag>}
+                        {i === 0 && <Tag variant="rehearsal" className="self-start">{t('Next up')}</Tag>}
                         <span className="bw-h3 truncate">{rehearsal.title}</span>
                         <span className="bw-body-sm text-muted-foreground truncate">
                           {[rehearsal.date, rehearsal.location].filter(Boolean).join(' · ')}
@@ -229,13 +238,13 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <span className="flex items-center gap-1.5 flex-wrap">
                     <EventMark kind="rehearsal" size={20} bare />
-                    <span className="bw-label-xs">Rehearsal</span>
+                    <span className="bw-label-xs">{t('Rehearsal')}</span>
                     {currentRehearsal.status && (
                       <span
                         className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center"
                         style={{ backgroundColor: 'color-mix(in srgb, var(--accent-rehearsal-fg) 12%, transparent)' }}
                       >
-                        {currentRehearsal.status}
+                        {statusLabel[currentRehearsal.status] ?? currentRehearsal.status}
                       </span>
                     )}
                   </span>
@@ -275,7 +284,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               {/* Timeline strip */}
               {timeline.length > 1 && (
                 <Card>
-                  <span className="bw-label-sm text-muted-foreground">Timeline</span>
+                  <span className="bw-label-sm text-muted-foreground">{t('Timeline')}</span>
                   <div className="relative flex justify-between items-start">
                     <span className="absolute top-[5px] left-1 right-1 h-px bg-border" aria-hidden="true" />
                     {timeline.map((step, i) => (
@@ -297,7 +306,7 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 icon={<Play className="w-[18px] h-[18px]" />}
                 onClick={() => setRehearsalViewMode('live')}
               >
-                Enter live mode
+                {t('Enter live mode')}
               </PillButton>
 
               {/* Setlist / tasks tiles */}
@@ -308,10 +317,10 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   className="rounded-[24px] p-4 flex flex-col gap-2 bg-card text-card-foreground text-left active:scale-[0.98] transition-transform"
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="bw-label-md">Songs to play</span>
+                    <span className="bw-label-md">{t('Songs to play')}</span>
                     <ArrowUpRight className="w-4 h-4 shrink-0" />
                   </span>
-                  <DotText text={songCount} size={24} label={`${songCount} songs`} />
+                  <DotText text={songCount} size={24} label={t('{count} songs', { count: songCount })} />
                 </button>
                 <button
                   type="button"
@@ -319,10 +328,10 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                   className="rounded-[24px] p-4 flex flex-col gap-2 bg-card text-card-foreground text-left active:scale-[0.98] transition-transform"
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="bw-label-md">Pending tasks</span>
+                    <span className="bw-label-md">{t('Pending tasks')}</span>
                     <ArrowUpRight className="w-4 h-4 shrink-0" />
                   </span>
-                  <DotText text={pendingTasks} size={24} label={`${pendingTasks} pending tasks`} />
+                  <DotText text={pendingTasks} size={24} label={t('{count} pending tasks', { count: pendingTasks })} />
                 </button>
               </div>
             </motion.div>
@@ -338,11 +347,11 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               className="flex flex-col gap-4"
             >
               <span className="bw-label-sm text-muted-foreground">
-                {songCount} {songCount === 1 ? 'song' : 'songs'}
+                {songCount === 1 ? t('{count} song', { count: songCount }) : t('{count} songs', { count: songCount })}
               </span>
               {songCount === 0 ? (
                 <Card className="items-center text-center py-8">
-                  <h3 className="bw-h3">No setlist yet</h3>
+                  <h3 className="bw-h3">{t('No setlist yet')}</h3>
                 </Card>
               ) : (
                 <Card className="gap-0 py-2">
@@ -373,12 +382,12 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col gap-4"
             >
-              <span className="bw-label-sm text-muted-foreground">{pendingTasks} pending</span>
+              <span className="bw-label-sm text-muted-foreground">{t('{count} pending', { count: pendingTasks })}</span>
               {tasksError && <p role="alert" className="bw-body-sm text-destructive">{tasksError}</p>}
               {tasks.length === 0 ? (
                 <Card className="items-center text-center py-8">
-                  <h3 className="bw-h3">No tasks</h3>
-                  <p className="bw-body-sm text-muted-foreground">Add them when you create or edit the rehearsal.</p>
+                  <h3 className="bw-h3">{t('No tasks')}</h3>
+                  <p className="bw-body-sm text-muted-foreground">{t('Add them when you create or edit the rehearsal.')}</p>
                 </Card>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -418,12 +427,12 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
                 <Mic2 className="relative w-10 h-10" />
               </span>
               <div className="flex flex-col gap-2">
-                <h2 className="bw-display-lg">Live session</h2>
-                <p className="bw-label-sm text-muted-foreground">Recording &amp; tracking time</p>
+                <h2 className="bw-display-lg">{t('Live session')}</h2>
+                <p className="bw-label-sm text-muted-foreground">{t('Recording & tracking time')}</p>
               </div>
-              <DotText text="00:00:00" size={34} label="Elapsed 00:00:00" />
+              <DotText text="00:00:00" size={34} label={t('Elapsed {time}', { time: '00:00:00' })} />
               <PillButton variant="outline" fullWidth={false} className="text-destructive border-destructive" onClick={() => setRehearsalViewMode('overview')}>
-                End session
+                {t('End session')}
               </PillButton>
             </motion.div>
           )}
@@ -444,9 +453,9 @@ export const RehearsalExpanded: React.FC<RehearsalExpandedProps> = ({
               icon={<Radio className="w-[18px] h-[18px]" />}
               onClick={() => setRehearsalViewMode('live')}
             >
-              Check in / live
+              {t('Check in / live')}
             </PillButton>
-            <IconButton label="Decline rehearsal" icon={<X />} onClick={onDecline} className="w-14 h-14" />
+            <IconButton label={t('Decline rehearsal')} icon={<X />} onClick={onDecline} className="w-14 h-14" />
           </div>
         </motion.div>
       )}

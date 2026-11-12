@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, Calendar, X } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { Card, IconButton, PillButton, ScreenHeader, Tag } from '@/app/components/bw';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   onClose: () => void;
@@ -21,14 +22,15 @@ const ATTENDANCE = [
 ];
 
 export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
+  const t = useT();
   return (
     <div className="fixed inset-0 z-[185] bg-background text-foreground flex flex-col overflow-y-auto">
       <ScreenHeader
-        actions={<IconButton label="Close summary" icon={<X />} variant="ghost" onClick={onClose} />}
+        actions={<IconButton label={t('Close summary')} icon={<X />} variant="ghost" onClick={onClose} />}
         overline={
           <span className="inline-flex items-center gap-1.5 text-success">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Rehearsal completed
+            {t('Rehearsal completed')}
           </span>
         }
         title="Weekly band practice"
@@ -43,9 +45,9 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { value: 4, label: 'Songs played', cls: '' },
-            { value: 2, label: 'Need work', cls: 'text-warning' },
-            { value: 1, label: 'Problem', cls: 'text-destructive' },
+            { value: 4, label: t('Songs played'), cls: '' },
+            { value: 2, label: t('Need work'), cls: 'text-warning' },
+            { value: 1, label: t('Problem'), cls: 'text-destructive' },
           ].map((s) => (
             <Card key={s.label} className="gap-2 p-4">
               <span className={cn('bw-value-lg', s.cls)}>{s.value}</span>
@@ -56,7 +58,7 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
 
         {/* Feedback */}
         <section className="flex flex-col gap-3">
-          <h3 className="bw-label-sm text-muted-foreground">Feedback summary</h3>
+          <h3 className="bw-label-sm text-muted-foreground">{t('Feedback summary')}</h3>
           {FEEDBACK.map((f) => (
             <Card key={f.song} className="gap-2">
               <div className="flex items-start justify-between gap-3">
@@ -65,7 +67,7 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
                   variant={f.tone === 'good' ? 'accent' : f.tone === 'work' ? 'outline' : 'solid'}
                   className={f.tone === 'problem' ? 'bg-destructive-solid text-white' : undefined}
                 >
-                  {f.verdict}
+                  {f.tone === 'good' ? t('Nailed it') : f.tone === 'work' ? t('Needs work') : t('Problems')}
                 </Tag>
               </div>
               <p className="bw-body-sm text-muted-foreground">“{f.note}”</p>
@@ -75,14 +77,14 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
 
         {/* Attendance */}
         <section className="flex flex-col gap-3">
-          <h3 className="bw-label-sm text-muted-foreground">Attendance</h3>
+          <h3 className="bw-label-sm text-muted-foreground">{t('Attendance')}</h3>
           <Card className="gap-0 py-2">
             {ATTENDANCE.map((m) => (
               <div key={m.id} className="flex items-center gap-3 py-2">
                 <CheckCircle2 className={cn('w-5 h-5 shrink-0', m.status === 'late' ? 'text-warning' : 'text-success')} />
                 <span className="flex-1 min-w-0 bw-body-lg truncate">{m.name}</span>
-                {m.status === 'late' && <Tag variant="outline">Late</Tag>}
-                <span className="bw-label-sm text-muted-foreground shrink-0">Arrived {m.time}</span>
+                {m.status === 'late' && <Tag variant="outline">{t('Late')}</Tag>}
+                <span className="bw-label-sm text-muted-foreground shrink-0">{t('Arrived {time}', { time: m.time })}</span>
               </div>
             ))}
           </Card>
@@ -92,14 +94,14 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
         <div className="rounded-[24px] p-5 flex flex-col gap-4 bg-surface-inverse text-surface-inverse-foreground">
           <p className="flex items-center gap-2 bw-label-sm opacity-70">
             <Calendar className="w-4 h-4" />
-            Next session
+            {t('Next session')}
           </p>
           <div className="flex flex-col gap-1">
             <h3 className="bw-h2">Monday, Feb 3</h3>
             <p className="bw-body-sm opacity-70">Rehearsal Studios XYZ · 21:00</p>
           </div>
           <div className="flex flex-col gap-2">
-            <p className="bw-label-sm opacity-70">Suggested focus</p>
+            <p className="bw-label-sm opacity-70">{t('Suggested focus')}</p>
             <ul className="flex flex-col gap-2 bw-body-md">
               {['Bohemian Rhapsody (bridge)', 'Purple Rain (modulation)', 'Superstition (new!)'].map((item) => (
                 <li key={item} className="flex items-center gap-2">
@@ -109,11 +111,11 @@ export const RehearsalPostView: React.FC<Props> = ({ onClose }) => {
               ))}
             </ul>
           </div>
-          <PillButton onClick={onClose}>Schedule next</PillButton>
+          <PillButton onClick={onClose}>{t('Schedule next')}</PillButton>
         </div>
 
         <PillButton variant="ghost" onClick={onClose}>
-          Close summary
+          {t('Close summary')}
         </PillButton>
       </div>
     </div>

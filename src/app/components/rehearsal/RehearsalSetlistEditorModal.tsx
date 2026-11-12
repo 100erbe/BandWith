@@ -5,6 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { BwSheet, IconButton, PillButton, PillField, SearchField, Selector } from '@/app/components/bw';
 import { createSong } from '@/lib/services/songs';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
+import { useT } from '@/lib/i18n';
 
 function detectUrlType(input: string): { spotify_id?: string; youtube_url?: string; audio_url?: string } {
   const trimmed = input.trim();
@@ -32,6 +33,7 @@ interface Props {
 export const RehearsalSetlistEditorModal: React.FC<Props> = ({ 
   isOpen, onClose, initialTemplate, library, onSave, onCreate, currentUserInitials, bandId, onSongCreated 
 }) => {
+  const t = useT();
   // Local State
   const [name, setName] = useState('');
   const [currentSongIds, setCurrentSongIds] = useState<string[]>([]);
@@ -229,14 +231,14 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
       onClose();
   };
 
-  const sheetTitle = isSearchExpanded ? 'Add songs' : initialTemplate ? 'Edit setlist' : 'New setlist';
+  const sheetTitle = isSearchExpanded ? t('Add songs') : initialTemplate ? t('Edit setlist') : t('New setlist');
   const addCount = currentSongIds.length;
 
   const footer = isSearchExpanded ? (
     <div className="dark">
       {overlayTab === 'library' ? (
         <PillButton onClick={handleAddSelected} icon={<Check className="w-[18px] h-[18px]" />}>
-          Done · {addCount} {addCount === 1 ? 'song' : 'songs'}
+          {addCount === 1 ? t('Done · {count} song', { count: addCount }) : t('Done · {count} songs', { count: addCount })}
         </PillButton>
       ) : (
         <PillButton
@@ -245,7 +247,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
           loading={saving}
           icon={<Check className="w-[18px] h-[18px]" />}
         >
-          {saving ? 'Saving…' : 'Add & select'}
+          {saving ? t('Saving…') : t('Add & select')}
         </PillButton>
       )}
     </div>
@@ -253,16 +255,16 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
     <div className="dark flex gap-3">
       {initialTemplate && hasChanges && (
         <PillButton variant="outline" onClick={() => handleSaveAction(true)} disabled={!name} icon={<Copy className="w-4 h-4" />}>
-          Save as new
+          {t('Save as new')}
         </PillButton>
       )}
       {hasChanges ? (
         <PillButton onClick={() => handleSaveAction(false)} disabled={!name} icon={<Save className="w-[18px] h-[18px]" />}>
-          {initialTemplate ? 'Update setlist' : 'Create setlist'}
+          {initialTemplate ? t('Update setlist') : t('Create setlist')}
         </PillButton>
       ) : (
         <PillButton onClick={onClose} icon={<Check className="w-[18px] h-[18px]" />}>
-          Done
+          {t('Done')}
         </PillButton>
       )}
     </div>
@@ -272,8 +274,8 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
     <BwSheet
       open={isOpen}
       onClose={isSearchExpanded ? () => setIsSearchExpanded(false) : onClose}
-      closeLabel={isSearchExpanded ? 'Back to setlist' : 'Close'}
-      overline={isSearchExpanded ? name || 'Setlist' : `Setlist · ${currentSongs.length} ${currentSongs.length === 1 ? 'song' : 'songs'}`}
+      closeLabel={isSearchExpanded ? t('Back to setlist') : t('Close')}
+      overline={isSearchExpanded ? name || t('Setlist') : currentSongs.length === 1 ? t('Setlist · {count} song', { count: currentSongs.length }) : t('Setlist · {count} songs', { count: currentSongs.length })}
       title={sheetTitle}
       footer={footer}
       zIndex={110}
@@ -284,16 +286,19 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
             {/* Name + meta */}
             <PillField
               tone="sheet"
-              label="Setlist name"
+              label={t('Setlist name')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Summer tour 2026"
+              placeholder={t('e.g. Summer tour 2026')}
             />
             {initialTemplate && (
               <p className="flex items-center gap-1.5 bw-label-sm text-sheet-foreground/70">
                 <Clock className="w-3.5 h-3.5" />
-                Edited {new Date(initialTemplate.updatedAt).toLocaleDateString()} · v{initialTemplate.version} · by{' '}
-                {initialTemplate.updatedBy}
+                {t('Edited {date} · v{version} · by {name}', {
+                  date: new Date(initialTemplate.updatedAt).toLocaleDateString(),
+                  version: initialTemplate.version,
+                  name: initialTemplate.updatedBy,
+                })}
               </p>
             )}
 
@@ -304,17 +309,17 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
               className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-white/10 border border-white/20 text-left cursor-pointer active:scale-[0.99] transition-transform"
             >
               <Search className="w-5 h-5 shrink-0" />
-              <span className="flex-1 min-w-0 bw-body-lg text-sheet-foreground/60 truncate">Search library to add…</span>
-              <span className="bw-label-sm text-sheet-foreground/60 shrink-0">{library.length} songs</span>
+              <span className="flex-1 min-w-0 bw-body-lg text-sheet-foreground/60 truncate">{t('Search library to add…')}</span>
+              <span className="bw-label-sm text-sheet-foreground/60 shrink-0">{t('{count} songs', { count: library.length })}</span>
             </button>
 
             {/* Current runlist */}
             {currentSongs.length === 0 ? (
               <div className="flex flex-col items-center text-center gap-2 py-10">
                 <ListMusic className="w-8 h-8 text-sheet-foreground/40" />
-                <h4 className="bw-h3">List is empty</h4>
+                <h4 className="bw-h3">{t('List is empty')}</h4>
                 <p className="bw-body-sm text-sheet-foreground/60 max-w-[240px]">
-                  Search your repertoire above to start adding songs.
+                  {t('Search your repertoire above to start adding songs.')}
                 </p>
               </div>
             ) : (
@@ -341,7 +346,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                       <span className="bw-body-sm text-sheet-foreground/60 truncate">{song.artist}</span>
                     </div>
                     <IconButton
-                      label={`Remove ${song.title}`}
+                      label={t('Remove {title}', { title: song.title })}
                       icon={<Trash2 />}
                       variant="ghost"
                       size="sm"
@@ -358,8 +363,8 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
             {overlayTab === 'library' && (
               <SearchField
                 autoFocus
-                label="Search library"
-                placeholder="Search library…"
+                label={t('Search library')}
+                placeholder={t('Search library…')}
                 value={searchQuery}
                 onChange={setSearchQuery}
               />
@@ -371,14 +376,14 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                 onClick={() => setOverlayTab('library')}
                 className={overlayTab === 'library' ? 'bg-accent text-accent-foreground' : undefined}
               >
-                From library
+                {t('From library')}
               </Selector>
               <Selector
                 selected={overlayTab === 'add'}
                 onClick={() => setOverlayTab('add')}
                 className={overlayTab === 'add' ? 'bg-accent text-accent-foreground' : undefined}
               >
-                Manual
+                {t('Manual')}
               </Selector>
             </div>
 
@@ -387,20 +392,20 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
                 <div className="flex items-center justify-between gap-3">
                   <Selector size="sm" selected={hideAlreadyInList} onClick={() => setHideAlreadyInList(!hideAlreadyInList)}>
                     {hideAlreadyInList && <Check className="w-3 h-3" />}
-                    Hide added
+                    {t('Hide added')}
                   </Selector>
                   <span className="bw-label-sm text-sheet-foreground/60">
-                    {filteredLibrary.length} {filteredLibrary.length === 1 ? 'result' : 'results'}
+                    {filteredLibrary.length === 1 ? t('{count} result', { count: filteredLibrary.length }) : t('{count} results', { count: filteredLibrary.length })}
                   </span>
                 </div>
 
                 {filteredLibrary.length === 0 && (
-                  <p className="bw-body-sm text-sheet-foreground/60 text-center py-8">No matching songs found</p>
+                  <p className="bw-body-sm text-sheet-foreground/60 text-center py-8">{t('No matching songs found')}</p>
                 )}
 
                 {Object.entries(groupedLibrary).map(([category, songs]) => (
                   <section key={category} className="flex flex-col gap-2">
-                    <h5 className="bw-label-sm text-sheet-foreground/60">{category}</h5>
+                    <h5 className="bw-label-sm text-sheet-foreground/60">{category === 'Other' ? t('Other') : category}</h5>
                     {songs.map((song) => {
                       const isSelected = currentSongIds.includes(song.id);
                       return (
@@ -432,28 +437,28 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
               <>
                 <PillField
                   tone="sheet"
-                  label="Song title *"
+                  label={t('Song title *')}
                   autoFocus
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Enter song title…"
+                  placeholder={t('Enter song title…')}
                 />
                 <PillField
                   tone="sheet"
-                  label="Artist"
+                  label={t('Artist')}
                   value={newArtist}
                   onChange={(e) => setNewArtist(e.target.value)}
-                  placeholder="Enter artist name…"
+                  placeholder={t('Enter artist name…')}
                 />
                 <PillField
                   tone="sheet"
                   type="url"
-                  label="Link (Spotify, YouTube, Drive)"
+                  label={t('Link (Spotify, YouTube, Drive)')}
                   icon={<Link className="w-5 h-5" />}
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
-                  placeholder="Paste URL…"
-                  hint="Spotify, YouTube, Google Drive, or any audio link"
+                  placeholder={t('Paste URL…')}
+                  hint={t('Spotify, YouTube, Google Drive, or any audio link')}
                 />
               </>
             )}

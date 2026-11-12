@@ -3,6 +3,7 @@ import { ListMusic, Clock, Layers, AlertCircle, GripVertical, Trash2, Check, X }
 import { BwSheet, IconButton, PillButton, Tag } from '@/app/components/bw';
 import { RehearsalSetlistSnapshotFinal } from './types';
 import { cn } from '@/app/components/ui/utils';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
   isOpen, onClose, snapshot, totalDuration,
   onUpdateSnapshot, onConfirmSetlist, onDeselectSetlist, isConfirmed = false
 }) => {
+  const t = useT();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -66,7 +68,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
     <div className="dark flex flex-col gap-3">
       {isConfirmed && (
         <p className="flex items-center gap-2 bw-label-sm text-success">
-          <Check className="w-4 h-4" /> Setlist confirmed
+          <Check className="w-4 h-4" /> {t('Setlist confirmed')}
         </p>
       )}
       <div className="flex gap-3">
@@ -77,12 +79,12 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
             icon={isConfirmed ? <X className="w-4 h-4" /> : undefined}
             className={!isConfirmed && onConfirmSetlist ? 'flex-[2]' : undefined}
           >
-            Deselect
+            {t('Deselect')}
           </PillButton>
         )}
         {!isConfirmed && onConfirmSetlist && (
           <PillButton onClick={onConfirmSetlist} icon={<Check className="w-[18px] h-[18px]" />} className="flex-[3]">
-            Confirm setlist
+            {t('Confirm setlist')}
           </PillButton>
         )}
       </div>
@@ -93,8 +95,8 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
     <BwSheet
       open={isOpen}
       onClose={onClose}
-      overline={`${snapshot.songs.length} ${snapshot.songs.length === 1 ? 'song' : 'songs'} · ${totalDuration}`}
-      title="Rehearsal setlist"
+      overline={`${snapshot.songs.length === 1 ? t('{count} song', { count: snapshot.songs.length }) : t('{count} songs', { count: snapshot.songs.length })} · ${totalDuration}`}
+      title={t('Rehearsal setlist')}
       footer={footer}
       zIndex={110}
     >
@@ -102,17 +104,17 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
         {/* Summary */}
         <div className="flex flex-wrap gap-1.5">
           <Tag variant="outline" icon={<ListMusic />}>
-            {snapshot.songs.length} {snapshot.songs.length === 1 ? 'song' : 'songs'}
+            {snapshot.songs.length === 1 ? t('{count} song', { count: snapshot.songs.length }) : t('{count} songs', { count: snapshot.songs.length })}
           </Tag>
           <Tag variant="outline" icon={<Clock />}>
             {totalDuration}
           </Tag>
           <Tag variant="outline" icon={<Layers />}>
-            {snapshot.sources.length} {snapshot.sources.length === 1 ? 'source' : 'sources'}
+            {snapshot.sources.length === 1 ? t('{count} source', { count: snapshot.sources.length }) : t('{count} sources', { count: snapshot.sources.length })}
           </Tag>
           {snapshot.mergeReport.totalDuplicatesSkipped > 0 && (
             <Tag variant="accent" icon={<AlertCircle />}>
-              {snapshot.mergeReport.totalDuplicatesSkipped} skipped
+              {t('{count} skipped', { count: snapshot.mergeReport.totalDuplicatesSkipped })}
             </Tag>
           )}
         </div>
@@ -120,7 +122,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
         {/* Sources */}
         {snapshot.sources.length > 0 && (
           <section className="flex flex-col gap-2">
-            <h4 className="bw-label-sm text-sheet-foreground/70">Built from templates</h4>
+            <h4 className="bw-label-sm text-sheet-foreground/70">{t('Built from templates')}</h4>
             {snapshot.sources.map((src, i) => (
               <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 rounded-[16px] bg-white/[0.08]">
                 <span className="bw-body-md truncate">{src.templateName}</span>
@@ -133,8 +135,8 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
         {/* Draggable song list */}
         <section className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="bw-label-sm text-sheet-foreground/70">Final tracklist</h4>
-            {onUpdateSnapshot && <span className="bw-label-xs text-sheet-foreground/50">Drag to reorder</span>}
+            <h4 className="bw-label-sm text-sheet-foreground/70">{t('Final tracklist')}</h4>
+            {onUpdateSnapshot && <span className="bw-label-xs text-sheet-foreground/50">{t('Drag to reorder')}</span>}
           </div>
           <ol className="flex flex-col gap-2">
             {snapshot.songs.map((song, i) => (
@@ -161,7 +163,7 @@ export const RehearsalReviewSetlistModal: React.FC<Props> = ({
                 <span className="bw-label-md shrink-0">{song.durationAtSnapshot}</span>
                 {onUpdateSnapshot && (
                   <IconButton
-                    label={`Remove ${song.titleAtSnapshot}`}
+                    label={t('Remove {title}', { title: String(song.titleAtSnapshot) })}
                     icon={<Trash2 />}
                     variant="ghost"
                     size="sm"

@@ -12,6 +12,7 @@ import {
 } from '@/lib/services/rehearsalPolls';
 import { toLocalDateString } from '../../../lib/dates';
 import { personName } from '@/lib/personName';
+import { useT } from '@/lib/i18n';
 
 interface TimeSlotDraft {
   id: string;
@@ -49,6 +50,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   onSuccess,
   onShowToast,
 }) => {
+  const t = useT();
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [generatorMode, setGeneratorMode] = useState<'preset' | 'custom'>('preset');
@@ -133,7 +135,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   // Fast Week Preset Generation
   const handleGenerateWeekPreset = () => {
     if (selectedPresetDays.length === 0) {
-      setError('Select at least one day of the week to generate slots.');
+      setError(t('Select at least one day of the week to generate slots.'));
       return;
     }
 
@@ -163,7 +165,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     });
 
     if (newSlots.length === 0) {
-      setError('These slots have already been added.');
+      setError(t('These slots have already been added.'));
       return;
     }
 
@@ -173,7 +175,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   // Add individual custom slot
   const handleAddCustomSlot = () => {
     if (!customDate || !customStartTime) {
-      setError('Please select both a date and start time.');
+      setError(t('Please select both a date and start time.'));
       return;
     }
 
@@ -183,7 +185,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     );
 
     if (exists) {
-      setError('This slot is already added.');
+      setError(t('This slot is already added.'));
       return;
     }
 
@@ -203,11 +205,11 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
   const handlePublish = async () => {
     if (!title.trim()) {
-      setError('Please give your poll a title.');
+      setError(t('Please give your poll a title.'));
       return;
     }
     if (timeSlots.length === 0) {
-      setError('Add at least one candidate time slot for members to vote on.');
+      setError(t('Add at least one candidate time slot for members to vote on.'));
       return;
     }
 
@@ -230,11 +232,11 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     setSubmitting(false);
 
     if (publishErr) {
-      setError(publishErr.message || 'Failed to publish poll.');
+      setError(publishErr.message || t('Failed to publish poll.'));
       return;
     }
 
-    onShowToast?.('Rehearsal availability poll published to band!', 'success');
+    onShowToast?.(t('Rehearsal availability poll published to band!'), 'success');
     onSuccess?.();
     onClose();
   };
@@ -267,12 +269,12 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
             style={{ paddingTop: 'calc(var(--safe-top) + 16px)' }}
           >
             <div className="flex items-center gap-3 min-h-11">
-              <p className="flex-1 min-w-0 bw-label-sm truncate">Admin tool · Find the best day</p>
+              <p className="flex-1 min-w-0 bw-label-sm truncate">{t('Admin tool · Find the best day')}</p>
               <RailCover pane />
-              <HeaderAction pane label="Close" icon={<X />} variant="sheet" onClick={onClose} />
+              <HeaderAction pane label={t('Close')} icon={<X />} variant="sheet" onClick={onClose} />
             </div>
             <h1 id="poll-builder-title" className="bw-display-lg [overflow-wrap:anywhere]">
-              {initialProposal ? 'Proposal to poll' : 'Availability poll'}
+              {initialProposal ? t('Proposal to poll') : t('Availability poll')}
             </h1>
           </header>
 
@@ -286,13 +288,13 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                 <div className="flex flex-col gap-1 min-w-0">
                   <p className="bw-body-sm">
                     <span className="font-semibold">
-                      From {personName(initialProposal.creator_profile, 'Band member')}:
+                      {t('From {name}:', { name: personName(initialProposal.creator_profile, t('Band member')) })}
                     </span>{' '}
                     <span className="text-muted-foreground">{initialProposal.title}</span>
                   </p>
                   {initialProposal.preferred_days && initialProposal.preferred_days.length > 0 && (
                     <p className="bw-label-sm text-muted-foreground">
-                      Preferred days · {initialProposal.preferred_days.join(', ')}
+                      {t('Preferred days')} · {initialProposal.preferred_days.join(', ')}
                     </p>
                   )}
                 </div>
@@ -301,23 +303,23 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
             {/* Title & Notes */}
             <PillField
-              label="Poll title"
+              label={t('Poll title')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Extra rehearsal before the wedding"
+              placeholder={t('e.g. Extra rehearsal before the wedding')}
             />
             <PillField
-              label="Goal / notes (optional)"
+              label={t('Goal / notes (optional)')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Focus on ending transitions"
+              placeholder={t('e.g. Focus on ending transitions')}
             />
 
             {/* Generator mode (Figma Segmented) */}
-            <div role="tablist" aria-label="Slot generator" className="flex p-1 gap-1 rounded-full bg-card">
+            <div role="tablist" aria-label={t('Slot generator')} className="flex p-1 gap-1 rounded-full bg-card">
               {([
-                ['preset', 'Whole week preset'],
-                ['custom', 'Custom date / time'],
+                ['preset', t('Whole week preset')],
+                ['custom', t('Custom date / time')],
               ] as const).map(([mode, label]) => (
                 <button
                   key={mode}
@@ -341,20 +343,20 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               <>
                 {/* Target Week */}
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="bw-label-sm text-muted-foreground mb-2">Week of</legend>
+                  <legend className="bw-label-sm text-muted-foreground mb-2">{t('Week of')}</legend>
                   <div className="flex gap-2">
                     <Selector selected={weekOffset === 0} onClick={() => setWeekOffset(0)}>
-                      This week
+                      {t('This week')}
                     </Selector>
                     <Selector selected={weekOffset === 1} onClick={() => setWeekOffset(1)}>
-                      Next week
+                      {t('Next week')}
                     </Selector>
                   </div>
                 </fieldset>
 
                 {/* Day Pills */}
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="bw-label-sm text-muted-foreground mb-2">Include days</legend>
+                  <legend className="bw-label-sm text-muted-foreground mb-2">{t('Include days')}</legend>
                   <div className="flex gap-1.5">
                     {DAYS_META.map((d) => (
                       <Selector
@@ -377,19 +379,19 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
 
                 {/* Default Time range */}
                 <div className="grid grid-cols-2 gap-3">
-                  <TimeField label="Start" value={presetStartTime} onChange={setPresetStartTime} />
-                  <TimeField label="End" value={presetEndTime} onChange={setPresetEndTime} align="end" />
+                  <TimeField label={t('Start')} value={presetStartTime} onChange={setPresetStartTime} />
+                  <TimeField label={t('End')} value={presetEndTime} onChange={setPresetEndTime} align="end" />
                 </div>
 
                 <PillButton variant="dark" size="md" onClick={handleGenerateWeekPreset}>
-                  Add selected days to poll
+                  {t('Add selected days to poll')}
                 </PillButton>
               </>
             ) : (
               <>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="poll-custom-date" className="bw-label-sm text-muted-foreground">
-                    Candidate date
+                    {t('Candidate date')}
                   </label>
                   <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
                     <Calendar className="w-5 h-5 shrink-0" />
@@ -404,22 +406,22 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <TimeField label="Start" value={customStartTime} onChange={setCustomStartTime} />
-                  <TimeField label="End" value={customEndTime} onChange={setCustomEndTime} align="end" />
+                  <TimeField label={t('Start')} value={customStartTime} onChange={setCustomStartTime} />
+                  <TimeField label={t('End')} value={customEndTime} onChange={setCustomEndTime} align="end" />
                 </div>
 
                 <PillButton variant="dark" size="md" onClick={handleAddCustomSlot}>
-                  Add slot to poll
+                  {t('Add slot to poll')}
                 </PillButton>
               </>
             )}
 
             {/* Candidate slots */}
             <div className="flex items-center justify-between gap-3 min-h-9 pt-2">
-              <h2 className="bw-label-md text-foreground">Candidate slots · {timeSlots.length}</h2>
+              <h2 className="bw-label-md text-foreground">{t('Candidate slots')} · {timeSlots.length}</h2>
               {timeSlots.length > 0 && (
                 <PillButton variant="danger" size="sm" fullWidth={false} onClick={() => setTimeSlots([])}>
-                  Clear all
+                  {t('Clear all')}
                 </PillButton>
               )}
             </div>
@@ -428,7 +430,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               <Card className="items-center text-center py-8">
                 <Clock className="w-6 h-6 text-muted-foreground" />
                 <p className="bw-body-sm text-muted-foreground max-w-xs">
-                  No slots yet. Add days above to give the band dates to vote on.
+                  {t('No slots yet. Add days above to give the band dates to vote on.')}
                 </p>
               </Card>
             ) : (
@@ -441,7 +443,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                     <Calendar className="w-[18px] h-[18px] shrink-0" />
                     <span className="flex-1 min-w-0 bw-body-md truncate">{slotLabel(slot)}</span>
                     <IconButton
-                      label="Remove slot"
+                      label={t('Remove slot')}
                       icon={<X />}
                       variant="ghost"
                       size="sm"
@@ -461,7 +463,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
         >
           <div className="max-w-xl mx-auto grid grid-cols-[2fr_3fr] gap-3">
             <PillButton variant="outline" onClick={onClose} disabled={submitting}>
-              Cancel
+              {t('Cancel')}
             </PillButton>
             <PillButton
               onClick={handlePublish}
@@ -469,7 +471,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               disabled={timeSlots.length === 0}
               icon={<Send className="w-[18px] h-[18px]" />}
             >
-              {submitting ? 'Publishing…' : 'Publish poll'}
+              {submitting ? t('Publishing…') : t('Publish poll')}
             </PillButton>
           </div>
         </div>

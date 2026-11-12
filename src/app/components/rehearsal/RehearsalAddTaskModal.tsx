@@ -3,6 +3,7 @@ import { Plus, AlertCircle } from '@/app/components/icons';
 import { RehearsalMember, RehearsalSong, RehearsalTask } from './types';
 import { cn } from '@/app/components/ui/utils';
 import { BwSheet, PillButton, PillField, Selector } from '@/app/components/bw';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,11 @@ interface Props {
 }
 
 export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, members, songs, onAdd }) => {
+  const t = useT();
+  // Task categories as shown (the ids stay English).
+  const categoryLabels: Record<string, string> = {
+    study: t('study'), bring: t('bring'), fix: t('fix'), prepare: t('prepare'), other: t('other'),
+  };
   const [text, setText] = useState('');
   const [type, setType] = useState<RehearsalTask['type']>('prepare');
   
@@ -76,17 +82,17 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
   // Helper text
   const getButtonText = () => {
       if (assignMode === 'multiple' && selectedMemberIds.length > 1) {
-          return `Create ${selectedMemberIds.length} Tasks`;
+          return t('Create {count} Tasks', { count: selectedMemberIds.length });
       }
-      return "Add Task";
+      return t('Add Task');
   };
 
   return (
     <BwSheet
       open={isOpen}
       onClose={onClose}
-      overline="Rehearsal prep"
-      title="Add task"
+      overline={t('Rehearsal prep')}
+      title={t('Add task')}
       zIndex={110}
       footer={
         <div className="dark">
@@ -104,21 +110,21 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
         {/* Description */}
         <PillField
           tone="sheet"
-          label="Task description"
+          label={t('Task description')}
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. Learn the bridge part"
+          placeholder={t('e.g. Learn the bridge part')}
         />
 
         {/* Assignment */}
         <fieldset className="flex flex-col gap-2">
-          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Assign to</legend>
-          <div role="tablist" aria-label="Assign to" className="flex p-1 gap-1 rounded-full bg-white/[0.08]">
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">{t('Assign to')}</legend>
+          <div role="tablist" aria-label={t('Assign to')} className="flex p-1 gap-1 rounded-full bg-white/[0.08]">
             {([
-              ['all', 'Entire band'],
-              ['single', 'One member'],
-              ['multiple', 'Multiple'],
+              ['all', t('Entire band')],
+              ['single', t('One member')],
+              ['multiple', t('Multiple')],
             ] as const).map(([mode, label]) => (
               <button
                 key={mode}
@@ -171,18 +177,20 @@ export const RehearsalAddTaskModal: React.FC<Props> = ({ isOpen, onClose, member
           {assignMode === 'multiple' && selectedMemberIds.length > 0 && (
             <p className="flex items-center gap-2 bw-body-sm text-sheet-foreground/70">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              Creates {selectedMemberIds.length} separate {selectedMemberIds.length === 1 ? 'task' : 'tasks'} (one per member).
+              {selectedMemberIds.length === 1
+                ? t('Creates {count} separate task (one per member).', { count: selectedMemberIds.length })
+                : t('Creates {count} separate tasks (one per member).', { count: selectedMemberIds.length })}
             </p>
           )}
         </fieldset>
 
         {/* Category */}
         <fieldset className="flex flex-col gap-2">
-          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">Category</legend>
+          <legend className="bw-label-sm text-sheet-foreground/70 mb-2">{t('Category')}</legend>
           <div className="flex flex-wrap gap-2">
-            {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((t) => (
-              <Selector key={t} selected={type === t} onClick={() => setType(t)}>
-                {t}
+            {(['study', 'bring', 'fix', 'prepare', 'other'] as const).map((cat) => (
+              <Selector key={cat} selected={type === cat} onClick={() => setType(cat)}>
+                {categoryLabels[cat] ?? cat}
               </Selector>
             ))}
           </div>
