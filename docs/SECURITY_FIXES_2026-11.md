@@ -138,3 +138,7 @@ Le regole che prima erano solo nell'app ora sono nel database e nelle edge funct
 Ordine di rilascio: merge (il client funziona anche senza 071), poi la migrazione 071, poi il deploy di `send-push` e `send-email` da un worktree pulito con `--no-verify-jwt`. Le build iOS/Android vecchie non leggono più le fee dopo la 071: i tester vanno aggiornati.
 
 Facoltativo, dalla dashboard: Realtime → Settings → disattivare *Allow public access*, così restano solo i canali privati.
+
+### Migrazione 072 — eventi della band
+
+Le policy di `events` si erano accumulate negli anni: alcune consideravano admin anche chi aveva lasciato la band (`is_active` false), e una lasciava modificare un evento della band a chi l'aveva creato anche dopo aver perso il ruolo di admin. Ora, per gli eventi della band: lettura ai member attivi, creazione/modifica/cancellazione agli admin attivi, e un admin non può spostare un evento in una band che non gestisce. I gig personali restano del solo creatore. Provata sullo staging (19 controlli, più i 62 della 071). Si applica dopo la 071.
