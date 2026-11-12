@@ -14,6 +14,8 @@ const SOURCES = import.meta.glob(['/src/**/*.{ts,tsx}', '!/src/**/__tests__/**']
 
 const CALL = /\bt\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/g;
 const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
+// t('Free', { context: 'day' }) needs its own "Free|day" entry.
+const CONTEXT_CALL = /\bt\(\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*,\s*\{\s*context:\s*'(\w+)'/g;
 
 const usedKeys = (() => {
   const keys = new Map<string, string>();
@@ -21,6 +23,10 @@ const usedKeys = (() => {
     if (!text.includes("from '@/lib/i18n'")) continue;
     for (const m of text.matchAll(CALL)) {
       const key = unescape(m[1] ?? m[2]);
+      if (!keys.has(key)) keys.set(key, file);
+    }
+    for (const m of text.matchAll(CONTEXT_CALL)) {
+      const key = `${unescape(m[1] ?? m[2])}|${m[3]}`;
       if (!keys.has(key)) keys.set(key, file);
     }
   }
@@ -61,6 +67,14 @@ describe('t()', () => {
     expect(getLocale()).toBe('it');
     expect(t('Notifications')).toBe('Notifiche');
     expect(t('Version {version}', { version: '1.0.0' })).toBe('Versione 1.0.0');
+  });
+
+  it('picks the entry for a context, falling back to the plain one', () => {
+    expect(t('Free', { context: 'day' })).toBe('Free');
+    setLocalePref('it');
+    expect(t('Free')).toBe('Gratis');
+    expect(t('Free', { context: 'day' })).toBe('Libero');
+    expect(t('Notifications', { context: 'nothing-here' })).toBe('Notifiche');
   });
 
   it('falls back to the English for strings not translated yet', () => {

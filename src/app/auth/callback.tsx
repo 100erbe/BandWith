@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, RECOVERY_FLAG } from '@/lib/supabase';
 import { Loader2 } from '@/app/components/icons';
+import { t, useT } from '@/lib/i18n';
 
 /**
  * Auth callback page — handles OAuth redirects from Google/Apple.
@@ -13,6 +14,8 @@ import { Loader2 } from '@/app/components/icons';
  * 4. Redirects to the main app root
  */
 export default function AuthCallback() {
+  // Re-render on a language change; the text below uses the module t().
+  useT();
   const [status, setStatus] = useState<'processing' | 'redirecting'>('processing');
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +66,7 @@ export default function AuthCallback() {
         } else if (accessToken) {
           // Tokens in the URL fragment (legacy implicit flow) are rejected:
           // they cannot be tied to a sign-in this app started (login CSRF).
-          setError('This sign-in link is no longer valid. Please sign in again.');
+          setError(t('This sign-in link is no longer valid. Please sign in again.'));
           setTimeout(() => {
             if (!cancelled) cleanupAndRedirect();
           }, 3000);
@@ -75,7 +78,7 @@ export default function AuthCallback() {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) {
             console.warn('[AuthCallback] No session found');
-            setError('Sign in did not complete. Please try again.');
+            setError(t('Sign in did not complete. Please try again.'));
             setTimeout(() => {
               if (!cancelled) cleanupAndRedirect();
             }, 3000);
@@ -90,7 +93,7 @@ export default function AuthCallback() {
         cleanupAndRedirect();
       } catch (err) {
         console.error('[AuthCallback] Unexpected error:', err);
-        setError('An unexpected error occurred');
+        setError(t('An unexpected error occurred'));
         setTimeout(() => {
           if (!cancelled) cleanupAndRedirect();
         }, 3000);
@@ -127,11 +130,11 @@ export default function AuthCallback() {
       {error ? (
         <>
           <span className="text-red-400 text-sm font-medium">{error}</span>
-          <span className="text-white/40 text-xs">Redirecting back...</span>
+          <span className="text-white/40 text-xs">{t('Redirecting back...')}</span>
         </>
       ) : (
         <span className="text-white/60 text-sm font-medium">
-          {status === 'processing' ? 'Completing sign in...' : 'Redirecting...'}
+          {status === 'processing' ? t('Completing sign in...') : t('Redirecting...')}
         </span>
       )}
     </div>

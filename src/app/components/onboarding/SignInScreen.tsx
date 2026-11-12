@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { AuthScreen, BackButton, FormError, Kicker, OrDivider, PillButton, PillField } from '@/app/components/bw/Form';
 import type { BiometricStatus } from '@/lib/services/biometric';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useT } from '@/lib/i18n';
 
 interface SignInScreenProps {
   onBack: () => void;
@@ -31,6 +32,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onForgotPassword,
   onCreateAccount,
 }) => {
+  const t = useT();
   const bioDrag = useSheetDrag(() => { void handleBiometricPromptDecision(false); });
   const { signIn, signInWithGoogle, signInWithApple, isAuthenticated } = useAuth();
 
@@ -104,7 +106,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         const { data, error } = await supabase.auth.refreshSession({ refresh_token: quick.refreshToken });
         if (!mountedRef.current) return;
         if (error || !data.session) {
-          await forget('Quick sign-in expired. Sign in with your password once to turn it back on.');
+          await forget(t('Quick sign-in expired. Sign in with your password once to turn it back on.'));
           return;
         }
         await bioModule.updateStoredSession(data.session);
@@ -116,7 +118,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       if (!mountedRef.current) return;
       if (error) {
         if (/invalid login credentials/i.test(error.message)) {
-          await forget('Your password changed. Sign in with it once to turn quick sign-in back on.');
+          await forget(t('Your password changed. Sign in with it once to turn quick sign-in back on.'));
           return;
         }
         setError(error.message);
@@ -128,7 +130,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       onSuccess();
     } catch (err: any) {
       if (!mountedRef.current) return;
-      setError(err.message || 'Biometric authentication failed');
+      setError(err.message || t('Biometric authentication failed'));
       setLoading(false);
     }
   };
@@ -160,7 +162,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       onSuccess();
     } catch (err: any) {
       if (!mountedRef.current) return;
-      setError(err.message || 'An error occurred');
+      setError(err.message || t('An error occurred'));
       setLoading(false);
     }
   };
@@ -197,7 +199,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     e.stopPropagation();
 
     if (!email || !password) {
-      setError('Please enter email and password');
+      setError(t('Please enter email and password'));
       return;
     }
 
@@ -233,7 +235,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       onSuccess();
     } catch (err: any) {
       if (!mountedRef.current) return;
-      setError(err.message || 'An error occurred');
+      setError(err.message || t('An error occurred'));
       setLoading(false);
     }
   };
@@ -242,9 +244,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     switch (type) {
       case 'faceId': return 'Face ID';
       case 'touchId': return 'Touch ID';
-      case 'fingerprint': return 'Fingerprint';
-      case 'iris': return 'Iris';
-      default: return 'Biometric';
+      case 'fingerprint': return t('Fingerprint');
+      case 'iris': return t('Iris');
+      default: return t('Biometric');
     }
   };
 
@@ -268,7 +270,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <Kicker overline="Welcome back" title="Sign in" />
+        <Kicker overline={t('Welcome back')} title={t('Sign in')} />
 
         <div className="flex flex-col gap-3">
           <PillButton
@@ -277,7 +279,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             disabled={loading}
             icon={<GoogleBrandIcon className="w-5 h-5" />}
           >
-            Continue with Google
+            {t('Continue with Google')}
           </PillButton>
           <PillButton
             variant="white"
@@ -285,7 +287,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             disabled={loading}
             icon={<AppleBrandIcon className="w-5 h-5" />}
           >
-            Continue with Apple
+            {t('Continue with Apple')}
           </PillButton>
         </div>
 
@@ -300,7 +302,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         </AnimatePresence>
 
         <PillField
-          label="Email"
+          label={t('Email')}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -312,18 +314,18 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           icon={<Mail className="w-5 h-5" strokeWidth={1.75} />}
         />
         <PillField
-          label="Password"
+          label={t('Password')}
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Your password"
+          placeholder={t('Your password')}
           icon={<Lock className="w-5 h-5" strokeWidth={1.75} />}
           trailing={
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? t('Hide password') : t('Show password')}
               className="-m-2 p-2 text-muted-foreground"
             >
               {showPassword ? <EyeOff className="w-5 h-5" strokeWidth={1.75} /> : <Eye className="w-5 h-5" strokeWidth={1.75} />}
@@ -333,7 +335,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
 
         <div className="flex items-center justify-end -mx-3">
           <PillButton variant="ghost" size="sm" fullWidth={false} onClick={onForgotPassword} className="text-muted-foreground">
-            Forgot password?
+            {t('Forgot password?')}
           </PillButton>
         </div>
 
@@ -343,7 +345,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           disabled={!email || !password}
           trailingIcon={<ArrowUpRight className="w-5 h-5" />}
         >
-          Sign in
+          {t('Sign in')}
         </PillButton>
 
         {/* Full-size biometric sign-in, as easy to hit as the main button. */}
@@ -354,7 +356,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             disabled={loading}
             icon={<BiometryIcon className="w-6 h-6" strokeWidth={1.75} />}
           >
-            Use {biometryName}
+            {t('Use {name}', { name: biometryName })}
           </PillButton>
         )}
         {canUseBiometric && biometricStatus?.email && (
@@ -363,9 +365,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
 
         {onCreateAccount && (
           <p className="bw-body-sm text-muted-foreground">
-            New here?{' '}
+            {t('New here?')}{' '}
             <button type="button" onClick={onCreateAccount} className="underline underline-offset-4 text-foreground">
-              Create an account
+              {t('Create an account')}
             </button>
           </p>
         )}
@@ -401,21 +403,21 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               <div className="w-16 h-16 rounded-[20px] bg-accent text-accent-foreground flex items-center justify-center mb-5">
                 <BiometryIcon className="w-8 h-8" strokeWidth={1.75} />
               </div>
-              <p className="bw-label-sm text-white/70 mb-1">Faster sign-in</p>
+              <p className="bw-label-sm text-white/70 mb-1">{t('Faster sign-in')}</p>
               <h2 id="bio-title" className="bw-h2 text-[28px] mb-3">
-                {replacingAccount ? `Use ${biometryName} for this account?` : `Enable ${biometryName}?`}
+                {replacingAccount ? t('Use {name} for this account?', { name: biometryName }) : t('Enable {name}?', { name: biometryName })}
               </h2>
               <p className="text-[16px] leading-[1.4] text-white/70 mb-6 break-words">
                 {replacingAccount
-                  ? `${biometryName} now signs in ${biometricStatus.email}. Switch it to ${pendingCredentials?.email.trim().toLowerCase()}?`
-                  : `Sign in faster next time using ${biometryName}.`}
+                  ? t('{name} now signs in {email}. Switch it to {newEmail}?', { name: biometryName, email: `${biometricStatus.email}`, newEmail: `${pendingCredentials?.email.trim().toLowerCase()}` })
+                  : t('Sign in faster next time using {name}.', { name: biometryName })}
               </p>
               <div className="flex flex-col gap-3">
                 <PillButton onClick={() => handleBiometricPromptDecision(true)}>
-                  {replacingAccount ? `Switch ${biometryName}` : `Enable ${biometryName}`}
+                  {replacingAccount ? t('Switch {name}', { name: biometryName }) : t('Enable {name}', { name: biometryName })}
                 </PillButton>
                 <PillButton variant="ghost" size="md" className="text-white" onClick={() => handleBiometricPromptDecision(false)}>
-                  Not now
+                  {t('Not now')}
                 </PillButton>
               </div>
             </motion.div>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Send } from '@/app/components/icons';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, BackButton, FormError, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
+import { useT } from '@/lib/i18n';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -11,6 +12,7 @@ interface ForgotPasswordScreenProps {
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   onBack,
 }) => {
+  const t = useT();
   const { resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -23,7 +25,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     setError(null);
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Enter a valid email address.');
+      setError(t('Enter a valid email address.'));
       return;
     }
     setLoading(true);
@@ -38,10 +40,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
       setSuccess(true);
       setLoading(false);
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || t('An error occurred'));
       setLoading(false);
     }
   };
+
+  // The email sits in its own span: split the sentence around it.
+  const [sentBefore, sentAfter] = t('We sent a link to {email}. Follow it to create a new password. The link expires in 1 hour.').split('{email}');
 
   return (
     <AuthScreen top={<BackButton onClick={onBack} className="bw-duo-rail-back" />}>
@@ -62,14 +67,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
             >
               <Mail className="w-10 h-10" strokeWidth={1.75} />
             </motion.div>
-            <Kicker overline="Link sent" title="Check your email" size="xl" />
+            <Kicker overline={t('Link sent')} title={t('Check your email')} size="xl" />
             <p className="text-[18px] font-medium leading-[1.35] tracking-[-0.005em] text-muted-foreground max-w-[340px]">
-              We sent a link to <span className="text-foreground">{email}</span>. Follow it to create a new
-              password. The link expires in 1 hour.
+              {sentBefore}<span className="text-foreground">{email}</span>{sentAfter}
             </p>
             <div className="flex-1" />
             <PillButton variant="dark" onClick={onBack}>
-              Back to sign in
+              {t('Back to sign in')}
             </PillButton>
           </motion.div>
         ) : (
@@ -82,13 +86,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
           >
-            <Kicker overline="Account recovery" title="Reset password" />
+            <Kicker overline={t('Account recovery')} title={t('Reset password')} />
             <p className="text-[16px] leading-[1.45] text-muted-foreground max-w-[340px]">
-              Enter the email you signed up with. We&apos;ll send you a link to choose a new password.
+              {t("Enter the email you signed up with. We'll send you a link to choose a new password.")}
             </p>
             {error && <FormError>{error}</FormError>}
             <PillField
-              label="Email"
+              label={t('Email')}
               type="email"
               inputMode="email"
               autoComplete="email"
@@ -109,7 +113,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
               disabled={!email}
               trailingIcon={<Send className="w-5 h-5" />}
             >
-              Send reset link
+              {t('Send reset link')}
             </PillButton>
           </motion.form>
         )}

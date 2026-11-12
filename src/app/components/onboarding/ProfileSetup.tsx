@@ -5,6 +5,7 @@ import { useOnboarding, INSTRUMENTS } from '@/lib/OnboardingContext';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { ChoicePill, WizardTop, wizardStep } from './OnboardingChrome';
+import { useT } from '@/lib/i18n';
 
 interface ProfileSetupProps {
   onBack: () => void;
@@ -15,6 +16,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   onBack,
   onComplete,
 }) => {
+  const t = useT();
   const { setProfileData, profileData, path, bandData } = useOnboarding();
   const { user, profile } = useAuth();
 
@@ -75,6 +77,17 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   };
 
   const { step, total } = wizardStep(path, 'profile');
+  // Display names for the instrument ids (the ids are what gets saved).
+  const instrumentLabel: Record<string, string> = {
+    guitar: t('Guitar'),
+    bass: t('Bass'),
+    drums: t('Drums'),
+    vocals: t('Vocals'),
+    keys: t('Keys'),
+    saxophone: t('Saxophone'),
+    trumpet: t('Trumpet'),
+    violin: t('Violin'),
+  };
 
   return (
     <AuthScreen
@@ -87,19 +100,19 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           loading={isSubmitting}
           trailingIcon={<ArrowUpRight className="w-5 h-5" />}
         >
-          Continue
+          {t('Continue')}
         </PillButton>
       }
     >
-      <Kicker overline="Your profile" title="Tell us about you" />
+      <Kicker overline={t('Your profile')} title={t('Tell us about you')} />
 
       {/* Name Input */}
       <PillField
-        label="Your name *"
+        label={t('Your name *')}
         type="text"
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
-        placeholder="Your name"
+        placeholder={t('Your name')}
         autoComplete="name"
         autoCapitalize="words"
         enterKeyHint="done"
@@ -109,7 +122,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
       {/* Instruments */}
       <div className="flex flex-col gap-3">
         <p id="instrument-label" className="bw-label-sm text-muted-foreground">
-          Your role / instrument *
+          {t('Your role / instrument *')}
         </p>
 
         <div role="group" aria-labelledby="instrument-label" className="flex flex-wrap gap-2">
@@ -119,7 +132,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               selected={selectedInstruments.includes(instrument.id)}
               onClick={() => toggleInstrument(instrument.id)}
             >
-              {instrument.id === 'other' ? 'Other…' : instrument.label}
+              {instrument.id === 'other' ? t('Other…') : instrumentLabel[instrument.id] ?? instrument.label}
             </ChoicePill>
           ))}
 
@@ -130,7 +143,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               <ChoicePill
                 key={custom}
                 selected
-                aria-label={`Remove ${custom}`}
+                aria-label={t('Remove {name}', { name: custom })}
                 onClick={() => setSelectedInstruments((prev) => prev.filter((i) => i !== custom))}
               >
                 {custom}
@@ -147,12 +160,12 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             animate={{ opacity: 1, height: 'auto' }}
           >
             <PillField
-              label="Other instrument"
+              label={t('Other instrument')}
               hideLabel
               type="text"
               value={customInstrument}
               onChange={(e) => setCustomInstrument(e.target.value)}
-              placeholder="Enter instrument…"
+              placeholder={t('Enter instrument…')}
               className="flex-1 min-w-0"
               autoFocus
               enterKeyHint="done"
@@ -171,7 +184,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               onClick={addCustomInstrument}
               disabled={!customInstrument.trim()}
             >
-              Add
+              {t('Add')}
             </PillButton>
             <PillButton
               variant="ghost"
@@ -180,7 +193,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               className="h-[52px] px-3 text-muted-foreground"
               onClick={() => setShowCustomInput(false)}
             >
-              Cancel
+              {t('Cancel')}
             </PillButton>
           </motion.div>
         )}
@@ -198,8 +211,8 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             <Crown className="w-[22px] h-[22px]" />
           </div>
           <div className="flex flex-col gap-1 min-w-0">
-            <p className="bw-label-md text-foreground">Your role: band admin</p>
-            <p className="bw-body-sm text-muted-foreground">Full control over settings, events and members.</p>
+            <p className="bw-label-md text-foreground">{t('Your role: band admin')}</p>
+            <p className="bw-body-sm text-muted-foreground">{t('Full control over settings, events and members.')}</p>
           </div>
         </motion.div>
       )}
@@ -212,7 +225,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          <p className="bw-label-sm text-muted-foreground">Joining</p>
+          <p className="bw-label-sm text-muted-foreground">{t('Joining')}</p>
           <h3 className="bw-h3 text-foreground truncate">{bandData.name}</h3>
         </motion.div>
       )}

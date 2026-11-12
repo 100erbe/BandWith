@@ -4,6 +4,7 @@ import { ArrowUpRight, Camera, Sparkles } from '@/app/components/icons';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { AuthScreen, Kicker, PillButton, PillField } from '@/app/components/bw/Form';
 import { WizardTop, wizardStep } from './OnboardingChrome';
+import { useT } from '@/lib/i18n';
 
 interface BandCreationProps {
   onBack: () => void;
@@ -14,6 +15,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
   onBack,
   onComplete,
 }) => {
+  const t = useT();
   const { setBandData, bandData, path } = useOnboarding();
   const [bandName, setBandName] = useState(bandData?.name || '');
   const [avatarUrl, setAvatarUrl] = useState(bandData?.avatarUrl || '');
@@ -82,7 +84,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           loading={isSubmitting}
           trailingIcon={<ArrowUpRight className="w-5 h-5" />}
         >
-          Continue
+          {t('Continue')}
         </PillButton>
       }
     >
@@ -117,7 +119,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
               <h2 className="font-[family-name:var(--font-display)] font-bold uppercase text-foreground text-[44px] leading-[0.9] tracking-[-0.03em] break-words">
                 {bandName}
               </h2>
-              <p className="bw-h2 text-accent-ink mt-3">is born!</p>
+              <p className="bw-h2 text-accent-ink mt-3">{t('is born!')}</p>
             </motion.div>
 
             {/* Confetti particles */}
@@ -148,14 +150,14 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         )}
       </AnimatePresence>
 
-      <Kicker overline="Your band" title="Name your band" />
+      <Kicker overline={t('Your band')} title={t('Name your band')} />
       <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px] -mt-1">
-        This is how your band appears to members and clients.
+        {t('This is how your band appears to members and clients.')}
       </p>
 
       {/* Band Name Input */}
       <PillField
-        label="Band name *"
+        label={t('Band name *')}
         type="text"
         value={bandName}
         onChange={(e) => setBandName(e.target.value)}
@@ -166,7 +168,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         enterKeyHint="done"
         hint={
           <span className="flex justify-between gap-3">
-            <span>{bandName.length < 2 ? 'At least 2 characters' : ''}</span>
+            <span>{bandName.length < 2 ? t('At least 2 characters') : ''}</span>
             <span className="tabular-nums">{bandName.length}/50</span>
           </span>
         }
@@ -177,23 +179,23 @@ export const BandCreation: React.FC<BandCreationProps> = ({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label={avatarSrc ? 'Change band avatar' : 'Add band avatar photo'}
+          aria-label={avatarSrc ? t('Change band avatar') : t('Add band avatar photo')}
           className="w-24 h-24 shrink-0 rounded-[24px] border-[1.5px] border-dashed border-foreground text-foreground flex flex-col items-center justify-center gap-2 overflow-hidden active:scale-[var(--press-scale,0.97)] transition-transform"
         >
           {avatarSrc ? (
-            <img src={avatarSrc} alt="Band avatar" className="w-full h-full object-cover" />
+            <img src={avatarSrc} alt={t('Band avatar')} className="w-full h-full object-cover" />
           ) : (
             <>
               <Camera className="w-6 h-6" />
-              <span className="bw-label-sm">Add photo</span>
+              <span className="bw-label-sm">{t('Add photo')}</span>
             </>
           )}
         </button>
 
         <div className="flex flex-col gap-1 min-w-0">
-          <p className="bw-label-md text-foreground">Band avatar</p>
+          <p className="bw-label-md text-foreground">{t('Band avatar')}</p>
           <p className="bw-body-sm text-muted-foreground max-w-[200px]">
-            {avatarPreview ? 'Looking good! Tap to change it.' : 'Tap to add a photo or skip for now.'}
+            {avatarPreview ? t('Looking good! Tap to change it.') : t('Tap to add a photo or skip for now.')}
           </p>
         </div>
 
@@ -213,7 +215,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <p className="bw-label-sm text-muted-foreground">Preview</p>
+          <p className="bw-label-sm text-muted-foreground">{t('Preview')}</p>
           <div className="dark bg-sheet text-foreground rounded-[24px] p-4 flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center overflow-hidden shrink-0">
               {avatarSrc ? (
@@ -224,7 +226,7 @@ export const BandCreation: React.FC<BandCreationProps> = ({
             </div>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <h3 className="bw-h2 truncate">{bandName}</h3>
-              <p className="bw-label-sm">1 member · New band</p>
+              <p className="bw-label-sm">{t('1 member · New band')}</p>
             </div>
           </div>
         </motion.div>

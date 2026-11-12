@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { Metric } from '@/app/components/bw/Metric';
 import { setStatusBarTone } from '@/lib/systemBars';
+import { useT } from '@/lib/i18n';
 
 interface CompletionScreenProps {
   onComplete: () => void;
@@ -14,6 +15,7 @@ interface CompletionScreenProps {
 export const CompletionScreen: React.FC<CompletionScreenProps> = ({
   onComplete,
 }) => {
+  const t = useT();
   const { bandData, invites, songs, profileData } = useOnboarding();
   const { user } = useAuth();
   const [showContent, setShowContent] = useState(false);
@@ -47,7 +49,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           transition={{ delay: 1 }}
         >
           <PillButton onClick={onComplete} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
-            Go to dashboard
+            {t('Go to dashboard')}
           </PillButton>
         </motion.div>
       }
@@ -76,7 +78,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 30 }}
         transition={{ duration: 0.6, delay: 0.2 }}
       >
-        <Kicker title="Ready to rock." size="xl" />
+        <Kicker title={t('Ready to rock.')} size="xl" />
       </motion.div>
 
       {/* Band Name */}
@@ -86,7 +88,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
         animate={{ opacity: showContent ? 1 : 0, y: showContent ? 0 : 20 }}
         transition={{ duration: 0.5, delay: 0.4 }}
       >
-        {bandData?.name ? `${bandData.name} is all set up.` : 'You’re all set up.'}
+        {bandData?.name ? t('{name} is all set up.', { name: bandData.name }) : t('You’re all set up.')}
       </motion.p>
 
       {/* Stats */}
@@ -98,13 +100,13 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
       >
         <Metric
           className="flex-1"
-          label={memberCount === 1 ? 'Member' : 'Members'}
+          label={memberCount === 1 ? t('Member') : t('Members')}
           value={memberCount}
           fill={memberCount / METER_DOTS}
         />
         <Metric
           className="flex-1"
-          label={songCount === 1 ? 'Song in repertoire' : 'Songs in repertoire'}
+          label={songCount === 1 ? t('Song in repertoire') : t('Songs in repertoire')}
           value={songCount}
           fill={songCount / METER_DOTS}
         />
@@ -119,7 +121,7 @@ export const CompletionScreen: React.FC<CompletionScreenProps> = ({
           transition={{ duration: 0.5, delay: 0.8 }}
         >
           <Check className="w-3.5 h-3.5 shrink-0 text-accent" strokeWidth={2.5} />
-          <p className="bw-label-sm text-foreground truncate">Signed in as {signedInAs}</p>
+          <p className="bw-label-sm text-foreground truncate">{t('Signed in as {account}', { account: signedInAs })}</p>
         </motion.div>
       )}
     </AuthScreen>

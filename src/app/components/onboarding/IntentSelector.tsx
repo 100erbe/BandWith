@@ -5,6 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { useOnboarding } from '@/lib/OnboardingContext';
 import { AuthScreen, Kicker, PillButton } from '@/app/components/bw/Form';
 import { DotMatrixRadio, WizardTop, wizardStep } from './OnboardingChrome';
+import { useT } from '@/lib/i18n';
 
 interface IntentSelectorProps {
   onSelectSolo: () => void;
@@ -25,29 +26,30 @@ interface IntentOption {
   accentBadge?: boolean;
 }
 
-const OPTIONS: IntentOption[] = [
-  {
-    id: 'solo',
-    title: 'Solo schedule',
-    description: 'Manage personal gigs, sync private rehearsals and track your earnings.',
-    badge: 'Free',
-    dots: 1,
-  },
-  {
-    id: 'band',
-    title: 'Manage my band',
-    description: 'Coordinate shared schedules, automate quotes and track band finances.',
-    badge: 'Admin',
-    dots: 5,
-    accentBadge: true,
-  },
-];
-
 export const IntentSelector: React.FC<IntentSelectorProps> = ({
   onSelectSolo,
   onSelectBand,
   onBack,
 }) => {
+  const t = useT();
+  // Built here so the text follows the language; the ids are what gets used.
+  const OPTIONS: IntentOption[] = [
+    {
+      id: 'solo',
+      title: t('Solo schedule'),
+      description: t('Manage personal gigs, sync private rehearsals and track your earnings.'),
+      badge: t('Free'),
+      dots: 1,
+    },
+    {
+      id: 'band',
+      title: t('Manage my band'),
+      description: t('Coordinate shared schedules, automate quotes and track band finances.'),
+      badge: t('Admin'),
+      dots: 5,
+      accentBadge: true,
+    },
+  ];
   const { path } = useOnboarding();
   const [choice, setChoice] = useState<Intent | null>(null);
   const { step, total } = wizardStep(path, 'intent');
@@ -63,16 +65,16 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
       bodyClassName="pt-2 gap-3"
       footer={
         <PillButton onClick={handleContinue} disabled={!choice} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
-          Continue
+          {t('Continue')}
         </PillButton>
       }
     >
-      <Kicker overline="Choose your path" title="What brings you here?" />
+      <Kicker overline={t('Choose your path')} title={t('What brings you here?')} />
       <p className="text-[16px] leading-[1.45] tracking-[-0.003em] text-muted-foreground max-w-[340px]">
-        Choose how you want to use BandWith. You can change this later.
+        {t('Choose how you want to use BandWith. You can change this later.')}
       </p>
 
-      <div role="radiogroup" aria-label="Choose your path" className="flex flex-col gap-3">
+      <div role="radiogroup" aria-label={t('Choose your path')} className="flex flex-col gap-3">
         {OPTIONS.map((opt, i) => {
           const selected = choice === opt.id;
           return (
@@ -125,7 +127,7 @@ export const IntentSelector: React.FC<IntentSelectorProps> = ({
               <span className="flex items-center gap-2">
                 <DotMatrixRadio checked={selected} />
                 <span className={cn('bw-label-sm', selected ? 'text-accent' : 'text-muted-foreground')}>
-                  {selected ? 'Selected' : 'Select'}
+                  {selected ? t('Selected') : t('Select')}
                 </span>
               </span>
             </motion.button>
