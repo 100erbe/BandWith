@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw/Form';
 import type { RsvpStatus } from '@/app/components/notifications/EventRSVPSheet';
+import { useT } from '@/lib/i18n';
 
 export type RsvpAnswer = 'pending' | 'accepted' | 'maybe' | 'declined';
 
@@ -26,6 +27,7 @@ export const RsvpChoiceCard: React.FC<{
   allowMaybe: boolean;
   caption?: string;
 }> = ({ title, current, onChoose, allowMaybe, caption }) => {
+  const t = useT();
   const [busy, setBusy] = useState<RsvpStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -39,16 +41,16 @@ export const RsvpChoiceCard: React.FC<{
       await onChoose(status);
       setEditing(false);
     } catch (e: any) {
-      setError(e?.message || 'Could not save your answer. Please try again.');
+      setError(e?.message || t('Could not save your answer. Please try again.'));
     } finally {
       setBusy(null);
     }
   };
 
   const options: { value: RsvpStatus; label: string }[] = [
-    { value: 'confirmed', label: 'GOING' },
-    ...(allowMaybe ? [{ value: 'maybe' as const, label: 'MAYBE' }] : []),
-    { value: 'declined', label: "CAN'T" },
+    { value: 'confirmed', label: t('GOING') },
+    ...(allowMaybe ? [{ value: 'maybe' as const, label: t('MAYBE') }] : []),
+    { value: 'declined', label: t("CAN'T") },
   ];
 
   const answered = options.find((o) => o.value === selected);
@@ -60,16 +62,16 @@ export const RsvpChoiceCard: React.FC<{
     return (
       <section
         className="dark bg-sheet text-sheet-foreground rounded-[16px] pl-5 pr-3 py-3 flex items-center gap-3"
-        aria-label="Your RSVP"
+        aria-label={t('Your RSVP')}
       >
-        <span className="bw-label-sm shrink-0">Your RSVP</span>
+        <span className="bw-label-sm shrink-0">{t('Your RSVP')}</span>
         <span className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full bw-button-sm ${tone}`}>
           {answered.value === 'confirmed' && <Check className="w-4 h-4" aria-hidden />}
-          {answered.value === 'confirmed' ? 'Going' : answered.value === 'maybe' ? 'Maybe' : "Can't make it"}
+          {answered.value === 'confirmed' ? t('Going') : answered.value === 'maybe' ? t('Maybe') : t("Can't make it")}
         </span>
         <span className="flex-1" />
         <PillButton variant="outline" size="sm" fullWidth={false} onClick={() => setEditing(true)}>
-          Change
+          {t('Change')}
         </PillButton>
       </section>
     );
@@ -77,9 +79,9 @@ export const RsvpChoiceCard: React.FC<{
 
   return (
     <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
-      <span className="bw-label-sm">Your RSVP</span>
+      <span className="bw-label-sm">{t('Your RSVP')}</span>
       <h2 className="bw-h1">{title}</h2>
-      <div role="radiogroup" aria-label="Your RSVP" className={options.length === 3 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'}>
+      <div role="radiogroup" aria-label={t('Your RSVP')} className={options.length === 3 ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'}>
         {options.map((o) => {
           const on = selected === o.value;
           return (

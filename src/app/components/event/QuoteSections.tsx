@@ -8,6 +8,7 @@ import { DotText } from '@/app/components/bw';
 import { Tag } from '@/app/components/bw/Screen';
 import { KeyValueRow, SectionTitle } from './parts';
 import { daysUntil, formatStampShort } from './format';
+import { useT } from '@/lib/i18n';
 
 /**
  * The quote saved with an event: by events.quote_id when set, otherwise the
@@ -56,7 +57,7 @@ interface QuoteMath {
 }
 
 /** Same math and line-item rules as QuoteDetailModal / the PDF. */
-const quoteMath = (quote: AppQuote | null, fallbackTotal: number): QuoteMath => {
+const quoteMath = (quote: AppQuote | null, fallbackTotal: number, t: ReturnType<typeof useT>): QuoteMath => {
   const sym = quote?.currency ? currencySymbol(quote.currency) : getActiveSymbol();
   const money = (n: number) => formatQuoteMoney(n, sym);
   if (!quote) {
@@ -76,7 +77,7 @@ const quoteMath = (quote: AppQuote | null, fallbackTotal: number): QuoteMath => 
           ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: m.name, amount: m.price || 0 })),
           ...(quote.customItems || []).map((c) => ({
             id: `c-${c.id}`,
-            label: c.description || c.name || 'Custom item',
+            label: c.description || c.name || t('Custom item'),
             amount: (c.amount ?? c.price ?? 0) * (c.quantity || 1),
           })),
         ];
@@ -99,29 +100,44 @@ export const QuoteSummaryCard: React.FC<{
   error: string | null;
   fallbackTotal: number;
 }> = ({ quote, loading, error, fallbackTotal }) => {
-  const m = quoteMath(quote, fallbackTotal);
+  const t = useT();
+  const m = quoteMath(quote, fallbackTotal, t);
   const validDays = daysUntil(quote?.validUntil);
   const validLabel =
-    validDays == null ? null : validDays < 0 ? 'EXPIRED' : validDays === 0 ? 'VALID TODAY' : `VALID ${validDays} ${validDays === 1 ? 'DAY' : 'DAYS'}`;
+    validDays == null
+      ? null
+      : validDays < 0
+        ? t('EXPIRED')
+        : validDays === 0
+          ? t('VALID TODAY')
+          : validDays === 1
+            ? t('VALID {count} DAY', { count: validDays })
+            : t('VALID {count} DAYS', { count: validDays });
   const sent = formatStampShort(quote?.sentAt);
   const opened = formatStampShort(quote?.viewedAt);
   const sentLine = sent
-    ? `Sent${quote?.clientEmail ? ` to ${quote.clientEmail}` : ''} on ${sent}${opened ? ` · opened ${opened}` : ''}`
+    ? quote?.clientEmail
+      ? opened
+        ? t('Sent to {email} on {date} · opened {opened}', { email: quote.clientEmail, date: sent, opened })
+        : t('Sent to {email} on {date}', { email: quote.clientEmail, date: sent })
+      : opened
+        ? t('Sent on {date} · opened {opened}', { date: sent, opened })
+        : t('Sent on {date}', { date: sent })
     : quote?.status === 'DRAFT'
-      ? 'Draft · not sent yet'
+      ? t('Draft · not sent yet')
       : null;
 
   return (
     <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="bw-label-sm truncate">QUOTE{quote?.quoteNumber ? ` ${quote.quoteNumber}` : ''}</span>
+        <span className="bw-label-sm truncate">{quote?.quoteNumber ? t('QUOTE {number}', { number: quote.quoteNumber }) : t('QUOTE')}</span>
         {validLabel && <Tag variant={validDays != null && validDays < 0 ? 'subtle' : 'accent'}>{validLabel}</Tag>}
       </div>
       <DotText text={m.money(m.total)} size={32} label={m.money(m.total)} />
       {loading ? (
-        <p className="bw-label-xs text-sheet-foreground/70">LOADING QUOTE…</p>
+        <p className="bw-label-xs text-sheet-foreground/70">{t('LOADING QUOTE…')}</p>
       ) : error ? (
-        <p role="alert" className="bw-body-sm text-destructive">Could not load the quote: {error}</p>
+        <p role="alert" className="bw-body-sm text-destructive">{t('Could not load the quote: {error}', { error })}</p>
       ) : sentLine ? (
         <p className="bw-body-sm text-sheet-foreground/80 [overflow-wrap:anywhere]">{sentLine}</p>
       ) : null}
@@ -131,20 +147,21 @@ export const QuoteSummaryCard: React.FC<{
 
 /** LINE ITEMS: items, Subtotal, VAT, TOTAL. */
 export const QuoteLineItems: React.FC<{ quote: AppQuote | null; fallbackTotal: number }> = ({ quote, fallbackTotal }) => {
-  const m = quoteMath(quote, fallbackTotal);
+  const t = useT();
+  const m = quoteMath(quote, fallbackTotal, t);
   if (!quote && fallbackTotal <= 0) return null;
   return (
     <section className="flex flex-col gap-6">
-      <SectionTitle title="LINE ITEMS" />
+      <SectionTitle title={t('LINE ITEMS')} />
       <div className="bg-card rounded-[16px] p-4 flex flex-col gap-3">
         {m.itemRows.map((row) => (
           <KeyValueRow key={row.id} label={row.label} value={m.money(row.amount)} muted />
         ))}
         {m.itemRows.length > 0 && <hr className="border-0 h-px bg-border" />}
-        <KeyValueRow label="Subtotal" value={m.money(m.subtotal)} muted />
-        {m.discount > 0 && <KeyValueRow label="Discount" value={`−${m.money(m.discount)}`} muted />}
-        {m.hasMath && <KeyValueRow label={`VAT ${m.vatRate}%`} value={m.money(m.vat)} muted />}
-        <KeyValueRow label="TOTAL" value={m.money(m.total)} strong />
+        <KeyValueRow label={t('Subtotal')} value={m.money(m.subtotal)} muted />
+        {m.discount > 0 && <KeyValueRow label={t('Discount')} value={`−${m.money(m.discount)}`} muted />}
+        {m.hasMath && <KeyValueRow label={t('VAT {rate}%', { rate: m.vatRate })} value={m.money(m.vat)} muted />}
+        <KeyValueRow label={t('TOTAL')} value={m.money(m.total)} strong />
       </div>
     </section>
   );
@@ -156,18 +173,19 @@ export const QuoteClientSection: React.FC<{
   fallback: { company?: string; contact?: string; guests?: number };
   notes?: string;
 }> = ({ quote, fallback, notes }) => {
+  const t = useT();
   const company = quote?.clientCompany || fallback.company;
   const contact = quote?.clientName || fallback.contact;
   const guests = quote?.guestCount || fallback.guests;
   const rows = [
-    company ? { label: 'Company', value: company } : null,
-    contact ? { label: 'Contact', value: contact } : null,
-    guests ? { label: 'Guests', value: `~${guests}` } : null,
+    company ? { label: t('Company'), value: company } : null,
+    contact ? { label: t('Contact'), value: contact } : null,
+    guests ? { label: t('Guests'), value: `~${guests}` } : null,
   ].filter(Boolean) as { label: string; value: string }[];
   if (rows.length === 0 && !notes) return null;
   return (
     <section className="flex flex-col gap-6">
-      <SectionTitle title="CLIENT" />
+      <SectionTitle title={t('CLIENT')} />
       <div className="bg-card rounded-[16px] p-4 flex flex-col gap-3">
         {rows.map((r) => (
           <KeyValueRow key={r.label} label={r.label} value={r.value} muted />

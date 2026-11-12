@@ -5,6 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { money } from '@/lib/currency';
 import { toLocalDateString, parseLocalDate } from '@/lib/dates';
 import { haptic } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel, hhmm } from './shared';
 
@@ -96,6 +97,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
   onAddRehearsal,
   zIndex,
 }) => {
+  const t = useT();
   const today = toLocalDateString();
   const [internal, setInternal] = useState(selectedDate ?? today);
   const selected = selectedDate ?? internal;
@@ -133,10 +135,10 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
   };
 
   const counts: { label: string; value: string }[] = [
-    { label: 'Gigs', value: String(stats.gigs) },
-    { label: 'Rehearsals', value: String(stats.rehearsals) },
-    ...(isAdmin ? [{ label: 'Fees', value: money(stats.fees) }] : []),
-    { label: 'Free weekends', value: String(stats.freeWeekends) },
+    { label: t('Gigs'), value: String(stats.gigs) },
+    { label: t('Rehearsals'), value: String(stats.rehearsals) },
+    ...(isAdmin ? [{ label: t('Fees'), value: money(stats.fees) }] : []),
+    { label: t('Free weekends'), value: String(stats.freeWeekends) },
   ];
 
   const weeks = cells.length / 7;
@@ -155,7 +157,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
       </dl>
       <div
         role="grid"
-        aria-label="Month"
+        aria-label={t('Month')}
         className="flex-1 grid grid-cols-7 gap-x-1 gap-y-0.5"
         style={{ gridTemplateRows: `auto repeat(${weeks}, minmax(28px, 1fr))` }}
       >
@@ -176,7 +178,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
               type="button"
               role="gridcell"
               aria-selected={isSel}
-              aria-label={`${dayLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}${list.length ? `, ${list.length} ${list.length === 1 ? 'event' : 'events'}` : ''}`}
+              aria-label={`${dayLabel(d, { weekday: 'long', month: 'long', day: 'numeric' })}${list.length ? `, ${list.length === 1 ? t('{count} event', { count: list.length }) : t('{count} events', { count: list.length })}` : ''}`}
               onClick={() => select(d)}
               className={cn(
                 'h-full max-h-11 self-center rounded-[12px] flex flex-col items-center justify-center gap-0.5 cursor-pointer',
@@ -199,28 +201,28 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
   const deck = (
     <div className="flex flex-col gap-3 px-4 pt-3 pb-3 min-h-full">
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="Previous month" onClick={() => shiftMonth(-1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
+        <button type="button" aria-label={t('Previous month')} onClick={() => shiftMonth(-1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
           <ChevronLeft className="w-5 h-5" />
           <ChevronLeft className="w-5 h-5 -ml-3.5" />
         </button>
-        <button type="button" aria-label="Previous day" onClick={() => shiftDay(-1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
+        <button type="button" aria-label={t('Previous day')} onClick={() => shiftDay(-1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <p className="flex-1 min-w-0 text-center bw-h3 truncate" aria-live="polite">
-          {selected === today ? 'Today' : dayLabel(selected, { weekday: 'long', month: 'short', day: 'numeric' })}
+          {selected === today ? t('Today') : dayLabel(selected, { weekday: 'long', month: 'short', day: 'numeric' })}
         </p>
-        <button type="button" aria-label="Next day" onClick={() => shiftDay(1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
+        <button type="button" aria-label={t('Next day')} onClick={() => shiftDay(1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
           <ChevronRight className="w-5 h-5" />
         </button>
-        <button type="button" aria-label="Next month" onClick={() => shiftMonth(1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
+        <button type="button" aria-label={t('Next month')} onClick={() => shiftMonth(1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
           <ChevronRight className="w-5 h-5" />
           <ChevronRight className="w-5 h-5 -ml-3.5" />
         </button>
       </div>
-      <section aria-label="Agenda" className="flex-1 flex flex-col gap-2">
-        <DeckHeading>Agenda</DeckHeading>
+      <section aria-label={t('Agenda')} className="flex-1 flex flex-col gap-2">
+        <DeckHeading>{t('Agenda')}</DeckHeading>
         {agenda.length === 0 ? (
-          <ModeEmpty title="Free" detail="Nothing on this day." className="py-2" />
+          <ModeEmpty title={t('Free')} detail={t('Nothing on this day.')} className="py-2" />
         ) : (
           <ul className="flex flex-col gap-1.5">
             {agenda.map((e) => (
@@ -241,7 +243,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
                     <span className="bw-body-md font-semibold truncate">{e.title}</span>
                     {(e.venue || e.time || e.draft) && (
                       <span className="bw-body-sm text-muted-foreground truncate">
-                        {[e.draft ? 'Draft · only you' : null, hhmm(e.time), e.venue].filter(Boolean).join(' · ')}
+                        {[e.draft ? t('Draft · only you') : null, hhmm(e.time), e.venue].filter(Boolean).join(' · ')}
                       </span>
                     )}
                   </span>
@@ -258,12 +260,12 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
         <div className="grid grid-cols-2 gap-2">
           {onAddGig && (
             <DeckButton tone="accent" onClick={() => { haptic.tap(); onAddGig(selected); }}>
-              <Plus className="w-5 h-5" /> Gig
+              <Plus className="w-5 h-5" /> {t('Gig')}
             </DeckButton>
           )}
           {onAddRehearsal && (
             <DeckButton tone="inverse" onClick={() => { haptic.tap(); onAddRehearsal(selected); }}>
-              <Plus className="w-5 h-5" /> Rehearsal
+              <Plus className="w-5 h-5" /> {t('Rehearsal')}
             </DeckButton>
           )}
         </div>
@@ -271,7 +273,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
     </div>
   );
 
-  return <FoldSplit zIndex={zIndex} displayLabel="Month" deckLabel="Day planner" display={display} deck={deck} />;
+  return <FoldSplit zIndex={zIndex} displayLabel={t('Month')} deckLabel={t('Day planner')} display={display} deck={deck} />;
 };
 
 export default PlannerMode;

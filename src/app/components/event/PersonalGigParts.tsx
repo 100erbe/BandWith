@@ -6,17 +6,21 @@ import { supabase } from '@/lib/supabase';
 import { findEventConflicts } from '@/lib/eventConflicts';
 import type { EventData } from '@/app/components/dashboard/EventCard';
 import { formatDayShort, formatTime12 } from './format';
+import { useT } from '@/lib/i18n';
 
 /* Personal gig (Figma 23:993): privacy note, band-event conflict, paid toggle. */
 
-export const PersonalPrivacyCard: React.FC = () => (
-  <div className="bg-card rounded-[16px] p-4 flex items-start gap-3">
-    <Lock className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden />
-    <p className="bw-body-md">
-      Private to you. Your bands only see you as &ldquo;busy&rdquo; on this date.
-    </p>
-  </div>
-);
+export const PersonalPrivacyCard: React.FC = () => {
+  const t = useT();
+  return (
+    <div className="bg-card rounded-[16px] p-4 flex items-start gap-3">
+      <Lock className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden />
+      <p className="bw-body-md">
+        {t('Private to you. Your bands only see you as “busy” on this date.')}
+      </p>
+    </div>
+  );
+};
 
 /** First band gig / rehearsal on the same date as the personal gig. */
 export const findBandConflict = (event: EventData, allEvents?: EventData[]): EventData | null => {
@@ -35,10 +39,11 @@ export const ScheduleConflictCard: React.FC<{
   conflict: EventData;
   onNotify?: (bandId: string, eventId: string) => Promise<void> | void;
 }> = ({ conflict, onNotify }) => {
+  const t = useT();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const band = conflict.band_name || 'Your band';
-  const kind = String(conflict.status || '').toUpperCase() === 'REHEARSAL' ? 'Rehearsal' : 'Gig';
+  const band = conflict.band_name || t('Your band');
+  const rehearsal = String(conflict.status || '').toUpperCase() === 'REHEARSAL';
   const when = [formatDayShort(conflict.date), formatTime12(conflict.time)].filter(Boolean).join(', ');
 
   const notify = async () => {
@@ -49,7 +54,7 @@ export const ScheduleConflictCard: React.FC<{
       await onNotify(conflict.band_id, conflict.eventId);
       setState('sent');
     } catch (e: any) {
-      setError(e?.message || 'Could not notify the admin.');
+      setError(e?.message || t('Could not notify the admin.'));
       setState('idle');
     }
   };
@@ -58,10 +63,12 @@ export const ScheduleConflictCard: React.FC<{
     <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-3">
       <span className="bw-label-sm inline-flex items-center gap-2">
         <AlertTriangle className="w-4 h-4 text-warning" aria-hidden />
-        SCHEDULE CONFLICT
+        {t('SCHEDULE CONFLICT')}
       </span>
       <p className="bw-body-md [overflow-wrap:anywhere]">
-        {band} has a {kind} on the same evening{when ? ` (${when})` : ''}. Let the admin know.
+        {rehearsal
+          ? t('{band} has a Rehearsal on the same evening{when}. Let the admin know.', { band, when: when ? ` (${when})` : '' })
+          : t('{band} has a Gig on the same evening{when}. Let the admin know.', { band, when: when ? ` (${when})` : '' })}
       </p>
       {error && (
         <p role="alert" className="bw-body-sm text-destructive">
@@ -78,7 +85,7 @@ export const ScheduleConflictCard: React.FC<{
           icon={<Bell className="w-4 h-4" />}
           className="whitespace-normal"
         >
-          {state === 'sent' ? 'ADMIN NOTIFIED' : `NOTIFY ${band.toUpperCase()} ADMIN`}
+          {state === 'sent' ? t('ADMIN NOTIFIED') : t('NOTIFY {band} ADMIN', { band: band.toUpperCase() })}
         </PillButton>
       )}
     </section>
@@ -91,6 +98,7 @@ export const PaidToggleRow: React.FC<{
   initial?: 'pending' | 'partial' | 'paid';
   onSaved?: () => void;
 }> = ({ eventId, initial, onSaved }) => {
+  const t = useT();
   const [paid, setPaid] = useState(initial === 'paid');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +116,7 @@ export const PaidToggleRow: React.FC<{
     setSaving(false);
     if (upErr || !data?.length) {
       setPaid(!next);
-      setError(upErr?.message || 'This gig could not be updated.');
+      setError(upErr?.message || t('This gig could not be updated.'));
       return;
     }
     onSaved?.();
@@ -117,8 +125,8 @@ export const PaidToggleRow: React.FC<{
   return (
     <div className="flex flex-col gap-2">
       <label className="flex items-center justify-between gap-3 w-full min-w-0">
-        <span className="bw-body-md text-muted-foreground">Paid</span>
-        <Toggle checked={paid} onCheckedChange={change} disabled={!eventId || saving} aria-label="Paid" />
+        <span className="bw-body-md text-muted-foreground">{t('Paid')}</span>
+        <Toggle checked={paid} onCheckedChange={change} disabled={!eventId || saving} aria-label={t('Paid')} />
       </label>
       {error && (
         <p role="alert" className="bw-body-sm text-destructive">

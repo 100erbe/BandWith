@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
-import { APP_COPY } from '@/app/constants/copy';
+import { useT } from '@/lib/i18n';
 import { parseLocalDate } from '@/lib/dates';
 import { Metric } from '@/app/components/bw';
 import { BackButton, Selector } from '@/app/components/bw/Form';
@@ -56,6 +56,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
   bands = [],
   userFeeMap = {},
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const [payFilter, setPayFilter] = useState<PayFilter>('All');
 
@@ -130,7 +131,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
     filteredEvents.forEach((event) => {
       const norm = normalizeDateStr(event.date);
       const key = norm ? norm.slice(0, 7) : 'tbd';
-      let label = 'Date TBD';
+      let label = t('Date TBD');
       if (norm) {
         const d = parseLocalDate(norm);
         if (!isNaN(d.getTime())) label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -140,7 +141,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       else out.push({ key, label, events: [event] });
     });
     return out;
-  }, [filteredEvents]);
+  }, [filteredEvents, t]);
 
   const feeFor = (event: EventData) =>
     !isAdmin && event.eventId && userFeeMap[event.eventId] != null ? userFeeMap[event.eventId] : parseFee(event.price);
@@ -161,7 +162,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
       <header className="sticky top-0 z-30 bg-background px-4" style={{ paddingTop: 'var(--safe-top)' }}>
         <div className="h-14 flex items-center gap-3">
           <BackButton onClick={onClose} />
-          <h1 className="bw-h2 flex-1 min-w-0 truncate">{APP_COPY.events.archive.title}</h1>
+          <h1 className="bw-h2 flex-1 min-w-0 truncate">{t('Past Events')}</h1>
         </div>
       </header>
 
@@ -172,9 +173,9 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
         {/* Metrics (Figma Metric: label, dot value, 4×12 meter) */}
         <div className="grid grid-cols-2 gap-8">
           {/* One dot per gig played */}
-          <Metric label={`Played in ${currentYear}`} value={metrics.gigsCount} fill={metrics.gigsCount / 48} />
+          <Metric label={t('Played in {year}', { year: currentYear })} value={metrics.gigsCount} fill={metrics.gigsCount / 48} />
           {/* One dot per 500 earned */}
-          <Metric label="Earned" value={metrics.formattedRevenue} fill={metrics.totalRevenue / (48 * 500)} />
+          <Metric label={t('Earned')} value={metrics.formattedRevenue} fill={metrics.totalRevenue / (48 * 500)} />
         </div>
 
         {/* Payment filter (Figma Selector MD: All / Paid / Unpaid n) */}
@@ -187,7 +188,7 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
               onClick={() => setPayFilter(f)}
               count={f === 'Unpaid' && unpaidCount > 0 ? unpaidCount : undefined}
             >
-              {f}
+              {f === 'All' ? t('All') : f === 'Paid' ? t('Paid') : t('Unpaid')}
             </Selector>
           ))}
         </div>
@@ -204,12 +205,12 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
                 const isQuote = status === 'QUOTED' || status === 'QUOTE';
                 // Every row here is in the past, so an unpaid gig is overdue.
                 const isPaid = isGig && event.paymentStatus === 'paid';
-                const statusLabel = isGig ? (isPaid ? 'Paid' : 'Overdue') : isRehearsal ? 'Rehearsal' : isQuote ? 'Quote' : 'Draft';
+                const statusLabel = isGig ? (isPaid ? t('Paid') : t('Overdue')) : isRehearsal ? t('Rehearsal') : isQuote ? t('Quote') : t('Draft');
                 const norm = normalizeDateStr(event.date);
                 const d = norm ? parseLocalDate(norm) : null;
                 const valid = d && !isNaN(d.getTime());
                 const day = valid ? String(d!.getDate()).padStart(2, '0') : '--';
-                const mon = valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD';
+                const mon = valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD');
                 const fee = isGig ? feeFor(event) : 0;
                 const meta = [
                   !isAdmin && bands.length > 1 ? event.band_name : null,
@@ -251,13 +252,13 @@ export const PastEventsView: React.FC<PastEventsViewProps> = ({
           ))
         ) : (
           <Card className="items-center text-center py-10">
-            <h2 className="bw-h3">No past events found</h2>
+            <h2 className="bw-h3">{t('No past events found')}</h2>
             <p className="bw-body-sm text-muted-foreground max-w-[280px]">
               {payFilter === 'Paid'
-                ? 'No paid gigs yet.'
+                ? t('No paid gigs yet.')
                 : payFilter === 'Unpaid'
-                ? 'Every past gig is paid.'
-                : 'No completed gigs or rehearsals recorded yet.'}
+                ? t('Every past gig is paid.')
+                : t('No completed gigs or rehearsals recorded yet.')}
             </p>
           </Card>
         )}

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { initialsOf, type ResolvedMember } from './parts';
 import { personName } from '@/lib/personName';
 import { getEventMemberMoney, markEventPaid } from '@/lib/services/eventMemberMoney';
+import { useT } from '@/lib/i18n';
 
 interface BandLike {
   id?: string;
@@ -35,6 +36,7 @@ export function useEventMembers({
   bands,
   selectedBand,
 }: Options) {
+  const t = useT();
   const [members, setMembers] = useState<ResolvedMember[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +101,7 @@ export function useEventMembers({
       const resolved: ResolvedMember[] = rows.map((em) => {
         const info = roster.get(em.user_id);
         const name =
-          info?.name || profileNames.get(em.user_id) || (em.user_id === currentUserId ? 'You' : 'Unknown musician');
+          info?.name || profileNames.get(em.user_id) || (em.user_id === currentUserId ? t('You') : t('Unknown musician'));
         const rawRole = typeof em.role === 'string' ? em.role.trim() : '';
         const instrument =
           (rawRole && !['admin', 'member'].includes(rawRole.toLowerCase()) ? rawRole : '') || info?.instrument || 'Musician';
@@ -122,13 +124,13 @@ export function useEventMembers({
     };
     load().catch((e) => {
       if (cancelled) return;
-      setError(e?.message || 'Could not load the lineup.');
+      setError(e?.message || t('Could not load the lineup.'));
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [eventId, bandId, createdBy, currentUserId, disabled, bands, selectedBand]);
+  }, [eventId, bandId, createdBy, currentUserId, disabled, bands, selectedBand, t]);
 
   /** Admins: stamp paid_at on every non-declined member still unpaid. */
   const markAllPaid = useCallback(async () => {

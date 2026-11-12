@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/app/components/ui/utils';
 import { Tag } from '@/app/components/bw/Screen';
+import { useT } from '@/lib/i18n';
 
 /* Figma kit pieces shared by the event detail screens (Figma 22:674 · 22:895 · 23:862 · 23:993 · 23:1104). */
 
@@ -67,7 +68,26 @@ const AVAILABILITY_LABEL: Record<ResolvedMember['status'], string> = {
   declined: 'NOT FREE',
 };
 
+/** Shown role: the instrument stays as entered; the 'Musician' fallback and ' · Band leader' (useEventMembers) are translated. */
+export const memberRoleLabel = (role: string, t: ReturnType<typeof useT>): string => {
+  const suffix = ' · Band leader';
+  const leader = role.endsWith(suffix);
+  const instrument = leader ? role.slice(0, -suffix.length) : role;
+  const shown = instrument === 'Musician' ? t('Musician') : instrument;
+  return leader ? t('{instrument} · Band leader', { instrument: shown }) : shown;
+};
+
 export const MemberRow: React.FC<{ member: ResolvedMember; availability?: boolean }> = ({ member, availability }) => {
+  const t = useT();
+  const shownLabel: Record<string, string> = {
+    CONFIRMED: t('CONFIRMED'),
+    PENDING: t('PENDING'),
+    MAYBE: t('MAYBE'),
+    DECLINED: t('DECLINED'),
+    FREE: t('FREE'),
+    'NO ANSWER': t('NO ANSWER'),
+    'NOT FREE': t('NOT FREE'),
+  };
   const base = MEMBER_STATUS[member.status] || MEMBER_STATUS.pending;
   const status = availability ? { ...base, label: AVAILABILITY_LABEL[member.status] || base.label } : base;
   const declined = member.status === 'declined';
@@ -83,21 +103,23 @@ export const MemberRow: React.FC<{ member: ResolvedMember; availability?: boolea
       </span>
       <span className={cn('flex flex-col gap-1 flex-1 min-w-0', declined && 'opacity-60')}>
         <span className="bw-label-md truncate">{member.name}</span>
-        <span className="bw-body-sm text-muted-foreground truncate">{member.role}</span>
+        <span className="bw-body-sm text-muted-foreground truncate">{memberRoleLabel(member.role, t)}</span>
       </span>
       <span
         className={cn('inline-flex items-center gap-2 bw-label-sm shrink-0', declined && 'text-destructive-solid')}
       >
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
-        {status.label}
+        {shownLabel[status.label] ?? status.label}
       </span>
     </span>
   );
 };
 
 /** PAID (accent) / PENDING (outline) payout badge. */
-export const PaidBadge: React.FC<{ paid: boolean }> = ({ paid }) =>
-  paid ? <Tag variant="accent">PAID</Tag> : <Tag variant="outline">PENDING</Tag>;
+export const PaidBadge: React.FC<{ paid: boolean }> = ({ paid }) => {
+  const t = useT();
+  return paid ? <Tag variant="accent">{t('PAID')}</Tag> : <Tag variant="outline">{t('PENDING')}</Tag>;
+};
 
 export const initialsOf = (name: string): string =>
   name

@@ -5,6 +5,7 @@ import { ArrowUpRight } from '@/app/components/icons';
 import { EventMark, type EventKind } from '@/app/components/bw/EventMark';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { useT } from '@/lib/i18n';
 
 export interface EventData {
   id: number;
@@ -61,6 +62,7 @@ interface EventCardProps {
 
 /** Figma "Event Card": the whole card is the event colour (see EventsView). */
 export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const status = (event.status || '').toUpperCase();
   const kind: EventKind =
@@ -68,7 +70,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
     : status === 'QUOTE' || status === 'QUOTED' ? 'quote'
     : !event.band_id ? 'personal'
     : 'gig';
-  const typeLabel = kind === 'personal' ? 'Personal' : kind === 'rehearsal' ? 'Rehearsal' : kind === 'quote' ? 'Quote' : 'Gig';
+  const typeLabel = kind === 'personal' ? t('Personal') : kind === 'rehearsal' ? t('Rehearsal') : kind === 'quote' ? t('Quote') : t('Gig');
   const d = event.date ? parseLocalDate(event.date) : null;
   const valid = !!d && !isNaN(d.getTime());
   const chipBg = `color-mix(in srgb, var(--accent-${kind}-fg) 12%, transparent)`;
@@ -94,7 +96,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
             <span className="bw-label-xs">{typeLabel}</span>
             {statusChip && (
               <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center" style={{ backgroundColor: chipBg }}>
-                {statusChip}
+                {statusChip === 'CONFIRMED' ? t('CONFIRMED')
+                  : statusChip === 'COMPLETED' ? t('COMPLETED')
+                  : statusChip === 'PENDING' ? t('PENDING')
+                  : statusChip === 'DRAFT' ? t('DRAFT')
+                  : statusChip === 'CANCELLED' ? t('CANCELLED')
+                  : statusChip === 'TENTATIVE' ? t('TENTATIVE')
+                  : statusChip}
               </span>
             )}
           </motion.div>
@@ -111,7 +119,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       <motion.div layoutId={`meta-${event.id}`} className="flex items-end justify-between gap-3">
         <motion.span layoutId={`date-block-${event.id}`} className="flex items-baseline gap-1.5 shrink-0">
           <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '--'}</span>
-          <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}</span>
+          <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}</span>
         </motion.span>
         {meta && <span className="bw-label-md truncate min-w-0 text-right">{meta}</span>}
       </motion.div>
@@ -131,7 +139,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
             ))}
           </span>
         ) : (
-          <span className="bw-label-xs opacity-70">No team</span>
+          <span className="bw-label-xs opacity-70">{t('No team')}</span>
         )}
         {event.price && <span className="bw-num whitespace-nowrap">{sym()}{event.price}</span>}
       </motion.div>
