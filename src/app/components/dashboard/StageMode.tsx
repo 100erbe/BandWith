@@ -7,6 +7,7 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { HeaderAction } from '@/app/components/bw/Screen';
 import { RailCover, useRailTone } from '@/lib/railActions';
 import { setStatusBarTone } from '@/lib/systemBars';
+import { useT } from '@/lib/i18n';
 
 export interface StageStep {
   label: string;
@@ -75,6 +76,7 @@ export const StageMode: React.FC<StageModeProps> = ({
   accentColor = 'var(--accent-gig, #D5FB46)',
   onClose,
 }) => {
+  const t = useT();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export const StageMode: React.FC<StageModeProps> = ({
     <motion.div
       role="dialog"
       aria-modal="true"
-      aria-label={`Stage mode: ${title}`}
+      aria-label={t('Stage mode: {title}', { title })}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -133,7 +135,7 @@ export const StageMode: React.FC<StageModeProps> = ({
           <div className="flex flex-col gap-2 min-w-0">
             <span className="flex items-center gap-2 bw-label-sm text-white">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
-              Stage mode · {dateLabel}
+              {t('Stage mode · {date}', { date: dateLabel })}
             </span>
             <FitText as="h1" text={title} sizes={FIT.stage} maxLines={2} className="bw-display-lg text-white" />
             {(venue || city) && (
@@ -143,11 +145,11 @@ export const StageMode: React.FC<StageModeProps> = ({
             )}
           </div>
           <RailCover pane />
-          <HeaderAction pane label="Exit stage mode" variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
+          <HeaderAction pane label={t('Exit stage mode')} variant="sheet" icon={<X />} onClick={handleClose} className="border-white text-white" />
         </div>
 
         {/* Run of show */}
-        <ol className="grid grid-cols-2 gap-3 shrink-0" aria-label="Run of show">
+        <ol className="grid grid-cols-2 gap-3 shrink-0" aria-label={t('Run of show')}>
           {steps.map((s, i) => {
             const next = i === nextIndex;
             const done = isDone(i);
@@ -161,13 +163,13 @@ export const StageMode: React.FC<StageModeProps> = ({
                 }}
               >
                 <span className="bw-label-xs text-white">
-                  {next ? `Next · ${s.label}` : s.label}
+                  {next ? t('Next · {label}', { label: s.label }) : s.label}
                 </span>
                 <span
                   className="bw-num text-[clamp(22px,7vw,32px)] leading-[1.1] whitespace-nowrap"
                   style={{ ...MONO, color: next ? accentColor : '#fff' }}
                 >
-                  {to24h(s.time) || s.display || 'TBD'}
+                  {to24h(s.time) || s.display || t('TBD')}
                 </span>
               </li>
             );
@@ -175,16 +177,16 @@ export const StageMode: React.FC<StageModeProps> = ({
         </ol>
 
         {/* Setlist */}
-        <section className="flex flex-col flex-1 min-h-0 gap-1" aria-label="Setlist">
+        <section className="flex flex-col flex-1 min-h-0 gap-1" aria-label={t('Setlist')}>
           <div className="flex items-baseline justify-between shrink-0 pb-2">
-            <span className="bw-label-sm text-white">Setlist</span>
+            <span className="bw-label-sm text-white">{t('Setlist')}</span>
             <span className="bw-num text-[14px] font-medium text-white/70" style={MONO}>
-              {songsLoading ? '…' : `${songs.length} ${songs.length === 1 ? 'song' : 'songs'}`}
+              {songsLoading ? '…' : songs.length === 1 ? t('{count} song', { count: songs.length }) : t('{count} songs', { count: songs.length })}
             </span>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-4 px-4">
             {songs.length === 0 && !songsLoading ? (
-              <p className="bw-body-md text-white/70">No setlist attached to this gig.</p>
+              <p className="bw-body-md text-white/70">{t('No setlist attached to this gig.')}</p>
             ) : (
               <ol className="flex flex-col">
                 {songs.map((song, i) => (

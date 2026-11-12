@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/app/components/ui/utils';
+import { t } from '@/lib/i18n';
 import { ArrowUpRight } from '@/app/components/icons';
 import { EventMark, type EventKind } from './EventMark';
 
@@ -12,7 +13,8 @@ interface SectionHeaderProps {
   className?: string;
 }
 
-export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, onSeeAll, seeAllLabel = 'See all', className }) => (
+// The default label is read at render; the screens using this header re-render on a language change.
+export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, onSeeAll, seeAllLabel = t('See all'), className }) => (
   <div className={cn('flex items-center gap-2.5', className)}>
     <h2 className="bw-h1 flex-1 min-w-0 truncate">{title}</h2>
     {onSeeAll && (

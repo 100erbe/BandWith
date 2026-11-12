@@ -18,7 +18,7 @@ import { useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { cn } from '@/app/components/ui/utils';
 import { EventData } from '@/app/components/dashboard/EventCard';
-import { APP_COPY } from '@/app/constants/copy';
+import { t, useT } from '@/lib/i18n';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { EventsSkeleton } from '@/app/components/ui/EventsSkeleton';
@@ -64,8 +64,6 @@ interface EventsViewProps {
 
 const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
 
-/** Figma "Calendar": link to the past-events archive. */
-const PAST_ARCHIVE_LABEL = 'Past events archive';
 
 
 const getRehearsalCadence = (event: EventData): string => {
@@ -99,6 +97,29 @@ const getEventTags = (event: EventData): string[] => {
   return tags;
 };
 
+/** Shown text for a tag from getEventTags (the tags themselves stay as ids). */
+const tagLabel = (tag: string): string => {
+  switch (tag) {
+    case 'INDOOR': return t('INDOOR');
+    case 'OUTDOOR': return t('OUTDOOR');
+    case 'HYBRID': return t('HYBRID');
+    case 'ONCE': return t('ONCE');
+    case 'WEEKLY': return t('WEEKLY');
+    case 'BI-WEEKLY': return t('BI-WEEKLY');
+    case 'MONTHLY': return t('MONTHLY');
+    case 'BI-MONTHLY': return t('BI-MONTHLY');
+    case 'DRAFT': return t('DRAFT');
+    case 'SENT': return t('SENT');
+    case 'VIEWED': return t('VIEWED');
+    case 'NEGOTIATING': return t('NEGOTIATING');
+    case 'ARCHIVED': return t('ARCHIVED');
+    case 'ACCEPTED': return t('ACCEPTED');
+    case 'DECLINED': return t('DECLINED');
+    case 'EXPIRED': return t('EXPIRED');
+    default: return tag;
+  }
+};
+
 
 
 const calendarKind = (event: EventData, isPast = false): EventKind => {
@@ -125,7 +146,7 @@ const normalizeDateStr = (rawDate: string | undefined): string | null => {
 };
 
 const formatEventDate = (dateStr: string): string => {
-  if (!dateStr) return 'TBD';
+  if (!dateStr) return t('TBD');
   const d = parseLocalDate(dateStr);
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   const day = d.getDate();
@@ -165,9 +186,9 @@ const formatBandTotal = (price: string): string => {
 const getEventWarnings = (event: EventData): string[] => {
   const warnings: string[] = [];
   const type = event.eventType?.toLowerCase() || event.status?.toLowerCase();
-  if (!event.location || event.location === 'TBD') warnings.push('Missing venue');
-  if (!event.date) warnings.push('Missing date');
-  if (type !== 'rehearsal' && (!event.price || event.price === '0')) warnings.push('Missing fee');
+  if (!event.location || event.location === 'TBD') warnings.push(t('Missing venue'));
+  if (!event.date) warnings.push(t('Missing date'));
+  if (type !== 'rehearsal' && (!event.price || event.price === '0')) warnings.push(t('Missing fee'));
   return warnings;
 };
 
@@ -186,20 +207,20 @@ const getEventSuggestions = (event: EventData): string[] => {
   const hasLocation = event.location && event.location !== 'TBD';
 
   if (isGig) {
-    if (!hasAddress && !hasLocation) suggestions.push('No venue address');
-    if (!hasMembers) suggestions.push('No team assigned');
-    if (!event.endTime) suggestions.push('No end time');
-    if (!event.clientName) suggestions.push('No client info');
+    if (!hasAddress && !hasLocation) suggestions.push(t('No venue address'));
+    if (!hasMembers) suggestions.push(t('No team assigned'));
+    if (!event.endTime) suggestions.push(t('No end time'));
+    if (!event.clientName) suggestions.push(t('No client info'));
   }
 
   if (isRehearsal) {
-    if (!hasAddress && !hasLocation) suggestions.push('No venue address');
-    if (!hasMembers) suggestions.push('No team assigned');
+    if (!hasAddress && !hasLocation) suggestions.push(t('No venue address'));
+    if (!hasMembers) suggestions.push(t('No team assigned'));
   }
 
   if (isQuote) {
-    if (!event.clientName) suggestions.push('No client info');
-    if (!hasMembers) suggestions.push('No team assigned');
+    if (!event.clientName) suggestions.push(t('No client info'));
+    if (!hasMembers) suggestions.push(t('No team assigned'));
   }
 
   return suggestions;
@@ -229,6 +250,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   currentUserId,
   focusMonth,
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const getDisplayFee = (event: EventData): string => {
     if (!isAdmin && event.eventId && userFeeMap[event.eventId] != null) {
@@ -272,7 +294,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   // same "Search events" screen, whose field then opens in the rail.
   const railOwnsChrome = useRailOwnsChrome();
   useRailSearch(searchOpen ? null : {
-    label: 'Search events',
+    label: t('Search events'),
     value: '',
     base: true,
     onChange: () => {},
@@ -465,6 +487,19 @@ export const EventsView: React.FC<EventsViewProps> = ({
     return 'SCHEDULE';
   }, [eventFilter]);
 
+  // Shown text for the filter / search tab ids (the ids stay as they are).
+  const filterLabel = (f: string): string => {
+    switch (f) {
+      case 'ALL': return t('ALL');
+      case 'GIGS': return t('GIGS');
+      case 'REHEARSALS': return t('REHEARSALS');
+      case 'QUOTES': return t('QUOTES');
+      case 'DRAFTS': return t('DRAFTS');
+      case 'PAST': return t('PAST');
+      default: return f;
+    }
+  };
+
   // A day with several events opens an inline panel under the grid (like the
   // free-day panel), so the bottom navigation stays put.
   const openDayPicker = (events: EventData[]) => {
@@ -564,7 +599,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
         const fee = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, ''));
         list.push({
           id,
-          title: ev.title || 'Untitled event',
+          title: ev.title || t('Untitled event'),
           date,
           kind: calendarKind(ev),
           time: ev.time || null,
@@ -575,7 +610,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       });
     });
     return { plannerEvents: list, plannerSource: source };
-  }, [eventDatesMap]);
+  }, [eventDatesMap, t]);
   const [plannerDate, setPlannerDate] = useState(todayStr);
   const selectPlannerDate = (date: string) => {
     setPlannerDate(date);
@@ -715,20 +750,20 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const draftOf = event.draftOf;
     const memberCount = event.members?.length || 0;
 
-    let typeLabel = event.band_id ? 'GIG' : 'PERSONAL';
+    let typeLabel = event.band_id ? t('GIG') : t('PERSONAL');
 
     if (isRehearsal) {
-      typeLabel = 'REHEARSAL';
+      typeLabel = t('REHEARSAL');
     } else if (isQuote) {
-      typeLabel = 'QUOTE';
+      typeLabel = t('QUOTE');
     } else if (isDraft) {
-      typeLabel = 'DRAFT';
+      typeLabel = t('DRAFT');
     }
 
     const warnings = getEventWarnings(event);
     const suggestions = getEventSuggestions(event);
     const tags = getEventTags(event);
-    const secondaryTags = tags.filter(t => t !== 'GIG' && t !== 'REHEARSAL' && t !== 'QUOTE' && t !== 'DRAFT');
+    const secondaryTags = tags.filter(tag => tag !== 'GIG' && tag !== 'REHEARSAL' && tag !== 'QUOTE' && tag !== 'DRAFT');
 
 
 
@@ -740,11 +775,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const cardFg = isDraft && !isPast ? 'var(--fg)' : `var(--accent-${kind}-fg)`;
     const dimFg = `color-mix(in srgb, ${cardFg} 22%, transparent)`;
     const chipBg = `color-mix(in srgb, ${cardFg} 12%, transparent)`;
-    const statusChip = isPast ? 'PAST' : draftOf ? (draftOf === 'quote' ? 'DRAFT · NOT SHARED' : 'DRAFT · ONLY YOU') : secondaryTags[0] || (isGig ? 'CONFIRMED' : isDraft ? 'DRAFT' : '');
+    const statusChip = isPast ? t('PAST') : draftOf ? (draftOf === 'quote' ? t('DRAFT · NOT SHARED') : t('DRAFT · ONLY YOU')) : (secondaryTags[0] ? tagLabel(secondaryTags[0]) : '') || (isGig ? t('CONFIRMED') : isDraft ? t('DRAFT') : '');
     const issues = [...warnings, ...(isAdmin ? suggestions : [])];
-    const venue = event.location?.split(',')[0] || event.clientName || 'TBD';
+    const venue = event.location?.split(',')[0] || event.clientName || t('TBD');
     const address = event.venueAddress || event.location?.split(',').slice(1).join(',').trim();
-    const dateLabel = [event.date ? formatEventDate(event.date) : 'TBD', event.time ? formatEventTime(event.time) : null].filter(Boolean).join(' · ');
+    const dateLabel = [event.date ? formatEventDate(event.date) : t('TBD'), event.time ? formatEventTime(event.time) : null].filter(Boolean).join(' · ');
 
     const hours = (() => {
       const m1 = event.time?.match(/^(\d{1,2}):(\d{2})/);
@@ -756,10 +791,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
     })();
     const feeNum = parseFloat(String(event.price || '').replace(/[^0-9.]/g, '')) || 0;
 
-    const left = { label: isRehearsal ? 'GOING' : isQuote || isGig ? 'LINEUP' : 'TEAM', value: String(memberCount), fill: memberCount / 16 };
+    const left = { label: isRehearsal ? t('GOING') : isQuote || isGig ? t('LINEUP') : t('TEAM'), value: String(memberCount), fill: memberCount / 16 };
     const right = isRehearsal
-      ? { label: 'LENGTH', value: hours ? `${hours}H` : '--', fill: hours ? hours / 4 : 0 }
-      : { label: isQuote ? 'QUOTE' : getFeeLabel(event) === 'YOUR FEE' ? 'YOUR FEE' : 'FEE', value: feeNum > 0 ? getDisplayFee(event) : '--', fill: maxUpcomingFee > 0 ? feeNum / maxUpcomingFee : 0 };
+      ? { label: t('LENGTH'), value: hours ? `${hours}H` : '--', fill: hours ? hours / 4 : 0 }
+      : { label: isQuote ? t('QUOTE') : getFeeLabel(event) === 'YOUR FEE' ? t('YOUR FEE') : t('FEE'), value: feeNum > 0 ? getDisplayFee(event) : '--', fill: maxUpcomingFee > 0 ? feeNum / maxUpcomingFee : 0 };
 
     return (
       <motion.div
@@ -769,7 +804,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEventClick(event); } }}
-        aria-label={draftOf ? `${event.title}, draft, only you can see it` : undefined}
+        aria-label={draftOf ? t('{title}, draft, only you can see it', { title: event.title }) : undefined}
         className={cn(
           'relative flex flex-col gap-4 rounded-[24px] p-5 cursor-pointer active:scale-[0.99] transition-transform',
           isPast && 'opacity-85'
@@ -801,7 +836,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               )}
               {event._isPendingSync && (
                 <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center gap-1 bg-warning text-warning-foreground">
-                  <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Sync
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" /> {t('Sync')}
                 </span>
               )}
               {!isPast && !draftOf && issues.length > 0 && (
@@ -809,7 +844,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setSuggestionPopoverId(null); setWarningPopoverId(warningPopoverId === event.id ? null : event.id); }}
-                    aria-label={`${issues.length} details missing`}
+                    aria-label={t('{count} details missing', { count: issues.length })}
                     className="relative h-4 px-1.5 rounded-full inline-flex items-center gap-1 bw-label-xs cursor-pointer after:absolute after:-inset-3 after:content-['']"
                     style={{ backgroundColor: chipBg }}
                   >
@@ -826,8 +861,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                         onClick={(e) => { e.stopPropagation(); setWarningPopoverId(null); onEventClick(event); }}
                       >
                         <div className="flex items-center justify-between gap-1.5 mb-2 pb-1.5 border-b border-border">
-                          <span className="bw-label-xs text-warning">Missing info</span>
-                          <span className="bw-label-xs text-muted-foreground flex items-center gap-0.5">Edit <ArrowUpRight className="w-3 h-3" /></span>
+                          <span className="bw-label-xs text-warning">{t('Missing info')}</span>
+                          <span className="bw-label-xs text-muted-foreground flex items-center gap-0.5">{t('Edit')} <ArrowUpRight className="w-3 h-3" /></span>
                         </div>
                         <div className="flex flex-col gap-1.5">
                           {issues.map((w, wi) => (
@@ -944,7 +979,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               key={`${year}-${month}-${day}`}
               type="button"
               disabled={!isInteractive}
-              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length} event${eventsOnDay.length > 1 ? 's' : ''}` : ''}${onlyDrafts ? ', draft' : ''}${isToday ? ', today' : ''}`}
+              aria-label={`${dateKeyStr}${hasEvents ? `, ${eventsOnDay.length > 1 ? t('{count} events', { count: eventsOnDay.length }) : t('{count} event', { count: eventsOnDay.length })}` : ''}${onlyDrafts ? `, ${t('draft')}` : ''}${isToday ? `, ${t('today')}` : ''}`}
               aria-current={isToday ? 'date' : undefined}
               onClick={() => {
                 if (!isInteractive) return;
@@ -994,7 +1029,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
         {!isAdmin && (
           <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
             <Selector size="sm" selected={selectedBandPill === 'all'} onClick={() => onBandPillClick('all')}>
-              All
+              {t('All')}
             </Selector>
             {bands.map((band) => (
               <Selector key={band.id} size="sm" selected={selectedBandPill === band.id} onClick={() => onBandPillClick(band.id)}>
@@ -1002,7 +1037,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               </Selector>
             ))}
             <Selector size="sm" selected={selectedBandPill === 'personal'} onClick={() => onBandPillClick('personal')}>
-              Personal
+              {t('Personal')}
             </Selector>
           </div>
         )}
@@ -1012,7 +1047,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const isActive = eventFilter === f || (f === 'ALL' && eventFilter === 'All') || (f === 'REHEARSALS' && eventFilter === 'REHEARSAL') || (f === 'QUOTES' && eventFilter === 'QUOTE') || (f === 'DRAFTS' && eventFilter === 'DRAFT');
             return (
               <Selector key={f} size="md" selected={isActive} onClick={() => setEventFilter(f)} count={isActive ? allEvents.length : undefined}>
-                {f}
+                {filterLabel(f)}
               </Selector>
             );
           })}
@@ -1023,7 +1058,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {activePolls.length > 0 && (
             <div className="flex flex-col gap-3">
               <span className="bw-label-md text-muted-foreground">
-                Rehearsal scheduling ({activePolls.length})
+                {t('Rehearsal scheduling ({count})', { count: activePolls.length })}
               </span>
               <div className="flex flex-col gap-3">
                 {activePolls.map((poll) => (
@@ -1046,15 +1081,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
             {/* Calendar Header: Month Navigation, Title & Today Shortcut */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <IconButton label="Previous month" size="sm" icon={<ArrowLeft />} onClick={prevMonth} />
-                <IconButton label="Next month" size="sm" icon={<ArrowRight />} onClick={nextMonth} />
+                <IconButton label={t('Previous month')} size="sm" icon={<ArrowLeft />} onClick={prevMonth} />
+                <IconButton label={t('Next month')} size="sm" icon={<ArrowRight />} onClick={nextMonth} />
                 <span className="bw-h3 truncate">
                   {monthName} {calendarYear}
                 </span>
               </div>
               {!isCurrentMonth && (
                 <Selector size="sm" selected={false} onClick={jumpToToday}>
-                  Today
+                  {t('Today')}
                 </Selector>
               )}
             </div>
@@ -1135,8 +1170,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Tag variant="subtle">{dayPickerEvents.length} events</Tag>
-                              <IconButton label="Close day" variant="sheet" size="sm" icon={<X />} onClick={() => setDayPickerEvents(null)} />
+                              <Tag variant="subtle">{t('{count} events', { count: dayPickerEvents.length })}</Tag>
+                              <IconButton label={t('Close day')} variant="sheet" size="sm" icon={<X />} onClick={() => setDayPickerEvents(null)} />
                             </div>
                           </div>
                           <div className="flex flex-col gap-2">
@@ -1153,7 +1188,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                                     <span className="bw-h3 truncate">{ev.title}</span>
                                     <span className="bw-body-sm text-sheet-foreground/70 truncate">
-                                      {ev.time ? formatEventTime(ev.time) : 'Time TBD'}{ev.location ? ` · ${ev.location}` : ''}
+                                      {ev.time ? formatEventTime(ev.time) : t('Time TBD')}{ev.location ? ` · ${ev.location}` : ''}
                                     </span>
                                   </span>
                                   <ArrowRight className="w-4 h-4 shrink-0" />
@@ -1182,9 +1217,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       const [yy, mm, dd] = selectedEmptyDate.split('-').map(Number);
                       const sel = new Date(yy, mm - 1, dd);
                       const tiles: Array<{ type: 'gig' | 'rehearsal' | 'quote'; label: string }> = [
-                        { type: 'gig', label: 'Gig' },
-                        { type: 'rehearsal', label: 'Rehearsal' },
-                        { type: 'quote', label: 'Quote' },
+                        { type: 'gig', label: t('Gig') },
+                        { type: 'rehearsal', label: t('Rehearsal') },
+                        { type: 'quote', label: t('Quote') },
                       ];
                       return (
                         <div className="dark mt-4 rounded-[24px] bg-sheet text-sheet-foreground p-5 flex flex-col gap-4">
@@ -1197,33 +1232,33 @@ export const EventsView: React.FC<EventsViewProps> = ({
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Tag variant="subtle">Free day</Tag>
-                              <IconButton label="Dismiss date selection" variant="sheet" size="sm" icon={<X />} onClick={() => setSelectedEmptyDate(null)} />
+                              <Tag variant="subtle">{t('Free day')}</Tag>
+                              <IconButton label={t('Dismiss date selection')} variant="sheet" size="sm" icon={<X />} onClick={() => setSelectedEmptyDate(null)} />
                             </div>
                           </div>
                           {isAdmin && onCreateEvent ? (
                             <>
-                              <p className="bw-body-md">Nothing scheduled yet. Add something for the band:</p>
+                              <p className="bw-body-md">{t('Nothing scheduled yet. Add something for the band:')}</p>
                               <div className="grid grid-cols-3 gap-2">
-                                {tiles.map((t) => (
+                                {tiles.map((tile) => (
                                   <button
-                                    key={t.type}
+                                    key={tile.type}
                                     type="button"
-                                    onClick={() => { onCreateEvent(t.type, selectedEmptyDate); setSelectedEmptyDate(null); }}
+                                    onClick={() => { onCreateEvent(tile.type, selectedEmptyDate); setSelectedEmptyDate(null); }}
                                     className="h-[76px] rounded-[16px] px-3 py-4 flex flex-col justify-between text-left cursor-pointer active:scale-[0.97] transition-transform"
-                                    style={{ backgroundColor: `var(--accent-${t.type})`, color: `var(--accent-${t.type}-fg)` }}
+                                    style={{ backgroundColor: `var(--accent-${tile.type})`, color: `var(--accent-${tile.type}-fg)` }}
                                   >
                                     <span className="flex items-center justify-between">
-                                      <EventMark kind={t.type} size={20} bare />
+                                      <EventMark kind={tile.type} size={20} bare />
                                       <Plus className="w-4 h-4" />
                                     </span>
-                                    <span className="bw-button-sm">{t.label}</span>
+                                    <span className="bw-button-sm">{tile.label}</span>
                                   </button>
                                 ))}
                               </div>
                             </>
                           ) : (
-                            <p className="bw-body-md text-sheet-foreground/80">Nothing scheduled on this day.</p>
+                            <p className="bw-body-md text-sheet-foreground/80">{t('Nothing scheduled on this day.')}</p>
                           )}
                         </div>
                       );
@@ -1239,7 +1274,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             {(isAdmin ? (['gig', 'rehearsal', 'quote', 'personal'] as const) : (['gig', 'rehearsal', 'personal'] as const)).map((k) => (
               <span key={k} className="flex items-center gap-2">
                 <EventMark kind={k} size={20} />
-                <span className="bw-label-sm text-muted-foreground">{k}</span>
+                <span className="bw-label-sm text-muted-foreground">{k === 'gig' ? t('gig') : k === 'rehearsal' ? t('rehearsal') : k === 'quote' ? t('quote') : t('personal')}</span>
               </span>
             ))}
             {/* Drafts: their type's colour, desaturated and dashed (admins only). */}
@@ -1249,7 +1284,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   className="w-5 h-5 rounded-[6px] bg-[var(--accent-gig)] [filter:saturate(0.3)] outline-[1.5px] outline-dashed outline-offset-[-3px] outline-[var(--accent-gig-fg)]"
                   aria-hidden="true"
                 />
-                <span className="bw-label-sm text-muted-foreground">draft · only you</span>
+                <span className="bw-label-sm text-muted-foreground">{t('draft · only you')}</span>
               </span>
             )}
           </div>
@@ -1257,9 +1292,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {/* ═══ SECTION HEADER ═══ */}
           <div className="flex flex-col gap-2">
             {eyebrowLabel !== 'SCHEDULE' && (
-              <span className="bw-label-sm text-muted-foreground">{eyebrowLabel}</span>
+              <span className="bw-label-sm text-muted-foreground">{filterLabel(eyebrowLabel)}</span>
             )}
-            <SectionHeader title="Upcoming" onSeeAll={onOpenPastEvents} />
+            <SectionHeader title={t('Upcoming')} onSeeAll={onOpenPastEvents} />
           </div>
 
           {/* ═══ UPCOMING EVENT CARDS ═══ */}
@@ -1271,38 +1306,42 @@ export const EventsView: React.FC<EventsViewProps> = ({
             ) : (
               // Figma "Calendar / Empty": "Nothing scheduled" hero with quick-create actions.
               <Card className="items-center text-center py-10 px-6 gap-3">
-                <h3 className="bw-h2">Nothing scheduled</h3>
+                <h3 className="bw-h2">{t('Nothing scheduled')}</h3>
                 <p className="bw-body-md text-muted-foreground max-w-[280px]">
                   {eventFilter !== 'All' && eventFilter !== 'ALL'
-                    ? `No upcoming ${eyebrowLabel.toLowerCase()}.`
+                    ? eyebrowLabel === 'GIGS' ? t('No upcoming gigs.')
+                      : eyebrowLabel === 'REHEARSALS' ? t('No upcoming rehearsals.')
+                      : eyebrowLabel === 'QUOTES' ? t('No upcoming quotes.')
+                      : eyebrowLabel === 'DRAFTS' ? t('No upcoming drafts.')
+                      : t('No upcoming schedule.')
                     : isAdmin
-                    ? 'Add your next gig or rehearsal.'
+                    ? t('Add your next gig or rehearsal.')
                     : onProposeRehearsal
-                    ? 'Propose a rehearsal to the band.'
-                    : 'New gigs and rehearsals will show up here.'}
+                    ? t('Propose a rehearsal to the band.')
+                    : t('New gigs and rehearsals will show up here.')}
                 </p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap justify-center">
                   {eventFilter !== 'All' && eventFilter !== 'ALL' && (
                     <PillButton size="sm" variant="outline" fullWidth={false} onClick={() => setEventFilter('ALL')}>
-                      {APP_COPY.events.emptyState.showAllEvents}
+                      {t('Show All Events')}
                     </PillButton>
                   )}
                   {isAdmin && onCreateEvent && (
                     <>
                       <PillButton size="sm" variant="dark" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('gig')}>
-                        Gig
+                        {t('Gig')}
                       </PillButton>
                       <PillButton size="sm" variant="outline" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('rehearsal')}>
-                        Rehearsal
+                        {t('Rehearsal')}
                       </PillButton>
                       <PillButton size="sm" variant="outline" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={() => onCreateEvent('quote')}>
-                        Quote
+                        {t('Quote')}
                       </PillButton>
                     </>
                   )}
                   {!isAdmin && onProposeRehearsal && (
                     <PillButton size="sm" variant="dark" fullWidth={false} icon={<Plus className="w-3.5 h-3.5" />} onClick={onProposeRehearsal}>
-                      Propose rehearsal
+                      {t('Propose rehearsal')}
                     </PillButton>
                   )}
                 </div>
@@ -1314,7 +1353,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           {pastEvents.length > 0 && (
             <div className="flex items-center justify-between gap-3 py-2">
               <span className="bw-body-md text-muted-foreground">
-                {pastEvents.length} past event{pastEvents.length === 1 ? '' : 's'}
+                {pastEvents.length === 1 ? t('{count} past event', { count: pastEvents.length }) : t('{count} past events', { count: pastEvents.length })}
               </span>
               {onOpenPastEvents && (
                 <button
@@ -1323,7 +1362,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   className="h-9 flex items-center gap-2 bw-button-sm text-foreground cursor-pointer"
                 >
                   <History className="w-3.5 h-3.5" />
-                  {PAST_ARCHIVE_LABEL}
+                  {/* Figma "Calendar": link to the past-events archive. */}
+                  {t('Past events archive')}
                 </button>
               )}
             </div>
@@ -1341,13 +1381,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
             const tabs = (isAdmin
               ? (['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'PAST'] as const)
               : (['ALL', 'GIGS', 'REHEARSALS', 'PAST'] as const));
-            const inTab = (e: EventData, t: typeof searchTab) => {
-              if (t === 'ALL') return true;
-              if (t === 'PAST') return isPastEv(e);
+            const inTab = (e: EventData, tab: typeof searchTab) => {
+              if (tab === 'ALL') return true;
+              if (tab === 'PAST') return isPastEv(e);
               if (isPastEv(e)) return false;
               const badge = getPrimaryBadge(e);
-              if (t === 'GIGS') return badge === 'GIG';
-              if (t === 'REHEARSALS') return badge === 'REHEARSAL';
+              if (tab === 'GIGS') return badge === 'GIG';
+              if (tab === 'REHEARSALS') return badge === 'REHEARSAL';
               return badge === 'QUOTE';
             };
             const results = all.filter((e) => inTab(e, searchTab));
@@ -1360,7 +1400,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
                 role="dialog"
                 aria-modal="true"
-                aria-label="Search events"
+                aria-label={t('Search events')}
                 // iPhone Duo open: search stays on the leading page, the event
                 // you pick opens on the trailing page (Figma "Calendar search").
                 // Under the tab bar (z-80, like the other hub screens): you can
@@ -1370,8 +1410,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
               >
                 {/* Top Bar (on iPhone Duo the Back sits in the rail, tabs stay) */}
                 <div className="h-14 shrink-0 px-4 flex items-center gap-3 bw-status-clear">
-                  <NavBackButton label="Close search" size="sm" onClick={closeSearch} keepTabs />
-                  <h2 className="bw-h2 truncate">Search events</h2>
+                  <NavBackButton label={t('Close search')} size="sm" onClick={closeSearch} keepTabs />
+                  <h2 className="bw-h2 truncate">{t('Search events')}</h2>
                 </div>
 
                 <div
@@ -1384,8 +1424,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     inputRef={searchInputRef}
                     value={eventSearch}
                     onChange={setEventSearch}
-                    label="Search events"
-                    placeholder="Search title, venue, city, client…"
+                    label={t('Search events')}
+                    placeholder={t('Search title, venue, city, client…')}
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') closeSearch();
@@ -1394,15 +1434,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   />
 
                   <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
-                    {tabs.map((t) => (
+                    {tabs.map((tab) => (
                       <Selector
-                        key={t}
+                        key={tab}
                         size="md"
-                        selected={searchTab === t}
-                        onClick={() => setSearchTab(t)}
-                        count={searchTab === t && q ? all.filter((e) => inTab(e, t)).length : undefined}
+                        selected={searchTab === tab}
+                        onClick={() => setSearchTab(tab)}
+                        count={searchTab === tab && q ? all.filter((e) => inTab(e, tab)).length : undefined}
                       >
-                        {t}
+                        {filterLabel(tab)}
                       </Selector>
                     ))}
                   </div>
@@ -1410,7 +1450,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   {q ? (
                     <>
                       <p className="bw-label-sm text-muted-foreground">
-                        {results.length} {results.length === 1 ? 'result' : 'results'} for &ldquo;{q}&rdquo;
+                        {results.length === 1 ? t('{count} result for “{query}”', { count: results.length, query: q }) : t('{count} results for “{query}”', { count: results.length, query: q })}
                       </p>
                       <ul className="flex flex-col gap-4">
                         {results.map((ev) => {
@@ -1420,9 +1460,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                           const d = norm ? parseLocalDate(norm) : null;
                           const valid = d && !isNaN(d.getTime());
                           const badge = getPrimaryBadge(ev);
-                          const typeWord = badge === 'GIG' && !ev.band_id ? 'Personal' : badge.charAt(0) + badge.slice(1).toLowerCase();
+                          const typeWord = badge === 'GIG' && !ev.band_id ? t('Personal') : badge === 'GIG' ? t('Gig') : badge === 'REHEARSAL' ? t('Rehearsal') : badge === 'QUOTE' ? t('Quote') : t('Draft');
                           const sub = badge === 'QUOTE' ? ev.quoteStatus : evPast && badge === 'GIG' ? ev.paymentStatus : undefined;
-                          const over = [evPast ? 'Past' : typeWord, sub ? String(sub).charAt(0).toUpperCase() + String(sub).slice(1) : null].filter(Boolean).join(' · ');
+                          const over = [evPast ? t('Past') : typeWord, sub ? String(sub).charAt(0).toUpperCase() + String(sub).slice(1) : null].filter(Boolean).join(' · ');
                           const meta = [ev.location?.split(',')[0] || ev.clientName, ev.time ? formatEventTime(ev.time) : null].filter(Boolean).join(' · ');
                           const feeNum = parseFloat(String(ev.price || '').replace(/[^0-9.]/g, '')) || 0;
                           const value = badge !== 'REHEARSAL' && feeNum > 0 ? getDisplayFee(ev) : null;
@@ -1439,7 +1479,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                   style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
                                 >
                                   <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '–'}</span>
-                                  <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}</span>
+                                  <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}</span>
                                 </span>
                                 <span className="flex-1 min-w-0 flex flex-col gap-1">
                                   <span className="bw-label-xs text-muted-foreground truncate">{over}</span>
@@ -1459,13 +1499,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
                       {results.length === 0 && (
                         <Card className="items-center text-center py-8 gap-2">
                           <Search className="w-6 h-6 text-muted-foreground" />
-                          <p className="bw-h3">No matching events</p>
-                          <p className="bw-body-sm text-muted-foreground">Try a title, venue or client name.</p>
+                          <p className="bw-h3">{t('No matching events')}</p>
+                          <p className="bw-body-sm text-muted-foreground">{t('Try a title, venue or client name.')}</p>
                         </Card>
                       )}
                     </>
                   ) : (
-                    <p className="bw-body-sm text-muted-foreground">Search by title, venue, city, client or notes.</p>
+                    <p className="bw-body-sm text-muted-foreground">{t('Search by title, venue, city, client or notes.')}</p>
                   )}
                 </div>
               </motion.div>

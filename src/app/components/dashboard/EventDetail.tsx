@@ -32,6 +32,7 @@ import { DotText } from '@/app/components/bw';
 import { IconButton, NavBackButton, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { haptic } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 import { StageMode } from './StageMode';
 import { FloorWedgeMode, useLaptopPose } from '@/app/components/duo';
@@ -259,6 +260,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   isAdmin = true,
   currentUserId,
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const railChrome = useRailOwnsChrome();
   const { selectedBand, bands } = useBand();
@@ -324,7 +326,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const { tasks: eventTasks, toggle: toggleEventTask, error: eventTasksError } = useEventTasks(
     isPersonalGig ? null : event.eventId,
   );
-  const tasksDone = eventTasks.filter((t) => t.is_completed).length;
+  const tasksDone = eventTasks.filter((task) => task.is_completed).length;
 
   // Fetch setlist songs
   useEffect(() => {
@@ -346,7 +348,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         if (!cancelled && data && data.length > 0) {
           setSetlistSongs(
             data.map((s: any) => ({
-              title: s.song?.title || 'Unknown Song',
+              title: s.song?.title || t('Unknown Song'),
               artist: s.song?.artist || undefined,
               duration:
                 typeof s.song?.duration_seconds === 'number' && s.song.duration_seconds > 0
@@ -364,7 +366,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [event.setlistId, isPersonalGig]);
+  }, [event.setlistId, isPersonalGig, t]);
 
   const isPast = useMemo(() => {
     if (!event.date) return false;
@@ -419,8 +421,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const canStage = eventType === 'gig' && !isPast && !isPersonalGig;
   const isGigDay = (() => {
     if (!event.date) return false;
-    const t = new Date();
-    const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return (event.date.includes('T') ? event.date.split('T')[0] : event.date) === todayStr;
   })();
   // iPhone Duo: Stage mode joins the rail's Side Actions; on gig day it is
@@ -433,7 +435,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         }
       : undefined,
     {
-      label: 'Open stage mode',
+      label: t('Open stage mode'),
       icon: <Play />,
       pane: true,
       prominent: isGigDay,
@@ -452,12 +454,32 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           setOptionsOpen(true);
         }
       : undefined,
-    { label: 'More options', icon: <MoreHorizontal />, pane: true },
+    { label: t('More options'), icon: <MoreHorizontal />, pane: true },
   );
 
   if (!isAdmin && !isPersonalGig && (eventType === 'quote' || userResponse === 'declined')) {
     return null;
   }
+
+  // Display labels for the event kind (eventType stays the logic value).
+  const deleteLabels: Record<EventCategory, string> = {
+    rehearsal: t('DELETE THIS REHEARSAL'),
+    gig: t('DELETE THIS GIG'),
+    quote: t('DELETE THIS QUOTE'),
+    draft: t('DELETE THIS DRAFT'),
+  };
+  const typeLabels: Record<EventCategory, string> = {
+    rehearsal: t('REHEARSAL'),
+    gig: t('GIG'),
+    quote: t('QUOTE'),
+    draft: t('DRAFT'),
+  };
+  const pastTypeLabels: Record<EventCategory, string> = {
+    rehearsal: t('PAST REHEARSAL'),
+    gig: t('PAST GIG'),
+    quote: t('PAST QUOTE'),
+    draft: t('PAST DRAFT'),
+  };
 
   const baseTheme = THEME[eventType];
   const theme = isPast
@@ -465,11 +487,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         ...baseTheme,
         accentColor: 'var(--accent-past)',
         accentFg: 'var(--accent-past-fg)',
-        deleteLabel: `DELETE THIS ${eventType.toUpperCase()}`,
+        deleteLabel: deleteLabels[eventType],
       }
     : isPersonalGig
-      ? { ...baseTheme, accentColor: 'var(--accent-personal)', accentFg: 'var(--accent-personal-fg)', deleteLabel: 'DELETE THIS GIG' }
-      : baseTheme;
+      ? { ...baseTheme, accentColor: 'var(--accent-personal)', accentFg: 'var(--accent-personal-fg)', deleteLabel: t('DELETE THIS GIG') }
+      : { ...baseTheme, deleteLabel: deleteLabels[eventType] };
 
   const memberCount = resolvedMembers.length;
 
@@ -552,6 +574,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     '';
   const hasValidLocation = venueName !== 'TBD' && venueName !== '';
   const fullLocationQuery = [venueName !== 'TBD' ? venueName : '', venueAddress].filter(Boolean).join(', ');
+  const venueShown = venueName === 'TBD' ? t('TBD') : venueName;
 
   const handleOpenMaps = () => {
     if (!hasValidLocation) return;
@@ -573,8 +596,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const showTime = event.time ? formatEventTime(event.time) : 'TBD';
   const endTimeFormatted = event.endTime ? formatEventTime(event.endTime) : '';
   // Only times someone actually set; no invented schedule.
-  const loadInTime = event.loadInTime ? formatEventTime(event.loadInTime) : 'TBD';
-  const soundCheckTime = event.soundcheckTime ? formatEventTime(event.soundcheckTime) : 'TBD';
+  const loadInTime = event.loadInTime ? formatEventTime(event.loadInTime) : t('TBD');
+  const soundCheckTime = event.soundcheckTime ? formatEventTime(event.soundcheckTime) : t('TBD');
+  const showTimeShown = showTime === 'TBD' ? t('TBD') : showTime;
 
   const numSongs = setlistSongs.length;
 
@@ -582,27 +606,48 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const subTypeEyebrow = (() => {
     const raw = event.eventType?.toUpperCase();
     if (!raw || raw === 'GIG' || raw === 'REHEARSAL' || raw === 'QUOTE' || raw === 'OTHER') return null;
-    return raw;
+    const shown: Record<string, string> = {
+      WEDDING: t('WEDDING'),
+      CORPORATE: t('CORPORATE'),
+      PRIVATE: t('PRIVATE'),
+      FESTIVAL: t('FESTIVAL'),
+      CLUB: t('CLUB'),
+      PUB: t('PUB'),
+    };
+    return shown[raw] ?? raw;
   })();
 
   // ─── Hero chips (Figma: "GIG · CONFIRMED", "PERSONAL · ONLY YOU", "REHEARSAL · EVERY TUESDAY") ───
   const primaryChip = isPersonalGig
-    ? 'PERSONAL'
+    ? t('PERSONAL')
     : isPast
-      ? `PAST ${eventType.toUpperCase()}`
-      : eventType.toUpperCase();
+      ? pastTypeLabels[eventType]
+      : typeLabels[eventType];
   const statusChips: string[] = [];
-  if (isPersonalGig) statusChips.push('ONLY YOU');
+  if (isPersonalGig) statusChips.push(t('ONLY YOU'));
   else if (isRehearsal) statusChips.push(rehearsalCadence(event.is_recurring, event.recurrence_rule, event.date));
   else if (isQuote) {
     // Same fallback as the status card below: a quote never shared is a draft.
     const qs = String(linkedQuote?.status || event.quoteStatus || 'draft');
-    statusChips.push(qs.toUpperCase());
+    const quoteStatusLabels: Record<string, string> = {
+      draft: t('DRAFT'),
+      sent: t('SENT'),
+      viewed: t('VIEWED'),
+      accepted: t('ACCEPTED'),
+      declined: t('DECLINED'),
+      rejected: t('REJECTED'),
+      expired: t('EXPIRED'),
+    };
+    statusChips.push(quoteStatusLabels[qs.toLowerCase()] ?? qs.toUpperCase());
     // A quote not shared yet: on the admins' calendar only (unless the
     // lineup was asked for availability, then they see the check).
-    if (qs.toLowerCase() === 'draft' && !isPast && memberCount === 0) statusChips.push('HIDDEN FROM MEMBERS');
+    if (qs.toLowerCase() === 'draft' && !isPast && memberCount === 0) statusChips.push(t('HIDDEN FROM MEMBERS'));
   }
-  else if (eventType === 'gig' && !isPast) statusChips.push((event.status || 'CONFIRMED').toUpperCase());
+  else if (eventType === 'gig' && !isPast) {
+    const gigStatus = (event.status || 'CONFIRMED').toUpperCase();
+    const gigStatusLabels: Record<string, string> = { CONFIRMED: t('CONFIRMED'), COMPLETED: t('COMPLETED') };
+    statusChips.push(gigStatusLabels[gigStatus] ?? gigStatus);
+  }
   const showPendingChip = !isPast && !isPersonalGig && isPending && (eventType === 'gig' || isRehearsal);
 
   // ─── Quote: where it stands and the way forward (admins) ───
@@ -615,30 +660,38 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     const free = resolvedMembers.filter((m) => m.status === 'confirmed').length;
     const lineup =
       memberCount > 0
-        ? ` Availability: ${free} of ${memberCount} free${answered < memberCount ? `, ${memberCount - answered} still to answer` : ''} (see below).`
+        ? ` ${
+            answered < memberCount
+              ? t('Availability: {free} of {total} free, {pending} still to answer (see below).', {
+                  free,
+                  total: memberCount,
+                  pending: memberCount - answered,
+                })
+              : t('Availability: {free} of {total} free (see below).', { free, total: memberCount })
+          }`
         : '';
     if (qs === 'draft')
       return {
         icon: <EyeOff className="w-5 h-5" />,
-        title: 'Draft · not sent to the client',
-        body: `${memberCount > 0 ? 'The lineup only got an availability check.' : "Only admins see it: the band isn't told yet."} Share quote sends it to the client (it becomes Sent). When they say yes, Confirm as gig puts it on everyone's calendar.${lineup}`,
+        title: t('Draft · not sent to the client'),
+        body: `${memberCount > 0 ? t('The lineup only got an availability check.') : t("Only admins see it: the band isn't told yet.")} ${t("Share quote sends it to the client (it becomes Sent). When they say yes, Confirm as gig puts it on everyone's calendar.")}${lineup}`,
       };
     if (qs === 'accepted')
       return {
         icon: <CheckCircle2 className="w-5 h-5" />,
-        title: 'The client said yes',
-        body: `Confirm as gig to put it on everyone's calendar.${lineup}`,
+        title: t('The client said yes'),
+        body: `${t("Confirm as gig to put it on everyone's calendar.")}${lineup}`,
       };
     if (qs === 'declined' || qs === 'rejected' || qs === 'expired')
       return {
         icon: <XCircle className="w-5 h-5" />,
-        title: qs === 'expired' ? 'The quote expired' : 'The client said no',
-        body: `Edit it and share a new version, or delete the quote to free the date.${lineup}`,
+        title: qs === 'expired' ? t('The quote expired') : t('The client said no'),
+        body: `${t('Edit it and share a new version, or delete the quote to free the date.')}${lineup}`,
       };
     return {
       icon: <Send className="w-5 h-5" />,
-      title: qs === 'viewed' ? 'The client opened it' : 'Sent · waiting for the client',
-      body: `When the client says yes, Confirm as gig puts it on everyone's calendar.${lineup}`,
+      title: qs === 'viewed' ? t('The client opened it') : t('Sent · waiting for the client'),
+      body: `${t("When the client says yes, Confirm as gig puts it on everyone's calendar.")}${lineup}`,
     };
   })();
 
@@ -648,14 +701,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const heroDay = hasHeroDate ? String(heroDate!.getDate()).padStart(2, '0') : '--';
   const heroMonth = hasHeroDate
     ? heroDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-    : 'TBD';
-  const heroDateTime = `${formatEventDateFull(event.date)}${
+    : t('TBD');
+  const heroDateTime = `${hasHeroDate ? formatEventDateFull(event.date) : t('DATE TBD')}${
     showTime !== 'TBD' ? ` · ${showTime}${endTimeFormatted ? `–${endTimeFormatted}` : ''}` : ''
   }`;
 
   // ─── Money ───
   const bandFeeNum = parseAmount(event.price);
-  const feeCardLabel = isAdmin ? 'Band fee' : 'Your fee';
+  const feeCardLabel = isAdmin ? t('Band fee') : t('Your fee');
   // "Fee TBD": the date is confirmed, the money is still being agreed.
   const feeTbd = event.paymentStatus === 'tbd';
   const feeExactValue = feeTbd
@@ -665,6 +718,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     : myResolvedFee != null
       ? formatCurrencyExact(myResolvedFee)
       : 'TBD';
+  // The dot-matrix figure keeps 'TBD' (its glyphs are A–Z only); text shows the translation.
+  const feeShownValue = feeExactValue === 'TBD' ? t('TBD') : feeExactValue;
   const payoutTotal = activeMembers.reduce((sum, m) => sum + (Number(m.fee) || 0), 0);
   const bandFund = Math.max(0, bandFeeNum - payoutTotal);
   const bandFundPct = bandFeeNum > 0 ? Math.round((bandFund / bandFeeNum) * 100) : null;
@@ -678,7 +733,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const totalSongSeconds = songSeconds.reduce((a, b) => a + b, 0);
   const maxSongSeconds = Math.max(0, ...songSeconds);
   const showSetFlow = numSongs >= 2 && numSongs <= 24 && maxSongSeconds > 0;
-  const chatLabel = isRehearsal ? 'REHEARSAL CHAT' : 'EVENT CHAT';
+  const chatLabel = isRehearsal ? t('REHEARSAL CHAT') : t('EVENT CHAT');
 
   // ─── RSVP ───
   // Pending gig invite: accept / decline card (unchanged).
@@ -695,7 +750,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const answerByDays = daysUntil(answerByDate);
   const rsvpCaption =
     answerByDate && answerByDays != null && answerByDays >= 0
-      ? `Answer by ${formatDayShort(answerByDate)} so the admin can confirm the room.`
+      ? t('Answer by {date} so the admin can confirm the room.', { date: formatDayShort(answerByDate) })
       : undefined;
   // Members drop out of a rehearsal from the "…" menu.
   const memberRehearsal = isRehearsal && !isAdmin && !isPersonalGig;
@@ -713,21 +768,21 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   };
 
   // ─── Client & notes (gig / draft): Client, Phone, Dress code, then notes ───
-  const notesTitle = event.clientName && !isPersonalGig ? 'CLIENT & NOTES' : 'NOTES';
+  const notesTitle = event.clientName && !isPersonalGig ? t('CLIENT & NOTES') : t('NOTES');
   const notesRows: { label: string; value: string }[] = [];
   if (!isPersonalGig) {
-    if (event.clientName) notesRows.push({ label: 'Client', value: event.clientName });
-    if (event.clientPhone) notesRows.push({ label: 'Phone', value: event.clientPhone });
-    if (event.dressCode) notesRows.push({ label: 'Dress code', value: event.dressCode });
+    if (event.clientName) notesRows.push({ label: t('Client'), value: event.clientName });
+    if (event.clientPhone) notesRows.push({ label: t('Phone'), value: event.clientPhone });
+    if (event.dressCode) notesRows.push({ label: t('Dress code'), value: event.dressCode });
   }
   const showNotesSection = !isRehearsal && !isQuote;
 
   // Lineup header action: admins edit the lineup, others open the details.
   const lineupAction =
     isAdmin && onEdit && !isPast
-      ? { label: 'EDIT', run: onEdit }
+      ? { label: t('EDIT'), run: onEdit }
       : !isRehearsal
-        ? { label: 'DETAILS', run: () => setActiveSheet('lineup') }
+        ? { label: t('DETAILS'), run: () => setActiveSheet('lineup') }
         : null;
 
   const renderDeleteConfirm = (onCancel: () => void) => (
@@ -741,10 +796,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           setShowDeleteConfirm(false);
         }}
       >
-        Confirm delete
+        {t('Confirm delete')}
       </PillButton>
       <button onClick={onCancel} className={LINK_CLASS}>
-        CANCEL
+        {t('CANCEL')}
       </button>
     </div>
   );
@@ -759,35 +814,39 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     </span>
   );
 
+  const settingLabels: Record<string, string> = { INDOOR: t('INDOOR'), OUTDOOR: t('OUTDOOR'), HYBRID: t('HYBRID') };
+  const settingRaw = event.indoorOutdoor?.toUpperCase();
+  const settingShown = settingRaw ? settingLabels[settingRaw] ?? settingRaw : undefined;
+
   // Time tiles (none on quotes). Laptop pose shows them on the Display with
   // the title (index.css: .bw-ed-times-hero), the rest of the time on the sheet.
   const timeTiles = !isQuote ? (
     <div className="grid grid-cols-3 gap-2">
       {isPersonalGig ? (
         <>
-          <TimeTile label="CALL" value={loadInTime} />
-          <TimeTile label="START" value={showTime} />
-          <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
+          <TimeTile label={t('CALL')} value={loadInTime} />
+          <TimeTile label={t('START')} value={showTimeShown} />
+          <TimeTile label={t('END')} value={endTimeFormatted || t('TBD')} />
         </>
       ) : eventType === 'gig' ? (
         <>
-          <TimeTile label="LOAD IN" value={loadInTime} />
-          <TimeTile label="SOUNDCHECK" value={soundCheckTime} />
-          <TimeTile label="SHOW" value={showTime} />
+          <TimeTile label={t('LOAD IN')} value={loadInTime} />
+          <TimeTile label={t('SOUNDCHECK')} value={soundCheckTime} />
+          <TimeTile label={t('SHOW')} value={showTimeShown} />
         </>
       ) : isRehearsal ? (
         <>
-          <TimeTile label="START" value={showTime} />
-          <TimeTile label="END" value={endTimeFormatted || 'TBD'} />
-          <TimeTile label="ROOM" value={roomLabel || 'TBD'} text />
+          <TimeTile label={t('START')} value={showTimeShown} />
+          <TimeTile label={t('END')} value={endTimeFormatted || t('TBD')} />
+          <TimeTile label={t('ROOM')} value={roomLabel || t('TBD')} text />
         </>
       ) : (
         <>
-          <TimeTile label="SHOW TIME" value={showTime} />
-          <TimeTile label="SETTING" value={event.indoorOutdoor?.toUpperCase() || 'TBD'} text />
+          <TimeTile label={t('SHOW TIME')} value={showTimeShown} />
+          <TimeTile label={t('SETTING')} value={settingShown || t('TBD')} text />
           <TimeTile
-            label={event.guests ? 'GUESTS' : 'STATUS'}
-            value={event.guests ? `${event.guests} PAX` : eventType.toUpperCase()}
+            label={event.guests ? t('GUESTS') : t('STATUS')}
+            value={event.guests ? t('{count} PAX', { count: event.guests }) : typeLabels[eventType]}
             text
           />
         </>
@@ -845,8 +904,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       haptic.medium();
                       setIsStageOpen(true);
                     }}
-                    aria-label="Open stage mode"
-                    title="Stage mode"
+                    aria-label={t('Open stage mode')}
+                    title={t('Stage mode')}
                     className="w-11 h-11 -mr-2.5 ml-auto rounded-full flex items-center justify-center shrink-0 active:scale-[var(--press-scale)] transition-transform cursor-pointer"
                     style={isGigDay ? heroChipStyle : undefined}
                   >
@@ -855,7 +914,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 )}
                 {showOptionsMenu && !optionsInRail && (
                   <IconButton
-                    label="More options"
+                    label={t('More options')}
                     icon={<MoreHorizontal />}
                     variant="event"
                     size="sm"
@@ -879,7 +938,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       ? chip(
                           <>
                             <Check className="w-3 h-3" />
-                            COMPLETED
+                            {t('COMPLETED')}
                           </>,
                           heroChipStyle,
                         )
@@ -887,7 +946,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         ? chip(
                             <>
                               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                              INVITE PENDING
+                              {t('INVITE PENDING')}
                             </>,
                             heroChipStyle,
                           )
@@ -911,7 +970,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     text={heroDay}
                     size={40}
                     showGrid
-                    label={hasHeroDate ? formatEventDateFull(event.date) : 'Date TBD'}
+                    label={hasHeroDate ? formatEventDateFull(event.date) : t('Date TBD')}
                   />
                   <span className="bw-label-sm opacity-70">{heroMonth}</span>
                 </div>
@@ -924,7 +983,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     type="button"
                     onClick={hasValidLocation ? handleOpenMaps : onEdit}
                     disabled={!hasValidLocation && !onEdit}
-                    title={hasValidLocation ? `Open ${fullLocationQuery} in Maps` : 'Venue TBD'}
+                    title={hasValidLocation ? t('Open {place} in Maps', { place: fullLocationQuery }) : t('Venue TBD')}
                     className={cn(
                       'group inline-flex items-center gap-1 text-left max-w-full',
                       hasValidLocation ? 'cursor-pointer active:opacity-70' : 'cursor-default opacity-75'
@@ -937,11 +996,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         hasValidLocation && 'underline decoration-dotted decoration-1 underline-offset-[3px]'
                       )}
                     >
-                      {venueName}
+                      {venueShown}
                     </span>
                     {hasValidLocation && (
                       <span className="inline-flex items-center gap-0.5 shrink-0 px-1.5 h-[18px] rounded-full border border-current/40 bw-label-xs opacity-80">
-                        MAP
+                        {t('MAP')}
                         <ArrowUpRight className="w-2.5 h-2.5" aria-hidden />
                       </span>
                     )}
@@ -959,10 +1018,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   {isPast ? (
                     <div className="flex flex-col items-end gap-1">
                       <span className="bw-label-xs opacity-70">
-                        {eventType === 'gig' && !isPersonalGig ? 'ATTENDANCE' : 'STATUS'}
+                        {eventType === 'gig' && !isPersonalGig ? t('ATTENDANCE') : t('STATUS')}
                       </span>
                       <span className="bw-label-md">
-                        {activeMembers.length > 0 && !isPersonalGig ? `${activeMembers.length} MEMBERS` : 'ARCHIVED'}
+                        {activeMembers.length > 0 && !isPersonalGig ? t('{count} MEMBERS', { count: activeMembers.length }) : t('ARCHIVED')}
                       </span>
                     </div>
                   ) : (
@@ -988,15 +1047,15 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── RSVP (pending gig invite) ─── */}
               {showRsvpCard && (
                 <section className="dark bg-sheet text-sheet-foreground rounded-[16px] p-5 flex flex-col gap-4">
-                  <span className="bw-label-sm">{isQuote ? 'Availability check' : 'Your RSVP'}</span>
-                  <h2 className="bw-h1">{isQuote ? 'Are you free?' : 'Are you in?'}</h2>
+                  <span className="bw-label-sm">{isQuote ? t('Availability check') : t('Your RSVP')}</span>
+                  <h2 className="bw-h1">{isQuote ? t('Are you free?') : t('Are you in?')}</h2>
                   <div className="grid grid-cols-2 gap-2">
                     <PillButton variant="primary" size="md" onClick={handleAccept} disabled={isSubmitting}>
                       <Check className="w-4 h-4" />
-                      {isSubmitting ? '...' : isQuote ? "I'M FREE" : 'ACCEPT'}
+                      {isSubmitting ? '...' : isQuote ? t("I'M FREE") : t('ACCEPT')}
                     </PillButton>
                     <PillButton variant="white" size="md" onClick={handleDecline} disabled={isSubmitting}>
-                      {isQuote ? 'NOT FREE' : 'DECLINE'}
+                      {isQuote ? t('NOT FREE') : t('DECLINE')}
                     </PillButton>
                   </div>
                 </section>
@@ -1005,7 +1064,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── RSVP (rehearsal, always visible) ─── */}
               {showRehearsalRsvp && (
                 <RsvpChoiceCard
-                  title="Are you coming?"
+                  title={t('Are you coming?')}
                   current={userResponse}
                   onChoose={handleRespond}
                   allowMaybe={!!onRespond}
@@ -1027,7 +1086,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 <>
                   {quoteGuide && (
                     <section
-                      aria-label="Quote status"
+                      aria-label={t('Quote status')}
                       className="rounded-[16px] bg-card p-4 flex items-start gap-3"
                     >
                       <span className="w-9 h-9 rounded-full bg-foreground/[0.08] flex items-center justify-center shrink-0" aria-hidden>
@@ -1053,34 +1112,38 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   />
                   {/* Availability check sent with the quote: who is free. */}
                   {!isPersonalGig && (memberCount > 0 || (membersLoading && !dbMembers)) && (
-                    <section className="flex flex-col gap-6" aria-label="Lineup availability">
+                    <section className="flex flex-col gap-6" aria-label={t('Lineup availability')}>
                       <SectionTitle
-                        title={`AVAILABILITY${memberCount > 0 ? ` · ${confirmedExact}/${memberCount} FREE` : ''}`}
-                        actionLabel={memberCount > 0 ? 'DETAILS' : undefined}
+                        title={
+                          memberCount > 0
+                            ? t('AVAILABILITY · {confirmed}/{total} FREE', { confirmed: confirmedExact, total: memberCount })
+                            : t('AVAILABILITY')
+                        }
+                        actionLabel={memberCount > 0 ? t('DETAILS') : undefined}
                         onAction={memberCount > 0 ? () => setActiveSheet('lineup') : undefined}
                       />
                       <div className="bg-card rounded-[16px] p-4 flex flex-col gap-4">
                         {membersLoading && !dbMembers ? (
-                          <span className="bw-label-sm text-muted-foreground">LOADING…</span>
+                          <span className="bw-label-sm text-muted-foreground">{t('LOADING…')}</span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => setActiveSheet('lineup')}
                             className="flex flex-col gap-4 text-left cursor-pointer"
-                            aria-label="Open availability details"
+                            aria-label={t('Open availability details')}
                           >
                             {resolvedMembers.slice(0, 6).map((m, i) => (
                               <MemberRow key={m.userId || i} member={m} availability />
                             ))}
                             {resolvedMembers.length > 6 && (
                               <span className="bw-label-xs text-muted-foreground pl-14">
-                                + {resolvedMembers.length - 6} MORE
+                                {t('+ {count} MORE', { count: resolvedMembers.length - 6 })}
                               </span>
                             )}
                           </button>
                         )}
                         <span className="bw-body-sm text-muted-foreground">
-                          Not confirmed yet: everyone's answer is only about the date. They get the gig when you confirm it.
+                          {t("Not confirmed yet: everyone's answer is only about the date. They get the gig when you confirm it.")}
                         </span>
                       </div>
                     </section>
@@ -1094,32 +1157,32 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col gap-1 min-w-0">
                       <span className="bw-label-sm">{feeCardLabel}</span>
-                      <DotText text={feeExactValue} size={32} label={feeExactValue} />
+                      <DotText text={feeExactValue} size={32} label={feeShownValue} />
                     </div>
-                    {isAdmin && depositDue && <Tag variant="accent">DEPOSIT DUE</Tag>}
-                    {feeTbd && <Tag variant="subtle">To be discussed</Tag>}
+                    {isAdmin && depositDue && <Tag variant="accent">{t('DEPOSIT DUE')}</Tag>}
+                    {feeTbd && <Tag variant="subtle">{t('To be discussed')}</Tag>}
                   </div>
                   {isAdmin && (activeMembers.length > 0 || depositAmount > 0 || (myResolvedFee != null && myResolvedFee > 0)) && (
                     <div className="flex flex-col gap-3">
                       {activeMembers.length > 0 && (
                         <KeyValueRow
-                          label={`Musician payouts (${activeMembers.length})`}
+                          label={t('Musician payouts ({count})', { count: activeMembers.length })}
                           value={formatCurrencyExact(payoutTotal)}
                         />
                       )}
                       {activeMembers.length > 0 && bandFund > 0 && (
-                        <KeyValueRow label="Band fund" value={formatCurrencyExact(bandFund)} />
+                        <KeyValueRow label={t('Band fund')} value={formatCurrencyExact(bandFund)} />
                       )}
                       {depositAmount > 0 && (
                         <KeyValueRow
-                          label={`Deposit${depositPct != null ? ` ${depositPct}%` : ''}${event.depositPaid ? ' · paid' : ''}`}
+                          label={`${t('Deposit')}${depositPct != null ? ` ${depositPct}%` : ''}${event.depositPaid ? ` · ${t('paid')}` : ''}`}
                           value={formatCurrencyExact(depositAmount)}
                         />
                       )}
                     </div>
                   )}
                   <PillButton variant="primary" size="md" type="button" onClick={() => setActiveSheet('fee')}>
-                    {isAdmin ? 'FEE & PAYOUTS' : 'PAYOUT DETAILS'}
+                    {isAdmin ? t('FEE & PAYOUTS') : t('PAYOUT DETAILS')}
                     <ArrowUpRight className="w-4 h-4" />
                   </PillButton>
                 </section>
@@ -1128,9 +1191,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── EARNINGS (personal gig) ─── */}
               {isPersonalGig && !isRehearsal && (
                 <section className="flex flex-col gap-6">
-                  <SectionTitle title="EARNINGS" />
+                  <SectionTitle title={t('EARNINGS')} />
                   <div className="bg-card rounded-[16px] p-4 flex flex-col gap-3">
-                    <KeyValueRow label="My fee" value={formatCurrencyExact(event.price)} muted />
+                    <KeyValueRow label={t('My fee')} value={formatCurrencyExact(event.price)} muted />
                     <PaidToggleRow
                       key={event.eventId}
                       eventId={event.eventId}
@@ -1145,7 +1208,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {!isPersonalGig && !isQuote && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle
-                    title={`${isRehearsal ? 'ATTENDANCE' : 'LINEUP'}${
+                    title={`${isRehearsal ? t('ATTENDANCE') : t('LINEUP')}${
                       memberCount > 0 ? ` · ${confirmedExact}/${memberCount}` : ''
                     }`}
                     actionLabel={lineupAction?.label}
@@ -1153,42 +1216,42 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   />
                   <div className="bg-card rounded-[16px] p-4 flex flex-col gap-4">
                     {membersLoading && !dbMembers ? (
-                      <span className="bw-label-sm text-muted-foreground">LOADING LINEUP…</span>
+                      <span className="bw-label-sm text-muted-foreground">{t('LOADING LINEUP…')}</span>
                     ) : membersError ? (
                       <span role="alert" className="bw-body-sm text-destructive">
-                        Could not load the lineup: {membersError}
+                        {t('Could not load the lineup: {error}', { error: membersError })}
                       </span>
                     ) : resolvedMembers.length > 0 ? (
                       <button
                         type="button"
                         onClick={() => setActiveSheet('lineup')}
                         className="flex flex-col gap-4 text-left cursor-pointer"
-                        aria-label="Open lineup details"
+                        aria-label={t('Open lineup details')}
                       >
                         {resolvedMembers.slice(0, 6).map((m, i) => (
                           <MemberRow key={m.userId || i} member={m} />
                         ))}
                         {resolvedMembers.length > 6 && (
                           <span className="bw-label-xs text-muted-foreground pl-14">
-                            + {resolvedMembers.length - 6} MORE
+                            {t('+ {count} MORE', { count: resolvedMembers.length - 6 })}
                           </span>
                         )}
                       </button>
                     ) : (
                       <span className="flex items-center justify-between gap-3">
                         <span className="bw-body-sm text-muted-foreground">
-                          {isRehearsal ? 'No one invited yet' : 'No musicians added yet'}
+                          {isRehearsal ? t('No one invited yet') : t('No musicians added yet')}
                         </span>
                         <span className="bw-label-xs inline-flex items-center gap-1.5 text-warning">
                           <span className="w-2 h-2 rounded-full bg-warning" />
-                          UNASSIGNED
+                          {t('UNASSIGNED')}
                         </span>
                       </span>
                     )}
                     {isAdmin && !isPast && onEdit && !isRehearsal && (
                       <PillButton variant="outline" size="md" type="button" onClick={onEdit}>
                         <Plus className="w-4 h-4" />
-                        ADD MUSICIAN
+                        {t('ADD MUSICIAN')}
                       </PillButton>
                     )}
                   </div>
@@ -1198,10 +1261,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── STUDIO COST (rehearsal) ─── */}
               {showStudioCost && (
                 <section className="flex flex-col gap-6">
-                  <SectionTitle title="STUDIO COST" />
+                  <SectionTitle title={t('STUDIO COST')} />
                   <div className="bg-card rounded-[16px] p-4 flex flex-col gap-3">
                     <KeyValueRow
-                      label={[roomLabel || 'Room', rehearsalHours != null ? `${formatHours(rehearsalHours)} h` : '']
+                      label={[roomLabel || t('Room'), rehearsalHours != null ? `${formatHours(rehearsalHours)} h` : '']
                         .filter(Boolean)
                         .join(' · ')}
                       value={formatCurrencyExact(bandFeeNum)}
@@ -1209,8 +1272,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     />
                     {goingCount > 0 && (
                       <KeyValueRow
-                        label={`Split between ${goingCount} going`}
-                        value={`${money(bandFeeNum / goingCount, 'auto')} EACH`}
+                        label={t('Split between {count} going', { count: goingCount })}
+                        value={t('{amount} EACH', { amount: money(bandFeeNum / goingCount, 'auto') })}
                         muted
                       />
                     )}
@@ -1222,8 +1285,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {!isPersonalGig && !isQuote && !isRehearsal && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle
-                    title="SETLIST"
-                    actionLabel={setlistLoading ? '...' : `${numSongs} ${numSongs === 1 ? 'SONG' : 'SONGS'}`}
+                    title={t('SETLIST')}
+                    actionLabel={
+                      setlistLoading
+                        ? '...'
+                        : numSongs === 1
+                          ? t('{count} SONG', { count: numSongs })
+                          : t('{count} SONGS', { count: numSongs })
+                    }
                     onAction={() => setActiveSheet('setlist')}
                   />
                   <button
@@ -1232,12 +1301,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     className="bg-card rounded-[16px] p-4 flex flex-col gap-3 text-left cursor-pointer active:scale-[0.99] transition-transform"
                   >
                     {setlistLoading ? (
-                      <span className="bw-label-sm text-muted-foreground">LOADING SETLIST…</span>
+                      <span className="bw-label-sm text-muted-foreground">{t('LOADING SETLIST…')}</span>
                     ) : numSongs === 0 ? (
                       <span className="flex items-center justify-between gap-3 w-full">
                         <span className="bw-label-sm text-warning inline-flex items-center gap-1.5">
                           <AlertCircle className="w-3.5 h-3.5" />
-                          NO SETLIST ASSIGNED
+                          {t('NO SETLIST ASSIGNED')}
                         </span>
                         <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                       </span>
@@ -1247,8 +1316,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           <span className="flex flex-col gap-2 w-full pb-3 border-b border-border">
                             <SetFlow seconds={songSeconds} max={maxSongSeconds} />
                             <span className="flex items-center justify-between bw-label-xs text-muted-foreground">
-                              <span>SET FLOW · ENERGY</span>
-                              <span>OPENER → ENCORE</span>
+                              <span>{t('SET FLOW · ENERGY')}</span>
+                              <span>{t('OPENER → ENCORE')}</span>
                             </span>
                           </span>
                         )}
@@ -1268,8 +1337,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         {(numSongs > 3 || totalSongSeconds > 0) && (
                           <span className="bw-label-xs text-muted-foreground">
                             {[
-                              numSongs > 3 ? `+ ${numSongs - 3} MORE` : '',
-                              totalSongSeconds > 0 ? `${formatTotalDuration(totalSongSeconds)} TOTAL` : '',
+                              numSongs > 3 ? t('+ {count} MORE', { count: numSongs - 3 }) : '',
+                              totalSongSeconds > 0 ? t('{duration} TOTAL', { duration: formatTotalDuration(totalSongSeconds) }) : '',
                             ]
                               .filter(Boolean)
                               .join(' · ')}
@@ -1285,12 +1354,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {isRehearsal && !isPersonalGig && (
                 <section className="flex flex-col gap-6">
                   <SectionTitle
-                    title="FOCUS SONGS"
-                    actionLabel={setlistLoading ? '...' : 'SETLIST'}
+                    title={t('FOCUS SONGS')}
+                    actionLabel={setlistLoading ? '...' : t('SETLIST')}
                     onAction={() => setActiveSheet('setlist')}
                   />
                   {setlistLoading ? (
-                    <span className="bw-label-sm text-muted-foreground">LOADING…</span>
+                    <span className="bw-label-sm text-muted-foreground">{t('LOADING…')}</span>
                   ) : numSongs > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {setlistSongs.slice(0, 8).map((song, i) => (
@@ -1304,7 +1373,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           onClick={() => setActiveSheet('setlist')}
                           className="h-7 px-3 rounded-full bw-label-sm inline-flex items-center text-muted-foreground cursor-pointer"
                         >
-                          + {numSongs - 8} MORE
+                          {t('+ {count} MORE', { count: numSongs - 8 })}
                         </button>
                       )}
                     </div>
@@ -1314,7 +1383,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       onClick={() => setActiveSheet('setlist')}
                       className="bg-card rounded-[16px] p-4 text-left bw-body-sm text-muted-foreground cursor-pointer"
                     >
-                      No songs picked for this rehearsal yet.
+                      {t('No songs picked for this rehearsal yet.')}
                     </button>
                   )}
                 </section>
@@ -1324,8 +1393,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {!isPersonalGig && eventTasks.length > 0 && (
                 <section className="flex flex-col gap-6">
                   <div className="flex flex-col gap-1">
-                    <SectionTitle title="TASKS" />
-                    <span className="bw-label-sm text-muted-foreground">{tasksDone} of {eventTasks.length} done</span>
+                    <SectionTitle title={t('TASKS')} />
+                    <span className="bw-label-sm text-muted-foreground">
+                      {t('{done} of {total} done', { done: tasksDone, total: eventTasks.length })}
+                    </span>
                   </div>
                   {eventTasksError && <p role="alert" className="bw-body-sm text-destructive">{eventTasksError}</p>}
                   <div className="bg-card rounded-[16px] px-4 py-1 flex flex-col">
@@ -1349,7 +1420,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           </span>
                           {task.due_date && (
                             <span className="bw-label-xs text-muted-foreground">
-                              Due {parseLocalDate(task.due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                              {t('Due {date}', {
+                                date: parseLocalDate(task.due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+                              })}
                             </span>
                           )}
                         </span>
@@ -1362,7 +1435,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               {/* ─── CLIENT & NOTES (gig / draft / personal) ─── */}
               {showNotesSection && (
                 <section className="flex flex-col gap-6">
-                  <SectionTitle title={notesTitle} actionLabel="DETAILS" onAction={() => setActiveSheet('notes')} />
+                  <SectionTitle title={notesTitle} actionLabel={t('DETAILS')} onAction={() => setActiveSheet('notes')} />
                   <button
                     type="button"
                     onClick={() => setActiveSheet('notes')}
@@ -1379,8 +1452,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     >
                       {event.notes ||
                         (isPersonalGig
-                          ? 'No personal notes added for this gig.'
-                          : 'No notes added yet.')}
+                          ? t('No personal notes added for this gig.')
+                          : t('No notes added yet.'))}
                     </span>
                   </button>
                 </section>
@@ -1398,7 +1471,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     >
                       <PillButton variant="outline" size="lg" onClick={() => setActiveSheet('setlist')}>
                         <Music className="w-4 h-4" />
-                        VIEW SETLIST
+                        {t('VIEW SETLIST')}
                       </PillButton>
                       {(isAdmin || userResponse === 'accepted') && (
                         <PillButton variant="dark" size="lg" onClick={onChat}>
@@ -1414,14 +1487,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         <div className="flex items-center gap-5">
                           <button onClick={onEdit} className={LINK_CLASS}>
                             <Pencil className="w-3.5 h-3.5" />
-                            EDIT DETAILS
+                            {t('EDIT DETAILS')}
                           </button>
                           <button
                             onClick={() => setShowDeleteConfirm(true)}
                             className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            REMOVE FROM ARCHIVE
+                            {t('REMOVE FROM ARCHIVE')}
                           </button>
                         </div>
                       ))}
@@ -1430,7 +1503,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   <>
                     <PillButton variant="outline" size="lg" onClick={onEdit}>
                       <Pencil className="w-4 h-4" />
-                      EDIT
+                      {t('EDIT')}
                     </PillButton>
                     {showDeleteConfirm ? (
                       renderDeleteConfirm(() => setShowDeleteConfirm(false))
@@ -1441,7 +1514,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        DELETE
+                        {t('DELETE')}
                       </button>
                     )}
                   </>
@@ -1458,11 +1531,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           }}
                         >
                           <Share2 className="w-4 h-4" />
-                          SHARE QUOTE
+                          {t('SHARE QUOTE')}
                         </PillButton>
                         <PillButton variant="primary" size="lg" onClick={handleConfirmQuote} disabled={isConfirming}>
                           <Check className="w-4 h-4" />
-                          {isConfirming ? '...' : 'CONFIRM AS GIG'}
+                          {isConfirming ? '...' : t('CONFIRM AS GIG')}
                         </PillButton>
                       </div>
                       {showDeleteConfirm ? (
@@ -1471,7 +1544,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         <div className="flex items-center gap-5">
                           <button onClick={onEdit} className={LINK_CLASS}>
                             <Pencil className="w-3.5 h-3.5" />
-                            EDIT QUOTE
+                            {t('EDIT QUOTE')}
                           </button>
                           <button
                             onClick={() => setShowDeleteConfirm(true)}
@@ -1479,7 +1552,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                             className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            DELETE
+                            {t('DELETE')}
                           </button>
                         </div>
                       )}
@@ -1489,7 +1562,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       <div className="grid grid-cols-2 gap-3 w-full">
                         <PillButton variant="outline" size="lg" onClick={onEdit}>
                           <Pencil className="w-4 h-4" />
-                          EDIT
+                          {t('EDIT')}
                         </PillButton>
                         <PillButton variant="dark" size="lg" onClick={onChat}>
                           <MessageSquare className="w-4 h-4" />
@@ -1497,19 +1570,24 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         </PillButton>
                       </div>
                       {showRevertConfirm ? (
-                        <div className="flex flex-col gap-3 w-full" role="group" aria-label="Revert to quote?">
+                        <div className="flex flex-col gap-3 w-full" role="group" aria-label={t('Revert to quote?')}>
                           <p className="bw-body-sm text-muted-foreground">
-                            Back to a quote: the gig leaves the musicians' calendars
-                            {memberCount > 0 ? ` (${memberCount} in the lineup)` : ''} until you confirm it again. Their
-                            answers are kept.
+                            {memberCount > 0
+                              ? t(
+                                  "Back to a quote: the gig leaves the musicians' calendars ({count} in the lineup) until you confirm it again. Their answers are kept.",
+                                  { count: memberCount },
+                                )
+                              : t(
+                                  "Back to a quote: the gig leaves the musicians' calendars until you confirm it again. Their answers are kept.",
+                                )}
                           </p>
                           <div className="flex items-center gap-3">
                             <PillButton size="sm" fullWidth={false} onClick={handleRevertQuote} disabled={isReverting}>
                               <RotateCcw className="w-3.5 h-3.5" />
-                              Revert to quote
+                              {t('Revert to quote')}
                             </PillButton>
                             <button onClick={() => setShowRevertConfirm(false)} className={LINK_CLASS}>
-                              Keep the gig
+                              {t('Keep the gig')}
                             </button>
                           </div>
                         </div>
@@ -1520,7 +1598,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           {onRevertQuote && (
                             <button onClick={() => setShowRevertConfirm(true)} disabled={isReverting} className={LINK_CLASS}>
                               <RotateCcw className="w-3.5 h-3.5" />
-                              {isReverting ? 'REVERTING...' : 'REVERT TO QUOTE'}
+                              {isReverting ? t('REVERTING...') : t('REVERT TO QUOTE')}
                             </button>
                           )}
                           <button
@@ -1529,7 +1607,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                             className={cn(LINK_CLASS, 'text-destructive-solid hover:text-destructive-solid')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            DELETE
+                            {t('DELETE')}
                           </button>
                         </div>
                       )}
@@ -1553,7 +1631,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         onClick={() => setShowDeleteConfirm(true)}
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? '...' : 'DROP OUT'}
+                        {isSubmitting ? '...' : t('DROP OUT')}
                       </PillButton>
                       <PillButton variant="dark" size="lg" onClick={onChat}>
                         <MessageSquare className="w-4 h-4" />
@@ -1562,7 +1640,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     </div>
                     {showDeleteConfirm && (
                       <div className="flex items-center gap-3">
-                        <span className="bw-label-sm text-muted-foreground">Drop out?</span>
+                        <span className="bw-label-sm text-muted-foreground">{t('Drop out?')}</span>
                         <PillButton
                           size="sm"
                           fullWidth={false}
@@ -1570,10 +1648,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           onClick={handleDecline}
                           loading={isSubmitting}
                         >
-                          Confirm drop
+                          {t('Confirm drop')}
                         </PillButton>
                         <button onClick={() => setShowDeleteConfirm(false)} className={LINK_CLASS}>
-                          CANCEL
+                          {t('CANCEL')}
                         </button>
                       </div>
                     )}
@@ -1592,15 +1670,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           picker
           open={!!activeSheet}
           onClose={() => setActiveSheet(null)}
-          closeLabel="Close sheet"
+          closeLabel={t('Close sheet')}
           zIndex={110}
-          overline={activeSheet === 'fee' && isAdmin ? 'Admin only' : event.title}
+          overline={activeSheet === 'fee' && isAdmin ? t('Admin only') : event.title}
           title={
             <>
-              {activeSheet === 'fee' && 'Fee & payouts'}
-              {activeSheet === 'setlist' && `Setlist · ${numSongs}`}
-              {activeSheet === 'lineup' && `${isQuote ? 'Availability' : 'Lineup'} · ${memberCount}`}
-              {activeSheet === 'notes' && 'Logistics & notes'}
+              {activeSheet === 'fee' && t('Fee & payouts')}
+              {activeSheet === 'setlist' && t('Setlist · {count}', { count: numSongs })}
+              {activeSheet === 'lineup' &&
+                (isQuote ? t('Availability · {count}', { count: memberCount }) : t('Lineup · {count}', { count: memberCount }))}
+              {activeSheet === 'notes' && t('Logistics & notes')}
             </>
           }
           footer={
@@ -1614,7 +1693,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 loading={markingPaid}
                 icon={<Check className="w-[18px] h-[18px]" />}
               >
-                MARK ALL AS PAID
+                {t('MARK ALL AS PAID')}
               </PillButton>
             ) : undefined
           }
@@ -1623,8 +1702,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             {activeSheet === 'fee' && (
               <FeePayoutsContent
                 isAdmin={isAdmin}
-                feeLabel={isAdmin ? 'Band fee' : 'Your assigned fee'}
-                feeValue={feeExactValue}
+                feeLabel={isAdmin ? t('Band fee') : t('Your assigned fee')}
+                feeValue={feeShownValue}
                 members={activeMembers}
                 bandFund={bandFund}
                 bandFundPct={bandFundPct}
@@ -1676,11 +1755,11 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 ) : (
                   <div className="py-8 flex flex-col items-center justify-center text-center gap-3">
                     <AlertCircle className="w-8 h-8 text-warning" />
-                    <p className="bw-h3">No setlist assigned</p>
+                    <p className="bw-h3">{t('No setlist assigned')}</p>
                     <p className="bw-body-sm text-muted-foreground max-w-[260px]">
                       {isAdmin
-                        ? 'Tap Edit to assign songs or a setlist to this event.'
-                        : 'The band admin has not attached a setlist yet.'}
+                        ? t('Tap Edit to assign songs or a setlist to this event.')
+                        : t('The band admin has not attached a setlist yet.')}
                     </p>
                     {isAdmin && onEdit && (
                       <PillButton
@@ -1693,7 +1772,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           onEdit();
                         }}
                       >
-                        Assign setlist
+                        {t('Assign setlist')}
                       </PillButton>
                     )}
                   </div>
@@ -1716,7 +1795,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                         )}
                         {canFindDeputy && m.status === 'declined' && (
                           <PillButton size="sm" variant="white" fullWidth={false} className="shrink-0" onClick={() => setDeputyFor(m)}>
-                            Find a deputy
+                            {t('Find a deputy')}
                           </PillButton>
                         )}
                       </div>
@@ -1724,7 +1803,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   </div>
                 ) : (
                   <div className="py-8 text-center bw-body-sm text-muted-foreground">
-                    {membersError ? `Could not load the lineup: ${membersError}` : 'No members assigned to this event yet.'}
+                    {membersError
+                      ? t('Could not load the lineup: {error}', { error: membersError })
+                      : t('No members assigned to this event yet.')}
                   </div>
                 )}
               </>
@@ -1735,20 +1816,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 {/* Venue & address */}
                 <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-3">
                   <div className="min-w-0 flex flex-col gap-1">
-                    <span className="bw-label-sm text-muted-foreground">Venue & location</span>
-                    <span className="bw-label-md truncate">{venueName}</span>
+                    <span className="bw-label-sm text-muted-foreground">{t('Venue & location')}</span>
+                    <span className="bw-label-md truncate">{venueShown}</span>
                     {venueAddress && (
                       <span className="bw-body-sm text-muted-foreground truncate">{venueAddress}</span>
                     )}
                   </div>
                   {hasValidLocation && (
                     <div className="grid grid-cols-2 gap-2">
-                      <PillButton variant="outline" size="sm" onClick={handleCopyAddress} title="Copy address">
+                      <PillButton variant="outline" size="sm" onClick={handleCopyAddress} title={t('Copy address')}>
                         <Copy className="w-3.5 h-3.5" />
-                        {copiedAddress ? 'Copied' : 'Copy'}
+                        {copiedAddress ? t('Copied') : t('Copy')}
                       </PillButton>
                       <PillButton variant="primary" size="sm" onClick={handleOpenMaps}>
-                        Maps
+                        {t('Maps')}
                         <ArrowUpRight className="w-3.5 h-3.5" />
                       </PillButton>
                     </div>
@@ -1759,10 +1840,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 {!isPersonalGig &&
                   (event.clientName || event.clientPhone || event.clientEmail || event.dressCode || event.guests || event.indoorOutdoor) && (
                     <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-3">
-                      {event.clientName && <KeyValueRow label="Client" value={event.clientName} muted />}
+                      {event.clientName && <KeyValueRow label={t('Client')} value={event.clientName} muted />}
                       {event.clientPhone && (
                         <KeyValueRow
-                          label="Phone"
+                          label={t('Phone')}
                           value={
                             <a href={`tel:${event.clientPhone.replace(/\s+/g, '')}`} className="underline underline-offset-2 select-text">
                               {event.clientPhone}
@@ -1773,7 +1854,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                       )}
                       {event.clientEmail && (
                         <KeyValueRow
-                          label="Email"
+                          label={t('Email')}
                           value={
                             <a href={`mailto:${event.clientEmail}`} className="underline underline-offset-2 select-text">
                               {event.clientEmail}
@@ -1782,19 +1863,19 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           muted
                         />
                       )}
-                      {event.dressCode && <KeyValueRow label="Dress code" value={event.dressCode} muted />}
+                      {event.dressCode && <KeyValueRow label={t('Dress code')} value={event.dressCode} muted />}
                       {event.indoorOutdoor && (
-                        <KeyValueRow label="Setting" value={event.indoorOutdoor.toUpperCase()} muted />
+                        <KeyValueRow label={t('Setting')} value={settingShown} muted />
                       )}
-                      {event.guests ? <KeyValueRow label="Guests" value={`${event.guests} PAX`} muted /> : null}
+                      {event.guests ? <KeyValueRow label={t('Guests')} value={t('{count} PAX', { count: event.guests })} muted /> : null}
                     </div>
                   )}
 
                 {/* Notes */}
                 <div className="rounded-[16px] bg-foreground/[0.08] p-4 flex flex-col gap-2">
-                  <span className="bw-label-sm text-muted-foreground">Notes</span>
+                  <span className="bw-label-sm text-muted-foreground">{t('Notes')}</span>
                   <p className="bw-body-md whitespace-pre-wrap select-text">
-                    {event.notes || 'No additional notes recorded for this event.'}
+                    {event.notes || t('No additional notes recorded for this event.')}
                   </p>
                 </div>
               </div>
@@ -1806,18 +1887,18 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         <BwSheet
           open={optionsOpen}
           onClose={() => setOptionsOpen(false)}
-          closeLabel="Close options"
+          closeLabel={t('Close options')}
           zIndex={110}
           overline={event.title}
-          title="Rehearsal options"
+          title={t('Rehearsal options')}
         >
           <div className="dark flex flex-col gap-3">
             {confirmDrop ? (
               <>
-                <p className="bw-body-md">Drop out of this rehearsal? The admin will be notified.</p>
+                <p className="bw-body-md">{t('Drop out of this rehearsal? The admin will be notified.')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <PillButton variant="outline" size="md" onClick={() => setConfirmDrop(false)} disabled={isSubmitting}>
-                    CANCEL
+                    {t('CANCEL')}
                   </PillButton>
                   <PillButton
                     size="md"
@@ -1828,7 +1909,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                     }}
                     loading={isSubmitting}
                   >
-                    DROP OUT
+                    {t('DROP OUT')}
                   </PillButton>
                 </div>
               </>
@@ -1839,7 +1920,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                 className="flex items-center gap-3 min-h-14 px-4 rounded-[16px] bg-foreground/[0.08] text-left text-destructive cursor-pointer active:scale-[var(--press-scale,0.97)] transition-transform"
               >
                 <LogOut className="w-5 h-5 shrink-0" />
-                <span className="bw-label-md">Drop out of this rehearsal</span>
+                <span className="bw-label-md">{t('Drop out of this rehearsal')}</span>
               </button>
             )}
           </div>
@@ -1909,14 +1990,14 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             title={event.title}
             venue={venueName !== 'TBD' ? venueName : undefined}
             city={event.venueCity}
-            dateLabel={formatEventDateShort(event.date)}
+            dateLabel={hasHeroDate ? formatEventDateShort(event.date) : t('TBD')}
             date={event.date}
             accentColor="var(--accent-gig)"
             steps={[
-              { label: 'Load in', time: event.loadInTime, display: 'TBD' },
-              { label: 'Soundcheck', time: event.soundcheckTime, display: 'TBD' },
-              { label: 'Show', time: event.time, display: 'TBD' },
-              { label: 'End', time: event.endTime, display: 'TBD' },
+              { label: t('Load in'), time: event.loadInTime, display: t('TBD') },
+              { label: t('Soundcheck'), time: event.soundcheckTime, display: t('TBD') },
+              { label: t('Show'), time: event.time, display: t('TBD') },
+              { label: t('End'), time: event.endTime, display: t('TBD') },
             ]}
             songs={setlistSongs}
             songsLoading={setlistLoading}

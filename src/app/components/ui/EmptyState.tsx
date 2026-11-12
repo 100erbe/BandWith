@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Sparkles } from '@/app/components/icons';
-import { APP_COPY } from '@/app/constants/copy';
+import { useT } from '@/lib/i18n';
 
 interface EmptyStateProps {
   title?: string;
@@ -10,10 +10,12 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = APP_COPY.events.emptyState.title,
-  description = APP_COPY.events.emptyState.description,
+  title,
+  description,
   icon,
-}) => (
+}) => {
+  const t = useT();
+  return (
   <motion.div
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
@@ -24,10 +26,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {icon || <Sparkles className="w-8 h-8" />}
     </div>
     <h4 className="bw-h3 text-foreground mb-1">
-      {title}
+      {title ?? t('No items scheduled')}
     </h4>
     <p className="bw-body-sm text-muted-foreground max-w-xs">
-      {description}
+      {description ?? t('When new items are created or confirmed, they will show up here.')}
     </p>
   </motion.div>
-);
+  );
+};

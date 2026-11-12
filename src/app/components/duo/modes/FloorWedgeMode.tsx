@@ -5,6 +5,7 @@ import { haptic } from '@/lib/haptics';
 import { useKeepAwake } from '@/lib/posture';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, clock, durationSeconds } from './shared';
+import { useT } from '@/lib/i18n';
 
 /**
  * Floor wedge (Stage mode in Laptop pose): the phone stands on the stage
@@ -52,6 +53,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   startedAt,
   zIndex,
 }) => {
+  const t = useT();
   useKeepAwake(true);
   const count = songs.length;
   const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, count - 1)));
@@ -81,8 +83,8 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
       if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) {
         e.preventDefault();
         go(1);
@@ -109,11 +111,11 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
   const display = (
     <div className="bw-fold-pad min-h-full flex flex-col gap-3 pt-3 pb-4 bg-black text-white select-none">
       <div className="flex items-baseline justify-between gap-4 bw-label-md uppercase text-white/60">
-        <span className="truncate">{[setLabel, title].filter(Boolean).join(' · ') || 'Stage'}</span>
-        <span className="shrink-0 tabular-nums" aria-label={`Elapsed ${elapsed}`}>{elapsed}</span>
+        <span className="truncate">{[setLabel, title].filter(Boolean).join(' · ') || t('Stage')}</span>
+        <span className="shrink-0 tabular-nums" aria-label={t('Elapsed {time}', { time: elapsed })}>{elapsed}</span>
       </div>
       {!song ? (
-        <p className="bw-display-lg text-white/70">{songsLoading ? 'Loading setlist…' : 'No setlist'}</p>
+        <p className="bw-display-lg text-white/70">{songsLoading ? t('Loading setlist…') : t('No setlist')}</p>
       ) : (
         <>
           <p className="bw-value-lg tabular-nums" aria-live="polite">
@@ -127,7 +129,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
             <dl className="flex gap-8">
               {song.key && (
                 <div>
-                  <dt className="bw-label-sm uppercase text-white/50">Key</dt>
+                  <dt className="bw-label-sm uppercase text-white/50">{t('Key')}</dt>
                   <dd className="bw-value-lg">{song.key}</dd>
                 </div>
               )}
@@ -142,12 +144,12 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
           <p className="mt-auto bw-h3 text-white/70 truncate">
             {next ? (
               <>
-                <span className="bw-label-sm uppercase text-white/45 mr-2">Next</span>
+                <span className="bw-label-sm uppercase text-white/45 mr-2">{t('Next')}</span>
                 {next.title}
                 {next.key ? ` · ${next.key}` : ''}
               </>
             ) : (
-              <span className="bw-label-sm uppercase text-white/45">Last song</span>
+              <span className="bw-label-sm uppercase text-white/45">{t('Last song')}</span>
             )}
           </p>
         </>
@@ -164,9 +166,9 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
           className="h-full bg-white/10 text-white"
           disabled={!song || index === 0}
           onClick={() => go(-1)}
-          aria-label="Previous song"
+          aria-label={t('Previous song')}
         >
-          <ChevronLeft className="w-7 h-7" /> Prev
+          <ChevronLeft className="w-7 h-7" /> {t('Prev')}
         </DeckButton>
         <DeckButton
           size="pad"
@@ -174,13 +176,13 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
           className="h-full"
           disabled={!song || index >= count - 1}
           onClick={() => go(1)}
-          aria-label="Next song"
+          aria-label={t('Next song')}
         >
-          Next <ChevronRight className="w-7 h-7" />
+          {t('Next')} <ChevronRight className="w-7 h-7" />
         </DeckButton>
       </div>
       {count > 0 && (
-        <div className="flex flex-col gap-1.5" aria-label={`Song ${index + 1} of ${count}`}>
+        <div className="flex flex-col gap-1.5" aria-label={t('Song {index} of {count}', { index: index + 1, count })}>
           <div className="flex gap-1" aria-hidden>
             {songs.map((_, i) => (
               <span
@@ -190,15 +192,15 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
             ))}
           </div>
           <p className="bw-label-md uppercase text-white/60 flex justify-between">
-            <span>Song {index + 1} of {count}</span>
-            {left !== null && <span className="tabular-nums">{clock(left)} left</span>}
+            <span>{t('Song {index} of {count}', { index: index + 1, count })}</span>
+            {left !== null && <span className="tabular-nums">{t('{time} left', { time: clock(left) })}</span>}
           </p>
         </div>
       )}
     </div>
   );
 
-  return <FoldSplit zIndex={zIndex} variant="stage" displayLabel="Now playing" deckLabel="Song controls" display={display} deck={deck} />;
+  return <FoldSplit zIndex={zIndex} variant="stage" displayLabel={t('Now playing')} deckLabel={t('Song controls')} display={display} deck={deck} />;
 };
 
 export default FloorWedgeMode;
