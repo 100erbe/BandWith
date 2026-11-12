@@ -16,6 +16,7 @@ import type { Transaction } from '@/lib/services/transactions';
 import { todayLocal } from '../../../../lib/dates';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { useT } from '@/lib/i18n';
 
 interface FinanceExpandedProps {
   bandId: string;
@@ -39,6 +40,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   onTransactionAdded,
 }) => {
   useCurrency(); // re-render money labels when the band currency changes
+  const t = useT();
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [txType, setTxType] = useState<'income' | 'expense'>('income');
   const [txTitle, setTxTitle] = useState('');
@@ -51,6 +53,19 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
   const categories = {
     income: ['GIG', 'REHEARSAL', 'MERCHANDISE', 'ROYALTIES', 'OTHER'],
     expense: ['EQUIPMENT', 'TRAVEL', 'STUDIO', 'MARKETING', 'FEES', 'OTHER'],
+  };
+  // Display labels only: the saved category stays the English id above.
+  const categoryLabel: Record<string, string> = {
+    GIG: t('GIG'),
+    REHEARSAL: t('REHEARSAL'),
+    MERCHANDISE: t('MERCHANDISE'),
+    ROYALTIES: t('ROYALTIES'),
+    OTHER: t('OTHER'),
+    EQUIPMENT: t('EQUIPMENT'),
+    TRAVEL: t('TRAVEL'),
+    STUDIO: t('STUDIO'),
+    MARKETING: t('MARKETING'),
+    FEES: t('FEES'),
   };
 
   const handleAddTransaction = async () => {
@@ -68,7 +83,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
     });
 
     if (error) {
-      setTxError(error.message || 'Could not save the transaction');
+      setTxError(error.message || t('Could not save the transaction'));
     } else {
       setTxError(null);
       setShowAddTransaction(false);
@@ -84,20 +99,20 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
   const displayTransactions =
     realTransactions && realTransactions.length > 0
-      ? realTransactions.map((t) => ({
+      ? realTransactions.map((tr) => ({
           id:
-            uuidToNumericId(t.id),
-          title: t.title,
-          date: parseLocalDate(t.date).toLocaleDateString('en-US', {
+            uuidToNumericId(tr.id),
+          title: tr.title,
+          date: parseLocalDate(tr.date).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
           }),
           amount:
-            t.type === 'income'
-              ? `+${sym()}${Number(t.amount).toFixed(2)}`
-              : `-${sym()}${Math.abs(Number(t.amount)).toFixed(2)}`,
-          type: t.type as 'income' | 'expense',
-          tag: t.category || 'OTHER',
+            tr.type === 'income'
+              ? `+${sym()}${Number(tr.amount).toFixed(2)}`
+              : `-${sym()}${Math.abs(Number(tr.amount)).toFixed(2)}`,
+          type: tr.type as 'income' | 'expense',
+          tag: tr.category || 'OTHER',
         }))
       : [];
 
@@ -113,10 +128,10 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
       origin={{ top: '12%', left: '3%', right: '42%', bottom: '62%' }}
     >
       <ExpandedTopBar
-        title="Money flow"
+        title={t('Money flow')}
         onBack={onClose}
         actions={
-          <IconButton label="Add transaction" variant="filled" icon={<Plus />} onClick={() => setShowAddTransaction(true)} />
+          <IconButton label={t('Add transaction')} variant="filled" icon={<Plus />} onClick={() => setShowAddTransaction(true)} />
         }
       />
 
@@ -132,17 +147,17 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
           className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-8 gap-y-8"
         >
           <Metric
-            label="Net profit"
+            label={t('Net profit')}
             value={loading ? '-' : `${sym()}${fmt(stats.netProfit)}`}
             fill={income > 0 ? Math.max(0, stats.netProfit) / income : 0}
           />
           <Metric
-            label="Revenue"
+            label={t('Revenue')}
             value={loading ? '-' : `${sym()}${fmt(stats.totalIncome)}`}
             fill={income + expenses > 0 ? income / (income + expenses) : 0}
           />
           <Metric
-            label="Expenses"
+            label={t('Expenses')}
             value={loading ? '-' : `-${sym()}${fmt(expenses)}`}
             fill={income + expenses > 0 ? expenses / (income + expenses) : 0}
           />
@@ -150,11 +165,11 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
 
         {/* Recent activity */}
         <section className="flex flex-col gap-4">
-          <SectionHeader title="Recent activity" />
+          <SectionHeader title={t('Recent activity')} />
           {displayTransactions.length === 0 ? (
             <Card className="items-center text-center py-8 gap-1">
-              <h3 className="bw-h3">No transactions yet</h3>
-              <p className="bw-body-sm text-muted-foreground">Your income and expenses will appear here.</p>
+              <h3 className="bw-h3">{t('No transactions yet')}</h3>
+              <p className="bw-body-sm text-muted-foreground">{t('Your income and expenses will appear here.')}</p>
             </Card>
           ) : (
             <div className="flex flex-col gap-2">
@@ -168,7 +183,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                   <ListRow
                     icon={tx.type === 'income' ? <ArrowDownLeft /> : <ArrowUpRight />}
                     title={tx.title}
-                    subtitle={`${tx.tag} · ${tx.date}`}
+                    subtitle={`${categoryLabel[tx.tag] ?? tx.tag} · ${tx.date}`}
                     trailing={
                       <span className={tx.type === 'income' ? 'bw-label-md shrink-0' : 'bw-label-md shrink-0 text-muted-foreground'}>
                         {tx.amount}
@@ -187,8 +202,8 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
         portal
         open={showAddTransaction}
         onClose={() => setShowAddTransaction(false)}
-        overline="Money flow"
-        title="Add transaction"
+        overline={t('Money flow')}
+        title={t('Add transaction')}
         zIndex={180}
         footer={
           <PillButton
@@ -197,7 +212,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             disabled={!txTitle.trim() || !txAmount}
             icon={<Check className="w-[18px] h-[18px]" />}
           >
-            Add {txType === 'income' ? 'income' : 'expense'}
+            {txType === 'income' ? t('Add income') : t('Add expense')}
           </PillButton>
         }
       >
@@ -206,7 +221,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             <p role="alert" className="bw-body-sm text-destructive">{txError}</p>
           )}
           {/* Type */}
-          <div className="flex gap-2" role="group" aria-label="Transaction type">
+          <div className="flex gap-2" role="group" aria-label={t('Transaction type')}>
             <Selector
               size="md"
               selected={txType === 'income'}
@@ -215,7 +230,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 setTxCategory('GIG');
               }}
             >
-              <ArrowDownLeft className="w-3.5 h-3.5" /> Income
+              <ArrowDownLeft className="w-3.5 h-3.5" /> {t('Income')}
             </Selector>
             <Selector
               size="md"
@@ -225,18 +240,18 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
                 setTxCategory('EQUIPMENT');
               }}
             >
-              <ArrowUpRight className="w-3.5 h-3.5" /> Expense
+              <ArrowUpRight className="w-3.5 h-3.5" /> {t('Expense')}
             </Selector>
           </div>
 
           <PillField
-            label="Description"
+            label={t('Description')}
             value={txTitle}
             onChange={(e) => setTxTitle(e.target.value)}
-            placeholder="e.g., Jazz Night @ Blue Note"
+            placeholder={t('e.g., Jazz Night @ Blue Note')}
           />
           <PillField
-            label={`Amount (${sym()})`}
+            label={t('Amount ({symbol})', { symbol: sym() })}
             type="number"
             inputMode="decimal"
             value={txAmount}
@@ -244,7 +259,7 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
             placeholder="0.00"
           />
           <PillField
-            label="Date"
+            label={t('Date')}
             type="date"
             value={txDate}
             onChange={(e) => setTxDate(e.target.value)}
@@ -252,11 +267,11 @@ export const FinanceExpanded: React.FC<FinanceExpandedProps> = ({
           />
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="bw-label-sm text-muted-foreground mb-2">Category</legend>
+            <legend className="bw-label-sm text-muted-foreground mb-2">{t('Category')}</legend>
             <div className="flex flex-wrap gap-2">
               {categories[txType].map((cat) => (
                 <Selector key={cat} selected={txCategory === cat} onClick={() => setTxCategory(cat)}>
-                  {cat}
+                  {categoryLabel[cat] ?? cat}
                 </Selector>
               ))}
             </div>

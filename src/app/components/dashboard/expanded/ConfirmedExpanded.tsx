@@ -9,6 +9,7 @@ import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
+import { useT } from '@/lib/i18n';
 
 interface ConfirmedExpandedProps {
   bandId: string;
@@ -35,6 +36,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
   events: realEvents,
   loading
 }) => {
+  const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
   const [expandedGigId, setExpandedGigId] = useState<number | null>(null);
 
@@ -50,10 +52,10 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
       const valid = !!parsed && !isNaN(parsed.getTime());
       return {
         id: uuidToNumericId(event.id),
-        title: event.title || 'Untitled Event',
+        title: event.title || t('Untitled Event'),
         day: valid ? String(parsed!.getDate()).padStart(2, '0') : '--',
-        month: valid ? parsed!.toLocaleDateString('en-US', { month: 'short' }) : 'TBD',
-        venue: event.venue || event.venue_name || 'TBD',
+        month: valid ? parsed!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD'),
+        venue: event.venue || event.venue_name || t('TBD'),
         address: event.address || event.venue_address || '',
         fee: event.fee ? Number(event.fee) : 0,
         amount: event.fee ? Number(event.fee).toLocaleString() : '0',
@@ -67,7 +69,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
         notes: event.notes || ''
       };
     });
-  }, [realEvents]);
+  }, [realEvents, t]);
 
   const nextGig = gigs[0];
   const totalFee = gigs.reduce((sum, g) => sum + g.fee, 0);
@@ -87,7 +89,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
       origin={{ top: '40%', left: '44%', right: '3%', bottom: '42%' }}
     >
       <ExpandedTopBar
-        title="Confirmed gigs"
+        title={t('Confirmed gigs')}
         onBack={onClose}
         meta={<span className="bw-label-sm text-muted-foreground">{gigs.length}</span>}
       />
@@ -99,8 +101,8 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
       >
         {/* Metrics (Figma Metric: one dot per gig / per €500 booked) */}
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
-          <Metric label="Confirmed" value={loading ? '-' : gigs.length} fill={gigs.length / 48} />
-          <Metric label="Booked" value={loading ? '-' : shortEuro(totalFee)} fill={totalFee / (48 * 500)} />
+          <Metric label={t('Confirmed')} value={loading ? '-' : gigs.length} fill={gigs.length / 48} />
+          <Metric label={t('Booked')} value={loading ? '-' : shortEuro(totalFee)} fill={totalFee / (48 * 500)} />
         </div>
 
         {/* Next gig (Figma Event Card, event colour) */}
@@ -116,7 +118,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                 <div className="flex-1 min-w-0 flex flex-col gap-2">
                   <span className="flex items-center gap-1.5">
                     <EventMark kind="gig" size={20} bare />
-                    <span className="bw-label-xs">Next gig</span>
+                    <span className="bw-label-xs">{t('Next gig')}</span>
                   </span>
                   <h2 className="bw-h1 [overflow-wrap:anywhere]">{nextGig.title}</h2>
                 </div>
@@ -130,15 +132,15 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                 {nextGig.address && <span className="bw-label-xs opacity-70 truncate">{nextGig.address}</span>}
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <TimeTile label="Load in" value={nextGig.timeline.loadIn} className="bg-card text-card-foreground" />
-                <TimeTile label="Soundcheck" value={nextGig.timeline.soundcheck} className="bg-card text-card-foreground" />
-                <TimeTile label="Show" value={nextGig.timeline.show} className="bg-surface-inverse text-surface-inverse-foreground" />
+                <TimeTile label={t('Load in')} value={nextGig.timeline.loadIn} className="bg-card text-card-foreground" />
+                <TimeTile label={t('Soundcheck', { context: 'tile' })} value={nextGig.timeline.soundcheck} className="bg-card text-card-foreground" />
+                <TimeTile label={t('Show')} value={nextGig.timeline.show} className="bg-surface-inverse text-surface-inverse-foreground" />
               </div>
             </div>
           ) : !loading ? (
             <Card className="items-center text-center py-8">
-              <h2 className="bw-h3">No upcoming gigs</h2>
-              <p className="bw-body-sm text-muted-foreground">Book a gig to see it here.</p>
+              <h2 className="bw-h3">{t('No upcoming gigs')}</h2>
+              <p className="bw-body-sm text-muted-foreground">{t('Book a gig to see it here.')}</p>
             </Card>
           ) : null}
         </motion.section>
@@ -146,7 +148,7 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
         {/* Gig list */}
         {(loading || gigs.length > 1) && (
           <section className="flex flex-col gap-4">
-            <h2 className="bw-label-md text-foreground">Upcoming gigs</h2>
+            <h2 className="bw-label-md text-foreground">{t('Upcoming gigs')}</h2>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -194,28 +196,28 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
                             {gig.address && (
                               <div className="flex items-center gap-3">
                                 <span className="flex-1 min-w-0 flex flex-col gap-1">
-                                  <span className="bw-label-xs text-muted-foreground">Address</span>
+                                  <span className="bw-label-xs text-muted-foreground">{t('Address')}</span>
                                   <span className="bw-body-sm [overflow-wrap:anywhere]">{gig.address}</span>
                                 </span>
-                                <IconButton label="Copy address" size="sm" variant="ghost" icon={<Copy />} onClick={() => copyAddress(gig.address)} />
+                                <IconButton label={t('Copy address')} size="sm" variant="ghost" icon={<Copy />} onClick={() => copyAddress(gig.address)} />
                               </div>
                             )}
                             <div className="grid grid-cols-3 gap-2">
-                              <TimeTile label="Load in" value={gig.timeline.loadIn} className="bg-foreground/[0.08]" />
-                              <TimeTile label="Soundcheck" value={gig.timeline.soundcheck} className="bg-foreground/[0.08]" />
-                              <TimeTile label="Show" value={gig.timeline.show} className="bg-foreground/[0.08]" />
+                              <TimeTile label={t('Load in')} value={gig.timeline.loadIn} className="bg-foreground/[0.08]" />
+                              <TimeTile label={t('Soundcheck', { context: 'tile' })} value={gig.timeline.soundcheck} className="bg-foreground/[0.08]" />
+                              <TimeTile label={t('Show')} value={gig.timeline.show} className="bg-foreground/[0.08]" />
                             </div>
                             {(gig.contactName || gig.dress) && (
                               <div className="flex flex-col gap-2">
                                 {gig.contactName && (
                                   <span className="flex items-baseline justify-between gap-3">
-                                    <span className="bw-body-md text-muted-foreground">Contact</span>
+                                    <span className="bw-body-md text-muted-foreground">{t('Contact')}</span>
                                     <span className="bw-label-md text-right truncate">{gig.contactName}</span>
                                   </span>
                                 )}
                                 {gig.dress && (
                                   <span className="flex items-baseline justify-between gap-3">
-                                    <span className="bw-body-md text-muted-foreground">Dress code</span>
+                                    <span className="bw-body-md text-muted-foreground">{t('Dress code')}</span>
                                     <span className="bw-label-md text-right truncate">{gig.dress}</span>
                                   </span>
                                 )}

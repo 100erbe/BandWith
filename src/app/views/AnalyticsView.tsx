@@ -9,6 +9,7 @@ import { ScreenHeader, Card } from '@/app/components/bw/Screen';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { supabase } from '@/lib/supabase';
 import { toLocalDateString } from '@/lib/dates';
+import { useT } from '@/lib/i18n';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -68,6 +69,7 @@ const StatCard: React.FC<{ label: string; value: string | number; accent?: boole
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboardData: sharedData, isAdmin = true, onSelectMonth }) => {
   useCurrency(); // re-render money labels when the band currency changes
+  const t = useT();
   const { selectedBand } = useBand();
   // Skip the query when Home's numbers were handed in.
   const { data: fetchedData, loading: fetching } = useDashboardData(sharedData ? null : selectedBand?.id || null);
@@ -146,7 +148,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
       className="bw-pane-hub fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
       style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
     >
-      <ScreenHeader sticky onBack={onClose} overline={overline} title={<>Data<br />insights</>} />
+      <ScreenHeader sticky onBack={onClose} overline={overline} title={(() => {
+        // Two lines: the first word, then the rest ("Data / insights").
+        const [first, ...rest] = t('Data insights').split(' ');
+        return rest.length ? <>{first}<br />{rest.join(' ')}</> : first;
+      })()} />
 
       <div className="px-4 pt-4 flex flex-col gap-4 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
         {loading ? (
@@ -156,31 +162,31 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
         ) : (
           <>
             <div className="flex gap-2">
-              <StatCard label="Total revenue" value={fmt(totalRevenue)} accent delay={0.05} />
-              <StatCard label="Total events" value={totalEvents} delay={0.1} />
+              <StatCard label={t('Total revenue')} value={fmt(totalRevenue)} accent delay={0.05} />
+              <StatCard label={t('Total events')} value={totalEvents} delay={0.1} />
             </div>
             <div className="flex gap-2">
-              <StatCard label="Confirmed" value={confirmed} delay={0.15} />
-              <StatCard label="Upcoming" value={upcoming} delay={0.2} />
+              <StatCard label={t('Confirmed')} value={confirmed} delay={0.15} />
+              <StatCard label={t('Upcoming')} value={upcoming} delay={0.2} />
             </div>
 
             {/* Revenue change (Figma: inverse card, 32pt dot value, lime chart icon) */}
             <div className="flex items-center gap-3 px-5 py-4 rounded-[24px] bg-surface-inverse text-surface-inverse-foreground">
               <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <span className="bw-label-sm">Revenue vs previous period</span>
-                <DotText text={changeLabel} size={32} label={`Revenue change: ${changeLabel}`} />
+                <span className="bw-label-sm">{t('Revenue vs previous period')}</span>
+                <DotText text={changeLabel} size={32} label={t('Revenue change: {value}', { value: changeLabel })} />
               </div>
               <BarChart3 className="w-7 h-7 shrink-0 text-accent" aria-hidden />
             </div>
 
             {/* Monthly breakdown */}
             <Card className="p-5 gap-4">
-              <h2 className="bw-label-md">Monthly breakdown</h2>
+              <h2 className="bw-label-md">{t('Monthly breakdown')}</h2>
               <div
                 className="flex items-end justify-between"
                 {...(onSelectMonth
-                  ? { role: 'group', 'aria-label': 'Monthly revenue, last six months. Choose a month to open it in the calendar.' }
-                  : { role: 'img', 'aria-label': `Monthly revenue, last six months: ${monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ')}` })}
+                  ? { role: 'group', 'aria-label': t('Monthly revenue, last six months. Choose a month to open it in the calendar.') }
+                  : { role: 'img', 'aria-label': t('Monthly revenue, last six months: {months}', { months: monthly.map((x) => `${x.month} ${sym()}${x.fee}`).join(', ') }) })}
               >
                 {monthly.map(({ month, yyyyMm, longLabel, fee, lit, current }, i) => {
                   const bar = (
@@ -204,7 +210,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                       type="button"
                       {...motionProps}
                       onClick={() => onSelectMonth(yyyyMm)}
-                      aria-label={`${longLabel}: ${sym()}${fee.toLocaleString('en-US')}. Open in calendar`}
+                      aria-label={t('{label}: {amount}. Open in calendar', { label: longLabel, amount: `${sym()}${fee.toLocaleString('en-US')}` })}
                       className="flex flex-col items-center gap-2 rounded-[12px] p-1 -m-1 cursor-pointer active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                     >
                       {bar}
@@ -217,7 +223,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
                 })}
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="bw-body-lg text-muted-foreground">Total earnings {now.getFullYear()}</span>
+                <span className="bw-body-lg text-muted-foreground">{t('Total earnings {year}', { year: now.getFullYear() })}</span>
                 <span className="bw-label-md shrink-0">{sym()}{totalRevenue.toLocaleString('en-US')}</span>
               </div>
             </Card>
