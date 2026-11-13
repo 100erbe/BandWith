@@ -28,6 +28,7 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { PlannerMode, type PlannerEvent } from '@/app/components/duo';
 import { keyboardSafeTap } from '@/lib/keyboardSafeTap';
+import { ALL_BANDS, PERSONAL, matchesBandFilter, type BandFilterOption } from '@/lib/bandFilter';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -48,6 +49,8 @@ interface EventsViewProps {
   onDayPickerOpen?: (open: boolean) => void;
   userFeeMap?: Record<string, number>;
   bands?: Array<{ id: string; name: string }>;
+  /** Band filter pills (people in 2+ bands; see lib/bandFilter). None: no filter row. */
+  bandFilterOptions?: BandFilterOption[];
   selectedBandPill?: string;
   onBandPillClick?: (bandId: string) => void;
   rehearsalPolls?: RehearsalPoll[];
@@ -247,6 +250,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   isAdmin = true,
   userFeeMap = {},
   bands = [],
+  bandFilterOptions = [],
   rehearsalPolls = [],
   onConvertProposal,
   onPollUpdated,
@@ -270,13 +274,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const activePolls = useMemo(() => {
     if (!rehearsalPolls) return [];
     return rehearsalPolls.filter((p) => {
+      if (!matchesBandFilter(p.band_id, selectedBandPill)) return false;
       if (p.status === 'polling') return true;
       if (p.status === 'proposed') {
         return isAdmin || p.created_by === currentUserId;
       }
       return false;
     });
-  }, [rehearsalPolls, isAdmin, currentUserId]);
+  }, [rehearsalPolls, isAdmin, currentUserId, selectedBandPill]);
 
   const baseDateRef = useRef(new Date());
   const [monthOffset, setMonthOffset] = useState(0);
@@ -343,6 +348,18 @@ export const EventsView: React.FC<EventsViewProps> = ({
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }, []);
+
+  // Band filter pills (Selector, as the type filters): a group so screen
+  // readers tell it from the type row, which also starts with "All".
+  const bandPills = bandFilterOptions.length > 0 ? (
+    <div role="group" aria-label={t('Filter by band')} className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
+      {bandFilterOptions.map((o) => (
+        <Selector key={o.id} size="sm" selected={selectedBandPill === o.id} onClick={() => onBandPillClick(o.id)} className="max-w-[60vw]">
+          <span className="min-w-0 truncate">{o.id === ALL_BANDS ? t('All bands') : o.id === PERSONAL ? t('Personal') : o.name}</span>
+        </Selector>
+      ))}
+    </div>
+  ) : null;
 
   const visibleFilters = useMemo(() => {
     return isAdmin ? FILTERS : FILTERS.filter(f => f !== 'QUOTES' && f !== 'DRAFTS');
@@ -833,9 +850,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   {statusChip}
                 </span>
               )}
-              {!isAdmin && bands.length > 1 && event.band_name && (
+              {bands.length > 1 && event.band_name && (
                 <span className="bw-label-xs h-4 px-1.5 rounded-full inline-flex items-center truncate max-w-[140px]" style={{ backgroundColor: chipBg }}>
-                  {event.band_name}
+                  {event.band_id ? event.band_name : t('Personal')}
                 </span>
               )}
               {event._isPendingSync && (
@@ -1029,22 +1046,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
     >
       {/* ═══ FILTERS (Figma "Tabs": Selector MD) ═══ */}
       <div className="flex flex-col gap-3 shrink-0">
-        {/* ═══ BAND FILTER PILLS ═══ (client-side, instant) */}
-        {!isAdmin && (
-          <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
-            <Selector size="sm" selected={selectedBandPill === 'all'} onClick={() => onBandPillClick('all')}>
-              {t('All')}
-            </Selector>
-            {bands.map((band) => (
-              <Selector key={band.id} size="sm" selected={selectedBandPill === band.id} onClick={() => onBandPillClick(band.id)}>
-                {band.name}
-              </Selector>
-            ))}
-            <Selector size="sm" selected={selectedBandPill === 'personal'} onClick={() => onBandPillClick('personal')}>
-              {t('Personal')}
-            </Selector>
-          </div>
-        )}
+        {/* ═══ BAND FILTER PILLS ═══ (2+ bands; combines with the type filter) */}
+        {bandPills}
 
         <div className="flex gap-2 items-center shrink-0 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {visibleFilters.map((f) => {
@@ -1531,6 +1534,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
           }}
           onAddGig={isAdmin && onCreateEvent ? (date) => onCreateEvent('gig', date) : undefined}
           onAddRehearsal={isAdmin && onCreateEvent ? (date) => onCreateEvent('rehearsal', date) : undefined}
+          filters={bandPills}
         />
       )}
 

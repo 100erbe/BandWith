@@ -145,6 +145,7 @@ import { t, useLocale, dateName, intlLocale } from "@/lib/i18n";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
 import { EVENT_PUBLIC_COLUMNS, attachEventPrivate } from "@/lib/services/eventPrivate";
+import { bandFilterOptions, filterByBand, matchesBandFilter, normalizeBandFilter } from "@/lib/bandFilter";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -703,6 +704,17 @@ export default function AuthenticatedApp() {
     return [];
   }, [masterEventsList, eventMembersMap, isAdminOfBand, user?.id, bandLookup, realBand?.name]);
 
+  // Calendar band filter: offered from two bands on (plus Personal when there
+  // are personal gigs). A choice that is no longer offered goes back to All,
+  // so a hidden filter never hides events.
+  const hasPersonalEvents = useMemo(() => events.some((e) => !e.band_id), [events]);
+  const bandPillOptions = useMemo(() => bandFilterOptions(formattedBands, hasPersonalEvents), [formattedBands, hasPersonalEvents]);
+  useEffect(() => {
+    if (bandsLoading || eventsLoading) return;
+    const next = normalizeBandFilter(selectedBandPill, bandPillOptions);
+    if (next !== selectedBandPill) setSelectedBandPill(next);
+  }, [bandsLoading, eventsLoading, selectedBandPill, bandPillOptions]);
+
   // The open detail follows the list: a newer version of its event (saved
   // here or by someone else, delivered by realtime) replaces the snapshot.
   const openEventSeenRef = useRef<{ key: string | null; seen: string | null }>({ key: null, seen: null });
@@ -745,13 +757,8 @@ export default function AuthenticatedApp() {
   }, [events, realBand?.id]);
 
   const visuallyFilteredEvents = useMemo(() => {
-    let result = events;
-    // Band pill filter
-    if (selectedBandPill === 'personal') {
-      result = result.filter(e => !e.band_id);
-    } else if (selectedBandPill !== 'all') {
-      result = result.filter(e => e.band_id === selectedBandPill);
-    }
+    // Band filter (people in 2+ bands): narrows, combines with the rest.
+    let result = filterByBand(events, selectedBandPill);
     // Optimistic UI: instantly strip events that should be visually hidden
     if (optimisticallyHiddenEventIds.length > 0) {
       result = result.filter(e => !optimisticallyHiddenEventIds.includes(e.eventId || ''));
@@ -834,7 +841,7 @@ export default function AuthenticatedApp() {
     if (wantDrafts) {
       const have = new Set(base.map((e) => e.eventId));
       events
-        .filter((e) => isQuoteDraft(e) && !have.has(e.eventId) && matches(e))
+        .filter((e) => isQuoteDraft(e) && !have.has(e.eventId) && matches(e) && matchesBandFilter(e.band_id, selectedBandPill))
         .forEach((e) => base.push({ ...e, draftOf: 'quote' as const }));
     }
     const local = myEventDrafts
@@ -871,7 +878,7 @@ export default function AuthenticatedApp() {
         if (f.startsWith('REHEARSAL')) return e.draftOf === 'rehearsal';
         return false;
       })
-      .filter(matches);
+      .filter((e) => matches(e) && matchesBandFilter(e.band_id, selectedBandPill));
     return local.length ? [...base, ...local] : base;
   }, [isAdmin, selectedBandPill, eventFilter, eventSearch, visuallyFilteredEvents, events, draftQuoteIds, myEventDrafts, realQuotes]);
   const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
@@ -3416,7 +3423,7 @@ export default function AuthenticatedApp() {
                 setEditingEventData(null);
                 setIsCreateEventOpen(true);
               }
-            }} onOpenPastEvents={() => setShowPastEvents(true)} onProposeRehearsal={() => handleCreateEvent('rehearsal')} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
+            }} onOpenPastEvents={() => setShowPastEvents(true)} onProposeRehearsal={() => handleCreateEvent('rehearsal')} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} bandFilterOptions={bandPillOptions} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
               rehearsalPolls={rehearsalPolls}
               onConvertProposal={handleConvertProposal}
               onPollUpdated={() => {
@@ -3429,7 +3436,7 @@ export default function AuthenticatedApp() {
           )}
           {/* PLG: Solo mode fallback for Chat tab */}
           {activeTab === "Chat" && isSolo && (
-            <EventsView key="events-solo" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type?: string, date?: string) => { setEditingPersonalGig(date ? { id: '', title: '', eventDate: date } : null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
+            <EventsView key="events-solo" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={visuallyFilteredEvents} rawEvents={events} onEventClick={handleEventCardClick} onCreateEvent={(type?: string, date?: string) => { setEditingPersonalGig(date ? { id: '', title: '', eventDate: date } : null); setShowPersonalGigModal(true); }} onOpenPastEvents={() => setShowPastEvents(true)} isAdmin={false} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} bandFilterOptions={bandPillOptions} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} />
           )}
         </AnimatePresence>
 

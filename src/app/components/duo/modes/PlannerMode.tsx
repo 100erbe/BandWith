@@ -40,6 +40,8 @@ export interface PlannerModeProps {
   onAddRehearsal?: (date: string) => void;
   /** See FoldSplit. Default 70 (page level). */
   zIndex?: number;
+  /** Filter pills shown at the top of the Deck (e.g. the band filter). */
+  filters?: React.ReactNode;
 }
 
 /** Mon…Sun in the app language (English: 'Mon', 'Tue'…). 2024-01-01 is a Monday. */
@@ -97,6 +99,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
   onAddGig,
   onAddRehearsal,
   zIndex,
+  filters,
 }) => {
   const t = useT();
   const today = toLocalDateString();
@@ -201,6 +204,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
 
   const deck = (
     <div className="flex flex-col gap-3 px-4 pt-3 pb-3 min-h-full">
+      {filters}
       <div className="flex items-center gap-2">
         <button type="button" aria-label={t('Previous month')} onClick={() => shiftMonth(-1)} className="w-11 h-11 rounded-full bg-muted flex items-center justify-center cursor-pointer">
           <ChevronLeft className="w-5 h-5" />

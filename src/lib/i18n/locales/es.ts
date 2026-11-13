@@ -3133,6 +3133,9 @@ const dict: Dictionary = {
   "Payouts ({count})": "Pagos ({count})",
   "Your payouts ({count})": "Tus pagos ({count})",
   "Payouts due · {count} · {amount}": "Pagos pendientes · {count} · {amount}",
+  // Calendar band filter
+  "All bands": "Todas las bandas",
+  "Filter by band": "Filtrar por banda",
 };
 
 export default dict;
