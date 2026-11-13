@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bandFilterOptions, filterByBand, matchesBandFilter, normalizeBandFilter } from '../bandFilter';
+import { bandFilterOptions, bandFilterShowsFees, feeForViewer, filterByBand, matchesBandFilter, normalizeBandFilter } from '../bandFilter';
 
 const A = 'aaaaaaaa-0000-0000-0000-000000000001';
 const B = 'bbbbbbbb-0000-0000-0000-000000000002';
@@ -79,5 +79,32 @@ describe('normalizeBandFilter', () => {
   });
   it('falls back to all when the filter is hidden (one band)', () => {
     expect(normalizeBandFilter(A, bandFilterOptions([{ id: A, name: 'Alpha' }], true))).toBe('all');
+  });
+});
+
+describe('bandFilterShowsFees', () => {
+  const adminOf = (id: string) => id === A;
+  it('follows the active band on all and personal', () => {
+    expect(bandFilterShowsFees('all', adminOf, true)).toBe(true);
+    expect(bandFilterShowsFees('all', adminOf, false)).toBe(false);
+    expect(bandFilterShowsFees('personal', adminOf, true)).toBe(true);
+  });
+  it('shows fees for a band only to its admins', () => {
+    expect(bandFilterShowsFees(A, adminOf, false)).toBe(true);
+    expect(bandFilterShowsFees(B, adminOf, true)).toBe(false);
+  });
+});
+
+describe('feeForViewer', () => {
+  const adminOf = (id: string) => id === A;
+  it('keeps fees of bands the user admins and personal gigs', () => {
+    expect(feeForViewer(A, 1800, adminOf)).toBe(1800);
+    expect(feeForViewer(null, 300, adminOf)).toBe(300);
+  });
+  it('drops fees of bands where the user is a member', () => {
+    expect(feeForViewer(B, 900, adminOf)).toBeNull();
+  });
+  it('keeps a missing fee missing', () => {
+    expect(feeForViewer(A, null, adminOf)).toBeNull();
   });
 });

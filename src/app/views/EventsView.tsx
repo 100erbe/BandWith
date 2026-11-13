@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import { 
   ArrowUpRight,
@@ -28,7 +28,7 @@ import { FIT, FitText } from '@/app/components/bw/FitText';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { PlannerMode, type PlannerEvent } from '@/app/components/duo';
 import { keyboardSafeTap } from '@/lib/keyboardSafeTap';
-import { ALL_BANDS, PERSONAL, matchesBandFilter, type BandFilterOption } from '@/lib/bandFilter';
+import { ALL_BANDS, PERSONAL, bandFilterShowsFees, feeForViewer, matchesBandFilter, type BandFilterOption } from '@/lib/bandFilter';
 
 interface EventsViewProps {
   loading?: boolean;
@@ -52,6 +52,8 @@ interface EventsViewProps {
   /** Band filter pills (people in 2+ bands; see lib/bandFilter). None: no filter row. */
   bandFilterOptions?: BandFilterOption[];
   selectedBandPill?: string;
+  /** Role in an item's band (events come from every band). Default: `isAdmin`. */
+  isAdminOfBand?: (bandId: string) => boolean;
   onBandPillClick?: (bandId: string) => void;
   rehearsalPolls?: RehearsalPoll[];
   onConvertProposal?: (poll: RehearsalPoll) => void;
@@ -251,6 +253,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   userFeeMap = {},
   bands = [],
   bandFilterOptions = [],
+  isAdminOfBand,
   rehearsalPolls = [],
   onConvertProposal,
   onPollUpdated,
@@ -607,6 +610,10 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
   // ── iPhone Duo · Laptop pose: Planner (renders nothing in other postures) ──
   // Same events as the month grid (current filter, recurring rehearsals expanded).
+  // Band money in the Planner: a band's fees only for its admins, so a band
+  // where the user plays as a member shows no Fees (not "€0").
+  const adminOfBand = useCallback((id: string) => (isAdminOfBand ? isAdminOfBand(id) : isAdmin), [isAdminOfBand, isAdmin]);
+  const plannerShowsFees = bandFilterShowsFees(selectedBandPill, adminOfBand, isAdmin);
   const { plannerEvents, plannerSource } = useMemo(() => {
     const list: PlannerEvent[] = [];
     const source = new Map<string, EventData>();
@@ -625,13 +632,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
           kind: calendarKind(ev),
           time: ev.time || null,
           venue: ev.venueName || (ev.location && ev.location !== 'TBD' ? ev.location : null),
-          fee: Number.isFinite(fee) && fee > 0 ? fee : null,
+          fee: feeForViewer(ev.band_id, Number.isFinite(fee) && fee > 0 ? fee : null, adminOfBand),
           draft: !!ev.draftOf,
         });
       });
     });
     return { plannerEvents: list, plannerSource: source };
-  }, [eventDatesMap, t]);
+  }, [eventDatesMap, t, adminOfBand]);
   const [plannerDate, setPlannerDate] = useState(todayStr);
   const selectPlannerDate = (date: string) => {
     setPlannerDate(date);
@@ -1525,7 +1532,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       {!searchOpen && (
         <PlannerMode
           events={plannerEvents}
-          isAdmin={isAdmin}
+          isAdmin={plannerShowsFees}
           selectedDate={plannerDate}
           onSelectDate={selectPlannerDate}
           onOpenEvent={(id) => {

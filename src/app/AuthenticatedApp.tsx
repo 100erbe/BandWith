@@ -3423,7 +3423,7 @@ export default function AuthenticatedApp() {
                 setEditingEventData(null);
                 setIsCreateEventOpen(true);
               }
-            }} onOpenPastEvents={() => setShowPastEvents(true)} onProposeRehearsal={() => handleCreateEvent('rehearsal')} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} bandFilterOptions={bandPillOptions} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill}
+            }} onOpenPastEvents={() => setShowPastEvents(true)} onProposeRehearsal={() => handleCreateEvent('rehearsal')} isAdmin={isAdmin} onDayPickerOpen={setIsDayPickerOpen} userFeeMap={userFeeMap} bands={formattedBands} bandFilterOptions={bandPillOptions} selectedBandPill={selectedBandPill} onBandPillClick={setSelectedBandPill} isAdminOfBand={isAdminOfBand}
               rehearsalPolls={rehearsalPolls}
               onConvertProposal={handleConvertProposal}
               onPollUpdated={() => {
