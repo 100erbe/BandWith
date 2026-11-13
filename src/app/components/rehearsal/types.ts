@@ -70,29 +70,6 @@ export interface RehearsalSetlistSnapshotFinal {
   };
 }
 
-export interface ProposalAttachment {
-    id: string;
-    type: 'link' | 'pdf' | 'image' | 'audio' | 'other';
-    label: string;
-    url?: string;
-    fileMeta?: { name: string; sizeBytes?: number };
-}
-
-export interface SongProposal {
-  id: string;
-  title: string;
-  artist: string;
-  proposer: string;
-  reason: string;
-  attachments?: ProposalAttachment[];
-  votes: { yes: number; no: number; comments: number };
-  status: 'approved' | 'pending' | 'new';
-  userVote?: 'yes' | 'no' | null;
-  links?: string[]; // Legacy compatibility
-  scoreUploaded?: boolean; // Legacy compatibility
-  createdAt?: string;
-}
-
 export interface RehearsalTask {
   id: string;
   text: string;
@@ -137,7 +114,6 @@ export interface RehearsalState {
   setlist: RehearsalSong[]; // Legacy/Current working setlist for UI display
   setlistSnapshotFinal?: RehearsalSetlistSnapshotFinal;
   selectedTemplateIdsInOrder?: string[]; // Queue for merging
-  proposals: SongProposal[];
   
   // Prep
   tasks: RehearsalTask[];
