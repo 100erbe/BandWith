@@ -49,6 +49,8 @@ interface TaskTemplatesViewProps {
   userId?: string | null;
   /** Feedback after the tasks were added to an existing event or draft. */
   onNotify?: (message: string) => void;
+  /** Only active admins write templates (migration 074); members read them. Defaults to true. */
+  canEdit?: boolean;
 }
 
 /** Category tag colours follow the event palette (Figma: Templates / Task templates). */
@@ -61,7 +63,7 @@ const CATEGORIES: Record<TemplateCategory, { label: string; tag: TagStyle }> = {
   other: { label: 'Other', tag: 'subtle' },
 };
 
-export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate, events = [], userId, onNotify }) => {
+export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, bandId, onUseTemplate, events = [], userId, onNotify, canEdit = true }) => {
   const t = useT();
   const categoryLabel: Record<TemplateCategory, string> = {
     wedding: t('Wedding'),
@@ -274,7 +276,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         overline={t('Workflows & checklists')}
         title={t('To-do lists')}
         actions={
-          <IconButton label={t('New to-do list')} variant="filled" icon={<Plus />} onClick={openCreate} />
+          canEdit ? <IconButton label={t('New to-do list')} variant="filled" icon={<Plus />} onClick={openCreate} /> : undefined
         }
       />
 
@@ -309,7 +311,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                   : t('Create reusable checklists for gigs, weddings, rehearsals or festival setups.')}
               </p>
             </div>
-            {!searchQuery && (
+            {!searchQuery && canEdit && (
               <div className="flex flex-wrap justify-center gap-2">
                 <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
                   {t('New to-do list')}
@@ -348,7 +350,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         <Tag variant={category.tag}>{categoryLabel[template.category] ?? category.label}</Tag>
                         {template.is_default && <Tag variant="solid">{t('Default')}</Tag>}
                       </div>
-                      <button
+                      {canEdit && <button
                         type="button"
                         onClick={() => setMenuOpenId(menuOpenId === template.id ? null : template.id)}
                         aria-label={t('Actions for {name}', { name: template.name })}
@@ -361,7 +363,7 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
                         ) : (
                           <MoreHorizontal className="w-[18px] h-[18px]" />
                         )}
-                      </button>
+                      </button>}
                     </div>
                     <button
                       type="button"
@@ -424,9 +426,11 @@ export const TaskTemplatesView: React.FC<TaskTemplatesViewProps> = ({ onBack, ba
         overline={t('To-do list')}
         title={selectedTemplate?.name ?? ''}
         footer={
-          <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={handleUseTemplate}>
-            {t('Use this list')}
-          </PillButton>
+          canEdit ? (
+            <PillButton icon={<Copy className="w-[18px] h-[18px]" />} onClick={handleUseTemplate}>
+              {t('Use this list')}
+            </PillButton>
+          ) : undefined
         }
       >
         {selectedTemplate && (
