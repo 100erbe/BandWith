@@ -63,14 +63,16 @@ export function normalizeBandFilter(filter: BandFilter, options: ReadonlyArray<B
 
 /**
  * Whether band money (gig fees, the month's Fees) shows under `filter`: for
- * one band, only to its admins; for All and Personal, as for the active band.
+ * one band, only to its admins; for All, as for the active band; never for
+ * Personal (no band money there, so it would only read "€0").
  */
 export function bandFilterShowsFees(
   filter: BandFilter,
   isAdminOfBand: (bandId: string) => boolean,
   activeBandAdmin: boolean,
 ): boolean {
-  if (filter === ALL_BANDS || filter === PERSONAL) return activeBandAdmin;
+  if (filter === PERSONAL) return false;
+  if (filter === ALL_BANDS) return activeBandAdmin;
   return isAdminOfBand(filter);
 }
 
