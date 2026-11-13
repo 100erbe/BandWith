@@ -3938,7 +3938,9 @@ export default function AuthenticatedApp() {
       <AnimatePresence>
         {selectedEvent && (
           <EventDetail
-            key="event-detail"
+            // One instance per event: switching gigs (Duo two-pane) must not
+            // carry over "Confirm delete", sheets or the previous setlist.
+            key={`event-detail-${selectedEvent.eventId ?? selectedEvent.id}`}
             event={selectedEvent}
             currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}

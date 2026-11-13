@@ -348,7 +348,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           .select('*, song:songs(title, artist, duration_seconds, key)')
           .eq('setlist_id', event.setlistId)
           .order('position', { ascending: true });
-        if (!cancelled && data && data.length > 0) {
+        if (cancelled) return;
+        // An empty or failed query clears the list instead of keeping the
+        // songs of the setlist shown before.
+        if (!data || data.length === 0) {
+          setSetlistSongs([]);
+        } else {
           setSetlistSongs(
             data.map((s: any) => ({
               title: s.song?.title || t('Unknown Song'),
