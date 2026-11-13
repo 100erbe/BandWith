@@ -39,7 +39,7 @@ import {
 } from '@/lib/services/quotes';
 import { useBand } from '@/lib/BandContext';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale, localDecimal } from '@/lib/i18n';
 
 interface QuotesExpandedProps {
   bandId: string;
@@ -335,7 +335,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         >
           <div className="flex flex-col gap-1">
             <span className="bw-label-sm">{t('Pipeline potential')}</span>
-            <DotText text={`${sym()}${(pipelineTotal / 1000).toFixed(1)}k`} size={32} label={t('Pipeline {amount}', { amount: `${sym()}${pipelineTotal.toLocaleString()}` })} />
+            <DotText text={`${sym()}${localDecimal((pipelineTotal / 1000).toFixed(1))}k`} size={32} label={t('Pipeline {amount}', { amount: `${sym()}${pipelineTotal.toLocaleString(intlLocale())}` })} />
           </div>
 
           {/* One dot column per active quote: height = value, colour = likelihood */}
@@ -353,7 +353,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     type="button"
                     key={quote.id}
                     onClick={() => setActiveChartId(isActive ? null : quote.id)}
-                    aria-label={`${quote.eventTitle || quote.clientName}: ${sym()}${quote.total.toLocaleString()}`}
+                    aria-label={`${quote.eventTitle || quote.clientName}: ${sym()}${quote.total.toLocaleString(intlLocale())}`}
                     className="relative flex flex-col gap-1 items-center cursor-pointer group"
                   >
                     <span
@@ -362,7 +362,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                         (isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
                       }
                     >
-                      {sym()}{(quote.total / 1000).toFixed(1)}k
+                      {sym()}{localDecimal((quote.total / 1000).toFixed(1))}k
                     </span>
                     {Array.from({ length: CHART_ROWS }).map((_, r) => {
                       const fromBottom = CHART_ROWS - 1 - r;
@@ -435,11 +435,11 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 </span>
                 <span className="flex items-end justify-between gap-3">
                   <span className={'bw-label-xs ' + (accepted ? 'opacity-70' : 'text-muted-foreground')}>
-                    {[items > 0 ? (items === 1 ? t('{count} item', { count: items }) : t('{count} items', { count: items })) : null, created && !isNaN(created.getTime()) ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null]
+                    {[items > 0 ? (items === 1 ? t('{count} item', { count: items }) : t('{count} items', { count: items })) : null, created && !isNaN(created.getTime()) ? created.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' }) : null]
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  <span className="bw-num whitespace-nowrap">{sym()}{quote.total.toLocaleString()}</span>
+                  <span className="bw-num whitespace-nowrap">{sym()}{quote.total.toLocaleString(intlLocale())}</span>
                 </span>
               </motion.button>
             );

@@ -34,7 +34,7 @@ import { notificationBandId, notificationTarget, notificationTargetLabel } from 
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale } from '@/lib/i18n';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -99,12 +99,12 @@ const formatTime = (dateStr: string): string => {
   if (diffMins < 60) return t('{count}m ago', { count: diffMins });
   if (diffHours < 24) return t('{count}h ago', { count: diffHours });
   if (diffDays < 7) return t('{count}d ago', { count: diffDays });
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
 };
 
 const formatEventDate = (dateStr: string): string => {
   const date = parseLocalDate(dateStr);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(intlLocale('en-US'), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -623,7 +623,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                               {Boolean(d.member_fee || d.fee) && (
                                 <KV
                                   k={d.member_fee ? t('Allocated fee') : t('Total fee')}
-                                  v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString()}`}
+                                  v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString(intlLocale())}`}
                                 />
                               )}
                             </>

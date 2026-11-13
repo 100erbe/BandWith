@@ -22,7 +22,7 @@ import { ChatItem, ChatFilterType, toTitleCase } from '@/app/data/chats';
 import { searchChatsAndMessages, SearchResult } from '@/lib/services/chats';
 import { useRailSearch } from '@/lib/railActions';
 import { SwipeRow } from '@/app/components/bw/SwipeRow';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 interface ChatViewProps {
   chatFilter: ChatFilterType;
@@ -207,7 +207,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (days === 0) return t('Today');
     if (days === 1) return t('Yesterday');
     if (days < 7) return t('{count}d ago', { count: days });
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
   };
 
 

@@ -8,7 +8,7 @@ import { setStatusBarTone } from '@/lib/systemBars';
 import { parseLocalDate } from '@/lib/dates';
 import { FIT, FitText } from '@/app/components/bw/FitText';
 import { personName } from '@/lib/personName';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 export interface InviteData {
   id: string;
@@ -84,7 +84,7 @@ export const JoinerInviteLanding: React.FC<JoinerInviteLandingProps> = ({
   // Format date
   const formatDate = (dateString: string) => {
     const date = parseLocalDate(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric' });
   };
 
   return (

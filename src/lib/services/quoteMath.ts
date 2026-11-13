@@ -142,10 +142,10 @@ export const calculateDepositAmount = (total: number, depositPercentage: number)
  * Money formatting shared by the wizard and the PDF: whole amounts without decimals,
  * otherwise two decimals (e.g. "€1,250" / "€1,250.50").
  */
-export const formatQuoteMoney = (amount: number, sym = '€'): string => {
+export const formatQuoteMoney = (amount: number, sym = '€', tag: string | undefined = 'en-US'): string => {
   const v = roundCents(amount);
   const hasCents = Math.round(Math.abs(v) * 100) % 100 !== 0;
-  return `${sym}${v.toLocaleString('en-US', {
+  return `${sym}${v.toLocaleString(tag, {
     minimumFractionDigits: hasCents ? 2 : 0,
     maximumFractionDigits: 2,
   })}`;

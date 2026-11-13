@@ -10,7 +10,7 @@ import { EventItem } from '@/app/data/events';
 import { Band } from '@/app/data/bands';
 import { ExpandedCardType } from '@/app/types';
 import { useBand } from '@/lib/BandContext';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 import { RehearsalPollCard } from '@/app/components/rehearsal/RehearsalPollCard';
 import type { RehearsalPoll } from '@/lib/services/rehearsalPolls';
 import { parseLocalDate } from '@/lib/dates';
@@ -246,7 +246,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const formatRevenue = (value: number): string => {
     if (value >= 1000) {
-      return `${sym()}${(value / 1000).toFixed(1)}k`;
+      return `${sym()}${localDecimal((value / 1000).toFixed(1))}k`;
     }
     return `${sym()}${value}`;
   };
@@ -477,7 +477,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         items.push({
           id: `rsvp-${id}`,
           title: e.title || t('Untitled Event'),
-          detail: [t('RSVP'), d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : null]
+          detail: [t('RSVP'), d && !isNaN(d.getTime()) ? d.toLocaleDateString(intlLocale('en-US'), { weekday: 'short', month: 'short', day: 'numeric' }) : null]
             .filter(Boolean)
             .join(' · '),
           kind: (e.event_type || e.eventType) === 'rehearsal' ? 'rehearsal' : 'gig',
@@ -798,7 +798,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   title={event.title || t('Untitled Event')}
                   meta={upcomingMeta(event)}
                   day={valid ? d!.getDate() : '–'}
-                  month={valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}
+                  month={valid ? dateName(d!, { month: 'short' }) : t('TBD')}
                   value={upcomingValue(event)}
                   onClick={() => {
                     if (onSelectEvent && (event.id || event.eventId)) {
@@ -825,14 +825,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
           const ok = d && !isNaN(d.getTime());
           return {
             day: ok ? d!.getDate() : '–',
-            month: ok ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD'),
+            month: ok ? dateName(d!, { month: 'short' }) : t('TBD'),
           };
         };
         const saved = (iso: string) => {
           const d = new Date(iso);
           return isNaN(d.getTime())
             ? t('Draft')
-            : t('Draft · saved {date}', { date: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) });
+            : t('Draft · saved {date}', { date: d.toLocaleDateString(intlLocale('en-US'), { day: 'numeric', month: 'short' }) });
         };
         return (
           <motion.div variants={dashboardItemVariants} className="@container flex flex-col gap-4" aria-label={t('Drafts')}>

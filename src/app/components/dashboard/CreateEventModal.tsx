@@ -51,7 +51,7 @@ import { haptic } from '@/lib/haptics';
 import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { useLeadingCompanion } from '@/app/components/duo';
 import { LiveGigPreview } from '@/app/components/duo/previews/LiveGigPreview';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 export interface BandMember {
   id: string;
@@ -833,7 +833,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     if (!details.date) return t('DATE TBD');
     const d = new Date(details.date + 'T00:00:00');
     if (isNaN(d.getTime())) return details.date;
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(intlLocale('en-US'), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -1049,7 +1049,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
       lineupNames={selectedMembers
         .map(id => MEMBERS.find(m => m.id === id || m.user_id === id)?.name)
         .filter((n): n is string => !!n)}
-      fee={isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString('en-US')}` : null}
+      fee={isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString(intlLocale('en-US'))}` : null}
       accent={activeAccentColor}
       accentFg={activeAccentFg}
     />,
@@ -1513,7 +1513,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
     const kindLabel = modalCategory === 'quote' ? t('Quote') : t('Gig');
     const d = details.date ? new Date(details.date + 'T00:00:00') : null;
     if (!d || isNaN(d.getTime())) return kindLabel;
-    return `${kindLabel} · ${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+    return `${kindLabel} · ${d.toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' })}`;
   })();
 
   const renderTimeFields = () => (
@@ -1811,7 +1811,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const lineupSummary = [
     lineupLabel,
     musiciansText(selectedMembers.length),
-    isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString('en-US')}` : null,
+    isAdmin && grandTotalFee > 0 ? `${currencySymbol}${grandTotalFee.toLocaleString(intlLocale('en-US'))}` : null,
   ]
     .filter(Boolean)
     .join(' · ');

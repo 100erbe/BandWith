@@ -5,7 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { BwSheet, IconButton, PillButton, PillField, SearchField, Selector } from '@/app/components/bw';
 import { createSong } from '@/lib/services/songs';
 import { safeHttpsUrl } from '@/lib/services/songFiles';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 function detectUrlType(input: string): { spotify_id?: string; youtube_url?: string; audio_url?: string } {
   const trimmed = input.trim();
@@ -295,7 +295,7 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
               <p className="flex items-center gap-1.5 bw-label-sm text-sheet-foreground/70">
                 <Clock className="w-3.5 h-3.5" />
                 {t('Edited {date} · v{version} · by {name}', {
-                  date: new Date(initialTemplate.updatedAt).toLocaleDateString(),
+                  date: new Date(initialTemplate.updatedAt).toLocaleDateString(intlLocale()),
                   version: initialTemplate.version,
                   name: initialTemplate.updatedBy,
                 })}

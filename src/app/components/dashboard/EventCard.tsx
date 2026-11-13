@@ -5,7 +5,7 @@ import { ArrowUpRight } from '@/app/components/icons';
 import { EventMark, type EventKind } from '@/app/components/bw/EventMark';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
-import { useT } from '@/lib/i18n';
+import { useT, dateName } from '@/lib/i18n';
 
 export interface EventData {
   id: number;
@@ -119,7 +119,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       <motion.div layoutId={`meta-${event.id}`} className="flex items-end justify-between gap-3">
         <motion.span layoutId={`date-block-${event.id}`} className="flex items-baseline gap-1.5 shrink-0">
           <span className="bw-num">{valid ? String(d!.getDate()).padStart(2, '0') : '--'}</span>
-          <span className="bw-label-xs">{valid ? d!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD')}</span>
+          <span className="bw-label-xs">{valid ? dateName(d!, { month: 'short' }) : t('TBD')}</span>
         </motion.span>
         {meta && <span className="bw-label-md truncate min-w-0 text-right">{meta}</span>}
       </motion.div>

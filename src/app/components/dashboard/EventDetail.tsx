@@ -32,7 +32,7 @@ import { DotText } from '@/app/components/bw';
 import { IconButton, NavBackButton, Tag, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, Selector } from '@/app/components/bw/Form';
 import { haptic } from '@/lib/haptics';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale, getLocale } from '@/lib/i18n';
 import { QuoteShareModal } from '@/app/components/quotes/QuoteShareModal';
 import { StageMode } from './StageMode';
 import { FloorWedgeMode, useLaptopPose } from '@/app/components/duo';
@@ -104,7 +104,9 @@ const formatEventDateShort = (dateStr: string): string => {
   if (!dateStr) return 'TBD';
   const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return 'TBD';
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  // Other languages put the day first ("20 MAR"); English stays "MAR 20".
+  if (getLocale() !== 'en') return d.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short' }).toUpperCase();
+  const month = dateName(d, { month: 'short' }).toUpperCase();
   const day = d.getDate();
   return `${month} ${day}`;
 };
@@ -113,8 +115,9 @@ const formatEventDateFull = (dateStr: string): string => {
   if (!dateStr) return 'DATE TBD';
   const d = parseLocalDate(dateStr);
   if (isNaN(d.getTime())) return 'DATE TBD';
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-  const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  if (getLocale() !== 'en') return d.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+  const weekday = dateName(d, { weekday: 'short' }).toUpperCase();
+  const month = dateName(d, { month: 'short' }).toUpperCase();
   const day = d.getDate();
   const year = d.getFullYear();
   return `${weekday}, ${month} ${day}, ${year}`;
@@ -126,7 +129,7 @@ const formatCurrencyExact = (price?: string | number): string => {
   if (price === undefined || price === null || price === '') return `${sym()}0`;
   const raw = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.]/g, ''));
   if (isNaN(raw)) return String(price);
-  return `${sym()}${Math.round(raw).toLocaleString()}`;
+  return `${sym()}${Math.round(raw).toLocaleString(intlLocale())}`;
 };
 
 type EventCategory = 'rehearsal' | 'gig' | 'quote' | 'draft';
@@ -700,7 +703,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   const hasHeroDate = !!heroDate && !isNaN(heroDate.getTime());
   const heroDay = hasHeroDate ? String(heroDate!.getDate()).padStart(2, '0') : '--';
   const heroMonth = hasHeroDate
-    ? heroDate!.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+    ? dateName(heroDate!, { month: 'short' }).toUpperCase()
     : t('TBD');
   const heroDateTime = `${hasHeroDate ? formatEventDateFull(event.date) : t('DATE TBD')}${
     showTime !== 'TBD' ? ` · ${showTime}${endTimeFormatted ? `–${endTimeFormatted}` : ''}` : ''
@@ -1421,7 +1424,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                           {task.due_date && (
                             <span className="bw-label-xs text-muted-foreground">
                               {t('Due {date}', {
-                                date: parseLocalDate(task.due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+                                date: parseLocalDate(task.due_date).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short' }),
                               })}
                             </span>
                           )}

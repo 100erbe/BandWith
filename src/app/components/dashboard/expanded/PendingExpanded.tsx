@@ -11,7 +11,7 @@ import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { MapsLink } from '@/app/components/ui/MapsLink';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 interface PendingExpandedProps {
   bandId: string;
@@ -48,7 +48,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
         id: uuidToNumericId(event.id),
         title: event.title,
         status: (event.status || 'draft').toUpperCase(),
-        price: event.fee ? Number(event.fee).toLocaleString() : '0',
+        price: event.fee ? Number(event.fee).toLocaleString(intlLocale()) : '0',
         time: (event.time || event.start_time || '').slice(0, 5),
         location: event.venue || event.venue_name || 'TBD',
         // Full address for Maps / "Copy address" (the name alone isn't enough).
@@ -64,7 +64,7 @@ export const PendingExpanded: React.FC<PendingExpandedProps> = ({
     return Object.entries(groups)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, events]) => ({
-        date: parseLocalDate(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        date: parseLocalDate(date).toLocaleDateString(intlLocale('en-US'), { month: 'short', day: 'numeric', year: 'numeric' }),
         label: getDateLabel(date),
         events
       }));

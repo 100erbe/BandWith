@@ -8,7 +8,7 @@ import { DotText } from '@/app/components/bw';
 import { Tag } from '@/app/components/bw/Screen';
 import { KeyValueRow, SectionTitle } from './parts';
 import { daysUntil, formatStampShort } from './format';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 /**
  * The quote saved with an event: by events.quote_id when set, otherwise the
@@ -59,7 +59,7 @@ interface QuoteMath {
 /** Same math and line-item rules as QuoteDetailModal / the PDF. */
 const quoteMath = (quote: AppQuote | null, fallbackTotal: number, t: ReturnType<typeof useT>): QuoteMath => {
   const sym = quote?.currency ? currencySymbol(quote.currency) : getActiveSymbol();
-  const money = (n: number) => formatQuoteMoney(n, sym);
+  const money = (n: number) => formatQuoteMoney(n, sym, intlLocale('en-US'));
   if (!quote) {
     return { money, total: fallbackTotal, subtotal: fallbackTotal, discount: 0, vat: 0, vatRate: 0, hasMath: false, itemRows: [] };
   }

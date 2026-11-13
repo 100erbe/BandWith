@@ -21,7 +21,7 @@ import { findCalendarEvent, findEventConflicts } from '@/lib/eventConflicts';
 import { cn } from '@/app/components/ui/utils';
 import { formatDayShort, formatTime12, parseAmount } from '@/app/components/event/format';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 export type RsvpStatus = 'confirmed' | 'maybe' | 'declined';
 
@@ -257,7 +257,7 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             <SheetKV
               icon={<CurrencyIcon className="w-4 h-4" />}
               k={memberFee ? t('Your fee') : t('Fee')}
-              v={`${sym()}${displayFee.toLocaleString()}`}
+              v={`${sym()}${displayFee.toLocaleString(intlLocale())}`}
             />
           )}
         </div>

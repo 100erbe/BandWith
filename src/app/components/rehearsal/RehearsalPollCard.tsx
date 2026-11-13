@@ -21,7 +21,7 @@ import {
 import { haptic } from '@/lib/haptics';
 import { StepPad, Card, Tag, PillButton, PillField } from '@/app/components/bw';
 import { personName } from '@/lib/personName';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale } from '@/lib/i18n';
 
 interface RehearsalPollCardProps {
   poll: RehearsalPoll;
@@ -239,7 +239,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
             {personName(poll.creator_profile, t('Band member'))}
           </span>{' '}
           ·{' '}
-          {new Date(poll.created_at).toLocaleDateString(undefined, {
+          {new Date(poll.created_at).toLocaleDateString(intlLocale(), {
             month: 'short',
             day: 'numeric',
           })}
@@ -323,7 +323,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                 onDark
                 selected={!!option.has_voted}
                 disabled={votingOptionId === option.id}
-                day={d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                day={dateName(d, { weekday: 'short' }).toUpperCase()}
                 date={d.getDate()}
                 time={`${(option.start_time || '').slice(0, 5)}${option.end_time ? `–${option.end_time.slice(0, 5)}` : ''}`}
                 votes={Array.from({ length: slots }, (_, i) => i < count)}
@@ -410,7 +410,7 @@ export const RehearsalPollCard: React.FC<RehearsalPollCardProps> = ({
                         >
                           <span className="flex items-center gap-2 flex-wrap">
                             <span className="bw-body-lg whitespace-nowrap">
-                              {parsedDate.toLocaleDateString(undefined, {
+                              {parsedDate.toLocaleDateString(intlLocale(), {
                                 weekday: 'short',
                                 month: 'short',
                                 day: 'numeric',

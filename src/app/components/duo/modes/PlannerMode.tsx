@@ -5,7 +5,7 @@ import { cn } from '@/app/components/ui/utils';
 import { money } from '@/lib/currency';
 import { toLocalDateString, parseLocalDate } from '@/lib/dates';
 import { haptic } from '@/lib/haptics';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale } from '@/lib/i18n';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel, hhmm } from './shared';
 
@@ -42,7 +42,8 @@ export interface PlannerModeProps {
   zIndex?: number;
 }
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** Mon…Sun in the app language (English: 'Mon', 'Tue'…). 2024-01-01 is a Monday. */
+const weekdayNames = () => Array.from({ length: 7 }, (_, i) => dateName(new Date(2024, 0, 1 + i), { weekday: 'short' }));
 const KIND_ORDER: EventKind[] = ['gig', 'rehearsal', 'quote', 'personal', 'past'];
 
 export interface MonthStats {
@@ -146,7 +147,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
     // The whole month sits above the fold: compact counts under the title,
     // and the weeks share the height that is left (Figma "Planner").
     <div className="bw-fold-pad h-full min-h-fit flex flex-col gap-2 pt-3 pb-3">
-      <h1 className="bw-h1 truncate">{month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h1>
+      <h1 className="bw-h1 truncate">{month.toLocaleDateString(intlLocale('en-US'), { month: 'long', year: 'numeric' })}</h1>
       <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         {counts.map((c) => (
           <div key={c.label} className="flex items-baseline gap-1.5 min-w-0">
@@ -161,7 +162,7 @@ export const PlannerMode: React.FC<PlannerModeProps> = ({
         className="flex-1 grid grid-cols-7 gap-x-1 gap-y-0.5"
         style={{ gridTemplateRows: `auto repeat(${weeks}, minmax(28px, 1fr))` }}
       >
-        {WEEKDAYS.map((w) => (
+        {weekdayNames().map((w) => (
           <span key={w} role="columnheader" className="bw-label-xs uppercase text-muted-foreground text-center pb-0.5">
             {w}
           </span>

@@ -7,7 +7,7 @@ import { DotText, EventMark, Metric } from '@/app/components/bw';
 import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
-import { t, useT } from '@/lib/i18n';
+import { t, useT, intlLocale, localDecimal, dateName } from '@/lib/i18n';
 
 interface FeeExpandedProps {
   onClose: () => void;
@@ -24,13 +24,13 @@ interface FeeExpandedProps {
   }>;
 }
 
-const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1).replace('.0', '')}k` : `${sym()}${v}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(1).replace('.0', ''))}k` : `${sym()}${v}`);
 
 /** "2026-11-12" → "Thu, Nov 12"; anything unparseable is shown as is. */
 const formatDay = (d: string) => {
   if (!d) return t('Date TBD');
   const parsed = parseLocalDate(d);
-  return isNaN(parsed.getTime()) ? d : parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return isNaN(parsed.getTime()) ? d : parsed.toLocaleDateString(intlLocale('en-US'), { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 /** One dot column per month, height = share of the best month (Figma set-flow dots). */
@@ -69,12 +69,12 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
   const earningsData = useMemo(() => {
     // Mock monthly data - will be replaced with real data
     const monthlyEarnings = [
-      { month: 'Jan', amount: 450, gigs: 3 },
-      { month: 'Feb', amount: 380, gigs: 2 },
-      { month: 'Mar', amount: 520, gigs: 4 },
-      { month: 'Apr', amount: 290, gigs: 2 },
-      { month: 'May', amount: 610, gigs: 5 },
-      { month: 'Jun', amount: 440, gigs: 3 },
+      { month: 'Jan', monthIndex: 0, amount: 450, gigs: 3 },
+      { month: 'Feb', monthIndex: 1, amount: 380, gigs: 2 },
+      { month: 'Mar', monthIndex: 2, amount: 520, gigs: 4 },
+      { month: 'Apr', monthIndex: 3, amount: 290, gigs: 2 },
+      { month: 'May', monthIndex: 4, amount: 610, gigs: 5 },
+      { month: 'Jun', monthIndex: 5, amount: 440, gigs: 3 },
     ];
 
     const totalEarned = monthlyEarnings.reduce((sum, m) => sum + m.amount, 0);
@@ -164,10 +164,10 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                 </div>
                 <div className="flex justify-between gap-2">
                   {earningsData.monthlyEarnings.map((data) => (
-                    <span key={data.month} className="flex flex-col items-center gap-2 min-w-0" title={`${data.month}: ${sym()}${data.amount}`}>
+                    <span key={data.month} className="flex flex-col items-center gap-2 min-w-0" title={`${dateName(new Date(2024, data.monthIndex, 1), { month: 'short' })}: ${sym()}${data.amount}`}>
                       <span className="bw-label-xs text-muted-foreground">{sym()}{data.amount}</span>
                       <DotColumn share={data.amount / earningsData.maxAmount} />
-                      <span className="bw-label-xs">{data.month}</span>
+                      <span className="bw-label-xs">{dateName(new Date(2024, data.monthIndex, 1), { month: 'short' })}</span>
                     </span>
                   ))}
                 </div>
@@ -198,7 +198,7 @@ export const FeeExpanded: React.FC<FeeExpandedProps> = ({
                         icon={<EventMark kind={payment.type === 'rehearsal' ? 'rehearsal' : 'gig'} size={20} />}
                         title={payment.title}
                         subtitle={formatDay(payment.date)}
-                        trailing={<span className="bw-label-md shrink-0">{sym()}{payment.amount.toLocaleString()}</span>}
+                        trailing={<span className="bw-label-md shrink-0">{sym()}{payment.amount.toLocaleString(intlLocale())}</span>}
                       />
                     </motion.div>
                   ))}

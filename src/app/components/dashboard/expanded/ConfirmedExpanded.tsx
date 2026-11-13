@@ -9,7 +9,7 @@ import { ExpandedCardWrapper, ExpandedTopBar } from './ExpandedCardWrapper';
 import type { Event } from '@/lib/services/events';
 import { parseLocalDate } from '@/lib/dates';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
-import { useT } from '@/lib/i18n';
+import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 
 interface ConfirmedExpandedProps {
   bandId: string;
@@ -21,7 +21,7 @@ interface ConfirmedExpandedProps {
 /** "17:00:00" → "17:00"; empty → "--". */
 const hhmm = (t?: string | null) => (t ? String(t).slice(0, 5) : '--');
 
-const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${(v / 1000).toFixed(1).replace('.0', '')}k` : `${sym()}${v}`);
+const shortEuro = (v: number) => (v >= 1000 ? `${sym()}${localDecimal((v / 1000).toFixed(1).replace('.0', ''))}k` : `${sym()}${v}`);
 
 /** Event-detail "Time Tile" (Figma 22:674): label XS + numeric value on a 16-radius tile. */
 const TimeTile: React.FC<{ label: string; value: string; className?: string }> = ({ label, value, className }) => (
@@ -54,11 +54,11 @@ export const ConfirmedExpanded: React.FC<ConfirmedExpandedProps> = ({
         id: uuidToNumericId(event.id),
         title: event.title || t('Untitled Event'),
         day: valid ? String(parsed!.getDate()).padStart(2, '0') : '--',
-        month: valid ? parsed!.toLocaleDateString('en-US', { month: 'short' }) : t('TBD'),
+        month: valid ? dateName(parsed!, { month: 'short' }) : t('TBD'),
         venue: event.venue || event.venue_name || t('TBD'),
         address: event.address || event.venue_address || '',
         fee: event.fee ? Number(event.fee) : 0,
-        amount: event.fee ? Number(event.fee).toLocaleString() : '0',
+        amount: event.fee ? Number(event.fee).toLocaleString(intlLocale()) : '0',
         dress: event.dress_code || '',
         contactName: event.client_name || '',
         timeline: {

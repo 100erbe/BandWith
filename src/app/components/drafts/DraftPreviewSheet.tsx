@@ -3,7 +3,7 @@ import { Calendar, Clock, EyeOff, MapPin, Pencil, Trash2 } from '@/app/component
 import { BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import type { EventDraft } from '@/lib/wizardDrafts';
-import { useT } from '@/lib/i18n';
+import { useT, intlLocale } from '@/lib/i18n';
 
 export type DraftKind = 'gig' | 'rehearsal' | 'quote';
 
@@ -15,7 +15,7 @@ export const DRAFT_KIND_LABEL: Record<DraftKind, string> = { gig: 'Gig', rehears
 const longDate = (d?: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
   if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-GB', {
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(intlLocale('en-GB'), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -138,7 +138,7 @@ export const DraftPreviewSheet: React.FC<{
           </div>
           {d?.savedAt && (
             <p className="bw-body-sm text-sheet-foreground/70">
-              {tr('Saved {time}', { time: new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}
+              {tr('Saved {time}', { time: new Date(d.savedAt).toLocaleString(intlLocale('en-GB'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}
             </p>
           )}
         </div>
