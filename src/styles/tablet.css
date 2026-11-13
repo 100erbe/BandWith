@@ -50,3 +50,17 @@
 [data-bw-wide] .bw-sheet-card .bw-grabber {
   display: none;
 }
+
+/* Hubs (Inbox, Identity, members, library, analytics, expanded home cards…)
+   sit on the leading pane of the Duo book layout. On a tablet that column is
+   a third of the window, so a hub with nothing open beside it takes the whole
+   window, its content centred at a readable width. Once it opens a detail
+   (a profile editor, an event), it steps back to the list column and the
+   detail fills the rest: list + detail, the screen still fully covered. */
+[data-bw-wide][data-bw-two-pane] body:not(:has(.bw-pane-detail)) .bw-pane-hub {
+  right: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  padding-left: max(0px, calc((100% - 760px) / 2)) !important;
+  padding-right: max(0px, calc((100% - 760px) / 2)) !important;
+}

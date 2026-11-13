@@ -1735,6 +1735,15 @@ export default function AuthenticatedApp() {
     setSelectedEventMembership(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [twoPane, hubOpen]);
+  // Tablets: the Inbox and the expanded home cards are hubs too. Opening one
+  // closes the detail left from before, so the hub can take the whole window
+  // (src/styles/tablet.css) instead of sitting beside an unrelated event.
+  const tabletHubOpen = wideLayout && twoPane && (inboxOpen || !!expandedCard);
+  useEffect(() => {
+    if (!tabletHubOpen) return;
+    setSelectedEvent(null);
+    setSelectedEventMembership(null);
+  }, [tabletHubOpen]);
 
   // Figma "Duo · Identity" (open): the profile editor sits on the trailing
   // page next to "Who you are", instead of an empty placeholder.
