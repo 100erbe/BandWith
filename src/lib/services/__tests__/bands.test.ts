@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Create mock functions
 const mockGetUser = vi.fn();
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 // Mock Supabase client - must be before imports
 vi.mock('@/lib/supabase', () => ({
@@ -18,6 +19,7 @@ vi.mock('@/lib/supabase', () => ({
       getUser: () => mockGetUser(),
     },
     from: (table: string) => mockFrom(table),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   },
 }));
 
@@ -30,6 +32,7 @@ describe('Band Service', () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'test-user-id' } },
     });
+    mockRpc.mockResolvedValue({ data: [], error: null });
   });
 
   describe('getBands', () => {
@@ -134,8 +137,8 @@ describe('Band Service', () => {
   describe('getBandMembers', () => {
     it('should return members for a valid band', async () => {
       const mockMembers = [
-        { id: '1', user_id: 'user-1', role: 'admin' },
-        { id: '2', user_id: 'user-2', role: 'member' },
+        { id: '1', band_id: 'band-id', user_id: 'user-1', role: 'admin' },
+        { id: '2', band_id: 'band-id', user_id: 'user-2', role: 'member' },
       ];
 
       mockFrom.mockReturnValue({
@@ -152,6 +155,32 @@ describe('Band Service', () => {
       
       expect(result.error).toBeNull();
       expect(result.data).toHaveLength(2);
+    });
+
+    it('reads no fee columns and takes the fees from bw_band_member_fees (076)', async () => {
+      const select = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                { id: '1', band_id: 'band-id', user_id: 'test-user-id', role: 'member' },
+                { id: '2', band_id: 'band-id', user_id: 'user-2', role: 'member' },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+      mockFrom.mockReturnValue({ select });
+      mockRpc.mockResolvedValue({ data: [{ band_id: 'band-id', user_id: 'test-user-id', default_fee: 300, fee_percentage: null }], error: null });
+
+      const result = await getBandMembers('band-id');
+
+      const cols = String(select.mock.calls[0][0]);
+      expect(cols).not.toMatch(/\*|fee/);
+      expect(mockRpc).toHaveBeenCalledWith('bw_band_member_fees', { p_band_ids: ['band-id'] });
+      expect(result.data?.[0].default_fee).toBe(300);
+      expect(result.data?.[1].default_fee).toBeUndefined();
     });
   });
 });
