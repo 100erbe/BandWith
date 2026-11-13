@@ -3153,6 +3153,10 @@ export default function AuthenticatedApp() {
   // Render
   const isMenuOpen = isIdentityOpen || isControlDeckOpen;
   const isHeaderHidden = !!expandedCard || isMenuOpen;
+  // Figma "Duo Next / Home – readiness & Go live" (open): Home is the Calendar
+  // on the leading page, with the next gig and its readiness on the trailing
+  // one (homeAutoDetail). Closed, laptop and iPad keep the dashboard.
+  const duoHomeCalendar = twoPane && !wideLayout && activeTab === "Home";
   const userRole: UserRole = isAdmin ? "admin" : "member";
   const permissions = getPermissions(userRole);
 
@@ -3436,7 +3440,7 @@ export default function AuthenticatedApp() {
         WebkitMaskImage: scrollerMask,
       }}>
         <Header
-          activeTab={activeTab} selectedBand={selectedBand}
+          activeTab={duoHomeCalendar ? "Events" : activeTab} selectedBand={selectedBand}
           bands={realBands.length > 0 ? realBands.map((b) => ({ id: uuidToNumericId(b.id), name: b.name, role: b.user_role === "admin" ? "ADMIN" : "MEMBER", initials: b.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase(), members: b.member_count, genre: b.genre || "", plan: (b.plan === "pro" || b.plan === "enterprise") ? "Pro" : "Free" } as Band)) : []}
           onOpenBandSwitcher={() => setIsBandSwitcherOpen(true)}
           filteredEventsCount={visuallyFilteredEvents.length} totalEventsCount={events.length}
@@ -3455,7 +3459,7 @@ export default function AuthenticatedApp() {
         />
 
         <AnimatePresence mode="wait">
-          {(activeTab === "Home" || activeTab === "More") && (
+          {((activeTab === "Home" && !duoHomeCalendar) || activeTab === "More") && (
             <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onGoLive={handleGoLive} onReviewPayouts={handleReviewPayouts} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
@@ -3497,7 +3501,7 @@ export default function AuthenticatedApp() {
           {activeTab === "Chat" && !isSolo && (
             <ChatView key="chat" chatFilter={chatFilter} setChatFilter={setChatFilter} chatSearch={chatSearch} setChatSearch={setChatSearch} filteredChats={filteredChats} unreadCounts={chatUnreadCounts} onChatClick={(c) => { c.unread = 0; setSelectedChat(c); }} onStartChat={() => setShowNewChat(true)} selectedChatUuid={wideLayout && twoPane ? selectedChat?.uuid : null} onDeleteChat={async (c) => { if (!c.uuid) return; const { error } = await deleteChatService(c.uuid); if (error) setSaveToast({ message: t('Could not delete the chat. Try again.'), type: 'error' }); else refetchChats?.(); }} />
           )}
-          {activeTab === "Events" && (
+          {(activeTab === "Events" || duoHomeCalendar) && (
             <EventsView key="events" loading={eventsLoading} eventFilter={eventFilter} setEventFilter={setEventFilter} eventSearch={eventSearch} setEventSearch={setEventSearch} eventView={eventView} groupedEvents={groupedEvents} allEvents={calendarEvents} rawEvents={events} onEventClick={handleEventCardClick} selectedEventId={wideLayout && twoPane ? selectedEvent?.eventId ?? null : null} onCreateEvent={(type: 'gig' | 'rehearsal' | 'quote' = 'gig', date?: string) => {
               if (date) {
                 setCreateEventInitialDate(date);
