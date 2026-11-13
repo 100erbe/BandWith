@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowUpRight, Plus, AlertCircle,
   ChevronDown, X, Layers, CurrencyIcon, Guitar, Check,
-  Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Sparkles, Users
+  Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Users
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
@@ -19,12 +19,10 @@ import {
   RehearsalState,
   RehearsalType,
   RehearsalSong,
-  SongProposal,
   RehearsalTask,
   RehearsalMember,
   SetlistTemplate,
   RehearsalSetlistSnapshotFinal,
-  ProposalAttachment,
   RecurrenceType,
 } from './types';
 import { useBand } from '@/lib/BandContext';
@@ -34,10 +32,8 @@ import { LeaveWizardSheet } from '@/app/components/bw/LeaveWizardSheet';
 import { saveEventDraft, deleteEventDraft, newDraftId, type EventDraft } from '@/lib/wizardDrafts';
 import { useSystemBack } from '@/lib/backStack';
 
-import { RehearsalProposeSongModal } from './RehearsalProposeSongModal';
 import { RehearsalAddTaskModal } from './RehearsalAddTaskModal';
 import { RehearsalSetlistEditorModal } from './RehearsalSetlistEditorModal';
-import { RehearsalEditProposalModal } from './RehearsalEditProposalModal';
 import { RehearsalTaskDetailModal } from './RehearsalTaskDetailModal';
 import { RehearsalReviewSetlistModal } from './RehearsalReviewSetlistModal';
 import { toLocalDateString } from '../../../lib/dates';
@@ -376,12 +372,9 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   }, [currentUserId, realMembers]);
 
   // Modal state
-  const [isProposeModalOpen, setIsProposeModalOpen] = useState(false);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isSetlistEditorOpen, setIsSetlistEditorOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SetlistTemplate | null>(null);
-  const [isEditProposalOpen, setIsEditProposalOpen] = useState(false);
-  const [editingProposal, setEditingProposal] = useState<SongProposal | null>(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<RehearsalTask | null>(null);
   const [isReviewSetlistOpen, setIsReviewSetlistOpen] = useState(false);
@@ -474,7 +467,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     setlist: [],
     setlistSnapshotFinal: undefined,
     selectedTemplateIdsInOrder: [],
-    proposals: [],
     tasks: [],
     defaultChecklist: DEFAULT_CHECKLIST,
     personalChecklist: [],
@@ -642,7 +634,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       basics: false,
       when_where: true,
       roster: false,
-      setlist_proposals: false,
+      setlist: false,
       prep_tasks: false,
     };
   });
@@ -853,13 +845,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       selectedTemplateIdsInOrder: [],
     }));
     setIsReviewSetlistOpen(false);
-  };
-
-  const handleSaveProposalDetails = (id: string, reason: string, attachments: ProposalAttachment[]) => {
-    setData(prev => ({
-      ...prev,
-      proposals: prev.proposals.map(p => p.id === id ? { ...p, reason, attachments } : p)
-    }));
   };
 
   // Task logic
@@ -1284,30 +1269,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         </div>
       )}
 
-      {data.proposals.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="bw-label-sm text-muted-foreground">{t('Proposed songs')} · {data.proposals.length}</span>
-          <ul className="flex flex-col gap-2">
-            {data.proposals.map((prop, idx) => (
-              <li key={`${prop.id}-${idx}`} className={songRowCls}>
-                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="bw-body-md truncate">{prop.title}</span>
-                  <span className="bw-body-sm text-muted-foreground truncate">
-                    {prop.artist} · {t('By {name}', { name: prop.proposer })}
-                  </span>
-                </div>
-                <IconButton
-                  label={t('Remove proposal {title}', { title: prop.title })}
-                  icon={<X />}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setData(prev => ({ ...prev, proposals: prev.proposals.filter(p => p.id !== prop.id) }))}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </>
   );
 
@@ -1380,17 +1341,17 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           </div>
         </Card>
 
-        {/* Setlist & Song Proposals (optional) */}
+        {/* Setlist (optional) */}
         <RehearsalAccordionCard
           isOpen={isSetlistExpanded}
           onToggle={() => setIsSetlistExpanded(!isSetlistExpanded)}
           icon={<Music2 />}
-          title={t('Setlist & proposals')}
+          title={t('Setlist')}
           optional
           summary={
-            songCount + data.proposals.length === 0
+            songCount === 0
               ? t('No songs yet')
-              : `${songCount === 1 ? t('{count} song', { count: songCount }) : t('{count} songs', { count: songCount })}${data.proposals.length > 0 ? ` · ${t('{count} proposed', { count: data.proposals.length })}` : ''}`
+              : songCount === 1 ? t('{count} song', { count: songCount }) : t('{count} songs', { count: songCount })
           }
         >
           <div className="flex flex-wrap gap-2">
@@ -1412,16 +1373,13 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             >
               {t('Setlist template')}
             </PillButton>
-            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
-              {t('Propose song')}
-            </PillButton>
           </div>
 
           {renderSongLists()}
 
-          {data.setlist.length === 0 && data.proposals.length === 0 && (
+          {data.setlist.length === 0 && (
             <p className="bw-body-sm text-muted-foreground">
-              {t('Add songs from your catalog or propose new tracks to rehearse.')}
+              {t('Add songs from your catalog, or a new song to learn.')}
             </p>
           )}
         </RehearsalAccordionCard>
@@ -1632,16 +1590,15 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           <ul className="flex flex-col">{data.members.map(renderMemberRow)}</ul>
         </RehearsalAccordionCard>
 
-        {/* Section 4: Setlist & proposals */}
+        {/* Section 4: Setlist */}
         <RehearsalAccordionCard
-          isOpen={!!expandedEditSections.setlist_proposals}
-          onToggle={() => toggleEditSection('setlist_proposals')}
+          isOpen={!!expandedEditSections.setlist}
+          onToggle={() => toggleEditSection('setlist')}
           stepNumber="04"
-          title={t('Setlist & proposals')}
+          title={t('Setlist')}
           summary={(() => {
             const n = data.setlistSnapshotFinal?.songs.length || data.setlist.length;
-            const p = data.proposals.length;
-            return `${n === 1 ? t('{count} song', { count: n }) : t('{count} songs', { count: n })} · ${p === 1 ? t('{count} proposal', { count: p }) : t('{count} proposals', { count: p })}`;
+            return n === 1 ? t('{count} song', { count: n }) : t('{count} songs', { count: n });
           })()}
         >
           {data.setlistSnapshotFinal ? (
@@ -1737,16 +1694,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             </ul>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <span className="bw-label-sm text-muted-foreground">
-              {data.proposals.length === 1
-                ? t('{count} song proposal', { count: data.proposals.length })
-                : t('{count} song proposals', { count: data.proposals.length })}
-            </span>
-            <PillButton variant="outline" size="sm" fullWidth={false} icon={<Sparkles className="w-4 h-4" />} onClick={() => setIsProposeModalOpen(true)}>
-              {t('Propose song')}
-            </PillButton>
-          </div>
         </RehearsalAccordionCard>
 
         {/* Section 5: Gear, checklists & tasks */}
@@ -1834,12 +1781,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   const modals = (
     <>
-      <RehearsalProposeSongModal
-        isOpen={isProposeModalOpen}
-        onClose={() => setIsProposeModalOpen(false)}
-        currentUser={{ initials: currentUserInitials }}
-        onPropose={(proposal) => setData(prev => ({ ...prev, proposals: [...prev.proposals, proposal] }))}
-      />
       <RehearsalAddTaskModal
         isOpen={isAddTaskModalOpen}
         onClose={() => setIsAddTaskModalOpen(false)}
@@ -1861,12 +1802,6 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
             setLibrary(prev => [song, ...prev]);
           }
         }}
-      />
-      <RehearsalEditProposalModal
-        isOpen={isEditProposalOpen}
-        onClose={() => setIsEditProposalOpen(false)}
-        proposal={editingProposal}
-        onSave={handleSaveProposalDetails}
       />
       <RehearsalTaskDetailModal
         isOpen={isTaskDetailOpen}
