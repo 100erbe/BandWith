@@ -336,3 +336,26 @@ export function pickDeputyLang(preferred: readonly string[]): DeputyLang {
 export function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? vars[k] : m));
 }
+
+// Roles are typed by the band in its own language ("Bass", "Basso"). Known
+// instruments are shown in the deputy's language; anything else (a role with
+// more than instruments, an instrument we don't know) stays as written.
+const INSTRUMENTS: Record<DeputyLang, Record<string, string>> = {
+  en: { 'double-bass': 'Double bass', bass: 'Bass', drums: 'Drums', percussion: 'Percussion', keys: 'Keys', guitar: 'Guitar', vocals: 'Vocals', sax: 'Sax', trumpet: 'Trumpet', trombone: 'Trombone', violin: 'Violin', cello: 'Cello', dj: 'DJ' },
+  it: { 'double-bass': 'Contrabbasso', bass: 'Basso', drums: 'Batteria', percussion: 'Percussioni', keys: 'Tastiere', guitar: 'Chitarra', vocals: 'Voce', sax: 'Sax', trumpet: 'Tromba', trombone: 'Trombone', violin: 'Violino', cello: 'Violoncello', dj: 'DJ' },
+  es: { 'double-bass': 'Contrabajo', bass: 'Bajo', drums: 'Batería', percussion: 'Percusión', keys: 'Teclados', guitar: 'Guitarra', vocals: 'Voz', sax: 'Saxo', trumpet: 'Trompeta', trombone: 'Trombón', violin: 'Violín', cello: 'Violonchelo', dj: 'DJ' },
+  fr: { 'double-bass': 'Contrebasse', bass: 'Basse', drums: 'Batterie', percussion: 'Percussions', keys: 'Claviers', guitar: 'Guitare', vocals: 'Chant', sax: 'Saxo', trumpet: 'Trompette', trombone: 'Trombone', violin: 'Violon', cello: 'Violoncelle', dj: 'DJ' },
+  de: { 'double-bass': 'Kontrabass', bass: 'Bass', drums: 'Schlagzeug', percussion: 'Percussion', keys: 'Keyboard', guitar: 'Gitarre', vocals: 'Gesang', sax: 'Saxofon', trumpet: 'Trompete', trombone: 'Posaune', violin: 'Geige', cello: 'Cello', dj: 'DJ' },
+  pt: { 'double-bass': 'Contrabaixo', bass: 'Baixo', drums: 'Bateria', percussion: 'Percussão', keys: 'Teclados', guitar: 'Guitarra', vocals: 'Voz', sax: 'Saxofone', trumpet: 'Trompete', trombone: 'Trombone', violin: 'Violino', cello: 'Violoncelo', dj: 'DJ' },
+};
+
+/** The role in the deputy's language when it is only known instruments, otherwise as written. */
+export function roleLabel(role: string | null | undefined, lang: DeputyLang, keys: (text: string) => string[]): string | null {
+  const text = (role ?? '').trim();
+  if (!text) return null;
+  if (/leader|capobanda|admin/i.test(text)) return text;
+  const found = keys(text);
+  const names = INSTRUMENTS[lang];
+  if (found.length === 0 || !found.every((k) => k in names)) return text;
+  return found.map((k) => names[k]).join(' · ');
+}
