@@ -15,6 +15,7 @@ import {
 } from "@/lib/deputyClaim";
 import { listMyDeputyGigs } from "@/lib/services/deputies";
 import { supabase } from "@/lib/supabase";
+import { appLockSupported, markUnlocked, shouldLockOnLaunch } from "@/lib/appLock";
 import { useServerLocaleSync } from "@/lib/i18n/serverLocale";
 
 const AuthenticatedApp = lazy(() => import("./AuthenticatedApp"));
@@ -25,6 +26,8 @@ const OnboardingFlow = lazy(
   () => import("./components/onboarding/OnboardingFlow")
 );
 const DeputyHome = lazy(() => import("./components/deputy/DeputyHome"));
+const AppLockScreen = lazy(() => import("./components/onboarding/AppLockScreen"));
+const BandsLoadError = lazy(() => import("./components/onboarding/BandsLoadError"));
 
 // Remembers that this account has deputy gigs and no band, so the next
 // launch opens "Deputy gigs" straight away (checked again in the background).
@@ -70,9 +73,33 @@ export default function App() {
   useServerLocaleSync(isAuthenticated && !isPasswordRecovery ? user?.id : null, profile?.preferred_language);
   const { startOnboarding, goToStep } = useOnboarding();
   const deputyClaim = useDeputyClaim();
-  const { bands, loading: bandsLoading, refreshBands } = useBand();
+  const { bands, loading: bandsLoading, refreshBands, error: bandsError } = useBand();
   const [showOnboarding, setShowOnboarding] = useState(true);
   const prevAuthRef = useRef(isAuthenticated);
+
+  // App lock (src/lib/appLock.ts): decided once, when the session saved at
+  // launch is known. A sign-in later in this run never locks.
+  const [lock, setLock] = useState<'checking' | 'locked' | 'open'>(() => (appLockSupported() ? 'checking' : 'open'));
+  useEffect(() => {
+    if (lock !== 'checking' || authLoading) return;
+    if (isAuthenticated && shouldLockOnLaunch(true)) {
+      setLock('locked');
+    } else {
+      markUnlocked();
+      setLock('open');
+    }
+  }, [lock, authLoading, isAuthenticated]);
+  // Signed out from the lock screen: the next sign-in opens the app.
+  useEffect(() => {
+    if (lock === 'locked' && !authLoading && !isAuthenticated) {
+      markUnlocked();
+      setLock('open');
+    }
+  }, [lock, authLoading, isAuthenticated]);
+  const handleUnlock = useCallback(() => {
+    markUnlocked();
+    setLock('open');
+  }, []);
   const onboardingCompletedRef = useRef(false);
 
   // Invite link: web `/?invite=<token>`, native deep link `…://invite?invite=<token>`.
@@ -180,6 +207,9 @@ export default function App() {
     }
     
     if (authLoading || bandsLoading) return;
+
+    // The band list couldn't be loaded: that is not "no bands" (render shows a retry screen).
+    if (bandsError && bands.length === 0) return;
     
     // PLG: If user is in solo mode, skip onboarding entirely
     if (userMode === 'solo' || profile?.user_mode === 'solo') {
@@ -190,7 +220,7 @@ export default function App() {
 
     // Default logic: show onboarding if no bands exist
     setShowOnboarding(bands.length === 0);
-  }, [isAuthenticated, authLoading, bandsLoading, bands.length, userMode, profile?.user_mode]);
+  }, [isAuthenticated, authLoading, bandsLoading, bands.length, bandsError, userMode, profile?.user_mode]);
 
   // Add an effect to warn if we bypass onboarding but have no bands
   useEffect(() => {
@@ -205,8 +235,17 @@ export default function App() {
     return <AuthCallback />;
   }
 
-  if (authLoading) {
+  if (authLoading || lock === 'checking') {
     return <BlackScreen />;
+  }
+
+  // Cold start with a saved session: prove it's the owner before anything shows.
+  if (lock === 'locked' && isAuthenticated) {
+    return (
+      <Suspense fallback={<BlackScreen />}>
+        <AppLockScreen onUnlock={handleUnlock} />
+      </Suspense>
+    );
   }
 
   // Opened a password-reset link: ask for the new password before anything else.
@@ -222,6 +261,23 @@ export default function App() {
   // don't block navigation, allow it to render so the dashboard shows
   if (isAuthenticated && bandsLoading && !onboardingCompletedRef.current) {
     return <BlackScreen />;
+  }
+
+  // Signed in but the band list didn't load: never send the user into
+  // onboarding (it would offer solo mode and hide the bands they have).
+  if (
+    isAuthenticated &&
+    !bandsLoading &&
+    bands.length === 0 &&
+    bandsError &&
+    !isSolo &&
+    !onboardingCompletedRef.current
+  ) {
+    return (
+      <Suspense fallback={<BlackScreen />}>
+        <BandsLoadError onRetry={refreshBands} onSignOut={() => void signOut()} />
+      </Suspense>
+    );
   }
 
   // A deputy without a band: their gigs (with the claim's result), and a way to a band.

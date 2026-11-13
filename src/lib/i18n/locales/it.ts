@@ -3279,6 +3279,28 @@ const dict: Dictionary = {
   "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "I link già inviati smettono di funzionare. Manda la prossima richiesta via messaggio: aprendo il nuovo link dall'app si collega l'account giusto.",
   "{name} answers in the app: requests and changes reach them as notifications.": "{name} risponde nell'app: richieste e modifiche gli arrivano come notifiche.",
   "Unlink account": "Scollega account",
+  // App lock, bands load error
+  "Unlock BandWith": "Sblocca BandWith",
+  "device passcode": "codice del dispositivo",
+  "iris": "iride",
+  "fingerprint": "impronta digitale",
+  "This device can’t check it’s you. Enter your password.": "Questo dispositivo non può verificare che sei tu. Inserisci la password.",
+  "Couldn’t check it’s you. Try again.": "Impossibile verificare che sei tu. Riprova.",
+  "Wrong password.": "Password errata.",
+  "Couldn’t check your password: {error}": "Impossibile verificare la password: {error}",
+  "Use {name} to open your bands.": "Usa {name} per aprire le tue band.",
+  "Enter your account password to open your bands.": "Inserisci la password dell’account per aprire le tue band.",
+  "Sign in again to open your bands.": "Accedi di nuovo per aprire le tue band.",
+  "Locked": "Bloccata",
+  "Unlock with {name}": "Sblocca con {name}",
+  "Use password": "Usa la password",
+  "Unlock": "Sblocca",
+  "Can’t load your bands": "Impossibile caricare le tue band",
+  "Your bands and gigs are safe. Check your connection and try again. If it keeps happening, update BandWith to the latest version.": "Le tue band e i tuoi gig sono al sicuro. Controlla la connessione e riprova. Se succede ancora, aggiorna BandWith all’ultima versione.",
+  "Turn off app lock": "Disattiva blocco app",
+  "App lock, gig privacy, export, delete account": "Blocco app, privacy dei gig, esportazione, eliminazione account",
+  "App lock": "Blocco app",
+  "When BandWith starts again after being closed, ask for Face ID, fingerprint or the device passcode": "Quando BandWith si riapre dopo essere stata chiusa, chiedi Face ID, impronta digitale o il codice del dispositivo",
 };
 
 export default dict;

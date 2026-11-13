@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSFaceIDUsageDescription</key>
-	<string>BandWith uses Face ID to sign you in quickly and securely.</string>
+	<string>BandWith uses Face ID to unlock the app and to sign you in quickly and securely.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>

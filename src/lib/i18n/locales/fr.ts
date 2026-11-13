@@ -3279,6 +3279,28 @@ const dict: Dictionary = {
   "Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.": "Les liens déjà envoyés ne fonctionnent plus. Envoie la prochaine demande par message : en ouvrant le nouveau lien depuis l'app, le bon compte est relié.",
   "{name} answers in the app: requests and changes reach them as notifications.": "{name} répond dans l'app : les demandes et les changements lui arrivent en notifications.",
   "Unlink account": "Dissocier le compte",
+  // App lock, bands load error
+  "Unlock BandWith": "Déverrouiller BandWith",
+  "device passcode": "code de l’appareil",
+  "iris": "iris",
+  "fingerprint": "empreinte digitale",
+  "This device can’t check it’s you. Enter your password.": "Cet appareil ne peut pas vérifier que c’est toi. Saisis ton mot de passe.",
+  "Couldn’t check it’s you. Try again.": "Impossible de vérifier que c’est toi. Réessaie.",
+  "Wrong password.": "Mot de passe incorrect.",
+  "Couldn’t check your password: {error}": "Impossible de vérifier ton mot de passe : {error}",
+  "Use {name} to open your bands.": "Utilise {name} pour ouvrir tes groupes.",
+  "Enter your account password to open your bands.": "Saisis le mot de passe de ton compte pour ouvrir tes groupes.",
+  "Sign in again to open your bands.": "Reconnecte-toi pour ouvrir tes groupes.",
+  "Locked": "Verrouillée",
+  "Unlock with {name}": "Déverrouiller avec {name}",
+  "Use password": "Utiliser le mot de passe",
+  "Unlock": "Déverrouiller",
+  "Can’t load your bands": "Impossible de charger tes groupes",
+  "Your bands and gigs are safe. Check your connection and try again. If it keeps happening, update BandWith to the latest version.": "Tes groupes et tes concerts sont en sécurité. Vérifie ta connexion et réessaie. Si ça se reproduit, mets BandWith à jour vers la dernière version.",
+  "Turn off app lock": "Désactiver le verrouillage",
+  "App lock, gig privacy, export, delete account": "Verrouillage, confidentialité des concerts, export, suppression du compte",
+  "App lock": "Verrouillage de l’app",
+  "When BandWith starts again after being closed, ask for Face ID, fingerprint or the device passcode": "Quand BandWith redémarre après avoir été fermée, demander Face ID, l’empreinte digitale ou le code de l’appareil",
 };
 
 export default dict;

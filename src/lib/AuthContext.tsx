@@ -72,6 +72,26 @@ export const useAuth = () => {
   return context;
 };
 
+/**
+ * Sends the signed-in user's queued offline edits (a few seconds at most) and
+ * returns whatever is still queued, to be stored again after sign-out.
+ */
+const takeUnsyncedQueue = async (
+  userId: string | undefined
+): Promise<{ key: string; items: unknown[] } | null> => {
+  if (!userId) return null;
+  try {
+    const q = await import('./offline/syncQueue');
+    if (typeof navigator === 'undefined' || navigator.onLine) {
+      await Promise.race([q.processSyncQueue(), new Promise((resolve) => setTimeout(resolve, 6000))]);
+    }
+    const items = await q.getPendingMutations();
+    return items.length > 0 ? { key: q.getOfflineQueueKey(userId), items } : null;
+  } catch {
+    return null;
+  }
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -328,6 +348,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const handleSignOut = async () => {
+    // Offline edits not sent yet: try now, while the session is still valid.
+    // What still can't be sent is kept on this device for this account only
+    // (its own queue key) and syncs at its next sign-in, instead of being
+    // wiped with the offline cache below.
+    const pendingQueue = await takeUnsyncedQueue(user?.id);
     // Before the session ends: this device must stop receiving this account's pushes.
     await unregisterPushToken();
     cleanupPresence();
@@ -346,7 +371,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setProfile(null);
       setSession(null);
-      clearOfflineCache().catch(() => {});
+      clearOfflineCache()
+        .then(() => (pendingQueue ? setOfflineItem(pendingQueue.key, pendingQueue.items) : undefined))
+        .catch(() => {});
     }
     return { error };
   };
