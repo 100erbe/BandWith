@@ -2559,7 +2559,8 @@ export default function AuthenticatedApp() {
       .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
     const { done, open } = homeAutoDetail(homeAutoDetailRef.current, {
       twoPane,
-      onHome: activeTab === 'Home',
+      // A hub (members, settings…) covers Home: don't open a gig behind it.
+      onHome: activeTab === 'Home' && !hubOpen,
       hasSelected: !!selectedEvent,
       loading: eventsLoading,
       hasNext: !!next,
@@ -2568,7 +2569,7 @@ export default function AuthenticatedApp() {
     if (!open || !next) return;
     handleEventCardClick(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [twoPane, activeTab, eventsLoading, visuallyFilteredEvents, selectedEvent]);
+  }, [twoPane, activeTab, hubOpen, eventsLoading, visuallyFilteredEvents, selectedEvent]);
 
   const handleEventAccept = async () => {
     if (!selectedEventMembership?.id || !selectedEvent) return;
