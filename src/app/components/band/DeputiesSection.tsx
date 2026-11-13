@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, Mail, Pencil, Phone, Plus, Trash2, Users } from '@/app/components/icons';
-import { BwSheet, Card, IconButton } from '@/app/components/bw/Screen';
+import { BwSheet, Card, IconButton, Tag } from '@/app/components/bw/Screen';
 import { PillButton, PillField } from '@/app/components/bw/Form';
 import {
   deleteDeputy,
@@ -190,9 +190,12 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
                   {d.name.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
                 </span>
                 <span className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className="bw-label-md truncate">{d.name}</span>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="bw-label-md truncate">{d.name}</span>
+                    {d.user_id && <Tag variant="accent">{t('On BandWith')}</Tag>}
+                  </span>
                   <span className="bw-body-sm text-muted-foreground truncate">
-                    {[d.instrument, d.phone || d.email].filter(Boolean).join(' · ') || t('No contact yet')}
+                    {[d.instrument, d.phone || d.email].filter(Boolean).join(' · ') || (d.user_id ? t('Asked in the app') : t('No contact yet'))}
                   </span>
                 </span>
                 <Pencil className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden />

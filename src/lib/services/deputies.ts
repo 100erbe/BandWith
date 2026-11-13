@@ -17,6 +17,8 @@ export interface Deputy {
   email: string | null;
   notes: string | null;
   default_fee: number | null;
+  /** Their BandWith account, once they opened the app from a reply link (086). */
+  user_id?: string | null;
   created_at?: string;
 }
 
@@ -38,7 +40,7 @@ const clean = (v: DeputyInput): DeputyInput => ({
 export async function listDeputies(bandId: string) {
   const { data, error } = await supabase
     .from('band_deputies')
-    .select('id, band_id, name, instrument, phone, email, notes, default_fee, created_at')
+    .select('id, band_id, name, instrument, phone, email, notes, default_fee, user_id, created_at')
     .eq('band_id', bandId)
     .order('instrument', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
@@ -227,6 +229,91 @@ export function deputyUpdateText(o: DeputyGigText): string {
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+// ------------------------------------------------------------------
+// Deputies in the app (migration 086). A deputy who opens the app from
+// the reply link gets their account linked to the band's entry; the band
+// then asks them in the app, and they answer from "Deputy gigs".
+// ------------------------------------------------------------------
+
+/** "Ask in the app" again on an existing request: sent | not_linked | closed | throttled. */
+export async function pingDeputyRequest(requestId: string) {
+  const { data, error } = await supabase.rpc('bw_deputy_request_ping', { p_request_id: requestId });
+  return { data: (data as string | null) ?? null, error };
+}
+
+export type DeputyClaimStatus = 'linked' | 'already' | 'taken' | 'member' | 'not_found';
+export interface DeputyClaimResult {
+  status: DeputyClaimStatus;
+  band_name?: string | null;
+  deputy_name?: string | null;
+}
+
+/** Links the signed-in account to the deputy of that reply link. */
+export async function claimDeputy(token: string) {
+  const { data, error } = await supabase.rpc('bw_deputy_claim', { p_token: token });
+  return { data: (data as DeputyClaimResult | null) ?? null, error };
+}
+
+export type DeputyAnswer = 'available' | 'maybe' | 'unavailable';
+export type DeputyChangeKey = 'date' | 'load_in' | 'soundcheck' | 'start' | 'end' | 'venue' | 'city' | 'address';
+
+/** One request as the deputy sees it (bw_deputy_request_view + id and token). */
+export interface DeputyGig {
+  id: string;
+  token: string;
+  status: DeputyRequestStatus;
+  deputy_name: string;
+  role: string | null;
+  fee: number | null;
+  currency: string | null;
+  reply_note: string | null;
+  responded_at: string | null;
+  band_name: string;
+  event_title: string | null;
+  event_type: string | null;
+  event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  load_in_time: string | null;
+  soundcheck_time: string | null;
+  venue_name: string | null;
+  venue_city: string | null;
+  /** Only after a yes. */
+  venue_address: string | null;
+  event_cancelled: boolean;
+  changes: DeputyChangeKey[];
+  before: Partial<Record<DeputyChangeKey, string | null>>;
+  closed: boolean;
+}
+
+export interface MyDeputyGigs {
+  /** The bands that have this account as a deputy. */
+  bands: { band_name: string; deputy_name: string }[];
+  gigs: DeputyGig[];
+}
+
+const EMPTY_DEPUTY_GIGS: MyDeputyGigs = { bands: [], gigs: [] };
+
+/** The caller's deputy gigs across bands (from 30 days ago on). */
+export async function listMyDeputyGigs() {
+  const { data, error } = await supabase.rpc('bw_my_deputy_gigs');
+  const d = (data || null) as Partial<MyDeputyGigs> | null;
+  return {
+    data: d ? { bands: Array.isArray(d.bands) ? d.bands : [], gigs: Array.isArray(d.gigs) ? d.gigs : [] } : EMPTY_DEPUTY_GIGS,
+    error,
+  };
+}
+
+/** The deputy answers in the app (same RPC as the reply page). */
+export async function answerDeputyGig(token: string, answer: DeputyAnswer, note?: string | null) {
+  const { data, error } = await supabase.rpc('bw_deputy_request_reply', {
+    p_token: token,
+    p_answer: answer,
+    p_note: note?.trim() ? note.trim().slice(0, 500) : null,
+  });
+  return { data: (data as Omit<DeputyGig, 'id' | 'token'> | null) ?? null, error };
 }
 
 export const whatsappUrl = (phone: string, text: string) => {

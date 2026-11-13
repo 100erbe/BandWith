@@ -52,7 +52,7 @@ const en = {
   error: 'Something went wrong. Please try again in a moment.',
   loading: 'Loading…',
   appTitle: 'Playing often with {band}?',
-  appBody: 'With BandWith, gigs, times and changes reach you as notifications.',
+  appBody: 'Open the app from this link and sign in: your gigs with {band} are already there, and changes reach you as notifications.',
   appCta: 'Get BandWith',
 };
 
@@ -107,7 +107,7 @@ const it: DeputyStrings = {
   error: 'Qualcosa è andato storto. Riprova tra poco.',
   loading: 'Caricamento…',
   appTitle: 'Suoni spesso con {band}?',
-  appBody: 'Con BandWith date, orari e modifiche ti arrivano come notifiche.',
+  appBody: 'Apri l\'app da questo link e accedi: le tue date con {band} sono già lì, e le modifiche ti arrivano come notifiche.',
   appCta: 'Scarica BandWith',
 };
 
@@ -160,7 +160,7 @@ const es: DeputyStrings = {
   error: 'Algo ha fallado. Inténtalo de nuevo en un momento.',
   loading: 'Cargando…',
   appTitle: '¿Tocas a menudo con {band}?',
-  appBody: 'Con BandWith, fechas, horarios y cambios te llegan como notificaciones.',
+  appBody: 'Abre la app desde este enlace e inicia sesión: tus bolos con {band} ya están ahí y los cambios te llegan como notificaciones.',
   appCta: 'Descargar BandWith',
 };
 
@@ -213,7 +213,7 @@ const fr: DeputyStrings = {
   error: 'Une erreur est survenue. Réessaie dans un instant.',
   loading: 'Chargement…',
   appTitle: 'Tu joues souvent avec {band} ?',
-  appBody: 'Avec BandWith, dates, horaires et changements arrivent en notifications.',
+  appBody: 'Ouvre l\'app depuis ce lien et connecte-toi : tes dates avec {band} y sont déjà, et les changements arrivent en notifications.',
   appCta: 'Télécharger BandWith',
 };
 
@@ -266,7 +266,7 @@ const de: DeputyStrings = {
   error: 'Etwas ist schiefgelaufen. Versuch es gleich noch einmal.',
   loading: 'Wird geladen…',
   appTitle: 'Spielst du oft mit {band}?',
-  appBody: 'Mit BandWith kommen Gigs, Zeiten und Änderungen als Mitteilung.',
+  appBody: 'Öffne die App über diesen Link und melde dich an: Deine Gigs mit {band} sind schon da, Änderungen kommen als Mitteilung.',
   appCta: 'BandWith holen',
 };
 
@@ -319,7 +319,7 @@ const pt: DeputyStrings = {
   error: 'Algo deu errado. Tente de novo daqui a pouco.',
   loading: 'Carregando…',
   appTitle: 'Toca muito com {band}?',
-  appBody: 'Com o BandWith, shows, horários e mudanças chegam como notificações.',
+  appBody: 'Abra o app por este link e entre: seus shows com {band} já estão lá, e as mudanças chegam como notificações.',
   appCta: 'Baixar o BandWith',
 };
 

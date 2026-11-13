@@ -1,7 +1,7 @@
 import React from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Loader2, Mail, MessageCircle, MessageSquare } from '@/app/components/icons';
-import { BwSheet } from '@/app/components/bw/Screen';
+import { Bell, Loader2, Mail, MessageCircle, MessageSquare } from '@/app/components/icons';
+import { BwSheet, Tag } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import { openExternal } from '@/lib/nativeFiles';
 import {
@@ -17,6 +17,7 @@ import {
   listDeputies,
   listDeputyRequests,
   openDeputyRequest,
+  pingDeputyRequest,
   rankDeputies,
   smsUrl,
   whatsappUrl,
@@ -88,6 +89,8 @@ export const AskDeputySheet: React.FC<{
   const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+  // "Ask in the app": what happened, per deputy.
+  const [sentInApp, setSentInApp] = React.useState<Record<string, 'sent' | 'throttled' | 'closed'>>({});
 
   const loadRequests = React.useCallback(async () => {
     const { data, error: e } = await listDeputyRequests(ctx.eventId);
@@ -183,6 +186,42 @@ export const AskDeputySheet: React.FC<{
     }
   };
 
+  /** A deputy with the app (086): the request, recap or update arrives as a push. */
+  const askInApp = async (d: Deputy) => {
+    if (busy) return;
+    setError(null);
+    const req = latest[d.id];
+    setBusy(d.id);
+    type Outcome = 'sent' | 'throttled' | 'closed' | 'not_linked';
+    const outcome: Outcome | null = await (async () => {
+      if (!req || req.status === 'cancelled') {
+        // A new request pushes a linked deputy by itself (bw_deputy_request_open).
+        const { error: e } = await openDeputyRequest({
+          eventId: ctx.eventId,
+          deputyId: d.id,
+          replacesUserId: member?.userId ?? null,
+          role,
+          fee: (member?.fee && member.fee > 0 ? member.fee : d.default_fee) ?? null,
+        });
+        return e ? null : 'sent';
+      }
+      const { data, error: e } = await pingDeputyRequest(req.id);
+      return e ? null : ((data as Outcome | null) ?? 'sent');
+    })();
+    setBusy(null);
+    if (!outcome) {
+      setError(t('Could not create the request. Try again.'));
+      return;
+    }
+    if (outcome === 'not_linked') {
+      setError(t('{name} is no longer on BandWith: send the request by message.', { name: d.name }));
+    } else {
+      setSentInApp((m) => ({ ...m, [d.id]: outcome }));
+    }
+    await loadRequests();
+    onRequestsChange?.();
+  };
+
   const cancel = async (r: DeputyRequest) => {
     setBusy(r.deputy_id);
     const { error: e } = await cancelDeputyRequest(r.id);
@@ -207,6 +246,16 @@ export const AskDeputySheet: React.FC<{
     recap: t('Send recap'),
     update: t('Send update'),
   };
+  const inAppLabel: Record<Mode, string> = {
+    request: t('Ask in the app'),
+    recap: t('Recap in the app'),
+    update: t('Update in the app'),
+  };
+  const inAppDone: Record<'sent' | 'throttled' | 'closed', string> = {
+    sent: t('Sent in the app: they get a notification.'),
+    throttled: t('Already sent a moment ago.'),
+    closed: t('This request is closed.'),
+  };
 
   return (
     <BwSheet
@@ -221,6 +270,7 @@ export const AskDeputySheet: React.FC<{
           {noLinks
             ? t('Send a request for {event} · {date}. It opens WhatsApp, Messages or Mail with the details filled in.', { event: ctx.eventTitle, date: ctx.dateLabel })
             : t('Send a request for {event} · {date}. It opens WhatsApp, Messages or Mail with the details and a link: the deputy answers in one tap, no app needed, and you get a notification.', { event: ctx.eventTitle, date: ctx.dateLabel })}
+          {!noLinks && ranked.some((d) => d.user_id) && ` ${t('Deputies on BandWith get it in the app.')}`}
         </p>
         {error && (
           <p role="alert" className="bw-body-sm text-destructive">
@@ -254,7 +304,10 @@ export const AskDeputySheet: React.FC<{
                 <li key={d.id} className="rounded-[16px] bg-sheet-foreground/[0.08] p-3 flex flex-col gap-3">
                   <div className="flex items-start gap-3 min-w-0">
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                      <span className="bw-label-md truncate">{d.name}</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="bw-label-md truncate">{d.name}</span>
+                        {d.user_id && !noLinks && <Tag variant="accent" className="shrink-0">{t('On BandWith')}</Tag>}
+                      </span>
                       <span className="bw-body-sm text-sheet-foreground/70 truncate">
                         {[d.instrument, d.default_fee ? t('usual fee {fee}', { fee: formatFee(d.default_fee) }) : null, d.notes].filter(Boolean).join(' · ') || t('Deputy')}
                       </span>
@@ -287,12 +340,28 @@ export const AskDeputySheet: React.FC<{
                       )}
                     </div>
                   )}
+                  {d.user_id && !noLinks && (
+                    <div className="flex flex-col gap-1.5">
+                      <PillButton size="sm" variant="primary" fullWidth={false} className="self-start" disabled={!!busy} icon={<Bell className="w-4 h-4" />} onClick={() => void askInApp(d)}>
+                        {inAppLabel[mode]}
+                      </PillButton>
+                      {sentInApp[d.id] && (
+                        <span className="bw-body-sm text-sheet-foreground/80" role="status">
+                          {inAppDone[sentInApp[d.id]]}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {d.phone || d.email ? (
                     <div className="flex flex-col gap-2">
-                      {req && <span className="bw-label-xs text-sheet-foreground/70 uppercase">{sendLabel[mode]}</span>}
+                      {(req || (d.user_id && !noLinks)) && (
+                        <span className="bw-label-xs text-sheet-foreground/70 uppercase">
+                          {d.user_id && !noLinks ? t('Or by message') : sendLabel[mode]}
+                        </span>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         {d.phone && (
-                          <PillButton size="sm" variant="primary" fullWidth={false} disabled={!!busy} icon={<MessageCircle className="w-4 h-4" />} onClick={() => void send(d, 'whatsapp')}>
+                          <PillButton size="sm" variant={d.user_id && !noLinks ? 'white' : 'primary'} fullWidth={false} disabled={!!busy} icon={<MessageCircle className="w-4 h-4" />} onClick={() => void send(d, 'whatsapp')}>
                             WhatsApp
                           </PillButton>
                         )}
@@ -309,7 +378,7 @@ export const AskDeputySheet: React.FC<{
                       </div>
                     </div>
                   ) : (
-                    <p className="bw-body-sm text-sheet-foreground/70">{t('Add a phone or email to contact them.')}</p>
+                    !d.user_id && <p className="bw-body-sm text-sheet-foreground/70">{t('Add a phone or email to contact them.')}</p>
                   )}
                   {active && req && (
                     <div className="flex flex-wrap gap-x-4 gap-y-1">

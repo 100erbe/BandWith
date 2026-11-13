@@ -79,6 +79,9 @@ import { HomeView } from "@/app/views/HomeView";
 import { ChatView } from "@/app/views/ChatView";
 import { EventsView } from "@/app/views/EventsView";
 import { PastEventsView } from "@/app/views/PastEventsView";
+import { DeputyGigsScreen } from "@/app/components/deputy/DeputyGigsScreen";
+import { useDeputyClaim } from "@/lib/deputyClaim";
+import { listMyDeputyGigs } from "@/lib/services/deputies";
 import { OfflineBanner } from "@/app/components/ui/OfflineBanner";
 import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/offline/useNetworkStatus";
 import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
@@ -1134,6 +1137,10 @@ export default function AuthenticatedApp() {
         setShowBandMembers(true);
       } else if (d.screen === "repertoire") {
         setShowSetlistManager(true);
+      } else if (d.screen === "deputyGigs") {
+        setDeputyGigsFocus(d.requestId ?? null);
+        setShowDeputyGigs(true);
+        window.dispatchEvent(new CustomEvent("bw:refresh-deputy-gigs"));
       } else if (d.screen === "home") setActiveTab("Home");
     };
     window.addEventListener("push-navigate", handler);
@@ -1258,6 +1265,28 @@ export default function AuthenticatedApp() {
   const [showContracts, setShowContracts] = useState(false);
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  // Requests from other bands to this account as a deputy (086).
+  const [showDeputyGigs, setShowDeputyGigs] = useState(false);
+  const [deputyGigsFocus, setDeputyGigsFocus] = useState<string | null>(null);
+  const [deputyBandCount, setDeputyBandCount] = useState(0);
+  const deputyClaim = useDeputyClaim();
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    void listMyDeputyGigs().then(({ data, error }) => {
+      if (alive && !error) setDeputyBandCount(data.bands.length);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id, deputyClaim.result]);
+  // Just opened the app from a deputy link: show what happened.
+  useEffect(() => {
+    if (deputyClaim.result) {
+      setDeputyGigsFocus(null);
+      setShowDeputyGigs(true);
+    }
+  }, [deputyClaim.result]);
   const [liveInterval, setLiveInterval] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -1698,7 +1727,7 @@ export default function AuthenticatedApp() {
 
   // Duo open: a hub (members, library, gear, documents, templates, analytics,
   // settings, archive) takes the leading page; stale trailing details go.
-  const hubOpen = showBandMembers || showSetlistManager || showInventory || showContracts || showTaskTemplates || showAnalytics || showSettings || showPastEvents;
+  const hubOpen = showBandMembers || showSetlistManager || showInventory || showContracts || showTaskTemplates || showAnalytics || showSettings || showPastEvents || showDeputyGigs;
   useEffect(() => {
     if (!twoPane || !hubOpen) return;
     setShowEditProfile(false);
@@ -1978,6 +2007,7 @@ export default function AuthenticatedApp() {
     showContracts,
     showTaskTemplates,
     showPastEvents,
+    showDeputyGigs,
     isControlDeckOpen,
     isIdentityOpen,
     activeTab,
@@ -2019,6 +2049,7 @@ export default function AuthenticatedApp() {
     showContracts,
     showTaskTemplates,
     showPastEvents,
+    showDeputyGigs,
     isControlDeckOpen,
     isIdentityOpen,
     activeTab,
@@ -2166,6 +2197,10 @@ export default function AuthenticatedApp() {
       }
       if (s.showPastEvents) {
         setShowPastEvents(false);
+        return;
+      }
+      if (s.showDeputyGigs) {
+        setShowDeputyGigs(false);
         return;
       }
 
@@ -3524,6 +3559,12 @@ export default function AuthenticatedApp() {
             closeIdentity();
             handleGridNav(section && section !== 'main' ? `Settings:${section}` : 'Settings');
           }}
+          deputyBandCount={deputyBandCount}
+          onOpenDeputyGigs={() => {
+            closeIdentity();
+            setDeputyGigsFocus(null);
+            setShowDeputyGigs(true);
+          }}
         />
 
         <SwitchBandPopup
@@ -3595,7 +3636,7 @@ export default function AuthenticatedApp() {
               ? // Tablet, two panes: Settings screens open beside the hub and
                 // keep the floating nav; composers and full-screen layers hide it.
                 !!expandedCard || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || isCreateEventOpen || showNewChat || showCreateBand || showPersonalGigModal || showProposeRehearsalModal
-              : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
+              : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || showDeputyGigs || isCreateEventOpen || showEditProfile || showNewChat
         }
         isAdmin={isAdmin}
         isSolo={userMode === 'solo'}
@@ -3634,6 +3675,16 @@ export default function AuthenticatedApp() {
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
             handleCreateEvent(kind);
           }} />}
+          {showDeputyGigs && (
+            <DeputyGigsScreen
+              key="deputy-gigs"
+              focusId={deputyGigsFocus}
+              onClose={() => {
+                setShowDeputyGigs(false);
+                deputyClaim.dismiss();
+              }}
+            />
+          )}
           {showPastEvents && (
             <PastEventsView
               key="past-events"

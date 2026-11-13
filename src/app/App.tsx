@@ -5,6 +5,16 @@ import AuthCallback from "./auth/callback";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { inviteTokenFromUrl } from "@/lib/services/invitations";
+import { useOnboarding } from "@/lib/OnboardingContext";
+import {
+  claimPendingDeputyToken,
+  deputyTokenFromUrl,
+  pendingDeputyToken,
+  savePendingDeputyToken,
+  useDeputyClaim,
+} from "@/lib/deputyClaim";
+import { listMyDeputyGigs } from "@/lib/services/deputies";
+import { supabase } from "@/lib/supabase";
 
 const AuthenticatedApp = lazy(() => import("./AuthenticatedApp"));
 const SetNewPasswordScreen = lazy(
@@ -13,6 +23,27 @@ const SetNewPasswordScreen = lazy(
 const OnboardingFlow = lazy(
   () => import("./components/onboarding/OnboardingFlow")
 );
+const DeputyHome = lazy(() => import("./components/deputy/DeputyHome"));
+
+// Remembers that this account has deputy gigs and no band, so the next
+// launch opens "Deputy gigs" straight away (checked again in the background).
+const deputyHomeKey = (userId: string) => `bw_deputy_home:${userId}`;
+const readDeputyHome = (userId?: string): boolean => {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(deputyHomeKey(userId)) === "1";
+  } catch {
+    return false;
+  }
+};
+const writeDeputyHome = (userId: string, on: boolean) => {
+  try {
+    if (on) localStorage.setItem(deputyHomeKey(userId), "1");
+    else localStorage.removeItem(deputyHomeKey(userId));
+  } catch {
+    /* ignore */
+  }
+};
 
 const BlackScreen = () => <div className="min-h-screen bg-background" />;
 
@@ -33,7 +64,9 @@ const isAuthCallback = (): boolean => {
 };
 
 export default function App() {
-  const { isAuthenticated, loading: authLoading, userMode, profile, isPasswordRecovery } = useAuth();
+  const { isAuthenticated, loading: authLoading, userMode, profile, isPasswordRecovery, user, signOut } = useAuth();
+  const { startOnboarding, goToStep } = useOnboarding();
+  const deputyClaim = useDeputyClaim();
   const { bands, loading: bandsLoading, refreshBands } = useBand();
   const [showOnboarding, setShowOnboarding] = useState(true);
   const prevAuthRef = useRef(isAuthenticated);
@@ -48,8 +81,12 @@ export default function App() {
     // Drop the token from the address bar so a refresh doesn't re-open the invite.
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
-    if (url.searchParams.has('invite')) {
+    // Deputy reply page → "Get BandWith": keep the token until signed in.
+    const deputyToken = deputyTokenFromUrl(url.href);
+    if (deputyToken) savePendingDeputyToken(deputyToken);
+    if (url.searchParams.has('invite') || url.searchParams.has('deputy')) {
       url.searchParams.delete('invite');
+      url.searchParams.delete('deputy');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
     }
   }, []);
@@ -59,11 +96,59 @@ export default function App() {
     const handle = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
       const token = inviteTokenFromUrl(url);
       if (token) setInviteToken(token);
+      const deputyToken = deputyTokenFromUrl(url);
+      if (deputyToken) savePendingDeputyToken(deputyToken);
     });
     return () => {
       handle.then((h) => h.remove()).catch(() => {});
     };
   }, []);
+
+  // Deputy link: link the account as soon as the user is signed in.
+  useEffect(() => {
+    if (!isAuthenticated || authLoading || isPasswordRecovery) return;
+    if (pendingDeputyToken()) void claimPendingDeputyToken();
+  }, [isAuthenticated, authLoading, isPasswordRecovery, deputyClaim.pending]);
+
+  // Before signing in: which band sent the link, for the welcome screen.
+  const [deputyBand, setDeputyBand] = useState<string | null>(null);
+  useEffect(() => {
+    const token = pendingDeputyToken();
+    if (isAuthenticated || authLoading || !token) return;
+    let alive = true;
+    void supabase.rpc('bw_deputy_request_view', { p_token: token }).then(({ data }) => {
+      const band = (data as { band_name?: string } | null)?.band_name;
+      if (alive && band) setDeputyBand(band);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated, authLoading, deputyClaim.pending]);
+
+  // An account with no band of its own but with deputy gigs lands on
+  // "Deputy gigs" instead of the band set-up (it can still start one).
+  const isSolo = userMode === 'solo' || profile?.user_mode === 'solo';
+  const [deputyHome, setDeputyHome] = useState<boolean>(() => readDeputyHome(user?.id));
+  const [skipDeputyHome, setSkipDeputyHome] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated || authLoading || bandsLoading || !user?.id) return;
+    if (bands.length > 0 || isSolo) {
+      writeDeputyHome(user.id, false);
+      setDeputyHome(false);
+      return;
+    }
+    setDeputyHome(readDeputyHome(user.id));
+    let alive = true;
+    void listMyDeputyGigs().then(({ data, error }) => {
+      if (!alive || error) return;
+      const on = data.bands.length > 0;
+      writeDeputyHome(user.id, on);
+      setDeputyHome(on);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated, authLoading, bandsLoading, bands.length, isSolo, user?.id, deputyClaim.result]);
 
   // Handle manual navigation when user presses onComplete in the onboarding flow.
   // Defined early with useCallback to be stable across renders and available before any early return.
@@ -136,6 +221,34 @@ export default function App() {
     return <BlackScreen />;
   }
 
+  // A deputy without a band: their gigs (with the claim's result), and a way to a band.
+  if (
+    isAuthenticated &&
+    !bandsLoading &&
+    bands.length === 0 &&
+    !isSolo &&
+    !skipDeputyHome &&
+    !onboardingCompletedRef.current &&
+    (deputyHome || deputyClaim.pending || !!deputyClaim.result)
+  ) {
+    return (
+      <Suspense fallback={<BlackScreen />}>
+        <DeputyHome
+          onStartBand={() => {
+            deputyClaim.dismiss();
+            startOnboarding('creator');
+            goToStep(1);
+            setSkipDeputyHome(true);
+          }}
+          onSignOut={() => {
+            deputyClaim.dismiss();
+            void signOut();
+          }}
+        />
+      </Suspense>
+    );
+  }
+
   // Show onboarding for unauthenticated users or existing users who haven't completed
   if ((!isAuthenticated || showOnboarding) && !onboardingCompletedRef.current) {
     return (
@@ -143,6 +256,7 @@ export default function App() {
         <OnboardingFlow
           onComplete={handleNavigationToDashboard}
           inviteToken={inviteToken ?? undefined}
+          deputyBand={!isAuthenticated ? deputyBand : null}
         />
       </Suspense>
     );

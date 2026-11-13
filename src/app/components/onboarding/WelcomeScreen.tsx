@@ -17,6 +17,8 @@ interface WelcomeScreenProps {
   inviteCodeLoading: boolean;
   inviteCodeError: string | null;
   closeInviteInputRef?: React.MutableRefObject<(() => boolean) | null>;
+  /** Opened from a deputy reply link: the band that asked. */
+  deputyBand?: string | null;
 }
 
 /** Figma "Dot hero": two rows of pills (52) and dots (10), gap 8 / 6. */
@@ -33,6 +35,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   inviteCodeLoading,
   inviteCodeError,
   closeInviteInputRef,
+  deputyBand,
 }) => {
   const t = useT();
   const FEATURES = [t('Shared calendars'), t('Automated quotes'), t('Rehearsal costs'), t('Setlist builder')];
@@ -148,6 +151,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.5 }}
         >
+          {deputyBand && (
+            <p role="status" className="rounded-[20px] bg-surface-inverse text-surface-inverse-foreground px-4 py-3 bw-body-md">
+              {t('{band} calls you as a deputy. Create an account or sign in: your gigs with them will be in the app.', { band: deputyBand })}
+            </p>
+          )}
           <PillButton variant="dark" onClick={onGetStarted} trailingIcon={<ArrowUpRight className="w-5 h-5" />}>
             {t('Get started')}
           </PillButton>

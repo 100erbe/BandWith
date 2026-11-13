@@ -253,13 +253,33 @@ export const buildSeed = (): DemoDB => {
 
   // Fictional session players (no real people or numbers).
   const band_deputies: Row[] = [
-    { id: id(2000), band_id: IDS.band, name: 'Sam Keller', instrument: 'Bass', phone: '+10000000001', email: 'sam@example.com', notes: 'Reads charts', default_fee: 180, created_by: IDS.me, created_at: created, updated_at: created },
+    // On BandWith (086): asked in the app.
+    { id: id(2000), band_id: IDS.band, name: 'Sam Keller', instrument: 'Bass', phone: '+10000000001', email: 'sam@example.com', notes: 'Reads charts', default_fee: 180, user_id: id(2090), created_by: IDS.me, created_at: created, updated_at: created },
     { id: id(2001), band_id: IDS.band, name: 'Noa Brandt', instrument: 'Drums', phone: '+10000000002', email: null, notes: null, default_fee: 200, created_by: IDS.me, created_at: created, updated_at: created },
     { id: id(2002), band_id: IDS.band, name: 'Ivo Marsh', instrument: 'Keys', phone: null, email: 'ivo@example.com', notes: 'Own rig', default_fee: null, created_by: IDS.me, created_at: created, updated_at: created },
   ];
 
+  // The demo user plays as a deputy for another (fictional) band: what
+  // bw_my_deputy_gigs returns (086). Address kept, shown after a yes.
+  const demo_deputy_gigs: Row[] = [
+    {
+      id: id(2100), token: 'd'.repeat(64), status: 'pending', deputy_name: 'Alex Rivera', role: 'Vocals', fee: 150, currency: 'EUR',
+      reply_note: null, responded_at: null, band_name: 'The Late Shift', event_title: 'Jazz Brunch', event_type: 'gig',
+      event_date: day(9), start_time: '12:00:00', end_time: '15:00:00', load_in_time: '10:30:00', soundcheck_time: null,
+      venue_name: 'Hotel Bristol', venue_city: 'Torino', venue_address: 'Via XX Settembre 48', event_cancelled: false,
+      changes: [], before: {}, closed: false,
+    },
+    {
+      id: id(2101), token: 'e'.repeat(64), status: 'available', deputy_name: 'Alex Rivera', role: 'Vocals', fee: 220, currency: 'EUR',
+      reply_note: 'I can bring my own mic', responded_at: ago(60 * 24 * 3), band_name: 'The Late Shift', event_title: 'Summer Wedding', event_type: 'gig',
+      event_date: day(23), start_time: '19:30:00', end_time: '23:30:00', load_in_time: '16:00:00', soundcheck_time: '17:30:00',
+      venue_name: 'Villa Arconati', venue_city: 'Bollate', venue_address: 'Via Madonna Fametta 1', event_cancelled: false,
+      changes: ['start'], before: { start: '20:00' }, closed: false,
+    },
+  ];
+
   return {
-    band_deputies, event_drafts: [],
+    band_deputies, event_drafts: [], demo_deputy_gigs,
     profiles, bands, band_members, songs, song_folders: [], setlists, setlist_songs, events, event_members,
     rehearsal_setlist, rehearsal_tasks, song_proposals, proposal_votes: [], quotes, quote_musicians: [],
     transactions, chats, chat_participants, messages, notifications, rehearsal_polls, rehearsal_poll_options,

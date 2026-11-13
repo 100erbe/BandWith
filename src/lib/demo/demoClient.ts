@@ -852,9 +852,43 @@ const rpc = (fn: string, args: Row = {}) => {
       data = [{ id: r.id, token: r.token, status: r.status }];
       break;
     }
-    case 'bw_deputy_request_view':
-      data = { changes: [] };
+    case 'bw_deputy_request_view': {
+      // The demo user's own deputy gigs (086) answer with their band, for the welcome screen.
+      const g = table('demo_deputy_gigs').find((x) => x.token === args.p_token);
+      data = g ? { band_name: g.band_name, status: g.status, changes: [] } : { changes: [] };
       break;
+    }
+    // Deputies in the app (086): the demo user is a deputy for "The Late Shift".
+    case 'bw_deputy_request_ping':
+      data = 'sent';
+      break;
+    case 'bw_deputy_claim':
+      data = { status: 'already', band_name: 'The Late Shift', deputy_name: DEMO_USER.user_metadata.full_name };
+      break;
+    case 'bw_my_deputy_gigs': {
+      const gigs = table('demo_deputy_gigs');
+      data = {
+        bands: gigs.length ? [{ band_name: 'The Late Shift', deputy_name: DEMO_USER.user_metadata.full_name }] : [],
+        gigs: gigs.map((g) => ({ ...clone(g), venue_address: g.status === 'available' ? g.venue_address : null })),
+      };
+      break;
+    }
+    case 'bw_deputy_request_reply': {
+      const g = table('demo_deputy_gigs').find((x) => x.token === args.p_token);
+      if (!g) {
+        data = null;
+        break;
+      }
+      g.status = args.p_answer;
+      g.reply_note = args.p_note ?? null;
+      g.responded_at = new Date().toISOString();
+      g.changes = [];
+      g.before = {};
+      persist();
+      const { id: _id, token: _token, ...view } = clone(g);
+      data = { ...view, venue_address: g.status === 'available' ? g.venue_address : null };
+      break;
+    }
     case 'update_setlist_song_count': {
       const id = args.p_setlist_id ?? args.setlist_id;
       const s = table('setlists').find((r) => r.id === id);
