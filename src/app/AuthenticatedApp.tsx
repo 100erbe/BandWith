@@ -114,6 +114,7 @@ import {
 import { AdminGuidedTourModal } from "@/app/components/onboarding/AdminGuidedTourModal";
 import { Quote } from "@/app/data/quotes";
 import { createQuote as createQuoteDB, appQuoteToDbRecord, appMusiciansToDb } from "@/lib/services/quotes";
+import { quoteMusicianFee } from "@/lib/services/quoteMath";
 
 import { ChatDetailModal, NewChatModal } from "@/app/components/chat";
 import { EditProfileModal, CreateBandModal } from "@/app/components/profile";
@@ -3681,7 +3682,7 @@ export default function AuthenticatedApp() {
                         return {
                           user_id: resolvedUserId,
                           status: resolvedUserId === user?.id ? 'confirmed' : 'pending',
-                          fee: Number(m.rate || m.customFee || 0),
+                          fee: quoteMusicianFee(m),
                           role: m.instrument || bandMember?.role || 'Musician',
                         };
                       })
@@ -3761,7 +3762,7 @@ export default function AuthenticatedApp() {
                       .map((m: any) => {
                         const bm = realBand.members?.find((x: any) => x.id === m.id || x.user_id === m.id);
                         const uid = bm?.user_id || m.user_id || null;
-                        if (uid) feeByUser[uid] = Number(m.rate || m.customFee || 0);
+                        if (uid) feeByUser[uid] = quoteMusicianFee(m);
                         return uid;
                       })
                       .filter((uid: string | null): uid is string => !!uid && uid !== user.id);

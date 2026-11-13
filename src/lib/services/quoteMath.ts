@@ -150,3 +150,16 @@ export const formatQuoteMoney = (amount: number, sym = '€', tag: string | unde
     maximumFractionDigits: 2,
   })}`;
 };
+
+/**
+ * A quote musician's fee as a number. The wizard stores it as `fee`; older
+ * payloads used `rate` or `customFee`. Missing or invalid means 0.
+ */
+export const quoteMusicianFee = (m: { fee?: unknown; rate?: unknown; customFee?: unknown } | null | undefined): number => {
+  if (!m) return 0;
+  for (const v of [m.fee, m.rate, m.customFee]) {
+    const n = Number(v);
+    if (v != null && v !== '' && Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+};
