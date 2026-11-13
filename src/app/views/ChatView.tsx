@@ -35,6 +35,8 @@ interface ChatViewProps {
   onStartChat?: () => void;
   /** Swipe left → Delete. Removes the chat from my list only. */
   onDeleteChat?: (chat: ChatItem) => Promise<void> | void;
+  /** Tablet, two panes: the chat open beside the list (highlighted). */
+  selectedChatUuid?: string | null;
 }
 
 const FILTERS = [
@@ -115,6 +117,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onChatClick,
   onStartChat,
   onDeleteChat,
+  selectedChatUuid = null,
 }) => {
   const t = useT();
   const [openRowId, setOpenRowId] = useState<ChatItem['id'] | null>(null);
@@ -362,6 +365,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         {filteredChats.length > 0 ? (
           filteredChats.map((chat, i) => {
             const hasUnread = chat.unread > 0;
+            const selected = !!selectedChatUuid && chat.uuid === selectedChatUuid;
             const displayName = toTitleCase(chat.name);
             const row = (
               <motion.div 
@@ -379,7 +383,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   }
                 }}
                 aria-label={hasUnread ? t('{name}, {count} unread', { name: displayName, count: chat.unread }) : displayName}
-                className="py-3 cursor-pointer active:scale-[0.99] transition-transform flex items-center gap-3"
+                aria-current={selected ? 'true' : undefined}
+                className={cn(
+                  'py-3 cursor-pointer active:scale-[0.99] transition-transform flex items-center gap-3',
+                  selected && '-mx-3 px-3 rounded-[16px] bg-foreground/[0.06]',
+                )}
               >
                 <ChatAvatar chat={chat} />
 

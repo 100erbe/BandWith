@@ -174,7 +174,7 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
         className={cn(
           // bw-picker: on the iPhone Duo open the form that asked moves to the
           // leading page while the picker is open (src/styles/duo-panes.css).
-          'bw-rail-sheet bw-picker fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
+          'bw-rail-sheet bw-picker bw-sheet-card fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
           'bg-background text-foreground rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.35)] outline-none select-none',
           'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom duration-300',
         )}
@@ -182,7 +182,7 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
       >
         {/* Sheet Header (Style=Light): swipe it down to close */}
         <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
-          <span className="mx-auto w-10 h-[5px] rounded-full bg-muted-foreground/55" aria-hidden />
+          <span className="bw-grabber mx-auto w-10 h-[5px] rounded-full bg-muted-foreground/55" aria-hidden />
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               {overline && <p className="bw-label-sm text-muted-foreground truncate">{overline}</p>}

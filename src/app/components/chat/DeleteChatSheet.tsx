@@ -55,10 +55,10 @@ export const DeleteChatSheet: React.FC<{
             transition={{ type: 'spring', damping: 32, stiffness: 360 }}
             {...drag.sheet}
             onPointerDown={drag.handle.onPointerDown}
-            className="bw-rail-sheet touch-none fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
+            className="bw-rail-sheet bw-sheet-card touch-none fixed bottom-0 left-0 right-0 z-[201] bg-sheet text-sheet-foreground rounded-t-[32px] sm:rounded-[32px] px-5 pt-3 sm:max-w-lg sm:mx-auto sm:bottom-6 flex flex-col gap-4"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}
           >
-            <span className="mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
+            <span className="bw-grabber mx-auto w-10 h-[5px] rounded-full bg-sheet-foreground/85" aria-hidden />
             <div className="flex flex-col gap-1">
               <span id="delete-chat-title" className="bw-label-md [overflow-wrap:anywhere]">
                 {title ?? (chatName ? t('Delete chat with {name}?', { name: chatName }) : t('Delete this chat?'))}

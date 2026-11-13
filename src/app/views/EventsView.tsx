@@ -65,6 +65,8 @@ interface EventsViewProps {
    * Analytics' month bars on the iPhone Duo book layout. Applied when it changes.
    */
   focusMonth?: string | null;
+  /** Tablet, two panes: the event open beside the calendar (outlined). */
+  selectedEventId?: string | null;
 }
 
 const FILTERS = ['ALL', 'GIGS', 'REHEARSALS', 'QUOTES', 'DRAFTS'] as const;
@@ -260,6 +262,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onShowToast,
   currentUserId,
   focusMonth,
+  selectedEventId = null,
 }) => {
   const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
@@ -844,12 +847,15 @@ export const EventsView: React.FC<EventsViewProps> = ({
           'relative flex flex-col gap-4 rounded-[24px] p-5 cursor-pointer active:scale-[0.99] transition-transform',
           isPast && 'opacity-85'
         )}
+        aria-current={selectedEventId && event.eventId === selectedEventId ? 'true' : undefined}
         style={{
           backgroundColor: cardBg,
           color: cardFg,
           ...(draftOf
             ? { filter: 'saturate(0.3)', outline: `2px dashed color-mix(in srgb, ${cardFg} 45%, transparent)`, outlineOffset: -6 }
-            : null),
+            : selectedEventId && event.eventId === selectedEventId
+              ? { outline: '2px solid var(--color-foreground)', outlineOffset: 3 }
+              : null),
         }}
         onClick={() => onEventClick(event)}
       >
@@ -1493,7 +1499,11 @@ export const EventsView: React.FC<EventsViewProps> = ({
                                 type="button"
                                 // Opens on the first tap even with the keyboard up.
                                 {...keyboardSafeTap(() => onEventClick(ev))}
-                                className="w-full flex items-center gap-4 p-3 rounded-[24px] bg-card text-left active:scale-[0.99] transition-transform cursor-pointer"
+                                aria-current={selectedEventId && ev.eventId === selectedEventId ? 'true' : undefined}
+                                className={cn(
+                                  'w-full flex items-center gap-4 p-3 rounded-[24px] bg-card text-left active:scale-[0.99] transition-transform cursor-pointer',
+                                  selectedEventId && ev.eventId === selectedEventId && 'outline outline-2 outline-foreground outline-offset-2',
+                                )}
                               >
                                 <span
                                   className="w-[52px] h-14 rounded-full flex flex-col items-center justify-center shrink-0"

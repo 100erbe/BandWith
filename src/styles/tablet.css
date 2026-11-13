@@ -9,7 +9,7 @@
 [data-bw-wide][data-bw-two-pane] .bw-nav-bar {
   z-index: 103 !important;
 }
-[data-bw-wide][data-bw-two-pane] body:has(.bw-sheet[role="dialog"]:not(.bw-nav-popover)) .bw-nav-bar {
+[data-bw-wide][data-bw-two-pane] body:has(:is(.bw-sheet[role="dialog"], .bw-sheet-card):not(.bw-nav-popover)) .bw-nav-bar {
   z-index: 80 !important;
 }
 /* Detail content ends above the nav (bar 64 px + 24 px from the bottom). */
@@ -22,8 +22,10 @@
   padding-bottom: calc(var(--safe-bottom, 0px) + 120px) !important;
 }
 
-/* Sheets become centred cards. */
-[data-bw-wide] .bw-sheet[role="dialog"] {
+/* Sheets become centred cards (BwSheet, plus custom sheets marked
+   `bw-sheet-card`: new chat, date picker). */
+[data-bw-wide] .bw-sheet[role="dialog"],
+[data-bw-wide] .bw-sheet-card {
   top: 0 !important;
   bottom: 0 !important;
   left: 0 !important;
@@ -43,4 +45,8 @@
   margin: 0 auto !important;
   width: min(420px, calc(100vw - 48px)) !important;
   max-height: calc(100vh - var(--safe-bottom, 0px) - 140px) !important;
+}
+/* A card is not dragged from its top edge: no grabber. */
+[data-bw-wide] .bw-sheet-card .bw-grabber {
+  display: none;
 }

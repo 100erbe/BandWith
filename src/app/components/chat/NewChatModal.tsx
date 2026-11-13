@@ -289,7 +289,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-chat-title"
-        className="bw-rail-sheet dark fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] flex flex-col"
+        className="bw-rail-sheet bw-sheet-card dark fixed bottom-0 left-0 right-0 z-[91] bg-sheet text-sheet-foreground rounded-t-[32px] flex flex-col"
         style={{ 
           maxHeight: '85vh',
           paddingBottom: 'calc(var(--safe-bottom) + 16px)',
@@ -299,7 +299,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
       >
         {/* Sheet header: grabber, overline, title, close */}
         <div className="flex flex-col items-center gap-3 px-5 pt-3 pb-2 shrink-0" {...drag.handle}>
-          <div className="w-10 h-[5px] rounded-[3px] bg-foreground/85" aria-hidden="true" />
+          <div className="bw-grabber w-10 h-[5px] rounded-[3px] bg-foreground/85" aria-hidden="true" />
           <div className="flex items-center gap-3 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <span className="bw-label-sm text-foreground/85">{t('Start chat')}</span>
