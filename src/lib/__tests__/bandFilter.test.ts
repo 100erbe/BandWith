@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bandFilterOptions, bandFilterShowsFees, feeForViewer, filterByBand, matchesBandFilter, normalizeBandFilter } from '../bandFilter';
+import { bandFilterCanCreate, bandFilterOptions, bandFilterShowsFees, bandToActivateForCreate, feeForViewer, filterByBand, matchesBandFilter, normalizeBandFilter } from '../bandFilter';
 
 const A = 'aaaaaaaa-0000-0000-0000-000000000001';
 const B = 'bbbbbbbb-0000-0000-0000-000000000002';
@@ -109,5 +109,34 @@ describe('feeForViewer', () => {
   });
   it('keeps a missing fee missing', () => {
     expect(feeForViewer(A, null, adminOf)).toBeNull();
+  });
+});
+
+describe('bandFilterCanCreate', () => {
+  const adminOf = (id: string) => id === A;
+  it('follows the active band on all', () => {
+    expect(bandFilterCanCreate('all', adminOf, true)).toBe(true);
+    expect(bandFilterCanCreate('all', adminOf, false)).toBe(false);
+  });
+  it('lets only admins of the shown band create', () => {
+    expect(bandFilterCanCreate(A, adminOf, false)).toBe(true);
+    expect(bandFilterCanCreate(B, adminOf, true)).toBe(false);
+  });
+  it('never on personal', () => {
+    expect(bandFilterCanCreate('personal', adminOf, true)).toBe(false);
+  });
+});
+
+describe('bandToActivateForCreate', () => {
+  it('keeps the active band on all and personal', () => {
+    expect(bandToActivateForCreate('all', A)).toBeNull();
+    expect(bandToActivateForCreate('personal', A)).toBeNull();
+  });
+  it('keeps the active band when it is the one shown', () => {
+    expect(bandToActivateForCreate(A, A)).toBeNull();
+  });
+  it('switches to the shown band otherwise', () => {
+    expect(bandToActivateForCreate(B, A)).toBe(B);
+    expect(bandToActivateForCreate(B, null)).toBe(B);
   });
 });

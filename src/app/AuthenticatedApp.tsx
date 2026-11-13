@@ -145,7 +145,7 @@ import { t, useLocale, dateName, intlLocale } from "@/lib/i18n";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
 import { EVENT_PUBLIC_COLUMNS, attachEventPrivate } from "@/lib/services/eventPrivate";
-import { bandFilterOptions, filterByBand, matchesBandFilter, normalizeBandFilter } from "@/lib/bandFilter";
+import { bandFilterOptions, bandToActivateForCreate, filterByBand, matchesBandFilter, normalizeBandFilter } from "@/lib/bandFilter";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -3415,7 +3415,12 @@ export default function AuthenticatedApp() {
               } else {
                 setCreateEventInitialDate(null);
               }
-              if (!isAdmin || isSolo) {
+              // Calendar showing one band: create in that band (make it active),
+              // not in the active one. The buttons only show to its admins.
+              const switchTo = bandToActivateForCreate(selectedBandPill, realBand?.id);
+              const adminHere = switchTo ? isAdminOfBand(switchTo) : isAdmin;
+              if (switchTo && adminHere && !isSolo) selectBand(switchTo);
+              if (!adminHere || isSolo) {
                 setEditingPersonalGig(date ? { id: '', title: '', eventDate: date } : null);
                 setShowPersonalGigModal(true);
               } else {
