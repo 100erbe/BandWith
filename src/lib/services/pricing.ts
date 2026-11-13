@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { setActiveCurrency } from '@/lib/currency';
+import { translate, type Locale } from '@/lib/i18n';
 import type { PerformanceType } from '@/app/data/quotes';
 
 
@@ -148,17 +149,23 @@ export function hasBankAccount(s: Partial<BandPricingSettings>): boolean {
   return Boolean(bankAccountId(s));
 }
 
-/** "Label: value" lines for quote PDFs, in the band's bank format. */
-export function bankDetailParts(s: Partial<BandPricingSettings>): string[] {
+/** "Label: value" lines for quote PDFs, in the band's bank format and the document language. */
+export function bankDetailParts(s: Partial<BandPricingSettings>, lang: Locale = 'en'): string[] {
   const region = bankRegionOf(s);
-  const account = bankAccountId(s);
   return [
-    s.bank_account_holder ? `Beneficiary: ${s.bank_account_holder}` : '',
-    account ? `${region === 'eu' ? 'IBAN' : 'Account'}: ${account}` : '',
-    region === 'us' && s.bank_routing_number ? `Routing (ABA): ${s.bank_routing_number}` : '',
+    s.bank_account_holder ? translate(lang, 'Beneficiary: {name}', { name: s.bank_account_holder }) : '',
+    bankAccountLine(s, lang),
+    region === 'us' && s.bank_routing_number ? translate(lang, 'Routing (ABA): {number}', { number: s.bank_routing_number }) : '',
     s.bank_bic_swift ? `${region === 'eu' ? 'BIC' : 'SWIFT'}: ${s.bank_bic_swift}` : '',
-    s.bank_name ? `Bank: ${s.bank_name}` : '',
+    s.bank_name ? translate(lang, 'Bank: {name}', { name: s.bank_name }) : '',
   ].filter(Boolean);
+}
+
+/** The account line alone ("IBAN: …" / "Account: …"), '' when there is none. */
+export function bankAccountLine(s: Partial<BandPricingSettings>, lang: Locale = 'en'): string {
+  const account = bankAccountId(s);
+  if (!account) return '';
+  return bankRegionOf(s) === 'eu' ? `IBAN: ${account}` : translate(lang, 'Account: {number}', { number: account });
 }
 
 /** Masked account for compact UI ("IT60 X054 •••• 3456"). */

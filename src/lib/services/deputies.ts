@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { t } from '@/lib/i18n';
 
 /**
  * Deputies: session musicians the band calls when a member can't play
@@ -81,12 +82,14 @@ export function deputyRequestText(o: {
 }): string {
   const first = o.deputyName.trim().split(/\s+/)[0] || o.deputyName;
   return [
-    `Hi ${first}, it's ${o.bandName}.`,
-    `Are you available to play${o.role ? ` ${o.role.toLowerCase()}` : ''} with us at "${o.eventTitle}"?`,
+    t("Hi {name}, it's {band}.", { name: first, band: o.bandName }),
+    o.role
+      ? t('Are you available to play {role} with us at "{event}"?', { role: o.role.toLowerCase(), event: o.eventTitle })
+      : t('Are you available to play with us at "{event}"?', { event: o.eventTitle }),
     `📅 ${o.dateLabel}${o.timeLabel ? ` · ${o.timeLabel}` : ''}`,
     o.venue ? `📍 ${o.venue}` : null,
     o.fee ? `💶 ${o.fee}` : null,
-    'Let us know as soon as you can. Thanks!',
+    t('Let us know as soon as you can. Thanks!'),
   ]
     .filter(Boolean)
     .join('\n');

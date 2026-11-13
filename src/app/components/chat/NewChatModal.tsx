@@ -237,7 +237,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
           participant_ids: [],
         });
         if (createError) throw createError;
-        const eventTitle = selectedEvent.title || 'Event';
+        const eventTitle = selectedEvent.title || t('Event');
         const eventInitials = eventTitle.split(' ').filter(Boolean).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'E';
         if (data) onChatCreated(data.id, {
           type: 'event',

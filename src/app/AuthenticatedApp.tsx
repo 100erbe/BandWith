@@ -160,7 +160,7 @@ const eventToEventItem = (event: Event): EventItem => {
   return {
     id: uuidToNumericId(event.id),
     eventId: event.id,
-    title: event.title || "Untitled Event",
+    title: event.title || t("Untitled Event"),
     status,
     date: event.event_date || new Date().toISOString().split("T")[0],
     time: event.start_time || "19:00",
@@ -711,7 +711,7 @@ export default function AuthenticatedApp() {
         const date = String(e.date || '').slice(0, 10);
         const kind: 'gig' | 'rehearsal' | 'quote' =
           e.eventType === 'rehearsal' || e.status === 'REHEARSAL' ? 'rehearsal' : e.status === 'TENTATIVE' || e.status === 'QUOTE' || e.eventType === 'quote' ? 'quote' : 'gig';
-        return { id, title: e.title || 'Untitled', date, kind };
+        return { id, title: e.title || t('Untitled'), date, kind };
       })
       .filter((e) => /^[0-9a-f-]{36}$/i.test(e.id) && (!e.date || e.date >= today))
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -823,7 +823,7 @@ export default function AuthenticatedApp() {
           id: -Math.abs(h || 1),
           eventId: `draft:${d.id}`,
           band_id: d.bandId || undefined,
-          title: d.title || (isReh ? 'Untitled rehearsal' : 'Untitled gig'),
+          title: d.title || (isReh ? t('Untitled rehearsal') : t('Untitled gig')),
           status: isReh ? 'REHEARSAL' : 'CONFIRMED',
           date: d.date || '',
           // An undated draft's time is only the wizard's default.
@@ -2231,7 +2231,7 @@ export default function AuthenticatedApp() {
       setActiveTab('Chat');
     }
     refetchChats?.();
-    const name = ev.title || 'Event chat';
+    const name = ev.title || t('Event chat');
     setTimeout(() => {
       setSelectedChat({
         id: Date.now(),
@@ -3235,9 +3235,9 @@ export default function AuthenticatedApp() {
       <div aria-hidden="true" className="bw-pane-placeholder flex-col justify-end gap-3 p-6 pb-10 bg-background text-foreground select-none">
         <span className="bw-label-sm text-muted-foreground">BandWith · Duo</span>
         <span className="bw-display-lg">
-          {activeTab === 'Chat' ? 'Pick a chat' : (activeTab === 'More' || isIdentityOpen) ? 'Your band, side by side' : 'Pick an event'}
+          {activeTab === 'Chat' ? t('Pick a chat') : (activeTab === 'More' || isIdentityOpen) ? t('Your band, side by side') : t('Pick an event')}
         </span>
-        <span className="bw-body-sm text-muted-foreground">Details open on this side.</span>
+        <span className="bw-body-sm text-muted-foreground">{t('Details open on this side.')}</span>
       </div>
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply z-[1]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
@@ -3688,7 +3688,7 @@ export default function AuthenticatedApp() {
                 const evD: Record<string, any> = {
                   ...(clientEventId ? { id: clientEventId } : {}),
                   band_id: realBand.id,
-                  title: q.eventName || q.clientName || 'Quote Event',
+                  title: q.eventName || q.clientName || t('Quote Event'),
                   event_type: q.eventType || 'other',
                   status: 'tentative' as const,
                   event_date: q.eventDate || todayLocal(),
@@ -3952,9 +3952,9 @@ export default function AuthenticatedApp() {
           <motion.div key="demo-chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-6" onClick={() => setSelectedChat(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-background text-foreground rounded-[24px] p-6 text-center max-w-[342px] w-full" onClick={(e) => e.stopPropagation()}>
               <div className="w-14 h-14 bg-accent text-accent-foreground rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
-              <h3 className="bw-h2 uppercase text-foreground mb-2">Demo Chat</h3>
-              <p className="bw-body-md text-muted-foreground mb-6">This is sample data. Start a real conversation using the + button!</p>
-              <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full h-14 px-5 bg-accent text-accent-foreground rounded-full bw-button-md active:scale-[0.97] transition-transform">Start Real Chat</button>
+              <h3 className="bw-h2 uppercase text-foreground mb-2">{t('Demo Chat')}</h3>
+              <p className="bw-body-md text-muted-foreground mb-6">{t('This is sample data. Start a real conversation using the + button!')}</p>
+              <button onClick={() => { setSelectedChat(null); setShowNewChat(true); }} className="w-full h-14 px-5 bg-accent text-accent-foreground rounded-full bw-button-md active:scale-[0.97] transition-transform">{t('Start Real Chat')}</button>
             </motion.div>
           </motion.div>
         )}
@@ -3977,7 +3977,7 @@ export default function AuthenticatedApp() {
                 name: chatName,
                 initials: chatInitials,
                 avatarUrl: chatAvatarUrl,
-                lastMessage: "Start chatting...",
+                lastMessage: t("Start chatting..."),
                 time: "now",
                 unread: 0,
                 status: "read",

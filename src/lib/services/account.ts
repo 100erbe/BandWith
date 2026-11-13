@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { t } from '@/lib/i18n';
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -29,6 +30,6 @@ export async function deleteMyAccount(): Promise<DeleteAccountResult> {
   return {
     ok: false,
     reason: 'error',
-    message: 'We couldn’t delete your account. Check your connection and try again, or contact support@bandwith.app.',
+    message: t('We couldn’t delete your account. Check your connection and try again, or contact support@bandwith.app.'),
   };
 }

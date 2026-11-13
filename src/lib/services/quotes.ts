@@ -5,6 +5,7 @@ import type {
   QuoteStatus as AppQuoteStatus,
 } from '@/app/data/quotes';
 import { roundCents, totalsForQuote } from './quoteMath';
+import { t } from '@/lib/i18n';
 
 // Types
 export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired' | 'negotiating' | 'archived';
@@ -783,7 +784,7 @@ export const dbQuoteToAppQuote = (q: Quote & { musicians?: QuoteMusician[] }): A
   createdBy: q.created_by || '',
   // legacy fields used by the list
   eventId: q.converted_to_event_id,
-  eventTitle: q.event_name || 'Untitled Quote',
+  eventTitle: q.event_name || t('Untitled Quote'),
   lineItems: [],
   discount: Number(q.discount_amount || 0),
   tax: Number(q.vat_amount || 0),

@@ -15,6 +15,7 @@ import { IconButton, NavBackButton, Tag, Card } from '@/app/components/bw/Screen
 import { PillButton } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
 import { useT, dateName, intlLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -104,14 +105,14 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     quote.lineItems && quote.lineItems.length > 0
       ? quote.lineItems.map((li) => ({
           id: li.id,
-          label: li.quantity > 1 ? `${li.description} × ${li.quantity}` : li.description,
+          label: li.quantity > 1 ? `${builtinText(li.description)} × ${li.quantity}` : builtinText(li.description),
           amount: (li.unitPrice || 0) * (li.quantity || 1),
         }))
       : [
-          ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: m.name, amount: m.price || 0 })),
+          ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: builtinText(m.name), amount: m.price || 0 })),
           ...(quote.customItems || []).map((c) => ({
             id: `c-${c.id}`,
-            label: c.description || c.name || t('Custom item'),
+            label: builtinText(c.description || c.name) || t('Custom item'),
             amount: (c.amount ?? c.price ?? 0) * (c.quantity || 1),
           })),
         ];

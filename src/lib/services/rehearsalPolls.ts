@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { createEvent } from './events';
 import { createBulkNotifications } from './notifications';
 import { personName } from '@/lib/personName';
+import { t } from '@/lib/i18n';
 
 export interface RehearsalPollOption {
   id: string;
@@ -480,13 +481,13 @@ export const finalizePollIntoRehearsal = async ({
     }));
 
     // 4. Create confirmed rehearsal event
-    const venueName = location?.trim() || 'Band Practice Space';
-    const finalNotes = notes?.trim() || poll.notes || 'Scheduled via Band Availability Poll';
+    const venueName = location?.trim() || t('Band Practice Space');
+    const finalNotes = notes?.trim() || poll.notes || t('Scheduled via Band Availability Poll');
 
     const { data: newEvent, error: eventError } = await createEvent(
       {
         band_id: bandId,
-        title: poll.title?.trim() || 'Rehearsal',
+        title: poll.title?.trim() || t('Rehearsal'),
         event_type: 'rehearsal',
         status: 'confirmed',
         event_date: option.proposed_date,

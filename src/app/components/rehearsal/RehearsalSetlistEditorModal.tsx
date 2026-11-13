@@ -62,9 +62,9 @@ export const RehearsalSetlistEditorModal: React.FC<Props> = ({
             initialNameRef.current = initialTemplate.name;
             initialSongIdsRef.current = initialTemplate.songIds;
         } else {
-            setName('New Setlist');
+            setName(t('New Setlist'));
             setCurrentSongIds([]);
-            initialNameRef.current = 'New Setlist';
+            initialNameRef.current = t('New Setlist');
             initialSongIdsRef.current = [];
         }
         setSearchQuery('');

@@ -4,7 +4,7 @@
  */
 import { parseLocalDate } from '@/lib/dates';
 
-import { dateName, intlLocale, getLocale } from '@/lib/i18n';
+import { dateName, intlLocale, getLocale, t } from '@/lib/i18n';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** "19:30:00" / "7:30" → "19:30" (24h). Empty string when there is no time. */
@@ -112,14 +112,21 @@ type RecurrenceRule = { freq?: string; frequency?: string; interval?: number } |
  * it does not repeat.
  */
 export const rehearsalCadence = (isRecurring: boolean | undefined, rule: RecurrenceRule, dateStr?: string): string => {
-  if (!isRecurring) return 'ONCE';
+  if (!isRecurring) return t('ONCE');
   const freq = (rule?.freq || rule?.frequency || '').toLowerCase();
   const interval = rule?.interval || 1;
   const day = weekdayLong(dateStr);
-  if (freq === 'weekly' && interval === 1) return day ? `EVERY ${day}` : 'WEEKLY';
-  if (freq === 'weekly' && interval === 2) return day ? `EVERY OTHER ${day}` : 'BI-WEEKLY';
-  if (freq === 'monthly' && interval === 1) return 'MONTHLY';
-  if (freq === 'monthly' && interval === 2) return 'BI-MONTHLY';
+  // Saturday / Sunday get their own entry: some languages change the word with the day.
+  const weekend = [0, 6].includes(validDate(dateStr)?.getDay() ?? -1);
+  if (freq === 'weekly' && interval === 1) {
+    if (!day) return t('WEEKLY');
+    return weekend ? t('EVERY {day}', { context: 'weekend', day }) : t('EVERY {day}', { day });
+  }
+  if (freq === 'weekly' && interval === 2) return day ? t('EVERY OTHER {day}', { day }) : t('BI-WEEKLY');
+  if (freq === 'monthly' && interval === 1) return t('MONTHLY');
+  if (freq === 'monthly' && interval === 2) return t('BI-MONTHLY');
+  if (freq === 'daily') return t('DAILY');
+  if (freq === 'yearly') return t('YEARLY');
   if (freq) return freq.toUpperCase();
-  return 'ONCE';
+  return t('ONCE');
 };

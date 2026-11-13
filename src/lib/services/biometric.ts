@@ -10,6 +10,7 @@ import {
   type CheckBiometryResult 
 } from '@aparajita/capacitor-biometric-auth';
 import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage';
+import { t } from '@/lib/i18n';
 
 const CREDENTIALS_KEY = 'bandwith_auth_credentials';
 const WEB_TEST_KEY = 'bandwith_auth_biometric_web_test';
@@ -266,7 +267,7 @@ export const saveSessionForBiometric = async (
   const encoded = encodeSession(session);
   if (!encoded) return false;
   try {
-    if (isNative) await authenticate('Confirm it’s you to turn on quick sign-in');
+    if (isNative) await authenticate(t('Confirm it’s you to turn on quick sign-in'));
     await writeStoredCredentials(encoded);
     return true;
   } catch (error) {
@@ -318,7 +319,7 @@ export const getQuickSignIn = async (
   if (!isNative && !allowWebTest) return null;
 
   try {
-    if (isNative) await authenticate(reason || 'Sign in to BandWith');
+    if (isNative) await authenticate(reason || t('Sign in to BandWith'));
   } catch {
     return null; // cancelled or failed
   }

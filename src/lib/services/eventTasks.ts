@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../supabase';
+import { t } from '@/lib/i18n';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Event tasks (table `rehearsal_tasks`, migration 008: despite the name it
@@ -59,7 +60,7 @@ export async function listEventTasks(eventId: string): Promise<{ data: EventTask
     .select(COLUMNS)
     .eq('event_id', eventId)
     .order('created_at', { ascending: true });
-  if (error) return { data: [], error: asError(error, 'Could not load the tasks.') };
+  if (error) return { data: [], error: asError(error, t('Could not load the tasks.')) };
   return { data: (data || []).map(normalize), error: null };
 }
 
@@ -82,11 +83,11 @@ export async function syncEventTasks(
 
   if (removed.length > 0) {
     const { error } = await supabase.from('rehearsal_tasks').delete().in('id', removed);
-    if (error) return { error: asError(error, 'Could not remove the tasks.') };
+    if (error) return { error: asError(error, t('Could not remove the tasks.')) };
   }
-  for (const t of clean.filter((x) => x.id)) {
-    const { error } = await supabase.from('rehearsal_tasks').update({ title: t.title }).eq('id', t.id as string);
-    if (error) return { error: asError(error, 'Could not update the tasks.') };
+  for (const task of clean.filter((x) => x.id)) {
+    const { error } = await supabase.from('rehearsal_tasks').update({ title: task.title }).eq('id', task.id as string);
+    if (error) return { error: asError(error, t('Could not update the tasks.')) };
   }
   const added = clean.filter((t) => !t.id);
   if (added.length > 0) {
@@ -100,7 +101,7 @@ export async function syncEventTasks(
         notes: t.notes?.trim() || null,
       })),
     );
-    if (error) return { error: asError(error, 'Could not save the tasks.') };
+    if (error) return { error: asError(error, t('Could not save the tasks.')) };
   }
   return { error: null };
 }
@@ -111,9 +112,9 @@ export async function setEventTaskDone(id: string, done: boolean): Promise<{ err
     .update({ is_completed: done })
     .eq('id', id)
     .select('id');
-  if (error) return { error: asError(error, 'Could not update the task.') };
+  if (error) return { error: asError(error, t('Could not update the task.')) };
   if (!data || (Array.isArray(data) && data.length === 0)) {
-    return { error: new Error("This change wasn't saved: you can't edit this event's tasks.") };
+    return { error: new Error(t("This change wasn't saved: you can't edit this event's tasks.")) };
   }
   return { error: null };
 }

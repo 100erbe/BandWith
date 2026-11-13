@@ -72,7 +72,8 @@ import { formatDistance, fromUnit, ratePerUnit, toUnit, useDistanceUnit } from '
 import { QuoteDeskMode, quoteDeskLinesFromQuote, useLeadingCompanion, type QuoteDeskLine } from '@/app/components/duo';
 import { LiveQuotePreview } from '@/app/components/duo/previews/LiveQuotePreview';
 import { personName } from '@/lib/personName';
-import { t, useT, intlLocale } from '@/lib/i18n';
+import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 export interface QuoteBandMember {
   id: string;
@@ -1099,15 +1100,19 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
 
   const getEffectiveTitle = useCallback(() => {
     if (eventName.trim()) return eventName.trim();
+    // Saved as the title: English as before, otherwise in the app language.
+    const typeLabel = eventType
+      ? getLocale() === 'en'
+        ? eventType.charAt(0).toUpperCase() + eventType.slice(1)
+        : eventTypeLabel(eventType)
+      : '';
     if (clientName.trim()) {
-      return eventType
-        ? `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} - ${clientName.trim()}`
-        : `Quote - ${clientName.trim()}`;
+      return typeLabel
+        ? `${typeLabel} - ${clientName.trim()}`
+        : t('Quote - {client}', { client: clientName.trim() });
     }
-    return eventType
-      ? `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Quote`
-      : 'New Quote';
-  }, [eventName, clientName, eventType]);
+    return typeLabel ? t('{type} Quote', { type: typeLabel }) : t('New Quote');
+  }, [eventName, clientName, eventType, t]);
 
   const maxAccessibleStep = useMemo(() => {
     if (isEditing) return STEPS.length - 1;
@@ -1341,7 +1346,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 `opt-${i + 1}`,
                 pkg.name,
                 pkg.musiciansCount,
-                pkg.description || `${pkg.musiciansCount} Musicians`,
+                pkg.description || t('{count} Musicians', { count: pkg.musiciansCount }),
                 pkg.flatPrice + setsAndExtrasAmount + travelAndProductionAmount,
                 discPct
               )
@@ -1577,7 +1582,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                   selectedPackageId === pkg.id || (!selectedPackageId && performanceType === pkg.performanceType);
                 return (
                   <Chip key={pkg.id} size="md" selected={isSelected} onClick={() => selectFlatPackage(pkg)} title={t('{count} musicians', { count: pkg.musiciansCount })}>
-                    {pkg.name}
+                    {builtinText(pkg.name)}
                     <span className="opacity-60">
                       {currencySymbol}
                       {pkg.flatPrice.toLocaleString(intlLocale())}
@@ -1718,7 +1723,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               return (
                 <Chip key={srv.id} selected={isAdded} onClick={() => toggleBandCustomService(srv)}>
                   {isAdded ? <Check className="w-3 h-3 shrink-0" /> : <Plus className="w-3 h-3 shrink-0" />}
-                  <span className="truncate max-w-[180px]">{srv.name}</span>
+                  <span className="truncate max-w-[180px]">{builtinText(srv.name)}</span>
                   <span className={cn(!isAdded && 'opacity-70')}>
                     · {currencySymbol}
                     {lineTotal.toLocaleString(intlLocale())}
@@ -1939,13 +1944,13 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
             <Chip
               key={loc}
               tone="accent"
-              selected={venueName === loc}
+              selected={venueName === builtinText(loc)}
               onClick={() => {
-                setVenueName(loc);
+                setVenueName(builtinText(loc));
                 if (loc !== 'TBD') handleCalculateDistance(loc);
               }}
             >
-              {loc}
+              {builtinText(loc)}
             </Chip>
           ))}
         </div>
@@ -2363,7 +2368,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 ...prev,
                 {
                   id: `item-${Date.now()}`,
-                  name: 'Custom Line Item',
+                  name: t('Custom Line Item'),
                   amount: 150,
                   price: 150,
                   quantity: 1,
@@ -2385,7 +2390,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <input
                   type="text"
                   aria-label={t('Item name')}
-                  value={item.name || item.description || ''}
+                  value={builtinText(item.name || item.description || '')}
                   onChange={e =>
                     setCustomItems(prev => prev.map((it, i) => (i === idx ? { ...it, name: e.target.value } : it)))
                   }
@@ -2466,7 +2471,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                     <span className="bw-label-xs text-muted-foreground">{t('Tier name')}</span>
                     <input
                       type="text"
-                      value={opt.name}
+                      value={builtinText(opt.name) ?? undefined}
                       onChange={e => updatePackageOption(opt.id, { name: e.target.value })}
                       className="h-11 px-4 rounded-full bg-field border border-border bw-body-sm font-medium text-foreground outline-none focus:border-foreground"
                     />
@@ -2602,7 +2607,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   };
   const heroChipStyle: React.CSSProperties = { backgroundColor: 'var(--wizard-accent-fg)', color: 'var(--wizard-accent)' };
   const heroTintStyle: React.CSSProperties = { backgroundColor: 'color-mix(in srgb, currentColor 14%, transparent)' };
-  const extrasNames = customItems.map(it => it.name || it.description).filter(Boolean) as string[];
+  const extrasNames = customItems.map(it => builtinText(it.name || it.description)).filter(Boolean) as string[];
 
   const billingSummary = [
     vatExempt || reverseCharge ? t('VAT exempt') : t('{rate}% VAT', { rate: vatRate }),
@@ -2969,7 +2974,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
   const handleDeskAddLine = () => {
     setCustomItems(prev => [
       ...prev,
-      { id: `item-${Date.now()}`, name: 'Custom Line Item', amount: 150, price: 150, quantity: 1, taxable: true },
+      { id: `item-${Date.now()}`, name: t('Custom Line Item'), amount: 150, price: 150, quantity: 1, taxable: true },
     ]);
   };
 

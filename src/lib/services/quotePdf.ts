@@ -1,5 +1,6 @@
 import { Quote, QuotePackageOption } from '@/app/data/quotes';
-import { BandPricingSettings, DEFAULT_BAND_PRICING, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
+import { builtinText } from '@/lib/i18n/builtins';
+import { BandPricingSettings, DEFAULT_BAND_PRICING, DEFAULT_QUOTE_DISCLAIMER, bankAccountLine, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
 import { formatDistance } from '@/lib/units';
 import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
@@ -245,7 +246,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     instrumentsList.length > 0
       ? tr('(e.g. {list})', { list: instrumentsList.join(', ') })
       : tr('(e.g. Drums, Bass, Keys, Guitar, Vocals)');
-  const instrumentsDetail = optionOverride?.instrumentsDetail || defaultInstrumentsText;
+  const instrumentsDetail = builtinText(optionOverride?.instrumentsDetail, lang) || defaultInstrumentsText;
 
   const numSets = quote.numberOfSets || 3;
   const setDur = quote.setDuration || 45;
@@ -360,12 +361,12 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     for (const mom of quote.selectedMoments) {
       const momDetails = tr('{count}pc ({minutes}m)', { count: mom.musicians, minutes: mom.duration });
       const momPrice = mom.included || mom.price === 0 ? tr('included') : formatMoney(mom.price, sym);
-      const subLeft = mom.description ? [`(${mom.description})`] : [];
+      const subLeft = mom.description ? [`(${builtinText(mom.description, lang)})`] : [];
       const subRight =
         mom.instruments && mom.instruments.length > 0
           ? wrapTextLines(ctx, `(${mom.instruments.join(', ')})`, 240)
           : [];
-      drawServiceItem(mom.name.toUpperCase(), momDetails, momPrice, subLeft, subRight);
+      drawServiceItem(builtinText(mom.name, lang).toUpperCase(), momDetails, momPrice, subLeft, subRight);
     }
   }
 
@@ -373,13 +374,13 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (quote.customItems && quote.customItems.length > 0) {
     for (const item of quote.customItems) {
       const itemPrice = (item.price ?? item.amount ?? 0) * (item.quantity || 1);
-      const itemLabel = (item.name || item.description || tr('EXTRA SERVICE')).toUpperCase();
+      const itemLabel = (builtinText(item.name || item.description, lang) || tr('EXTRA SERVICE')).toUpperCase();
       const qtyDetail = item.quantity && item.quantity > 1 ? `× ${item.quantity}` : tr('( Add-on )');
       drawServiceItem(
         itemLabel,
         qtyDetail,
         itemPrice > 0 ? formatMoney(itemPrice, sym) : tr('included'),
-        item.description && item.name && item.description !== item.name ? [item.description] : [],
+        item.description && item.name && item.description !== item.name ? [builtinText(item.description, lang)] : [],
         []
       );
     }
@@ -614,7 +615,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     ctx.fillStyle = '#334155';
     ctx.fillText(tr('PAYMENT & BANK TRANSFER DETAILS'), leftMargin + 24, y + 20);
 
-    const bankParts = bankDetailParts(settings);
+    const bankParts = bankDetailParts(settings, lang);
 
     ctx.font = '400 19px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#475569';
@@ -773,7 +774,7 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   options.forEach((opt, idx) => {
     const colCenterX = leftMargin + labelColW + idx * optColW + optColW / 2;
     ctx.textAlign = 'center';
-    ctx.fillText(opt.label, colCenterX, y + 17);
+    ctx.fillText(builtinText(opt.label, lang), colCenterX, y + 17);
   });
   ctx.textAlign = 'left';
   y += headerH;
@@ -952,7 +953,7 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
     settings.contact_email || quote.clientEmail || '',
     settings.website ? tr('Website: {url}', { url: settings.website }) : '',
     hasBankAccount(settings) && quote.showBankDetailsOnPdf !== false
-      ? bankDetailParts(settings).find((p) => /^(IBAN|Account):/.test(p)) || ''
+      ? bankAccountLine(settings, lang)
       : '',
   ]
     .filter(Boolean)

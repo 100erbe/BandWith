@@ -80,7 +80,7 @@ export const StepPad: React.FC<StepPadProps> = ({ day, date, time, votes = [], s
         );
       })()}
       {votes.length > 0 && (
-        <span className="flex justify-between pt-1" aria-label={`${votes.filter(Boolean).length} of ${votes.length} available`}>
+        <span className="flex justify-between pt-1" aria-label={t('{count} of {total} available', { count: votes.filter(Boolean).length, total: votes.length })}>
           {votes.map((v, i) => (
             <span key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: v ? dotOn : dotOff }} />
           ))}

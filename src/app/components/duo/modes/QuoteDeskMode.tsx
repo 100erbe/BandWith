@@ -8,6 +8,7 @@ import type { Quote as AppQuote } from '@/app/data/quotes';
 import { FoldSplit } from '../FoldSplit';
 import { DeckButton, DeckHeading, ModeEmpty, dayLabel } from './shared';
 import { t, useT } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 /**
  * Quote desk (a quote being edited, in Laptop pose). Display: the quote as
@@ -34,7 +35,7 @@ export function quoteDeskLinesFromQuote(q: Partial<Pick<AppQuote, 'lineItems' | 
   if (q.lineItems && q.lineItems.length > 0) {
     return q.lineItems.map((li) => ({
       id: li.id,
-      description: li.description,
+      description: builtinText(li.description),
       quantity: li.quantity || 1,
       unitPrice: li.unitPrice || 0,
     }));
@@ -42,10 +43,10 @@ export function quoteDeskLinesFromQuote(q: Partial<Pick<AppQuote, 'lineItems' | 
   return [
     ...(q.selectedMoments || [])
       .filter((m) => m.included !== false)
-      .map((m) => ({ id: `m-${m.id}`, description: m.name, quantity: 1, unitPrice: m.price || 0, adjustable: false })),
+      .map((m) => ({ id: `m-${m.id}`, description: builtinText(m.name), quantity: 1, unitPrice: m.price || 0, adjustable: false })),
     ...(q.customItems || []).map((c) => ({
       id: `c-${c.id}`,
-      description: c.description || c.name || t('Custom item'),
+      description: builtinText(c.description || c.name) || t('Custom item'),
       quantity: c.quantity || 1,
       unitPrice: c.amount ?? c.price ?? 0,
     })),

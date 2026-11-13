@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { sendOnboardingInviteEmail } from './email';
 import type { InviteData } from '@/app/components/onboarding/JoinerInviteLanding';
+import { t } from '@/lib/i18n';
 
 /**
  * Band invitations (table `band_invitations`, migration 044).
@@ -58,19 +59,19 @@ export class InviteError extends Error {
 export function inviteErrorMessage(code: InviteErrorCode, email?: string): string {
   switch (code) {
     case 'invalid_code':
-      return 'That doesn’t look like an invite code. Paste the full code or the invite link.';
+      return t('That doesn’t look like an invite code. Paste the full code or the invite link.');
     case 'invite_not_found':
-      return 'This invite isn’t valid any more. Ask your band admin for a new one.';
+      return t('This invite isn’t valid any more. Ask your band admin for a new one.');
     case 'invite_expired':
-      return 'This invite has expired. Ask your band admin for a new one.';
+      return t('This invite has expired. Ask your band admin for a new one.');
     case 'invite_email_mismatch':
-      return `This invite was sent to a different email. Sign in with ${email || 'that email'} to join.`;
+      return t('This invite was sent to a different email. Sign in with {email} to join.', { email: email || t('that email') });
     case 'not_authenticated':
-      return 'Sign in to join the band.';
+      return t('Sign in to join the band.');
     case 'server':
-      return 'Something went wrong on our side. Try again in a moment.';
+      return t('Something went wrong on our side. Try again in a moment.');
     default:
-      return 'We couldn’t check the invite. Check your connection and try again.';
+      return t('We couldn’t check the invite. Check your connection and try again.');
   }
 }
 

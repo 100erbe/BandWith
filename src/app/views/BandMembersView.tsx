@@ -632,16 +632,16 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
                 <PillButton
                   onClick={async () => {
                     const text = [
-                      `Join ${selectedBand?.name || 'our band'} on BandWith.`,
+                      selectedBand?.name ? t('Join {band} on BandWith.', { band: selectedBand.name }) : t('Join our band on BandWith.'),
                       inviteShare.url ? inviteShare.url : null,
-                      `Invite code: ${inviteShare.code}`,
+                      t('Invite code: {code}', { code: inviteShare.code }),
                     ].filter(Boolean).join('\n');
                     try {
                       if (Capacitor.isNativePlatform()) {
                         const { Share } = await import('@capacitor/share');
-                        await Share.share({ title: 'BandWith invite', text });
+                        await Share.share({ title: t('BandWith invite'), text });
                       } else if (navigator.share) {
-                        await navigator.share({ title: 'BandWith invite', text });
+                        await navigator.share({ title: t('BandWith invite'), text });
                       } else {
                         await navigator.clipboard.writeText(text);
                         setCodeCopied(true);

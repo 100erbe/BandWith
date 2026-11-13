@@ -9,6 +9,7 @@ import { Tag } from '@/app/components/bw/Screen';
 import { KeyValueRow, SectionTitle } from './parts';
 import { daysUntil, formatStampShort } from './format';
 import { useT, intlLocale } from '@/lib/i18n';
+import { builtinText } from '@/lib/i18n/builtins';
 
 /**
  * The quote saved with an event: by events.quote_id when set, otherwise the
@@ -70,14 +71,14 @@ const quoteMath = (quote: AppQuote | null, fallbackTotal: number, t: ReturnType<
     quote.lineItems && quote.lineItems.length > 0
       ? quote.lineItems.map((li) => ({
           id: li.id,
-          label: li.quantity > 1 ? `${li.description} × ${li.quantity}` : li.description,
+          label: li.quantity > 1 ? `${builtinText(li.description)} × ${li.quantity}` : builtinText(li.description),
           amount: (li.unitPrice || 0) * (li.quantity || 1),
         }))
       : [
-          ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: m.name, amount: m.price || 0 })),
+          ...(quote.selectedMoments || []).map((m) => ({ id: `m-${m.id}`, label: builtinText(m.name), amount: m.price || 0 })),
           ...(quote.customItems || []).map((c) => ({
             id: `c-${c.id}`,
-            label: c.description || c.name || t('Custom item'),
+            label: builtinText(c.description || c.name) || t('Custom item'),
             amount: (c.amount ?? c.price ?? 0) * (c.quantity || 1),
           })),
         ];

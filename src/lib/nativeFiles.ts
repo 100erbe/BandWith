@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { t } from '@/lib/i18n';
 
 export type FileShareResult = 'shared' | 'downloaded' | 'cancelled';
 
@@ -108,10 +109,10 @@ export const saveFile = async (
       directory: Directory.Documents,
       recursive: true,
     });
-    return { result: 'saved', location: isIOS ? 'Files › BandWith' : 'Documents › BandWith' };
+    return { result: 'saved', location: isIOS ? t('Files › BandWith') : t('Documents › BandWith') };
   } catch (err) {
     console.warn('[nativeFiles] Save failed, falling back to the share sheet:', err);
-    return { result: await shareFile(blob, name, { dialogTitle: 'Save PDF' }) };
+    return { result: await shareFile(blob, name, { dialogTitle: t('Save PDF') }) };
   }
 };
 
