@@ -3613,6 +3613,17 @@ const dict: Dictionary = {
   "Contract signed": "Contrato firmado",
   "Contract not signed yet": "Contrato aún sin firmar",
   "No contract yet": "Aún no hay contrato",
+  "Add preferred days": "Añadir los días preferidos",
+  "As members vote": "Como votan los miembros",
+  "Candidate days": "Días propuestos",
+  "Pick a day before the first slot": "Elige un día antes de la primera franja",
+  "Poll · members vote on dates": "Encuesta · los miembros votan las fechas",
+  "Rehearsal poll · active": "Encuesta de ensayo · activa",
+  "Sent to every active member": "Se envía a todos los miembros activos",
+  "Sent to every active member · {n}": "Se envía a todos los miembros activos · {n}",
+  "Tap a day to add it with these times": "Toca un día para añadirlo con este horario",
+  "Vote by": "Votar antes del",
+  "Vote deadline & note": "Plazo de votación y nota",
 };
 
 export default dict;

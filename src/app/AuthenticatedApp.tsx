@@ -3874,6 +3874,11 @@ export default function AuthenticatedApp() {
                 refetchRehearsalPolls();
                 refetchEvents();
               }}
+              onScheduleDirectly={() => {
+                setShowRehearsalPollModal(false);
+                setPollModalInitialProposal(null);
+                handleCreateEvent('rehearsal');
+              }}
               onShowToast={(msg, type) => setSaveToast({ message: msg, type })}
             />
           )}
