@@ -48,6 +48,8 @@ export interface FloorWedgeModeProps {
     following: boolean;
     leaderSeen: boolean;
     connected: boolean;
+    /** Bluetooth link (native apps): 'leading' for the admin, 'connected' for a member. */
+    bluetooth?: string;
     onToggle: (on: boolean) => void;
   };
   /** When the set started (elapsed time); defaults to when the mode mounted. */
@@ -236,8 +238,12 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
           )}
           {!follow ? null : follow.isLeader ? (
             <span className="flex items-center gap-2 bw-label-md uppercase text-white/70" role="status">
-              <span aria-hidden className={cn('w-2 h-2 rounded-full', follow.connected ? 'bg-accent' : 'border border-white/60')} />
-              {follow.connected ? t('Band follows you') : t('Offline')}
+              <span
+                aria-hidden
+                className={cn('w-2 h-2 rounded-full', follow.connected || follow.bluetooth === 'leading' ? 'bg-accent' : 'border border-white/60')}
+              />
+              {follow.connected ? t('Band follows you') : follow.bluetooth === 'leading' ? 'Bluetooth' : t('Offline')}
+              {follow.connected && follow.bluetooth === 'leading' ? ' · BT' : ''}
             </span>
           ) : (
             <button
@@ -254,6 +260,7 @@ export const FloorWedgeMode: React.FC<FloorWedgeModeProps> = ({
             >
               <span aria-hidden className={cn('w-2 h-2 rounded-full', follow.following ? 'bg-accent-foreground' : 'border border-white')} />
               {follow.following ? (follow.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
+              {follow.bluetooth === 'connected' ? ' · BT' : ''}
             </button>
           )}
         </div>

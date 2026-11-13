@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { saveSetlistOrder } from '@/lib/services/songs';
+import { useStageBle } from './useStageBle';
 import {
   applyOrder,
   indexOf,
@@ -73,6 +74,27 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
 
   const live = !!eventId && open;
   const ordered = useMemo(() => applyOrder(songs, order), [songs, order]);
+  const savedIds = useMemo(() => songs.map((s) => s.id).filter((id): id is string => !!id), [songs]);
+
+  /** A leader's state from either path (Realtime or Bluetooth); the newest wins. */
+  const receive = useCallback(
+    (state: StageLiveState) => {
+      if (state.from === clientId) return;
+      // Clock moves on even for states we don't show (Lamport).
+      if (!isNewer(state, lastRef.current)) return;
+      lastRef.current = state;
+      remoteRef.current = state;
+      setLeaderSeen(true);
+      // The order is the setlist's, so it applies even when not following.
+      if (state.order) setOrder(state.order);
+      if (followingRef.current) setSongId(state.songId);
+    },
+    [clientId],
+  );
+
+  // Offline on stage: the same states over Bluetooth (native apps only).
+  const ble = useStageBle({ eventId, savedIds, open: live, isLeader, onState: receive });
+  const blePublish = ble.publish;
   const hasIds = ordered.length > 0 && ordered.every((s) => !!s.id);
   const index = hasIds ? indexOf(ordered, songId) : Math.min(fallbackIndex, Math.max(0, ordered.length - 1));
 
@@ -90,8 +112,9 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
       lastRef.current = state;
       ledRef.current = true;
       void channelRef.current?.send({ type: 'broadcast', event: 'state', payload: state });
+      blePublish(state);
     },
-    [clientId],
+    [clientId, blePublish],
   );
 
   const applyRemote = useCallback((state: StageLiveState) => {
@@ -109,16 +132,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     channel
       .on('broadcast', { event: 'state' }, (msg: { payload?: unknown }) => {
         const state = parseStageState(msg?.payload);
-        if (!state || state.from === clientId) return;
-        // Clock moves on even for states we don't show (Lamport).
-        const newer = isNewer(state, lastRef.current);
-        if (!newer) return;
-        lastRef.current = state;
-        remoteRef.current = state;
-        setLeaderSeen(true);
-        // The order is the setlist's, so it applies even when not following.
-        if (state.order) setOrder(state.order);
-        if (followingRef.current) setSongId(state.songId);
+        if (state) receive(state);
       })
       .on('presence', { event: 'join' }, (msg: { key?: string }) => {
         if (msg?.key === clientId || !ledRef.current || !lastRef.current) return;
@@ -136,7 +150,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
       setConnected(false);
       void supabase.removeChannel(channel);
     };
-  }, [live, eventId, clientId, isLeader]);
+  }, [live, eventId, clientId, isLeader, receive]);
 
   // Closing Stage mode forgets the live state; the saved order stands.
   useEffect(() => {
@@ -229,6 +243,8 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     leaderSeen,
     /** The live channel is connected. */
     connected,
+    /** Bluetooth link (native apps): leading, searching, connected… */
+    bluetooth: ble.status,
     isLeader,
     /** Reordering needs saved rows (a band setlist with row ids). */
     canReorder: isLeader && !!setlistId && hasIds && ordered.every((s) => !!s.songId),

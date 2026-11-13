@@ -12,6 +12,7 @@ import { useT } from '@/lib/i18n';
 import { timelineDates } from '@/lib/gigTiming';
 import { cn } from '@/app/components/ui/utils';
 import type { StageSaveState } from '@/app/components/event/useStageLive';
+import type { StageBleStatus } from '@/app/components/event/useStageBle';
 
 export interface StageStep {
   label: string;
@@ -48,6 +49,8 @@ export interface StageLiveControls {
   setFollowing: (on: boolean) => void;
   leaderSeen: boolean;
   connected: boolean;
+  /** Bluetooth link in the native apps (offline on stage). */
+  bluetooth?: StageBleStatus;
   isLeader: boolean;
   canReorder: boolean;
   move: (from: number, to: number) => void;
@@ -272,8 +275,16 @@ export const StageMode: React.FC<StageModeProps> = ({
               <span className="flex items-center gap-2 min-w-0 shrink-0 max-w-[70%]">
                 {live.isLeader ? (
                   <LiveStatus
-                    on={live.connected}
-                    label={editing ? saveLabel(live.saveState, t) : live.connected ? t('Live') : t('Offline')}
+                    on={live.connected || live.bluetooth === 'leading'}
+                    label={
+                      editing
+                        ? saveLabel(live.saveState, t)
+                        : live.connected
+                          ? `${t('Live')}${live.bluetooth === 'leading' ? ' · BT' : ''}`
+                          : live.bluetooth === 'leading'
+                            ? 'Bluetooth'
+                            : t('Offline')
+                    }
                     hint={live.connected ? t('Band follows you') : undefined}
                     accentColor={accentColor}
                   />
@@ -297,6 +308,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                     />
                     <span className="truncate">
                       {live.following ? (live.leaderSeen ? t('Following leader') : t('Waiting for leader')) : t('Follow leader')}
+                      {live.bluetooth === 'connected' ? ' · BT' : ''}
                     </span>
                   </button>
                 )}

@@ -37,6 +37,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>In Stage mode, BandWith uses Bluetooth so the band leader's phone can keep everyone on the same song when there is no internet.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>BandWith uses the camera when you take a photo for your profile, band logo or signature.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
