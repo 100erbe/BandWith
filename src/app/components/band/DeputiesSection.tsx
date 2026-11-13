@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, Mail, Pencil, Phone, Plus, Trash2, Users } from '@/app/components/icons';
+import { Link, Loader2, Mail, Pencil, Phone, Plus, Trash2, Users } from '@/app/components/icons';
 import { BwSheet, Card, IconButton, Tag } from '@/app/components/bw/Screen';
 import { PillButton, PillField } from '@/app/components/bw/Form';
 import {
@@ -7,6 +7,7 @@ import {
   deputiesUnavailable,
   listDeputies,
   saveDeputy,
+  unlinkDeputy,
   type Deputy,
 } from '@/lib/services/deputies';
 import { useT } from '@/lib/i18n';
@@ -32,7 +33,8 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
   const [editing, setEditing] = React.useState<Deputy | 'new' | null>(null);
   const [form, setForm] = React.useState(EMPTY);
   const [saving, setSaving] = React.useState(false);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [confirm, setConfirm] = React.useState<'delete' | 'unlink' | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     const { data, error: e } = await listDeputies(bandId);
@@ -56,7 +58,8 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
 
   const open = (d: Deputy | 'new', instrument = '') => {
     setEditing(d);
-    setConfirmDelete(false);
+    setConfirm(null);
+    setNotice(null);
     setError(null);
     setForm(
       d === 'new'
@@ -105,6 +108,23 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
       return;
     }
     setEditing(null);
+    void load();
+  };
+
+  // The deputy's BandWith account (086), cleared by an admin when the wrong
+  // person opened the link or the deputy changed account (087).
+  const unlink = async () => {
+    if (!editing || editing === 'new') return;
+    setSaving(true);
+    const { error: e } = await unlinkDeputy(editing.id);
+    setSaving(false);
+    if (e) {
+      setError(t('Could not unlink. Try again.'));
+      return;
+    }
+    setEditing({ ...editing, user_id: null });
+    setConfirm(null);
+    setNotice(t('Unlinked. Send the next request by message: its new link lets them join again from the app.'));
     void load();
   };
 
@@ -210,17 +230,23 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
         open={!!editing}
         onClose={close}
         overline={bandName}
-        title={editing === 'new' ? t('New deputy') : confirmDelete ? t('Delete deputy?') : t('Edit deputy')}
+        title={editing === 'new' ? t('New deputy') : confirm === 'delete' ? t('Delete deputy?') : confirm === 'unlink' ? t('Unlink BandWith account?') : t('Edit deputy')}
         zIndex={102}
         footer={
-          confirmDelete ? (
+          confirm ? (
             <div className="grid grid-cols-2 gap-2">
-              <PillButton variant="white" onClick={() => setConfirmDelete(false)} disabled={saving}>
+              <PillButton variant="white" onClick={() => setConfirm(null)} disabled={saving}>
                 {t('Cancel')}
               </PillButton>
-              <PillButton variant="danger" loading={saving} icon={<Trash2 className="w-4 h-4" />} onClick={remove}>
-                {t('Delete')}
-              </PillButton>
+              {confirm === 'delete' ? (
+                <PillButton variant="danger" loading={saving} icon={<Trash2 className="w-4 h-4" />} onClick={remove}>
+                  {t('Delete')}
+                </PillButton>
+              ) : (
+                <PillButton variant="danger" loading={saving} onClick={unlink}>
+                  {t('Unlink')}
+                </PillButton>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -228,7 +254,7 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
                 {editing === 'new' ? t('Add deputy') : t('Save')}
               </PillButton>
               {editing && editing !== 'new' && (
-                <PillButton variant="danger" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirmDelete(true)}>
+                <PillButton variant="danger" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirm('delete')}>
                   {t('Delete deputy')}
                 </PillButton>
               )}
@@ -236,10 +262,18 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
           )
         }
       >
-        {confirmDelete ? (
+        {confirm === 'delete' ? (
           <p className="bw-body-md text-sheet-foreground/80">
             {t("{name} is removed from the band's list. You can add them again later.", { name: editing && editing !== 'new' ? editing.name : t('This deputy') })}
           </p>
+        ) : confirm === 'unlink' ? (
+          <div className="flex flex-col gap-3 bw-body-md text-sheet-foreground/80">
+            <p>
+              {t("{name}'s account stops getting requests in the app and no longer sees this band's gigs.", { name: editing && editing !== 'new' ? editing.name : t('This deputy') })}
+            </p>
+            <p>{t('Links already sent stop working. Send the next request by message: opening its new link from the app links the right account.')}</p>
+            {error && <p role="alert" className="bw-body-sm text-destructive">{error}</p>}
+          </div>
         ) : (
           <form
             className="flex flex-col gap-3"
@@ -248,6 +282,30 @@ export const DeputiesSection: React.FC<{ bandId: string; bandName?: string; memb
               void save();
             }}
           >
+            {editing && editing !== 'new' && editing.user_id && (
+              <div className="rounded-[20px] bg-sheet-foreground/[0.08] p-4 flex flex-col gap-1">
+                <p className="bw-label-md flex items-center gap-2">
+                  <Link className="w-4 h-4 shrink-0" aria-hidden />
+                  {t('On BandWith')}
+                </p>
+                <p className="bw-body-sm text-sheet-foreground/70">{t('{name} answers in the app: requests and changes reach them as notifications.', { name: editing.name })}</p>
+                <button
+                  type="button"
+                  className="bw-label-sm underline underline-offset-2 min-h-[44px] self-start"
+                  onClick={() => {
+                    setError(null);
+                    setConfirm('unlink');
+                  }}
+                >
+                  {t('Unlink account')}
+                </button>
+              </div>
+            )}
+            {notice && (
+              <p role="status" className="bw-body-sm rounded-[20px] bg-sheet-foreground/[0.08] p-4">
+                {notice}
+              </p>
+            )}
             <PillField tone="sheet" label={t('Name')} value={form.name} onChange={set('name')} maxLength={120} autoComplete="off" required />
             <PillField tone="sheet" label={t('Instrument')} value={form.instrument} onChange={set('instrument')} maxLength={60} placeholder={t('Bass, drums…')} />
             <PillField
