@@ -37,7 +37,9 @@ export interface ChartSection {
 
 export interface SongChart {
   v: 1;
-  source: 'ireal';
+  /** Where the chart came from: an iReal Pro link, or a MusicXML file (`file` = its name). */
+  source: 'ireal' | 'musicxml';
+  file?: string;
   title: string;
   composer?: string;
   style?: string;

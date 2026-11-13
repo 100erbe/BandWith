@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D42F00000100000003 /* BandWithBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000100000004 /* BandWithBridgeViewController.swift */; };
 		A1B2C3D42F00000100000011 /* StageBlePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000100000012 /* StageBlePlugin.swift */; };
+		A1B2C3D42F00000100000021 /* IrealForumPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000100000022 /* IrealForumPlugin.swift */; };
 		A1B2C3D42F00000100000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F00000100000002 /* SceneDelegate.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -23,6 +24,7 @@
 /* Begin PBXFileReference section */
 		A1B2C3D42F00000100000004 /* BandWithBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BandWithBridgeViewController.swift; sourceTree = "<group>"; };
 		A1B2C3D42F00000100000012 /* StageBlePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageBlePlugin.swift; sourceTree = "<group>"; };
+		A1B2C3D42F00000100000022 /* IrealForumPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrealForumPlugin.swift; sourceTree = "<group>"; };
 		A1B2C3D42F00000100000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -84,6 +86,7 @@
 				A1B2C3D42F00000100000002 /* SceneDelegate.swift */,
 				A1B2C3D42F00000100000004 /* BandWithBridgeViewController.swift */,
 				A1B2C3D42F00000100000012 /* StageBlePlugin.swift */,
+				A1B2C3D42F00000100000022 /* IrealForumPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -222,6 +225,7 @@
 				A1B2C3D42F00000100000001 /* SceneDelegate.swift in Sources */,
 				A1B2C3D42F00000100000003 /* BandWithBridgeViewController.swift in Sources */,
 				A1B2C3D42F00000100000011 /* StageBlePlugin.swift in Sources */,
+				A1B2C3D42F00000100000021 /* IrealForumPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

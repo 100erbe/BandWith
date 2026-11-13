@@ -33,6 +33,16 @@
                 <data android:scheme="com.bandwith.app" android:host="auth" />
             </intent-filter>
 
+            <!-- MusicXML chord charts opened from other apps ("Open with BandWith"): src/lib/chartInbox.ts -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.recordare.musicxml+xml" />
+                <data android:mimeType="application/vnd.recordare.musicxml" />
+            </intent-filter>
+
         </activity>
 
         <!-- Firebase push: status-bar icon and tint for notifications sent while the app is closed -->
