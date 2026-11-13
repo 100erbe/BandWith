@@ -6,6 +6,7 @@ import { cn } from '@/app/components/ui/utils';
 import { t } from '@/lib/i18n';
 import { RailHeaderActions, useRailAction, useRailBack, useRailHeaderSlot, useRailOwnsChrome, useRailSearch } from '@/lib/railActions';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
+import { useRailLayout } from '@/lib/deviceRegions';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Screen building blocks, 1:1 with the Figma components:
@@ -381,6 +382,11 @@ export interface BwSheetProps {
    * trailing page (Figma "Open · New gig / 2 | Picker / Date").
    */
   picker?: boolean;
+  /**
+   * Tablet: open as a popover above the nav's create button (iPad "Create"
+   * menu) instead of a centred card.
+   */
+  navAnchor?: boolean;
 }
 
 /**
@@ -400,8 +406,14 @@ export const BwSheet: React.FC<BwSheetProps> = ({
   leading = false,
   portal = false,
   picker = false,
+  navAnchor = false,
 }) => {
   const dark = tone === 'dark';
+  // Tablet-sized window: a centred card (or a popover above the nav) that
+  // fades in, instead of a sheet rising from the bottom edge.
+  const { wide, rail } = useRailLayout();
+  const card = wide && !rail;
+  const enter = card ? { opacity: 0, y: 16, scale: 0.98 } : { y: '100%' };
   // iPhone Duo (Figma "Home / Create menu", "Event / Fee & payouts sheet"):
   // the sheet keeps its own close and the rail stays as the screen beneath
   // had it; where that screen has a Back, Back closes the sheet first.
@@ -431,14 +443,15 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             key="bw-sheet"
             role="dialog"
             aria-modal="true"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'tween', duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+            initial={enter}
+            animate={card ? { opacity: 1, y: 0, scale: 1 } : { y: 0 }}
+            exit={enter}
+            transition={{ type: 'tween', duration: card ? 0.22 : 0.3, ease: [0.32, 0.72, 0, 1] }}
             className={cn(
-              'bw-rail-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
+              'bw-rail-sheet bw-sheet fixed inset-x-0 bottom-0 max-h-[88vh] flex flex-col rounded-t-[32px]',
               leading && 'bw-leading-sheet',
               picker && 'bw-picker',
+              navAnchor && 'bw-nav-popover',
               dark ? 'bg-sheet text-sheet-foreground' : 'bg-background text-foreground',
             )}
             data-state="open"
@@ -446,7 +459,9 @@ export const BwSheet: React.FC<BwSheetProps> = ({
             {...drag.sheet}
           >
             <div className="shrink-0 px-5 pt-3 pb-2 flex flex-col gap-3" {...drag.handle}>
-              <span className={cn('mx-auto w-10 h-[5px] rounded-full', dark ? 'bg-sheet-foreground/85' : 'bg-muted-foreground/55')} />
+              {!card && (
+                <span className={cn('mx-auto w-10 h-[5px] rounded-full', dark ? 'bg-sheet-foreground/85' : 'bg-muted-foreground/55')} />
+              )}
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   {overline && <p className={cn('bw-label-sm', dark ? 'text-sheet-foreground/85' : 'text-muted-foreground')}>{overline}</p>}

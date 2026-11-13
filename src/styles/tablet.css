@@ -1,0 +1,46 @@
+/* ── Tablet layout (iPad, Android tablets, desktop browsers) ─────────────
+   `data-bw-wide` is set by src/lib/deviceRegions.ts on windows 744 px and up
+   with no Duo system column, so none of these rules reach the iPhone Duo.
+   Two panes (landscape, or portrait from 960 px): a 320–420 px list column
+   and the detail beside it. The nav is a floating labelled pill over both. */
+
+/* The nav floats over the detail panes too (iPad frames; Settings screens
+   are z-100/101), but stays under a modal sheet's scrim. */
+[data-bw-wide][data-bw-two-pane] .bw-nav-bar {
+  z-index: 103 !important;
+}
+[data-bw-wide][data-bw-two-pane] body:has(.bw-sheet[role="dialog"]:not(.bw-nav-popover)) .bw-nav-bar {
+  z-index: 80 !important;
+}
+/* Detail content ends above the nav (bar 64 px + 24 px from the bottom). */
+[data-bw-wide][data-bw-two-pane][data-bw-tab-nav] .bw-pane-detail {
+  padding-bottom: calc(var(--safe-bottom, 0px) + 104px) !important;
+}
+
+/* The empty detail pane's caption sits above the nav. */
+[data-bw-wide] .bw-pane-placeholder {
+  padding-bottom: calc(var(--safe-bottom, 0px) + 120px) !important;
+}
+
+/* Sheets become centred cards. */
+[data-bw-wide] .bw-sheet[role="dialog"] {
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: auto !important;
+  height: fit-content !important;
+  width: min(560px, calc(100vw - 48px)) !important;
+  max-width: none !important;
+  max-height: 85vh !important;
+  border-radius: 32px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+}
+/* The create menu: a popover just above the nav's create button. */
+[data-bw-wide] .bw-sheet.bw-nav-popover[role="dialog"] {
+  top: auto !important;
+  bottom: calc(var(--safe-bottom, 0px) + 24px + 64px + 20px) !important;
+  margin: 0 auto !important;
+  width: min(420px, calc(100vw - 48px)) !important;
+  max-height: calc(100vh - var(--safe-bottom, 0px) - 140px) !important;
+}

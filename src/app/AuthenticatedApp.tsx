@@ -332,7 +332,7 @@ export default function AuthenticatedApp() {
   // Navigation
   const [activeTab, setActiveTab] = useState<TabName>("Home");
   // iPhone Duo rail (Figma "Duo"): the switch-band sheet keeps the tabs, the inbox hides them.
-  const { twoPane, rail: railLayout } = useRailLayout();
+  const { twoPane, rail: railLayout, wide: wideLayout } = useRailLayout();
   useEffect(() => {
     isHeaderScrolledRef.current = false;
     setIsHeaderScrolled(false);
@@ -3371,7 +3371,7 @@ export default function AuthenticatedApp() {
           one is open. Neutral canvas like the Figma "Open" panes, so the glass
           rail (lime Create, active dots) stays legible over it. */}
       <div aria-hidden="true" className="bw-pane-placeholder flex-col justify-end gap-3 p-6 pb-10 bg-background text-foreground select-none">
-        <span className="bw-label-sm text-muted-foreground">BandWith · Duo</span>
+        <span className="bw-label-sm text-muted-foreground">{railLayout ? 'BandWith · Duo' : 'BandWith'}</span>
         <span className="bw-display-lg">
           {activeTab === 'Chat' ? t('Pick a chat') : (activeTab === 'More' || isIdentityOpen) ? t('Your band, side by side') : t('Pick an event')}
         </span>
@@ -3591,7 +3591,11 @@ export default function AuthenticatedApp() {
               // the tabs themselves (only on the pane they cover when open);
               // these few register nothing with it.
               !!expandedCard || isNotificationsOpen || isDayPickerOpen || (!twoPane && (!!rsvpNotification || !!pollNotification || !!votePollId))
-            : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
+            : wideLayout && twoPane
+              ? // Tablet, two panes: Settings screens open beside the hub and
+                // keep the floating nav; composers and full-screen layers hide it.
+                !!expandedCard || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || isCreateEventOpen || showNewChat || showCreateBand || showPersonalGigModal || showProposeRehearsalModal
+              : !!expandedCard || (!twoPane && (!!selectedChat || !!selectedEvent || !!selectedNotification)) || isBandSwitcherOpen || isDayPickerOpen || !!rsvpNotification || !!pollNotification || !!votePollId || showSettings || showBandMembers || showSetlistManager || showAnalytics || showInventory || showContracts || showTaskTemplates || showPricingModal || showPastEvents || isCreateEventOpen || showEditProfile || showNewChat
         }
         isAdmin={isAdmin}
         isSolo={userMode === 'solo'}

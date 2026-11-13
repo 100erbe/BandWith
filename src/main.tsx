@@ -18,9 +18,11 @@ if (Capacitor.isNativePlatform()) {
     document.documentElement.setAttribute("data-platform", "android");
   }
   void enableEdgeToEdge();
-  installDuoLayout();
   installKeyboardInsets();
 }
+// Layout attributes (Duo rail, two panes, tablet width) on every platform, so
+// the iPad layout also runs in Safari and on desktop browsers.
+installDuoLayout();
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -30,6 +32,7 @@ import "@fontsource/inter/800.css";
 import "@fontsource/inter/900.css";
 import "./styles/index.css";
 import "./styles/duo-panes.css";
+import "./styles/tablet.css";
 
 createRoot(document.getElementById("root")!).render(
   <MotionConfig reducedMotion="user">
