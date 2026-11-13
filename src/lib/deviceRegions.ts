@@ -109,6 +109,14 @@ export function postureInput(r: DeviceRegions, native: boolean, vw: number, vh: 
 /** Narrowest window that gets the tablet layout (iPad mini portrait is 744). */
 export const WIDE_MIN_W = 744;
 
+/** Shortest side a tablet window has: keeps phones in landscape (~390 tall) on the phone layout. */
+export const WIDE_MIN_SHORT = 600;
+
+/** A tablet-sized window: wide enough and tall enough (not a phone turned sideways). */
+export function isTabletWindow(vw: number, vh: number): boolean {
+  return vw >= WIDE_MIN_W && Math.min(vw, vh) >= WIDE_MIN_SHORT;
+}
+
 /** Width of the list column on a tablet in two-pane: 36% of the window, 320–420 px. */
 export function tabletListWidth(vw: number): number {
   return Math.max(320, Math.min(420, Math.round(vw * 0.36)));
@@ -151,7 +159,7 @@ export function installDuoLayout(): void {
     // the Duo rules never see it.
     // A top/bottom occlusion (an iPad status strip) is not a Duo column.
     const sideColumn = !!s && s.edge !== 'top' && s.edge !== 'bottom';
-    const wide = !sideColumn && rail === 0 && vw >= WIDE_MIN_W;
+    const wide = !sideColumn && rail === 0 && isTabletWindow(vw, vh);
     root.toggleAttribute('data-bw-wide', wide);
     root.toggleAttribute('data-bw-rail', rail > 0);
     if (rail > 0 && railEdge) root.setAttribute('data-bw-rail-edge', railEdge);
