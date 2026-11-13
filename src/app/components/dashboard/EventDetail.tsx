@@ -460,6 +460,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     { label: t('More options'), icon: <MoreHorizontal />, pane: true },
   );
 
+  // Reverting a gig to a quote asks first. Declared before the early return
+  // below: every hook must run on every render.
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+
   if (!isAdmin && !isPersonalGig && (eventType === 'quote' || userResponse === 'declined')) {
     return null;
   }
@@ -512,7 +516,6 @@ export const EventDetail: React.FC<EventDetailProps> = ({
   };
 
   // Reverting takes the gig off the lineup's calendars: it asks first.
-  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
   const handleRevertQuote = async () => {
     if (isReverting || !onRevertQuote) return;
     haptic.tap();
