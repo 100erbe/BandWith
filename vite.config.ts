@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         unsubscribe: path.resolve(__dirname, 'unsubscribe.html'),
+        // Third page: /deputy.html (deputy reply link, migration 084).
+        deputy: path.resolve(__dirname, 'deputy.html'),
       },
     },
   },

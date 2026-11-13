@@ -33,6 +33,7 @@ export function notificationTarget(
     kind.startsWith('event_') ||
     kind.startsWith('gig_') ||
     kind === 'member_dropped_out' ||
+    kind === 'deputy_reply' ||
     kind === 'setlist_updated' ||
     kind === 'rehearsal_reminder' ||
     kind === 'rehearsal_poll_finalized'

@@ -141,6 +141,7 @@ import type { RehearsalPoll } from "@/lib/services/rehearsalPolls";
 import { useBodyScrollLock } from "@/app/hooks";
 import { usePushNotifications } from "@/app/hooks/usePushNotifications";
 import { parseLocalDate } from '@/lib/dates';
+import { addressWithoutCity } from '@/lib/eventAddress';
 import { MapsChooserHost } from '@/app/components/ui/MapsLink';
 import { personName, personFirstName, personInitials } from "@/lib/personName";
 import { t, useLocale, dateName, intlLocale } from "@/lib/i18n";
@@ -2736,7 +2737,11 @@ export default function AuthenticatedApp() {
       const venueCity = isRehearsalWizard ? data.city : data.details?.city;
       const clientName = data.details?.clientName || data.clientName;
 
-      const fullAddress = [venueAddress, venueCity].filter(Boolean).join(', ') || null;
+      // The wizard's address field may still end with the city (older saves
+      // appended it on every edit): keep the street part once, then the city.
+      const street = addressWithoutCity(venueAddress, venueCity);
+      const sameAsCity = !!venueCity && street.toLocaleLowerCase() === String(venueCity).trim().toLocaleLowerCase();
+      const fullAddress = [sameAsCity ? '' : street, venueCity].filter(Boolean).join(', ') || null;
       const venueFinal = location || "TBD";
       const timeFinal = time || "20:00";
       const eventData: Record<string, any> = {
