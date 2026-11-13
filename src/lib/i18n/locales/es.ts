@@ -3135,6 +3135,12 @@ const dict: Dictionary = {
   "Payouts ({count})": "Pagos ({count})",
   "Your payouts ({count})": "Tus pagos ({count})",
   "Payouts due · {count} · {amount}": "Pagos pendientes · {count} · {amount}",
+  "In": "Dentro",
+  "In|rsvp": "Va",
+  "Lineup so far · {count} of {total} in": "Formación hasta ahora · {count} de {total} van",
+  "{count} in": "{count} van",
+  "{count} maybe": "{count} quizás",
+  "{count} out": "{count} no van",
   // Calendar band filter
   "All bands": "Todas las bandas",
   "Filter by band": "Filtrar por banda",

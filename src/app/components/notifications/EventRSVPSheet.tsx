@@ -23,6 +23,8 @@ import { formatDayShort, formatTime12 } from '@/app/components/event/format';
 import { inviteFeeToShow } from '@/lib/inviteFee';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import { useT, intlLocale } from '@/lib/i18n';
+import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
+import { LineupSoFar } from '@/app/components/event/LineupSoFar';
 
 export type RsvpStatus = 'confirmed' | 'maybe' | 'declined';
 
@@ -91,6 +93,13 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   const eventTime = (data.event_time as string) || matchedEvent?.time;
   const venue = (data.venue as string) || matchedEvent?.location;
   const venueAddress = (data.venue_address as string) || matchedEvent?.venueAddress;
+
+  // Who else is on the gig so far: names, parts and answers, never fees.
+  const lineup = useLineupSoFar(
+    eventId,
+    notification.band_id || (data.band_id as string | undefined) || matchedEvent?.bandId || null,
+    currentUserId,
+  );
 
   // Members see only their own fee, never the gig total.
   const memberFee = inviteFeeToShow(data);
@@ -261,6 +270,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
             />
           )}
         </div>
+
+        {lineup && <LineupSoFar lineup={lineup} tone="sheet" />}
 
         {/* Schedule conflict notice */}
         {conflictEvent ? (
