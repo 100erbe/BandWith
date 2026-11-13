@@ -592,6 +592,8 @@ const dict: Dictionary = {
   "Stage mode: {title}": "Modo escenario: {title}",
   "Stage mode · {date}": "Modo escenario · {date}",
   "Exit stage mode": "Salir del modo escenario",
+  "Hide sidebar": "Ocultar barra lateral",
+  "Show sidebar": "Mostrar barra lateral",
   "Run of show": "Programa del evento",
   "Next · {label}": "Siguiente · {label}",
   "Setlist": "Setlist",
