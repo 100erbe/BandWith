@@ -10,6 +10,71 @@ import { useT } from '@/lib/i18n';
 const SIZES = [18, 21, 24, 28, 33, 40];
 const SIZE_KEY = 'bw-lyrics-size';
 
+/** Lyrics text size (A− / A+), kept per device and shared with Stage mode. */
+export function useLyricsSize() {
+  const [size, setSize] = React.useState(() => {
+    try {
+      const v = Number(localStorage.getItem(SIZE_KEY));
+      return SIZES.includes(v) ? v : 24;
+    } catch {
+      return 24;
+    }
+  });
+  const step = React.useCallback(
+    (d: number) => {
+      const i = Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(size) + d));
+      setSize(SIZES[i]);
+      try {
+        localStorage.setItem(SIZE_KEY, String(SIZES[i]));
+      } catch {
+        /* per-device preference */
+      }
+    },
+    [size],
+  );
+  return { size, step, min: size === SIZES[0], max: size === SIZES[SIZES.length - 1] };
+}
+
+/**
+ * Lyrics as sections of lines (Markdown / JSON, see src/lib/lyrics.ts).
+ * `muted` is the class for section names and the empty message.
+ */
+export const LyricsText: React.FC<{ lyrics?: string | null; size: number; muted?: string; className?: string }> = ({
+  lyrics,
+  size,
+  muted = 'text-muted-foreground',
+  className,
+}) => {
+  const tr = useT();
+  const sections = React.useMemo(() => parseLyrics(lyrics), [lyrics]);
+  return (
+    <div className={className ?? 'max-w-3xl mx-auto w-full flex flex-col gap-8 pt-4'} style={{ fontSize: size, lineHeight: 1.45 }}>
+      {sections.length === 0 ? (
+        <p className={`bw-body-lg ${muted}`}>{tr('No lyrics for this song yet.')}</p>
+      ) : (
+        sections.map((s, i) => (
+          <section key={i} className="flex flex-col gap-1">
+            {s.name && <h3 className={`bw-label-md ${muted} uppercase mb-1`}>{s.name}</h3>}
+            {s.lines.map((line, j) =>
+              line.trim() ? (
+                <p key={j} className="font-medium break-words">
+                  {parseInline(line).map((part, k) => (
+                    <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
+                      {part.text}
+                    </span>
+                  ))}
+                </p>
+              ) : (
+                <span key={j} className="block h-[0.8em]" aria-hidden />
+              )
+            )}
+          </section>
+        ))
+      )}
+    </div>
+  );
+};
+
 /**
  * Full-screen lyrics reader (stage-friendly: big text, A−/A+ sizes kept
  * between songs). Mounted once (AuthenticatedApp); opened with openLyrics().
@@ -19,29 +84,11 @@ export const LyricsViewer: React.FC = () => {
   const doc = useLyricsDoc();
   const player = usePlayer();
   const tr = useT();
-  const [size, setSize] = React.useState(() => {
-    try {
-      const v = Number(localStorage.getItem(SIZE_KEY));
-      return SIZES.includes(v) ? v : 24;
-    } catch {
-      return 24;
-    }
-  });
-  const sections = React.useMemo(() => parseLyrics(doc?.lyrics), [doc?.lyrics]);
+  const { size, step, min, max } = useLyricsSize();
   useSystemBack(!!doc, () => {
     closeLyrics();
     return true;
   });
-
-  const step = (d: number) => {
-    const i = Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(size) + d));
-    setSize(SIZES[i]);
-    try {
-      localStorage.setItem(SIZE_KEY, String(SIZES[i]));
-    } catch {
-      /* per-device preference */
-    }
-  };
 
   const isThisTrack = !!doc?.songId && player.track?.id === doc.songId;
 
@@ -76,38 +123,12 @@ export const LyricsViewer: React.FC = () => {
                 onClick={togglePlay}
               />
             )}
-            <IconButton label={tr('Smaller text')} size="sm" icon={<Minus />} onClick={() => step(-1)} disabled={size === SIZES[0]} />
-            <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} />
+            <IconButton label={tr('Smaller text')} size="sm" icon={<Minus />} onClick={() => step(-1)} disabled={min} />
+            <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={max} />
             <IconButton label={tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-16">
-            <div
-              className="max-w-3xl mx-auto w-full flex flex-col gap-8 pt-4"
-              style={{ fontSize: size, lineHeight: 1.45 }}
-            >
-              {sections.length === 0 ? (
-                <p className="bw-body-lg text-muted-foreground">{tr('No lyrics for this song yet.')}</p>
-              ) : (
-                sections.map((s, i) => (
-                  <section key={i} className="flex flex-col gap-1">
-                    {s.name && <h3 className="bw-label-md text-muted-foreground uppercase mb-1">{s.name}</h3>}
-                    {s.lines.map((line, j) =>
-                      line.trim() ? (
-                        <p key={j} className="font-medium break-words">
-                          {parseInline(line).map((part, k) => (
-                            <span key={k} className={part.bold ? 'font-bold' : part.italic ? 'italic' : undefined}>
-                              {part.text}
-                            </span>
-                          ))}
-                        </p>
-                      ) : (
-                        <span key={j} className="block h-[0.8em]" aria-hidden />
-                      )
-                    )}
-                  </section>
-                ))
-              )}
-            </div>
+            <LyricsText lyrics={doc.lyrics} size={size} />
           </div>
         </motion.div>
       )}

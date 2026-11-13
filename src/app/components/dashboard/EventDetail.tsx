@@ -47,6 +47,7 @@ import { listDeputyRequests, type DeputyRequest } from '@/lib/services/deputies'
 import { KeyValueRow, LINK_CLASS, MemberRow, SectionTitle, type ResolvedMember } from '@/app/components/event/parts';
 import { useEventMembers } from '@/app/components/event/useEventMembers';
 import { useEventLiveRefresh } from '@/app/components/event/useEventLiveRefresh';
+import { useStageLive } from '@/app/components/event/useStageLive';
 import { useLinkedQuote, QuoteSummaryCard, QuoteLineItems, QuoteClientSection } from '@/app/components/event/QuoteSections';
 import { RsvpChoiceCard, type RsvpAnswer } from '@/app/components/event/RsvpChoiceCard';
 import {
@@ -310,7 +311,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   // Setlist state
   const laptopPose = useLaptopPose();
-  const [setlistSongs, setSetlistSongs] = useState<{ title: string; artist?: string; duration?: string; key?: string }[]>([]);
+  const [setlistSongs, setSetlistSongs] = useState<
+    { id?: string; songId?: string; setNumber?: number; title: string; artist?: string; duration?: string; key?: string; lyrics?: string }[]
+  >([]);
   const [setlistLoading, setSetlistLoading] = useState(false);
 
   // event_members (declined kept), names from the band roster
@@ -371,7 +374,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           .from('setlist_songs')
           // songs has duration_seconds, not duration: asking for a missing
           // column makes PostgREST fail the whole query.
-          .select('*, song:songs(title, artist, duration_seconds, key)')
+          .select('*, song:songs(title, artist, duration_seconds, key, lyrics)')
           .eq('setlist_id', event.setlistId)
           .order('set_number', { ascending: true })
           .order('position', { ascending: true });
@@ -383,6 +386,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
         } else {
           setSetlistSongs(
             data.map((s: any) => ({
+              id: s.id || undefined,
+              songId: s.song_id || undefined,
+              setNumber: typeof s.set_number === 'number' ? s.set_number : undefined,
               title: s.song?.title || t('Unknown Song'),
               artist: s.song?.artist || undefined,
               duration:
@@ -390,6 +396,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   ? `${Math.floor(s.song.duration_seconds / 60)}:${String(s.song.duration_seconds % 60).padStart(2, '0')}`
                   : undefined,
               key: s.song?.key || undefined,
+              lyrics: s.song?.lyrics || undefined,
             }))
           );
         }
@@ -463,6 +470,16 @@ export const EventDetail: React.FC<EventDetailProps> = ({
 
   // Stage mode is offered for upcoming band gigs and promoted (filled) on gig day.
   const canStage = eventType === 'gig' && !isPast && !isPersonalGig;
+
+  // Live Stage mode: the admin's song steps and new order reach every
+  // member with Stage mode open (private channel, migration 085).
+  const stageLive = useStageLive({
+    eventId: isPersonalGig ? undefined : event.eventId,
+    setlistId: event.setlistId,
+    songs: setlistSongs,
+    open: isStageOpen,
+    isLeader: isAdmin,
+  });
   const isGigDay = isLiveDay(gigTimes);
   // "Go live" from Home opens the gig straight in Stage mode (once, on open).
   useEffect(() => {
@@ -2126,8 +2143,9 @@ export const EventDetail: React.FC<EventDetailProps> = ({
               { label: t('Show'), time: gigTimes.start, display: t('TBD') },
               { label: t('End'), time: event.endTime, display: t('TBD') },
             ]}
-            songs={setlistSongs}
+            songs={stageLive.songs}
             songsLoading={setlistLoading}
+            live={stageLive}
             onClose={() => setIsStageOpen(false)}
           />
         )}
@@ -2137,7 +2155,20 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           only with Stage mode and only in the pose, since it keeps the screen
           awake and takes the arrow / page-turner keys while mounted. */}
       {isStageOpen && laptopPose && (
-        <FloorWedgeMode songs={setlistSongs} songsLoading={setlistLoading} title={event.title} />
+        <FloorWedgeMode
+          songs={stageLive.songs}
+          songsLoading={setlistLoading}
+          title={event.title}
+          index={stageLive.index}
+          onIndexChange={stageLive.select}
+          follow={{
+            isLeader: stageLive.isLeader,
+            following: stageLive.following,
+            leaderSeen: stageLive.leaderSeen,
+            connected: stageLive.connected,
+            onToggle: stageLive.setFollowing,
+          }}
+        />
       )}
     </>
   );
