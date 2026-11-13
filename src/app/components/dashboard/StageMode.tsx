@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Minus, Plus, X } from '@/app/components/icons';
 import { LyricsText, useLyricsSize } from '@/app/components/ui/LyricsViewer';
+import { ChordChartView } from '@/app/components/ui/ChordChart';
+import type { SongChart } from '@/lib/ireal';
 import { durations, easings } from '@/styles/motion';
 import { haptic } from '@/lib/haptics';
 import { FIT, FitText } from '@/app/components/bw/FitText';
@@ -34,6 +36,8 @@ export interface StageSong {
   key?: string;
   /** songs.lyrics (Markdown / JSON, src/lib/lyrics.ts). */
   lyrics?: string;
+  /** songs.chord_chart (iReal Pro import, src/lib/ireal.ts). */
+  chart?: SongChart;
 }
 
 /**
@@ -108,15 +112,20 @@ export const StageMode: React.FC<StageModeProps> = ({
   const editing = reordering && !!live?.canReorder;
   const currentRef = useRef<HTMLLIElement | null>(null);
   // Lyrics view: the current song's lyrics, following it (also when the leader moves).
+  // Chords view: the same for its chord chart.
   const hasLyrics = songs.some((s) => !!s.lyrics?.trim());
-  const [view, setView] = useState<'setlist' | 'lyrics'>('setlist');
-  const showLyrics = view === 'lyrics' && hasLyrics && !editing;
+  const hasChords = songs.some((s) => !!s.chart);
+  type StageView = 'setlist' | 'lyrics' | 'chords';
+  const views: StageView[] = ['setlist', ...(hasLyrics ? (['lyrics'] as const) : []), ...(hasChords ? (['chords'] as const) : [])];
+  const [view, setView] = useState<StageView>('setlist');
+  const showChords = view === 'chords' && hasChords && !editing;
+  const showLyrics = ((view === 'lyrics' && hasLyrics) || showChords) && !editing;
   const lyricsSong = songs[Math.max(0, current)];
   const lyricsSize = useLyricsSize();
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     lyricsRef.current?.scrollTo?.({ top: 0 });
-  }, [lyricsSong?.id, lyricsSong?.title, showLyrics]);
+  }, [lyricsSong?.id, lyricsSong?.title, showLyrics, showChords]);
 
   // Keep the current song in view when it changes (also when the leader moves).
   useEffect(() => {
@@ -242,9 +251,9 @@ export const StageMode: React.FC<StageModeProps> = ({
         {/* Setlist */}
         <section className="flex flex-col flex-1 min-h-0 gap-1 [@media(max-height:520px)_and_(min-width:600px)]:col-start-2 [@media(max-height:520px)_and_(min-width:600px)]:row-start-1 [@media(max-height:520px)_and_(min-width:600px)]:row-span-3" aria-label={t('Setlist')}>
           <div className="flex items-center justify-between gap-3 shrink-0 pb-2 min-h-11">
-            {hasLyrics && !editing ? (
+            {views.length > 1 && !editing ? (
               <span className="flex items-center gap-1 min-w-0" role="tablist" aria-label={t('Setlist')}>
-                {(['setlist', 'lyrics'] as const).map((v) => (
+                {views.map((v) => (
                   <button
                     key={v}
                     type="button"
@@ -259,7 +268,7 @@ export const StageMode: React.FC<StageModeProps> = ({
                       view === v ? 'text-white border-white' : 'text-white/50 border-transparent',
                     )}
                   >
-                    {v === 'setlist' ? t('Setlist') : t('Lyrics')}
+                    {v === 'setlist' ? t('Setlist') : v === 'lyrics' ? t('Lyrics') : t('Chords')}
                   </button>
                 ))}
               </span>
@@ -333,7 +342,7 @@ export const StageMode: React.FC<StageModeProps> = ({
             )}
           </div>
           {showLyrics && lyricsSong ? (
-            <div className="flex flex-col flex-1 min-h-0" role="tabpanel" aria-label={t('Lyrics · {title}', { title: lyricsSong.title })}>
+            <div className="flex flex-col flex-1 min-h-0" role="tabpanel" aria-label={showChords ? t('Chords · {title}', { title: lyricsSong.title }) : t('Lyrics · {title}', { title: lyricsSong.title })}>
               <div className="flex items-center gap-3 shrink-0 pb-2">
                 <span className="bw-num text-[16px] font-medium shrink-0" style={{ ...MONO, color: accentColor }}>
                   {String(Math.max(0, current) + 1).padStart(2, '0')}
@@ -361,12 +370,26 @@ export const StageMode: React.FC<StageModeProps> = ({
                 </button>
               </div>
               <div ref={lyricsRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-4 px-4 pb-6">
-                <LyricsText
-                  lyrics={lyricsSong.lyrics}
-                  size={lyricsSize.size}
-                  muted="text-white/60"
-                  className="w-full flex flex-col gap-6 pt-1 text-white"
-                />
+                {showChords ? (
+                  lyricsSong.chart ? (
+                    <ChordChartView
+                      chart={lyricsSong.chart}
+                      size={lyricsSize.size}
+                      muted="text-white/60"
+                      line="border-white/25"
+                      className="w-full flex flex-col gap-5 pt-1 text-white"
+                    />
+                  ) : (
+                    <p className="bw-body-lg text-white/60">{t('No chords for this song yet.')}</p>
+                  )
+                ) : (
+                  <LyricsText
+                    lyrics={lyricsSong.lyrics}
+                    size={lyricsSize.size}
+                    muted="text-white/60"
+                    className="w-full flex flex-col gap-6 pt-1 text-white"
+                  />
+                )}
               </div>
             </div>
           ) : (

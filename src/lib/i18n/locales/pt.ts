@@ -3306,6 +3306,24 @@ const dict: Dictionary = {
   "{title} moved to position {position} of {total}": "{title} movida para a posição {position} de {total}",
   "Picked up {title}": "{title} selecionada para mover",
   "Reordering cancelled: {title} stays where it was": "Reordenação cancelada: {title} fica onde estava",
+  // iReal Pro chord charts
+  "Chords · {title}": "Acordes · {title}",
+  "No chords for this song yet.": "Ainda não há acordes para esta música.",
+  "This is not an iReal Pro link.": "Isto não é um link do iReal Pro.",
+  "Chord chart · iReal Pro": "Cifra · iReal Pro",
+  "{count} bars": "{count} compassos",
+  "Remove chord chart": "Remover cifra",
+  "Preview chords": "Ver acordes",
+  "Import chords from iReal Pro": "Importar acordes do iReal Pro",
+  "iReal Pro link": "Link do iReal Pro",
+  "On the iReal Pro forums, press and hold a song or playlist link, choose Copy Link and paste it here. Only chords and form are imported: no melody, no lyrics.": "Nos fóruns do iReal Pro, toque e segure o link de uma música ou playlist, escolha Copiar link e cole aqui. Só acordes e estrutura são importados: sem melodia, sem letra.",
+  "{name} · {count} songs": "{name} · {count} músicas",
+  "Playlist": "Playlist",
+  "Find a song": "Buscar uma música",
+  "No songs match.": "Nenhuma música corresponde.",
+  "Showing {shown} of {count}: type to narrow the list.": "{shown} de {count}: digite para filtrar a lista.",
+  "Section {name}": "Seção {name}",
+  "Chord chart from iReal Pro": "Cifra do iReal Pro",
 };
 
 export default dict;

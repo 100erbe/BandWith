@@ -8,6 +8,7 @@
  */
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { supabase, isDemoMode } from './supabase';
+import type { SongChart } from './ireal';
 
 export type StageBleState = 'on' | 'off' | 'unauthorized' | 'unsupported' | 'unknown';
 
@@ -75,6 +76,8 @@ export interface CachedSetlistSong {
   duration?: string;
   key?: string;
   lyrics?: string;
+  /** songs.chord_chart (iReal Pro import). */
+  chart?: SongChart;
 }
 
 export function readCachedSetlist(setlistId: string): CachedSetlistSong[] | null {
@@ -94,6 +97,11 @@ export function writeCachedSetlist(setlistId: string, songs: CachedSetlistSong[]
     if (songs.length === 0) localStorage.removeItem(SETLIST_PREFIX + setlistId);
     else localStorage.setItem(SETLIST_PREFIX + setlistId, JSON.stringify(songs));
   } catch {
-    /* storage full: Stage mode just needs internet */
+    // Storage full: keep at least the songs and lyrics, without chord charts.
+    try {
+      localStorage.setItem(SETLIST_PREFIX + setlistId, JSON.stringify(songs.map(({ chart: _chart, ...rest }) => rest)));
+    } catch {
+      /* Stage mode just needs internet */
+    }
   }
 }

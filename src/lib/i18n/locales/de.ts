@@ -3306,6 +3306,24 @@ const dict: Dictionary = {
   "{title} moved to position {position} of {total}": "{title} an Position {position} von {total} verschoben",
   "Picked up {title}": "{title} zum Verschieben aufgenommen",
   "Reordering cancelled: {title} stays where it was": "Neuordnung abgebrochen: {title} bleibt, wo es war",
+  // iReal Pro chord charts
+  "Chords · {title}": "Akkorde · {title}",
+  "No chords for this song yet.": "Noch keine Akkorde für diesen Song.",
+  "This is not an iReal Pro link.": "Das ist kein iReal-Pro-Link.",
+  "Chord chart · iReal Pro": "Akkordchart · iReal Pro",
+  "{count} bars": "{count} Takte",
+  "Remove chord chart": "Akkordchart entfernen",
+  "Preview chords": "Akkorde ansehen",
+  "Import chords from iReal Pro": "Akkorde aus iReal Pro importieren",
+  "iReal Pro link": "iReal-Pro-Link",
+  "On the iReal Pro forums, press and hold a song or playlist link, choose Copy Link and paste it here. Only chords and form are imported: no melody, no lyrics.": "Halte in den iReal-Pro-Foren den Link eines Songs oder einer Playlist gedrückt, wähle Link kopieren und füge ihn hier ein. Importiert werden nur Akkorde und Form: keine Melodie, kein Text.",
+  "{name} · {count} songs": "{name} · {count} Songs",
+  "Playlist": "Playlist",
+  "Find a song": "Song suchen",
+  "No songs match.": "Kein Song passt.",
+  "Showing {shown} of {count}: type to narrow the list.": "{shown} von {count}: tippe, um die Liste einzugrenzen.",
+  "Section {name}": "Teil {name}",
+  "Chord chart from iReal Pro": "Akkordchart aus iReal Pro",
 };
 
 export default dict;

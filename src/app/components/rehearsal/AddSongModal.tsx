@@ -36,6 +36,8 @@ import { personName } from '@/lib/personName';
 import { notifySongAdded } from '@/lib/services/notifications';
 import { genresOf, joinGenres, parseGenres } from '@/lib/songGenres';
 import { useT } from '@/lib/i18n';
+import { asSongChart, keyLabel, type SongChart } from '@/lib/ireal';
+import { IrealImportField } from './IrealImportField';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -90,6 +92,9 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [chordsUrl, setChordsUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [lyrics, setLyrics] = useState('');
+  // Chord chart pasted from iReal Pro (songs.chord_chart); saved only when changed here.
+  const [chordChart, setChordChart] = useState<SongChart | null>(null);
+  const [chordChartTouched, setChordChartTouched] = useState(false);
   const [bpm, setBpm] = useState('');
   const [key, setKey] = useState('');
   // Duration as minutes + seconds (number pads have no ":").
@@ -120,6 +125,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setYoutubeUrl(song.youtube_url || '');
     setNotes(song.notes || '');
     setLyrics(song.lyrics || '');
+    setChordChart(asSongChart(song.chord_chart));
+    setChordChartTouched(false);
     setGenres(parseGenres(song.genre));
     setExistingAudio(song.audio_url || undefined);
     setExistingChart(song.chart_url || undefined);
@@ -226,6 +233,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
         notes: noteText || undefined,
         // Editing to empty clears them.
         lyrics: lyrics.trim() ? lyrics.replace(/\s+$/, '').slice(0, 20000) : isEdit ? '' : undefined,
+        ...(chordChartTouched ? { chord_chart: chordChart } : {}),
         bpm: bpm ? parseInt(bpm) : undefined,
         key: key || undefined,
         duration_seconds: durationSeconds || undefined,
@@ -287,6 +295,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setChordsUrl('');
     setNotes('');
     setLyrics('');
+    setChordChart(null);
+    setChordChartTouched(false);
     setBpm('');
     setKey('');
     setDurMin('');
@@ -297,6 +307,17 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   };
 
   const canProceed = () => title.trim().length > 0;
+
+  // A chart fills what the form doesn't have yet (title, artist, key, tempo).
+  const handleChordChart = (c: SongChart | null) => {
+    setChordChart(c);
+    setChordChartTouched(true);
+    if (!c) return;
+    if (!title.trim()) setTitle(c.title);
+    if (!artist.trim() && c.composer) setArtist(c.composer);
+    if (!key.trim() && c.key) setKey(keyLabel(c.key) || '');
+    if (!bpm && c.bpm) setBpm(String(c.bpm).slice(0, 3));
+  };
 
   const nextStep = () => {
     if (step === 'details') setStep('more');
@@ -389,6 +410,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 enterKeyHint="next"
               />
               <PillField label={t('Original artist')} value={artist} onChange={(e) => setArtist(e.target.value)} placeholder={t('e.g. Stevie Wonder')} />
+              <IrealImportField chart={chordChart} onChange={handleChordChart} title={title} />
               {!isEdit && !isAdmin && (
                 <p className="bw-body-sm text-muted-foreground">
                   {suggestedBefore}<span className="text-foreground">{t('Suggested')}</span>{suggestedAfter}

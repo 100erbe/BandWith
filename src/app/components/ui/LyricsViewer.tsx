@@ -6,6 +6,8 @@ import { closeLyrics, parseInline, parseLyrics, useLyricsDoc } from '@/lib/lyric
 import { togglePlay, usePlayer } from '@/lib/audioPlayer';
 import { useSystemBack } from '@/lib/backStack';
 import { useT } from '@/lib/i18n';
+import { ChordChartView } from '@/app/components/ui/ChordChart';
+import { cn } from '@/app/components/ui/utils';
 
 const SIZES = [18, 21, 24, 28, 33, 40];
 const SIZE_KEY = 'bw-lyrics-size';
@@ -75,10 +77,39 @@ export const LyricsText: React.FC<{ lyrics?: string | null; size: number; muted?
   );
 };
 
+/** Lyrics / Chords switch, shown when a song has both. */
+export const LyricsChordsTabs: React.FC<{
+  view: 'lyrics' | 'chords';
+  onChange: (v: 'lyrics' | 'chords') => void;
+  className?: string;
+  /** Classes of the selected and the other tab (Stage mode is always dark). */
+  on?: string;
+  off?: string;
+}> = ({ view, onChange, className, on = 'bg-foreground text-background', off = 'text-muted-foreground' }) => {
+  const tr = useT();
+  return (
+    <div role="tablist" className={cn('flex items-center gap-1', className)}>
+      {(['lyrics', 'chords'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={view === v}
+          onClick={() => onChange(v)}
+          className={cn('min-h-9 px-3 rounded-full bw-label-sm transition-colors', view === v ? on : off)}
+        >
+          {v === 'lyrics' ? tr('Lyrics') : tr('Chords')}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 /**
  * Full-screen lyrics reader (stage-friendly: big text, A−/A+ sizes kept
  * between songs). Mounted once (AuthenticatedApp); opened with openLyrics().
  * When the song is playing in the mini player, play/pause sits in the header.
+ * Songs with a chord chart (songs.chord_chart) can switch to it.
  */
 export const LyricsViewer: React.FC = () => {
   const doc = useLyricsDoc();
@@ -91,6 +122,14 @@ export const LyricsViewer: React.FC = () => {
   });
 
   const isThisTrack = !!doc?.songId && player.track?.id === doc.songId;
+  const hasLyrics = !!doc?.lyrics?.trim();
+  const hasChart = !!doc?.chart;
+  const [view, setView] = React.useState<'lyrics' | 'chords'>('lyrics');
+  React.useEffect(() => {
+    if (doc) setView(doc.view ?? (hasLyrics || !hasChart ? 'lyrics' : 'chords'));
+  }, [doc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const showChords = view === 'chords' && hasChart;
+  const kind = showChords ? tr('Chords') : tr('Lyrics');
 
   return (
     <AnimatePresence>
@@ -99,7 +138,7 @@ export const LyricsViewer: React.FC = () => {
           key="lyrics"
           role="dialog"
           aria-modal="true"
-          aria-label={tr('Lyrics · {title}', { title: doc.title })}
+          aria-label={`${kind} · ${doc.title}`}
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
@@ -111,7 +150,7 @@ export const LyricsViewer: React.FC = () => {
             style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}
           >
             <span className="flex-1 min-w-0 flex flex-col">
-              <span className="bw-label-sm text-muted-foreground truncate">{doc.artist ? tr('Lyrics · {artist}', { artist: doc.artist }) : tr('Lyrics')}</span>
+              <span className="bw-label-sm text-muted-foreground truncate">{doc.artist ? `${kind} · ${doc.artist}` : kind}</span>
               <span className="bw-h2 truncate">{doc.title}</span>
             </span>
             {isThisTrack && (
@@ -125,10 +164,11 @@ export const LyricsViewer: React.FC = () => {
             )}
             <IconButton label={tr('Smaller text')} size="sm" icon={<Minus />} onClick={() => step(-1)} disabled={min} />
             <IconButton label={tr('Bigger text')} size="sm" icon={<Plus />} onClick={() => step(1)} disabled={max} />
-            <IconButton label={tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
+            <IconButton label={showChords ? tr('Close') : tr('Close lyrics')} size="sm" icon={<X />} onClick={closeLyrics} />
           </div>
+          {hasLyrics && hasChart && <LyricsChordsTabs view={view} onChange={setView} className="shrink-0 px-4 pb-2" />}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-16">
-            <LyricsText lyrics={doc.lyrics} size={size} />
+            {showChords && doc.chart ? <ChordChartView chart={doc.chart} size={size} /> : <LyricsText lyrics={doc.lyrics} size={size} />}
           </div>
         </motion.div>
       )}

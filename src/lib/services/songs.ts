@@ -1,5 +1,6 @@
 import { supabase, getSafeUser } from '../supabase';
 import { removeSongFiles } from './songFiles';
+import type { SongChart } from '../ireal';
 
 // Types
 /** 'suggested': proposed by a member; an admin moves it to learning / ready. */
@@ -24,6 +25,8 @@ export interface Song {
   audio_url?: string;
   chart_url?: string;
   lyrics?: string;
+  /** Chords and form imported from iReal Pro (no melody, no lyrics). */
+  chord_chart?: SongChart | null;
   notes?: string;
   
   spotify_id?: string;
