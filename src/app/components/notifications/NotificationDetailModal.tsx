@@ -35,6 +35,7 @@ import { SwipeRow } from '@/app/components/bw/SwipeRow';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import { haptic } from '@/lib/haptics';
 import { t, useT, intlLocale } from '@/lib/i18n';
+import { inviteFeeToShow } from '@/lib/inviteFee';
 
 /** Calendar item fields the gig-invitation page reads (subset of EventItem). */
 export interface NotificationCalendarEvent extends CalendarEventLike {
@@ -620,10 +621,10 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                   }
                                 />
                               )}
-                              {Boolean(d.member_fee || d.fee) && (
+                              {inviteFeeToShow(d) != null && (
                                 <KV
-                                  k={d.member_fee ? t('Allocated fee') : t('Total fee')}
-                                  v={`${sym()}${Number(d.member_fee || d.fee).toLocaleString(intlLocale())}`}
+                                  k={t('Allocated fee')}
+                                  v={`${sym()}${inviteFeeToShow(d)!.toLocaleString(intlLocale())}`}
                                 />
                               )}
                             </>

@@ -670,7 +670,6 @@ export const notifyEventMembersCreated = async (
   invitedMemberIds?: string[], // If empty, notify all band members
   additionalData?: {
     venue?: string;
-    fee?: number;
     memberFees?: Record<string, number>;
     /** The fee is still to be discussed ("Fee TBD"). */
     feeTbd?: boolean;
@@ -743,7 +742,7 @@ export const notifyEventMembersCreated = async (
         creator_id: creatorId,
         creator_name: creatorName,
         venue: additionalData?.venue,
-        fee: additionalData?.fee,
+        // Only the recipient's own fee: members never see the gig total.
         member_fee: additionalData?.memberFees?.[userId] ?? undefined,
         requires_rsvp: tentative || config.requiresRsvp,
         ...(tentative ? { tentative: true } : {}),
