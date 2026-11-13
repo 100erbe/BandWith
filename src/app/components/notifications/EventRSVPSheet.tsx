@@ -19,7 +19,8 @@ import { MapsLink } from '@/app/components/ui/MapsLink';
 import { supabase } from '@/lib/supabase';
 import { findCalendarEvent, findEventConflicts } from '@/lib/eventConflicts';
 import { cn } from '@/app/components/ui/utils';
-import { formatDayShort, formatTime12, parseAmount } from '@/app/components/event/format';
+import { formatDayShort, formatTime12 } from '@/app/components/event/format';
+import { inviteFeeToShow } from '@/lib/inviteFee';
 import { useSheetDrag } from '@/app/components/bw/useSheetDrag';
 import { useT, intlLocale } from '@/lib/i18n';
 
@@ -91,9 +92,8 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
   const venue = (data.venue as string) || matchedEvent?.location;
   const venueAddress = (data.venue_address as string) || matchedEvent?.venueAddress;
 
-  const memberFee = Number(data.member_fee) || 0;
-  const totalFee = Number(data.fee) || parseAmount(matchedEvent?.price);
-  const displayFee = memberFee || totalFee;
+  // Members see only their own fee, never the gig total.
+  const memberFee = inviteFeeToShow(data);
   const creatorName = (data.creator_name as string) || (data.creator_id ? t('Band Admin') : null);
 
   const loadInTime = matchedEvent?.loadInTime as string | undefined;
@@ -253,11 +253,11 @@ export const EventRSVPSheet: React.FC<EventRSVPSheetProps> = ({
               </span>
             }
           />
-          {displayFee > 0 && (
+          {memberFee != null && (
             <SheetKV
               icon={<CurrencyIcon className="w-4 h-4" />}
-              k={memberFee ? t('Your fee') : t('Fee')}
-              v={`${sym()}${displayFee.toLocaleString(intlLocale())}`}
+              k={t('Your fee')}
+              v={`${sym()}${memberFee.toLocaleString(intlLocale())}`}
             />
           )}
         </div>

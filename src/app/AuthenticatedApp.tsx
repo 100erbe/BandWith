@@ -2892,7 +2892,7 @@ export default function AuthenticatedApp() {
           if (addedOnEdit.length > 0 && user?.id) {
             try {
               const creatorName = personName({ full_name: profile?.full_name || user.user_metadata?.full_name, email: user.email }, "Someone");
-              await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, fee: parseFloat(price) || undefined, feeTbd: !!data.feeTbd });
+              await notifyEventMembersCreated(realBand.id, data._editingEventId, title || "Event", date, time || "20:00", eventType, user.id, creatorName, addedOnEdit, { venue: location, feeTbd: !!data.feeTbd });
             } catch (err) { console.error("Notify error:", err); }
           }
           const memberFailed = memberResult.startsWith('insert errors') || memberResult.startsWith('delete failed') || memberResult.startsWith('verify failed');
@@ -2927,7 +2927,7 @@ export default function AuthenticatedApp() {
               const invitedIds = data.audienceIds?.length > 0 ? data.audienceIds : data.members?.map((m: any) => m.id) || [];
               const perMemberFees: Record<string, number> = {};
               (data.members || []).forEach((m: any) => { if (m.id && m.fee) perMemberFees[m.id] = parseFloat(m.fee) || 0; });
-              await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, fee: parseFloat(price) || undefined, memberFees: perMemberFees, feeTbd: !!data.feeTbd });
+              await notifyEventMembersCreated(realBand.id, saved.id, title || "Event", date, time || "20:00", eventType, user.id, creatorName, invitedIds, { venue: location, memberFees: perMemberFees, feeTbd: !!data.feeTbd });
               const invitedCount = invitedIds.length > 0 ? invitedIds.filter((id: string) => id !== user.id).length : (realBand.member_count || 1) - 1;
               if (invitedCount > 0) await notifyEventPendingConfirmations(user.id, realBand.id, saved.id, title || "Event", eventType, invitedCount);
             } catch (err) { console.error("Notify error:", err); }
