@@ -698,6 +698,22 @@ const rpc = (fn: string, args: Row = {}) => {
         .map((r) => ({ band_id: r.band_id, user_id: r.user_id, default_fee: r.default_fee ?? null, fee_percentage: r.fee_percentage ?? null }));
       break;
     }
+    // Band banking, tax and pricing (077): bands the user administers only.
+    case 'bw_band_private': {
+      const ids: string[] = Array.isArray(args.p_band_ids) ? args.p_band_ids : [];
+      const adminOf = new Set(table('band_members').filter((r) => r.user_id === DEMO_USER.id && r.role === 'admin').map((r) => r.band_id));
+      const PRIVATE = [
+        'pricing_settings', 'pricing_rules', 'extra_services', 'core_musician_fee', 'additional_musician_fee',
+        'ceremony_musician_fee', 'cocktail_musician_fee', 'dj_hourly_rate', 'production_standard_fee',
+        'production_pro_fee', 'production_extra_location_fee', 'travel_rate_per_km', 'default_payment_terms',
+        'bank_account_holder', 'bank_iban', 'bank_bic_swift', 'bank_name', 'tax_vat_id', 'legal_company_name',
+        'legal_address', 'signature_url', 'signer_name', 'signer_role', 'contact_email', 'contact_phone', 'stripe_customer_id',
+      ];
+      data = table('bands')
+        .filter((b) => ids.includes(b.id) && adminOf.has(b.id))
+        .map((b) => ({ band_id: b.id, private: Object.fromEntries(PRIVATE.map((k) => [k, b[k] ?? null])) }));
+      break;
+    }
     case 'bw_save_event_lineup': {
       const rows = table('event_members');
       const now = new Date().toISOString();

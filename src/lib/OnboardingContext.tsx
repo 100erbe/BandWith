@@ -419,7 +419,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({
         created_by: user.id,
         slug: `${slug}-${Date.now().toString(36)}`,
       })
-      .select()
+      .select('id, name, slug, created_by')
       .single();
 
     if (bandError) {

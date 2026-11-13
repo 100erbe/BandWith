@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { BAND_MEMBER_COLUMNS, attachMemberFees } from './bandMemberFees';
+import { BAND_PUBLIC_COLUMNS, attachBandPrivate } from './bandPrivate';
 
 // Types
 export interface Band {
@@ -108,7 +109,7 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
         band_id,
         role,
         bands (
-          *
+          ${BAND_PUBLIC_COLUMNS}
         )
       `)
       .eq('user_id', user.id)
@@ -160,10 +161,14 @@ export const getBands = async (): Promise<{ data: BandWithMembers[] | null; erro
       }
     }
 
+    // Banking, tax and pricing come from bw_band_private (077), admins only.
+    const bandRows = data.map((item: any) => item.bands).filter(Boolean);
+    const bandsWithPrivate = new Map((await attachBandPrivate(bandRows)).map((b: any) => [b.id, b]));
+
     // Transform data
     const bands = data
       .map((item: any) => {
-        const band = item.bands;
+        const band = item.bands ? bandsWithPrivate.get(item.bands.id) : null;
         if (!band) return null;
         
         const members = membersByBandId[band.id] || [];
@@ -191,13 +196,14 @@ export const getBand = async (bandId: string): Promise<{ data: BandWithMembers |
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data: band, error: bandError } = await supabase
+    const { data: publicBand, error: bandError } = await supabase
       .from('bands')
-      .select('*')
+      .select(BAND_PUBLIC_COLUMNS)
       .eq('id', bandId)
       .single();
 
     if (bandError) throw bandError;
+    const [band] = await attachBandPrivate([publicBand as any]);
 
     // Get members with profiles
     const { data: rawMembers, error: membersError } = await supabase
@@ -269,7 +275,7 @@ export const createBand = async (bandData: {
         slug,
         created_by: user.id,
       })
-      .select()
+      .select(BAND_PUBLIC_COLUMNS)
       .single();
 
     if (error) throw error;
@@ -289,10 +295,11 @@ export const updateBand = async (
       .from('bands')
       .update(updates)
       .eq('id', bandId)
-      .select()
+      .select(BAND_PUBLIC_COLUMNS)
       .single();
 
     if (error) throw error;
+    const [band] = await attachBandPrivate([data as any]);
 
     // If band name was updated, keep chats of type 'band' in sync
     if (updates.name) {
@@ -303,7 +310,7 @@ export const updateBand = async (
         .eq('type', 'band');
     }
 
-    return { data, error: null };
+    return { data: band, error: null };
   } catch (error: any) {
     return { data: null, error };
   }
