@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RailCover } from '@/lib/railActions';
 import { Users, Plus } from '@/app/components/icons';
 import { PillButton } from '@/app/components/bw';
+import { useT } from '@/lib/i18n';
 
 interface NoBandRehearsalModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const NoBandRehearsalModal: React.FC<NoBandRehearsalModalProps> = ({
   onClose,
   onOpenUpgrade,
 }) => {
+  const tr = useT();
   if (!isOpen) return null;
 
   return (
@@ -53,10 +55,10 @@ export const NoBandRehearsalModal: React.FC<NoBandRehearsalModalProps> = ({
 
           <div className="flex flex-col gap-2">
             <h2 id="no-band-rehearsal-title" className="bw-h1 uppercase">
-              Band required
+              {tr('Band required')}
             </h2>
             <p className="bw-body-md text-muted-foreground">
-              Proposing a rehearsal is only available when you’re in a band. Create one or ask an admin for an invite.
+              {tr('Proposing a rehearsal is only available when you’re in a band. Create one or ask an admin for an invite.')}
             </p>
           </div>
 
@@ -69,15 +71,15 @@ export const NoBandRehearsalModal: React.FC<NoBandRehearsalModalProps> = ({
                 }}
                 icon={<Plus className="w-[18px] h-[18px]" />}
               >
-                Create a band
+                {tr('Create a band')}
               </PillButton>
               <p className="bw-label-xs text-muted-foreground">
-                {IS_BETA ? 'Free during the beta' : 'Requires a Pro subscription'}
+                {IS_BETA ? tr('Free during the beta') : tr('Requires a Pro subscription')}
               </p>
             </div>
 
             <PillButton variant="outline" onClick={onClose}>
-              Maybe later
+              {tr('Maybe later')}
             </PillButton>
           </div>
         </motion.div>

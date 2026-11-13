@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RailCover } from '@/lib/railActions';
 import { X, Users } from '@/app/components/icons';
 import { IconButton, ListRow, PillButton } from '@/app/components/bw';
+import { useT } from '@/lib/i18n';
 
 export interface BandOption {
   id: string;
@@ -29,6 +30,7 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
   bands,
   onSelectBand,
 }) => {
+  const tr = useT();
   if (!isOpen) return null;
 
   return (
@@ -64,14 +66,14 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
               <span className="w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center shrink-0">
                 <Users className="w-6 h-6" />
               </span>
-              <IconButton label="Close" icon={<X />} size="sm" onClick={onClose} />
+              <IconButton label={tr('Close')} icon={<X />} size="sm" onClick={onClose} />
             </div>
             <div className="flex flex-col gap-2">
               <h2 id="choose-band-title" className="bw-h1">
-                Choose band
+                {tr('Choose band')}
               </h2>
               <p className="bw-body-md text-muted-foreground">
-                Pick the band this rehearsal proposal is for.
+                {tr('Pick the band this rehearsal proposal is for.')}
               </p>
             </div>
           </div>
@@ -86,9 +88,11 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
                 .slice(0, 2)
                 .toUpperCase();
               const meta = [
-                band.user_role,
+                band.user_role === 'admin' ? tr('admin') : band.user_role === 'member' ? tr('member') : band.user_role,
                 band.member_count != null
-                  ? `${band.member_count} ${band.member_count === 1 ? 'member' : 'members'}`
+                  ? band.member_count === 1
+                    ? tr('1 member')
+                    : tr('{count} members', { count: band.member_count })
                   : null,
               ]
                 .filter(Boolean)
@@ -108,7 +112,7 @@ export const ChooseBandProposalModal: React.FC<ChooseBandProposalModalProps> = (
 
           <div className="p-6 pt-4 shrink-0">
             <PillButton variant="outline" onClick={onClose}>
-              Maybe later
+              {tr('Maybe later')}
             </PillButton>
           </div>
         </motion.div>
