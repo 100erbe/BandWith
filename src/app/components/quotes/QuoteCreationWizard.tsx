@@ -389,7 +389,12 @@ const LedgerRow: React.FC<{ label: string; value: string; tone?: 'success' }> = 
 interface QuoteCreationWizardProps {
   onClose: () => void;
   /** `share`: the user tapped Share, open the PDF/share sheet after saving. */
-  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean; askAvailability?: boolean }) => void;
+  /**
+   * Save the quote. When it returns a promise the wizard shows the save
+   * buttons as busy until it settles; the parent closes the wizard on success
+   * and leaves it open (with everything typed) on failure.
+   */
+  onCreate: (quote: Partial<Quote>, opts?: { share?: boolean; askAvailability?: boolean }) => void | Promise<void>;
   initialEventId?: string;
   initialEventTitle?: string;
   initialClientName?: string;
@@ -1434,7 +1439,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
     setQuoteOptions(prev => prev.filter(o => o.id !== id));
   };
 
+  // A save is running: the buttons show a spinner and a second tap does nothing.
+  const [submitting, setSubmitting] = useState(false);
   const handleCreate = (sendImmediately = true) => {
+    if (submitting) return;
     const finalEventName = getEffectiveTitle();
     const finalClientName = clientName.trim() || 'Client';
 
@@ -1531,7 +1539,11 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       updatedAt: new Date().toISOString(),
       eventTitle: finalEventName,
     };
-    onCreate(quoteData, { share: sendImmediately, askAvailability: !isEditing && askAvailability });
+    const pending = onCreate(quoteData, { share: sendImmediately, askAvailability: !isEditing && askAvailability });
+    if (pending && typeof (pending as Promise<void>).then === 'function') {
+      setSubmitting(true);
+      (pending as Promise<void>).catch(() => {}).finally(() => setSubmitting(false));
+    }
   };
 
   const activeCatalogServices = useMemo(
@@ -2981,7 +2993,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
       onQuantityChange={handleDeskQuantityChange}
       onAddLine={handleDeskAddLine}
       onSend={() => handleCreate(true)}
-      sendDisabled={!isEditing && (!eventType || !eventDate)}
+      sendDisabled={submitting || (!isEditing && (!eventType || !eventDate))}
     />
   );
 
@@ -3099,10 +3111,10 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
               <PillButton variant="outline" fullWidth={false} className="px-4" onClick={onClose}>
                 {t('Cancel')}
               </PillButton>
-              <PillButton variant="outline" fullWidth={false} className="px-4" onClick={() => handleCreate(false)}>
+              <PillButton variant="outline" fullWidth={false} className="px-4" disabled={submitting} onClick={() => handleCreate(false)}>
                 {t('Save')}
               </PillButton>
-              <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
+              <PillButton className="flex-1 min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} loading={submitting} onClick={() => handleCreate(true)}>
                 {t('Save & share')}
               </PillButton>
             </div>
@@ -3168,7 +3180,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
                 <PillButton variant="outline" fullWidth={false} className="px-5" onClick={handleBack}>
                   {t('Back')}
                 </PillButton>
-                <PillButton className="min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} onClick={() => handleCreate(true)}>
+                <PillButton className="min-w-0" icon={<Share2 className="w-[18px] h-[18px]" />} loading={submitting} onClick={() => handleCreate(true)}>
                   {t('Save & share')}
                 </PillButton>
               </div>
