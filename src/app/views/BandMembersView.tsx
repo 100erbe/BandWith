@@ -456,7 +456,11 @@ export const BandMembersView: React.FC<BandMembersViewProps> = ({ onClose }) => 
             </ul>
           </>
         )}
-        {isAdmin && !loading && selectedBand?.id && <DeputiesSection bandId={selectedBand.id} bandName={selectedBand.name} />}
+        {isAdmin && !loading && selectedBand?.id && <DeputiesSection
+            bandId={selectedBand.id}
+            bandName={selectedBand.name}
+            members={members.map((m) => ({ name: m.stage_name || personName(m.profile, t('Unknown')), instrument: m.instrument }))}
+          />}
       </div>
 
       {/* Primary CTA (Figma Button, lime) */}
