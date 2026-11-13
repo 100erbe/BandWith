@@ -3157,6 +3157,19 @@ const dict: Dictionary = {
   "Deputies: {names}": "Sostituti: {names}",
   "No deputy yet": "Nessun sostituto",
   "Add a deputy for {instrument}": "Aggiungi un sostituto per {instrument}",
+  "{count} ready": "{count} pronti",
+  "{count} learning": "{count} in studio",
+  "{count} in repair": "{count} in riparazione",
+  "{count} missing": "{count} smarriti",
+  "{count} to sign": "{count} da firmare",
+  "1 draft": "1 bozza",
+  "{count} drafts": "{count} bozze",
+  "{count} overdue": "{count} in ritardo",
+  "{count} due this week": "{count} in scadenza questa settimana",
+  "All in order": "Tutto in ordine",
+  "Nothing to sign": "Niente da firmare",
+  "Nothing due this week": "Niente in scadenza questa settimana",
+  "All ready": "Tutti pronti",
 };
 
 export default dict;

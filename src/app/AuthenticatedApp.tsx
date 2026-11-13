@@ -84,6 +84,8 @@ import { useNetworkStatus, isOfflineError, reportNetworkStatus } from "@/lib/off
 import { enqueueMutation, getPendingMutations } from "@/lib/offline/syncQueue";
 import { getOfflineItem, setOfflineItem, getCacheKey } from "@/lib/offline/storage";
 import { todayLocal } from '../lib/dates';
+import { effectiveStatus, type Contract } from '@/lib/services/contracts';
+import { addDaysLocal, countDueTasks, EMPTY_ASSET_STATUS, type AssetStatusCounts } from '@/lib/assetStatus';
 
 const BandMembersView = React.lazy(() => import("@/app/views/BandMembersView").then(m => ({ default: m.BandMembersView })));
 const SetlistManagerView = React.lazy(() => import("@/app/views/SetlistManagerView").then(m => ({ default: m.SetlistManagerView })));
@@ -1305,7 +1307,9 @@ export default function AuthenticatedApp() {
     }
   }, [profile?.sub_tier, realBands]);
 
-  const [entityCounts, setEntityCounts] = useState({ templates: 0, documents: 0, inventory: 0, repertoire: 0 });
+  const [entityCounts, setEntityCounts] = useState<{
+    templates: number; documents: number; inventory: number; repertoire: number; status: AssetStatusCounts;
+  }>({ templates: 0, documents: 0, inventory: 0, repertoire: 0, status: EMPTY_ASSET_STATUS });
 
   const [selectedNotification, setSelectedNotification] = useState<{
     id: string; type: string; title: string; body?: string;
@@ -1616,24 +1620,58 @@ export default function AuthenticatedApp() {
   useEffect(() => {
     if (!realBand?.id) return;
     const bandId = realBand.id;
+    const isBandAdmin = isAdminOfBand(bandId);
+    const today = todayLocal();
     const fetchCounts = async () => {
-      const [inv, docs, tpl, songs] = await Promise.all([
-        supabase.from('inventory').select('id', { count: 'exact', head: true }).eq('band_id', bandId),
-        supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('band_id', bandId),
-        supabase.from('task_templates').select('id', { count: 'exact', head: true }).eq('band_id', bandId),
-        supabase.from('songs').select('id', { count: 'exact', head: true }).eq('band_id', bandId),
+      const count = (q: PromiseLike<{ count: number | null }>) => Promise.resolve(q).then((r) => r.count ?? 0, () => 0);
+      const [inventory, documents, templates, repertoire, songsReady, songsLearning, gear, contractRows, taskRows] = await Promise.all([
+        count(supabase.from('inventory').select('id', { count: 'exact', head: true }).eq('band_id', bandId)),
+        count(supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('band_id', bandId)),
+        count(supabase.from('task_templates').select('id', { count: 'exact', head: true }).eq('band_id', bandId)),
+        count(supabase.from('songs').select('id', { count: 'exact', head: true }).eq('band_id', bandId)),
+        count(supabase.from('songs').select('id', { count: 'exact', head: true }).eq('band_id', bandId).eq('status', 'ready')),
+        count(supabase.from('songs').select('id', { count: 'exact', head: true }).eq('band_id', bandId).eq('status', 'learning')),
+        supabase.from('inventory').select('status').eq('band_id', bandId).in('status', ['maintenance', 'lost']),
+        // Contracts are admin-only (migration 075): members don't ask.
+        isBandAdmin
+          ? supabase.from('contracts').select('status, expires_at, event_date').eq('band_id', bandId).in('status', ['draft', 'sent', 'viewed'])
+          : Promise.resolve({ data: [] as { status: string; expires_at: string | null; event_date: string | null }[] }),
+        // Open tasks due by next week, with their event to keep this band's upcoming gigs only.
+        supabase
+          .from('rehearsal_tasks')
+          .select('due_date, events!inner(band_id, event_date)')
+          .eq('is_completed', false)
+          .not('due_date', 'is', null)
+          .lte('due_date', addDaysLocal(today, 7)),
       ]);
+      const gearRows = (gear.data || []) as { status: string }[];
+      const contracts = ((contractRows as { data?: unknown }).data || []) as Pick<Contract, 'status' | 'expires_at' | 'event_date'>[];
+      const tasks = ((taskRows.data || []) as { due_date: string | null; events: { band_id: string; event_date: string | null } | { band_id: string; event_date: string | null }[] | null }[])
+        .map((r) => ({ due_date: r.due_date, ev: Array.isArray(r.events) ? r.events[0] : r.events }))
+        .filter((r) => r.ev?.band_id === bandId)
+        .map((r) => ({ due_date: r.due_date, event_date: r.ev?.event_date ?? null }));
+      const { due, overdue } = countDueTasks(tasks, today);
       setEntityCounts({
-        inventory: inv.count ?? 0,
-        documents: docs.count ?? 0,
-        templates: tpl.count ?? 0,
-        repertoire: songs.count ?? 0,
+        inventory,
+        documents,
+        templates,
+        repertoire,
+        status: {
+          songsReady,
+          songsLearning,
+          gearRepair: gearRows.filter((g) => g.status === 'maintenance').length,
+          gearMissing: gearRows.filter((g) => g.status === 'lost').length,
+          contractsToSign: contracts.filter((c) => ['sent', 'viewed'].includes(effectiveStatus(c, today))).length,
+          contractsDraft: contracts.filter((c) => effectiveStatus(c, today) === 'draft').length,
+          tasksDue: due,
+          tasksOverdue: overdue,
+        },
       });
     };
     fetchCounts();
     // Recount when a library screen closes or the hub opens, so the numbers
     // follow what was just added or removed.
-  }, [realBand?.id, isIdentityOpen, isControlDeckOpen, showInventory, showContracts, showTaskTemplates, showSetlistManager]);
+  }, [realBand?.id, isAdminOfBand, isIdentityOpen, isControlDeckOpen, showInventory, showContracts, showTaskTemplates, showSetlistManager]);
 
   useEffect(() => {
     if (rehearsalIndex >= upcomingRehearsals.length && upcomingRehearsals.length > 0) setRehearsalIndex(upcomingRehearsals.length - 1);
