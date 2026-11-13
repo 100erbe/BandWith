@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Quote · BandWith</title>
+<style>
+  :root { color-scheme: light; --lime: #D5FB46; --ink: #050505; --bone: #E5E3E0; --mute: #5C5B5A; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    background: var(--bone); color: #000;
+    font-family: 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { width: 100%; max-width: 520px; display: grid; gap: 12px; align-content: start; }
+  .card { background: #fff; border-radius: 28px; padding: 28px 24px; }
+  .card.lime { background: var(--lime); }
+  .card.ink { background: var(--ink); color: #fff; }
+  .kicker {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 500;
+  }
+  h1 {
+    margin: 12px 0 0; font-size: 40px; line-height: 0.95; font-weight: 700;
+    letter-spacing: -0.02em; word-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere;
+  }
+  h2 { margin: 0; font-size: 24px; line-height: 1.05; font-weight: 700; letter-spacing: -0.01em; text-transform: uppercase; }
+  p { margin: 12px 0 0; font-size: 17px; line-height: 24px; }
+  .ink p, .ink .mute { color: rgba(255,255,255,0.72); }
+  .mute { color: var(--mute); }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
+  dt {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--mute); padding-top: 4px; white-space: nowrap;
+  }
+  dd { margin: 0; font-size: 17px; line-height: 22px; font-weight: 500; overflow-wrap: anywhere; }
+  dd s { color: var(--mute); font-weight: 400; margin-right: 6px; }
+  .ink dd s { color: rgba(255,255,255,0.5); }
+  .ink dt { color: rgba(255,255,255,0.6); }
+  .stack { display: grid; gap: 8px; margin-top: 20px; }
+  .btn {
+    width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    min-height: 56px; padding: 16px 22px; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--ink); color: #fff; text-align: left; text-decoration: none;
+    font: 700 15px/1.15 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+  }
+  .btn.lime { background: var(--lime); color: #000; }
+  .btn.light { background: #fff; color: #000; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.12); }
+  .ink .btn.light { box-shadow: none; }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #3A7BFF; outline-offset: 2px; }
+  .btn .arrow { flex: none; }
+  .field { display: grid; gap: 8px; margin-top: 18px; }
+  textarea {
+    width: 100%; min-height: 76px; resize: vertical; border: 0; border-radius: 18px; padding: 14px 16px;
+    font: 400 16px/22px 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #F2F1EF; color: #000; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.08);
+  }
+  .lime textarea { background: rgba(255,255,255,0.55); }
+  .row-link { display: inline-block; margin-top: 10px; color: inherit; font-weight: 600; font-size: 15px; }
+  .note { font-size: 13px; line-height: 19px; color: var(--mute); padding: 0 8px; margin: 0; }
+  details > summary {
+    list-style: none; cursor: pointer; margin-top: 18px; font-weight: 600; font-size: 15px;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  input[type="text"] {
+    width: 100%; min-height: 52px; border: 0; border-radius: 18px; padding: 14px 16px;
+    font: 400 17px/22px 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #F2F1EF; color: #000; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.08);
+  }
+  input[type="text"]:focus-visible, input[type="checkbox"]:focus-visible { outline: 3px solid #3A7BFF; outline-offset: 2px; }
+  div.check { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; font-size: 16px; line-height: 22px; cursor: pointer; }
+  div.check label { cursor: pointer; }
+  div.check input { flex: none; width: 24px; height: 24px; margin: 0; accent-color: #050505; }
+  .items { margin: 16px 0 0; padding: 0; list-style: none; }
+  .items li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(0,0,0,0.1); }
+  .items li:first-child { border-top: 0; }
+  .items .what { min-width: 0; overflow-wrap: anywhere; }
+  .items .what b {
+    display: block; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 16px;
+    letter-spacing: 0.06em; font-weight: 600;
+  }
+  .items .what span { display: block; font-size: 14px; line-height: 19px; color: var(--mute); margin-top: 2px; }
+  .items .amt { flex: none; font-size: 17px; line-height: 22px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+  .totals { margin-top: 8px; padding-top: 12px; border-top: 2px solid #000; display: grid; gap: 6px; }
+  .totals div { display: flex; justify-content: space-between; gap: 16px; font-size: 16px; line-height: 22px; font-variant-numeric: tabular-nums; }
+  .totals .grand { font-size: 24px; line-height: 30px; font-weight: 700; margin-top: 4px; }
+  .totals s { color: var(--mute); }
+  .pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .thread { display: grid; gap: 10px; margin-top: 18px; }
+  .msg { max-width: 88%; padding: 12px 16px; border-radius: 20px; font-size: 16px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.client { justify-self: end; background: var(--ink); color: #fff; border-bottom-right-radius: 6px; }
+  .msg.band { justify-self: start; background: #F2F1EF; border-bottom-left-radius: 6px; }
+  .msg small { display: block; margin-top: 6px; font-size: 12px; line-height: 16px; opacity: 0.65; }
+  .err { margin: 10px 0 0; font-size: 14px; line-height: 20px; color: #B3261E; font-weight: 600; }
+  .ink .err { color: #FFB4AB; }
+  [hidden] { display: none !important; }
+  @media (max-width: 374px) { h1 { font-size: 32px; } .card { padding: 24px 18px; } dl { grid-template-columns: 1fr; gap: 2px 0; } dd { margin-bottom: 8px; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite">
+  <section class="card lime"><div class="kicker">BandWith</div><p>Loading…</p></section>
+</main>
+<script type="module" src="/src/quote.ts"></script>
+</body>
+</html>

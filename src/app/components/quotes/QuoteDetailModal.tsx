@@ -16,6 +16,9 @@ import { PillButton } from '@/app/components/bw/Form';
 import { OnlineDepositLinks } from '@/app/components/quotes/OnlineDeposit';
 import { useT, dateName, intlLocale } from '@/lib/i18n';
 import { builtinText } from '@/lib/i18n/builtins';
+import { isUuid } from '@/lib/services/quotes';
+import type { QuoteMessageKind } from '@/lib/services/quoteLinks';
+import { QuoteClientLink } from './QuoteClientLink';
 
 interface QuoteDetailModalProps {
   quote: Quote;
@@ -29,6 +32,15 @@ interface QuoteDetailModalProps {
   /** A draft was shared from here and is now SENT. */
   onSent?: (quote: Quote) => void;
   onOpenBandSettings?: () => void;
+  /** The client answered on the quote page (migration 099): refresh the list. */
+  onClientStatus?: (quote: Quote, status: string) => void;
+  /** After acceptance: confirm the quote's gig (or create it) and open it. */
+  onCreateGig?: (quote: Quote) => void;
+  creatingGig?: boolean;
+  /** After acceptance: a contract prefilled from the quote. */
+  onPrepareContract?: (quote: Quote) => void;
+  /** Feedback from the client link section. */
+  notify?: (text: string, tone?: 'ok' | 'error') => void;
 }
 
 const getCurrencySym = (currency?: string): string => currencySymbol(currency || 'EUR');
@@ -55,12 +67,24 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   onSetOutcome,
   onSent,
   onOpenBandSettings,
+  onClientStatus,
+  onCreateGig,
+  creatingGig,
+  onPrepareContract,
+  notify,
 }) => {
   const t = useT();
   const { selectedBand } = useBand();
   const railChrome = useRailOwnsChrome();
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const canEdit = quote.status === 'DRAFT' || quote.status === 'SENT';
+  const [shareKind, setShareKind] = useState<QuoteMessageKind>('sent');
+  const [linkRefresh, setLinkRefresh] = useState(0);
+  // Editable until the client accepts or declines; a sent quote's edit is a new version of the client's page.
+  const canEdit = ['DRAFT', 'SENT', 'VIEWED', 'NEGOTIATING'].includes(quote.status);
+  const openShare = (kind: QuoteMessageKind) => {
+    setShareKind(kind);
+    setIsShareOpen(true);
+  };
   const sym = getCurrencySym(quote.currency);
   const money = (n: number) => formatQuoteMoney(n, sym, intlLocale('en-US'));
 
@@ -76,10 +100,11 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const STATUS_LABEL: Record<string, string> = {
     DRAFT: t('Draft'),
     SENT: t('Sent'),
+    VIEWED: t('Viewed'),
     ACCEPTED: t('Accepted'),
     DECLINED: t('Declined'),
     EXPIRED: t('Expired'),
-    NEGOTIATING: t('Negotiating'),
+    NEGOTIATING: t('Discussing'),
     ARCHIVED: t('Archived'),
   };
 
@@ -291,6 +316,21 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               </Card>
             </section>
 
+            {/* The client's confirmation link (099) */}
+            {isUuid(quote.id) && (
+              <QuoteClientLink
+                quote={quote}
+                onSend={openShare}
+                refreshKey={linkRefresh}
+                onStatusSeen={(status) => onClientStatus?.(quote, status)}
+                onCreateGig={onCreateGig ? () => onCreateGig(quote) : undefined}
+                creatingGig={creatingGig}
+                hasGig={!!quote.convertedToEventId}
+                onPrepareContract={onPrepareContract ? () => onPrepareContract(quote) : undefined}
+                notify={notify}
+              />
+            )}
+
             {/* Actions */}
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-2">
@@ -303,7 +343,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 >
                   {t('Edit quote')}
                 </PillButton>
-                <PillButton size="lg" icon={<Share2 className="w-4 h-4" />} onClick={() => setIsShareOpen(true)}>
+                <PillButton size="lg" icon={<Share2 className="w-4 h-4" />} onClick={() => openShare('sent')}>
                   {t('Share quote')}
                 </PillButton>
               </div>
@@ -314,7 +354,7 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               )}
               {onSetOutcome && ['SENT', 'VIEWED', 'NEGOTIATING'].includes(quote.status) && (
                 <div className="flex flex-col gap-2">
-                  <span className="bw-label-sm text-muted-foreground">{t('Client answer')}</span>
+                  <span className="bw-label-sm text-muted-foreground">{t('Client answered by phone or in person?')}</span>
                   <div className="grid grid-cols-2 gap-2">
                     <PillButton variant="outline" size="lg" icon={<X className="w-4 h-4" />} onClick={() => onSetOutcome(quote, 'DECLINED')}>
                       {t('Declined')}
@@ -360,6 +400,8 @@ export const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         onClose={() => setIsShareOpen(false)}
         onOpenBandSettings={onOpenBandSettings}
         onSent={() => onSent?.({ ...quote, status: 'SENT' })}
+        kind={shareKind}
+        onLinkChanged={() => setLinkRefresh((n) => n + 1)}
       />
     </>
   );

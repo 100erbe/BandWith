@@ -522,6 +522,32 @@ export const convertQuoteToEvent = async (quoteId: string): Promise<{ data: { ev
   }
 };
 
+/**
+ * The gig of an accepted quote (the client accepted on the quote page,
+ * migration 099): the tentative event made with the quote becomes confirmed,
+ * otherwise a new confirmed event is created from the quote.
+ */
+export const gigFromAcceptedQuote = async (quoteId: string): Promise<{ data: { eventId: string; created: boolean } | null; error: Error | null }> => {
+  try {
+    const { data: q, error } = await supabase.from('quotes').select('converted_to_event_id').eq('id', quoteId).single();
+    if (error) throw error;
+    if (q?.converted_to_event_id) {
+      const { error: evErr } = await supabase
+        .from('events')
+        .update({ status: 'confirmed' })
+        .eq('id', q.converted_to_event_id)
+        .eq('status', 'tentative');
+      if (evErr) throw evErr;
+      return { data: { eventId: q.converted_to_event_id, created: false }, error: null };
+    }
+    const made = await convertQuoteToEvent(quoteId);
+    if (made.error || !made.data) throw made.error || new Error('The gig was not created');
+    return { data: { eventId: made.data.eventId, created: true }, error: null };
+  } catch (error: any) {
+    return { data: null, error };
+  }
+};
+
 // ============================================
 // STATISTICS
 // ============================================

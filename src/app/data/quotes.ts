@@ -2,7 +2,7 @@ import { calculateQuoteTotals as calculateSharedQuoteTotals, roundCents } from '
 import { toLocalDateString, todayLocal } from '@/lib/dates';
 
 // Quote Status enum matching backend
-export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'NEGOTIATING' | 'ARCHIVED';
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'VIEWED' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'NEGOTIATING' | 'ARCHIVED';
 
 // Event types
 export type QuoteEventType = 'wedding' | 'corporate' | 'private' | 'festival' | 'club' | 'other';
@@ -525,6 +525,7 @@ export const getStatusColor = (status: QuoteStatus): string => {
   switch (status) {
     case 'DRAFT': return 'bg-gray-200 text-gray-700';
     case 'SENT': return 'bg-blue-100 text-blue-700';
+    case 'VIEWED': return 'bg-blue-100 text-blue-700';
     case 'ACCEPTED': return 'bg-green-100 text-green-700';
     case 'DECLINED': return 'bg-red-100 text-red-700';
     case 'EXPIRED': return 'bg-orange-100 text-orange-700';
@@ -538,10 +539,12 @@ export const getStatusLabel = (status: QuoteStatus): string => {
   switch (status) {
     case 'DRAFT': return 'Draft';
     case 'SENT': return 'Sent';
+    case 'VIEWED': return 'Viewed';
     case 'ACCEPTED': return 'Accepted';
     case 'DECLINED': return 'Declined';
     case 'EXPIRED': return 'Expired';
-    case 'NEGOTIATING': return 'Negotiating';
+    // The client wrote from the quote link (migration 099).
+    case 'NEGOTIATING': return 'Discussing';
     case 'ARCHIVED': return 'Archived';
     default: return status;
   }
@@ -797,6 +800,7 @@ export const toLegacyQuote = (quote: Quote): LegacyQuote => {
   const statusMap: Record<QuoteStatus, 'Negotiating' | 'Sent' | 'Finalizing' | 'Draft'> = {
     'DRAFT': 'Draft',
     'SENT': 'Sent',
+    'VIEWED': 'Sent',
     'ACCEPTED': 'Finalizing',
     'DECLINED': 'Sent',
     'EXPIRED': 'Sent',
@@ -807,6 +811,7 @@ export const toLegacyQuote = (quote: Quote): LegacyQuote => {
   const probabilityMap: Record<QuoteStatus, number> = {
     'DRAFT': 20,
     'SENT': 50,
+    'VIEWED': 55,
     'ACCEPTED': 100,
     'DECLINED': 0,
     'EXPIRED': 0,

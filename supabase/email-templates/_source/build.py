@@ -406,7 +406,57 @@ def product_update(variant="lime"):
     )
 
 
+# ── Client quote emails (migration 099) ────────────────────────────────────
+# They go to the band's CLIENT, in the client's language, so every word is a
+# placeholder filled from supabase/functions/_shared/quote-email-strings.ts.
+# Lime: a band moment (a quote on its way to a gig).
+def link_fallback(title, text, url):
+    return info_block(title,
+                      f'{text}<br><a href="{url}" style="font-family:{MONO};font-size:12px;line-height:18px;color:#000000;text-decoration:underline;word-break:break-all;">{url}</a>')
+
+
+def quote_box(text):
+    return ('<div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+            f'<td style="background:#FFFFFF;border-radius:24px;padding:22px 24px;font-family:{TEXT};font-size:17px;line-height:25px;color:#000000;">{text}</td>'
+            '</tr></table>')
+
+
+def quote_link(variant="lime"):
+    return document(
+        "{{Subject}}",
+        "{{Preheader}}",
+        [
+            hero(variant, "{{Kicker}}", "{{Headline}}", "{{Intro}}", "{{CtaLabel}}", "{{QuoteURL}}",
+                 details([("{{EventLabel}}", "{{EventName}}"), ("{{DateLabel}}", "{{EventDate}}"), ("{{TotalLabel}}", "{{Total}}")])),
+            info_card([
+                info_block("{{PdfTitle}}", "{{PdfText}}"),
+                info_block("{{NoteTitle}}", "{{NoteText}}"),
+                link_fallback("{{FallbackTitle}}", "{{FallbackText}}", "{{QuoteURL}}"),
+            ]),
+            footer("{{FooterReason}}", APP),
+        ],
+    )
+
+
+def quote_reply(variant="lime"):
+    return document(
+        "{{Subject}}",
+        "{{Preheader}}",
+        [
+            hero(variant, "{{Kicker}}", "{{Headline}}", "{{Intro}}", "{{CtaLabel}}", "{{QuoteURL}}",
+                 quote_box("{{Reply}}")),
+            info_card([
+                link_fallback("{{FallbackTitle}}", "{{FallbackText}}", "{{QuoteURL}}"),
+            ]),
+            footer("{{FooterReason}}", APP),
+        ],
+    )
+
+
 TEMPLATES = {
+    "quote-link": quote_link,
+    "quote-reply": quote_reply,
     "reauthentication": reauthentication,
     "product-update": product_update,
     "welcome": welcome,
@@ -460,6 +510,8 @@ APP_EMAILS = {
     "invite-expired": "Your invite to {{InviteeName}} for {{BandName}} expired",
     "welcome": "Welcome to BandWith",
     "product-update": "What’s new in BandWith — {{IssueLabel}}",
+    "quote-link": "{{Subject}}",
+    "quote-reply": "{{Subject}}",
 }
 AUTH_EMAILS = ["confirm-signup", "reset-password", "magic-link", "change-email", "reauthentication"]
 TS_MODULE = HERE.parent.parent / "functions" / "_shared" / "email-templates.ts"

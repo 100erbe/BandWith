@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => ({
         deputy: path.resolve(__dirname, 'deputy.html'),
         // Fourth page: /rider.html (the venue's read-only rider link, migration 093).
         rider: path.resolve(__dirname, 'rider.html'),
+        // Fifth page: /quote.html (the client confirms a quote, migration 099).
+        quote: path.resolve(__dirname, 'quote.html'),
       },
     },
   },

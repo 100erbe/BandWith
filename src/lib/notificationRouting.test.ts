@@ -15,6 +15,7 @@ describe('notificationTarget', () => {
 
   it('routes quotes, payments, invites and members', () => {
     expect(notificationTarget('quote_accepted', {})).toEqual({ screen: 'quotes' });
+    expect(notificationTarget('quote_message', { quote_id: 'q-1' })).toEqual({ screen: 'quotes', quoteId: 'q-1' });
     expect(notificationTarget('payment_received', {})).toEqual({ screen: 'finance' });
     expect(notificationTarget('invite_received', {})).toEqual({ screen: 'invites' });
     expect(notificationTarget('member_joined', {})).toEqual({ screen: 'bandMembers' });

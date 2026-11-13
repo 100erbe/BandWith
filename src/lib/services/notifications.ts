@@ -30,6 +30,9 @@ export type NotificationType =
   | 'quote_accepted'
   | 'quote_declined'
   | 'quote_expired'
+  // The client opened or wrote on the quote page (migration 099)
+  | 'quote_viewed'
+  | 'quote_message'
   // Payments
   | 'payment_received'
   | 'payment_due'
@@ -131,6 +134,8 @@ export const getNotificationIcon = (type: NotificationType): string => {
     quote_accepted: 'check',
     quote_declined: 'x',
     quote_expired: 'clock',
+    quote_viewed: 'eye',
+    quote_message: 'message-circle',
     // Payments
     payment_received: 'dollar-sign',
     payment_due: 'credit-card',

@@ -36,7 +36,10 @@ import {
   appMusiciansToDb,
   dbQuoteToAppQuote,
   isUuid,
+  gigFromAcceptedQuote,
 } from '@/lib/services/quotes';
+import { republishClientQuote } from '@/lib/services/quoteLinks';
+import type { ContractPrefill } from '@/app/views/ContractsView';
 import { useBand } from '@/lib/BandContext';
 import { getActiveSymbol as sym, useCurrency } from '@/lib/currency';
 import { useT, intlLocale, localDecimal } from '@/lib/i18n';
@@ -59,6 +62,13 @@ interface QuotesExpandedProps {
   onQuotesChanged?: () => void;
   /** Opens Band settings (Pricing modal, "Branding & payment" tab) from the share sheet. */
   onOpenBandSettings?: () => void;
+  /** Opens a gig (after "Create gig from quote"). */
+  onOpenEvent?: (eventId: string) => void;
+  /** Opens Contracts with a new contract filled from the quote. */
+  onPrepareContract?: (prefill: ContractPrefill) => void;
+  /** A quote to open right away (from a notification), then cleared. */
+  focusQuoteId?: string | null;
+  onFocusConsumed?: () => void;
 }
 
 export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
@@ -70,6 +80,10 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   onShowToast,
   onQuotesChanged,
   onOpenBandSettings,
+  onOpenEvent,
+  onPrepareContract,
+  focusQuoteId,
+  onFocusConsumed,
 }) => {
   const t = useT();
   useCurrency(); // re-render money labels when the band currency changes
@@ -121,6 +135,17 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [sharingQuote, setSharingQuote] = useState<Partial<Quote> | null>(null);
   
+  const [creatingGig, setCreatingGig] = useState(false);
+
+  // A notification about a quote opens it (once the list has it).
+  useEffect(() => {
+    if (!focusQuoteId) return;
+    const q = quotes.find((x) => x.id === focusQuoteId);
+    if (!q) return;
+    setSelectedQuote(q);
+    onFocusConsumed?.();
+  }, [focusQuoteId, quotes, onFocusConsumed]);
+
   // Chart interaction
   const [activeChartId, setActiveChartId] = useState<string | null>(null);
 
@@ -165,6 +190,11 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
         notify(t('Quote updated'), 'success');
         onQuotesChanged?.();
         if (opts?.share) setSharingQuote(saved);
+        // Already sent with the client link: the page shows the new version.
+        republishClientQuote(saved, currentBandId, selectedBand?.name || 'Band').then(({ data: version, error: pubError }) => {
+          if (pubError) notify(t('The client page could not be updated. Try again.'), 'error');
+          else if (version && version > 1) notify(t('The client’s page now shows version {n}.', { n: version }), 'success');
+        });
         return;
       }
 
@@ -263,6 +293,33 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     onQuotesChanged?.();
   };
 
+  const handleCreateGig = async (quote: Quote) => {
+    if (creatingGig) return;
+    setCreatingGig(true);
+    const { data, error } = await gigFromAcceptedQuote(quote.id);
+    setCreatingGig(false);
+    if (error || !data) {
+      notify(errorText(error, t('Could not create the gig')), 'error');
+      return;
+    }
+    setQuotes(prev => prev.map(q => (q.id === quote.id ? { ...q, convertedToEventId: data.eventId, eventId: data.eventId } : q)));
+    notify(data.created ? t('Gig created from the quote') : t('Gig confirmed'), 'success');
+    onQuotesChanged?.();
+    setSelectedQuote(null);
+    onOpenEvent?.(data.eventId);
+  };
+
+  const handlePrepareContract = (quote: Quote) => {
+    setSelectedQuote(null);
+    onPrepareContract?.({
+      eventId: quote.convertedToEventId || null,
+      eventName: quote.eventName || quote.eventTitle || '',
+      clientName: quote.clientCompany || quote.clientName || '',
+      clientEmail: quote.clientEmail || '',
+      eventDate: quote.eventDate || '',
+    });
+  };
+
   const handleEditQuote = (quote: Quote) => {
     setSelectedQuote(null);
     setEditingQuote(quote);
@@ -273,7 +330,9 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
   const getStatusIcon = (status: QuoteStatus) => {
     switch (status) {
       case 'DRAFT': return <Edit3 />;
-      case 'SENT': return <Send />;
+      case 'SENT':
+      case 'VIEWED':
+      case 'NEGOTIATING': return <Send />;
       case 'ACCEPTED': return <CheckCircle />;
       case 'DECLINED': return <XCircle />;
       case 'EXPIRED': return <Clock />;
@@ -285,6 +344,8 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     switch (status) {
       case 'DRAFT': return 20;
       case 'SENT': return 50;
+      case 'VIEWED': return 55;
+      case 'NEGOTIATING': return 60;
       case 'ACCEPTED': return 100;
       case 'DECLINED': return 0;
       case 'EXPIRED': return 0;
@@ -296,6 +357,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
     switch (status) {
       case 'ACCEPTED': return 'solid';
       case 'SENT':
+      case 'VIEWED':
       case 'NEGOTIATING': return 'quote';
       case 'DECLINED':
       case 'EXPIRED': return 'outline';
@@ -430,7 +492,7 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                     <span className="bw-h3 [overflow-wrap:anywhere]">{quote.eventTitle || t('Untitled quote')}</span>
                   </span>
                   <Tag variant={statusTag(quote.status)} icon={getStatusIcon(quote.status)}>
-                    {getStatusLabel(quote.status)}
+                    {t(getStatusLabel(quote.status))}
                   </Tag>
                 </span>
                 <span className="flex items-end justify-between gap-3">
@@ -511,6 +573,19 @@ export const QuotesExpanded: React.FC<QuotesExpandedProps> = ({
                 onDelete={handleDeleteQuote}
                 onSetOutcome={handleSetOutcome}
                 onOpenBandSettings={onOpenBandSettings}
+                onClientStatus={(q, status) => {
+                  // The client opened, answered or wrote: the list follows.
+                  const next = (status === 'discussing' ? 'NEGOTIATING' : status.toUpperCase()) as QuoteStatus;
+                  if (!['SENT', 'VIEWED', 'NEGOTIATING', 'ACCEPTED', 'DECLINED'].includes(next)) return;
+                  if (next === q.status) return;
+                  setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: next } : x)));
+                  setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: next } : prev));
+                  onQuotesChanged?.();
+                }}
+                onCreateGig={handleCreateGig}
+                creatingGig={creatingGig}
+                onPrepareContract={onPrepareContract ? handlePrepareContract : undefined}
+                notify={(text, tone) => notify(text, tone === 'error' ? 'error' : 'success')}
                 onSent={(q) => {
                   setQuotes(prev => prev.map(x => (x.id === q.id ? { ...x, status: 'SENT' as QuoteStatus, sentAt: new Date().toISOString() } : x)));
                   setSelectedQuote(prev => (prev && prev.id === q.id ? { ...prev, status: 'SENT' as QuoteStatus } : prev));

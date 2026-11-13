@@ -16,6 +16,12 @@ import {
 } from "../_shared/auth.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EmailTemplateName, renderEmail } from "../_shared/email-templates.ts";
+import {
+  pickQuoteEmailLang,
+  quoteEmailDate,
+  quoteEmailVars,
+  type QuoteEmailKind,
+} from "../_shared/quote-email-strings.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // Set EMAIL_FROM (e.g. "BandWith <noreply@your-domain>") once a sender domain
@@ -373,6 +379,135 @@ async function resolveDispatch(
   return { skip: "type cannot be sent by the database" };
 }
 
+// ── Client quote emails (migration 099) ────────────────────────────────────
+// The app names the quote; recipient, language, link and PDF come from the
+// database. Only an admin of the quote's band may send, at most once a minute.
+const QUOTE_EMAIL_INTERVAL_MS = 60 * 1000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface QuoteLinkRow {
+  id: string;
+  band_id: string;
+  token: string;
+  lang: string;
+  version: number;
+  pdf_url: string | null;
+  pdf_version: number | null;
+  snapshot: Record<string, unknown> | null;
+  revoked_at: string | null;
+  last_emailed_at: string | null;
+}
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+/** The PDF must be this band's file in the public quotes bucket of this project. */
+function quotePdfUrl(raw: string | null, bandId: string): string | null {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const project = new URL(Deno.env.get("SUPABASE_URL") ?? "").host;
+    const prefix = `/storage/v1/object/public/quotes/quotes/${bandId}/`;
+    if (url.protocol !== "https:" || url.host !== project || !url.pathname.startsWith(prefix)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function sendQuoteClientEmail(
+  admin: SupabaseClient,
+  caller: Caller,
+  type: "quote_link" | "quote_reply",
+  data: { quoteId?: unknown; kind?: unknown },
+) {
+  if (caller.kind !== "user") throw new HttpError(403, "Quote emails are sent from the app");
+  const quoteId = typeof data?.quoteId === "string" && UUID_RE.test(data.quoteId) ? data.quoteId : null;
+  if (!quoteId) throw new HttpError(400, "Missing quote");
+  const kind: QuoteEmailKind =
+    type === "quote_reply" ? "reply" : data?.kind === "reminder" ? "reminder" : data?.kind === "updated" ? "updated" : "sent";
+
+  const { data: linkRow } = await admin
+    .from("quote_links")
+    .select("id, band_id, token, lang, version, pdf_url, pdf_version, snapshot, revoked_at, last_emailed_at")
+    .eq("quote_id", quoteId)
+    .maybeSingle();
+  const link = linkRow as QuoteLinkRow | null;
+  if (!link) throw new HttpError(404, "This quote has no client link");
+  await requireBandAdmin(admin, caller.id, link.band_id);
+  if (link.revoked_at) throw new HttpError(410, "The client link is turned off");
+  if (link.last_emailed_at && Date.now() - new Date(link.last_emailed_at).getTime() < QUOTE_EMAIL_INTERVAL_MS) {
+    return jsonResponse({ success: false, code: "too_soon", error: "An email was just sent" }, 429);
+  }
+
+  const { data: quote } = await admin
+    .from("quotes")
+    .select("client_email, client_name, quote_number, event_name")
+    .eq("id", quoteId)
+    .eq("band_id", link.band_id)
+    .maybeSingle();
+  if (!quote) throw new HttpError(404, "Quote not found");
+  const to = String(quote.client_email ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(to)) return jsonResponse({ success: false, code: "no_client_email", error: "The quote has no client email" }, 400);
+
+  let reply = "";
+  if (kind === "reply") {
+    const { data: last } = await admin
+      .from("quote_activity")
+      .select("body")
+      .eq("quote_id", quoteId)
+      .eq("kind", "band_reply")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    reply = text(last?.body, 2000);
+    if (!reply) throw new HttpError(404, "No reply to send");
+  }
+
+  if (!RESEND_API_KEY) {
+    return jsonResponse({ success: false, code: "email_not_configured", error: "Email sending is not configured" }, 503);
+  }
+
+  const { data: band } = await admin.from("bands").select("name").eq("id", link.band_id).maybeSingle();
+  const lang = pickQuoteEmailLang(link.lang);
+  const snap = link.snapshot ?? {};
+  const ref = clean(snap.ref ?? quote.quote_number, "");
+  const pdf = kind === "reply" || link.pdf_version !== link.version ? null : quotePdfUrl(link.pdf_url, link.band_id);
+  const vars = quoteEmailVars({
+    kind,
+    lang,
+    band: clean(band?.name, "BandWith"),
+    ref,
+    event: clean(snap.title ?? quote.event_name, ref),
+    date: quoteEmailDate(snap.date, lang),
+    total: clean(snap.totalLabel, ""),
+    clientName: clean(quote.client_name, ""),
+    to,
+    url: `${appUrl()}/quote.html?t=${encodeURIComponent(link.token)}`,
+    pdfAttached: !!pdf,
+    reply,
+  });
+  const { subject, html } = renderEmail(type === "quote_reply" ? "quote-reply" : "quote-link", vars);
+  const filename = `${(ref || "quote").replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`;
+
+  // Claim the slot before sending so two taps don't send twice.
+  await admin.from("quote_links").update({ last_emailed_at: new Date().toISOString() }).eq("id", link.id);
+  console.log(`Sending ${type} (${kind}) email`);
+  try {
+    const result = await resend("/emails", {
+      from: FROM_EMAIL,
+      to: [to],
+      subject,
+      html,
+      ...(pdf ? { attachments: [{ path: pdf, filename }] } : {}),
+    });
+    return jsonResponse({ success: true, id: result.id });
+  } catch (e) {
+    await admin.from("quote_links").update({ last_emailed_at: link.last_emailed_at }).eq("id", link.id);
+    throw e;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -394,6 +529,9 @@ serve(async (req) => {
     }
 
     const { type, data: requestData } = (await req.json()) as EmailRequest;
+    if ((type as string) === "quote_link" || (type as string) === "quote_reply") {
+      return await sendQuoteClientEmail(admin, caller, type as unknown as "quote_link" | "quote_reply", requestData as never);
+    }
     const template = TEMPLATE_FOR[type];
     if (!template) throw new HttpError(400, "Unsupported email type");
 

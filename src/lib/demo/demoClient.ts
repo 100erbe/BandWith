@@ -964,6 +964,92 @@ const rpc = (fn: string, args: Row = {}) => {
       data = { ...view, venue_address: g.status === 'available' ? g.venue_address : null };
       break;
     }
+    // Quote confirmation link (099): the link and timeline are real in the demo, the page is not.
+    case 'bw_quote_link_publish': {
+      const links = table('quote_links');
+      const q = table('quotes').find((x) => x.id === args.p_quote_id);
+      if (!q) {
+        error = { message: 'Not allowed', code: '42501' };
+        break;
+      }
+      const now = new Date().toISOString();
+      let l = links.find((x) => x.quote_id === args.p_quote_id);
+      if (!l) {
+        l = { id: uuid(), quote_id: q.id, band_id: q.band_id, token: (uuid() + uuid()).replace(/-/g, ''), lang: 'en', version: 0, status: 'draft', snapshot: null, created_at: now };
+        links.push(l);
+      }
+      if (JSON.stringify(l.snapshot) !== JSON.stringify(args.p_snapshot)) {
+        l.version = (l.version || 0) + 1;
+        l.version_at = now;
+        l.pdf_url = null;
+        l.pdf_version = null;
+        if (l.status !== 'draft' && l.version > 1) {
+          table('quote_activity').push({ id: uuid(), quote_id: q.id, band_id: q.band_id, kind: 'updated', version: l.version, body: null, channel: null, created_at: now });
+        }
+      }
+      l.snapshot = args.p_snapshot;
+      if (args.p_lang) l.lang = args.p_lang;
+      if (args.p_pdf_url) {
+        l.pdf_url = args.p_pdf_url;
+        l.pdf_version = l.version;
+      }
+      l.updated_at = now;
+      persist();
+      data = [{ token: l.token, status: l.status, version: l.version, revoked: !!l.revoked_at }];
+      break;
+    }
+    case 'bw_quote_link_mark_sent': {
+      const l = table('quote_links').find((x) => x.quote_id === args.p_quote_id);
+      if (!l) {
+        error = { message: 'Publish the quote first', code: 'P0002' };
+        break;
+      }
+      const now = new Date().toISOString();
+      const kind = args.p_kind === 'reminded' ? 'reminded' : l.status === 'draft' ? 'sent' : 'resent';
+      table('quote_activity').push({ id: uuid(), quote_id: l.quote_id, band_id: l.band_id, kind, channel: args.p_channel ?? null, version: l.version, body: null, created_at: now });
+      if (l.status === 'draft') {
+        l.status = 'sent';
+        l.sent_at = now;
+      }
+      const q = table('quotes').find((x) => x.id === l.quote_id);
+      if (q && (q.status || 'draft') === 'draft') {
+        q.status = 'sent';
+        q.sent_at = now;
+      }
+      persist();
+      data = l.status;
+      break;
+    }
+    case 'bw_quote_reply': {
+      const l = table('quote_links').find((x) => x.quote_id === args.p_quote_id);
+      const body = String(args.p_body ?? '').trim();
+      if (!l || !body) {
+        error = { message: !l ? 'Publish the quote first' : 'Empty message', code: '22023' };
+        break;
+      }
+      const row = { id: uuid(), quote_id: l.quote_id, band_id: l.band_id, kind: 'band_reply', channel: null, version: l.version, body, created_at: new Date().toISOString() };
+      table('quote_activity').push(row);
+      persist();
+      data = row.id;
+      break;
+    }
+    case 'bw_quote_link_rotate':
+    case 'bw_quote_link_revoke': {
+      const l = table('quote_links').find((x) => x.quote_id === args.p_quote_id);
+      if (!l) {
+        error = { message: 'No link yet', code: 'P0002' };
+        break;
+      }
+      const rotate = fn === 'bw_quote_link_rotate';
+      if (rotate) {
+        l.token = (uuid() + uuid()).replace(/-/g, '');
+        l.revoked_at = null;
+      } else l.revoked_at = new Date().toISOString();
+      table('quote_activity').push({ id: uuid(), quote_id: l.quote_id, band_id: l.band_id, kind: rotate ? 'link_rotated' : 'link_revoked', channel: null, version: l.version, body: null, created_at: new Date().toISOString() });
+      persist();
+      data = rotate ? l.token : true;
+      break;
+    }
     case 'update_setlist_song_count': {
       const id = args.p_setlist_id ?? args.setlist_id;
       const s = table('setlists').find((r) => r.id === id);

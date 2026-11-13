@@ -55,9 +55,20 @@ import { useT, intlLocale, translate, getLocale, type Locale } from '@/lib/i18n'
 import { docLanguageFor, rememberDocLanguage } from '@/lib/i18n/docLanguage';
 import { DocLanguagePicker } from '@/app/components/bw/DocLanguagePicker';
 
+/** Opens the new-contract form filled from an accepted quote (migration 099). */
+export interface ContractPrefill {
+  eventId: string | null;
+  eventName: string;
+  clientName: string;
+  clientEmail: string;
+  eventDate: string;
+  notes?: string;
+}
+
 interface ContractsViewProps {
   onBack: () => void;
   bandId: string;
+  prefill?: ContractPrefill | null;
 }
 
 /** Figma "Status": dot colour + Label/XS. */
@@ -127,7 +138,7 @@ const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim(
 
 type BusyKind = 'download' | 'sign' | 'delete' | 'link' | 'version';
 
-export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) => {
+export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId, prefill }) => {
   const t = useT();
   const docStatusLabel = useStatusLabel();
   const riderStatusLabel = useStatusLabel(true);
@@ -213,6 +224,22 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setFormEventId(contract.event_id ?? null);
     setShowCreateModal(true);
   };
+
+  // From an accepted quote: the form opens filled with its gig and client.
+  useEffect(() => {
+    if (!prefill) return;
+    resetForm();
+    setFormType('contract');
+    setFormEventId(prefill.eventId);
+    setFormEventName(prefill.eventName);
+    setFormClientName(prefill.clientName);
+    setFormClientEmail(prefill.clientEmail);
+    setFormEventDate(prefill.eventDate.slice(0, 10));
+    if (prefill.notes) setFormNotes(prefill.notes);
+    setFormTitle(prefill.eventName ? `${t('Performance agreement')} · ${prefill.eventName}` : t('Performance agreement'));
+    setShowCreateModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   /** Picking a band event fills what the document needs from it. */
   const linkEvent = (ev: LinkableEvent | null) => {
