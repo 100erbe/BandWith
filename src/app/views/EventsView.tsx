@@ -169,6 +169,8 @@ const formatEventTime = (timeStr: string): string => {
   if (match) {
     let h = parseInt(match[1]);
     const m = parseInt(match[2]);
+    // 24-hour clock outside English ("21:00"); English keeps "9 PM".
+    if (getLocale() !== 'en') return `${String(h).padStart(2, '0')}:${match[2]}`;
     const ampm = h >= 12 ? 'PM' : 'AM';
     if (h > 12) h -= 12;
     if (h === 0) h = 12;

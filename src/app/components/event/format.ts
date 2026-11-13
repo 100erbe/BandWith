@@ -4,7 +4,7 @@
  */
 import { parseLocalDate } from '@/lib/dates';
 
-import { dateName, intlLocale } from '@/lib/i18n';
+import { dateName, intlLocale, getLocale } from '@/lib/i18n';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** "19:30:00" / "7:30" → "19:30" (24h). Empty string when there is no time. */
@@ -15,11 +15,15 @@ export const formatTime24 = (time?: string | null): string => {
   return `${pad(parseInt(m[1], 10))}:${m[2]}`;
 };
 
-/** "19:30" → "7:30 PM", "19:00" → "7 PM". Empty string when there is no time. */
+/**
+ * Event time on screen. English: "19:30" → "7:30 PM", "19:00" → "7 PM";
+ * other languages use the 24-hour clock ("19:30", "07:00"). Empty string when there is no time.
+ */
 export const formatTime12 = (time?: string | null): string => {
   if (!time) return '';
   const m = String(time).match(/^(\d{1,2}):(\d{2})/);
   if (!m) return String(time);
+  if (getLocale() !== 'en') return formatTime24(time);
   let h = parseInt(m[1], 10);
   const ampm = h >= 12 ? 'PM' : 'AM';
   if (h > 12) h -= 12;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLocalePref } from '@/lib/i18n';
 import {
   dayBefore,
   daysUntil,
@@ -19,6 +20,17 @@ describe('event format helpers', () => {
     expect(formatTime24(undefined)).toBe('');
     expect(formatTime12('19:00:00')).toBe('7 PM');
     expect(formatTime12('00:30')).toBe('12:30 AM');
+  });
+
+  it('uses the 24-hour clock outside English', () => {
+    setLocalePref('it');
+    try {
+      expect(formatTime12('19:00:00')).toBe('19:00');
+      expect(formatTime12('9:05')).toBe('09:05');
+      expect(formatTime12('')).toBe('');
+    } finally {
+      setLocalePref('en');
+    }
   });
 
   it('formats short days and the day before', () => {
