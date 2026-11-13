@@ -54,6 +54,7 @@ import { ErrorState } from "@/app/components/ui/ErrorState";
 import { LeadingCompanionSlot } from "@/app/components/duo";
 import { MiniPlayer } from "@/app/components/ui/MiniPlayer";
 import { LyricsViewer } from "@/app/components/ui/LyricsViewer";
+import { ReceivedChartSheet } from "@/app/components/rehearsal/ReceivedChartSheet";
 
 import { USER } from "@/app/data/user";
 import { EventItem, EventStatus } from "@/app/data/events";
@@ -4421,6 +4422,8 @@ export default function AuthenticatedApp() {
       <LeadingCompanionSlot />
       <MiniPlayer />
       <LyricsViewer />
+      {/* A MusicXML chord chart opened with the app: attach it to a song. */}
+      <ReceivedChartSheet />
       <AnimatePresence>
         {saveToast && (
           saveToast.minimal ? (

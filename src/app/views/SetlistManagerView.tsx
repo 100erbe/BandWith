@@ -18,7 +18,10 @@ import {
   FileText,
   Upload,
   BookOpen,
+  Guitar,
 } from '@/app/components/icons';
+import { ultimateGuitarSearchUrl } from '@/lib/ultimateGuitar';
+import { openExternal } from '@/lib/nativeFiles';
 import { openLyrics } from '@/lib/lyrics';
 import { asSongChart } from '@/lib/ireal';
 import { cn } from '@/app/components/ui/utils';
@@ -842,6 +845,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                   ? [{ label: t('Chords'), icon: <Music2 className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart), view: 'chords' }); } }]
                                   : []),
                                 ...(hasChart ? [{ label: t('Open chart'), icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
+                                { label: t('Open in Ultimate Guitar'), icon: <Guitar className="w-4 h-4" />, run: () => { setActionMenuId(null); void openExternal(ultimateGuitarSearchUrl(song.title, song.artist)); } },
                                 { label: t('Edit'), icon: <Edit3 className="w-4 h-4" />, run: () => handleEditSong(song) },
                                 ...(isAdmin && song.status !== 'ready'
                                   ? [{ label: t('Mark as ready'), icon: <CheckCircle2 className="w-4 h-4" />, run: () => handleSetSongStatus(song, 'ready') }]
