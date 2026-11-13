@@ -244,7 +244,9 @@ export const Selector: React.FC<{
   onClick?: () => void;
   count?: number | string;
   className?: string;
-}> = ({ children, selected = true, size = 'sm', onClick, count, className }) => {
+  /** Accessible name when the visible text is an abbreviation (e.g. "IT" → "Italiano"). */
+  ariaLabel?: string;
+}> = ({ children, selected = true, size = 'sm', onClick, count, className, ariaLabel }) => {
   const cls = cn(
     'inline-flex items-center gap-1.5 rounded-full bw-label-sm whitespace-nowrap shrink-0 transition-colors',
     size === 'sm' ? 'h-7 px-3' : 'h-9 px-4',
@@ -259,7 +261,7 @@ export const Selector: React.FC<{
     </>
   );
   return onClick ? (
-    <button type="button" aria-pressed={selected} onClick={onClick} className={cls}>
+    <button type="button" aria-pressed={selected} aria-label={ariaLabel} title={ariaLabel} onClick={onClick} className={cls}>
       {body}
     </button>
   ) : (

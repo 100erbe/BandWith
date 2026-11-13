@@ -109,8 +109,13 @@ const interpolate = (text: string, vars?: TranslateVars) =>
  * Translates in the current language. In components use `useT()` so the screen updates when the language changes.
  * When one English word needs two translations, pass `{ context: 'day' }`: the entry "Free|day" wins over "Free".
  */
-export const t = (source: string, vars?: TranslateVars): string => {
-  const l = getLocale();
+export const t = (source: string, vars?: TranslateVars): string => translate(getLocale(), source, vars);
+
+/**
+ * Same as `t()` but in a given language, e.g. a quote or contract written in
+ * the client's language rather than the app's.
+ */
+export const translate = (l: Locale, source: string, vars?: TranslateVars): string => {
   if (l === 'en') return interpolate(source, vars);
   const dict = DICTIONARIES[l];
   const ctx = vars?.context;
@@ -144,10 +149,8 @@ const INTL_TAGS: Record<Exclude<Locale, 'en'>, string> = { it: 'it-IT', es: 'es-
  * day/month names, order and separators.
  * Client-facing text (quote share/PDF, contracts, emails) keeps its fixed tag.
  */
-export const intlLocale = (en?: string): string | undefined => {
-  const l = getLocale();
-  return l === 'en' ? en : INTL_TAGS[l];
-};
+export const intlLocale = (en?: string, l: Locale = getLocale()): string | undefined =>
+  l === 'en' ? en : INTL_TAGS[l];
 
 /**
  * A month or weekday name on its own ("Mar", "Tue"), e.g. in a date tile.

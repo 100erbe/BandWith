@@ -35,7 +35,7 @@ import {
   listContracts,
   listLinkableEvents,
   saveContractEdits,
-  STANDARD_TERMS,
+  standardTerms,
   type LinkableEvent,
   mailtoUrl,
   markContractSent,
@@ -46,7 +46,9 @@ import {
 import { DotText } from '@/app/components/bw';
 import { ScreenHeader, IconButton, SearchField, Card, BwSheet } from '@/app/components/bw/Screen';
 import { PillButton, PillField, Selector, FormError } from '@/app/components/bw/Form';
-import { useT, intlLocale } from '@/lib/i18n';
+import { useT, intlLocale, translate, getLocale, type Locale } from '@/lib/i18n';
+import { docLanguageFor, rememberDocLanguage } from '@/lib/i18n/docLanguage';
+import { DocLanguagePicker } from '@/app/components/bw/DocLanguagePicker';
 
 interface ContractsViewProps {
   onBack: () => void;
@@ -158,6 +160,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendEmail, setSendEmail] = useState('');
   const [sendStep, setSendStep] = useState<'compose' | 'confirm'>('compose');
+  // Language of the PDF and message the client receives (remembered per client on this device).
+  const [sendLang, setSendLang] = useState<Locale>('en');
   /** How the PDF left the app (drives the confirm copy). */
   const [sendVia, setSendVia] = useState<'share' | 'mail'>('share');
   const [sendBusy, setSendBusy] = useState(false);
@@ -345,7 +349,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setBusy({ id: contract.id, kind: 'download' });
     setActionError(null);
     try {
-      const blob = buildContractPdf(contract, { bandName });
+      const blob = buildContractPdf(contract, { bandName, lang: docLanguageFor(contract.client_email || contract.client_name) });
       const { result, location } = await saveFile(blob, contractFileName(contract));
       if (result === 'saved') setNotice(t('PDF saved to {location}', { location: String(location) }));
       else if (result === 'downloaded') setNotice(t('PDF downloaded'));
@@ -374,6 +378,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setMenuOpenId(null);
     setViewingId(null);
     setSendEmail(contract.client_email ?? '');
+    setSendLang(docLanguageFor(contract.client_email || contract.client_name));
     setSendStep('compose');
     setSendError(null);
     setSendingId(contract.id);
@@ -407,8 +412,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setSendError(null);
     try {
       const contract = { ...sendingContract, client_email: email };
-      const { subject, body } = buildSendMessage(contract, bandName);
-      const blob = buildContractPdf(contract, { bandName });
+      rememberDocLanguage(email, sendLang);
+      const { subject, body } = buildSendMessage(contract, bandName, sendLang);
+      const blob = buildContractPdf(contract, { bandName, lang: sendLang });
       const result = await shareFile(blob, contractFileName(contract), { title: subject, text: body, dialogTitle: t('Send to client') });
       if (result === 'cancelled') return;
       if (result === 'shared') {
@@ -418,7 +424,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       }
       // No file sharing here (desktop web): the PDF was downloaded, open the
       // mail app pre-filled and let the user confirm once the email is sent.
-      await openExternal(mailtoUrl(email, subject, `${body}\n\n(PDF attached: ${contractFileName(contract)})`));
+      await openExternal(mailtoUrl(email, subject, `${body}\n\n${translate(sendLang, '(PDF attached: {file})', { file: contractFileName(contract) })}`));
       setSendVia('mail');
       setSendStep('confirm');
     } catch (err) {
@@ -739,7 +745,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   {!formNotes.trim() && (
                     <button
                       type="button"
-                      onClick={() => setFormNotes(STANDARD_TERMS[formType])}
+                      onClick={() => setFormNotes(standardTerms(formType, getLocale()))}
                       className="inline-flex items-center gap-1.5 h-9 bw-button-sm text-foreground"
                     >
                       <Sparkles className="w-4 h-4" aria-hidden />
@@ -900,9 +906,10 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                 <p className="bw-body-sm text-sheet-foreground/70">
                   {t('The PDF opens in the share sheet with a message ready to go. Pick Mail (or any app) and send it to the client. The document is marked as sent once you share it.')}
                 </p>
+                <DocLanguagePicker tone="sheet" value={sendLang} onChange={setSendLang} labelClassName="text-sheet-foreground/70" />
                 <SheetInfo label={t('Message')}>
-                  <p className="whitespace-pre-wrap bw-body-md">
-                    {buildSendMessage({ ...sendingContract, client_email: sendEmail }, bandName).body}
+                  <p className="whitespace-pre-wrap bw-body-md" lang={sendLang}>
+                    {buildSendMessage({ ...sendingContract, client_email: sendEmail }, bandName, sendLang).body}
                   </p>
                 </SheetInfo>
               </>

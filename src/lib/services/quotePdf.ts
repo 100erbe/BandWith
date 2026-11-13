@@ -1,9 +1,10 @@
 import { Quote, QuotePackageOption } from '@/app/data/quotes';
-import { BandPricingSettings, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
+import { BandPricingSettings, DEFAULT_BAND_PRICING, DEFAULT_QUOTE_DISCLAIMER, bankDetailParts, hasBankAccount } from '@/lib/services/pricing';
 import { supabase } from '@/lib/supabase';
 import { formatDistance } from '@/lib/units';
 import { formatQuoteMoney, totalsForQuote, calculateDepositAmount } from '@/lib/services/quoteMath';
 import { ONLINE_DEPOSITS_ENABLED } from './pricing';
+import { intlLocale, translate, type Locale, type TranslateVars } from '@/lib/i18n';
 
 export interface QuotePdfGenerationResult {
   pdfBlob: Blob;
@@ -24,22 +25,32 @@ const getCurrencySymbol = (currency?: string): string => {
   return '€';
 };
 
-// Same formatting as the wizard (whole amounts without decimals, otherwise cents)
-const formatMoney = (amount: number, sym = '€'): string => formatQuoteMoney(amount || 0, sym);
+// Same formatting as the wizard (whole amounts without decimals, otherwise cents).
+// The document is written in the client's language (`lang`); English output is unchanged.
+const moneyIn = (lang: Locale) => (amount: number, sym = '€'): string =>
+  formatQuoteMoney(amount || 0, sym, intlLocale('en-US', lang));
 
-const formatFormalEventDate = (dateStr?: string): string => {
-  if (!dateStr) return 'Date TBD';
+const trIn = (lang: Locale) => (source: string, vars?: TranslateVars) => translate(lang, source, vars);
+
+const formatFormalEventDate = (dateStr: string | undefined, lang: Locale): string => {
+  if (!dateStr) return translate(lang, 'Date TBD');
   const clean = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
   const d = new Date(`${clean}T00:00:00`);
   if (isNaN(d.getTime())) return dateStr;
+  if (lang !== 'en') return d.toLocaleDateString(intlLocale(undefined, lang), { day: 'numeric', month: 'long', year: 'numeric' });
   const day = d.getDate();
   const month = d.toLocaleDateString('en-GB', { month: 'long' });
   const year = d.getFullYear();
   return `${day} ${month}, ${year}`;
 };
 
-const formatIssueDateDMY = (dateStr?: string): string => {
-  const d = dateStr ? new Date(dateStr) : new Date();
+const formatIssueDateDMY = (dateStr: string | undefined, lang: Locale): string => {
+  const parsed = dateStr ? new Date(dateStr) : new Date();
+  if (lang !== 'en') {
+    const day = isNaN(parsed.getTime()) ? new Date() : parsed;
+    return day.toLocaleDateString(intlLocale(undefined, lang), { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  const d = parsed;
   if (isNaN(d.getTime())) {
     const now = new Date();
     return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -124,10 +135,13 @@ interface SingleQuotePageParams {
   logoImg: HTMLImageElement | null;
   signatureImg: HTMLImageElement | null;
   optionOverride?: QuotePackageOption;
+  lang: Locale;
 }
 
 const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
-  const { quote, bandName, settings, logoImg, signatureImg, optionOverride } = params;
+  const { quote, bandName, settings, logoImg, signatureImg, optionOverride, lang } = params;
+  const tr = trIn(lang);
+  const formatMoney = moneyIn(lang);
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
@@ -150,7 +164,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   ctx.font = '400 68px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('Event Quote', leftMargin, 310);
+  ctx.fillText(tr('Event Quote'), leftMargin, 310);
 
   // 3. Metadata Block (Description, Client, Event Date)
   let y = 520;
@@ -161,16 +175,16 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   const descriptionText =
     quote.quoteDescription?.trim() ||
     (venueDisplay && venueDisplay !== 'TBD'
-      ? `Formal quote for an event in ${venueDisplay}`
-      : quote.eventName || quote.eventTitle || 'Formal event performance quote');
+      ? tr('Formal quote for an event in {venue}', { venue: venueDisplay })
+      : quote.eventName || quote.eventTitle || tr('Formal event performance quote'));
 
   const metaRows = [
-    { label: 'Description:', value: descriptionText },
+    { label: tr('Description:'), value: descriptionText },
     {
-      label: 'Client:',
-      value: [quote.clientName || 'Client TBD', quote.clientCompany].filter(Boolean).join(' — '),
+      label: tr('Client:'),
+      value: [quote.clientName || tr('Client TBD'), quote.clientCompany].filter(Boolean).join(' — '),
     },
-    { label: 'Event Date:', value: formatFormalEventDate(quote.eventDate) },
+    { label: tr('Event Date:'), value: formatFormalEventDate(quote.eventDate, lang) },
   ];
 
   for (const row of metaRows) {
@@ -187,10 +201,10 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   // 4. Validity Disclaimer Paragraph
   y += 45;
   const validityDays = quote.validityDays || settings.default_validity_days || 30;
+  const bandDisclaimer = quote.customDisclaimer?.trim() || settings.default_quote_disclaimer;
+  // The built-in text follows the document language; text the band wrote is used as written.
   const rawDisclaimer =
-    quote.customDisclaimer?.trim() ||
-    settings.default_quote_disclaimer ||
-    DEFAULT_QUOTE_DISCLAIMER;
+    !bandDisclaimer || bandDisclaimer === DEFAULT_QUOTE_DISCLAIMER ? tr(DEFAULT_QUOTE_DISCLAIMER) : bandDisclaimer;
   const formattedDisclaimer = `( ${rawDisclaimer.replace(/\{days\}/g, String(validityDays))} )`;
 
   ctx.font = '400 22px Georgia, "Times New Roman", serif';
@@ -210,10 +224,10 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   ctx.font = '700 23px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#4f6b82';
   ctx.textAlign = 'left';
-  ctx.fillText('Service Description', colServiceX, y);
-  ctx.fillText('Details', colDetailsX, y);
+  ctx.fillText(tr('Service Description'), colServiceX, y);
+  ctx.fillText(tr('Details'), colDetailsX, y);
   ctx.textAlign = 'right';
-  ctx.fillText('Price', colPriceRightX, y);
+  ctx.fillText(tr('Price'), colPriceRightX, y);
   ctx.textAlign = 'left';
 
   y += 34;
@@ -229,13 +243,16 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     .filter(Boolean);
   const defaultInstrumentsText =
     instrumentsList.length > 0
-      ? `(e.g. ${instrumentsList.join(', ')})`
-      : `(e.g. Drums, Bass, Keys, Guitar, Vocals)`;
+      ? tr('(e.g. {list})', { list: instrumentsList.join(', ') })
+      : tr('(e.g. Drums, Bass, Keys, Guitar, Vocals)');
   const instrumentsDetail = optionOverride?.instrumentsDetail || defaultInstrumentsText;
 
   const numSets = quote.numberOfSets || 3;
   const setDur = quote.setDuration || 45;
-  const setsDescription = `(Includes ${numSets} ${numSets === 1 ? 'set' : 'sets'} of ${setDur} minutes or equivalent)`;
+  const setsDescription =
+    numSets === 1
+      ? tr('(Includes 1 set of {minutes} minutes or equivalent)', { minutes: setDur })
+      : tr('(Includes {count} sets of {minutes} minutes or equivalent)', { count: numSets, minutes: setDur });
 
   const mainBandFee =
     optionOverride?.grossFee ??
@@ -259,8 +276,18 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     ctx.fillText(title, colServiceX, y + 4);
 
     ctx.font = '700 22px Georgia, "Times New Roman", serif';
+    if (lang !== 'en') {
+      // Translations can be longer than the English label: shrink it so it never runs into the price.
+      const room = colPriceRightX - ctx.measureText(priceLabel).width - 14 - colDetailsX;
+      let size = 22;
+      while (size > 15 && ctx.measureText(detailsLabel).width > room) {
+        size -= 1;
+        ctx.font = `700 ${size}px Georgia, "Times New Roman", serif`;
+      }
+    }
     ctx.fillText(detailsLabel, colDetailsX, y + 4);
 
+    ctx.font = '700 22px Georgia, "Times New Roman", serif';
     ctx.textAlign = 'right';
     ctx.fillText(priceLabel, colPriceRightX, y + 4);
     ctx.textAlign = 'left';
@@ -291,8 +318,8 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   // Row 1: MAIN BAND
   const wrappedInstruments = wrapTextLines(ctx, instrumentsDetail, 240);
   drawServiceItem(
-    'MAIN BAND',
-    optionOverride?.lineupLabel || `${musiciansCount}pc band`,
+    tr('MAIN BAND'),
+    optionOverride?.lineupLabel || tr('{count}pc band', { count: musiciansCount }),
     formatMoney(mainBandFee, sym),
     [setsDescription],
     wrappedInstruments
@@ -302,37 +329,37 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   const prodTier = quote.productionTier || 'standard';
   if (prodTier !== 'none') {
     const tierName =
-      prodTier === 'pro' ? '( Pro Production )' : prodTier === 'custom' ? '( Custom )' : '( Standard )';
+      prodTier === 'pro' ? tr('( Pro Production )') : prodTier === 'custom' ? tr('( Custom )') : tr('( Standard )');
     const isProdIncluded =
       quote.soundIncluded !== false && (!quote.soundFee || quote.soundFee === 0);
     const prodPriceText = isProdIncluded
-      ? 'included'
+      ? tr('included')
       : formatMoney((quote.soundFee || 0) + (quote.lightsFee || 0), sym);
 
     const guestsLabel = quote.guestCount || 150;
     const defaultBullets =
       prodTier === 'pro'
         ? [
-            `• High-output PA system for ${guestsLabel}+ guests`,
-            '• Full stage lighting show & sound engineer',
+            tr('• High-output PA system for {guests}+ guests', { guests: guestsLabel }),
+            tr('• Full stage lighting show & sound engineer'),
           ]
         : [
-            `• Sound equipment up to ${guestsLabel} guests`,
-            '• Standard lighting',
+            tr('• Sound equipment up to {guests} guests', { guests: guestsLabel }),
+            tr('• Standard lighting'),
           ];
     const bullets =
       quote.productionBullets && quote.productionBullets.length > 0
         ? quote.productionBullets.map((b) => (b.startsWith('•') ? b : `• ${b}`))
         : defaultBullets;
 
-    drawServiceItem('MUSICAL PRODUCTION', tierName, prodPriceText, bullets, []);
+    drawServiceItem(tr('MUSICAL PRODUCTION'), tierName, prodPriceText, bullets, []);
   }
 
   // Row 3+: Selected Musical Moments
   if (quote.selectedMoments && quote.selectedMoments.length > 0) {
     for (const mom of quote.selectedMoments) {
-      const momDetails = `${mom.musicians}pc (${mom.duration}m)`;
-      const momPrice = mom.included || mom.price === 0 ? 'included' : formatMoney(mom.price, sym);
+      const momDetails = tr('{count}pc ({minutes}m)', { count: mom.musicians, minutes: mom.duration });
+      const momPrice = mom.included || mom.price === 0 ? tr('included') : formatMoney(mom.price, sym);
       const subLeft = mom.description ? [`(${mom.description})`] : [];
       const subRight =
         mom.instruments && mom.instruments.length > 0
@@ -346,12 +373,12 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (quote.customItems && quote.customItems.length > 0) {
     for (const item of quote.customItems) {
       const itemPrice = (item.price ?? item.amount ?? 0) * (item.quantity || 1);
-      const itemLabel = (item.name || item.description || 'EXTRA SERVICE').toUpperCase();
-      const qtyDetail = item.quantity && item.quantity > 1 ? `× ${item.quantity}` : '( Add-on )';
+      const itemLabel = (item.name || item.description || tr('EXTRA SERVICE')).toUpperCase();
+      const qtyDetail = item.quantity && item.quantity > 1 ? `× ${item.quantity}` : tr('( Add-on )');
       drawServiceItem(
         itemLabel,
         qtyDetail,
-        itemPrice > 0 ? formatMoney(itemPrice, sym) : 'included',
+        itemPrice > 0 ? formatMoney(itemPrice, sym) : tr('included'),
         item.description && item.name && item.description !== item.name ? [item.description] : [],
         []
       );
@@ -362,36 +389,36 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (!quote.travelIncluded && (quote.travelFee || 0) > 0) {
     // The quote keeps the one-way distance; the fee covers the round trip.
     const distNote = quote.travelDistanceKm
-      ? `${formatDistance(quote.travelDistanceKm * 2)} round trip`
-      : 'Transport & mileage';
+      ? tr('{distance} round trip', { distance: formatDistance(quote.travelDistanceKm * 2) })
+      : tr('Transport & mileage');
     drawServiceItem(
-      'TRAVEL & LOGISTICS',
+      tr('TRAVEL & LOGISTICS'),
       distNote,
       formatMoney(quote.travelFee || 0, sym),
-      ['(Transport, fuel & mileage expenses)'],
+      [tr('(Transport, fuel & mileage expenses)')],
       []
     );
   }
 
   if (quote.accommodationNeeded && (quote.accommodationFee || 0) > 0) {
     const roomsNote = quote.accommodationRooms
-      ? `${quote.accommodationRooms} rooms`
-      : 'Hotel & lodging';
+      ? tr('{count} rooms', { count: quote.accommodationRooms })
+      : tr('Hotel & lodging');
     drawServiceItem(
-      'ACCOMMODATION',
+      tr('ACCOMMODATION'),
       roomsNote,
       formatMoney(quote.accommodationFee || 0, sym),
-      ['(Overnight accommodation for band & crew)'],
+      [tr('(Overnight accommodation for band & crew)')],
       []
     );
   }
 
   if (quote.mealsIncluded === false && (quote.mealsFee || 0) > 0) {
     drawServiceItem(
-      'CATERING / MEALS',
-      `${musiciansCount} persons`,
+      tr('CATERING / MEALS'),
+      tr('{count} persons', { count: musiciansCount }),
       formatMoney(quote.mealsFee || 0, sym),
-      ['(Artist hospitality & hot meals)'],
+      [tr('(Artist hospitality & hot meals)')],
       []
     );
   }
@@ -441,7 +468,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   ctx.font = '700 23px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#111111';
   ctx.textAlign = 'left';
-  ctx.fillText('TOTAL:', leftMargin, y);
+  ctx.fillText(tr('TOTAL:'), leftMargin, y);
 
   const grossText = formatMoney(grossSubtotal, sym);
   ctx.font = '700 23px Georgia, "Times New Roman", serif';
@@ -473,7 +500,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (hasDiscount) {
     ctx.font = '700 23px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#111111';
-    ctx.fillText('DISCOUNTED TOTAL:', leftMargin, y);
+    ctx.fillText(tr('DISCOUNTED TOTAL:'), leftMargin, y);
 
     ctx.font = '700 23px Georgia, "Times New Roman", serif';
     ctx.textAlign = 'right';
@@ -484,10 +511,10 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
 
   // VAT Row
   const vatLabel = quote.vatExempt
-    ? 'VAT (Exempt):'
+    ? tr('VAT (Exempt):')
     : quote.reverseCharge
-      ? 'VAT (Reverse Charge 0%):'
-      : `VAT ${vatRate}%:`;
+      ? tr('VAT (Reverse Charge 0%):')
+      : tr('VAT {rate}%:', { rate: vatRate });
   ctx.font = '400 23px Georgia, "Times New Roman", serif';
   ctx.fillStyle = '#111111';
   ctx.fillText(vatLabel, leftMargin, y);
@@ -500,8 +527,8 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (hasDiscount) {
     const discNote =
       discountPct > 0
-        ? `Package Discount Applied (${discountPct}%)`
-        : `Package Discount Applied (${formatMoney(discountAmount, sym)})`;
+        ? tr('Package Discount Applied ({amount})', { amount: `${discountPct}%` })
+        : tr('Package Discount Applied ({amount})', { amount: formatMoney(discountAmount, sym) });
     ctx.font = 'italic 22px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#111111';
     ctx.fillText(discNote, leftMargin, y);
@@ -518,14 +545,14 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   // Travel & Accommodation notes
   const inclusionNotes: string[] = [];
   if (quote.travelMode === 'included' || (quote.travelIncluded && (quote.travelFee || 0) === 0)) {
-    inclusionNotes.push('(This quote includes travel expenses.)');
+    inclusionNotes.push(tr('(This quote includes travel expenses.)'));
   } else if (quote.travelMode === 'client_provided') {
-    inclusionNotes.push('(Travel & transport to be arranged by the client.)');
+    inclusionNotes.push(tr('(Travel & transport to be arranged by the client.)'));
   }
   if (quote.accommodationMode === 'included') {
-    inclusionNotes.push('(This quote includes accommodation expenses.)');
+    inclusionNotes.push(tr('(This quote includes accommodation expenses.)'));
   } else if (quote.accommodationMode === 'client_provided') {
-    inclusionNotes.push('(Accommodation to be provided by the client if required.)');
+    inclusionNotes.push(tr('(Accommodation to be provided by the client if required.)'));
   }
 
   for (const note of inclusionNotes) {
@@ -540,7 +567,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   // TOTAL (VAT INCLUDED)
   ctx.font = '700 26px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#111111';
-  ctx.fillText('TOTAL (VAT INCLUDED):', leftMargin, y);
+  ctx.fillText(tr('TOTAL (VAT INCLUDED):'), leftMargin, y);
 
   ctx.textAlign = 'right';
   ctx.fillText(formatMoney(totalWithVat, sym), rightMargin, y);
@@ -549,7 +576,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   y += 66;
   ctx.font = '400 21px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#222222';
-  ctx.fillText(`(for a ${musiciansCount}-piece band)`, leftMargin, y);
+  ctx.fillText(tr('(for a {count}-piece band)', { count: musiciansCount }), leftMargin, y);
 
   // Initial Payment / Deposit line (Right-aligned)
   if (quote.depositRequired !== false && depositPct > 0) {
@@ -557,17 +584,17 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     ctx.textAlign = 'right';
     ctx.font = '400 23px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#111111';
-    const depText = `Initial Payment: ${depositPct}% = ${formatMoney(depositAmount, sym)} (to be paid in advance.)`;
+    const depText = tr('Initial Payment: {percent}% = {amount} (to be paid in advance.)', { percent: depositPct, amount: formatMoney(depositAmount, sym) });
     ctx.fillText(depText, rightMargin, y);
     // Online deposit links (Stripe / PayPal): off for the whole alpha.
     const payLinks = ONLINE_DEPOSITS_ENABLED
-      ? [settings.stripe_payment_link && `Card: ${settings.stripe_payment_link}`, settings.paypal_link && `PayPal: ${settings.paypal_link}`].filter(Boolean)
+      ? [settings.stripe_payment_link && tr('Card: {link}', { link: settings.stripe_payment_link }), settings.paypal_link && `PayPal: ${settings.paypal_link}`].filter(Boolean)
       : [];
     if (payLinks.length) {
       y += 34;
       ctx.font = '400 19px "Inter", "Helvetica Neue", Arial, sans-serif';
       ctx.fillStyle = '#444444';
-      ctx.fillText(`Pay the deposit online · ${payLinks.join('  ·  ')}`, rightMargin, y);
+      ctx.fillText(tr('Pay the deposit online · {links}', { links: payLinks.join('  ·  ') }), rightMargin, y);
     }
     ctx.textAlign = 'left';
   }
@@ -585,7 +612,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
 
     ctx.font = '700 18px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#334155';
-    ctx.fillText('PAYMENT & BANK TRANSFER DETAILS', leftMargin + 24, y + 20);
+    ctx.fillText(tr('PAYMENT & BANK TRANSFER DETAILS'), leftMargin + 24, y + 20);
 
     const bankParts = bankDetailParts(settings);
 
@@ -601,7 +628,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
     y += 46;
     ctx.font = 'italic 19px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#475569';
-    const noteLines = wrapTextLines(ctx, `Note: ${quote.clientNotes.trim()}`, contentWidth);
+    const noteLines = wrapTextLines(ctx, tr('Note: {note}', { note: quote.clientNotes.trim() }), contentWidth);
     for (const line of noteLines.slice(0, 2)) {
       ctx.fillText(line, leftMargin, y);
       y += 26;
@@ -615,7 +642,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   ctx.font = 'italic 22px Georgia, "Times New Roman", serif';
   ctx.fillStyle = '#a3a3a3';
   ctx.textAlign = 'left';
-  ctx.fillText(formatIssueDateDMY(quote.createdAt), leftMargin, footerBaseY);
+  ctx.fillText(formatIssueDateDMY(quote.createdAt, lang), leftMargin, footerBaseY);
 
   // Signature & Signer info on right
   const sigBlockX = leftMargin + 945;
@@ -637,7 +664,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
 
   let contactY = footerBaseY + 22;
   const signerName = settings.signer_name || bandName;
-  const signerRole = settings.signer_role || 'Musical Director and Musician';
+  const signerRole = settings.signer_role || tr('Musical Director and Musician');
   const contactEmail = settings.contact_email || quote.clientEmail || '';
   const contactPhone = settings.contact_phone || '';
 
@@ -668,7 +695,7 @@ const renderSingleOptionQuotePage = (params: SingleQuotePageParams): string => {
   if (settings.tax_vat_id) {
     ctx.font = '400 17px "Inter", "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = '#adadad';
-    ctx.fillText(`VAT / Tax ID: ${settings.tax_vat_id}`, sigBlockX, contactY);
+    ctx.fillText(tr('VAT / Tax ID: {id}', { id: settings.tax_vat_id }), sigBlockX, contactY);
   }
 
   return canvas.toDataURL('image/jpeg', 0.94);
@@ -680,10 +707,13 @@ interface ProposalSummaryPageParams {
   settings: BandPricingSettings;
   logoImg: HTMLImageElement | null;
   options: QuotePackageOption[];
+  lang: Locale;
 }
 
 const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string => {
-  const { quote, bandName, settings, logoImg, options } = params;
+  const { quote, bandName, settings, logoImg, options, lang } = params;
+  const tr = trIn(lang);
+  const formatMoney = moneyIn(lang);
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
@@ -705,24 +735,24 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   ctx.font = '700 46px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('Event Proposal Summary', leftMargin, 340);
+  ctx.fillText(tr('Event Proposal Summary'), leftMargin, 340);
 
   // 3. Client & Event Date
   let y = 495;
   ctx.font = '700 22px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#555555';
-  ctx.fillText('Client:', leftMargin, y);
+  ctx.fillText(tr('Client:'), leftMargin, y);
   ctx.font = '400 22px Georgia, "Times New Roman", serif';
   ctx.fillStyle = '#111111';
-  ctx.fillText(quote.clientName || 'Client TBD', leftMargin + 330, y);
+  ctx.fillText(quote.clientName || tr('Client TBD'), leftMargin + 330, y);
 
   y += 38;
   ctx.font = '700 22px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.fillStyle = '#555555';
-  ctx.fillText('Event Date:', leftMargin, y);
+  ctx.fillText(tr('Event Date:'), leftMargin, y);
   ctx.font = '400 22px Georgia, "Times New Roman", serif';
   ctx.fillStyle = '#111111';
-  ctx.fillText(formatFormalEventDate(quote.eventDate), leftMargin + 330, y);
+  ctx.fillText(formatFormalEventDate(quote.eventDate, lang), leftMargin + 330, y);
 
   // 4. Multi-Option Comparison Table
   y += 58;
@@ -738,7 +768,7 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   ctx.fillStyle = '#ffffff';
   ctx.font = '700 22px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('Package Overview', leftMargin + 14, y + 17);
+  ctx.fillText(tr('Package Overview'), leftMargin + 14, y + 17);
 
   options.forEach((opt, idx) => {
     const colCenterX = leftMargin + labelColW + idx * optColW + optColW / 2;
@@ -822,12 +852,12 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   };
 
   drawCompRow(
-    'Band Lineup',
-    options.map((o) => `${o.musiciansCount} Musicians`),
+    tr('Band Lineup'),
+    options.map((o) => tr('{count} Musicians', { count: o.musiciansCount })),
     { rowH: 52, labelBold: true }
   );
   drawCompRow(
-    'Instrumentation',
+    tr('Instrumentation'),
     options.map((o) => o.instrumentsSummary),
     { rowH: 66, labelBold: true }
   );
@@ -839,12 +869,12 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
   const depositPct = quote.depositPercentage ?? settings.default_deposit_rate ?? 20;
 
   drawCompRow(
-    'Gross Fee',
+    tr('Gross Fee'),
     options.map((o) => formatMoney(o.grossFee, sym)),
     { rowH: 46, labelBold: true }
   );
   drawCompRow(
-    'Package Discount',
+    tr('Package Discount'),
     options.map((o) => (o.discountAmount > 0 ? `(${formatMoney(o.discountAmount, sym)})` : '—')),
     {
       rowH: 46,
@@ -854,17 +884,17 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
     }
   );
   drawCompRow(
-    'Net Subtotal',
+    tr('Net Subtotal'),
     options.map((o) => formatMoney(o.netSubtotal, sym)),
     { rowH: 46, labelBold: true }
   );
   drawCompRow(
-    `VAT (${vatRate}%)`,
+    tr('VAT ({rate}%)', { rate: vatRate }),
     options.map((o) => formatMoney(o.vatAmount, sym)),
     { rowH: 46, labelBold: true }
   );
   drawCompRow(
-    'TOTAL (VAT INCLUDED)',
+    tr('TOTAL (VAT INCLUDED)'),
     options.map((o) => formatMoney(o.totalWithVat, sym)),
     {
       rowH: 56,
@@ -877,7 +907,7 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
     }
   );
   drawCompRow(
-    `Advance Deposit (${depositPct}%)`,
+    tr('Advance Deposit ({percent}%)', { percent: depositPct }),
     options.map((o) => formatMoney(o.depositAmount, sym)),
     {
       rowH: 50,
@@ -898,26 +928,29 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
 
   ctx.fillStyle = '#1f3f60';
   ctx.font = '700 20px "Inter", "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText('Included Services & Terms of Agreement', leftMargin + 14, y + 14);
+  ctx.fillText(tr('Included Services & Terms of Agreement'), leftMargin + 14, y + 14);
   y += termsHeaderH;
 
   const numSets = quote.numberOfSets || 3;
   const setDur = quote.setDuration || 45;
   const guestsLabel = quote.guestCount || 150;
   const validityDays = quote.validityDays || settings.default_validity_days || 30;
+  const bandTerms = quote.paymentTermsText || settings.default_payment_terms;
+  // The built-in default follows the document language; terms the band wrote are used as written.
   const paymentTerms =
-    quote.paymentTermsText ||
-    settings.default_payment_terms ||
-    `${depositPct}% initial deposit upon booking; ${100 - depositPct}% balance due before event`;
+    (bandTerms && bandTerms === DEFAULT_BAND_PRICING.default_payment_terms ? tr(bandTerms) : bandTerms) ||
+    tr('{deposit}% initial deposit upon booking; {balance}% balance due before event', { deposit: depositPct, balance: 100 - depositPct });
 
   const travelSummary =
     quote.travelMode === 'separate' && (quote.travelFee || 0) > 0
-      ? `Travel expenses: ${formatMoney(quote.travelFee || 0, sym)}${quote.accommodationNeeded ? ' + Accommodation' : ''}`
-      : 'Complete travel expenses included';
+      ? quote.accommodationNeeded
+        ? tr('Travel expenses: {amount} + Accommodation', { amount: formatMoney(quote.travelFee || 0, sym) })
+        : tr('Travel expenses: {amount}', { amount: formatMoney(quote.travelFee || 0, sym) })
+      : tr('Complete travel expenses included');
 
   const contactLine = [
     settings.contact_email || quote.clientEmail || '',
-    settings.website ? `Website: ${settings.website}` : '',
+    settings.website ? tr('Website: {url}', { url: settings.website }) : '',
     hasBankAccount(settings) && quote.showBankDetailsOnPdf !== false
       ? bankDetailParts(settings).find((p) => /^(IBAN|Account):/.test(p)) || ''
       : '',
@@ -927,19 +960,19 @@ const renderProposalSummaryPage = (params: ProposalSummaryPageParams): string =>
 
   const termsRows = [
     {
-      label: 'Live Performance:',
-      value: `${numSets} dynamic sets of ${setDur} minutes (or custom equivalent schedule)`,
+      label: tr('Live Performance:'),
+      value: tr('{count} dynamic sets of {minutes} minutes (or custom equivalent schedule)', { count: numSets, minutes: setDur }),
     },
     {
-      label: 'Audio & Production:',
-      value: `High-end sound system for up to ${guestsLabel} guests and stage lighting`,
+      label: tr('Audio & Production:'),
+      value: tr('High-end sound system for up to {guests} guests and stage lighting', { guests: guestsLabel }),
     },
-    { label: 'Logistics & Travel:', value: travelSummary },
-    { label: 'Payment Terms:', value: paymentTerms },
-    { label: 'Date:', value: formatIssueDateDMY(quote.createdAt) },
-    { label: 'Validity:', value: `Quote valid for ${validityDays} days` },
-    { label: 'Client:', value: quote.clientName || 'Client TBD' },
-    { label: 'Contact:', value: contactLine || bandName },
+    { label: tr('Logistics & Travel:'), value: travelSummary },
+    { label: tr('Payment Terms:'), value: paymentTerms },
+    { label: tr('Date:'), value: formatIssueDateDMY(quote.createdAt, lang) },
+    { label: tr('Validity:'), value: tr('Quote valid for {days} days', { days: validityDays }) },
+    { label: tr('Client:'), value: quote.clientName || tr('Client TBD') },
+    { label: tr('Contact:'), value: contactLine || bandName },
   ];
 
   for (const row of termsRows) {
@@ -1074,7 +1107,9 @@ export const buildPdfBlobFromJpegDataUrls = (jpegDataUrls: string[]): Blob => {
 export async function generateQuotePdf(
   quote: Partial<Quote>,
   bandName: string,
-  settings: BandPricingSettings
+  settings: BandPricingSettings,
+  /** Language the client reads (default English, as before). */
+  lang: Locale = 'en'
 ): Promise<QuotePdfGenerationResult> {
   const [logoImg, signatureImg] = await Promise.all([
     loadImageSafe(settings.band_logo_url),
@@ -1095,6 +1130,7 @@ export async function generateQuotePdf(
           logoImg,
           signatureImg,
           optionOverride: opt,
+          lang,
         })
       );
     }
@@ -1106,6 +1142,7 @@ export async function generateQuotePdf(
         settings,
         logoImg,
         options,
+        lang,
       })
     );
   } else {
@@ -1117,6 +1154,7 @@ export async function generateQuotePdf(
         settings,
         logoImg,
         signatureImg,
+        lang,
       })
     );
   }
@@ -1124,7 +1162,8 @@ export async function generateQuotePdf(
   const pdfBlob = buildPdfBlobFromJpegDataUrls(pageDataUrls);
   const safeBand = (bandName || 'Band').replace(/[^a-zA-Z0-9_-]/g, '_');
   const safeClient = (quote.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `Quote_${safeBand}_${safeClient}.pdf`;
+  const docWord = translate(lang, 'Quote').normalize('NFD').replace(/[^a-zA-Z0-9_-]/g, '');
+  const fileName = `${docWord || 'Quote'}_${safeBand}_${safeClient}.pdf`;
   const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
   return {
