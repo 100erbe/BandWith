@@ -3105,6 +3105,20 @@ const dict: Dictionary = {
   "Start chatting...": "Inizia a scrivere...",
   "Pick an event": "Scegli un evento",
   "Your band, side by side": "La tua band, fianco a fianco",
+  "Deposit not paid yet": "Acconto non ancora pagato",
+  "Deposit paid": "Acconto pagato",
+  "Go live": "Go live",
+  "Lineup · {done} of {total} confirmed": "Formazione · {done} su {total} confermati",
+  "No musicians on the lineup yet": "Ancora nessun musicista in formazione",
+  "No start time yet": "Orario di inizio da definire",
+  "SHOW READINESS · {done}/{total}": "PRONTI PER LO SHOW · {done}/{total}",
+  "Show readiness": "Pronti per lo show",
+  "Show readiness · {done}/{total}": "Pronti per lo show · {done}/{total}",
+  "Show readiness: {done} of {total}": "Pronti per lo show: {done} su {total}",
+  "Start time set": "Orario di inizio definito",
+  "To do": "Da fare",
+  "To-dos · {done} of {total} done": "Cose da fare · {done} su {total} fatte",
+  "Venue set": "Luogo definito",
 };
 
 export default dict;

@@ -166,6 +166,7 @@ const eventToEventItem = (event: Event): EventItem => {
     status,
     date: event.event_date || new Date().toISOString().split("T")[0],
     time: event.start_time || "19:00",
+    timeSet: !!event.start_time,
     location: event.venue_name || event.venue_city || "TBD",
     price: event.fee?.toString() || "0",
     members: [],
@@ -992,6 +993,15 @@ export default function AuthenticatedApp() {
       }
     }, 200);
   }, [refetchEvents, explainMissingEvent]);
+
+  // "Go live" (Home's next gig): open the gig straight in Stage mode.
+  const [stageOnOpen, setStageOnOpen] = useState<string | null>(null);
+  const handleGoLive = useCallback((eventDbId: string) => {
+    setStageOnOpen(eventDbId);
+    void navigateToEvent(eventDbId);
+    // Not opened after all (deleted, hidden): don't start the next visit in Stage mode.
+    window.setTimeout(() => setStageOnOpen((cur) => (cur === eventDbId ? null : cur)), 5000);
+  }, [navigateToEvent]);
 
   // ═══ Several bands: act in the band an item belongs to ═══
   // Viewing works from any band; changing something of another band asks to
@@ -2410,6 +2420,10 @@ export default function AuthenticatedApp() {
     }
   };
   handleEventCardClickRef.current = handleEventCardClick;
+  // The gig opened in Stage mode: later visits open it normally.
+  useEffect(() => {
+    if (stageOnOpen && selectedEvent?.eventId === stageOnOpen) setStageOnOpen(null);
+  }, [stageOnOpen, selectedEvent]);
 
   // Figma "Duo · Home" (open): the next gig / commitment is already shown on
   // the trailing page, next to the dashboard. Once per visit to Home (see
@@ -3311,7 +3325,7 @@ export default function AuthenticatedApp() {
 
         <AnimatePresence mode="wait">
           {(activeTab === "Home" || activeTab === "More") && (
-            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onFilterEvents={(filter) => {
+            <HomeView key={`dashboard-${isSolo ? 'solo' : selectedBand.id}`} selectedBand={selectedBand} expandedCard={expandedCard} setExpandedCard={setExpandedCard} upcomingRehearsals={upcomingRehearsals} currentRehearsal={currentRehearsal} onRehearsalClick={handleRehearsalClick} isHidden={isMenuOpen} dashboardData={computedDashboardData} dashboardLoading={dashboardLoading && !masterEventsList?.length} isAdmin={isAdmin} onViewChange={(tab) => setActiveTab(tab as TabName)} onSelectEvent={navigateToEvent} onGoLive={handleGoLive} onFilterEvents={(filter) => {
               setEventFilter(filter);
               setActiveTab("Events");
             }} onQuickAction={(action) => {
@@ -4033,6 +4047,7 @@ export default function AuthenticatedApp() {
             // carry over "Confirm delete", sheets or the previous setlist.
             key={`event-detail-${selectedEvent.eventId ?? selectedEvent.id}`}
             event={selectedEvent}
+            startInStage={!!stageOnOpen && stageOnOpen === selectedEvent.eventId}
             currentUserId={user?.id}
             onClose={() => { setSelectedEvent(null); setSelectedEventMembership(null); }}
             onOpenBandSettings={isAdmin ? () => { setPricingModalInitialTab('branding'); setPricingReturnTo(null); setShowPricingModal(true); } : undefined}

@@ -16,6 +16,8 @@ export interface EventData {
   status: string;
   date: string;
   time: string;
+  /** The gig has a real start time; `time` falls back to 19:00 without one. */
+  timeSet?: boolean;
   location: string;
   price: string;
   members: string[];
