@@ -839,10 +839,10 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                               items={[
                                 ...(canPlay ? [{ label: t('Play'), icon: <Play className="w-4 h-4" />, run: () => handlePlaySong(song) }] : []),
                                 ...(song.lyrics?.trim()
-                                  ? [{ label: t('Lyrics'), icon: <BookOpen className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart) }); } }]
+                                  ? [{ label: t('Lyrics'), icon: <BookOpen className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, songKey: song.key, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart) }); } }]
                                   : []),
                                 ...(asSongChart(song.chord_chart)
-                                  ? [{ label: t('Chords'), icon: <Music2 className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart), view: 'chords' }); } }]
+                                  ? [{ label: t('Chords'), icon: <Music2 className="w-4 h-4" />, run: () => { setActionMenuId(null); openLyrics({ songId: song.id, title: song.title, artist: song.artist, songKey: song.key, lyrics: song.lyrics || '', chart: asSongChart(song.chord_chart), view: 'chords' }); } }]
                                   : []),
                                 ...(hasChart ? [{ label: t('Open chart'), icon: <FileText className="w-4 h-4" />, run: () => handleOpenChart(song) }] : []),
                                 { label: t('Open in Ultimate Guitar'), icon: <Guitar className="w-4 h-4" />, run: () => { setActionMenuId(null); void openExternal(ultimateGuitarSearchUrl(song.title, song.artist)); } },

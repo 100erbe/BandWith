@@ -3678,6 +3678,22 @@ const dict: Dictionary = {
   "RIDER ADDED": "RIDER ADICIONADO",
   "Suggested from the lineup. Save it and it is added when you create the gig.": "Sugerido a partir da formação. Salve e ele será adicionado ao criar o show.",
   "Event created, but the rider & stage were not saved.": "Evento criado, mas o rider e o palco não foram salvos.",
+  "BPM from the recording": "BPM da gravação",
+  "Back to the original key": "Voltar ao tom original",
+  "Could not read the recording.": "Não foi possível ler a gravação.",
+  "Double tempo": "Tempo dobrado",
+  "Half or double tempo": "Metade ou dobro do tempo",
+  "Half tempo": "Metade do tempo",
+  "Moves the key, the chord chart and the chords in the lyrics.": "Muda o tom, a cifra e os acordes da letra.",
+  "No clear beat found in the recording.": "Nenhuma pulsação clara na gravação.",
+  "Original key": "Tom original",
+  "Tap the tempo": "Marque o tempo",
+  "Tap": "Tap",
+  "Transpose down a semitone": "Descer um semitom",
+  "Transpose for the band": "Transpor para a banda",
+  "Transpose up a semitone": "Subir um semitom",
+  "Transpose": "Transpor",
+  "Estimated from the recording: check it by tapping along.": "Estimado pela gravação: confira marcando o tempo.",
 };
 
 export default dict;

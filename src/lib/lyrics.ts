@@ -135,6 +135,8 @@ export interface LyricsDoc {
   chart?: SongChart | null;
   /** Which one to show first (default: lyrics when there are any). */
   view?: 'lyrics' | 'chords';
+  /** songs.key: the reader's Transpose control shows the moved key. */
+  songKey?: string | null;
 }
 
 let current: LyricsDoc | null = null;

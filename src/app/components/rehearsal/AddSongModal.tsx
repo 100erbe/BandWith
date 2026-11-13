@@ -40,6 +40,8 @@ import { asSongChart, keyLabel, type SongChart } from '@/lib/ireal';
 import { IrealImportField } from './IrealImportField';
 import { ChordImportSheet } from './ChordImportSheet';
 import type { ImportedSong } from '@/lib/songImport';
+import { foldSemitones, parseKey, prefersFlats, transposeChart, transposeKey, transposeLyrics } from '@/lib/transpose';
+import { TempoKeyTools } from './TempoKeyTools';
 
 interface AddSongModalProps {
   isOpen: boolean;
@@ -100,6 +102,8 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
   const [chordChartTouched, setChordChartTouched] = useState(false);
   const [bpm, setBpm] = useState('');
   const [key, setKey] = useState('');
+  /** Semitones moved with Transpose in this edit. */
+  const [transposed, setTransposed] = useState(0);
   // Duration as minutes + seconds (number pads have no ":").
   const [durMin, setDurMin] = useState('');
   const [durSec, setDurSec] = useState('');
@@ -304,6 +308,7 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     setKey('');
     setDurMin('');
     setDurSec('');
+    setTransposed(0);
     setError(null);
     setSuccess(false);
     onClose();
@@ -330,6 +335,18 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
     if (!artist.trim() && song.artist) setArtist(song.artist);
     if (!key.trim() && song.key) setKey(song.key.slice(0, 8));
     if (!bpm && song.bpm) setBpm(String(song.bpm).slice(0, 3));
+  };
+
+  // Transpose for the band: key, chart and the lyrics' inline chords move together (saved with the song).
+  const transposeSong = (by: number) => {
+    const flats = prefersFlats(key || keyLabel(chordChart?.key), by);
+    if (parseKey(key)) setKey(transposeKey(key, by));
+    if (chordChart) {
+      setChordChart(transposeChart(chordChart, by));
+      setChordChartTouched(true);
+    }
+    if (lyrics) setLyrics(transposeLyrics(lyrics, by, flats));
+    setTransposed((n) => foldSemitones(n + by));
   };
 
   const nextStep = () => {
@@ -485,6 +502,15 @@ export const AddSongModal: React.FC<AddSongModalProps> = ({
                 <PillField label="BPM" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} value={bpm} onChange={(e) => setBpm(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="120" />
                 <PillField label={t('Key')} value={key} onChange={(e) => setKey(e.target.value)} placeholder={t('C maj')} />
               </div>
+              <TempoKeyTools
+                bpm={bpm}
+                onBpm={(v) => setBpm(v.slice(0, 3))}
+                audioFile={audioFile}
+                storedAudio={existingAudio}
+                canTranspose={!!parseKey(key) || !!chordChart || /\[[A-G][^\]\s]{0,15}\]/.test(lyrics)}
+                moved={transposed}
+                onTranspose={transposeSong}
+              />
 
               {/* Genre tags: used to filter the library when building a setlist */}
               <fieldset className="flex flex-col gap-2 pt-2">
