@@ -364,15 +364,23 @@ export const EventsView: React.FC<EventsViewProps> = ({
     </div>
   ) : null;
 
+  // Admin view of the band shown by the band filter (All: the active band;
+  // Personal: none). Drives "+ Gig / + Rehearsal / + Quote", the Quotes and
+  // Drafts filters and the legend's Quote, so a band where the user is a
+  // member looks as it does to a member.
+  const adminOfBand = useCallback((id: string) => (isAdminOfBand ? isAdminOfBand(id) : isAdmin), [isAdminOfBand, isAdmin]);
+  const adminOfShown = bandFilterCanCreate(selectedBandPill, adminOfBand, isAdmin);
+  const canCreate = adminOfShown;
+
   const visibleFilters = useMemo(() => {
-    return isAdmin ? FILTERS : FILTERS.filter(f => f !== 'QUOTES' && f !== 'DRAFTS');
-  }, [isAdmin]);
+    return adminOfShown ? FILTERS : FILTERS.filter(f => f !== 'QUOTES' && f !== 'DRAFTS');
+  }, [adminOfShown]);
 
   useEffect(() => {
-    if (!isAdmin && (eventFilter === 'QUOTES' || eventFilter === 'QUOTE' || eventFilter === 'DRAFTS' || eventFilter === 'DRAFT')) {
+    if (!adminOfShown && (eventFilter === 'QUOTES' || eventFilter === 'QUOTE' || eventFilter === 'DRAFTS' || eventFilter === 'DRAFT')) {
       setEventFilter('ALL');
     }
-  }, [isAdmin, eventFilter, setEventFilter]);
+  }, [adminOfShown, eventFilter, setEventFilter]);
 
   const filteredAllEvents = useMemo(() => {
     if (!isAdmin) {
@@ -612,10 +620,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   // Same events as the month grid (current filter, recurring rehearsals expanded).
   // Band money in the Planner: a band's fees only for its admins, so a band
   // where the user plays as a member shows no Fees (not "€0").
-  const adminOfBand = useCallback((id: string) => (isAdminOfBand ? isAdminOfBand(id) : isAdmin), [isAdminOfBand, isAdmin]);
   const plannerShowsFees = bandFilterShowsFees(selectedBandPill, adminOfBand, isAdmin);
-  // "+ Gig / + Rehearsal / + Quote": not on a band where the user is a member.
-  const canCreate = bandFilterCanCreate(selectedBandPill, adminOfBand, isAdmin);
   const { plannerEvents, plannerSource } = useMemo(() => {
     const list: PlannerEvent[] = [];
     const source = new Map<string, EventData>();
@@ -1287,14 +1292,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* ═══ LEGEND (Event Marks) ═══ */}
           <div className="flex items-center gap-4 flex-wrap">
-            {(isAdmin ? (['gig', 'rehearsal', 'quote', 'personal'] as const) : (['gig', 'rehearsal', 'personal'] as const)).map((k) => (
+            {(adminOfShown ? (['gig', 'rehearsal', 'quote', 'personal'] as const) : (['gig', 'rehearsal', 'personal'] as const)).map((k) => (
               <span key={k} className="flex items-center gap-2">
                 <EventMark kind={k} size={20} />
                 <span className="bw-label-sm text-muted-foreground">{k === 'gig' ? t('gig') : k === 'rehearsal' ? t('rehearsal') : k === 'quote' ? t('quote') : t('personal')}</span>
               </span>
             ))}
             {/* Drafts: their type's colour, desaturated and dashed (admins only). */}
-            {isAdmin && filteredAllEvents.some((e) => !!e.draftOf) && (
+            {adminOfShown && filteredAllEvents.some((e) => !!e.draftOf) && (
               <span className="flex items-center gap-2">
                 <span
                   className="w-5 h-5 rounded-[6px] bg-[var(--accent-gig)] [filter:saturate(0.3)] outline-[1.5px] outline-dashed outline-offset-[-3px] outline-[var(--accent-gig-fg)]"
