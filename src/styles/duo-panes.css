@@ -176,3 +176,17 @@
 [data-bw-posture="tabletop"] .bw-heat-count {
   display: none;
 }
+
+/* Figma "Duo · Next / Chat – event context": an event thread opened on its
+   own takes the leading page and the event's times and lineup the trailing
+   one (ChatDetailModal sets data-bw-chat-context). When the gig itself is
+   already on the leading page (chat over event), that rule wins instead. */
+[data-bw-two-pane]:not([data-bw-wide])[data-bw-chat-context]:not([data-bw-chat-over-event]) .bw-chat-detail {
+  left: 0 !important;
+  right: auto !important;
+  width: var(--bw-pane-leading-w) !important;
+  padding-right: 0 !important;
+}
+[data-bw-chat-over-event] .bw-chat-context-pane {
+  display: none;
+}

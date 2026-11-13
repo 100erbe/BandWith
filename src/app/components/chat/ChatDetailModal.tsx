@@ -31,6 +31,10 @@ import { useOnlinePresence } from '@/lib/services/presence';
 import { Capacitor } from '@capacitor/core';
 import { useT, intlLocale } from '@/lib/i18n';
 import { CHAT_EVENT_COLUMNS, chatEventContext, type ChatEventContext } from '@/lib/chatEventContext';
+import { createPortal } from 'react-dom';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { useLineupSoFar } from '@/app/hooks/useLineupSoFar';
+import { ChatEventContextPane } from '@/app/components/chat/ChatEventContextPane';
 import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
 
 /**
@@ -134,6 +138,25 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
   // Band admins (user ids) for the chat's band: drives the " · Admin" sender label.
   const [bandAdminIds, setBandAdminIds] = useState<Set<string>>(() => new Set());
   const onlineUserIds = useOnlinePresence(user?.id);
+
+  // Event chats on the open Duo and on a landscape tablet: the event's times,
+  // place and lineup sit beside the thread (Figma "Duo · Next / Chat – event
+  // context", "iPad · 07 / Chat · Landscape"). Elsewhere the pinned strip does it.
+  const { twoPane, wide } = useRailLayout();
+  const [landscapeWide, setLandscapeWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1100 && window.innerWidth > window.innerHeight);
+  useEffect(() => {
+    const onResize = () => setLandscapeWide(window.innerWidth >= 1100 && window.innerWidth > window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const showContextPane = !!eventContext && twoPane && (!wide || landscapeWide);
+  const contextLineup = useLineupSoFar(showContextPane ? eventContext?.id : null, eventContext?.details.bandId, user?.id);
+  useEffect(() => {
+    if (!showContextPane) return;
+    const root = document.documentElement;
+    root.setAttribute('data-bw-chat-context', '');
+    return () => root.removeAttribute('data-bw-chat-context');
+  }, [showContextPane]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Push and notification opens don't know the chat type: getChat corrects it.
@@ -645,6 +668,27 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose,
       {chatType === 'event' && eventContext && (
         <ChatEventStrip context={eventContext} onOpen={onOpenEvent ? () => onOpenEvent(eventContext.id) : undefined} />
       )}
+
+      {chatType === 'event' && eventContext && showContextPane &&
+        createPortal(
+          <motion.aside
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="bw-pane-detail bw-chat-context-pane fixed inset-0 z-[80] bg-background text-foreground overflow-y-auto overflow-x-hidden"
+            style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
+            aria-label={t('Event context')}
+          >
+            <ChatEventContextPane
+              context={eventContext}
+              lineup={contextLineup}
+              onlineCount={onlineCount}
+              onOpen={onOpenEvent ? () => onOpenEvent(eventContext.id) : undefined}
+              variant={wide ? 'tablet' : 'duo'}
+            />
+          </motion.aside>,
+          document.body,
+        )}
 
       <DeleteChatSheet
         open={showDeleteConfirm}

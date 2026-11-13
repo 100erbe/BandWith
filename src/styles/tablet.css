@@ -73,3 +73,17 @@
 [data-bw-wide][data-bw-two-pane] body:not(:has(.bw-pane-detail)) .bw-pane-main:has(.bw-pane-hub) {
   max-width: none !important;
 }
+
+/* Event chats on a landscape tablet (Figma "iPad · 07 / Chat / Inbox &
+   thread · Landscape"): list | thread | event context. The thread gives up
+   the right-hand column to the context pane. */
+[data-bw-wide][data-bw-two-pane][data-bw-chat-context]:not([data-bw-chat-over-event]) .bw-chat-detail {
+  right: 340px !important;
+}
+[data-bw-wide][data-bw-two-pane] .bw-chat-context-pane {
+  left: auto !important;
+  right: 0 !important;
+  width: 340px !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
