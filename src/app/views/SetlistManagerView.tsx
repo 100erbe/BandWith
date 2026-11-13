@@ -117,7 +117,9 @@ const SetlistOrderRow: React.FC<{
   setLabel?: string;
   duration: string;
   onRemove: () => void;
-}> = ({ item, song, index, setLabel, duration, onRemove }) => {
+  /** Members read setlists: no grip, no remove. */
+  readOnly?: boolean;
+}> = ({ item, song, index, setLabel, duration, onRemove, readOnly = false }) => {
   const t = useT();
   const controls = useDragControls();
   const [dragging, setDragging] = useState(false);
@@ -135,7 +137,7 @@ const SetlistOrderRow: React.FC<{
         dragging ? 'z-10 border-foreground shadow-lg' : 'border-transparent',
       )}
     >
-      <span
+      {!readOnly && <span
         onPointerDown={(e) => {
           e.preventDefault();
           controls.start(e);
@@ -146,7 +148,7 @@ const SetlistOrderRow: React.FC<{
         aria-hidden
       >
         <GripVertical className="w-4 h-4" />
-      </span>
+      </span>}
       <span className="w-8 h-8 rounded-full border-[1.5px] border-foreground/30 flex items-center justify-center bw-label-sm shrink-0">
         {index + 1}
       </span>
@@ -158,7 +160,7 @@ const SetlistOrderRow: React.FC<{
         <p className="bw-body-sm text-muted-foreground truncate">{song.artist || t('Unknown artist')}</p>
       </div>
       <span className="bw-label-sm shrink-0">{duration}</span>
-      <IconButton label={t('Remove {title}', { title: song.title })} variant="ghost" size="sm" icon={<X />} onClick={onRemove} />
+      {!readOnly && <IconButton label={t('Remove {title}', { title: song.title })} variant="ghost" size="sm" icon={<X />} onClick={onRemove} />}
     </Reorder.Item>
   );
 };
@@ -172,6 +174,8 @@ type ViewMode = 'songs' | 'setlists';
 export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose }) => {
   const t = useT();
   const { selectedBand, isAdmin } = useBand();
+  // Setlists are written by admins only (migration 074); members read them.
+  const canEditSetlists = isAdmin;
   const [viewMode, setViewMode] = useState<ViewMode>('songs');
   const [songs, setSongs] = useState<Song[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
@@ -650,12 +654,14 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                 onClick={() => importInputRef.current?.click()}
               />
             )}
-            <IconButton
-              label={viewMode === 'songs' ? t('Add song') : t('New setlist')}
-              variant="filled"
-              icon={<Plus />}
-              onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
-            />
+            {(viewMode === 'songs' || canEditSetlists) && (
+              <IconButton
+                label={viewMode === 'songs' ? t('Add song') : t('New setlist')}
+                variant="filled"
+                icon={<Plus />}
+                onClick={() => (viewMode === 'songs' ? setShowAddSong(true) : setShowAddSetlist(true))}
+              />
+            )}
           </>
         }
       />
@@ -860,7 +866,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                     {searchQuery ? t('Try another name.') : t('Organise your repertoire into performance sets, weddings or gig playlists.')}
                   </p>
                 </div>
-                {!searchQuery && (
+                {!searchQuery && canEditSetlists && (
                   <PillButton size="md" fullWidth={false} icon={<Plus className="w-4 h-4" />} onClick={() => setShowAddSetlist(true)}>
                     {t('Create first setlist')}
                   </PillButton>
@@ -982,21 +988,25 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                           onClick={handleExportSetlistPdf}
                           disabled={exportingPdf || editorRows.length === 0}
                         />
-                        <IconButton label={t('Delete setlist')} icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />
+                        {canEditSetlists && (
+                          <IconButton label={t('Delete setlist')} icon={<Trash2 />} className="text-destructive border-destructive" onClick={handleDeleteSetlist} />
+                        )}
                       </div>
                     }
                   />
 
                   <div className="px-4 pt-6 pb-8 flex flex-col gap-6 max-w-2xl mx-auto w-full">
-                    <PillField
-                      label={t('Setlist name')}
-                      value={editingSetlistName}
-                      onChange={(e) => setEditingSetlistName(e.target.value)}
-                      placeholder={t('Setlist name')}
-                    />
+                    {canEditSetlists && (
+                      <PillField
+                        label={t('Setlist name')}
+                        value={editingSetlistName}
+                        onChange={(e) => setEditingSetlistName(e.target.value)}
+                        placeholder={t('Setlist name')}
+                      />
+                    )}
 
                     {/* Add songs from the library */}
-                    {!setlistEditorSearch ? (
+                    {!canEditSetlists ? null : !setlistEditorSearch ? (
                       <button
                         type="button"
                         onClick={() => setSetlistEditorSearch(true)}
@@ -1118,14 +1128,16 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                         <Card className="items-center text-center py-10 gap-3">
                           <ListMusic className="w-10 h-10 text-muted-foreground" />
                           <h3 className="bw-h3">{t('Setlist is empty')}</h3>
-                          <p className="bw-body-sm text-muted-foreground max-w-[240px]">{t('Tap "Add songs from library" above to build your set.')}</p>
+                          {canEditSetlists && (
+                            <p className="bw-body-sm text-muted-foreground max-w-[240px]">{t('Tap "Add songs from library" above to build your set.')}</p>
+                          )}
                         </Card>
                       ) : (
                         <Reorder.Group
                           as="ol"
                           axis="y"
                           values={editorVisibleItems}
-                          onReorder={handleEditorReorder}
+                          onReorder={canEditSetlists ? handleEditorReorder : () => {}}
                           className="flex flex-col gap-2"
                         >
                           {editorRows.map(({ item, fullIndex, song }, i) => {
@@ -1140,6 +1152,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                                 setLabel={firstOfSet ? t('Set {number}', { number: editorSetNumbers[fullIndex] }) : undefined}
                                 duration={formatClock(song.duration_seconds)}
                                 onRemove={() => handleEditorRemoveSong(item.key)}
+                                readOnly={!canEditSetlists}
                               />
                             );
                           })}
@@ -1149,7 +1162,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                   </div>
                 </motion.div>
 
-                <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+                {canEditSetlists && <div className="shrink-0 px-4 pt-3 bg-background" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
                   <div className="max-w-2xl mx-auto w-full flex flex-col gap-3">
                     {editorError && <FormError>{editorError}</FormError>}
                     <PillButton
@@ -1161,7 +1174,7 @@ export const SetlistManagerView: React.FC<SetlistManagerViewProps> = ({ onClose 
                       {t('Save setlist')}
                     </PillButton>
                   </div>
-                </div>
+                </div>}
               </>
             )}
           </motion.div>

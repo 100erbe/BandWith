@@ -3482,7 +3482,7 @@ export default function AuthenticatedApp() {
           {showAnalytics && <AnalyticsView key="analytics" onClose={() => setShowAnalytics(false)} dashboardData={computedDashboardData as any} isAdmin={isAdmin} />}
           {showInventory && realBand && <InventoryView key="inventory" onBack={() => setShowInventory(false)} bandId={realBand.id} />}
           {showContracts && realBand && <ContractsView key="contracts" onBack={() => setShowContracts(false)} bandId={realBand.id} />}
-          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} events={isAdminOfBand(realBand.id) ? templateTargetEvents : []} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
+          {showTaskTemplates && realBand && <TaskTemplatesView key="task-templates" onBack={() => setShowTaskTemplates(false)} bandId={realBand.id} userId={user?.id} canEdit={isAdminOfBand(realBand.id)} events={isAdminOfBand(realBand.id) ? templateTargetEvents : []} onNotify={(message) => setSaveToast({ message, type: 'success' })} onUseTemplate={(template, kind) => {
             setShowTaskTemplates(false);
             setCreateEventInitialTasks((template.tasks || []).map((t) => ({ title: t.title, templateId: template.id, dueOffset: t.dueOffset })));
             handleCreateEvent(kind);
