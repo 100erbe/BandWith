@@ -3119,6 +3119,20 @@ const dict: Dictionary = {
   "To do": "Da fare",
   "To-dos · {done} of {total} done": "Cose da fare · {done} su {total} fatte",
   "Venue set": "Luogo definito",
+  "Payouts due · {title}": "Pagamenti da fare · {title}",
+  "Your payout · {title}": "Il tuo compenso · {title}",
+  "Payouts due": "Pagamenti da fare",
+  "You're owed {amount}": "Ti spettano {amount}",
+  "Not paid yet": "Non ancora pagato",
+  "{name} · paid after the show": "{name} · da pagare dopo lo show",
+  "1 musician": "1 musicista",
+  "{count} musicians · paid after the show": "{count} musicisti · da pagare dopo lo show",
+  "Review payouts": "Rivedi i pagamenti",
+  "View payout": "Vedi il compenso",
+  "And {count} more gigs with payouts due": "E altre {count} date con pagamenti da fare",
+  "Payouts ({count})": "Pagamenti ({count})",
+  "Your payouts ({count})": "I tuoi compensi ({count})",
+  "Payouts due · {count} · {amount}": "Pagamenti da fare · {count} · {amount}",
 };
 
 export default dict;
