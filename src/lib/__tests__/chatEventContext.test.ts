@@ -9,6 +9,18 @@ describe('chatEventContext', () => {
     expect(c).toEqual({
       id: 'e1', title: 'Wedding Rossi', eventType: 'gig', day: '2026-12-12', when: 'later',
       time: { kind: 'loadIn', value: '17:00' }, place: 'Villa Clara, Como', cancelled: false,
+      details: {
+        bandId: null, status: 'confirmed', venue: 'Villa Clara', address: null,
+        loadIn: '17:00', soundcheck: null, start: '19:30', end: null,
+      },
+    });
+  });
+
+  it('carries the times and address for the context pane', () => {
+    const c = chatEventContext({ ...base, band_id: 'b1', start_time: '20:30', end_time: '01:00:00', load_in_time: '17:00', soundcheck_time: '18:30', venue_name: 'Villa Clara', venue_address: ' Via dei Colli 12, Bologna ' }, '2026-12-01');
+    expect(c.details).toEqual({
+      bandId: 'b1', status: 'confirmed', venue: 'Villa Clara', address: 'Via dei Colli 12, Bologna',
+      loadIn: '17:00', soundcheck: '18:30', start: '20:30', end: '01:00',
     });
   });
 

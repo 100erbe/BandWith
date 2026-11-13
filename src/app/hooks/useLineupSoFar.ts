@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useBand } from '@/lib/BandContext';
+import { useOptionalBand } from '@/lib/BandContext';
 import { personName } from '@/lib/personName';
 import { useT } from '@/lib/i18n';
 import { lineupSoFar, type LineupRow, type LineupRosterEntry, type LineupSummary } from '@/lib/lineupSoFar';
@@ -16,12 +16,14 @@ export function useLineupSoFar(
   viewerId: string | null | undefined,
 ): LineupSummary | null {
   const t = useT();
-  const { bands, selectedBand } = useBand();
+  const bandCtx = useOptionalBand();
+  const bands = bandCtx?.bands;
+  const selectedBand = bandCtx?.selectedBand ?? null;
   const [rows, setRows] = useState<LineupRow[] | null>(null);
   const [extraNames, setExtraNames] = useState<Map<string, string>>(new Map());
 
   const band = useMemo(
-    () => (bandId ? bands.find((b) => b.id === bandId) : null) ?? (selectedBand?.id === bandId ? selectedBand : null),
+    () => (bandId ? bands?.find((b) => b.id === bandId) : null) ?? (selectedBand?.id === bandId ? selectedBand : null),
     [bands, selectedBand, bandId],
   );
   const roster = useMemo(() => {

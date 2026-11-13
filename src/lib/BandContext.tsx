@@ -51,6 +51,9 @@ export const useBand = () => {
   return context;
 };
 
+/** Like useBand, but undefined outside a BandProvider (shared hooks, tests). */
+export const useOptionalBand = (): BandContextType | undefined => useContext(BandContext);
+
 interface BandProviderProps {
   children: ReactNode;
 }

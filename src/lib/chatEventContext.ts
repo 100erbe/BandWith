@@ -7,10 +7,11 @@ import { parseLocalDate, todayLocal } from '@/lib/dates';
 
 /** Public event columns the strip needs (see EVENT_PUBLIC_COLUMNS). */
 export const CHAT_EVENT_COLUMNS =
-  'id, title, event_type, status, event_date, date, start_time, time, load_in_time, venue_name, venue, venue_city';
+  'id, band_id, title, event_type, status, event_date, date, start_time, end_time, time, load_in_time, soundcheck_time, venue_name, venue, venue_address, venue_city';
 
 export interface ChatEventRow {
   id: string;
+  band_id?: string | null;
   title?: string | null;
   event_type?: string | null;
   status?: string | null;
@@ -19,9 +20,27 @@ export interface ChatEventRow {
   start_time?: string | null;
   time?: string | null;
   load_in_time?: string | null;
+  soundcheck_time?: string | null;
+  end_time?: string | null;
   venue_name?: string | null;
   venue?: string | null;
+  venue_address?: string | null;
   venue_city?: string | null;
+}
+
+/**
+ * What the event context pane beside the thread shows (Figma "Duo · Next /
+ * Chat – event context"): times, place and status. Still logistics only.
+ */
+export interface ChatEventDetails {
+  bandId: string | null;
+  status: string;
+  venue: string | null;
+  address: string | null;
+  loadIn: string | null;
+  soundcheck: string | null;
+  start: string | null;
+  end: string | null;
 }
 
 export interface ChatEventContext {
@@ -36,6 +55,7 @@ export interface ChatEventContext {
   time: { kind: 'loadIn' | 'start'; value: string } | null;
   place: string | null;
   cancelled: boolean;
+  details: ChatEventDetails;
 }
 
 const hhmm = (v?: string | null) => (v && /^\d{1,2}:\d{2}/.test(v) ? v.slice(0, v.indexOf(':') + 3).padStart(5, '0') : null);
@@ -63,5 +83,15 @@ export function chatEventContext(row: ChatEventRow, today = todayLocal()): ChatE
     time: loadIn ? { kind: 'loadIn', value: loadIn } : start ? { kind: 'start', value: start } : null,
     place,
     cancelled: row.status === 'cancelled',
+    details: {
+      bandId: row.band_id || null,
+      status: (row.status || '').toLowerCase(),
+      venue: venue || null,
+      address: (row.venue_address || '').trim() || null,
+      loadIn,
+      soundcheck: hhmm(row.soundcheck_time),
+      start,
+      end: hhmm(row.end_time),
+    },
   };
 }
