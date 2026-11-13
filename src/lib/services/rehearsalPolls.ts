@@ -238,12 +238,15 @@ export const createOrPublishAdminPoll = async ({
   title,
   notes,
   timeSlots,
+  voteBy,
 }: {
   pollId?: string;
   bandId: string;
   adminId: string;
   title: string;
   notes?: string;
+  /** rehearsal_polls.vote_by (058): the day members should vote by. Left out when not given. */
+  voteBy?: string | null;
   timeSlots: Array<{ proposed_date: string; start_time: string; end_time?: string | null }>;
 }): Promise<{ data: RehearsalPoll | null; error: Error | null }> => {
   try {
@@ -262,6 +265,7 @@ export const createOrPublishAdminPoll = async ({
           notes: notes?.trim() || null,
           status: 'polling',
           updated_at: new Date().toISOString(),
+          ...(voteBy !== undefined ? { vote_by: voteBy || null } : {}),
         })
         .eq('id', pollId)
         .select()
@@ -283,6 +287,7 @@ export const createOrPublishAdminPoll = async ({
           title: title.trim() || 'Rehearsal Availability Poll',
           notes: notes?.trim() || null,
           status: 'polling',
+          ...(voteBy !== undefined ? { vote_by: voteBy || null } : {}),
         })
         .select()
         .single();

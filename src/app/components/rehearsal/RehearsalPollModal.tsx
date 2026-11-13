@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Clock, Sparkles, Send } from '@/app/components/icons';
+import { X, Calendar, Clock, Sparkles, Send, ChevronLeft, ChevronRight } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { HeaderAction, IconButton, PillButton, PillField, Selector, Card, FormError } from '@/app/components/bw';
 import { RailCover } from '@/lib/railActions';
@@ -15,6 +15,7 @@ import { personName } from '@/lib/personName';
 import { useT, intlLocale } from '@/lib/i18n';
 import { useBandFreeDays, useCandidateFreeCounts, slotKey } from '@/lib/bandAvailability';
 import { FreeDots, FreeHeatLegend, FreeLabel, freeTone, heatStyle } from '@/app/components/ui/FreeHeat';
+import { ComposerCard, ComposerPreview, ComposerShell, Segmented, useComposerLayout } from '@/app/components/composer/Composer';
 
 interface TimeSlotDraft {
   id: string;
@@ -31,6 +32,8 @@ interface RehearsalPollModalProps {
   initialProposal?: RehearsalPoll | null;
   onSuccess?: () => void;
   onShowToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  /** iPad composer: "Schedule directly" goes back to the rehearsal composer. */
+  onScheduleDirectly?: () => void;
 }
 
 const DAYS_META = [
@@ -51,8 +54,13 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   initialProposal,
   onSuccess,
   onShowToast,
+  onScheduleDirectly,
 }) => {
   const t = useT();
+  // iPad (data-bw-wide, no Duo rail): the poll opens as a one-screen composer
+  // (Figma iPad · 05 "Rehearsal / New · Poll availability").
+  const { composer: composerOn, landscape } = useComposerLayout();
+  const [voteBy, setVoteBy] = useState('');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [generatorMode, setGeneratorMode] = useState<'preset' | 'custom'>('preset');
@@ -249,6 +257,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       adminId,
       title: title.trim(),
       notes: notes.trim(),
+      // Only the composer has a "Vote by" field; the phone builder leaves it as it is.
+      ...(composerOn ? { voteBy: voteBy || null } : {}),
       timeSlots: timeSlots.map((s) => ({
         proposed_date: s.proposed_date,
         start_time: s.start_time,
@@ -268,6 +278,350 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     onClose();
   };
 
+  // ── TABLET COMPOSER ───────────────────────────────────────
+  // Same state and publish as the builder below; days are picked on a week
+  // strip coloured by how many members are free (095), and the preview shows
+  // the slots as members will vote on them.
+  function renderComposer() {
+    const todayStr = toLocalDateString(new Date());
+    const dayLabel = (d: string, opts: Intl.DateTimeFormatOptions) =>
+      new Date(d + 'T12:00:00').toLocaleDateString(intlLocale(), opts);
+    const sorted = [...timeSlots].sort((a, b) =>
+      (a.proposed_date + a.start_time).localeCompare(b.proposed_date + b.start_time)
+    );
+    const freeOf = (s: TimeSlotDraft) =>
+      slotFree.get(slotKey({ date: s.proposed_date, start: s.start_time, end: s.end_time })) ?? null;
+    const memberTotal =
+      weekFree?.values().next().value?.total ?? (sorted.length ? freeOf(sorted[0])?.total : undefined);
+    const best = sorted.reduce<TimeSlotDraft | null>((acc, s) => {
+      const f = freeOf(s)?.free ?? -1;
+      return f > (acc ? freeOf(acc)?.free ?? -1 : -1) ? s : acc;
+    }, null);
+    const firstSlotDate = sorted[0]?.proposed_date;
+    const voteByOk = !!voteBy && voteBy >= todayStr && (!firstSlotDate || voteBy <= firstSlotDate);
+
+    const toggleDay = (date: string) => {
+      setError(null);
+      const has = timeSlots.some(s => s.proposed_date === date);
+      if (has) {
+        setTimeSlots(prev => prev.filter(s => s.proposed_date !== date));
+        return;
+      }
+      setTimeSlots(prev => [
+        ...prev,
+        {
+          id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          proposed_date: date,
+          start_time: presetStartTime,
+          end_time: presetEndTime,
+        },
+      ]);
+    };
+
+    const ready = [title.trim().length > 0, timeSlots.length > 0, voteByOk].filter(Boolean).length;
+
+    const pollCard = (
+      <ComposerCard n={1} title={t('Poll')} done={title.trim().length > 0}>
+        {initialProposal && (
+          <div className="flex items-start gap-3 p-4 rounded-[20px] bg-background">
+            <Sparkles className="w-5 h-5 shrink-0" />
+            <div className="flex flex-col gap-1 min-w-0">
+              <p className="bw-body-sm">
+                <span className="font-semibold">
+                  {t('From {name}:', { name: personName(initialProposal.creator_profile, t('Band member')) })}
+                </span>{' '}
+                <span className="text-muted-foreground">{initialProposal.title}</span>
+              </p>
+              {initialProposal.preferred_days && initialProposal.preferred_days.length > 0 && (
+                <p className="bw-label-sm text-muted-foreground">
+                  {t('Preferred days')} · {initialProposal.preferred_days.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <PillField
+          label={t('Poll title')}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder={t('e.g. Extra rehearsal before the wedding')}
+        />
+        <p className="bw-label-xs text-muted-foreground">
+          {memberTotal
+            ? t('Sent to every active member · {n}', { n: memberTotal })
+            : t('Sent to every active member')}
+        </p>
+      </ComposerCard>
+    );
+
+    const slotsCard = (
+      <ComposerCard n={2} title={t('Candidate slots')} done={timeSlots.length > 0}>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="bw-body-lg font-semibold shrink-0 mr-1">
+            {weekOffset === 0
+              ? t('This week')
+              : weekOffset === 1
+                ? t('Next week')
+                : `${dayLabel(weekDates[0], { day: 'numeric', month: 'short' })} – ${dayLabel(weekDates[6], { day: 'numeric', month: 'short' })}`}
+          </span>
+          <span className="bw-label-xs text-muted-foreground flex-1 min-w-0 truncate text-right">
+            {t('From band calendars')}
+          </span>
+          <IconButton
+            label={t('Previous week')}
+            icon={<ChevronLeft />}
+            variant="ghost"
+            size="sm"
+            onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
+            disabled={weekOffset === 0}
+          />
+          <IconButton
+            label={t('Next week')}
+            icon={<ChevronRight />}
+            variant="ghost"
+            size="sm"
+            onClick={() => setWeekOffset(w => Math.min(8, w + 1))}
+          />
+        </div>
+        <div className="grid grid-cols-7 gap-1.5" role="group" aria-label={t('Candidate days')}>
+          {weekDates.map(d => {
+            const past = d < todayStr;
+            const c = !past ? weekFree?.get(d) ?? null : null;
+            const on = timeSlots.some(s => s.proposed_date === d);
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                disabled={past}
+                aria-label={`${dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' })}${c ? `, ${t('{free} of {total} free', { free: c.free, total: c.total })}` : ''}`}
+                onClick={() => toggleDay(d)}
+                className={cn(
+                  'min-w-0 rounded-[20px] py-2.5 flex flex-col items-center gap-1 transition-colors',
+                  past
+                    ? 'bg-background text-muted-foreground opacity-50 cursor-not-allowed'
+                    : on
+                      ? 'bg-surface-inverse text-surface-inverse-foreground cursor-pointer'
+                      : 'bg-background text-foreground hover:bg-foreground/[0.06] cursor-pointer'
+                )}
+              >
+                <span className="bw-label-xs opacity-70">{dayLabel(d, { weekday: 'short' })}</span>
+                <span className="bw-h2 tabular-nums leading-none">{new Date(d + 'T12:00:00').getDate()}</span>
+                {c ? (
+                  <>
+                    <FreeDots count={c} size={5} onColor={on ? 'var(--accent-gig)' : 'var(--success)'} />
+                    <span className="bw-label-xs text-[9px] leading-tight text-center opacity-80">
+                      {c.free}/{c.total}
+                      <br />
+                      {t('free')}
+                    </span>
+                  </>
+                ) : (
+                  <span className="bw-label-xs text-[9px] opacity-60 h-[26px] flex items-center">—</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <TimeField label={t('Start')} value={presetStartTime} onChange={setPresetStartTime} />
+          <TimeField label={t('End')} value={presetEndTime} onChange={setPresetEndTime} align="end" />
+        </div>
+        <p className="bw-label-xs text-muted-foreground">{t('Tap a day to add it with these times')}</p>
+        {initialProposal?.preferred_days && initialProposal.preferred_days.length > 0 && (
+          <PillButton variant="outline" size="sm" fullWidth={false} onClick={handleGenerateWeekPreset}>
+            {t('Add preferred days')}
+          </PillButton>
+        )}
+        {sorted.length > 0 && (
+          <ul className="flex flex-col">
+            {sorted.map(slot => {
+              const f = freeOf(slot);
+              return (
+                <li key={slot.id} className="flex items-center gap-3 min-h-11 border-t border-foreground/10">
+                  <span className="bw-body-md font-semibold w-24 shrink-0 truncate">
+                    {dayLabel(slot.proposed_date, { weekday: 'short', day: 'numeric' })}
+                  </span>
+                  <span className="bw-label-sm tabular-nums flex-1 min-w-0 truncate">
+                    {slot.start_time}
+                    {slot.end_time ? `–${slot.end_time}` : ''}
+                  </span>
+                  {f && <FreeLabel count={f} className={freeTone(f)} />}
+                  <IconButton
+                    label={t('Remove slot')}
+                    icon={<X />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveSlot(slot.id)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </ComposerCard>
+    );
+
+    const deadlineCard = (
+      <ComposerCard n={3} title={t('Vote deadline & note')} done={voteByOk}>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="cmp-poll-vote-by" className="bw-label-sm text-muted-foreground">
+            {t('Vote by')}
+          </label>
+          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+            <Calendar className="w-5 h-5 shrink-0" />
+            <input
+              id="cmp-poll-vote-by"
+              type="date"
+              value={voteBy}
+              min={todayStr}
+              max={firstSlotDate}
+              onChange={e => setVoteBy(e.target.value)}
+              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground"
+            />
+          </div>
+          {voteBy && !voteByOk && (
+            <p className="bw-label-xs text-destructive">{t('Pick a day before the first slot')}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="cmp-poll-note" className="bw-label-sm text-muted-foreground">
+            {t('Goal / notes (optional)')}
+          </label>
+          <textarea
+            id="cmp-poll-note"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={3}
+            placeholder={t('e.g. Focus on ending transitions')}
+            className="w-full rounded-[24px] bg-field border border-border px-4 py-3 bw-body-md text-foreground outline-none resize-none focus:border-2 focus:border-foreground"
+          />
+        </div>
+      </ComposerCard>
+    );
+
+    const publishButton = (
+      <PillButton
+        size="lg"
+        onClick={handlePublish}
+        loading={submitting}
+        disabled={timeSlots.length === 0 || !title.trim() || (!!voteBy && !voteByOk)}
+        icon={<Send className="w-5 h-5" />}
+        style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
+      >
+        {submitting ? t('Publishing…') : t('Publish poll')}
+      </PillButton>
+    );
+
+    const voteLine = [
+      voteByOk ? t('Vote by {date}', { date: dayLabel(voteBy, { weekday: 'short', day: 'numeric', month: 'short' }) }) : null,
+      memberTotal ? t('{voted} of {total} voted', { voted: 0, total: memberTotal }) : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    const preview = (
+      <ComposerPreview
+        label={t('Live preview')}
+        caption={t('As members vote')}
+        className={landscape ? 'sticky top-0 min-h-[min(720px,calc(100dvh-140px))]' : undefined}
+        footer={
+          <>
+            {error && <FormError>{error}</FormError>}
+            {publishButton}
+          </>
+        }
+      >
+        <div className="rounded-[28px] p-5 flex flex-col gap-2 min-w-0 bg-accent-rehearsal text-accent-rehearsal-foreground">
+          <span className="bw-label-xs">{t('Rehearsal poll · active')}</span>
+          <h3 className="bw-display-lg [overflow-wrap:anywhere]">{title.trim() || t('Rehearsal poll')}</h3>
+          {voteLine && <span className="bw-label-xs opacity-90">{voteLine}</span>}
+        </div>
+        {sorted.length === 0 ? (
+          <p className="bw-body-sm text-muted-foreground text-center py-6">
+            {t('No slots yet. Add days above to give the band dates to vote on.')}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {sorted.map(slot => {
+              const f = freeOf(slot);
+              return (
+                <li key={slot.id} className="rounded-[20px] bg-background px-4 py-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="bw-body-lg font-semibold flex-1 min-w-0 truncate">
+                      {dayLabel(slot.proposed_date, { weekday: 'short', day: 'numeric' })} · {slot.start_time}
+                    </span>
+                    {best?.id === slot.id && f && f.free > 0 ? (
+                      <span className="bw-label-xs rounded-full px-2.5 py-1 bg-accent-gig text-accent-gig-foreground shrink-0">
+                        {t('Top pick')}
+                      </span>
+                    ) : (
+                      f && <span className="bw-label-xs text-muted-foreground shrink-0">{f.free}/{f.total}</span>
+                    )}
+                  </div>
+                  {f && <FreeDots count={f} size={10} onColor="currentColor" className="text-foreground" />}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </ComposerPreview>
+    );
+
+    const modeSwitch = onScheduleDirectly && !initialProposal ? (
+      <div className={cn(landscape ? 'w-[340px]' : 'w-full order-last basis-full')}>
+        <Segmented
+          label={t('Scheduling mode')}
+          value="poll"
+          options={[
+            { value: 'direct', label: t('Schedule directly') },
+            { value: 'poll', label: t('Poll availability') },
+          ]}
+          onChange={v => {
+            if (v === 'direct') onScheduleDirectly();
+          }}
+        />
+      </div>
+    ) : undefined;
+
+    return (
+      <ComposerShell
+        kind="rehearsal-poll"
+        zClassName="z-[120]"
+        title={initialProposal ? t('Proposal to poll') : t('New rehearsal')}
+        subline={t('Poll · members vote on dates')}
+        closeLabel={t('Close')}
+        onClose={onClose}
+        ready={{ done: ready, total: 3 }}
+        headerCenter={modeSwitch}
+        accent="var(--accent-gig)"
+        accentFg="var(--accent-gig-fg)"
+      >
+        {landscape ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] gap-4 items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              {pollCard}
+              {deadlineCard}
+            </div>
+            <div className="flex flex-col gap-4 min-w-0">{slotsCard}</div>
+            {preview}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              {pollCard}
+              {slotsCard}
+            </div>
+            <div className="flex flex-col gap-4 min-w-0">
+              {deadlineCard}
+              {preview}
+            </div>
+          </div>
+        )}
+      </ComposerShell>
+    );
+  }
+
   if (!isOpen) return null;
 
   const slotLabel = (slot: TimeSlotDraft) => {
@@ -275,6 +629,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     const day = parsedDate.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
     return `${day} · ${slot.start_time}${slot.end_time ? ` – ${slot.end_time}` : ''}`;
   };
+
+  if (composerOn) return renderComposer();
 
   return (
     <AnimatePresence>

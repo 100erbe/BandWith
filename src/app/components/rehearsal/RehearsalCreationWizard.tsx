@@ -42,7 +42,7 @@ import { personName, personInitials } from '@/lib/personName';
 import { parseGenres } from '@/lib/songGenres';
 import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
 import { builtinText } from '@/lib/i18n/builtins';
-import { ComposerCard, ComposerCheck, ComposerPreview, ComposerShell, useComposerLayout } from '@/app/components/composer/Composer';
+import { ComposerCard, ComposerCheck, ComposerPreview, ComposerShell, Segmented as ComposerSegmented, useComposerLayout } from '@/app/components/composer/Composer';
 import { useBandFreeDays, useBandFreeSlots } from '@/lib/bandAvailability';
 import { heatLevel, toMinutes } from '@/lib/freeSlots';
 import { FreeDots, freeTone, heatStyle } from '@/app/components/ui/FreeHeat';
@@ -2257,7 +2257,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     const modeSwitch =
       onOpenPollBuilder && isAdmin ? (
         <div className={cn(landscape ? 'w-[340px]' : 'w-full order-last basis-full')}>
-          <Segmented
+          <ComposerSegmented
             label={t('Scheduling mode')}
             value="direct"
             options={[

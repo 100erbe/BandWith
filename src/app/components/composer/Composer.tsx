@@ -69,6 +69,8 @@ export interface ComposerShellProps {
   children: React.ReactNode;
   /** data-wizard-type, kept for tests and scans. */
   kind: string;
+  /** Stacking class; above the tab bar when opened outside the create flow (poll). */
+  zClassName?: string;
 }
 
 export const ComposerShell: React.FC<ComposerShellProps> = ({
@@ -83,6 +85,7 @@ export const ComposerShell: React.FC<ComposerShellProps> = ({
   accentFg,
   children,
   kind,
+  zClassName = 'z-[100]',
 }) => {
   const t = useT();
   return (
@@ -101,7 +104,7 @@ export const ComposerShell: React.FC<ComposerShellProps> = ({
           paddingBottom: 'calc(var(--safe-bottom, 0px) + 24px)',
         } as React.CSSProperties
       }
-      className="fixed inset-0 z-[100] bg-background text-foreground overflow-y-auto overscroll-contain animate-in fade-in duration-200"
+      className={cn('fixed inset-0 bg-background text-foreground overflow-y-auto overscroll-contain animate-in fade-in duration-200', zClassName)}
     >
       <div className="mx-auto w-full max-w-[1280px] px-8 flex flex-col gap-5">
         <header className="flex items-center gap-4 min-h-[56px] flex-wrap">
