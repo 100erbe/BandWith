@@ -64,3 +64,12 @@
   padding-left: max(0px, calc((100% - 760px) / 2)) !important;
   padding-right: max(0px, calc((100% - 760px) / 2)) !important;
 }
+
+/* Some hubs (Identity, the band switcher, expanded home cards) are rendered
+   inside the main scroller, which is list-wide on a tablet. iPadOS WebKit
+   clips a fixed element to an overflow-scrolling ancestor, so a full-window
+   hub there showed only its first column with the empty detail pane beside
+   it. While such a hub has the window to itself, the scroller widens too. */
+[data-bw-wide][data-bw-two-pane] body:not(:has(.bw-pane-detail)) .bw-pane-main:has(.bw-pane-hub) {
+  max-width: none !important;
+}
