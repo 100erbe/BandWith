@@ -3694,6 +3694,13 @@ const dict: Dictionary = {
   "Transpose up a semitone": "Subir un semitono",
   "Transpose": "Transponer",
   "Estimated from the recording: check it by tapping along.": "Estimado a partir de la grabación: compruébalo marcando el tempo.",
+  "Click": "Clic",
+  "Hidden": "Oculto",
+  "Hide the click on this phone": "Ocultar el clic en este teléfono",
+  "No BPM for this song": "Sin BPM para esta canción",
+  "Show the click": "Mostrar el clic",
+  "Start the click": "Iniciar el clic",
+  "Stop the click": "Detener el clic",
 };
 
 export default dict;

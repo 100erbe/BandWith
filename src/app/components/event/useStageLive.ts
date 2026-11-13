@@ -14,6 +14,25 @@ import {
   stageTopic,
   type StageLiveState,
 } from '@/lib/stageLive';
+import {
+  bestSample,
+  CLICK_EVENT,
+  clockSample,
+  parseClickState,
+  PING_EVENT,
+  PONG_EVENT,
+  START_LEAD_MS,
+  type ClickState,
+  type ClockSample,
+} from '@/lib/stageClick';
+
+/** Wall-clock ms with sub-ms steps (smooth for the metronome). */
+const nowMs = () => performance.timeOrigin + performance.now();
+/** Round trips measured when a click starts; the fastest sets the offset. */
+const PINGS = 6;
+const PING_GAP_MS = 200;
+/** Measure again after this long (clocks drift slowly). */
+const RESYNC_MS = 60_000;
 
 /** A setlist song as Stage mode gets it (setlist_songs row id, song id, set). */
 export interface LiveSongRef {
@@ -72,6 +91,13 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
   followingRef.current = following;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Visual metronome (stageClick.ts): the newest click state, and the leader's clock offset.
+  const [click, setClick] = useState<ClickState | null>(null);
+  const clickRef = useRef<ClickState | null>(null);
+  const [clickOffset, setClickOffset] = useState(0);
+  const samplesRef = useRef<{ peer: string; at: number; samples: ClockSample[] }>({ peer: '', at: 0, samples: [] });
+  const pingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const live = !!eventId && open;
   const ordered = useMemo(() => applyOrder(songs, order), [songs, order]);
   const savedIds = useMemo(() => songs.map((s) => s.id).filter((id): id is string => !!id), [songs]);
@@ -122,6 +148,34 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     if (state.songId !== undefined) setSongId(state.songId);
   }, []);
 
+  /** Measure the click leader's clock: a few pings, the fastest round trip wins. */
+  const syncWith = useCallback(
+    (peer: string) => {
+      const book = samplesRef.current;
+      if (book.peer === peer && nowMs() - book.at < RESYNC_MS && book.samples.length) return;
+      samplesRef.current = { peer, at: nowMs(), samples: [] };
+      pingTimers.current.forEach(clearTimeout);
+      pingTimers.current = Array.from({ length: PINGS }, (_, i) =>
+        setTimeout(() => {
+          void channelRef.current?.send({ type: 'broadcast', event: PING_EVENT, payload: { from: clientId, to: peer, t0: nowMs() } });
+        }, i * PING_GAP_MS),
+      );
+    },
+    [clientId],
+  );
+
+  const receiveClick = useCallback(
+    (state: ClickState) => {
+      if (state.from === clientId) return;
+      // The leader's click always replaces one this phone runs on its own.
+      if (clickRef.current && clickRef.current.from !== clientId && !isNewer(state, clickRef.current)) return;
+      clickRef.current = state;
+      setClick(state);
+      if (state.on) syncWith(state.from);
+    },
+    [clientId, syncWith],
+  );
+
   // The channel lives while Stage mode is open.
   useEffect(() => {
     if (!live || !eventId) return;
@@ -134,8 +188,32 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
         const state = parseStageState(msg?.payload);
         if (state) receive(state);
       })
+      .on('broadcast', { event: CLICK_EVENT }, (msg: { payload?: unknown }) => {
+        const state = parseClickState(msg?.payload);
+        if (state) receiveClick(state);
+      })
+      .on('broadcast', { event: PING_EVENT }, (msg: { payload?: { from?: unknown; to?: unknown; t0?: unknown } }) => {
+        // A bandmate measuring our clock: answer straight away with our time.
+        const p = msg?.payload;
+        if (!p || p.to !== clientId || typeof p.from !== 'string' || typeof p.t0 !== 'number') return;
+        void channel.send({ type: 'broadcast', event: PONG_EVENT, payload: { from: clientId, to: p.from, t0: p.t0, t1: nowMs() } });
+      })
+      .on('broadcast', { event: PONG_EVENT }, (msg: { payload?: { from?: unknown; to?: unknown; t0?: unknown; t1?: unknown } }) => {
+        const p = msg?.payload;
+        if (!p || p.to !== clientId || typeof p.from !== 'string' || typeof p.t0 !== 'number' || typeof p.t1 !== 'number') return;
+        const book = samplesRef.current;
+        if (book.peer !== p.from) return;
+        book.samples.push(clockSample(p.t0, p.t1, nowMs()));
+        const best = bestSample(book.samples);
+        if (best) setClickOffset(best.offset);
+      })
       .on('presence', { event: 'join' }, (msg: { key?: string }) => {
-        if (msg?.key === clientId || !ledRef.current || !lastRef.current) return;
+        if (msg?.key === clientId) return;
+        // A running click of ours reaches late arrivals too.
+        if (clickRef.current?.from === clientId && clickRef.current.on && isLeader) {
+          void channel.send({ type: 'broadcast', event: CLICK_EVENT, payload: clickRef.current });
+        }
+        if (!ledRef.current || !lastRef.current) return;
         if (lastRef.current.from !== clientId) return;
         void channel.send({ type: 'broadcast', event: 'state', payload: lastRef.current });
       })
@@ -150,7 +228,7 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
       setConnected(false);
       void supabase.removeChannel(channel);
     };
-  }, [live, eventId, clientId, isLeader, receive]);
+  }, [live, eventId, clientId, isLeader, receive, receiveClick]);
 
   // Closing Stage mode forgets the live state; the saved order stands.
   useEffect(() => {
@@ -165,9 +243,43 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     lastRef.current = null;
     remoteRef.current = null;
     ledRef.current = false;
+    clickRef.current = null;
+    setClick(null);
+    setClickOffset(0);
+    pingTimers.current.forEach(clearTimeout);
   }, [open]);
 
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(saveTimer.current);
+      pingTimers.current.forEach(clearTimeout);
+    },
+    [],
+  );
+
+  /**
+   * Start or stop the click on the current song. The leader's reaches the
+   * whole band; anyone else's stays on their own phone.
+   */
+  const setClickOn = useCallback(
+    (on: boolean, opts?: { bpm: number; beats: number; bars?: number | null }) => {
+      const prev = clickRef.current;
+      const state: ClickState = {
+        seq: (prev?.seq ?? 0) + 1,
+        from: clientId,
+        on,
+        bpm: opts?.bpm ?? prev?.bpm ?? 120,
+        beats: opts?.beats ?? prev?.beats ?? 4,
+        bars: opts?.bars ?? null,
+        startAt: nowMs() + (isLeader && on ? START_LEAD_MS : 0),
+        songId: songId ?? ordered[index]?.id ?? null,
+      };
+      clickRef.current = state;
+      setClick(state);
+      if (isLeader) void channelRef.current?.send({ type: 'broadcast', event: CLICK_EVENT, payload: state });
+    },
+    [clientId, isLeader, songId, ordered, index],
+  );
 
   /** Make song `i` (in the live order) the current one. */
   const select = useCallback(
@@ -250,6 +362,13 @@ export function useStageLive<T extends LiveSongRef>({ eventId, setlistId, songs,
     canReorder: isLeader && !!setlistId && hasIds && ordered.every((s) => !!s.songId),
     move,
     saveState,
+    /** Visual metronome: the newest click, whose it is, and the clock offset to use. */
+    click: {
+      state: click,
+      mine: !!click && click.from === clientId,
+      offset: click && click.from !== clientId ? clickOffset : 0,
+      setOn: setClickOn,
+    },
   };
 }
 
