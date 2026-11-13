@@ -3,6 +3,7 @@ import { Calendar, Clock, EyeOff, MapPin, Pencil, Trash2 } from '@/app/component
 import { BwSheet } from '@/app/components/bw/Screen';
 import { PillButton } from '@/app/components/bw/Form';
 import type { EventDraft } from '@/lib/wizardDrafts';
+import { useT } from '@/lib/i18n';
 
 export type DraftKind = 'gig' | 'rehearsal' | 'quote';
 
@@ -49,6 +50,7 @@ export const DraftPreviewSheet: React.FC<{
   onContinue: (d: EventDraft) => void;
   onDelete: (d: EventDraft) => void;
 }> = ({ draft, onClose, onContinue, onDelete }) => {
+  const tr = useT();
   const [confirm, setConfirm] = React.useState(false);
   const last = React.useRef<EventDraft | null>(null);
   if (draft) last.current = draft;
@@ -58,9 +60,29 @@ export const DraftPreviewSheet: React.FC<{
   }, [draft]);
 
   const kind = d ? draftKindOf(d) : 'gig';
-  const label = DRAFT_KIND_LABEL[kind];
+  // Whole sentences per kind: the noun's gender changes the wording in other languages.
+  const copy = {
+    gig: {
+      overline: tr('Gig draft'),
+      untitled: tr('Untitled gig'),
+      lost: tr('What you typed in this gig is lost. Nothing was sent to the band, so nobody else is affected.'),
+      privateNote: tr("Still a draft: only you can see it. Members aren't notified and it isn't on their calendar until you create the gig."),
+    },
+    rehearsal: {
+      overline: tr('Rehearsal draft'),
+      untitled: tr('Untitled rehearsal'),
+      lost: tr('What you typed in this rehearsal is lost. Nothing was sent to the band, so nobody else is affected.'),
+      privateNote: tr("Still a draft: only you can see it. Members aren't notified and it isn't on their calendar until you create the rehearsal."),
+    },
+    quote: {
+      overline: tr('Quote draft'),
+      untitled: tr('Untitled quote'),
+      lost: tr('What you typed in this quote is lost. Nothing was sent to the band, so nobody else is affected.'),
+      privateNote: tr("Still a draft: only you can see it. Members aren't notified and it isn't on their calendar until you create the quote."),
+    },
+  }[kind];
   const date = longDate(d?.date);
-  const t = d ? draftTimes(d) : {};
+  const times = d ? draftTimes(d) : {};
 
   return (
     <BwSheet
@@ -68,25 +90,25 @@ export const DraftPreviewSheet: React.FC<{
       onClose={onClose}
       portal
       zIndex={150}
-      overline={`${label} draft`}
-      title={confirm ? 'Delete this draft?' : d?.title || `Untitled ${label.toLowerCase()}`}
+      overline={copy.overline}
+      title={confirm ? tr('Delete this draft?') : d?.title || copy.untitled}
       footer={
         confirm ? (
           <div className="grid grid-cols-2 gap-2">
             <PillButton variant="white" onClick={() => setConfirm(false)}>
-              Cancel
+              {tr('Cancel')}
             </PillButton>
             <PillButton variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={() => d && onDelete(d)}>
-              Delete
+              {tr('Delete')}
             </PillButton>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             <PillButton icon={<Pencil className="w-4 h-4" />} onClick={() => d && onContinue(d)}>
-              Continue editing
+              {tr('Continue editing')}
             </PillButton>
             <PillButton variant="danger" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirm(true)}>
-              Delete draft
+              {tr('Delete draft')}
             </PillButton>
           </div>
         )
@@ -94,30 +116,29 @@ export const DraftPreviewSheet: React.FC<{
     >
       {confirm ? (
         <p className="bw-body-md text-sheet-foreground/80">
-          What you typed in this {label.toLowerCase()} is lost. Nothing was sent to the band, so nobody else is affected.
+          {copy.lost}
         </p>
       ) : (
         <div className="@container flex flex-col gap-3">
           <div className="rounded-[16px] bg-sheet-foreground/[0.08] p-3 flex items-start gap-3">
             <EyeOff className="w-5 h-5 shrink-0 mt-0.5" aria-hidden />
             <p className="bw-body-sm">
-              Still a draft: only you can see it. Members aren't notified and it isn't on their calendar until you create the{' '}
-              {label.toLowerCase()}.
+              {copy.privateNote}
             </p>
           </div>
           <div className="grid grid-cols-1 @min-[420px]:grid-cols-2 gap-x-4">
-            <Fact icon={<Calendar />}>{date || 'No date yet'}</Fact>
-            {t.start && (
+            <Fact icon={<Calendar />}>{date || tr('No date yet')}</Fact>
+            {times.start && (
               <Fact icon={<Clock />}>
-                {t.start}
-                {t.end ? ` – ${t.end}` : ''}
+                {times.start}
+                {times.end ? ` – ${times.end}` : ''}
               </Fact>
             )}
-            <Fact icon={<MapPin />}>{d?.venue || 'No venue yet'}</Fact>
+            <Fact icon={<MapPin />}>{d?.venue || tr('No venue yet')}</Fact>
           </div>
           {d?.savedAt && (
             <p className="bw-body-sm text-sheet-foreground/70">
-              Saved {new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {tr('Saved {time}', { time: new Date(d.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}
             </p>
           )}
         </div>
