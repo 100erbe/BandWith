@@ -3136,6 +3136,10 @@ const dict: Dictionary = {
   // Calendar band filter
   "All bands": "Alle Bands",
   "Filter by band": "Nach Band filtern",
+  "{count} gig": "{count} Gig",
+  "{count} gigs": "{count} Gigs",
+  "Revenue by event type": "Umsatz nach Eventtyp",
+  "No booked gigs this year yet.": "Dieses Jahr noch keine bestätigten Gigs.",
 };
 
 export default dict;

@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { getEventPrivate } from '@/lib/services/eventPrivate';
 import { toLocalDateString } from '@/lib/dates';
 import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
+import { revenueByType, type GigType, type RevenueEvent } from '@/lib/revenueByType';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -52,6 +53,30 @@ const LedColumn: React.FC<{ lit: number; current: boolean; index?: number }> = (
   </span>
 );
 
+/** Dots in a "revenue by type" bar: one per 5% of the year's revenue. */
+const SHARE_DOTS = 20;
+
+const ShareBar: React.FC<{ share: number; top: boolean; index: number }> = ({ share, top, index }) => {
+  const lit = share > 0 ? Math.max(1, Math.round(share * SHARE_DOTS)) : 0;
+  return (
+    <span className="flex gap-1 min-w-0" aria-hidden>
+      {Array.from({ length: SHARE_DOTS }).map((_, i) => {
+        const on = i < lit;
+        return (
+          <span
+            key={`${i}-${on ? 'on' : 'off'}`}
+            className={cn('w-1.5 h-1.5 shrink-0 rounded-full', on && 'bw-dot-rise')}
+            style={{
+              backgroundColor: on ? (top ? 'var(--accent-ink)' : 'var(--dot-on)') : 'var(--dot-off)',
+              ['--d' as string]: `${300 + index * 60 + i * 15}ms`,
+            }}
+          />
+        );
+      })}
+    </span>
+  );
+};
+
 const StatCard: React.FC<{ label: string; value: string | number; accent?: boolean; delay: number }> = ({ label, value, accent, delay }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -90,6 +115,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
 
   // Real confirmed-gig fees per month for the last MONTH_SPAN months.
   const [monthlyFees, setMonthlyFees] = useState<number[] | null>(null);
+  // This year's booked gigs (admins only: fees come from bw_event_private).
+  const [yearGigs, setYearGigs] = useState<RevenueEvent[] | null>(null);
   const bandId = selectedBand?.id;
   useEffect(() => {
     if (!bandId) return;
@@ -97,12 +124,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     const today = new Date();
     const start = new Date(today.getFullYear(), today.getMonth() - (MONTH_SPAN - 1), 1);
     const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const yearEnd = new Date(today.getFullYear(), 11, 31);
+    const yearPrefix = `${today.getFullYear()}-`;
     supabase
       .from('events')
       .select('id, event_date, status, event_type')
       .eq('band_id', bandId)
-      .gte('event_date', toLocalDateString(start))
-      .lte('event_date', toLocalDateString(end))
+      .gte('event_date', toLocalDateString(start < yearStart ? start : yearStart))
+      .lte('event_date', toLocalDateString(yearEnd))
       .then(async ({ data: rows, error }) => {
         // Gig fees from bw_event_private (078): admins only.
         type Row = { id: string; event_date: string; status: string; event_type: string };
@@ -121,6 +151,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
           }
         }
         setMonthlyFees(sums);
+        setYearGigs(error ? [] : data.filter((e) => e.event_date?.startsWith(yearPrefix)));
       });
     return () => {
       cancelled = true;
@@ -142,6 +173,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
       current: offset === 0,
     };
   });
+
+  const byType = revenueByType(yearGigs ?? []);
+  const typeLabels: Record<GigType, string> = {
+    wedding: t('Wedding'),
+    corporate: t('Corporate'),
+    private: t('Private party'),
+    festival: t('Festival'),
+    club: t('Club'),
+    pub: t('Pub'),
+    gig: t('Gig'),
+    other: t('Other'),
+  };
+  const money = (v: number) => `${sym()}${v.toLocaleString(intlLocale('en-US'))}`;
+  const gigsText = (n: number) => (n === 1 ? t('{count} gig', { count: n }) : t('{count} gigs', { count: n }));
 
   const overline = [selectedBand?.name, now.getFullYear()].filter(Boolean).join(' · ');
 
@@ -234,6 +279,49 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
               </div>
             </Card>
 
+            {/* Revenue by event type (this year's booked gigs; admins only) */}
+            {isAdmin && (
+              <Card className="p-5 gap-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="bw-label-md">{t('Revenue by event type')}</h2>
+                  <span className="bw-label-sm text-muted-foreground shrink-0">{now.getFullYear()}</span>
+                </div>
+                {yearGigs === null ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : byType.rows.length === 0 ? (
+                  <p className="bw-body-md text-muted-foreground">{t('No booked gigs this year yet.')}</p>
+                ) : (
+                  <ul className="flex flex-col gap-4">
+                    {byType.rows.map((row, i) => (
+                      <motion.li
+                        key={row.type}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + i * 0.05 }}
+                        className="flex flex-col gap-2"
+                        aria-label={`${typeLabels[row.type]}: ${money(row.total)}, ${gigsText(row.count)}, ${Math.round(row.share * 100)}%`}
+                      >
+                        <div className="flex items-baseline justify-between gap-3 min-w-0" aria-hidden>
+                          <span className="flex items-baseline gap-2 min-w-0">
+                            <span className="bw-label-md truncate">{typeLabels[row.type]}</span>
+                            <span className="bw-body-sm text-muted-foreground shrink-0">{gigsText(row.count)}</span>
+                          </span>
+                          <span className="bw-label-md shrink-0 tabular-nums">{money(row.total)}</span>
+                        </div>
+                        <div className="flex items-center gap-3" aria-hidden>
+                          <ShareBar share={row.share} top={i === 0 && row.total > 0} index={i} />
+                          <span className="bw-label-sm text-muted-foreground tabular-nums ml-auto shrink-0">
+                            {Math.round(row.share * 100)}%
+                          </span>
+                        </div>
+                      </motion.li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )}
           </>
         )}
       </div>
