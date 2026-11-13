@@ -2,6 +2,7 @@ import { supabase, getSafeUser } from '@/lib/supabase';
 import { shareFile, type FileShareResult } from '@/lib/nativeFiles';
 import { todayLocal } from '@/lib/dates';
 import { EVENT_MEMBER_COLUMNS, withMoney } from '@/lib/services/eventMemberMoney';
+import { EVENT_PUBLIC_COLUMNS, attachEventPrivate } from '@/lib/services/eventPrivate';
 import { t } from '@/lib/i18n';
 
 /**
@@ -53,7 +54,7 @@ export const buildMyDataExport = async (): Promise<MyDataExport> => {
       .eq('user_id', user.id),
     supabase
       .from('events')
-      .select('*')
+      .select(EVENT_PUBLIC_COLUMNS)
       .is('band_id', null)
       .eq('created_by', user.id)
       .order('event_date', { ascending: true }),
@@ -89,7 +90,8 @@ export const buildMyDataExport = async (): Promise<MyDataExport> => {
     account: { id: user.id, email: user.email ?? null },
     profile: (profileRes.data as Record<string, unknown> | null) ?? null,
     memberships,
-    personalGigs: (gigsRes.data || []) as Record<string, unknown>[],
+    // Personal gigs are the user's own: their price and client come from 078.
+    personalGigs: (await attachEventPrivate((gigsRes.data || []) as any[])) as Record<string, unknown>[],
     eventMemberships: (await withMoney((eventMembersRes.data || []) as any[])) as Record<string, unknown>[],
   };
 };

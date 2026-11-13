@@ -142,6 +142,7 @@ import { personName, personFirstName, personInitials } from "@/lib/personName";
 import { t, useLocale, dateName, intlLocale } from "@/lib/i18n";
 import { syncEventTasks, type EventTaskDraft } from "@/lib/services/eventTasks";
 import { getEventMemberMoney, moneyLookup, saveEventLineup, type LineupRow } from "@/lib/services/eventMemberMoney";
+import { EVENT_PUBLIC_COLUMNS, attachEventPrivate } from "@/lib/services/eventPrivate";
 
 const mapEventStatus = (event: Event): EventStatus => {
   // event_type is the primary classifier
@@ -878,10 +879,20 @@ export default function AuthenticatedApp() {
   /** Works out why an event isn't in the list, or opens it when it can. */
   const explainMissingEvent = useCallback(async (eventDbId: string) => {
     const { userId, isAdminOfBand: adminOf, eventMembersMap: membersMap, bandLookup: bands } = missingCtxRef.current;
-    const { data: row, error } = await supabase.from('events').select('*').eq('id', eventDbId).maybeSingle();
+    const { data: publicRow, error } = await supabase.from('events').select(EVENT_PUBLIC_COLUMNS).eq('id', eventDbId).maybeSingle();
     if (error) {
       setEventLoadError({ id: eventDbId, kind: 'error', message: error.message });
       return;
+    }
+    // Price and client only for whoever manages it (078).
+    let row = publicRow as Record<string, any> | null;
+    if (row) {
+      try {
+        [row] = await attachEventPrivate([row as { id: string }]);
+      } catch (err) {
+        setEventLoadError({ id: eventDbId, kind: 'error', message: err instanceof Error ? err.message : String(err) });
+        return;
+      }
     }
     const dayOf = (d?: string | null) => {
       const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');

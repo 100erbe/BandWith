@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { attachEventPrivate } from './eventPrivate';
 import { parseLocalDate, toLocalDateString, todayLocal } from '../dates';
 import { t, translate, intlLocale, type Locale } from '@/lib/i18n';
 
@@ -178,13 +179,15 @@ export async function listLinkableEvents(bandId: string, fromDate = todayLocal()
   try {
     const { data, error } = await supabase
       .from('events')
-      .select('id, title, event_date, client_name, client_email, venue_name, event_type')
+      .select('id, title, event_date, venue_name, event_type')
       .eq('band_id', bandId)
       .gte('event_date', fromDate)
       .order('event_date', { ascending: true })
       .limit(20);
     if (error || !data) return [];
-    return (data as any[])
+    // Client details from bw_event_private (078); contracts are admin-only.
+    const withClient = await attachEventPrivate(data as any[]);
+    return (withClient as any[])
       .filter((e) => e.event_type !== 'rehearsal')
       .slice(0, 12)
       .map((e) => ({
