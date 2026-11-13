@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Clock, Sparkles, Send, ChevronLeft, ChevronRight } from '@/app/components/icons';
+import { X, Calendar, Clock, Sparkles, Send, ChevronLeft, ChevronRight, MapPin, Plus } from '@/app/components/icons';
+import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
+import { getActiveSymbol as sym } from '@/lib/currency';
+import { pollShareLabel } from './PollDetails';
 import { cn } from '@/app/components/ui/utils';
 import { HeaderAction, IconButton, PillButton, PillField, Selector, Card, FormError } from '@/app/components/bw';
 import { RailCover } from '@/lib/railActions';
@@ -61,6 +64,11 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   // (Figma iPad · 05 "Rehearsal / New · Poll availability").
   const { composer: composerOn, landscape } = useComposerLayout();
   const [voteBy, setVoteBy] = useState('');
+  // Place, cost & songs (097), composer only.
+  const [location, setLocation] = useState('');
+  const [roomCost, setRoomCost] = useState('');
+  const [focusSongs, setFocusSongs] = useState<{ id: string; title: string }[]>([]);
+  const [songPickerOpen, setSongPickerOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [generatorMode, setGeneratorMode] = useState<'preset' | 'custom'>('preset');
@@ -124,6 +132,10 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    setLocation(initialProposal?.location || '');
+    setRoomCost(initialProposal?.room_cost != null ? String(initialProposal.room_cost) : '');
+    // Member proposals carry no songs; the builder never reopens a published poll.
+    setFocusSongs([]);
     if (initialProposal) {
       setTitle(initialProposal.title || t('Rehearsal Availability Poll'));
       setNotes(cleanNotesWithoutDays(initialProposal.notes));
@@ -258,7 +270,14 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       title: title.trim(),
       notes: notes.trim(),
       // Only the composer has a "Vote by" field; the phone builder leaves it as it is.
-      ...(composerOn ? { voteBy: voteBy || null } : {}),
+      ...(composerOn
+        ? {
+            voteBy: voteBy || null,
+            location: location.trim() || null,
+            roomCost: parseFloat(roomCost) > 0 ? parseFloat(roomCost) : null,
+            focusSongIds: focusSongs.map(s => s.id),
+          }
+        : {}),
       timeSlots: timeSlots.map((s) => ({
         proposed_date: s.proposed_date,
         start_time: s.start_time,
@@ -318,7 +337,84 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
       ]);
     };
 
-    const ready = [title.trim().length > 0, timeSlots.length > 0, voteByOk].filter(Boolean).length;
+    const ready = [title.trim().length > 0, timeSlots.length > 0, location.trim().length > 0, voteByOk].filter(Boolean).length;
+    const costNumber = parseFloat(roomCost) || 0;
+    const share = pollShareLabel(costNumber, memberTotal);
+
+    const placeCard = (
+      <ComposerCard n={3} title={t('Place, cost & songs')} done={location.trim().length > 0}>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="cmp-poll-place" className="bw-label-sm text-muted-foreground">
+            {t('Location / studio')}
+          </label>
+          <div className="flex items-center gap-3 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+            <MapPin className="w-5 h-5 shrink-0" />
+            <input
+              id="cmp-poll-place"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder={t('e.g. Blackbox Studios · room 2')}
+              className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2 min-w-0">
+            <label htmlFor="cmp-poll-cost" className="bw-label-sm text-muted-foreground">
+              {t('Room cost')}
+            </label>
+            <div className="flex items-center gap-2 h-[52px] px-4 rounded-full bg-field border border-border focus-within:border-2 focus-within:border-foreground">
+              <span className="bw-body-lg shrink-0">{sym().trim()}</span>
+              <input
+                id="cmp-poll-cost"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="1"
+                value={roomCost}
+                onChange={e => setRoomCost(e.target.value)}
+                placeholder="0"
+                className="flex-1 min-w-0 bg-transparent outline-none bw-body-lg text-foreground tabular-nums"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 min-w-0">
+            <span className="bw-label-sm text-muted-foreground">{t('Split')}</span>
+            <div className="h-[52px] px-4 rounded-full bg-background flex items-center bw-body-lg truncate">
+              {share ? t('{amount} each', { amount: share }) : t('Free')}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-sm text-muted-foreground">{t('Focus songs')}</span>
+          <div className="flex flex-wrap gap-2">
+            {focusSongs.map(song => (
+              <span
+                key={song.id}
+                className="inline-flex items-center gap-1 h-9 pl-3 pr-1 rounded-full bg-background bw-label-sm max-w-full"
+              >
+                <span className="truncate">{song.title}</span>
+                <IconButton
+                  label={t('Remove {title}', { title: song.title })}
+                  icon={<X />}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFocusSongs(prev => prev.filter(s => s.id !== song.id))}
+                />
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSongPickerOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-foreground/30 bw-label-sm cursor-pointer hover:bg-foreground/[0.06]"
+            >
+              <Plus aria-hidden className="w-4 h-4" />
+              {t('Add')}
+            </button>
+          </div>
+        </div>
+      </ComposerCard>
+    );
 
     const pollCard = (
       <ComposerCard n={1} title={t('Poll')} done={title.trim().length > 0}>
@@ -463,7 +559,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     );
 
     const deadlineCard = (
-      <ComposerCard n={3} title={t('Vote deadline & note')} done={voteByOk}>
+      <ComposerCard n={4} title={t('Vote deadline & note')} done={voteByOk}>
         <div className="flex flex-col gap-2">
           <label htmlFor="cmp-poll-vote-by" className="bw-label-sm text-muted-foreground">
             {t('Vote by')}
@@ -536,6 +632,21 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
           <span className="bw-label-xs">{t('Rehearsal poll · active')}</span>
           <h3 className="bw-display-lg [overflow-wrap:anywhere]">{title.trim() || t('Rehearsal poll')}</h3>
           {voteLine && <span className="bw-label-xs opacity-90">{voteLine}</span>}
+          {(location.trim() || share || focusSongs.length > 0) && (
+            <div className="flex flex-col gap-1 pt-1">
+              {(location.trim() || share) && (
+                <span className="bw-body-sm flex items-center gap-2 min-w-0">
+                  {location.trim() && <MapPin aria-hidden className="w-4 h-4 shrink-0" />}
+                  <span className="truncate">
+                    {[location.trim(), share ? t('{amount} each', { amount: share }) : null].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+              )}
+              {focusSongs.length > 0 && (
+                <span className="bw-body-sm [overflow-wrap:anywhere]">{focusSongs.map(s => s.title).join(' · ')}</span>
+              )}
+            </div>
+          )}
         </div>
         {sorted.length === 0 ? (
           <p className="bw-body-sm text-muted-foreground text-center py-6">
@@ -587,12 +698,12 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     return (
       <ComposerShell
         kind="rehearsal-poll"
-        zClassName="z-[120]"
+        zClassName="z-[105]"
         title={initialProposal ? t('Proposal to poll') : t('New rehearsal')}
         subline={t('Poll · members vote on dates')}
         closeLabel={t('Close')}
         onClose={onClose}
-        ready={{ done: ready, total: 3 }}
+        ready={{ done: ready, total: 4 }}
         headerCenter={modeSwitch}
         accent="var(--accent-gig)"
         accentFg="var(--accent-gig-fg)"
@@ -601,9 +712,12 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)] gap-4 items-start">
             <div className="flex flex-col gap-4 min-w-0">
               {pollCard}
+              {placeCard}
+            </div>
+            <div className="flex flex-col gap-4 min-w-0">
+              {slotsCard}
               {deadlineCard}
             </div>
-            <div className="flex flex-col gap-4 min-w-0">{slotsCard}</div>
             {preview}
           </div>
         ) : (
@@ -611,6 +725,7 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
             <div className="flex flex-col gap-4 min-w-0">
               {pollCard}
               {slotsCard}
+              {placeCard}
             </div>
             <div className="flex flex-col gap-4 min-w-0">
               {deadlineCard}
@@ -618,6 +733,19 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
             </div>
           </div>
         )}
+        <AnimatePresence>
+          {songPickerOpen && (
+            <SongPicker
+              isOpen={songPickerOpen}
+              onClose={() => setSongPickerOpen(false)}
+              onSelect={(song: PickedSong) => {
+                setFocusSongs(prev => (prev.some(s => s.id === song.id) ? prev : [...prev, { id: song.id, title: song.title }]));
+              }}
+              selectedIds={focusSongs.map(s => s.id)}
+              theme="blue"
+            />
+          )}
+        </AnimatePresence>
       </ComposerShell>
     );
   }
