@@ -15,6 +15,7 @@ import {
 } from "@/lib/deputyClaim";
 import { listMyDeputyGigs } from "@/lib/services/deputies";
 import { supabase } from "@/lib/supabase";
+import { useServerLocaleSync } from "@/lib/i18n/serverLocale";
 
 const AuthenticatedApp = lazy(() => import("./AuthenticatedApp"));
 const SetNewPasswordScreen = lazy(
@@ -65,6 +66,8 @@ const isAuthCallback = (): boolean => {
 
 export default function App() {
   const { isAuthenticated, loading: authLoading, userMode, profile, isPasswordRecovery, user, signOut } = useAuth();
+  // The server writes some pushes (deputies) in the language of the app.
+  useServerLocaleSync(isAuthenticated && !isPasswordRecovery ? user?.id : null, profile?.preferred_language);
   const { startOnboarding, goToStep } = useOnboarding();
   const deputyClaim = useDeputyClaim();
   const { bands, loading: bandsLoading, refreshBands } = useBand();
