@@ -122,7 +122,8 @@ interface EditingEvent {
 
 interface Props {
   onClose: () => void;
-  onCreate: (data: any) => void;
+  /** Resolves false when nothing was saved: the wizard stays open. */
+  onCreate: (data: any) => Promise<boolean | void> | boolean | void;
   editingEvent?: EditingEvent | null;
   onOpenPollBuilder?: () => void;
   /** Band calendar, so the date picker can mark busy days and suggest a free one. */
@@ -520,7 +521,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   }, [data.title, data.type]);
 
   // Navigation
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     const finalTitle = getEffectiveTitle();
@@ -535,8 +536,20 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
         _originalEventType: editingEvent.eventType || 'rehearsal',
       } : {}),
     };
-    onCreate(submitData);
-    deleteEventDraft(draft?.id);
+    let saved: boolean | void;
+    try {
+      saved = await onCreate(submitData);
+    } catch (err) {
+      console.error('[rehearsal] save failed:', err);
+      saved = false;
+    }
+    if (saved === false) {
+      // Not saved: keep the wizard open, and a new rehearsal in Drafts too.
+      setIsSubmitting(false);
+      if (draftsEnabled) persistDraft();
+      return;
+    }
+    deleteEventDraft(draftIdRef.current);
   };
 
   // ── Drafts ──────────────────────────────────────────────────
@@ -556,13 +569,18 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   };
   const requestClose = useCallback(() => requestCloseRef.current(), []);
 
-  const handleSaveDraft = () => {
+  // One id for this wizard: a draft kept after a failed save is replaced, not
+  // duplicated, and removed once the rehearsal is saved.
+  const draftIdRef = useRef<string | null>(draft?.id ?? null);
+
+  const persistDraft = () => {
     if (!currentUserId) return;
+    if (!draftIdRef.current) draftIdRef.current = newDraftId();
     // The date counts once the user picked it (or saw it on step 2):
     // otherwise it is only tomorrow's default and the draft stays undated.
     const dated = !!data.date && (data.date !== initialDateRef.current || step >= 1 || !!ds?.dated);
     saveEventDraft({
-      id: draft?.id || newDraftId(),
+      id: draftIdRef.current,
       userId: currentUserId,
       bandId: selectedBand?.id ?? null,
       title: getEffectiveTitle(),
@@ -571,13 +589,18 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
       eventType: 'rehearsal',
       state: { step, data, endTime, dated },
     });
+  };
+
+  const handleSaveDraft = () => {
+    if (!currentUserId) return;
+    persistDraft();
     setLeaveOpen(false);
     onClose();
   };
 
   const handleDiscardDraft = () => {
     // Reopened from a draft: throwing it away removes it from Drafts too.
-    deleteEventDraft(draft?.id);
+    deleteEventDraft(draftIdRef.current);
     setLeaveOpen(false);
     onClose();
   };
