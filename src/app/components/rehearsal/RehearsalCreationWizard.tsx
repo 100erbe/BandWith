@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, Clock, MapPin, ArrowLeft, ArrowUpRight, Plus, AlertCircle,
   ChevronDown, X, Layers, CurrencyIcon, Guitar, Check,
-  Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Users
+  Drum, Sliders, Mic, Edit3, Music2, CheckSquare, Users, ChevronLeft, ChevronRight
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { SongPicker, type PickedSong } from '@/app/components/ui/SongPicker';
@@ -42,6 +42,10 @@ import { personName, personInitials } from '@/lib/personName';
 import { parseGenres } from '@/lib/songGenres';
 import { t, useT, intlLocale, getLocale } from '@/lib/i18n';
 import { builtinText } from '@/lib/i18n/builtins';
+import { ComposerCard, ComposerCheck, ComposerPreview, ComposerShell, useComposerLayout } from '@/app/components/composer/Composer';
+import { useBandFreeDays, useBandFreeSlots } from '@/lib/bandAvailability';
+import { heatLevel, toMinutes } from '@/lib/freeSlots';
+import { FreeDots, freeTone, heatStyle } from '@/app/components/ui/FreeHeat';
 
 interface TaskTemplateDB {
   id: string;
@@ -600,7 +604,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
   // Android Back: the leave sheet first, then the step before, then close.
   useSystemBack(!isEditing, () => {
     if (leaveOpen) setLeaveOpen(false);
-    else if (step > 0) setStep(step - 1);
+    // The tablet composer has no steps: Back closes it.
+    else if (step > 0 && !composerOn) setStep(step - 1);
     else requestClose();
     return true;
   });
@@ -1836,6 +1841,483 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
     </>
   );
 
+  // ── TABLET COMPOSER (Figma iPad · 05 "Rehearsal / New · Schedule directly")
+  // Every step on one screen with the band's free counts (never who is busy)
+  // and the rehearsal as the band will see it. Phones and the Duo keep the steps.
+  const composerLayout = useComposerLayout();
+  const composerOn = composerLayout.composer && !isEditing;
+  const todayStr = toLocalDateString(new Date());
+  // The 7-day strip starts today, or on the chosen day when it is further out.
+  const [stripFrom, setStripFrom] = useState<string>(() => {
+    const t0 = new Date();
+    const weekOut = toLocalDateString(new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + 6));
+    return data.date && data.date > weekOut ? data.date : todayStr;
+  });
+  const stripDays = useMemo(() => {
+    const base = new Date(stripFrom + 'T00:00:00');
+    return Array.from({ length: 7 }, (_, i) => toLocalDateString(new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)));
+  }, [stripFrom]);
+  const stripFree = useBandFreeDays({
+    bandId: selectedBand?.id,
+    from: stripDays[0],
+    to: stripDays[6],
+    start: data.time,
+    end: endTime,
+    excludeEventId: editingEvent?.eventId,
+    enabled: composerOn,
+  });
+  // Hour bars: from two hours before the start to an hour after the end.
+  const barWindow = useMemo(() => {
+    const s = toMinutes(data.time);
+    let e = toMinutes(endTime);
+    if (s == null || e == null) return null;
+    if (e <= s) e += 1440;
+    const from = Math.max(0, Math.floor(s / 60) * 60 - 120);
+    const to = Math.min(from + 12 * 60, Math.ceil(e / 60) * 60 + 60);
+    const hhmm = (m: number) => `${String(Math.floor((m % 1440) / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    return { start: hhmm(from), end: hhmm(to), s, e };
+  }, [data.time, endTime]);
+  const hourFree = useBandFreeSlots({
+    bandId: selectedBand?.id,
+    from: data.date,
+    to: data.date,
+    start: barWindow?.start,
+    end: barWindow?.end,
+    slotMinutes: 60,
+    excludeEventId: editingEvent?.eventId,
+    enabled: composerOn && !!data.date,
+  });
+
+  const dayFreeMap = useBandFreeDays({
+    bandId: selectedBand?.id,
+    from: data.date,
+    to: data.date,
+    start: data.time,
+    end: endTime,
+    excludeEventId: editingEvent?.eventId,
+    enabled: composerOn && !!data.date,
+  });
+
+  const renderComposer = () => {
+    const landscape = composerLayout.landscape;
+    const dayFree = data.date ? dayFreeMap?.get(data.date) ?? null : null;
+    const busyKinds = new Map<string, string>();
+    pickerEvents.forEach(e => busyKinds.set(e.date.slice(0, 10), e.kind));
+    const dateLong = (d: string, opts: Intl.DateTimeFormatOptions) =>
+      new Date(d + 'T00:00:00').toLocaleDateString(intlLocale('en-GB'), opts);
+    const dateLine = data.date ? dateLong(data.date, { weekday: 'short', day: 'numeric', month: 'short' }) : t('Date TBD');
+    const isPaid = isAdmin && data.venueType === 'paid' && costNumber > 0;
+    const ready = [true, !!(data.date && data.time && endTime), !!data.location.trim(), audienceCount > 0].filter(Boolean).length;
+    const canCreate = !!data.date && !!data.location.trim();
+    const shiftStrip = (days: number) => {
+      const b = new Date(stripFrom + 'T00:00:00');
+      const next = toLocalDateString(new Date(b.getFullYear(), b.getMonth(), b.getDate() + days));
+      setStripFrom(next < todayStr ? todayStr : next);
+    };
+    const freeLine = (c: { free: number; total: number }) =>
+      heatLevel(c) === 4
+        ? t('{free} of {total} free · no conflicts', { free: c.free, total: c.total })
+        : t('{free} of {total} free', { free: c.free, total: c.total });
+
+    const sessionCard = (
+      <ComposerCard n={1} title={t('Session')} done>
+        <PillField
+          label={t('Rehearsal title (optional)')}
+          hideLabel
+          value={data.title}
+          onChange={e => setData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder={getEffectiveTitle()}
+        />
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('Session type')}>
+          {TYPE_OPTIONS.map(opt => (
+            <Selector
+              key={opt.value}
+              size="md"
+              selected={data.type === opt.value}
+              onClick={() => handleTypeChange(opt.value)}
+            >
+              {typeText[opt.value]?.label ?? opt.label}
+            </Selector>
+          ))}
+        </div>
+      </ComposerCard>
+    );
+
+    const invitedCard = (
+      <ComposerCard
+        title={t("Who's invited")}
+        trailing={
+          dayFree ? (
+            <span className={cn('bw-label-xs whitespace-nowrap', freeTone(dayFree))}>
+              {t('{free} of {total} free', { free: dayFree.free, total: dayFree.total })}
+            </span>
+          ) : undefined
+        }
+      >
+        {data.members.length === 0 ? (
+          <p className="bw-body-sm text-muted-foreground">{t('No band members yet.')}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border">{data.members.map(renderMemberRow)}</ul>
+        )}
+      </ComposerCard>
+    );
+
+    const dateCard = (
+      <ComposerCard n={2} title={t('Date & time')} done={!!(data.date && data.time && endTime)}>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="bw-body-lg font-semibold shrink-0 mr-1">
+            {stripFrom === todayStr ? t('Next 7 days') : `${dateLong(stripDays[0], { day: 'numeric', month: 'short' })} – ${dateLong(stripDays[6], { day: 'numeric', month: 'short' })}`}
+          </span>
+          <span className="bw-label-xs text-muted-foreground flex-1 min-w-0 truncate text-right">{t('From band calendars')}</span>
+          <IconButton label={t('Previous week')} icon={<ChevronLeft />} variant="ghost" size="sm" onClick={() => shiftStrip(-7)} disabled={stripFrom <= todayStr} />
+          <IconButton label={t('Next week')} icon={<ChevronRight />} variant="ghost" size="sm" onClick={() => shiftStrip(7)} />
+        </div>
+        <div className="grid grid-cols-7 gap-1.5" role="radiogroup" aria-label={t('Rehearsal date')}>
+          {stripDays.map(d => {
+            const c = stripFree?.get(d) ?? null;
+            const on = d === data.date;
+            const kind = busyKinds.get(d);
+            const dt = new Date(d + 'T00:00:00');
+            return (
+              <button
+                key={d}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`${dateLong(d, { weekday: 'long', day: 'numeric', month: 'long' })}${c ? `, ${t('{free} of {total} free', { free: c.free, total: c.total })}` : ''}`}
+                onClick={() => setData(prev => ({ ...prev, date: d }))}
+                className={cn(
+                  'min-w-0 rounded-[20px] py-2.5 flex flex-col items-center gap-1 cursor-pointer transition-colors',
+                  on ? 'bg-surface-inverse text-surface-inverse-foreground' : 'bg-background text-foreground hover:bg-foreground/[0.06]',
+                )}
+              >
+                <span className="bw-label-xs opacity-70">{dateLong(d, { weekday: 'short' })}</span>
+                <span className="bw-h2 tabular-nums leading-none">{dt.getDate()}</span>
+                {c ? (
+                  <>
+                    <FreeDots count={c} size={5} onColor={on ? 'var(--accent-gig)' : 'var(--success)'} />
+                    <span className="bw-label-xs text-[9px] leading-tight text-center opacity-80">
+                      {c.free}/{c.total}
+                      <br />
+                      {t('free')}
+                    </span>
+                  </>
+                ) : (
+                  <span className="bw-label-xs text-[9px] opacity-60 h-[26px] flex items-center">
+                    {kind === 'gig' ? t('Gig') : '—'}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <PillShell label={t('Start time')} htmlFor="cmp-reh-start" icon={<Clock />}>
+            <TimePicker
+              id="cmp-reh-start"
+              value={data.time}
+              onChange={val => setData(prev => ({ ...prev, time: val }))}
+              accentColor={activeAccentColor}
+              textSize="bw-body-lg"
+              showIcon={false}
+              className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+            />
+          </PillShell>
+          <PillShell
+            label={t('End time')}
+            htmlFor="cmp-reh-end"
+            icon={<Clock />}
+            aside={<span className="bw-label-sm text-foreground">{data.duration}</span>}
+          >
+            <TimePicker
+              id="cmp-reh-end"
+              value={endTime}
+              onChange={val => setEndTime(val)}
+              accentColor={activeAccentColor}
+              align="end"
+              textSize="bw-body-lg"
+              showIcon={false}
+              className="h-full border-0 pb-0 [&_span]:font-medium hover:border-0"
+            />
+          </PillShell>
+        </div>
+        {hourFree && barWindow && (
+          <div className="flex flex-col gap-2">
+            <span className="bw-label-xs text-muted-foreground">
+              {t("Who's free · {date}", { date: dateLong(data.date, { weekday: 'short', day: 'numeric', month: 'short' }) })}
+            </span>
+            <div className="flex gap-1.5" role="list">
+              {hourFree.map(r => {
+                const startM = toMinutes(r.slotStart) ?? 0;
+                // Slots after midnight count from the start of the window.
+                const m = startM < (toMinutes(barWindow.start) ?? 0) ? startM + 1440 : startM;
+                const inside = m + 60 > barWindow.s && m < barWindow.e;
+                return (
+                  <div key={r.slotStart} role="listitem" className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                    <span
+                      aria-label={`${r.slotStart}: ${t('{free} of {total} free', { free: r.free, total: r.total })}`}
+                      className={cn('w-full h-7 rounded-lg', heatLevel(r) === 0 && 'bg-foreground/[0.08]', !inside && 'opacity-45')}
+                      style={heatStyle(r)}
+                    />
+                    <span className={cn('bw-label-xs text-[10px] tabular-nums', inside ? 'text-foreground' : 'text-muted-foreground')}>
+                      {r.slotStart}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {dayFree && (
+          <p className={cn('bw-label-xs flex items-center gap-2', freeTone(dayFree))} aria-live="polite">
+            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+            {freeLine(dayFree)}
+          </p>
+        )}
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-xs text-muted-foreground">{t('Recurrence')}</span>
+          <Segmented
+            label={t('Recurrence')}
+            value={data.recurrence}
+            options={recurrenceOptions}
+            onChange={freq => setData(prev => ({ ...prev, recurrence: freq }))}
+          />
+        </div>
+      </ComposerCard>
+    );
+
+    const placeCard = (
+      <ComposerCard n={3} title={isAdmin ? t('Place & cost') : t('Place')} done={!!data.location.trim()}>
+        {renderLocationField(t('Search venue or studio…'))}
+        {data.address && <p className="bw-label-xs text-muted-foreground px-1 [overflow-wrap:anywhere]">{data.address}</p>}
+        {isAdmin && (
+          <>
+            <Segmented
+              label={t('Venue cost')}
+              value={data.venueType}
+              options={[
+                { value: 'free', label: t('Free') },
+                { value: 'paid', label: t('Paid') },
+              ]}
+              onChange={v =>
+                setData(prev => (v === 'free' ? { ...prev, venueType: 'free', totalCost: '0' } : { ...prev, venueType: 'paid' }))
+              }
+            />
+            {data.venueType === 'paid' && renderCostCard(false)}
+          </>
+        )}
+      </ComposerCard>
+    );
+
+    const focusCard = (
+      <ComposerCard n={4} title={t('Focus & tasks')} done={data.setlist.length > 0 || data.tasks.length > 0}>
+        <div className="flex flex-col gap-2">
+          <span className="bw-label-xs text-muted-foreground">{t('Focus songs')}</span>
+          <div className="flex flex-wrap gap-2">
+            {data.setlist.map((song, idx) => (
+              <button
+                key={`${song.id}-${idx}`}
+                type="button"
+                aria-label={t('Remove {title}', { title: song.title })}
+                onClick={() => setData(prev => ({ ...prev, setlist: prev.setlist.filter((_, i) => i !== idx) }))}
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-background bw-label-sm cursor-pointer hover:bg-foreground/[0.06]"
+              >
+                {song.title}
+                <X aria-hidden className="w-3.5 h-3.5 opacity-60" />
+              </button>
+            ))}
+            <Selector size="md" selected={false} onClick={() => setSongPickerOpen(true)}>
+              <Plus className="w-3.5 h-3.5" />
+              {t('Add')}
+            </Selector>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <PillField
+            label={t('New task')}
+            hideLabel
+            className="flex-1"
+            value={newTaskText}
+            onChange={e => setNewTaskText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddNewTask();
+              }
+            }}
+            placeholder={t('Add a preparation task…')}
+          />
+          <PillButton variant="dark" size="md" fullWidth={false} onClick={handleAddNewTask} disabled={!newTaskText.trim()}>
+            {t('Add')}
+          </PillButton>
+        </div>
+        {data.tasks.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {data.tasks.map(task => (
+              <li key={task.id} className={songRowCls}>
+                <span className="flex-1 min-w-0 bw-body-md truncate">{task.text}</span>
+                <IconButton label={t('Delete task {task}', { task: task.text })} icon={<X />} variant="ghost" size="sm" onClick={() => handleDeleteTask(task.id)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </ComposerCard>
+    );
+
+    const createButton = (
+      <PillButton
+        size="lg"
+        onClick={handleSubmit}
+        disabled={!canCreate}
+        loading={isSubmitting}
+        icon={<Check className="w-5 h-5" />}
+        style={{ backgroundColor: 'var(--accent-gig)', color: 'var(--accent-gig-fg)' }}
+      >
+        {t('Schedule rehearsal')}
+      </PillButton>
+    );
+
+    const tile = (label: string, value: string) => (
+      <div className="flex-1 min-w-0 rounded-[16px] bg-white/15 px-3 py-2 flex flex-col gap-1">
+        <span className="bw-label-xs opacity-80">{label}</span>
+        <span className="bw-label-md tabular-nums truncate">{value}</span>
+      </div>
+    );
+
+    const previewCard = (
+      <div className="rounded-[28px] p-5 flex flex-col gap-3 min-w-0 bg-accent-rehearsal text-accent-rehearsal-foreground">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="bw-label-xs rounded-full px-2.5 py-1 bg-white text-accent-rehearsal">{t('Rehearsal')}</span>
+          <span className="bw-label-xs">{typeText[data.type]?.label}</span>
+        </div>
+        <h3 className="bw-display-lg [overflow-wrap:anywhere]">{getEffectiveTitle()}</h3>
+        <div className="flex flex-col gap-1.5">
+          <span className="bw-body-md flex items-center gap-2">
+            <Calendar aria-hidden className="w-4 h-4 shrink-0" />
+            {dateLine}, {data.time}–{endTime}
+          </span>
+          <span className="bw-body-md flex items-center gap-2 min-w-0">
+            <MapPin aria-hidden className="w-4 h-4 shrink-0" />
+            <span className="truncate">{data.location.trim() || t('Location TBD')}</span>
+          </span>
+        </div>
+        <div className="flex gap-2">
+          {tile(t('Start'), data.time || '—')}
+          {tile(t('End'), endTime || '—')}
+          {isPaid && tile(t('Each'), perPersonLabel)}
+        </div>
+      </div>
+    );
+
+    const rsvpCard = (
+      <div className="rounded-[20px] bg-background p-4 flex flex-col gap-3">
+        <span className="bw-label-xs text-muted-foreground">{t('Each member gets an RSVP')}</span>
+        <div className="grid grid-cols-3 gap-2" aria-hidden>
+          {[
+            { icon: <Check className="w-4 h-4" />, label: t('Going') },
+            { icon: <Clock className="w-4 h-4" />, label: t('Maybe') },
+            { icon: <X className="w-4 h-4" />, label: t("Can't") },
+          ].map(x => (
+            <span key={x.label} className="h-10 rounded-full bg-foreground/[0.06] flex items-center justify-center gap-1.5 bw-label-sm truncate px-2">
+              {x.icon}
+              {x.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+
+    const checklist = (
+      <ul className="flex flex-col gap-2">
+        <ComposerCheck done={audienceCount > 0}>
+          {audienceCount === 1 ? t('{count} musician invited', { count: audienceCount }) : t('{count} musicians invited', { count: audienceCount })}
+        </ComposerCheck>
+        {isPaid && (
+          <ComposerCheck done>
+            {t('Room {cost} · split {each} each', { cost: `${sym().trim()}${data.totalCost}`, each: perPersonLabel })}
+          </ComposerCheck>
+        )}
+        <ComposerCheck done={canCreate}>{t("Added to everyone's calendar")}</ComposerCheck>
+      </ul>
+    );
+
+    const preview = (
+      <ComposerPreview
+        label={t('Live preview')}
+        caption={t('As the band sees it')}
+        className={landscape ? 'sticky top-0 min-h-[min(720px,calc(100dvh-140px))]' : undefined}
+        footer={createButton}
+      >
+        {previewCard}
+        {rsvpCard}
+        {checklist}
+      </ComposerPreview>
+    );
+
+    const modeSwitch =
+      onOpenPollBuilder && isAdmin ? (
+        <div className={cn(landscape ? 'w-[340px]' : 'w-full order-last basis-full')}>
+          <Segmented
+            label={t('Scheduling mode')}
+            value="direct"
+            options={[
+              { value: 'direct', label: t('Schedule directly') },
+              { value: 'poll', label: t('Poll availability') },
+            ]}
+            onChange={v => {
+              if (v === 'poll') {
+                onClose();
+                onOpenPollBuilder();
+              }
+            }}
+          />
+        </div>
+      ) : undefined;
+
+    return (
+      <ComposerShell
+        kind="rehearsal"
+        title={t('New rehearsal')}
+        subline={t('Schedule · the band gets an RSVP')}
+        closeLabel={t('Close rehearsal wizard')}
+        onClose={requestClose}
+        ready={{ done: ready, total: 4 }}
+        headerCenter={modeSwitch}
+        onSaveDraft={draftsEnabled ? handleSaveDraft : undefined}
+        accent="var(--accent-gig)"
+        accentFg="var(--accent-gig-fg)"
+      >
+        {landscape ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1fr)] gap-4 items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              {sessionCard}
+              {invitedCard}
+              {focusCard}
+            </div>
+            <div className="flex flex-col gap-4 min-w-0">
+              {dateCard}
+              {placeCard}
+            </div>
+            {preview}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              {sessionCard}
+              {dateCard}
+              {placeCard}
+            </div>
+            <div className="flex flex-col gap-4 min-w-0">
+              {invitedCard}
+              {focusCard}
+              {preview}
+            </div>
+          </div>
+        )}
+      </ComposerShell>
+    );
+  };
+
   // ── MAIN RENDER ───────────────────────────────────────────
 
   // iPhone Duo: the wizard's close sits in the system column under the clock
@@ -1907,6 +2389,8 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
 
   return (
     <>
+      {composerOn && renderComposer()}
+      {!composerOn && (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1952,6 +2436,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           </div>
         </div>
       </motion.div>
+      )}
       {modals}
       {draftsEnabled && (
         <LeaveWizardSheet
