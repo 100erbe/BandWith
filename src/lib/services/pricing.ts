@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getBandPrivate } from './bandPrivate';
 import { setActiveCurrency } from '@/lib/currency';
 import { translate, type Locale } from '@/lib/i18n';
 import type { PerformanceType } from '@/app/data/quotes';
@@ -731,14 +732,19 @@ export async function getBandPricing(bandId: string): Promise<BandPricingSetting
 
   try {
     if (effectiveId !== 'default') {
-      const { data, error } = await supabase
-        .from('bands')
-        .select('pricing_settings')
-        .eq('id', effectiveId)
-        .maybeSingle();
+      // Admins only (077): members get no row and never see the band's
+      // rates or bank details. Their currency comes from pricing_currency.
+      const { data, error } = await getBandPrivate([effectiveId]);
 
-      if (!error && data?.pricing_settings) {
-        const normalized = normalizeBandPricingSettings(data.pricing_settings, effectiveId);
+      if (!error && data.length === 0) {
+        // Not an admin of this band: drop any copy an older version cached.
+        try { localStorage.removeItem(localKey); } catch { /* storage unavailable */ }
+        return normalizeBandPricingSettings(DEFAULT_BAND_PRICING, effectiveId);
+      }
+
+      const settings = data[0]?.private?.pricing_settings;
+      if (!error && settings) {
+        const normalized = normalizeBandPricingSettings(settings as BandPricingSettings, effectiveId);
         localStorage.setItem(localKey, JSON.stringify(normalized));
         setActiveCurrency(normalized.currency, effectiveId);
         return normalized;
