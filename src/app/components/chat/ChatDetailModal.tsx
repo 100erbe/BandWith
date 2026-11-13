@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useOnlinePresence } from '@/lib/services/presence';
 import { Capacitor } from '@capacitor/core';
 import { useT, intlLocale } from '@/lib/i18n';
+import { CHAT_EVENT_COLUMNS, chatEventContext, type ChatEventContext } from '@/lib/chatEventContext';
 import { CHAT_PAGE_SIZE, mergeLatestPage, prependOlder, normalizeChatType, type ChatKind } from '@/lib/chatMessages';
 
 /**
@@ -62,6 +63,8 @@ interface ChatDetailModalProps {
     bandLabel?: string;
   };
   onClose: () => void;
+  /** Opens the chat's event (the pinned strip of an event chat). */
+  onOpenEvent?: (eventId: string) => void;
 }
 
 /** Icon shown on an event chat tile, per event kind (Figma: music / mic / file). */
@@ -101,7 +104,7 @@ const renderMessageContent = (content: string, isMe: boolean) => {
   );
 };
 
-export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose }) => {
+export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose, onOpenEvent }) => {
   const { user } = useAuth();
   const t = useT();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -124,6 +127,8 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
     chat.initials && chat.initials !== 'NC' ? chat.initials : ''
   );
   const [chatAvatarUrl, setChatAvatarUrl] = useState<string | undefined>(chat.avatarUrl);
+  // Event chats: the event pinned at the top (date, load-in, venue).
+  const [eventContext, setEventContext] = useState<ChatEventContext | null>(null);
   const [canText, setCanText] = useState<boolean>(true);
   const [restrictionReason, setRestrictionReason] = useState<string>('');
   // Band admins (user ids) for the chat's band: drives the " · Admin" sender label.
@@ -291,6 +296,11 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
               setChatAvatarUrl((fullChat as any).logo_url || (fullChat as any).avatar_url);
             }
           }
+        }
+
+        if (fullChat.type === 'event' && fullChat.event_id) {
+          const { data: ev } = await supabase.from('events').select(CHAT_EVENT_COLUMNS).eq('id', fullChat.event_id).maybeSingle();
+          if (ev) setEventContext(chatEventContext(ev as Parameters<typeof chatEventContext>[0]));
         }
 
         // One lookup per chat (not per message) for the band's admins.
@@ -632,6 +642,10 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
         <HeaderAction pane label={t('Delete chat')} variant="ghost" icon={<Trash2 />} onClick={() => setShowDeleteConfirm(true)} />
       </div>
 
+      {chatType === 'event' && eventContext && (
+        <ChatEventStrip context={eventContext} onOpen={onOpenEvent ? () => onOpenEvent(eventContext.id) : undefined} />
+      )}
+
       <DeleteChatSheet
         open={showDeleteConfirm}
         chatName={chatType === 'direct' ? displayTitle : undefined}
@@ -909,3 +923,59 @@ export const ChatDetailModal: React.FC<ChatDetailModalProps> = ({ chat, onClose 
 };
 
 export default ChatDetailModal;
+
+/** Event chats: the event pinned under the header; tapping it opens the event. */
+const ChatEventStrip: React.FC<{ context: ChatEventContext; onOpen?: () => void }> = ({ context, onOpen }) => {
+  const t = useT();
+  const kind = eventKindOf({ eventType: context.eventType });
+  const Icon = EVENT_ICON[kind];
+  const dateLabel = context.day
+    ? context.when === 'today'
+      ? t('Today')
+      : context.when === 'tomorrow'
+        ? t('Tomorrow')
+        : new Date(`${context.day}T12:00:00`).toLocaleDateString(intlLocale('en-GB'), { weekday: 'short', day: 'numeric', month: 'short' })
+    : null;
+  const timeLabel = context.time
+    ? context.time.kind === 'loadIn'
+      ? t('Load-in {time}', { time: context.time.value })
+      : t('Start {time}', { time: context.time.value })
+    : null;
+  const line = [context.when === 'past' ? t('Past event') : null, dateLabel, timeLabel].filter(Boolean).join(' · ');
+  const body = (
+    <>
+      <span
+        aria-hidden
+        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        style={{ backgroundColor: `var(--accent-${kind})`, color: `var(--accent-${kind}-fg)` }}
+      >
+        <Icon className="w-4 h-4" />
+      </span>
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="flex items-center gap-2 min-w-0">
+          <span className={cn('bw-label-sm truncate', context.cancelled && 'line-through text-muted-foreground')}>{line || context.title}</span>
+          {context.cancelled && <Tag>{t('Cancelled')}</Tag>}
+        </span>
+        {context.place && <span className="bw-body-sm text-muted-foreground truncate">{context.place}</span>}
+      </span>
+      {onOpen && <ArrowUpRight aria-hidden className="w-4 h-4 shrink-0 text-foreground" />}
+    </>
+  );
+  const cls = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-[20px] bg-card text-card-foreground text-left';
+  return (
+    <div className="px-4 pb-2 bg-background shrink-0">
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={[t('Open event'), context.title, line, context.place].filter(Boolean).join(', ')}
+          className={cn(cls, 'active:scale-[0.99] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring')}
+        >
+          {body}
+        </button>
+      ) : (
+        <div className={cls}>{body}</div>
+      )}
+    </div>
+  );
+};
