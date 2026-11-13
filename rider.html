@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Technical rider · BandWith</title>
+<style>
+  :root { color-scheme: light; --lime: #D5FB46; --ink: #050505; --bone: #E5E3E0; --mute: #5C5B5A; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    background: var(--bone); color: #000;
+    font-family: 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { width: 100%; max-width: 520px; display: grid; gap: 12px; align-content: start; }
+  .card { background: #fff; border-radius: 28px; padding: 28px 24px; }
+  .card.lime { background: var(--lime); }
+  .card.ink { background: var(--ink); color: #fff; }
+  .kicker {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 500;
+  }
+  h1 {
+    margin: 12px 0 0; font-size: 40px; line-height: 0.95; font-weight: 700;
+    letter-spacing: -0.02em; word-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere;
+  }
+  h2 { margin: 0; font-size: 24px; line-height: 1.05; font-weight: 700; letter-spacing: -0.01em; text-transform: uppercase; }
+  p { margin: 12px 0 0; font-size: 17px; line-height: 24px; }
+  .ink p, .ink .mute { color: rgba(255,255,255,0.72); }
+  .mute { color: var(--mute); }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; }
+  dt {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--mute); padding-top: 4px; white-space: nowrap;
+  }
+  dd { margin: 0; font-size: 17px; line-height: 22px; font-weight: 500; overflow-wrap: anywhere; }
+  dd s { color: var(--mute); font-weight: 400; margin-right: 6px; }
+  .ink dd s { color: rgba(255,255,255,0.5); }
+  .ink dt { color: rgba(255,255,255,0.6); }
+  .stack { display: grid; gap: 8px; margin-top: 20px; }
+  .btn {
+    width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    min-height: 56px; padding: 16px 22px; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--ink); color: #fff; text-align: left; text-decoration: none;
+    font: 700 15px/1.15 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+  }
+  .btn.lime { background: var(--lime); color: #000; }
+  .btn.light { background: #fff; color: #000; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.12); }
+  .ink .btn.light { box-shadow: none; }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #3A7BFF; outline-offset: 2px; }
+  .btn .arrow { flex: none; }
+  label.field { display: grid; gap: 8px; margin-top: 18px; }
+  textarea {
+    width: 100%; min-height: 76px; resize: vertical; border: 0; border-radius: 18px; padding: 14px 16px;
+    font: 400 16px/22px 'Neue Haas Grotesk Display Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #F2F1EF; color: #000; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.08);
+  }
+  .lime textarea { background: rgba(255,255,255,0.55); }
+  .row-link { display: inline-block; margin-top: 10px; color: inherit; font-weight: 600; font-size: 15px; }
+  .note { font-size: 13px; line-height: 19px; color: var(--mute); padding: 0 8px; margin: 0; }
+  details > summary {
+    list-style: none; cursor: pointer; margin-top: 18px; font-weight: 600; font-size: 15px;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  main { max-width: 760px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 20px; }
+  .tile { background: rgba(255,255,255,0.08); border-radius: 16px; padding: 12px 14px; min-width: 0; }
+  .tile b { display: block; margin-top: 4px; font: 500 15px/1.2 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+  .chip { font: 500 11px/1 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .chip.on { background: #000; color: #fff; box-shadow: none; }
+  .tag { font: 500 11px/1 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; padding: 7px 10px; border-radius: 999px; background: #DDF1E1; color: #1F6B35; }
+  .stage { position: relative; width: 100%; margin-top: 16px; border: 1.5px dashed rgba(0,0,0,.25); border-radius: 16px; background: #fff; }
+  .mark { position: absolute; transform: translate(-50%, -50%); }
+  .p { width: 40px; height: 40px; border-radius: 50%; background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; }
+  .p.lead { background: var(--lime); color: #000; }
+  .cap { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; white-space: nowrap; font: 400 10px/1 'SF Mono', Menlo, Consolas, monospace; color: var(--mute); }
+  .w { width: 28px; height: 13px; border: 1.5px solid #000; border-radius: 5px; background: #fff; }
+  .sp { width: 14px; height: 40px; border-radius: 4px; background: #000; }
+  .di { width: 22px; height: 14px; border: 1.5px solid #000; border-radius: 3px; font: 7px/11px monospace; text-align: center; }
+  .aud { text-align: center; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 15px; }
+  th { text-align: left; font: 500 11px/1 'SF Mono', Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding: 0 8px 10px 0; }
+  td { padding: 10px 8px 10px 0; border-top: 1px solid rgba(0,0,0,.1); vertical-align: top; }
+  td.mono { font: 500 12px/20px 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; }
+  td.who { color: var(--mute); text-align: right; padding-right: 0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  ul.check { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; font-size: 17px; }
+  ul.check li::before { content: '✓'; margin-right: 10px; color: var(--mute); }
+  .ink ul.check li::before { color: var(--lime); }
+  .pre { white-space: pre-wrap; }
+  @media (max-width: 560px) { .cols { grid-template-columns: 1fr; } .p { width: 32px; height: 32px; font-size: 11px; } .cap { display: none; } }
+  @media print { body { background: #fff; padding: 0; } .card { break-inside: avoid; } .noprint { display: none !important; } }
+  [hidden] { display: none !important; }
+  @media (max-width: 374px) { h1 { font-size: 32px; } .card { padding: 24px 18px; } dl { grid-template-columns: 1fr; gap: 2px 0; } dd { margin-bottom: 8px; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite">
+  <section class="card lime"><div class="kicker">BandWith</div><p>Loading…</p></section>
+</main>
+<script type="module" src="/src/rider.ts"></script>
+</body>
+</html>

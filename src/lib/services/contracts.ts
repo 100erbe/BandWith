@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { attachEventPrivate } from './eventPrivate';
 import { parseLocalDate, toLocalDateString, todayLocal } from '../dates';
 import { t, translate, intlLocale, type Locale } from '@/lib/i18n';
+import { channelLabel, stageSize, type StageData } from '../stagePlot';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Contracts & riders (table `contracts`, migration 006).
@@ -32,6 +33,10 @@ export interface Contract {
   viewed_at?: string | null;
   signed_at?: string | null;
   expires_at?: string | null;
+  /** Riders: version shown to the venue (093); a new version clears sent / seen. */
+  version?: number | null;
+  /** Riders: the venue's read-only web link token (093). */
+  view_token?: string | null;
   created_by?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -416,6 +421,8 @@ interface PdfOptions {
   lang?: Locale;
   /** Generation date (tests pass a fixed one). */
   now?: Date;
+  /** Riders: the gig's stage (092), drawn after the details. */
+  stage?: StageData | null;
 }
 
 /** Builds the PDF bytes (each char of the returned string is one byte). */
@@ -487,6 +494,103 @@ export const buildContractPdfBytes = (c: Contract, opts: PdfOptions = {}): Uint8
       y -= 17;
     }
     y -= 4;
+  }
+
+  // Rider: stage plot, input list, who brings what (092).
+  const stage = isRider(c) ? opts.stage : null;
+  if (stage) {
+    const heading = (label: string, meta = '') => {
+      y -= 10;
+      ensure(60);
+      rule();
+      y -= 26;
+      text(toWinAnsi(label), MARGIN, 10, true, 0.35);
+      if (meta) {
+        const m = toWinAnsi(meta);
+        text(m, PAGE_W - MARGIN - textWidth(m, 9), 9, false, 0.45);
+      }
+      y -= 18;
+    };
+    const centred = (s: string, cx: number, size: number, bold = false, gray = 0) => {
+      const w = toWinAnsi(s);
+      text(w, cx - textWidth(w, size, bold) / 2, size, bold, gray);
+    };
+    const circle = (cx: number, cy: number, r: number) => {
+      const k = 0.5523 * r;
+      return `${n(cx + r)} ${n(cy)} m ${n(cx + r)} ${n(cy + k)} ${n(cx + k)} ${n(cy + r)} ${n(cx)} ${n(cy + r)} c ` +
+        `${n(cx - k)} ${n(cy + r)} ${n(cx - r)} ${n(cy + k)} ${n(cx - r)} ${n(cy)} c ` +
+        `${n(cx - r)} ${n(cy - k)} ${n(cx - k)} ${n(cy - r)} ${n(cx)} ${n(cy - r)} c ` +
+        `${n(cx + k)} ${n(cy - r)} ${n(cx + r)} ${n(cy - k)} ${n(cx + r)} ${n(cy)} c`;
+    };
+    for (const plot of stage.plots.filter((p) => p.items.length > 0)) {
+      heading(`${tr('STAGE PLOT')} · ${plot.name.toUpperCase()}`, stageSize(plot));
+      const ratio = plot.widthM && plot.depthM ? Math.min(2.1, Math.max(1.3, plot.widthM / plot.depthM)) : 1.6;
+      const boxW = CONTENT_W;
+      const boxH = Math.round(boxW / ratio);
+      ensure(boxH + 36);
+      const top = y;
+      const bottom = y - boxH;
+      ops.push(`[4 3] 0 d 0.6 G 1 w ${n(MARGIN)} ${n(bottom)} ${n(boxW)} ${n(boxH)} re S [] 0 d`);
+      for (const it of plot.items) {
+        const cx = MARGIN + it.x * boxW;
+        const cy = top - it.y * boxH;
+        if (it.kind === 'player') {
+          ops.push(`${it.lead ? '0.835 0.984 0.275 rg' : '0 g'} ${circle(cx, cy, 15)} f`);
+          const save = y;
+          y = cy - 4;
+          centred(it.code || '', cx, 10, true, it.lead ? 0 : 1);
+          if (it.label) {
+            y = cy - 27;
+            centred(it.label, cx, 7.5, false, 0.4);
+          }
+          y = save;
+        } else if (it.kind === 'speaker') {
+          ops.push(`0 g ${n(cx - 5)} ${n(cy - 15)} 10 30 re f`);
+        } else if (it.kind === 'di') {
+          ops.push(`0 G 1 w ${n(cx - 8)} ${n(cy - 5)} 16 10 re S`);
+        } else {
+          ops.push(`0 G 1 w ${n(cx - 11)} ${n(cy - 5)} 22 10 re S`);
+        }
+      }
+      y = bottom - 16;
+      centred(tr('AUDIENCE'), MARGIN + boxW / 2, 8, false, 0.45);
+      y -= 12;
+    }
+
+    if (stage.inputs.length > 0) {
+      heading(
+        tr('INPUT LIST'),
+        [tr('{count} ch', { count: stage.inputs.length }), stage.mixer].filter(Boolean).join(' · '),
+      );
+      const cols = [MARGIN, MARGIN + 40, MARGIN + 260, MARGIN + 380];
+      [tr('CH'), tr('SOURCE'), tr('MIC / DI'), tr('WHO')].forEach((h, i) => text(toWinAnsi(h), cols[i], 8.5, true, 0.45));
+      y -= 16;
+      stage.inputs.forEach((ch, i) => {
+        ensure(18);
+        text(channelLabel(i), cols[0], 11, false, 0.45);
+        text(toWinAnsi(ch.source).slice(0, 34), cols[1], 11, true);
+        text(toWinAnsi(ch.mic.toUpperCase()).slice(0, 18), cols[2], 10);
+        text(toWinAnsi(ch.who).slice(0, 18), cols[3], 10.5, false, 0.35);
+        y -= 17;
+      });
+    }
+
+    if (stage.bandBrings.length > 0 || stage.venueProvides.length > 0) {
+      heading(tr('WHO BRINGS WHAT'), stage.venueAgreed ? tr('VENUE AGREED') : '');
+      const half = CONTENT_W / 2;
+      text(toWinAnsi(tr('BAND BRINGS')), MARGIN, 8.5, true, 0.45);
+      text(toWinAnsi(tr('VENUE PROVIDES')), MARGIN + half, 8.5, true, 0.45);
+      y -= 18;
+      const rows = Math.max(stage.bandBrings.length, stage.venueProvides.length);
+      for (let i = 0; i < rows; i++) {
+        ensure(17);
+        const a = stage.bandBrings[i];
+        const b = stage.venueProvides[i];
+        if (a) text(toWinAnsi(`- ${a}`).slice(0, 48), MARGIN, 11);
+        if (b) text(toWinAnsi(`- ${b}`).slice(0, 48), MARGIN + half, 11);
+        y -= 17;
+      }
+    }
   }
 
   // Notes & terms.

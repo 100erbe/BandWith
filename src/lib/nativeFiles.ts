@@ -131,3 +131,34 @@ export const openExternal = async (url: string) => {
   const w = window.open(url, '_blank', 'noopener,noreferrer');
   if (!w) window.location.href = url;
 };
+
+export type LinkShareResult = 'shared' | 'copied' | 'cancelled';
+
+/**
+ * Shares a link with a short message (the rider's web link). Native share
+ * sheet on iOS / Android, Web Share in browsers that have it, otherwise the
+ * link is copied to the clipboard.
+ */
+export const shareLink = async (url: string, opts: { title?: string; text?: string; dialogTitle?: string } = {}): Promise<LinkShareResult> => {
+  if (Capacitor.isNativePlatform()) {
+    const { Share } = await import('@capacitor/share');
+    try {
+      await Share.share({ title: opts.title, text: opts.text, url, dialogTitle: opts.dialogTitle || opts.title });
+      return 'shared';
+    } catch (err) {
+      if (isCancel(err)) return 'cancelled';
+      throw err;
+    }
+  }
+  const nav = navigator as Navigator;
+  if (nav.share) {
+    try {
+      await nav.share({ title: opts.title, text: opts.text, url });
+      return 'shared';
+    } catch (err) {
+      if (isCancel(err)) return 'cancelled';
+    }
+  }
+  await navigator.clipboard?.writeText(url);
+  return 'copied';
+};

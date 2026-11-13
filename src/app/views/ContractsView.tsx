@@ -14,10 +14,14 @@ import {
   RefreshCw,
   Pencil,
   Sparkles,
+  Link,
+  Copy,
 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
 import { todayLocal } from '@/lib/dates';
-import { shareFile, openExternal, saveFile } from '@/lib/nativeFiles';
+import { shareFile, shareLink, openExternal, saveFile } from '@/lib/nativeFiles';
+import { getEventStage, riderShareLink } from '@/lib/services/eventStage';
+import type { StageData } from '@/lib/stagePlot';
 import { DeleteChatSheet } from '@/app/components/chat/DeleteChatSheet';
 import {
   STATUS_LABEL,
@@ -40,6 +44,7 @@ import {
   mailtoUrl,
   markContractSent,
   markContractSigned,
+  updateContract,
   type Contract,
   type ContractStatus,
 } from '@/lib/services/contracts';
@@ -65,25 +70,25 @@ const STATUS_DOT: Record<ContractStatus, string> = {
 };
 
 /** Status label for display (the status itself stays the stored value). */
-const useStatusLabel = () => {
+const useStatusLabel = (rider = false) => {
   const t = useT();
   return useCallback(
     (status: ContractStatus): string => {
       const labels: Record<ContractStatus, string> = {
         draft: t('Draft'),
         sent: t('Sent'),
-        viewed: t('Viewed'),
+        viewed: rider ? t('Seen') : t('Viewed'),
         signed: t('Signed'),
         expired: t('Expired'),
       };
       return labels[status] ?? STATUS_LABEL[status] ?? status;
     },
-    [t],
+    [t, rider],
   );
 };
 
-const StatusDot: React.FC<{ status: ContractStatus }> = ({ status }) => {
-  const statusLabel = useStatusLabel();
+const StatusDot: React.FC<{ status: ContractStatus; rider?: boolean }> = ({ status, rider }) => {
+  const statusLabel = useStatusLabel(rider);
   return (
     <span className="flex items-center gap-1.5 shrink-0">
       <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[status] ?? 'bg-muted-foreground')} aria-hidden />
@@ -120,11 +125,13 @@ const TABS = ['All', 'Contracts', 'Riders'] as const;
 
 const sameText = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
-type BusyKind = 'download' | 'sign' | 'delete';
+type BusyKind = 'download' | 'sign' | 'delete' | 'link' | 'version';
 
 export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) => {
   const t = useT();
-  const statusLabel = useStatusLabel();
+  const docStatusLabel = useStatusLabel();
+  const riderStatusLabel = useStatusLabel(true);
+  const statusLabel = (status: ContractStatus, c?: Contract | null) => (c && isRider(c) ? riderStatusLabel(status) : docStatusLabel(status));
   const tabLabel = (tab: typeof TABS[number]) => (tab === 'All' ? t('All') : tab === 'Contracts' ? t('Contracts') : t('Riders'));
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,13 +350,74 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
     setMenuOpenId(null);
   };
 
+  /** Riders linked to a gig carry its stage plot, input list and who brings what. */
+  const stageFor = async (contract: Contract): Promise<StageData | null> => {
+    if (!isRider(contract) || !contract.event_id) return null;
+    const { data } = await getEventStage(contract.event_id);
+    return data?.saved ? data.data : null;
+  };
+
+  /** Riders: the venue's read-only web link; opening it marks the rider seen. */
+  const handleShareRiderLink = async (contract: Contract) => {
+    setMenuOpenId(null);
+    if (busy) return;
+    setBusy({ id: contract.id, kind: 'link' });
+    setActionError(null);
+    try {
+      const { data: url, error } = await riderShareLink(contract.id);
+      if (error || !url) {
+        setActionError(t('Could not create the link.') + (error?.message ? ` ${error.message}` : ''));
+        return;
+      }
+      const res = await shareLink(url, {
+        title: contract.title,
+        text: t('Technical rider for {event}: stage plot, input list and who brings what.', { event: contract.event_name || contract.title }),
+        dialogTitle: t('Share rider link'),
+      });
+      if (res === 'copied') setNotice(t('Link copied'));
+      if (res !== 'cancelled' && !contract.sent_at) {
+        const { data } = await updateContract(contract.id, {
+          status: contract.status === 'viewed' ? 'viewed' : 'sent',
+          sent_at: new Date().toISOString(),
+        });
+        if (data) replaceContract(data);
+      }
+    } catch (err) {
+      setActionError(t('Could not share the link.') + ` ${errorMessage(err)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Riders: a new version goes back to draft; sent and seen start again. */
+  const handleNewVersion = async (contract: Contract) => {
+    setMenuOpenId(null);
+    if (busy) return;
+    setBusy({ id: contract.id, kind: 'version' });
+    setActionError(null);
+    const { data, error } = await updateContract(contract.id, {
+      version: Math.min(999, (contract.version ?? 1) + 1),
+      status: 'draft',
+      sent_at: null,
+      viewed_at: null,
+    });
+    setBusy(null);
+    if (error || !data) {
+      setActionError(t('Could not update the document.') + (error?.message ? ` ${error.message}` : ''));
+      return;
+    }
+    replaceContract(data);
+    setNotice(t('Rider v{n}: share it again so the venue sees the new version.', { n: data.version ?? 1 }));
+  };
+
   const handleDownloadPdf = async (contract: Contract) => {
     setMenuOpenId(null);
     if (busy) return;
     setBusy({ id: contract.id, kind: 'download' });
     setActionError(null);
     try {
-      const blob = buildContractPdf(contract, { bandName, lang: docLanguageFor(contract.client_email || contract.client_name) });
+      const stage = await stageFor(contract);
+      const blob = buildContractPdf(contract, { bandName, lang: docLanguageFor(contract.client_email || contract.client_name), stage });
       const { result, location } = await saveFile(blob, contractFileName(contract));
       if (result === 'saved') setNotice(t('PDF saved to {location}', { location: String(location) }));
       else if (result === 'downloaded') setNotice(t('PDF downloaded'));
@@ -414,7 +482,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       const contract = { ...sendingContract, client_email: email };
       rememberDocLanguage(email, sendLang);
       const { subject, body } = buildSendMessage(contract, bandName, sendLang);
-      const blob = buildContractPdf(contract, { bandName, lang: sendLang });
+      const stage = await stageFor(contract);
+      const blob = buildContractPdf(contract, { bandName, lang: sendLang, stage });
       const result = await shareFile(blob, contractFileName(contract), { title: subject, text: body, dialogTitle: t('Send to client') });
       if (result === 'cancelled') return;
       if (result === 'shared') {
@@ -566,7 +635,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                     <div className="flex items-center gap-3">
                       <TypeIcon className="w-[22px] h-[22px] shrink-0" aria-label={rider ? t('Rider') : t('Contract')} />
                       <div className="flex-1" />
-                      <StatusDot status={status} />
+                      <StatusDot status={status} rider={rider} />
                       <button
                         type="button"
                         onClick={() => setMenuOpenId(menuOpenId === contract.id ? null : contract.id)}
@@ -586,6 +655,22 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                       <h3 className="bw-h3 text-foreground [overflow-wrap:anywhere]">{contract.title}</h3>
                       {meta && <p className="bw-body-sm text-muted-foreground line-clamp-2">{meta}</p>}
                     </button>
+                    {rider && contract.event_id && (
+                      <span className="relative z-10 pointer-events-none self-start max-w-full block h-7 leading-7 px-3 rounded-full bg-accent text-accent-foreground bw-label-xs truncate">
+                        {[
+                          t('Linked to {event}', { event: contract.event_name || t('a gig') }),
+                          `v${contract.version ?? 1}`,
+                          contract.viewed_at
+                            ? t('Seen {date}', {
+                                date: new Date(contract.viewed_at).toLocaleDateString(intlLocale('en-GB'), { day: 'numeric', month: 'short' }),
+                              })
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                          .toUpperCase()}
+                      </span>
+                    )}
                   </Card>
 
                   <AnimatePresence>
@@ -608,7 +693,12 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                                   icon: <Send className="w-4 h-4" />,
                                   run: () => openSend(contract),
                                 },
-                                { label: t('Mark as signed'), icon: <FileSignature className="w-4 h-4" />, run: () => handleMarkSigned(contract) },
+                                ...(rider
+                                  ? [
+                                      { label: t('Share web link'), icon: <Link className="w-4 h-4" />, run: () => handleShareRiderLink(contract) },
+                                      { label: t('New version'), icon: <Copy className="w-4 h-4" />, run: () => handleNewVersion(contract) },
+                                    ]
+                                  : [{ label: t('Mark as signed'), icon: <FileSignature className="w-4 h-4" />, run: () => handleMarkSigned(contract) }]),
                               ]
                             : []),
                           {
@@ -784,7 +874,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
       <BwSheet
         open={!!viewingContract}
         onClose={() => setViewingId(null)}
-        overline={viewingContract ? statusLabel(effectiveStatus(viewingContract, today)) : undefined}
+        overline={viewingContract ? statusLabel(effectiveStatus(viewingContract, today), viewingContract) : undefined}
         title={viewingContract?.title ?? ''}
         zIndex={110}
         footer={
@@ -817,16 +907,29 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
                   >
                     {t('Edit')}
                   </PillButton>
-                  <PillButton
-                    variant="outline"
-                    className={SHEET_OUTLINE}
-                    icon={<FileSignature className="w-[18px] h-[18px]" />}
-                    loading={isBusy(viewingContract.id, 'sign')}
-                    disabled={!!busy}
-                    onClick={() => handleMarkSigned(viewingContract)}
-                  >
-                    {t('Mark as signed')}
-                  </PillButton>
+                  {isRider(viewingContract) ? (
+                    <PillButton
+                      variant="outline"
+                      className={SHEET_OUTLINE}
+                      icon={<Link className="w-[18px] h-[18px]" />}
+                      loading={isBusy(viewingContract.id, 'link')}
+                      disabled={!!busy}
+                      onClick={() => handleShareRiderLink(viewingContract)}
+                    >
+                      {t('Web link')}
+                    </PillButton>
+                  ) : (
+                    <PillButton
+                      variant="outline"
+                      className={SHEET_OUTLINE}
+                      icon={<FileSignature className="w-[18px] h-[18px]" />}
+                      loading={isBusy(viewingContract.id, 'sign')}
+                      disabled={!!busy}
+                      onClick={() => handleMarkSigned(viewingContract)}
+                    >
+                      {t('Mark as signed')}
+                    </PillButton>
+                  )}
                 </div>
               )}
             </div>
@@ -845,7 +948,11 @@ export const ContractsView: React.FC<ContractsViewProps> = ({ onBack, bandId }) 
             {viewingContract.client_email && <SheetInfo label={t('Client email')}>{viewingContract.client_email}</SheetInfo>}
             <SheetInfo label={t('Document type')}>{isRider(viewingContract) ? t('Rider') : t('Contract')}</SheetInfo>
             {viewingContract.expires_at && <SheetInfo label={t('Valid until')}>{formatContractDate(viewingContract.expires_at, intlLocale('en-GB'))}</SheetInfo>}
+            {isRider(viewingContract) && <SheetInfo label={t('Version')}>{`v${viewingContract.version ?? 1}`}</SheetInfo>}
             {viewingContract.sent_at && <SheetInfo label={t('Sent')}>{formatContractDate(viewingContract.sent_at, intlLocale('en-GB'))}</SheetInfo>}
+            {isRider(viewingContract) && viewingContract.viewed_at && (
+              <SheetInfo label={t('Seen by the venue')}>{formatContractDate(viewingContract.viewed_at, intlLocale('en-GB'))}</SheetInfo>
+            )}
             {viewingContract.signed_at && <SheetInfo label={t('Signed')}>{formatContractDate(viewingContract.signed_at, intlLocale('en-GB'))}</SheetInfo>}
             {viewingContract.content && (
               <SheetInfo label={isRider(viewingContract) ? t('Requirements & notes') : t('Notes & terms')}>
