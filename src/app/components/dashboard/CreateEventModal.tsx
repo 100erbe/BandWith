@@ -1534,6 +1534,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         placeholder={t('Select event date')}
         className={PICKER_FIELD}
         events={pickerEvents}
+        availability={{ bandId: selectedBand?.id, start: details.startTime, end: details.endTime, excludeEventId: editingEvent?.eventId }}
       />
     </div>
   );

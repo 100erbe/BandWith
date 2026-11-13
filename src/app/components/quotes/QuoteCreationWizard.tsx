@@ -1970,6 +1970,7 @@ export const QuoteCreationWizard: React.FC<QuoteCreationWizardProps> = ({
           accentColor={activeAccentColor}
           placeholder={t('Select event date…')}
           className={PICKER_PILL}
+          availability={{ bandId: selectedBand?.id, start: eventTimeStart, end: eventTimeEnd }}
         />
       </div>
 
