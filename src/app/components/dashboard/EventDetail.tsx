@@ -48,6 +48,7 @@ import { KeyValueRow, LINK_CLASS, MemberRow, SectionTitle, type ResolvedMember }
 import { useEventMembers } from '@/app/components/event/useEventMembers';
 import { useEventLiveRefresh } from '@/app/components/event/useEventLiveRefresh';
 import { useStageLive } from '@/app/components/event/useStageLive';
+import { prefetchStageKey, readCachedSetlist, writeCachedSetlist } from '@/lib/stageBleNative';
 import { useLinkedQuote, QuoteSummaryCard, QuoteLineItems, QuoteClientSection } from '@/app/components/event/QuoteSections';
 import { RsvpChoiceCard, type RsvpAnswer } from '@/app/components/event/RsvpChoiceCard';
 import {
@@ -370,7 +371,8 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     if (setlistReloadKey === 0) setSetlistLoading(true);
     const fetchSetlist = async () => {
       try {
-        const { data } = await supabase
+        const setlistId = event.setlistId!;
+        const { data, error } = await supabase
           .from('setlist_songs')
           // songs has duration_seconds, not duration: asking for a missing
           // column makes PostgREST fail the whole query.
@@ -379,13 +381,19 @@ export const EventDetail: React.FC<EventDetailProps> = ({
           .order('set_number', { ascending: true })
           .order('position', { ascending: true });
         if (cancelled) return;
+        // No internet (a venue with no signal): the copy kept on the phone, so
+        // Stage mode still has the songs (and Bluetooth sync).
+        if (error) {
+          setSetlistSongs(readCachedSetlist(setlistId) ?? []);
+          return;
+        }
         // An empty or failed query clears the list instead of keeping the
         // songs of the setlist shown before.
         if (!data || data.length === 0) {
           setSetlistSongs([]);
+          writeCachedSetlist(setlistId, []);
         } else {
-          setSetlistSongs(
-            data.map((s: any) => ({
+          const songs = data.map((s: any) => ({
               id: s.id || undefined,
               songId: s.song_id || undefined,
               setNumber: typeof s.set_number === 'number' ? s.set_number : undefined,
@@ -397,9 +405,12 @@ export const EventDetail: React.FC<EventDetailProps> = ({
                   : undefined,
               key: s.song?.key || undefined,
               lyrics: s.song?.lyrics || undefined,
-            }))
-          );
+            }));
+          setSetlistSongs(songs);
+          writeCachedSetlist(setlistId, songs);
         }
+      } catch {
+        if (!cancelled) setSetlistSongs(readCachedSetlist(event.setlistId!) ?? []);
       } finally {
         if (!cancelled) setSetlistLoading(false);
       }
@@ -480,6 +491,10 @@ export const EventDetail: React.FC<EventDetailProps> = ({
     open: isStageOpen,
     isLeader: isAdmin,
   });
+  // The Bluetooth key is fetched while online, so Stage mode can sync offline on stage.
+  useEffect(() => {
+    if (canStage) prefetchStageKey(event.eventId);
+  }, [canStage, event.eventId]);
   const isGigDay = isLiveDay(gigTimes);
   // "Go live" from Home opens the gig straight in Stage mode (once, on open).
   useEffect(() => {
@@ -2166,6 +2181,7 @@ export const EventDetail: React.FC<EventDetailProps> = ({
             following: stageLive.following,
             leaderSeen: stageLive.leaderSeen,
             connected: stageLive.connected,
+            bluetooth: stageLive.bluetooth,
             onToggle: stageLive.setFollowing,
           }}
         />
