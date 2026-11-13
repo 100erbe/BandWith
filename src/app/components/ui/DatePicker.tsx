@@ -8,6 +8,8 @@ import { IconButton } from '@/app/components/bw/Screen';
 import { RailSheet } from '@/lib/railActions';
 import { PillButton } from '@/app/components/bw/Form';
 import { t, useT, intlLocale, weekdayInitials } from '@/lib/i18n';
+import { useBandFreeDays } from '@/lib/bandAvailability';
+import { FreeHeatLegend, heatStyle, freeTone } from './FreeHeat';
 
 export type DatePickerEventKind = 'gig' | 'rehearsal' | 'personal' | 'quote';
 
@@ -81,6 +83,21 @@ export interface DatePickerProps {
   accentColor?: string;
   /** Existing events: each day gets a small kind dot, and a busy day shows a hint above the CTA. */
   events?: DatePickerEvent[];
+  /**
+   * Free-slot heatmap: each day shows how many members of the band are free
+   * in their calendars (counts only, bw_band_free_slots). With start/end only
+   * events overlapping that window count.
+   */
+  availability?: DatePickerAvailability | null;
+}
+
+export interface DatePickerAvailability {
+  bandId?: string | null;
+  /** "HH:MM" window (optional). */
+  start?: string | null;
+  end?: string | null;
+  /** The event being edited does not count as busy. */
+  excludeEventId?: string | null;
 }
 
 export const getTodayStr = (): string => {
@@ -174,7 +191,7 @@ export const PickerSheet: React.FC<PickerSheetProps> = ({
         className={cn(
           // bw-picker: on the iPhone Duo open the form that asked moves to the
           // leading page while the picker is open (src/styles/duo-panes.css).
-          'bw-rail-sheet bw-picker bw-sheet-card fixed inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col',
+          'bw-rail-sheet bw-picker bw-sheet-card fixed inset-x-0 bottom-0 mx-auto max-w-[520px] max-h-[88dvh] flex flex-col',
           'bg-background text-foreground rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.35)] outline-none select-none',
           'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom duration-300',
         )}
@@ -248,6 +265,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   showShortcuts = true,
   accentColor,
   events,
+  availability,
 }) => {
   const t = useT();
   const placeholder = placeholderProp ?? t('Select event date...');
@@ -331,6 +349,21 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, inMonth: true });
   for (let i = 1; cells.length % 7 !== 0; i++) cells.push({ day: i, inMonth: false });
 
+  // Free-slot heatmap for the month on screen (fetched while the sheet is open).
+  const monthFrom = ymd(calYear, calMonth, 1);
+  const monthTo = ymd(calYear, calMonth, daysInMonth);
+  const freeDays = useBandFreeDays({
+    bandId: availability?.bandId || undefined,
+    from: monthFrom,
+    to: monthTo,
+    start: availability?.start,
+    end: availability?.end,
+    excludeEventId: availability?.excludeEventId,
+    enabled: open && !!availability?.bandId,
+  });
+  const freeTotal = freeDays ? freeDays.values().next().value?.total : undefined;
+  const selectedFree = value && freeDays ? freeDays.get(value) : undefined;
+
   const calMonthName = new Date(calYear, calMonth, 1).toLocaleDateString(intlLocale('en-US'), { month: 'long' });
 
   // A busy day keeps the sheet open so the conflict hint is visible.
@@ -408,6 +441,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       title={titleFromPlaceholder(placeholder, t('Date'))}
       footer={
         <div className="flex flex-col gap-3">
+          {selectedFree && (
+            <p role="status" className={cn('flex items-center gap-2 bw-label-sm', freeTone(selectedFree))}>
+              <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+              {selectedFree.free >= selectedFree.total
+                ? t('{free} of {total} free · no conflicts', { free: selectedFree.free, total: selectedFree.total })
+                : t('{free} of {total} free', { free: selectedFree.free, total: selectedFree.total })}
+            </p>
+          )}
           {conflict && (
             <p role="status" className="flex items-start gap-2 bw-body-sm text-foreground">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-px text-warning" aria-hidden />
@@ -467,14 +508,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         </div>
 
         {/* Calendar Day cells */}
-        <div className="grid grid-cols-7 gap-x-1 gap-y-2">
+        <div className="grid grid-cols-7 gap-x-1 gap-y-2" data-bw-heatmap={freeDays ? '' : undefined}>
           {cells.map(({ day, inMonth }, i) => {
             if (!inMonth) {
               return (
                 <span
                   key={i}
                   aria-hidden
-                  className="h-6 rounded-full bg-foreground/[0.08] flex items-center justify-center bw-label-md text-muted-foreground"
+                  className={cn(
+                    freeDays ? 'bw-heat-cell h-9 rounded-xl' : 'h-6 rounded-full',
+                    'bg-foreground/[0.08] flex items-center justify-center bw-label-md text-muted-foreground',
+                  )}
                 >
                   {day}
                 </span>
@@ -484,6 +528,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             const dayKey = ymd(calYear, calMonth, day);
             const isToday = dayKey === todayStr;
             const dayKinds = eventsByDay.get(dayKey);
+            const free = dayKey >= todayStr ? freeDays?.get(dayKey) : undefined;
             return (
               <button
                 key={i}
@@ -496,16 +541,27 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
-                })}${dayKinds ? `, ${t('has {events}', { events: dayKinds.map(kindNoun).join(` ${t('and')} `) })}` : ''}`}
+                })}${dayKinds ? `, ${t('has {events}', { events: dayKinds.map(kindNoun).join(` ${t('and')} `) })}` : ''}${
+                  free ? `, ${t('{free} of {total} free', { free: free.free, total: free.total })}` : ''
+                }`}
                 className={cn(
-                  "relative h-6 rounded-full flex items-center justify-center bw-label-md transition-colors cursor-pointer after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
+                  "relative rounded-full flex items-center justify-center bw-label-md transition-colors cursor-pointer after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
+                  freeDays ? 'bw-heat-cell h-9 flex-col gap-0.5 rounded-xl' : 'h-6',
                   isSelected
                     ? 'bg-surface-inverse text-surface-inverse-foreground'
-                    : 'bg-foreground/[0.08] text-foreground hover:bg-foreground/[0.14]',
+                    : free && free.free > 0
+                      ? 'text-foreground hover:brightness-95'
+                      : 'bg-foreground/[0.08] text-foreground hover:bg-foreground/[0.14]',
                   isToday && !isSelected && 'ring-[1.5px] ring-inset ring-foreground'
                 )}
+                style={free && !isSelected ? heatStyle(free) : undefined}
               >
-                {day}
+                <span className="leading-none">{day}</span>
+                {free && (
+                  <span aria-hidden className="bw-heat-count text-[9px] leading-none font-mono opacity-80">
+                    {free.free}/{free.total}
+                  </span>
+                )}
                 {dayKinds && (
                   <span
                     aria-hidden
@@ -517,6 +573,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             );
           })}
         </div>
+        {freeDays && <FreeHeatLegend total={freeTotal} className="pt-1" />}
       </div>
     </PickerSheet>
   );

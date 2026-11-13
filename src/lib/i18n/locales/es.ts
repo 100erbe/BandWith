@@ -3141,6 +3141,11 @@ const dict: Dictionary = {
   "{count} in": "{count} van",
   "{count} maybe": "{count} quizás",
   "{count} out": "{count} no van",
+  "Total due: {amount}": "Total pendiente: {amount}",
+  "Who is owed": "A quién se le debe",
+  "Could not mark the payouts as paid. Try again.": "No se pudieron marcar los pagos como hechos. Inténtalo de nuevo.",
+  "Where it comes from": "De dónde viene",
+  "Money": "Dinero",
   // Calendar band filter
   "All bands": "Todas las bandas",
   "Filter by band": "Filtrar por banda",
@@ -3332,6 +3337,12 @@ const dict: Dictionary = {
   "Showing {shown} of {count}: type to narrow the list.": "{shown} de {count}: escribe para acotar la lista.",
   "Section {name}": "Sección {name}",
   "Chord chart from iReal Pro": "Cifrado de iReal Pro",
+  "{free}/{total} free": "{free}/{total} libres",
+  "{free} of {total} free": "{free} de {total} libres",
+  "{free} of {total} free · no conflicts": "{free} de {total} libres · sin conflictos",
+  "Free in band calendars": "Libres en los calendarios de la banda",
+  "Free in band calendars · {n} members": "Libres en calendarios · {n} miembros",
+  "{day}: {free} of {total} free": "{day}: {free} de {total} libres",
 };
 
 export default dict;

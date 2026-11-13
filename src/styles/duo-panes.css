@@ -165,3 +165,14 @@
 [data-bw-two-pane] {
   --bw-toast-center: calc(var(--bw-pane-trailing-x) + var(--bw-pane-trailing-w) / 2);
 }
+
+/* Free-slot heatmap in a date picker (DatePicker `availability`): in Laptop
+   pose the picker has only the lower half, so day cells keep their colour
+   but drop the "4/5" line (it stays in the cell's aria-label). */
+[data-bw-posture="tabletop"] .bw-heat-cell {
+  height: 1.5rem !important;
+  border-radius: 9999px !important;
+}
+[data-bw-posture="tabletop"] .bw-heat-count {
+  display: none;
+}

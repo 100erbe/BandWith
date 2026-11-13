@@ -13,6 +13,8 @@ import {
 import { toLocalDateString } from '../../../lib/dates';
 import { personName } from '@/lib/personName';
 import { useT, intlLocale } from '@/lib/i18n';
+import { useBandFreeDays, useCandidateFreeCounts, slotKey } from '@/lib/bandAvailability';
+import { FreeDots, FreeHeatLegend, FreeLabel, freeTone, heatStyle } from '@/app/components/ui/FreeHeat';
 
 interface TimeSlotDraft {
   id: string;
@@ -84,6 +86,31 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
     const monday = new Date(now.setDate(diff));
     return monday;
   }, [weekOffset]);
+
+  // Free-slot heatmap (095): free members per day of the target week, for
+  // the preset window, and per candidate slot.
+  const weekDates = useMemo(
+    () =>
+      DAYS_META.map((d) => {
+        const x = new Date(targetMonday);
+        x.setDate(targetMonday.getDate() + (d.dayIndex === 0 ? 6 : d.dayIndex - 1));
+        return toLocalDateString(x);
+      }),
+    [targetMonday]
+  );
+  const weekFree = useBandFreeDays({
+    bandId,
+    from: weekDates[0],
+    to: weekDates[6],
+    start: presetStartTime,
+    end: presetEndTime,
+    enabled: isOpen && generatorMode === 'preset',
+  });
+  const slotFree = useCandidateFreeCounts(
+    bandId,
+    timeSlots.map((s) => ({ date: s.proposed_date, start: s.start_time, end: s.end_time })),
+    isOpen
+  );
 
   // Pre-fill if opening from a member proposal
   useEffect(() => {
@@ -375,6 +402,29 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                       </Selector>
                     ))}
                   </div>
+                  {weekFree && (
+                    <>
+                      <div className="flex gap-1.5" data-bw-heatmap="">
+                        {DAYS_META.map((d, i) => {
+                          const c = weekDates[i] >= toLocalDateString(new Date()) ? weekFree.get(weekDates[i]) : undefined;
+                          return (
+                            <span
+                              key={d.dayIndex}
+                              className={cn('flex-1 min-w-0 h-7 rounded-full flex items-center justify-center bw-label-xs text-foreground', (!c || c.free === 0) && 'bg-foreground/[0.08] text-muted-foreground')}
+                              style={heatStyle(c)}
+                              aria-label={c ? t('{day}: {free} of {total} free', { day: d.label, free: c.free, total: c.total }) : undefined}
+                            >
+                              {c ? `${c.free}/${c.total}` : '–'}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <FreeHeatLegend
+                        className="pt-1"
+                        total={weekFree.values().next().value?.total}
+                      />
+                    </>
+                  )}
                 </fieldset>
 
                 {/* Default Time range */}
@@ -435,13 +485,26 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
               </Card>
             ) : (
               <ul className="flex flex-col gap-4">
-                {timeSlots.map((slot, index) => (
+                {timeSlots.map((slot, index) => {
+                  const free = slotFree.get(slotKey({ date: slot.proposed_date, start: slot.start_time, end: slot.end_time }));
+                  return (
                   <li
                     key={slot.id || index}
-                    className="flex items-center gap-3 min-h-[47px] pl-4 pr-1 rounded-full bg-card"
+                    className={cn(
+                      'flex items-center gap-3 min-h-[47px] pl-4 pr-1 bg-card',
+                      free ? 'rounded-3xl py-2' : 'rounded-full'
+                    )}
                   >
                     <Calendar className="w-[18px] h-[18px] shrink-0" />
-                    <span className="flex-1 min-w-0 bw-body-md truncate">{slotLabel(slot)}</span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-1">
+                      <span className="bw-body-md truncate">{slotLabel(slot)}</span>
+                      {free && (
+                        <span className={cn('flex items-center gap-2', freeTone(free))}>
+                          <FreeDots count={free} onColor="currentColor" />
+                          <FreeLabel count={free} />
+                        </span>
+                      )}
+                    </span>
                     <IconButton
                       label={t('Remove slot')}
                       icon={<X />}
@@ -450,7 +513,8 @@ export const RehearsalPollModal: React.FC<RehearsalPollModalProps> = ({
                       onClick={() => handleRemoveSlot(slot.id)}
                     />
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

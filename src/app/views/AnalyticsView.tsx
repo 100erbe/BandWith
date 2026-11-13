@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { BarChart3, Loader2 } from '@/app/components/icons';
 import { cn } from '@/app/components/ui/utils';
@@ -14,6 +15,10 @@ import { useT, dateName, intlLocale, localDecimal } from '@/lib/i18n';
 import { revenueByType, type GigType, type RevenueEvent } from '@/lib/revenueByType';
 import { useAuth } from '@/lib/AuthContext';
 import { MemberStatsCard } from '@/app/components/dashboard/MemberStatsCard';
+import { AnalyticsPayoutsCard, type PayoutPerson } from '@/app/components/dashboard/AnalyticsPayoutsCard';
+import { usePayoutsDue } from '@/app/hooks/usePayoutsDue';
+import { useRailLayout } from '@/lib/deviceRegions';
+import { personName, personInitials } from '@/lib/personName';
 
 interface AnalyticsViewProps {
   onClose: () => void;
@@ -161,6 +166,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
     };
   }, [bandId]);
 
+  // Payouts still due after a show (admins only; Figma "Phone · Next / Analytics").
+  const payoutsRaw = usePayoutsDue(isAdmin ? bandId : null, user?.id, isAdmin);
+  const payoutGigs = isAdmin ? payoutsRaw ?? [] : [];
+  const bandMembers = (selectedBand as { members?: { user_id?: string; instrument?: string; profile?: Parameters<typeof personName>[0] }[] } | null)?.members;
+  const payoutPeople = useMemo(() => {
+    const map: Record<string, PayoutPerson> = {};
+    for (const m of bandMembers || []) {
+      if (!m.user_id) continue;
+      map[m.user_id] = { name: personName(m.profile), initials: personInitials(m.profile), instrument: m.instrument || null };
+    }
+    return map;
+  }, [bandMembers]);
+
+  // iPhone Duo open (Figma "Duo · Next / Analytics"): revenue by type and
+  // payouts get their own page beside the totals. Tablets keep one column.
+  const { twoPane, wide } = useRailLayout();
+  const splitPages = twoPane && !wide && isAdmin;
+
   const fees = monthlyFees ?? Array<number>(MONTH_SPAN).fill(0);
   const maxFee = Math.max(0, ...fees);
   const monthly = fees.map((fee, i) => {
@@ -190,6 +213,77 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
   };
   const money = (v: number) => `${sym()}${v.toLocaleString(intlLocale('en-US'))}`;
   const gigsText = (n: number) => (n === 1 ? t('{count} gig', { count: n }) : t('{count} gigs', { count: n }));
+
+  const byTypeCard = isAdmin ? (
+    <Card className="p-5 gap-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="bw-label-md">{t('Revenue by event type')}</h2>
+        <span className="bw-label-sm text-muted-foreground shrink-0">{now.getFullYear()}</span>
+      </div>
+      {yearGigs === null ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : byType.rows.length === 0 ? (
+        <p className="bw-body-md text-muted-foreground">{t('No booked gigs this year yet.')}</p>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {byType.rows.map((row, i) => (
+            <motion.li
+              key={row.type}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              className="flex flex-col gap-2"
+              aria-label={`${typeLabels[row.type]}: ${money(row.total)}, ${gigsText(row.count)}, ${Math.round(row.share * 100)}%`}
+            >
+              <div className="flex items-baseline justify-between gap-3 min-w-0" aria-hidden>
+                <span className="flex items-baseline gap-2 min-w-0">
+                  <span className="bw-label-md truncate">{typeLabels[row.type]}</span>
+                  <span className="bw-body-sm text-muted-foreground shrink-0">{gigsText(row.count)}</span>
+                </span>
+                <span className="bw-label-md shrink-0 tabular-nums">{money(row.total)}</span>
+              </div>
+              <div className="flex items-center gap-3" aria-hidden>
+                <ShareBar share={row.share} top={i === 0 && row.total > 0} index={i} />
+                <span className="bw-label-sm text-muted-foreground tabular-nums ml-auto shrink-0">
+                  {Math.round(row.share * 100)}%
+                </span>
+              </div>
+            </motion.li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  ) : null;
+
+  const payoutsCard =
+    payoutGigs.length > 0 ? <AnalyticsPayoutsCard gigs={payoutGigs} people={payoutPeople} accentButton={splitPages} /> : null;
+
+  // Figma "Duo · Next / Analytics": the trailing page, "Where it comes from".
+  const moneyPage =
+    splitPages && !loading
+      ? createPortal(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="bw-pane-detail fixed inset-0 z-[70] bg-background text-foreground overflow-y-auto overflow-x-hidden"
+            style={{ overscrollBehaviorX: 'none', touchAction: 'pan-y' }}
+            aria-label={t('Where it comes from')}
+          >
+            <ScreenHeader
+              overline={[selectedBand?.name, t('Money')].filter(Boolean).join(' · ')}
+              title={t('Where it comes from')}
+            />
+            <div className="px-4 pt-4 flex flex-col gap-4 w-full" style={{ paddingBottom: 'calc(var(--safe-bottom) + 40px)' }}>
+              {byTypeCard}
+              {payoutsCard}
+            </div>
+          </motion.div>,
+          document.body,
+        )
+      : null;
 
   const overline = [selectedBand?.name, now.getFullYear()].filter(Boolean).join(' · ');
 
@@ -282,55 +376,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onClose, dashboard
               </div>
             </Card>
 
-            {/* Revenue by event type (this year's booked gigs; admins only) */}
-            {isAdmin && (
-              <Card className="p-5 gap-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="bw-label-md">{t('Revenue by event type')}</h2>
-                  <span className="bw-label-sm text-muted-foreground shrink-0">{now.getFullYear()}</span>
-                </div>
-                {yearGigs === null ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : byType.rows.length === 0 ? (
-                  <p className="bw-body-md text-muted-foreground">{t('No booked gigs this year yet.')}</p>
-                ) : (
-                  <ul className="flex flex-col gap-4">
-                    {byType.rows.map((row, i) => (
-                      <motion.li
-                        key={row.type}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 + i * 0.05 }}
-                        className="flex flex-col gap-2"
-                        aria-label={`${typeLabels[row.type]}: ${money(row.total)}, ${gigsText(row.count)}, ${Math.round(row.share * 100)}%`}
-                      >
-                        <div className="flex items-baseline justify-between gap-3 min-w-0" aria-hidden>
-                          <span className="flex items-baseline gap-2 min-w-0">
-                            <span className="bw-label-md truncate">{typeLabels[row.type]}</span>
-                            <span className="bw-body-sm text-muted-foreground shrink-0">{gigsText(row.count)}</span>
-                          </span>
-                          <span className="bw-label-md shrink-0 tabular-nums">{money(row.total)}</span>
-                        </div>
-                        <div className="flex items-center gap-3" aria-hidden>
-                          <ShareBar share={row.share} top={i === 0 && row.total > 0} index={i} />
-                          <span className="bw-label-sm text-muted-foreground tabular-nums ml-auto shrink-0">
-                            {Math.round(row.share * 100)}%
-                          </span>
-                        </div>
-                      </motion.li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            )}
+            {/* Revenue by event type and payouts due (admins only); on the open
+                Duo they move to their own page beside the totals. */}
+            {!splitPages && byTypeCard}
+            {!splitPages && payoutsCard}
 
             {/* Per member this year (admins: whole band; members: themselves) */}
             {bandId && <MemberStatsCard bandId={bandId} isAdmin={isAdmin} currentUserId={user?.id} />}
           </>
         )}
       </div>
+      {moneyPage}
     </motion.div>
   );
 };

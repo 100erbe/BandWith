@@ -1022,6 +1022,7 @@ export const RehearsalCreationWizard: React.FC<Props> = ({ onClose, onCreate, ed
           placeholder={t('Select rehearsal date…')}
           showIcon={false}
           events={pickerEvents}
+          availability={{ bandId: selectedBand?.id, start: data.time, end: endTime, excludeEventId: editingEvent?.eventId }}
           className="h-full border-0 pb-0 text-lg font-medium hover:border-0"
         />
       </PillShell>
